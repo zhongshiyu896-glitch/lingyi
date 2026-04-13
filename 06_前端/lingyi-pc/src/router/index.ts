@@ -1,0 +1,81 @@
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    redirect: '/bom/list',
+  },
+  {
+    path: '/bom/list',
+    name: 'BomList',
+    component: () => import('@/views/bom/BomList.vue'),
+    meta: { module: 'bom' },
+  },
+  {
+    path: '/bom/detail',
+    name: 'BomDetail',
+    component: () => import('@/views/bom/BomDetail.vue'),
+    meta: { module: 'bom' },
+  },
+  {
+    path: '/production/plans',
+    name: 'ProductionPlanList',
+    component: () => import('@/views/production/ProductionPlanList.vue'),
+    meta: { module: 'production' },
+  },
+  {
+    path: '/production/plans/detail',
+    name: 'ProductionPlanDetail',
+    component: () => import('@/views/production/ProductionPlanDetail.vue'),
+    meta: { module: 'production' },
+  },
+  {
+    path: '/subcontract/list',
+    name: 'SubcontractOrderList',
+    component: () => import('@/views/subcontract/SubcontractOrderList.vue'),
+    meta: { module: 'subcontract' },
+  },
+  {
+    path: '/subcontract/detail',
+    name: 'SubcontractOrderDetail',
+    component: () => import('@/views/subcontract/SubcontractOrderDetail.vue'),
+    meta: { module: 'subcontract' },
+  },
+  {
+    path: '/workshop/tickets',
+    name: 'WorkshopTicketList',
+    component: () => import('@/views/workshop/WorkshopTicketList.vue'),
+    meta: { module: 'workshop' },
+  },
+  {
+    path: '/workshop/tickets/register',
+    name: 'WorkshopTicketRegister',
+    component: () => import('@/views/workshop/WorkshopTicketRegister.vue'),
+    meta: { module: 'workshop' },
+  },
+  {
+    path: '/workshop/tickets/batch',
+    name: 'WorkshopTicketBatch',
+    component: () => import('@/views/workshop/WorkshopTicketBatch.vue'),
+    meta: { module: 'workshop' },
+  },
+  {
+    path: '/workshop/daily-wages',
+    name: 'WorkshopDailyWage',
+    component: () => import('@/views/workshop/WorkshopDailyWage.vue'),
+    meta: { module: 'workshop' },
+  },
+  {
+    path: '/workshop/wage-rates',
+    name: 'WorkshopWageRate',
+    component: () => import('@/views/workshop/OperationWageRate.vue'),
+    meta: { module: 'workshop' },
+  },
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+})
+
+export default router

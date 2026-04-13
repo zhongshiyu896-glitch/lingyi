@@ -1,0 +1,66 @@
+name: Backend PostgreSQL Hard Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "07_后端/lingyi_service/**"
+      - ".github/workflows/backend-postgresql.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "07_后端/lingyi_service/**"
+      - ".github/workflows/backend-postgresql.yml"
+
+jobs:
+  subcontract-postgresql-gate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lingyi
+          POSTGRES_PASSWORD: lingyi_pwd
+          POSTGRES_DB: lingyi_test_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lingyi -d lingyi_test_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    defaults:
+      run:
+        working-directory: "07_后端/lingyi_service"
+
+    env:
+      POSTGRES_TEST_ALLOW_DESTRUCTIVE: "true"
+      POSTGRES_TEST_DSN: "postgresql+psycopg://lingyi:lingyi_pwd@127.0.0.1:5432/lingyi_test_ci"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run PostgreSQL hard gate
+        run: |
+          bash scripts/run_postgresql_ci_gate.sh
+
+      - name: Upload PostgreSQL JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgresql-gate-junit
+          path: 07_后端/lingyi_service/.pytest-postgresql.xml

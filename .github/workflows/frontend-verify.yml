@@ -1,0 +1,45 @@
+name: Frontend Verify Hard Gate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "06_前端/lingyi-pc/**"
+      - ".github/workflows/frontend-verify.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "06_前端/lingyi-pc/**"
+      - ".github/workflows/frontend-verify.yml"
+
+jobs:
+  lingyi-pc-verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "06_前端/lingyi-pc"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.1"
+          cache: npm
+          cache-dependency-path: "06_前端/lingyi-pc/package-lock.json"
+
+      - name: Assert Node and npm versions
+        run: |
+          test "$(node -v)" = "v22.22.1"
+          test "$(npm -v)" = "10.9.4"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend verify
+        run: npm run verify
+
+      - name: Audit high vulnerabilities
+        run: npm audit --audit-level=high

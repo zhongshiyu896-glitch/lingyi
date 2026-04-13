@@ -1,0 +1,30 @@
+{
+  "name": "lingyi-pc",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@10.9.4",
+  "engines": {
+    "node": "22.22.1",
+    "npm": "10.9.4"
+  },
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "build": "vue-tsc --noEmit -p tsconfig.json && vite build",
+    "check:production-contracts": "node scripts/check-production-contracts.mjs",
+    "test:production-contracts": "node scripts/test-production-contracts.mjs",
+    "verify": "npm run check:production-contracts && npm run test:production-contracts && npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "element-plus": "^2.11.5",
+    "vue": "^3.5.22",
+    "vue-router": "^4.6.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.8.1",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.11",
+    "vue-tsc": "^3.1.1"
+  }
+}
