@@ -355,7 +355,8 @@ TASK-001：BOM 管理；TASK-003：工票/车间管理
 - TASK-004C7 项目根 GitHub 仓库根策略落地：审计意见书第 73 份有条件通过，路径 `/03_需求与设计/02_开发计划/TASK-004C7_项目根GitHub仓库根策略落地_工程任务单.md`。项目根 git root 已立起来，`02_源码/.git` 已备份迁出，关键 workflow 和部分关键文件已进入根仓库索引；进入 TASK-004C8。
 - TASK-004C8 根仓库首个提交清单与离线 CI 模拟：审计意见书第 74 份已通过，路径 `/03_需求与设计/02_开发计划/TASK-004C8_根仓库首个提交清单与离线CI模拟_工程任务单.md`。根仓库首个提交已完成，tracked 文件从 6 个补齐到 236 个，审计 snapshot 前后端验证通过；进入 TASK-004C9。
 - TASK-004C9 GitHub 远端推送与前端 Required Check 闭环：审计意见书第 75 份有条件通过但平台未闭环，路径 `/03_需求与设计/02_开发计划/TASK-004C9_GitHub远端推送与前端RequiredCheck闭环_工程任务单.md`。本地基线属实，但缺 GitHub URL、origin、push、hosted runner、required check；进入 TASK-004C10，先补 C9 证据与最新审计记录 docs-only commit。
-- TASK-004C10 C9 证据与审计记录补提交：任务单已下发，路径 `/03_需求与设计/02_开发计划/TASK-004C10_C9证据与审计记录补提交_工程任务单.md`。只允许提交 C9 证据、第 75 份审计记录、架构/Sprint/日志和 C10 任务单，禁止 `git add .`，禁止提交前后端业务代码和未审计大目录；完成后再配置 remote/push。
+- TASK-004C10 C9 证据与审计记录补提交：审计意见书第 76 份已通过，路径 `/03_需求与设计/02_开发计划/TASK-004C10_C9证据与审计记录补提交_工程任务单.md`。C9 证据和第 75 份审计记录已完成 docs-only commit，当前本地基线为 `b32585c docs: record frontend platform gate blocker`；进入 TASK-004C11。
+- TASK-004C11 GitHub 平台最终闭环：任务单已下发，路径 `/03_需求与设计/02_开发计划/TASK-004C11_GitHub平台最终闭环_工程任务单.md`。要求管理员提供 GitHub URL，完成 C11 文档准备提交、配置 `origin`、push `main`、hosted runner 实跑、main required check 配置和平台证据 docs commit；未闭环前不进入 TASK-005/TASK-006。
 
 ════════════════════════════════════════════════════════════════════════════
 
