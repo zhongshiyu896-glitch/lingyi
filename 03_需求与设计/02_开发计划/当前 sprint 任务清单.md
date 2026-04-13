@@ -389,7 +389,7 @@ TASK-001：BOM 管理；TASK-003：工票/车间管理
 【数据库表设计】
 | 表名 | 用途 | 关键字段 | 索引 |
 | --- | --- | --- | --- |
-| ly_schema.ly_style_profit_snapshot | 利润快照 | id, snapshot_no, sales_order, item_code, revenue_amount, standard_cost_amount, actual_cost_amount, profit_amount | uk_snapshot_no, idx_item_order, idx_created_at |
+| ly_schema.ly_style_profit_snapshot | 利润快照 | snapshot_no, company, sales_order, item_code, revenue_status, estimated_revenue_amount, actual_revenue_amount, revenue_amount, standard_material_cost, standard_operation_cost, actual_material_cost, actual_workshop_cost, actual_subcontract_cost, allocated_overhead_amount, actual_total_cost, standard_total_cost, profit_amount, profit_rate, snapshot_status, formula_version | uk_snapshot_no, idx_item_order, idx_created_at |
 | ly_schema.ly_style_profit_detail | 利润明细 | id, snapshot_id, cost_type, source_type, source_name, amount | idx_snapshot_id, idx_cost_type |
 | ly_schema.ly_cost_allocation_rule | 费用分摊规则 | id, rule_name, cost_type, allocation_basis, status | idx_cost_type_status |
 | public.tabSales Order | ERPNext 销售订单 | name, grand_total, status | ERPNext 标准索引 |
@@ -400,30 +400,44 @@ TASK-001：BOM 管理；TASK-003：工票/车间管理
 | 接口名称 | HTTP方法 | 路径 | 入参 | 出参 |
 | --- | --- | --- | --- | --- |
 | 查询款式利润 | GET | /api/reports/style-profit/ | item_code, sales_order, from_date, to_date, page, page_size | items, total, page, page_size |
-| 生成利润快照 | POST | /api/reports/style-profit/snapshot | item_code, sales_order | snapshot_no, profit_amount, profit_rate |
+| 生成利润快照 | POST | /api/reports/style-profit/snapshot | company, item_code, sales_order, from_date, to_date, revenue_mode, include_provisional_subcontract, idempotency_key | snapshot_no, profit_amount, profit_rate |
 | 查询利润明细 | GET | /api/reports/style-profit/{snapshot_id} | snapshot_id | summary, details |
 | 标准实际对比 | GET | /api/reports/style-profit/compare | item_code, sales_order | standard_cost, actual_cost, variance_amount |
 
 【业务规则】
-1. 标准材料成本 = BOM 展开用量 × 采购单价（来自 ERPNext Item）。
-2. 标准工序成本 = BOM 工序成本 × 订单数量。
-3. 实际材料成本 = 采购实际入库成本（来自 ERPNext Purchase Receipt）。
-4. 实际工序成本 = 工票实际工价 × 实际完成数量。
-5. 款式利润 = 销售单价 × 数量 - 标准材料成本 - 实际工序成本 - 外发加工费。
+1. `estimated_revenue_amount` 来自 ERPNext `Sales Order` 已提交订单行。
+2. `actual_revenue_amount` 来自 ERPNext `Sales Invoice` 已提交发票行。
+3. `revenue_amount` 优先使用 `actual_revenue_amount`，缺失时使用 `estimated_revenue_amount` 并标记 `revenue_status=estimated`。
+4. `standard_material_cost = sum(bom_exploded_required_qty * standard_unit_cost)`，`standard_unit_cost` 来源为 `Item Price -> Item valuation_rate -> unresolved`。
+5. `standard_operation_cost = sum(bom_operation_rate * planned_qty)`。
+6. `actual_material_cost = sum(abs(stock_value_difference))`，来源 ERPNext `Stock Ledger Entry`。
+7. `Purchase Receipt` 仅作采购成本参考和异常排查，不直接作为实际材料成本。
+8. `actual_workshop_cost = sum((register_qty - reversal_qty) * wage_rate_snapshot)`。
+9. `actual_subcontract_cost = sum(settlement_locked_net_amount or provisional_inspection_net_amount)`。
+10. 扣款金额只做明细展示，已使用 `net_amount` 时不得重复扣减。
+11. `allocated_overhead_amount = 0`，`allocation_status=not_enabled`。
+12. `profit_amount = revenue_amount - actual_total_cost`；`revenue_amount=0` 时 `profit_rate=null`。
+13. 快照不可变，重算必须生成新 `snapshot_no`。
 
 【验收标准】
 □ POST /api/reports/style-profit/snapshot 能生成利润快照，并返回 snapshot_no。
 □ GET /api/reports/style-profit/{snapshot_id} 返回 summary 和 details。
-□ 销售金额 10000、标准材料成本 3000、实际工序成本 2000、外发加工费 1000 时，profit_amount 返回 4000。
-□ 标准成本和实际成本必须分别展示，不允许混为一个字段。
-□ 利润快照生成后再次重算必须生成新快照，不覆盖旧快照。
+□ `actual_revenue_amount` 存在时优先使用 actual。
+□ 无 `Sales Invoice` 时使用 estimated，并标记 `revenue_status=estimated`。
+□ `actual_material_cost` 使用 `Stock Ledger Entry`，不使用 `Purchase Receipt`。
+□ 使用 `net_amount` 后扣款不重复扣减。
+□ `allocated_overhead_amount=0` 且 `allocation_status=not_enabled`。
+□ 同 `idempotency_key` + 不同 `request_hash` 返回 `STYLE_PROFIT_IDEMPOTENCY_CONFLICT`。
+□ 利润快照重算生成新 `snapshot_no`，不覆盖旧快照。
 
 【与 ERPNext 的接口】
 | ERPNext 能力 | 调用方式 | 用途 |
 | --- | --- | --- |
-| Sales Order | REST API GET /api/resource/Sales Order/{name} | 获取销售收入和订单数量 |
-| Purchase Receipt | REST API GET /api/resource/Purchase Receipt | 获取采购实际入库成本 |
-| Stock Ledger Entry | REST API GET /api/resource/Stock Ledger Entry | 获取库存成本变动 |
+| Sales Order | REST API GET /api/resource/Sales Order/{name} | 获取预计收入（estimated_revenue_amount） |
+| Sales Invoice | REST API GET /api/resource/Sales Invoice/{name} | 获取实际收入（actual_revenue_amount） |
+| Stock Ledger Entry | REST API GET /api/resource/Stock Ledger Entry | 获取实际材料成本（actual_material_cost） |
+| Purchase Receipt | REST API GET /api/resource/Purchase Receipt | 采购成本参考与异常排查，不直接计入 actual_material_cost |
+| Item Price / Item | REST API GET /api/resource/Item Price, /api/resource/Item/{name} | 获取标准单价来源（Item Price 优先，Item valuation_rate 兜底） |
 
 【前置依赖】
 TASK-001：BOM 管理；TASK-002：外发加工管理；TASK-003：工票/车间管理；TASK-004：生产计划集成
