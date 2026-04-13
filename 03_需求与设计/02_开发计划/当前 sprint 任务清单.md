@@ -353,7 +353,9 @@ TASK-001：BOM 管理；TASK-003：工票/车间管理
 - TASK-004C5 前端 CI 平台 Required Check 闭环：审计意见书第 71 份有条件通过但平台未闭环，路径 `/03_需求与设计/02_开发计划/TASK-004C5_前端CI平台RequiredCheck闭环_工程任务单.md`。证据文件作为阻塞说明合格，但 hosted runner 实跑、Run URL、Commit SHA、required check 仍未完成；进入 TASK-004C6。
 - TASK-004C6 Git 仓库根与 CI 可见性整改：审计意见书第 72 份已通过，路径 `/03_需求与设计/02_开发计划/TASK-004C6_Git仓库根与CI可见性整改_工程任务单.md`。阻塞态证据确认项目根不是 git repo，真实可检测 git root 是 `/02_源码`，但 workflow、前端、后端交付目录不在当前 git root 跟踪范围内；进入 TASK-004C7。
 - TASK-004C7 项目根 GitHub 仓库根策略落地：审计意见书第 73 份有条件通过，路径 `/03_需求与设计/02_开发计划/TASK-004C7_项目根GitHub仓库根策略落地_工程任务单.md`。项目根 git root 已立起来，`02_源码/.git` 已备份迁出，关键 workflow 和部分关键文件已进入根仓库索引；进入 TASK-004C8。
-- TASK-004C8 根仓库首个提交清单与离线 CI 模拟：任务单已下发，路径 `/03_需求与设计/02_开发计划/TASK-004C8_根仓库首个提交清单与离线CI模拟_工程任务单.md`。要求补齐 `package-lock/scripts/tsconfig/vite/src` 与后端 `app/tests/scripts/migrations` 等首提清单，并用只包含 `git ls-files` 的 snapshot 跑前后端 CI；未闭环前不进入 TASK-005/TASK-006。
+- TASK-004C8 根仓库首个提交清单与离线 CI 模拟：审计意见书第 74 份已通过，路径 `/03_需求与设计/02_开发计划/TASK-004C8_根仓库首个提交清单与离线CI模拟_工程任务单.md`。根仓库首个提交已完成，tracked 文件从 6 个补齐到 236 个，审计 snapshot 前后端验证通过；进入 TASK-004C9。
+- TASK-004C9 GitHub 远端推送与前端 Required Check 闭环：审计意见书第 75 份有条件通过但平台未闭环，路径 `/03_需求与设计/02_开发计划/TASK-004C9_GitHub远端推送与前端RequiredCheck闭环_工程任务单.md`。本地基线属实，但缺 GitHub URL、origin、push、hosted runner、required check；进入 TASK-004C10，先补 C9 证据与最新审计记录 docs-only commit。
+- TASK-004C10 C9 证据与审计记录补提交：任务单已下发，路径 `/03_需求与设计/02_开发计划/TASK-004C10_C9证据与审计记录补提交_工程任务单.md`。只允许提交 C9 证据、第 75 份审计记录、架构/Sprint/日志和 C10 任务单，禁止 `git add .`，禁止提交前后端业务代码和未审计大目录；完成后再配置 remote/push。
 
 ════════════════════════════════════════════════════════════════════════════
 
