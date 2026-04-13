@@ -357,7 +357,8 @@ TASK-001：BOM 管理；TASK-003：工票/车间管理
 - TASK-004C9 GitHub 远端推送与前端 Required Check 闭环：审计意见书第 75 份有条件通过但平台未闭环，路径 `/03_需求与设计/02_开发计划/TASK-004C9_GitHub远端推送与前端RequiredCheck闭环_工程任务单.md`。本地基线属实，但缺 GitHub URL、origin、push、hosted runner、required check；进入 TASK-004C10，先补 C9 证据与最新审计记录 docs-only commit。
 - TASK-004C10 C9 证据与审计记录补提交：审计意见书第 76 份已通过，路径 `/03_需求与设计/02_开发计划/TASK-004C10_C9证据与审计记录补提交_工程任务单.md`。C9 证据和第 75 份审计记录已完成 docs-only commit，当前本地基线为 `b32585c docs: record frontend platform gate blocker`；进入 TASK-004C11。
 - TASK-004C11 GitHub 平台最终闭环：审计意见书第 77 份有条件通过但平台未闭环，路径 `/03_需求与设计/02_开发计划/TASK-004C11_GitHub平台最终闭环_工程任务单.md`。管理员仍需提供 GitHub URL、配置 `origin`、push `main`、hosted runner 实跑和 required check；另需修正 C11 证据中 `fc0dc2c`、`62e70bd` 与“待推送 HEAD”的 SHA 口径，进入 TASK-004C12。
-- TASK-004C12 C11 证据 SHA 口径修正：任务单已下发，路径 `/03_需求与设计/02_开发计划/TASK-004C12_C11证据SHA口径修正_工程任务单.md`。只修正 C11/C12 平台证据文档、架构记录和审计记录，明确 `b32585c / fc0dc2c / 62e70bd / C12新HEAD` 关系；不得配置 remote、不得 push、不得进入 TASK-005/TASK-006。
+- TASK-004C12 C11 证据 SHA 口径修正：审计意见书第 78 份已通过，路径 `/03_需求与设计/02_开发计划/TASK-004C12_C11证据SHA口径修正_工程任务单.md`。SHA 口径问题已闭环，`64fdfe4` 为当前新的本地待推送 HEAD；GitHub 平台闭环仍未完成，进入 TASK-004C13。
+- TASK-004C13 GitHub 平台闭环管理员执行：任务单已下发，路径 `/03_需求与设计/02_开发计划/TASK-004C13_GitHub平台闭环管理员执行单.md`。要求管理员提供 GitHub URL，完成 docs-only 准备提交、配置 `origin`、非强推 `main`、Hosted Runner 实跑、main required check 和平台证据回填；审计复审通过前不进入 TASK-005/TASK-006。
 
 ════════════════════════════════════════════════════════════════════════════
 
