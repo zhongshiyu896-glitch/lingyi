@@ -101,6 +101,14 @@ const tip = 'company 与 item_code 不能为空'
   <div>来源追溯</div>
   <div>利润金额</div>
   <div>利润率</div>
+  <p>利润计算说明</p>
+  <p>利润率计算规则</p>
+  <p>实际成本计算口径说明</p>
+  <p>标准成本计算口径说明</p>
+  <p>款式利润报表查看说明</p>
+  <p>利润快照来源说明</p>
+  <p>利润金额展示规则</p>
+  <p>未解析来源处理说明</p>
 </template>
 <script setup lang="ts">
 const canRead = { value: true }
@@ -299,6 +307,34 @@ const failureCases = [
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(root, 'src/App.vue', `${content}\n<template><button>利润金额重新计算</button></template>\n`)
+    },
+  },
+  {
+    name: 'el-button contains 利润计算说明',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><el-button>利润计算说明</el-button></template>\n`)
+    },
+  },
+  {
+    name: 'button contains 利润率计算规则',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><button>利润率计算规则</button></template>\n`)
+    },
+  },
+  {
+    name: 'menu item with click contains 利润快照来源说明',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<template><el-menu-item @click=\"openHelp\">利润快照来源说明</el-menu-item></template>\n`,
+      )
     },
   },
   {

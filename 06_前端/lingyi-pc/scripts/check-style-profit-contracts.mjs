@@ -104,15 +104,66 @@ const semanticRouteRegexes = [
   /path\s*:\s*['"]\/reports\/style-profit\/calculate['"]/gi,
 ]
 
-const hasSemanticWriteAction = (segment) => semanticWriteActions.some((action) => segment.includes(action))
-const isPureReadonlyPhrase = (segment) => readonlyPhrases.some((phrase) => segment.trim() === phrase)
+const readonlyExplanationPhrases = [
+  '利润计算说明',
+  '利润率计算规则',
+  '实际成本计算口径说明',
+  '标准成本计算口径说明',
+  '款式利润报表查看说明',
+  '利润快照来源说明',
+  '利润金额展示规则',
+  '未解析来源处理说明',
+]
 
-const shouldIgnoreSemanticMatch = (content, matchIndex, matchLength) => {
-  const segment = content.slice(matchIndex, matchIndex + matchLength).trim()
-  if (hasSemanticWriteAction(segment)) {
-    return false
+const interactiveContextRegexes = [
+  /<\s*el-button\b/i,
+  /<\s*button\b/i,
+  /<\s*el-menu-item\b/i,
+  /<\s*menu-item\b/i,
+  /@click\b/i,
+  /\bonClick\b/i,
+  /\brouter\.push\b/i,
+  /\bpath\s*:/i,
+  /\bname\s*:/i,
+  /\bfunction\s+[A-Za-z_]\w*/i,
+  /\bconst\s+[A-Za-z_]\w*\s*=/i,
+  /\blet\s+[A-Za-z_]\w*\s*=/i,
+  /\bvar\s+[A-Za-z_]\w*\s*=/i,
+]
+
+const findLineContext = (content, index) => {
+  const lineStart = content.lastIndexOf('\n', index)
+  const lineEnd = content.indexOf('\n', index)
+  const start = lineStart === -1 ? 0 : lineStart + 1
+  const end = lineEnd === -1 ? content.length : lineEnd
+  return content.slice(start, end)
+}
+
+const isInteractiveContext = (lineText) => interactiveContextRegexes.some((regex) => regex.test(lineText))
+
+const collectExplanationRanges = (content) => {
+  const ranges = []
+  for (const phrase of readonlyExplanationPhrases) {
+    let index = content.indexOf(phrase)
+    while (index !== -1) {
+      ranges.push({ start: index, end: index + phrase.length, phrase })
+      index = content.indexOf(phrase, index + phrase.length)
+    }
   }
-  return isPureReadonlyPhrase(segment)
+  return ranges
+}
+
+const matchExplanationRange = (ranges, start, end) =>
+  ranges.find((range) => start >= range.start && end <= range.end)
+
+const shouldAllowReadonlyExplanation = (content, matchIndex, matchLength, ranges) => {
+  const start = matchIndex
+  const end = matchIndex + matchLength
+  const explanationRange = matchExplanationRange(ranges, start, end)
+  if (!explanationRange) return false
+  const line = findLineContext(content, matchIndex)
+  if (isInteractiveContext(line)) return false
+  return true
 }
 
 export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot) => {
@@ -169,6 +220,7 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     const content = read(targetPath)
     const normalized = normalizePath(targetPath)
     const styleProfitSurface = isStyleProfitSurface(targetPath, content, projectRoot)
+    const explanationRanges = collectExplanationRanges(content)
 
     if (/\bfetch\s*\(/g.test(content) && styleProfitSurface && !fetchWhitelist.has(normalized)) {
       fail(`禁止裸 fetch()，必须走统一 request() 封装: ${targetPath}`)
@@ -208,13 +260,21 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     while (semanticMatch) {
       const matched = semanticMatch[0]
       const index = semanticMatch.index ?? 0
-      if (!shouldIgnoreSemanticMatch(content, index, matched.length)) {
+      if (!shouldAllowReadonlyExplanation(content, index, matched.length, explanationRanges)) {
         fail(`禁止前端出现款式利润中文泛化写入口语义: ${targetPath} -> ${matched}`)
         break
       }
       semanticMatch = semanticWriteEntryRegex.exec(content)
     }
     semanticWriteEntryRegex.lastIndex = 0
+
+    for (const range of explanationRanges) {
+      const line = findLineContext(content, range.start)
+      if (isInteractiveContext(line)) {
+        fail(`只读说明文案不得出现在交互入口上下文: ${targetPath} -> ${range.phrase}`)
+        break
+      }
+    }
 
     for (const rule of semanticIdentifierRegexes) {
       if (rule.test(content)) {
