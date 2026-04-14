@@ -102,7 +102,7 @@
 - 未提交：`.pytest-postgresql-*.xml`
 
 ## 9. 提交信息
-- commit：`<待提交后回填>`
+- commit：`6c46d19`
 - message：`fix: fail closed dynamic style profit computed keys`
 
 ## 10. 结论
