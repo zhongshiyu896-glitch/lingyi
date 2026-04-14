@@ -748,12 +748,15 @@ const resolveRuntimeMethodFromExpression = (
   runtimeNamespaceAliasMap = new Map(),
   runtimeArrayMethodContainerMap = new Map(),
   runtimeObjectMethodContainerMap = new Map(),
+  runtimeGlobalContainerAliasMap = new Map(),
 ) => {
   const target = normalizeRuntimeCalleeExpression(expression)
   if (!target) return null
 
   if (ts.isIdentifier(target)) {
-    return runtimeMethodAliasMap.get(target.text) || null
+    const aliasResolved = runtimeMethodAliasMap.get(target.text)
+    if (aliasResolved) return aliasResolved
+    return classifyRuntimeCodegenGlobalName(target.text)
   }
 
   if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
@@ -783,8 +786,14 @@ const resolveRuntimeMethodFromExpression = (
     const memberName = getStaticMemberName(target)
     if (!memberName) return null
     const namespaceName = resolveRuntimeNamespaceFromExpression(baseExpr, runtimeNamespaceAliasMap)
-    if (!namespaceName) return null
-    return classifyRuntimeMethodName(namespaceName, memberName)
+    if (namespaceName) {
+      return classifyRuntimeMethodName(namespaceName, memberName)
+    }
+    const globalContainer = resolveGlobalContainerFromExpression(baseExpr, runtimeGlobalContainerAliasMap)
+    if (globalContainer) {
+      return classifyRuntimeCodegenGlobalName(memberName)
+    }
+    return null
   }
 
   if (ts.isCallExpression(target)) {
@@ -793,6 +802,7 @@ const resolveRuntimeMethodFromExpression = (
       runtimeNamespaceAliasMap,
       runtimeArrayMethodContainerMap,
       runtimeObjectMethodContainerMap,
+      runtimeGlobalContainerAliasMap,
     }
     const reflectGetResolved = resolveRuntimeReflectGetCall(target, runtimeContext)
     if (reflectGetResolved?.method) {
@@ -812,6 +822,7 @@ const resolveRuntimeMethodFromExpression = (
       runtimeNamespaceAliasMap,
       runtimeArrayMethodContainerMap,
       runtimeObjectMethodContainerMap,
+      runtimeGlobalContainerAliasMap,
     )
   }
 
@@ -831,12 +842,20 @@ const runtimeMutatorSourceMethodSet = new Set([
   'Reflect.set',
   'Reflect.apply',
 ])
+const runtimeCodegenSourceMethodSet = new Set(['Global.eval', 'Global.Function'])
 
 const runtimeMutatorMemberNameSet = new Set(['defineProperty', 'defineProperties', 'assign', 'set', 'apply', 'get'])
+
+const classifyRuntimeCodegenGlobalName = (name) => {
+  if (name === 'eval') return 'Global.eval'
+  if (name === 'Function') return 'Global.Function'
+  return null
+}
 
 const resolveRuntimeReflectGetCall = (callNode, runtimeContext) => {
   const runtimeMethodAliasMap = runtimeContext.runtimeMethodAliasMap || new Map()
   const runtimeNamespaceAliasMap = runtimeContext.runtimeNamespaceAliasMap || new Map()
+  const runtimeGlobalContainerAliasMap = runtimeContext.runtimeGlobalContainerAliasMap || new Map()
   const runtimeArrayMethodContainerMap = runtimeContext.runtimeArrayMethodContainerMap || new Map()
   const runtimeObjectMethodContainerMap = runtimeContext.runtimeObjectMethodContainerMap || new Map()
 
@@ -848,6 +867,7 @@ const resolveRuntimeReflectGetCall = (callNode, runtimeContext) => {
     runtimeNamespaceAliasMap,
     runtimeArrayMethodContainerMap,
     runtimeObjectMethodContainerMap,
+    runtimeGlobalContainerAliasMap,
   )
   if (callMethod !== 'Reflect.get') return null
 
@@ -907,6 +927,7 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
         runtimeNamespaceAliasMap,
         runtimeArrayMethodContainerMap,
         runtimeObjectMethodContainerMap,
+        runtimeGlobalContainerAliasMap,
       )
       if (baseMethod) {
         return { method: baseMethod, invoke: memberName }
@@ -920,6 +941,7 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
     runtimeNamespaceAliasMap,
     runtimeArrayMethodContainerMap,
     runtimeObjectMethodContainerMap,
+    runtimeGlobalContainerAliasMap,
   )
   if (directMethod === 'Reflect.apply') {
     const reflectApplyTarget = callNode.arguments[0] || null
@@ -930,6 +952,7 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
           runtimeNamespaceAliasMap,
           runtimeArrayMethodContainerMap,
           runtimeObjectMethodContainerMap,
+          runtimeGlobalContainerAliasMap,
         )
       : null
     if (reflectApplyMethod && runtimeMutatorMethodSet.has(reflectApplyMethod)) {
@@ -1092,6 +1115,7 @@ const analyzeRuntimeMutatorArrayLiteral = (
   runtimeNamespaceAliasMap = new Map(),
   runtimeArrayMethodContainerMap = new Map(),
   runtimeObjectMethodContainerMap = new Map(),
+  runtimeGlobalContainerAliasMap = new Map(),
 ) => {
   const methods = []
   let unresolved = false
@@ -1109,6 +1133,7 @@ const analyzeRuntimeMutatorArrayLiteral = (
       runtimeNamespaceAliasMap,
       runtimeArrayMethodContainerMap,
       runtimeObjectMethodContainerMap,
+      runtimeGlobalContainerAliasMap,
     )
     if (method && runtimeMutatorMethodSet.has(method)) {
       methods.push(method)
@@ -1128,6 +1153,7 @@ const analyzeRuntimeMutatorObjectLiteral = (
   runtimeNamespaceAliasMap = new Map(),
   runtimeArrayMethodContainerMap = new Map(),
   runtimeObjectMethodContainerMap = new Map(),
+  runtimeGlobalContainerAliasMap = new Map(),
 ) => {
   const methodsByKey = new Map()
   let unresolved = false
@@ -1159,6 +1185,7 @@ const analyzeRuntimeMutatorObjectLiteral = (
       runtimeNamespaceAliasMap,
       runtimeArrayMethodContainerMap,
       runtimeObjectMethodContainerMap,
+      runtimeGlobalContainerAliasMap,
     )
     if (method && runtimeMutatorMethodSet.has(method)) {
       methodsByKey.set(keyInfo.keyText, method)
@@ -1180,6 +1207,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   const objectLiteralVariableMap = new Map()
   const runtimeAliasRiskFindings = []
   const runtimeMutatorSourceFindings = []
+  const runtimeCodegenSourceFindings = []
   runtimeNamespaceAliasMap.set('Object', 'Object')
   runtimeNamespaceAliasMap.set('Reflect', 'Reflect')
   runtimeGlobalContainerAliasMap.set('globalThis', 'globalThis')
@@ -1202,6 +1230,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         runtimeNamespaceAliasMap,
         runtimeArrayMethodContainerMap,
         runtimeObjectMethodContainerMap,
+        runtimeGlobalContainerAliasMap,
       )
       if (arrayAnalysis) {
         runtimeArrayMethodContainerMap.set(aliasName, arrayAnalysis)
@@ -1219,6 +1248,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         runtimeNamespaceAliasMap,
         runtimeArrayMethodContainerMap,
         runtimeObjectMethodContainerMap,
+        runtimeGlobalContainerAliasMap,
       )
       if (objectAnalysis) {
         runtimeObjectMethodContainerMap.set(aliasName, objectAnalysis)
@@ -1255,6 +1285,13 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     })
   }
 
+  const pushRuntimeCodegenSourceFinding = (type, expressionText) => {
+    runtimeCodegenSourceFindings.push({
+      type,
+      expressionText: normalizeComputedKeyExpr(expressionText || ''),
+    })
+  }
+
   const visit = (node) => {
     if (ts.isVariableDeclaration(node) && node.initializer) {
       const initializer = unwrapExpression(node.initializer)
@@ -1284,11 +1321,15 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           runtimeNamespaceAliasMap,
           runtimeArrayMethodContainerMap,
           runtimeObjectMethodContainerMap,
+          runtimeGlobalContainerAliasMap,
         )
         if (runtimeMethod) {
           runtimeMethodAliasMap.set(varName, runtimeMethod)
           if (runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
             pushRuntimeMutatorSourceFinding('VariableDeclaration-mutator-source', initializer.getText())
+          }
+          if (runtimeCodegenSourceMethodSet.has(runtimeMethod)) {
+            pushRuntimeCodegenSourceFinding('VariableDeclaration-codegen-source', initializer.getText())
           }
         } else {
           runtimeMethodAliasMap.delete(varName)
@@ -1323,6 +1364,12 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           } else if (globalContainer) {
             if (sourceKey === 'Object' || sourceKey === 'Reflect') {
               setRuntimeNamespaceAlias(localName, sourceKey)
+            } else {
+              const runtimeCodegenSource = classifyRuntimeCodegenGlobalName(sourceKey)
+              if (runtimeCodegenSource) {
+                runtimeMethodAliasMap.set(localName, runtimeCodegenSource)
+                pushRuntimeCodegenSourceFinding('ObjectBindingPattern-codegen-source', element.getText())
+              }
             }
           }
         }
@@ -1357,11 +1404,15 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           runtimeNamespaceAliasMap,
           runtimeArrayMethodContainerMap,
           runtimeObjectMethodContainerMap,
+          runtimeGlobalContainerAliasMap,
         )
         if (runtimeMethod) {
           runtimeMethodAliasMap.set(targetName, runtimeMethod)
           if (runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
             pushRuntimeMutatorSourceFinding('Assignment-mutator-source', rhs.getText())
+          }
+          if (runtimeCodegenSourceMethodSet.has(runtimeMethod)) {
+            pushRuntimeCodegenSourceFinding('Assignment-codegen-source', rhs.getText())
           }
         } else {
           runtimeMethodAliasMap.delete(targetName)
@@ -1394,6 +1445,15 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           for (const alias of aliases) {
             if (alias.sourceKey === 'Object' || alias.sourceKey === 'Reflect') {
               setRuntimeNamespaceAlias(alias.localName, alias.sourceKey)
+            } else {
+              const runtimeCodegenSource = classifyRuntimeCodegenGlobalName(alias.sourceKey)
+              if (runtimeCodegenSource) {
+                runtimeMethodAliasMap.set(alias.localName, runtimeCodegenSource)
+                pushRuntimeCodegenSourceFinding(
+                  'ObjectAssignmentPattern-codegen-source',
+                  alias.expressionText || alias.localName,
+                )
+              }
             }
           }
           for (const expressionText of unresolved) {
@@ -1419,11 +1479,22 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     runtimeObjectMethodContainerMap,
     runtimeAliasRiskFindings,
     runtimeMutatorSourceFindings,
+    runtimeCodegenSourceFindings,
     objectLiteralVariableMap,
   }
 }
 
-const collectRuntimeMutatorSourceReferenceFindings = (sourceFile, runtimeContext) => {
+const collectRuntimeSourceReferenceFindings = (
+  sourceFile,
+  runtimeContext,
+  {
+    methodSet,
+    typePrefix,
+    includeUnknownNamespaceMember = false,
+    includeUnknownGlobalNamespaceMember = false,
+    includeReflectGetUnknownMember = false,
+  },
+) => {
   const findings = []
   const seen = new Set()
   const runtimeMethodAliasMap = runtimeContext.runtimeMethodAliasMap || new Map()
@@ -1452,21 +1523,22 @@ const collectRuntimeMutatorSourceReferenceFindings = (sourceFile, runtimeContext
         runtimeNamespaceAliasMap,
         runtimeArrayMethodContainerMap,
         runtimeObjectMethodContainerMap,
+        runtimeGlobalContainerAliasMap,
       )
-      if (runtimeMethod && runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
-        pushFinding('RuntimeMutatorSourceReference', node.getText(sourceFile))
+      if (runtimeMethod && methodSet.has(runtimeMethod)) {
+        pushFinding(`${typePrefix}Reference`, node.getText(sourceFile))
       }
 
       if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
         const memberName = getStaticMemberName(node)
         const baseExpr = unwrapExpression(node.expression)
         const namespaceName = resolveRuntimeNamespaceFromExpression(baseExpr, runtimeNamespaceAliasMap)
-        if (namespaceName && !memberName) {
-          pushFinding('RuntimeMutatorSourceUnknownNamespaceMember', node.getText(sourceFile))
+        if (includeUnknownNamespaceMember && namespaceName && !memberName) {
+          pushFinding(`${typePrefix}UnknownNamespaceMember`, node.getText(sourceFile))
         }
         const globalContainer = resolveGlobalContainerFromExpression(baseExpr, runtimeGlobalContainerAliasMap)
-        if (globalContainer && !memberName) {
-          pushFinding('RuntimeMutatorSourceUnknownGlobalNamespaceMember', node.getText(sourceFile))
+        if (includeUnknownGlobalNamespaceMember && globalContainer && !memberName) {
+          pushFinding(`${typePrefix}UnknownGlobalNamespaceMember`, node.getText(sourceFile))
         }
       }
     }
@@ -1478,16 +1550,17 @@ const collectRuntimeMutatorSourceReferenceFindings = (sourceFile, runtimeContext
         runtimeNamespaceAliasMap,
         runtimeArrayMethodContainerMap,
         runtimeObjectMethodContainerMap,
+        runtimeGlobalContainerAliasMap,
       )
-      if (runtimeMethod && runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
-        pushFinding('RuntimeMutatorSourceCallReference', node.getText(sourceFile))
+      if (runtimeMethod && methodSet.has(runtimeMethod)) {
+        pushFinding(`${typePrefix}CallReference`, node.getText(sourceFile))
       }
 
       const reflectGetResolved = resolveRuntimeReflectGetCall(node, runtimeContext)
-      if (reflectGetResolved?.method && runtimeMutatorSourceMethodSet.has(reflectGetResolved.method)) {
-        pushFinding('RuntimeMutatorSourceReflectGetReference', node.getText(sourceFile))
-      } else if (reflectGetResolved?.unresolved) {
-        pushFinding('RuntimeMutatorSourceReflectGetUnknownMember', reflectGetResolved.expressionText || node.getText(sourceFile))
+      if (reflectGetResolved?.method && methodSet.has(reflectGetResolved.method)) {
+        pushFinding(`${typePrefix}ReflectGetReference`, node.getText(sourceFile))
+      } else if (includeReflectGetUnknownMember && reflectGetResolved?.unresolved) {
+        pushFinding(`${typePrefix}ReflectGetUnknownMember`, reflectGetResolved.expressionText || node.getText(sourceFile))
       }
     }
 
@@ -1497,6 +1570,22 @@ const collectRuntimeMutatorSourceReferenceFindings = (sourceFile, runtimeContext
   visit(sourceFile)
   return findings
 }
+
+const collectRuntimeMutatorSourceReferenceFindings = (sourceFile, runtimeContext) =>
+  collectRuntimeSourceReferenceFindings(sourceFile, runtimeContext, {
+    methodSet: runtimeMutatorSourceMethodSet,
+    typePrefix: 'RuntimeMutatorSource',
+    includeUnknownNamespaceMember: true,
+    includeUnknownGlobalNamespaceMember: true,
+    includeReflectGetUnknownMember: true,
+  })
+
+const collectRuntimeCodegenSourceReferenceFindings = (sourceFile, runtimeContext) =>
+  collectRuntimeSourceReferenceFindings(sourceFile, runtimeContext, {
+    methodSet: runtimeCodegenSourceMethodSet,
+    typePrefix: 'RuntimeCodegenSource',
+    includeUnknownGlobalNamespaceMember: true,
+  })
 
 const analyzeRuntimeObjectLiteralMembers = (objectNode) => {
   const explicitActionInfos = []
@@ -1755,6 +1844,7 @@ const hasSpreadRiskInExplanationChain = (chain) => {
 const analyzeStyleProfitAstContracts = (targetPath, content) => {
   const failures = []
   const mutatorSourceFailureSeen = new Set()
+  const codegenSourceFailureSeen = new Set()
   const pushMutatorSourceFailure = (type, expressionText) => {
     const normalized = normalizeComputedKeyExpr(expressionText || '')
     const dedupeKey = `${type}|${normalized}`
@@ -1762,6 +1852,15 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
     mutatorSourceFailureSeen.add(dedupeKey)
     failures.push(
       `style-profit forbids runtime mutator source references; use object spread and readonly literal actions（款式利润前端禁止 runtime mutator 源引用，请使用对象 spread 与只读字面量 action）: ${targetPath} -> ${type} [${normalized}]`,
+    )
+  }
+  const pushCodegenSourceFailure = (type, expressionText) => {
+    const normalized = normalizeComputedKeyExpr(expressionText || '')
+    const dedupeKey = `${type}|${normalized}`
+    if (codegenSourceFailureSeen.has(dedupeKey)) return
+    codegenSourceFailureSeen.add(dedupeKey)
+    failures.push(
+      `style-profit forbids runtime code generation entry points; use static readonly helpers（款式利润前端禁止运行时代码生成入口）: ${targetPath} -> ${type} [${normalized}]`,
     )
   }
 
@@ -1791,10 +1890,17 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
     for (const finding of runtimeContext.runtimeMutatorSourceFindings) {
       pushMutatorSourceFailure(finding.type, finding.expressionText)
     }
+    for (const finding of runtimeContext.runtimeCodegenSourceFindings || []) {
+      pushCodegenSourceFailure(finding.type, finding.expressionText)
+    }
 
     const runtimeMutatorSourceReferences = collectRuntimeMutatorSourceReferenceFindings(sourceFile, runtimeContext)
     for (const finding of runtimeMutatorSourceReferences) {
       pushMutatorSourceFailure(finding.type, finding.expressionText)
+    }
+    const runtimeCodegenSourceReferences = collectRuntimeCodegenSourceReferenceFindings(sourceFile, runtimeContext)
+    for (const finding of runtimeCodegenSourceReferences) {
+      pushCodegenSourceFailure(finding.type, finding.expressionText)
     }
 
     const runtimeDynamicFindings = collectRuntimeDynamicInjectionFindings(sourceFile, runtimeContext)

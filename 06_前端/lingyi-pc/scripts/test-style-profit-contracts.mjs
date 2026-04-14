@@ -2600,6 +2600,222 @@ const failureCases = [
     },
   },
   {
+    name: "runtime codegen via Function('return Object.assign')()",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nFunction('return Object.assign')()(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via new Function('return Object.defineProperty')()",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nnew Function('return Object.defineProperty')()(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via eval('Reflect.set')",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\neval('Reflect.set')(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via globalThis.Function('return Object.assign')()",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nglobalThis.Function('return Object.assign')()(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via window.Function('return Reflect.set')()",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nwindow.Function('return Reflect.set')()(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via globalThis.eval('Object.assign')",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nglobalThis.eval('Object.assign')(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via window.eval('Object.defineProperty')",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nwindow.eval('Object.defineProperty')(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via indirect eval (0, eval)('Object.assign')",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;(0, eval)('Object.assign')(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via alias const make = Function',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst make = Function\nmake('return Object.assign')()\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via alias const run = eval',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst run = eval\nrun('Reflect.set')\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime codegen via destructure const { Function: Fn } = globalThis',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst { Function: Fn } = globalThis\nFn('return Object.assign')()\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via destructure const { eval: run } = window',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst { eval: run } = window\nrun('Object.defineProperty')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via globalThis['Function']",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nglobalThis['Function']('return Object.assign')()\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via window['eval']",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nwindow['eval']('Object.assign')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime codegen via globalThis['Func' + 'tion']",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nglobalThis['Func' + 'tion']('return Reflect.set')()\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via window[`ev${'al'}`]",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nwindow[\`ev\${'al'}\`]('Object.defineProperty')\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime codegen source reference const dangerous = Function',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst dangerous = Function\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime codegen source container const holder = { make: Function }',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst holder = { make: Function }\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime codegen source function return const getFn = () => Function',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst getFn = () => Function\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime codegen source conditional const maker = condition ? Function : Function',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst maker = condition ? Function : Function\n</script>\n`,
+      )
+    },
+  },
+  {
     name: 'non-whitelist file contains bare fetch',
     expectedKeyword: '禁止裸 fetch()，必须走统一 request() 封装',
     mutate: (root) => {
