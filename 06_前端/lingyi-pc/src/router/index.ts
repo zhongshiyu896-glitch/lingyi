@@ -71,6 +71,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/workshop/OperationWageRate.vue'),
     meta: { module: 'workshop' },
   },
+  {
+    path: '/reports/style-profit',
+    name: 'StyleProfitSnapshotList',
+    component: () => import('@/views/style_profit/StyleProfitSnapshotList.vue'),
+    meta: { module: 'style_profit' },
+  },
+  {
+    path: '/reports/style-profit/detail',
+    name: 'StyleProfitSnapshotDetail',
+    component: () => import('@/views/style_profit/StyleProfitSnapshotDetail.vue'),
+    meta: { module: 'style_profit' },
+  },
 ]
 
 const router = createRouter({

@@ -13,7 +13,9 @@
     "build": "vue-tsc --noEmit -p tsconfig.json && vite build",
     "check:production-contracts": "node scripts/check-production-contracts.mjs",
     "test:production-contracts": "node scripts/test-production-contracts.mjs",
-    "verify": "npm run check:production-contracts && npm run test:production-contracts && npm run typecheck && npm run build"
+    "check:style-profit-contracts": "node scripts/check-style-profit-contracts.mjs",
+    "test:style-profit-contracts": "node scripts/test-style-profit-contracts.mjs",
+    "verify": "npm run check:production-contracts && npm run test:production-contracts && npm run check:style-profit-contracts && npm run test:style-profit-contracts && npm run typecheck && npm run build"
   },
   "dependencies": {
     "element-plus": "^2.11.5",
