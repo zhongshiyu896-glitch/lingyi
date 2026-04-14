@@ -1899,6 +1899,174 @@ const failureCases = [
     },
   },
   {
+    name: 'runtime explicit action key injection via comma callee Object.defineProperty',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;(0, Object.defineProperty)(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via comma callee Object.assign',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;(0, Object.assign)(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via comma callee Reflect.set',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;(0, Reflect.set)(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via conditional Object namespace alias',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst Obj = true ? Object : Object\nconst item = { label: '利润计算说明' }\nObj.defineProperty(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via conditional Reflect namespace alias',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst R = condition ? Reflect : Reflect\nconst item = { label: '利润计算说明' }\nR.set(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via conditional globalThis/window Object namespace alias',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst Obj = condition ? globalThis.Object : window.Object\nconst item = { label: '利润计算说明' }\nObj.assign(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via array mutator container index 0',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst mutators = [Object.defineProperty]\nconst item = { label: '利润计算说明' }\nmutators[0](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via array mutator container index 1',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst mutators = [Object.assign, Reflect.set]\nconst item = { label: '利润计算说明' }\nmutators[1](item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic property injection via array mutator container dynamic index fail closed',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst mutators = [Object.defineProperty]\nconst index = 0\nconst item = { label: '利润计算说明' }\nmutators[index](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic property injection via array mutator container spread fail closed',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst extra = []\nconst mutators = [Object.defineProperty, ...extra]\nconst item = { label: '利润计算说明' }\nmutators[0](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via object mutator container property access',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst mutators = { dp: Object.defineProperty }\nconst item = { label: '利润计算说明' }\nmutators.dp(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via object mutator container literal element access',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst mutators = { assign: Object.assign }\nconst item = { label: '利润计算说明' }\nmutators['assign'](item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic property injection via object mutator container dynamic key fail closed',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst mutators = { set: Reflect.set }\nconst key = 'set'\nconst item = { label: '利润计算说明' }\nmutators[key](item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic property injection via object mutator container spread fail closed',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst extra = {}\nconst mutators = { dp: Object.defineProperty, ...extra }\nconst item = { label: '利润计算说明' }\nmutators.dp(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
     name: "descendant meta label with ancestor [actionMap['onClick']] assignment",
     expectedKeyword: '只读说明文案不得出现在交互入口上下文',
     mutate: (root) => {
