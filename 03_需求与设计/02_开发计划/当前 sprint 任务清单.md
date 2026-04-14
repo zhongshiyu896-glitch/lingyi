@@ -477,7 +477,8 @@ TASK-001：BOM 管理；TASK-002：外发加工管理；TASK-003：工票/车间
 - TASK-005F6 Workflow 双 JUnit 上传与 PostgreSQL 证据回填：审计意见书第 109 份有条件通过，路径 `/03_需求与设计/02_开发计划/TASK-005F6_Workflow双JUnit上传与PG证据回填_工程任务单.md`。workflow 双 JUnit 上传、本地门禁和静态测试已闭环，但真实 PostgreSQL 非 skip 实跑证据仍缺失；进入 TASK-005F7。
 - TASK-005F7 PostgreSQL 真实非 Skip 证据闭环：审计意见书第 110 份不通过，路径 `/03_需求与设计/02_开发计划/TASK-005F7_PostgreSQL真实非Skip证据闭环_工程任务单.md`。真实 PG 下 settlement 门禁失败，原因是测试迁移链缺 TASK-005F2 外发利润桥接字段，style-profit JUnit 未生成；进入 TASK-005F8。
 - TASK-005F8 PostgreSQL 外发 Schema 基线与双门禁复跑：审计意见书第 111 份已通过，路径 `/03_需求与设计/02_开发计划/TASK-005F8_PostgreSQL外发Schema基线与双门禁复跑_工程任务单.md`。外发 PG schema 基线已纳入 TASK-005F2 桥接字段，settlement/style-profit 两份真实 PG JUnit 均 non-skip 通过；进入 TASK-005F9 本地基线提交。
-- TASK-005F9 款式利润 F 阶段本地基线提交：任务单已下发，路径 `/03_需求与设计/02_开发计划/TASK-005F9_款式利润F阶段本地基线提交_工程任务单.md`。只允许按白名单 stage/commit TASK-005F~F8 代码、迁移、测试、门禁、证据和文档；禁止 `git add .`、禁止提交 `.pytest-postgresql-*.xml`、历史未跟踪大目录、前端、`02_源码` 或 TASK-006。
+- TASK-005F9 款式利润 F 阶段本地基线提交：审计意见书第 112 份已通过，路径 `/03_需求与设计/02_开发计划/TASK-005F9_款式利润F阶段本地基线提交_工程任务单.md`。本地基线 commit `81c3cfa25acc77b0a57ae00a282fecb8dca81550` 已通过，但 F9 证据文件仍未跟踪；进入 TASK-005F10。
+- TASK-005F10 F9 证据 Docs-Only 补提交：任务单已下发，路径 `/03_需求与设计/02_开发计划/TASK-005F10_F9证据DocsOnly补提交_工程任务单.md`。只允许提交 F9 证据与架构/审计文档；提交前必须清理非白名单 staged 文件，禁止带入后端、前端、workflow、运行时 JUnit、历史大目录、`02_源码` 或 TASK-006。
 
 ════════════════════════════════════════════════════════════════════════════
 
