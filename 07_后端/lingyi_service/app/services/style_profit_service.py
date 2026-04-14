@@ -14,9 +14,13 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import BusinessException
 from app.core.exceptions import DatabaseWriteFailed
+from app.models.production import LyProductionJobCardLink
+from app.models.production import LyProductionPlan
+from app.models.production import LyProductionWorkOrderLink
 from app.models.style_profit import LyStyleProfitDetail
 from app.models.style_profit import LyStyleProfitSnapshot
 from app.models.style_profit import LyStyleProfitSourceMap
+from app.models.subcontract import LySubcontractOrder
 from app.schemas.style_profit import StyleProfitMaterialSourceDTO
 from app.schemas.style_profit import StyleProfitSnapshotCreateRequest
 from app.schemas.style_profit import StyleProfitSnapshotResult
@@ -1088,19 +1092,41 @@ class StyleProfitService:
             )
             row_production_plan_id = self._normalize_text(row.get("production_plan_id"))
             row_subcontract_order = self._normalize_text(row.get("subcontract_order"))
-            scope_status, scope_reason = self._match_profit_scope(
-                snapshot=snapshot,
-                payload=payload,
-                source_type="Subcontract",
-                row_company=row_company,
-                row_item_code=row_item_code,
-                row_sales_order=row_sales_order,
-                row_work_order=row_work_order,
-                row_job_card=row_job_card,
-                row_job_card_work_order=row_job_card_work_order,
-                row_production_plan_id=row_production_plan_id,
-                row_subcontract_order=row_subcontract_order,
-            )
+            row_profit_scope_status = self._normalize_text(row.get("profit_scope_status")).lower()
+            row_profit_scope_error = self._normalize_text(row.get("profit_scope_error_code")) or "SUBCONTRACT_SCOPE_UNTRUSTED"
+            bridge_source = self._normalize_text(row.get("bridge_source")) or None
+            row_inspected_at = self._none_if_empty(row.get("inspected_at"))
+            diagnostic_raw_ref = self._subcontract_diagnostic_raw_ref(row=row)
+            if not row_inspected_at:
+                scope_status, scope_reason = "unresolved", "SUBCONTRACT_INSPECTED_AT_REQUIRED"
+            elif row_profit_scope_status != "ready":
+                if row_profit_scope_status in {"", "unknown"}:
+                    scope_status, scope_reason = "unresolved", "SUBCONTRACT_SCOPE_STATUS_REQUIRED"
+                else:
+                    scope_status, scope_reason = "unresolved", row_profit_scope_error
+            else:
+                resolved_bridge_work_order, bridge_lookup_status = self._resolve_subcontract_bridge_work_order(
+                    session=session,
+                    expected_company=self._normalize_text(snapshot.company),
+                    expected_item=self._normalize_text(snapshot.item_code),
+                    expected_sales_order=self._normalize_text(snapshot.sales_order),
+                    row_job_card=row_job_card,
+                    row_job_card_work_order=row_job_card_work_order,
+                    row_production_plan_id=row_production_plan_id,
+                    row_subcontract_order=row_subcontract_order,
+                )
+                scope_status, scope_reason = self._match_subcontract_profit_scope(
+                    expected_company=self._normalize_text(snapshot.company),
+                    expected_item=self._normalize_text(snapshot.item_code),
+                    expected_sales_order=self._normalize_text(snapshot.sales_order),
+                    expected_work_order=self._normalize_text(payload.work_order),
+                    row_company=row_company,
+                    row_item_code=row_item_code,
+                    row_sales_order=row_sales_order,
+                    row_work_order=row_work_order,
+                    resolved_bridge_work_order=resolved_bridge_work_order,
+                    bridge_lookup_status=bridge_lookup_status,
+                )
             source_item_code = row_item_code or None
 
             if settlement_locked is not None:
@@ -1138,7 +1164,12 @@ class StyleProfitService:
                         currency=None,
                         warehouse=None,
                         posting_date=None,
-                        raw_ref={"scope_reason": scope_reason},
+                        raw_ref={
+                            "scope_reason": scope_reason,
+                            "bridge_source": bridge_source,
+                            "inspected_at": row_inspected_at,
+                            **diagnostic_raw_ref,
+                        },
                         include_in_profit=False,
                         mapping_status="excluded",
                         unresolved_reason=scope_reason,
@@ -1160,7 +1191,12 @@ class StyleProfitService:
                     formula_code="SUBCONTRACT_V1",
                     is_unresolved=True,
                     unresolved_reason=scope_reason,
-                    raw_ref={"scope_reason": scope_reason},
+                    raw_ref={
+                        "scope_reason": scope_reason,
+                        "bridge_source": bridge_source,
+                        "inspected_at": row_inspected_at,
+                        **diagnostic_raw_ref,
+                    },
                 )
                 session.add(detail)
                 session.flush()
@@ -1185,7 +1221,12 @@ class StyleProfitService:
                         currency=None,
                         warehouse=None,
                         posting_date=None,
-                        raw_ref={"scope_reason": scope_reason},
+                        raw_ref={
+                            "scope_reason": scope_reason,
+                            "bridge_source": bridge_source,
+                            "inspected_at": row_inspected_at,
+                            **diagnostic_raw_ref,
+                        },
                         include_in_profit=False,
                         mapping_status="unresolved",
                         unresolved_reason=scope_reason,
@@ -1193,6 +1234,40 @@ class StyleProfitService:
                 )
                 unresolved_count += 1
                 line_no += 1
+                continue
+
+            if scope_source_status in {"cancelled", "canceled"}:
+                session.add(
+                    LyStyleProfitSourceMap(
+                        snapshot_id=int(snapshot.id),
+                        detail_id=None,
+                        company=row_company or str(snapshot.company),
+                        sales_order=row_sales_order or snapshot.sales_order,
+                        style_item_code=row_item_code or str(snapshot.item_code),
+                        source_item_code=source_item_code,
+                        work_order=row_work_order or None,
+                        job_card=row_job_card or None,
+                        source_system="fastapi",
+                        source_doctype=scope_source_doctype,
+                        source_status=scope_source_status,
+                        source_name=source_name,
+                        source_line_no=source_line_no,
+                        qty=None,
+                        unit_rate=None,
+                        amount=scope_amount,
+                        currency=None,
+                        warehouse=None,
+                        posting_date=None,
+                        raw_ref={
+                            "reason": "SUBCONTRACT_CANCELLED",
+                            "inspected_at": row_inspected_at,
+                            **diagnostic_raw_ref,
+                        },
+                        include_in_profit=False,
+                        mapping_status="excluded",
+                        unresolved_reason="SUBCONTRACT_CANCELLED",
+                    )
+                )
                 continue
 
             if settlement_locked is not None:
@@ -1220,15 +1295,53 @@ class StyleProfitService:
                             source_line_no=source_line_no,
                             qty=None,
                             unit_rate=None,
-                            amount=provisional,
-                            currency=None,
-                            warehouse=None,
-                            posting_date=None,
-                            raw_ref={"reason": "provisional_not_included"},
-                            include_in_profit=False,
-                            mapping_status="excluded",
-                            unresolved_reason="provisional_not_included",
-                        )
+                                amount=provisional,
+                                currency=None,
+                                warehouse=None,
+                                posting_date=None,
+                                raw_ref={
+                                    "reason": "SUBCONTRACT_UNSETTLED_EXCLUDED",
+                                    "bridge_source": bridge_source,
+                                    "inspected_at": row_inspected_at,
+                                    **diagnostic_raw_ref,
+                                },
+                                include_in_profit=False,
+                                mapping_status="excluded",
+                                unresolved_reason="SUBCONTRACT_UNSETTLED_EXCLUDED",
+                            )
+                    )
+                else:
+                    session.add(
+                        LyStyleProfitSourceMap(
+                            snapshot_id=int(snapshot.id),
+                            detail_id=None,
+                            company=row_company or str(snapshot.company),
+                            sales_order=row_sales_order or snapshot.sales_order,
+                            style_item_code=row_item_code or str(snapshot.item_code),
+                            source_item_code=source_item_code,
+                            work_order=row_work_order or None,
+                            job_card=row_job_card or None,
+                            source_system="fastapi",
+                            source_doctype=scope_source_doctype,
+                            source_status=scope_source_status,
+                            source_name=source_name,
+                            source_line_no=source_line_no,
+                            qty=None,
+                            unit_rate=None,
+                                amount=Decimal("0"),
+                                currency=None,
+                                warehouse=None,
+                                posting_date=None,
+                                raw_ref={
+                                    "reason": "SUBCONTRACT_UNSETTLED_EXCLUDED",
+                                    "bridge_source": bridge_source,
+                                    "inspected_at": row_inspected_at,
+                                    **diagnostic_raw_ref,
+                                },
+                                include_in_profit=False,
+                                mapping_status="excluded",
+                                unresolved_reason="SUBCONTRACT_UNSETTLED_EXCLUDED",
+                            )
                     )
                 continue
 
@@ -1246,7 +1359,12 @@ class StyleProfitService:
                 formula_code="SUBCONTRACT_V1",
                 is_unresolved=False,
                 unresolved_reason=None,
-                raw_ref={"source_doctype": source_doctype},
+                raw_ref={
+                    "source_doctype": source_doctype,
+                    "bridge_source": bridge_source,
+                    "inspected_at": row_inspected_at,
+                    **diagnostic_raw_ref,
+                },
             )
             session.add(detail)
             session.flush()
@@ -1269,7 +1387,12 @@ class StyleProfitService:
                     currency=None,
                     warehouse=None,
                     posting_date=None,
-                    raw_ref={"source_doctype": source_doctype},
+                    raw_ref={
+                        "source_doctype": source_doctype,
+                        "bridge_source": bridge_source,
+                        "inspected_at": row_inspected_at,
+                        **diagnostic_raw_ref,
+                    },
                     include_in_profit=True,
                     mapping_status="mapped",
                     unresolved_reason=None,
@@ -1278,6 +1401,178 @@ class StyleProfitService:
             line_no += 1
 
         return total, line_no, unresolved_count
+
+    def _subcontract_diagnostic_raw_ref(self, *, row: dict[str, Any]) -> dict[str, Any]:
+        diagnostic_total_missing = self._normalize_text(row.get("diagnostic_total_missing_inspected_at"))
+        diagnostic_truncated_count = self._normalize_text(row.get("diagnostic_truncated_count"))
+        extra: dict[str, Any] = {}
+        if diagnostic_total_missing:
+            extra["diagnostic_total_missing_inspected_at"] = diagnostic_total_missing
+        if diagnostic_truncated_count:
+            extra["diagnostic_truncated_count"] = diagnostic_truncated_count
+        return extra
+
+    @staticmethod
+    def _match_subcontract_profit_scope(
+        *,
+        expected_company: str,
+        expected_item: str,
+        expected_sales_order: str,
+        expected_work_order: str,
+        row_company: str,
+        row_item_code: str,
+        row_sales_order: str,
+        row_work_order: str,
+        resolved_bridge_work_order: str,
+        bridge_lookup_status: str,
+    ) -> tuple[str, str | None]:
+        if row_company and row_company != expected_company:
+            return "excluded", "SUBCONTRACT_COMPANY_MISMATCH"
+        if row_item_code and row_item_code != expected_item:
+            return "excluded", "SUBCONTRACT_ITEM_MISMATCH"
+        if row_sales_order and row_sales_order != expected_sales_order:
+            return "excluded", "SUBCONTRACT_SCOPE_UNTRUSTED"
+
+        if not row_company:
+            return "unresolved", "company_scope_missing"
+        if not row_item_code:
+            return "unresolved", "item_scope_missing"
+        if not row_sales_order:
+            return "unresolved", "SUBCONTRACT_SCOPE_UNTRUSTED"
+
+        if not expected_work_order:
+            return "mapped", None
+
+        if row_work_order:
+            if row_work_order == expected_work_order:
+                return "mapped", None
+            return "excluded", "SUBCONTRACT_WORK_ORDER_MISMATCH"
+
+        if bridge_lookup_status == "resolved" and resolved_bridge_work_order:
+            if resolved_bridge_work_order == expected_work_order:
+                return "mapped", None
+            return "excluded", "SUBCONTRACT_WORK_ORDER_MISMATCH"
+        if bridge_lookup_status == "mismatch":
+            return "excluded", "SUBCONTRACT_WORK_ORDER_MISMATCH"
+        return "unresolved", "SUBCONTRACT_WORK_ORDER_UNTRUSTED"
+
+    def _resolve_subcontract_bridge_work_order(
+        self,
+        *,
+        session: Session,
+        expected_company: str,
+        expected_item: str,
+        expected_sales_order: str,
+        row_job_card: str,
+        row_job_card_work_order: str,
+        row_production_plan_id: str,
+        row_subcontract_order: str,
+    ) -> tuple[str, str]:
+        """Resolve trusted Work Order bridge for subcontract rows.
+
+        Returns:
+            (resolved_work_order, lookup_status)
+            lookup_status in {"resolved", "mismatch", "untrusted"}
+        """
+
+        if row_subcontract_order:
+            try:
+                order = (
+                    session.query(LySubcontractOrder)
+                    .filter(LySubcontractOrder.subcontract_no == row_subcontract_order)
+                    .one_or_none()
+                )
+            except SQLAlchemyError:
+                return "", "untrusted"
+            if order is not None:
+                order_company = self._normalize_text(order.company)
+                order_item = self._normalize_text(order.item_code)
+                order_sales_order = self._normalize_text(order.sales_order)
+                if (
+                    order_company != expected_company
+                    or order_item != expected_item
+                    or order_sales_order != expected_sales_order
+                ):
+                    return "", "mismatch"
+                order_work_order = self._normalize_text(order.work_order)
+                if order_work_order:
+                    return order_work_order, "resolved"
+
+        if row_production_plan_id:
+            try:
+                plan_id = int(row_production_plan_id)
+            except (TypeError, ValueError):
+                plan_id = None
+            if plan_id is not None:
+                try:
+                    plan = session.query(LyProductionPlan).filter(LyProductionPlan.id == plan_id).one_or_none()
+                except SQLAlchemyError:
+                    return "", "untrusted"
+                if plan is not None:
+                    plan_company = self._normalize_text(plan.company)
+                    plan_item = self._normalize_text(plan.item_code)
+                    plan_sales_order = self._normalize_text(plan.sales_order)
+                    if (
+                        plan_company != expected_company
+                        or plan_item != expected_item
+                        or plan_sales_order != expected_sales_order
+                    ):
+                        return "", "mismatch"
+                    try:
+                        link_rows = (
+                            session.query(LyProductionWorkOrderLink.work_order)
+                            .filter(LyProductionWorkOrderLink.plan_id == plan_id)
+                            .all()
+                        )
+                    except SQLAlchemyError:
+                        return "", "untrusted"
+                    work_orders = {
+                        self._normalize_text(row.work_order)
+                        for row in link_rows
+                        if self._normalize_text(row.work_order)
+                    }
+                    if len(work_orders) == 1:
+                        return next(iter(work_orders)), "resolved"
+
+        if row_job_card:
+            try:
+                link = (
+                    session.query(LyProductionJobCardLink)
+                    .filter(LyProductionJobCardLink.job_card == row_job_card)
+                    .order_by(LyProductionJobCardLink.id.desc())
+                    .first()
+                )
+            except SQLAlchemyError:
+                return "", "untrusted"
+            if link is not None:
+                try:
+                    plan = (
+                        session.query(LyProductionPlan)
+                        .filter(LyProductionPlan.id == link.plan_id)
+                        .one_or_none()
+                    )
+                except SQLAlchemyError:
+                    return "", "untrusted"
+                if plan is not None:
+                    plan_company = self._normalize_text(plan.company)
+                    plan_item = self._normalize_text(plan.item_code)
+                    plan_sales_order = self._normalize_text(plan.sales_order)
+                    if (
+                        plan_company == expected_company
+                        and plan_item == expected_item
+                        and plan_sales_order == expected_sales_order
+                    ):
+                        link_work_order = self._normalize_text(link.work_order)
+                        if link_work_order:
+                            return link_work_order, "resolved"
+                    else:
+                        return "", "mismatch"
+
+        if row_job_card_work_order:
+            # Keep strict fail-closed: unverified bridge hints cannot be trusted directly.
+            return "", "untrusted"
+
+        return "", "untrusted"
 
     def _match_profit_scope(
         self,
@@ -1300,6 +1595,7 @@ class StyleProfitService:
         expected_work_order = self._normalize_text(payload.work_order)
 
         hard_status, hard_reason = self._validate_required_scope_fields(
+            source_type=source_type,
             expected_company=expected_company,
             expected_item=expected_item,
             expected_sales_order=expected_sales_order,
@@ -1311,6 +1607,7 @@ class StyleProfitService:
             return hard_status, hard_reason
 
         return self._match_scope_bridge(
+            source_type=source_type,
             expected_work_order=expected_work_order,
             row_work_order=row_work_order,
             row_job_card=row_job_card,
@@ -1323,6 +1620,7 @@ class StyleProfitService:
     def _validate_required_scope_fields(
         self,
         *,
+        source_type: str,
         expected_company: str,
         expected_item: str,
         expected_sales_order: str,
@@ -1330,27 +1628,29 @@ class StyleProfitService:
         row_item_code: str,
         row_sales_order: str,
     ) -> tuple[str, str | None]:
+        is_subcontract = source_type == "Subcontract"
         if row_company and row_company != expected_company:
-            return "excluded", "company_scope_mismatch"
+            return "excluded", "SUBCONTRACT_COMPANY_MISMATCH" if is_subcontract else "company_scope_mismatch"
         if row_item_code and row_item_code != expected_item:
-            return "excluded", "item_scope_mismatch"
+            return "excluded", "SUBCONTRACT_ITEM_MISMATCH" if is_subcontract else "item_scope_mismatch"
         if row_sales_order and row_sales_order != expected_sales_order:
-            return "excluded", "sales_order_scope_mismatch"
+            return "excluded", "SUBCONTRACT_SCOPE_UNTRUSTED" if is_subcontract else "sales_order_scope_mismatch"
 
         if row_company and row_item_code and row_sales_order:
             return "mapped", None
 
         if not row_company:
-            return "bridge", "company_scope_missing"
+            return "bridge", "SUBCONTRACT_SCOPE_UNTRUSTED" if is_subcontract else "company_scope_missing"
         if not row_item_code:
-            return "bridge", "item_scope_missing"
+            return "bridge", "SUBCONTRACT_SCOPE_UNTRUSTED" if is_subcontract else "item_scope_missing"
         if not row_sales_order:
-            return "bridge", "unable_to_link_profit_scope"
-        return "bridge", "unable_to_link_profit_scope"
+            return "bridge", "SUBCONTRACT_SCOPE_UNTRUSTED" if is_subcontract else "unable_to_link_profit_scope"
+        return "bridge", "SUBCONTRACT_SCOPE_UNTRUSTED" if is_subcontract else "unable_to_link_profit_scope"
 
     def _match_scope_bridge(
         self,
         *,
+        source_type: str,
         expected_work_order: str,
         row_work_order: str,
         row_job_card: str,
@@ -1362,11 +1662,12 @@ class StyleProfitService:
         # TASK-005D3: without trusted bridge lookups for company/item/sales_order triad,
         # bridge references alone cannot map records into profit scope.
         _ = (row_job_card, row_production_plan_id, row_subcontract_order)
+        is_subcontract = source_type == "Subcontract"
         if expected_work_order and row_work_order and row_work_order != expected_work_order:
-            return "excluded", "work_order_scope_mismatch"
+            return "excluded", "SUBCONTRACT_SCOPE_UNTRUSTED" if is_subcontract else "work_order_scope_mismatch"
         if expected_work_order and row_job_card_work_order and row_job_card_work_order != expected_work_order:
-            return "excluded", "work_order_scope_mismatch"
-        return "unresolved", hard_reason or "unable_to_link_profit_scope"
+            return "excluded", "SUBCONTRACT_SCOPE_UNTRUSTED" if is_subcontract else "work_order_scope_mismatch"
+        return "unresolved", hard_reason or ("SUBCONTRACT_SCOPE_UNTRUSTED" if is_subcontract else "unable_to_link_profit_scope")
 
     @staticmethod
     def _resolve_standard_unit_cost(row: dict[str, Any]) -> tuple[Decimal | None, str | None]:

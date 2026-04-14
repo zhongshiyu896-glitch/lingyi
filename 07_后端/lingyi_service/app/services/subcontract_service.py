@@ -47,6 +47,9 @@ from app.core.exceptions import SubcontractInternalError
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
+from app.models.production import LyProductionJobCardLink
+from app.models.production import LyProductionPlan
+from app.models.production import LyProductionWorkOrderLink
 from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
@@ -108,6 +111,17 @@ class SubcontractService:
         if company is None:
             raise BusinessException(code=SUBCONTRACT_COMPANY_REQUIRED, message="外发单 company 不能为空")
 
+        bridge_scope = self._resolve_profit_scope_bridge(
+            company=company,
+            item_code=item_code,
+            bom_id=payload.bom_id,
+            sales_order=payload.sales_order,
+            sales_order_item=payload.sales_order_item,
+            production_plan_id=payload.production_plan_id,
+            work_order=payload.work_order,
+            job_card=payload.job_card,
+        )
+
         now = datetime.utcnow()
         subcontract_no = f"SC-{now.strftime('%Y%m%d%H%M%S%f')}"
         order = LySubcontractOrder(
@@ -130,6 +144,14 @@ class SubcontractService:
             status="draft",
             resource_scope_status="ready",
             scope_error_code=None,
+            sales_order=bridge_scope["sales_order"],
+            sales_order_item=bridge_scope["sales_order_item"],
+            production_plan_id=bridge_scope["production_plan_id"],
+            work_order=bridge_scope["work_order"],
+            job_card=bridge_scope["job_card"],
+            profit_scope_status=bridge_scope["profit_scope_status"],
+            profit_scope_error_code=bridge_scope["profit_scope_error_code"],
+            profit_scope_resolved_at=bridge_scope["profit_scope_resolved_at"],
         )
         if self._is_sqlite:
             order.id = self._next_id(LySubcontractOrder)
@@ -227,6 +249,37 @@ class SubcontractService:
                     net_amount=Decimal(str(getattr(row, "net_amount", 0) or 0)),
                     status=str(row.status),
                     resource_scope_status=str(row.resource_scope_status),
+                    profit_scope_status=str(getattr(row, "profit_scope_status", "unresolved") or "unresolved"),
+                    profit_scope_error_code=(
+                        str(getattr(row, "profit_scope_error_code", "")).strip()
+                        if getattr(row, "profit_scope_error_code", None)
+                        else None
+                    ),
+                    sales_order=(
+                        str(getattr(row, "sales_order", "")).strip()
+                        if getattr(row, "sales_order", None)
+                        else None
+                    ),
+                    sales_order_item=(
+                        str(getattr(row, "sales_order_item", "")).strip()
+                        if getattr(row, "sales_order_item", None)
+                        else None
+                    ),
+                    production_plan_id=(
+                        int(getattr(row, "production_plan_id"))
+                        if getattr(row, "production_plan_id", None) is not None
+                        else None
+                    ),
+                    work_order=(
+                        str(getattr(row, "work_order", "")).strip()
+                        if getattr(row, "work_order", None)
+                        else None
+                    ),
+                    job_card=(
+                        str(getattr(row, "job_card", "")).strip()
+                        if getattr(row, "job_card", None)
+                        else None
+                    ),
                     latest_issue_outbox_id=(
                         int(latest_issue_by_order[int(row.id)].id) if int(row.id) in latest_issue_by_order else None
                     ),
@@ -714,6 +767,21 @@ class SubcontractService:
             receipt_batch_no=receipt_batch_no,
             receipt_warehouse=self._receipt_warehouse_from_rows(receipt_rows=receipt_rows),
             item_code=str(order.item_code),
+            sales_order=(str(order.sales_order).strip() if getattr(order, "sales_order", None) else None),
+            sales_order_item=(str(order.sales_order_item).strip() if getattr(order, "sales_order_item", None) else None),
+            production_plan_id=(
+                int(order.production_plan_id) if getattr(order, "production_plan_id", None) is not None else None
+            ),
+            work_order=(str(order.work_order).strip() if getattr(order, "work_order", None) else None),
+            job_card=(str(order.job_card).strip() if getattr(order, "job_card", None) else None),
+            profit_scope_status=(
+                str(order.profit_scope_status).strip() if getattr(order, "profit_scope_status", None) else "unresolved"
+            ),
+            profit_scope_error_code=(
+                str(order.profit_scope_error_code).strip()
+                if getattr(order, "profit_scope_error_code", None)
+                else None
+            ),
             inspected_qty=inspected_qty,
             rejected_qty=rejected_qty,
             accepted_qty=accepted_qty,
@@ -948,6 +1016,19 @@ class SubcontractService:
             "settlement_status": str(order.settlement_status or ""),
             "resource_scope_status": str(order.resource_scope_status),
             "scope_error_code": (str(order.scope_error_code) if order.scope_error_code else None),
+            "sales_order": (str(order.sales_order) if getattr(order, "sales_order", None) else None),
+            "sales_order_item": (str(order.sales_order_item) if getattr(order, "sales_order_item", None) else None),
+            "production_plan_id": (
+                int(order.production_plan_id) if getattr(order, "production_plan_id", None) is not None else None
+            ),
+            "work_order": (str(order.work_order) if getattr(order, "work_order", None) else None),
+            "job_card": (str(order.job_card) if getattr(order, "job_card", None) else None),
+            "profit_scope_status": (
+                str(order.profit_scope_status) if getattr(order, "profit_scope_status", None) else "unresolved"
+            ),
+            "profit_scope_error_code": (
+                str(order.profit_scope_error_code) if getattr(order, "profit_scope_error_code", None) else None
+            ),
             "latest_issue_outbox_id": int(latest_issue_outbox.id) if latest_issue_outbox else None,
             "latest_issue_sync_status": str(latest_issue_outbox.status) if latest_issue_outbox else None,
             "latest_issue_stock_entry_name": (
@@ -1033,6 +1114,25 @@ class SubcontractService:
                 deduction_amount_per_piece=Decimal(str(row.deduction_amount_per_piece or "0")),
                 deduction_amount=Decimal(str(row.deduction_amount or "0")),
                 net_amount=Decimal(str(row.net_amount or "0")),
+                sales_order=(str(row.sales_order).strip() if getattr(row, "sales_order", None) else None),
+                sales_order_item=(
+                    str(row.sales_order_item).strip() if getattr(row, "sales_order_item", None) else None
+                ),
+                production_plan_id=(
+                    int(row.production_plan_id) if getattr(row, "production_plan_id", None) is not None else None
+                ),
+                work_order=(str(row.work_order).strip() if getattr(row, "work_order", None) else None),
+                job_card=(str(row.job_card).strip() if getattr(row, "job_card", None) else None),
+                profit_scope_status=(
+                    str(row.profit_scope_status).strip()
+                    if getattr(row, "profit_scope_status", None)
+                    else "unresolved"
+                ),
+                profit_scope_error_code=(
+                    str(row.profit_scope_error_code).strip()
+                    if getattr(row, "profit_scope_error_code", None)
+                    else None
+                ),
                 inspected_by=(str(row.inspected_by) if row.inspected_by else None),
                 inspected_at=row.inspected_at,
                 remark=(str(row.remark) if row.remark else None),
@@ -1628,6 +1728,194 @@ class SubcontractService:
         now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         return f"SRB-{order_id}-{now}"
 
+    def _resolve_profit_scope_bridge(
+        self,
+        *,
+        company: str,
+        item_code: str,
+        bom_id: int,
+        sales_order: str | None,
+        sales_order_item: str | None,
+        production_plan_id: int | None,
+        work_order: str | None,
+        job_card: str | None,
+    ) -> dict[str, object]:
+        """Resolve subcontract profit-scope bridge fields with fail-closed defaults."""
+
+        normalized_sales_order = self._normalize_text(sales_order) or None
+        normalized_sales_order_item = self._normalize_text(sales_order_item) or None
+        normalized_work_order = self._normalize_text(work_order) or None
+        normalized_job_card = self._normalize_text(job_card) or None
+        resolved_plan_id = int(production_plan_id) if production_plan_id is not None else None
+
+        has_scope_input = any(
+            (
+                normalized_sales_order,
+                normalized_work_order,
+                normalized_job_card,
+                resolved_plan_id is not None,
+            )
+        )
+        if not has_scope_input:
+            return {
+                "sales_order": None,
+                "sales_order_item": None,
+                "production_plan_id": None,
+                "work_order": None,
+                "job_card": None,
+                "profit_scope_status": "unresolved",
+                "profit_scope_error_code": "SUBCONTRACT_SCOPE_UNTRUSTED",
+                "profit_scope_resolved_at": None,
+            }
+
+        plan_from_input: LyProductionPlan | None = None
+        if resolved_plan_id is not None:
+            plan_from_input = self._must_get_plan_for_scope(plan_id=resolved_plan_id)
+            self._ensure_plan_scope_match(
+                plan=plan_from_input,
+                expected_company=company,
+                expected_item_code=item_code,
+                expected_bom_id=bom_id,
+                reason="production_plan_scope_mismatch",
+            )
+
+        plan_from_work_order: LyProductionPlan | None = None
+        if normalized_work_order:
+            _, plan_from_work_order = self._must_get_work_order_scope_link(work_order=normalized_work_order)
+            self._ensure_plan_scope_match(
+                plan=plan_from_work_order,
+                expected_company=company,
+                expected_item_code=item_code,
+                expected_bom_id=bom_id,
+                reason="work_order_scope_mismatch",
+            )
+
+        plan_from_job_card: LyProductionPlan | None = None
+        if normalized_job_card:
+            job_link, plan_from_job_card = self._must_get_job_card_scope_link(job_card=normalized_job_card)
+            if normalized_work_order and self._normalize_text(job_link.work_order) != normalized_work_order:
+                raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message="job_card 与 work_order 归属不一致")
+            self._ensure_plan_scope_match(
+                plan=plan_from_job_card,
+                expected_company=company,
+                expected_item_code=item_code,
+                expected_bom_id=bom_id,
+                reason="job_card_scope_mismatch",
+            )
+            if not normalized_work_order:
+                normalized_work_order = self._normalize_text(job_link.work_order) or None
+
+        linked_plans = [
+            plan
+            for plan in (plan_from_input, plan_from_work_order, plan_from_job_card)
+            if plan is not None
+        ]
+        if linked_plans:
+            first_plan_id = int(linked_plans[0].id)
+            for plan in linked_plans[1:]:
+                if int(plan.id) != first_plan_id:
+                    raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message="外发桥接字段归属不一致")
+            resolved_plan_id = first_plan_id
+            if normalized_sales_order:
+                if self._normalize_text(linked_plans[0].sales_order) != normalized_sales_order:
+                    raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message="sales_order 与生产归属不一致")
+            else:
+                normalized_sales_order = self._normalize_text(linked_plans[0].sales_order) or None
+            if not normalized_sales_order_item:
+                normalized_sales_order_item = self._normalize_text(linked_plans[0].sales_order_item) or None
+
+        if not normalized_sales_order:
+            return {
+                "sales_order": None,
+                "sales_order_item": normalized_sales_order_item,
+                "production_plan_id": resolved_plan_id,
+                "work_order": normalized_work_order,
+                "job_card": normalized_job_card,
+                "profit_scope_status": "unresolved",
+                "profit_scope_error_code": "SUBCONTRACT_SCOPE_UNTRUSTED",
+                "profit_scope_resolved_at": None,
+            }
+
+        if resolved_plan_id is None and not normalized_work_order:
+            return {
+                "sales_order": normalized_sales_order,
+                "sales_order_item": normalized_sales_order_item,
+                "production_plan_id": None,
+                "work_order": None,
+                "job_card": normalized_job_card,
+                "profit_scope_status": "unresolved",
+                "profit_scope_error_code": "SUBCONTRACT_SCOPE_UNTRUSTED",
+                "profit_scope_resolved_at": None,
+            }
+
+        return {
+            "sales_order": normalized_sales_order,
+            "sales_order_item": normalized_sales_order_item,
+            "production_plan_id": resolved_plan_id,
+            "work_order": normalized_work_order,
+            "job_card": normalized_job_card,
+            "profit_scope_status": "ready",
+            "profit_scope_error_code": None,
+            "profit_scope_resolved_at": datetime.utcnow(),
+        }
+
+    def _must_get_plan_for_scope(self, *, plan_id: int) -> LyProductionPlan:
+        try:
+            row = (
+                self.session.query(LyProductionPlan)
+                .filter(LyProductionPlan.id == plan_id)
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message="production_plan_id 不存在")
+        return row
+
+    def _must_get_work_order_scope_link(self, *, work_order: str) -> tuple[LyProductionWorkOrderLink, LyProductionPlan]:
+        try:
+            row = (
+                self.session.query(LyProductionWorkOrderLink, LyProductionPlan)
+                .join(LyProductionPlan, LyProductionPlan.id == LyProductionWorkOrderLink.plan_id)
+                .filter(LyProductionWorkOrderLink.work_order == work_order)
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message="work_order 不存在或未建立映射")
+        return row[0], row[1]
+
+    def _must_get_job_card_scope_link(self, *, job_card: str) -> tuple[LyProductionJobCardLink, LyProductionPlan]:
+        try:
+            row = (
+                self.session.query(LyProductionJobCardLink, LyProductionPlan)
+                .join(LyProductionPlan, LyProductionPlan.id == LyProductionJobCardLink.plan_id)
+                .filter(LyProductionJobCardLink.job_card == job_card)
+                .first()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+        if row is None:
+            raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message="job_card 不存在或未建立映射")
+        return row[0], row[1]
+
+    def _ensure_plan_scope_match(
+        self,
+        *,
+        plan: LyProductionPlan,
+        expected_company: str,
+        expected_item_code: str,
+        expected_bom_id: int,
+        reason: str,
+    ) -> None:
+        if self._normalize_text(plan.company) != self._normalize_text(expected_company):
+            raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message=f"生产归属冲突: {reason}")
+        if self._normalize_text(plan.item_code) != self._normalize_text(expected_item_code):
+            raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message=f"生产归属冲突: {reason}")
+        if int(plan.bom_id) != int(expected_bom_id):
+            raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message=f"生产归属冲突: {reason}")
+
     def _log_status(
         self,
         *,
@@ -1661,6 +1949,10 @@ class SubcontractService:
             return None
         normalized = value.strip()
         return normalized if normalized else None
+
+    @staticmethod
+    def _normalize_text(value: object) -> str:
+        return str(value or "").strip()
 
     @staticmethod
     def _is_missing_company(value: str | None) -> bool:

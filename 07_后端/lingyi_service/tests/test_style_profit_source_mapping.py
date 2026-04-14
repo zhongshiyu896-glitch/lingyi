@@ -497,6 +497,7 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
                     "status": "Submitted",
                 }
             ],
+            allowed_material_item_codes={"MAT-A"},
         )
 
         self.assertEqual(result.actual_material_cost, Decimal("45"))
@@ -521,6 +522,7 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
                     "status": "Submitted",
                 }
             ],
+            allowed_material_item_codes={"MAT-A"},
         )
 
         self.assertEqual(result.actual_material_cost, Decimal("0"))
@@ -528,7 +530,7 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
         self.assertEqual(result.unresolved_sources[0].mapping_status, "unresolved")
         self.assertEqual(
             result.unresolved_sources[0].unresolved_reason,
-            "unable_to_link_order_or_material_scope",
+            "SLE_SCOPE_UNTRUSTED",
         )
 
     def test_sle_outside_allowed_materials_is_unresolved(self) -> None:
@@ -554,7 +556,7 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
 
         self.assertEqual(result.actual_material_cost, Decimal("0"))
         self.assertEqual(len(result.unresolved_sources), 1)
-        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "material_item_not_in_bom")
+        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "SLE_MATERIAL_NOT_IN_BOM")
 
     def test_source_status_missing_saved_as_unknown_and_not_included(self) -> None:
         result = self.service.resolve_material_cost_sources(
@@ -579,7 +581,119 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
         self.assertEqual(result.actual_material_cost, Decimal("0"))
         self.assertEqual(len(result.unresolved_sources), 1)
         self.assertEqual(result.unresolved_sources[0].source_status, "unknown")
-        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "source_status_unknown")
+        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "SLE_STATUS_UNTRUSTED")
+
+    def test_sle_sales_order_mismatch_is_scope_untrusted(self) -> None:
+        result = self.service.resolve_material_cost_sources(
+            company="COMP-A",
+            sales_order="SO-EXPECTED",
+            style_item_code="STYLE-A",
+            stock_ledger_rows=[
+                {
+                    "name": "SLE-ORDER-MISMATCH",
+                    "voucher_type": "Stock Entry",
+                    "voucher_no": "STE-ORDER-MISMATCH",
+                    "company": "COMP-A",
+                    "sales_order": "SO-OTHER",
+                    "item_code": "MAT-A",
+                    "stock_value_difference": "-30",
+                    "docstatus": 1,
+                    "status": "Submitted",
+                }
+            ],
+            allowed_material_item_codes={"MAT-A"},
+        )
+        self.assertEqual(result.actual_material_cost, Decimal("0"))
+        self.assertEqual(len(result.unresolved_sources), 1)
+        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "SLE_SCOPE_UNTRUSTED")
+
+    def test_sle_work_order_mismatch_is_scope_untrusted(self) -> None:
+        result = self.service.resolve_material_cost_sources(
+            company="COMP-A",
+            sales_order="SO-EXPECTED",
+            style_item_code="STYLE-A",
+            work_order="WO-EXPECTED",
+            stock_ledger_rows=[
+                {
+                    "name": "SLE-WO-MISMATCH",
+                    "voucher_type": "Stock Entry",
+                    "voucher_no": "STE-WO-MISMATCH",
+                    "company": "COMP-A",
+                    "sales_order": "SO-EXPECTED",
+                    "work_order": "WO-OTHER",
+                    "item_code": "MAT-A",
+                    "stock_value_difference": "-30",
+                    "docstatus": 1,
+                    "status": "Submitted",
+                }
+            ],
+            allowed_material_item_codes={"MAT-A"},
+        )
+        self.assertEqual(result.actual_material_cost, Decimal("0"))
+        self.assertEqual(len(result.unresolved_sources), 1)
+        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "SLE_SCOPE_UNTRUSTED")
+
+    def test_sle_missing_status_and_cancel_flag_is_status_untrusted(self) -> None:
+        result = self.service.resolve_material_cost_sources(
+            company="COMP-A",
+            sales_order="SO-EXPECTED",
+            style_item_code="STYLE-A",
+            stock_ledger_rows=[
+                {
+                    "name": "SLE-MISS-STATUS-CANCEL",
+                    "voucher_type": "Stock Entry",
+                    "voucher_no": "STE-MISS-STATUS-CANCEL",
+                    "company": "COMP-A",
+                    "sales_order": "SO-EXPECTED",
+                    "item_code": "MAT-A",
+                    "stock_value_difference": "-30",
+                    "docstatus": 1,
+                }
+            ],
+            allowed_material_item_codes={"MAT-A"},
+        )
+        self.assertEqual(result.actual_material_cost, Decimal("0"))
+        self.assertEqual(len(result.unresolved_sources), 1)
+        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "SLE_STATUS_UNTRUSTED")
+
+    def test_sle_docstatus_zero_or_two_or_cancelled_is_not_counted(self) -> None:
+        result = self.service.resolve_material_cost_sources(
+            company="COMP-A",
+            sales_order="SO-EXPECTED",
+            style_item_code="STYLE-A",
+            stock_ledger_rows=[
+                {
+                    "name": "SLE-DRAFT",
+                    "voucher_type": "Stock Entry",
+                    "voucher_no": "STE-DRAFT",
+                    "company": "COMP-A",
+                    "sales_order": "SO-EXPECTED",
+                    "item_code": "MAT-A",
+                    "stock_value_difference": "-10",
+                    "docstatus": 0,
+                    "status": "Draft",
+                    "is_cancelled": 0,
+                },
+                {
+                    "name": "SLE-CANCELLED-STATUS",
+                    "voucher_type": "Stock Entry",
+                    "voucher_no": "STE-CANCELLED-STATUS",
+                    "company": "COMP-A",
+                    "sales_order": "SO-EXPECTED",
+                    "item_code": "MAT-A",
+                    "stock_value_difference": "-10",
+                    "docstatus": 2,
+                    "status": "Cancelled",
+                    "is_cancelled": 1,
+                },
+            ],
+            allowed_material_item_codes={"MAT-A"},
+        )
+        self.assertEqual(result.actual_material_cost, Decimal("0"))
+        self.assertEqual(len(result.unresolved_sources), 2)
+        reasons = {row.unresolved_reason for row in result.unresolved_sources}
+        self.assertIn("SLE_DRAFT_OR_UNSUBMITTED", reasons)
+        self.assertIn("SLE_CANCELLED", reasons)
 
     def test_purchase_receipt_not_directly_counted_into_actual_material_cost(self) -> None:
         result = self.service.resolve_material_cost_sources(

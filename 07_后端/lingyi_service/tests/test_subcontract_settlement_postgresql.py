@@ -32,6 +32,7 @@ from migrations.versions import task_002c_subcontract_company_and_schema as migr
 from migrations.versions import task_002f_inspection_detail_and_idempotency as migration_002f
 from migrations.versions import task_002h_subcontract_settlement_export as migration_002h
 from migrations.versions import task_002h1_subcontract_settlement_operation_idempotency as migration_002h1
+from migrations.versions import task_005f2_subcontract_profit_scope_bridge as migration_005f2
 
 
 SCHEMA = "ly_schema"
@@ -42,6 +43,29 @@ _TEST_DB_PATTERNS = (
     re.compile(r"lingyi_test_.*", re.IGNORECASE),
     re.compile(r"tmp_lingyi_.*", re.IGNORECASE),
 )
+
+_SUBCONTRACT_PROFIT_SCOPE_REQUIRED_COLUMNS = {
+    "ly_subcontract_order": (
+        "sales_order",
+        "sales_order_item",
+        "production_plan_id",
+        "work_order",
+        "job_card",
+        "profit_scope_status",
+        "profit_scope_error_code",
+        "profit_scope_resolved_at",
+    ),
+    "ly_subcontract_inspection": (
+        "sales_order",
+        "sales_order_item",
+        "production_plan_id",
+        "work_order",
+        "job_card",
+        "profit_scope_status",
+        "profit_scope_error_code",
+        "profit_scope_resolved_at",
+    ),
+}
 
 
 class PostgresDestructiveGateError(RuntimeError):
@@ -129,7 +153,9 @@ def _run_settlement_chain(engine) -> None:
     _run_migration_upgrade(engine, migration_002f)
     _run_migration_upgrade(engine, migration_002h)
     _run_migration_upgrade(engine, migration_002h1)
+    _run_migration_upgrade(engine, migration_005f2)
     _ensure_settlement_runtime_columns(engine)
+    _assert_subcontract_profit_scope_columns(engine)
 
 
 def _ensure_settlement_runtime_columns(engine) -> None:
@@ -143,6 +169,21 @@ def _ensure_settlement_runtime_columns(engine) -> None:
                 "ALTER TABLE ly_schema.ly_subcontract_order "
                 "ADD COLUMN settlement_status VARCHAR(32) NOT NULL DEFAULT 'unsettled'"
             )
+        )
+
+
+def _assert_subcontract_profit_scope_columns(engine) -> None:
+    inspector = inspect(engine)
+    missing: list[str] = []
+    for table_name, required_columns in _SUBCONTRACT_PROFIT_SCOPE_REQUIRED_COLUMNS.items():
+        existing = {str(col.get("name")) for col in inspector.get_columns(table_name, schema=SCHEMA)}
+        for col in required_columns:
+            if col not in existing:
+                missing.append(f"{SCHEMA}.{table_name}.{col}")
+    if missing:
+        raise AssertionError(
+            "PostgreSQL subcontract schema is missing TASK-005F2 profit-scope bridge columns: "
+            + ", ".join(sorted(missing))
         )
 
 

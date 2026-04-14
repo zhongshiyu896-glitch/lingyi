@@ -129,6 +129,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                     "company": "COMP-A",
                     "item_code": "STYLE-A",
                     "sales_order": "SO-200",
+                    "inspected_at": "2026-04-15T10:00:00",
+                    "profit_scope_status": "ready",
                     "settlement_locked_net_amount": "31",
                     "provisional_inspection_net_amount": "12",
                 }
@@ -472,6 +474,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "company": "COMP-B",
                 "item_code": "STYLE-A",
                 "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "settlement_locked_net_amount": "31",
             }
         ]
@@ -486,7 +490,7 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                     LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
                     LyStyleProfitSourceMap.source_name == "SETT-COMP-MISMATCH",
                     LyStyleProfitSourceMap.mapping_status == "excluded",
-                    LyStyleProfitSourceMap.unresolved_reason == "company_scope_mismatch",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_COMPANY_MISMATCH",
                 )
                 .count(),
                 1,
@@ -500,6 +504,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "company": "COMP-A",
                 "item_code": "STYLE-B",
                 "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "settlement_locked_net_amount": "31",
             }
         ]
@@ -514,7 +520,7 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                     LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
                     LyStyleProfitSourceMap.source_name == "SETT-ITEM-MISMATCH",
                     LyStyleProfitSourceMap.mapping_status == "excluded",
-                    LyStyleProfitSourceMap.unresolved_reason == "item_scope_mismatch",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_ITEM_MISMATCH",
                 )
                 .count(),
                 1,
@@ -528,6 +534,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "company": "COMP-A",
                 "item_code": "STYLE-A",
                 "sales_order": "SO-999",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "settlement_locked_net_amount": "31",
             }
         ]
@@ -542,7 +550,191 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                     LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
                     LyStyleProfitSourceMap.source_name == "SETT-ORDER-MISMATCH",
                     LyStyleProfitSourceMap.mapping_status == "excluded",
-                    LyStyleProfitSourceMap.unresolved_reason == "sales_order_scope_mismatch",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_SCOPE_UNTRUSTED",
+                )
+                .count(),
+                1,
+            )
+
+    def test_subcontract_work_order_mismatch_is_excluded_when_selector_has_work_order(self) -> None:
+        request = self._request(include_provisional=True)
+        request.work_order = "WO-200"
+        request.subcontract_rows = [
+            {
+                "statement_no": "SETT-WO-MISMATCH",
+                "company": "COMP-A",
+                "item_code": "STYLE-A",
+                "sales_order": "SO-200",
+                "work_order": "WO-999",
+                "profit_scope_status": "ready",
+                "inspected_at": "2026-04-15T10:00:00",
+                "settlement_locked_net_amount": "31",
+            }
+        ]
+        request.idempotency_key = "idem-subcontract-wo-mismatch"
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="u1")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+            self.assertEqual(row.actual_subcontract_cost, Decimal("0"))
+            self.assertEqual(
+                session.query(LyStyleProfitSourceMap)
+                .filter(
+                    LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
+                    LyStyleProfitSourceMap.source_name == "SETT-WO-MISMATCH",
+                    LyStyleProfitSourceMap.mapping_status == "excluded",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_WORK_ORDER_MISMATCH",
+                )
+                .count(),
+                1,
+            )
+
+    def test_subcontract_missing_work_order_is_unresolved_when_selector_has_work_order(self) -> None:
+        request = self._request(include_provisional=True)
+        request.work_order = "WO-200"
+        request.subcontract_rows = [
+            {
+                "statement_no": "SETT-WO-MISSING",
+                "company": "COMP-A",
+                "item_code": "STYLE-A",
+                "sales_order": "SO-200",
+                "profit_scope_status": "ready",
+                "inspected_at": "2026-04-15T10:00:00",
+                "settlement_locked_net_amount": "31",
+            }
+        ]
+        request.idempotency_key = "idem-subcontract-wo-missing"
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="u1")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+            self.assertEqual(row.actual_subcontract_cost, Decimal("0"))
+            self.assertEqual(row.snapshot_status, "incomplete")
+            self.assertEqual(
+                session.query(LyStyleProfitSourceMap)
+                .filter(
+                    LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
+                    LyStyleProfitSourceMap.source_name == "SETT-WO-MISSING",
+                    LyStyleProfitSourceMap.mapping_status == "unresolved",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_WORK_ORDER_UNTRUSTED",
+                )
+                .count(),
+                1,
+            )
+
+    def test_subcontract_without_selector_work_order_aggregates_ready_scope(self) -> None:
+        request = self._request(include_provisional=True)
+        request.work_order = None
+        request.subcontract_rows = [
+            {
+                "statement_no": "SETT-WO-A",
+                "company": "COMP-A",
+                "item_code": "STYLE-A",
+                "sales_order": "SO-200",
+                "work_order": "WO-1",
+                "profit_scope_status": "ready",
+                "inspected_at": "2026-04-15T10:00:00",
+                "settlement_locked_net_amount": "10",
+            },
+            {
+                "statement_no": "SETT-WO-B",
+                "company": "COMP-A",
+                "item_code": "STYLE-A",
+                "sales_order": "SO-200",
+                "work_order": "WO-2",
+                "profit_scope_status": "ready",
+                "inspected_at": "2026-04-16T10:00:00",
+                "settlement_locked_net_amount": "11",
+            },
+        ]
+        request.idempotency_key = "idem-subcontract-so-style-summary"
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="u1")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+            self.assertEqual(row.actual_subcontract_cost, Decimal("21"))
+
+    def test_subcontract_missing_profit_scope_status_is_unresolved(self) -> None:
+        request = self._request(include_provisional=True)
+        request.subcontract_rows = [
+            {
+                "statement_no": "SETT-MISSING-SCOPE-STATUS",
+                "company": "COMP-A",
+                "item_code": "STYLE-A",
+                "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "settlement_locked_net_amount": "31",
+            }
+        ]
+        request.idempotency_key = "idem-subcontract-scope-status-missing"
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="u1")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+            self.assertEqual(row.actual_subcontract_cost, Decimal("0"))
+            self.assertEqual(row.snapshot_status, "incomplete")
+            self.assertEqual(
+                session.query(LyStyleProfitSourceMap)
+                .filter(
+                    LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
+                    LyStyleProfitSourceMap.source_name == "SETT-MISSING-SCOPE-STATUS",
+                    LyStyleProfitSourceMap.mapping_status == "unresolved",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_SCOPE_STATUS_REQUIRED",
+                )
+                .count(),
+                1,
+            )
+
+    def test_subcontract_blank_profit_scope_status_is_unresolved(self) -> None:
+        request = self._request(include_provisional=True)
+        request.subcontract_rows = [
+            {
+                "statement_no": "SETT-BLANK-SCOPE-STATUS",
+                "company": "COMP-A",
+                "item_code": "STYLE-A",
+                "sales_order": "SO-200",
+                "profit_scope_status": " ",
+                "inspected_at": "2026-04-15T10:00:00",
+                "settlement_locked_net_amount": "31",
+            }
+        ]
+        request.idempotency_key = "idem-subcontract-scope-status-blank"
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="u1")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+            self.assertEqual(row.actual_subcontract_cost, Decimal("0"))
+            self.assertEqual(
+                session.query(LyStyleProfitSourceMap)
+                .filter(
+                    LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
+                    LyStyleProfitSourceMap.source_name == "SETT-BLANK-SCOPE-STATUS",
+                    LyStyleProfitSourceMap.mapping_status == "unresolved",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_SCOPE_STATUS_REQUIRED",
+                )
+                .count(),
+                1,
+            )
+
+    def test_subcontract_inspected_at_required(self) -> None:
+        request = self._request(include_provisional=True)
+        request.subcontract_rows = [
+            {
+                "statement_no": "SETT-MISSING-INSPECTED-AT",
+                "company": "COMP-A",
+                "item_code": "STYLE-A",
+                "sales_order": "SO-200",
+                "profit_scope_status": "ready",
+                "settlement_locked_net_amount": "31",
+            }
+        ]
+        request.idempotency_key = "idem-subcontract-inspected-at-required"
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="u1")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+            self.assertEqual(row.actual_subcontract_cost, Decimal("0"))
+            self.assertEqual(
+                session.query(LyStyleProfitSourceMap)
+                .filter(
+                    LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
+                    LyStyleProfitSourceMap.source_name == "SETT-MISSING-INSPECTED-AT",
+                    LyStyleProfitSourceMap.mapping_status == "unresolved",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_INSPECTED_AT_REQUIRED",
                 )
                 .count(),
                 1,
@@ -555,6 +747,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "inspection_no": "INSP-NO-SCOPE-BRIDGE",
                 "company": "COMP-A",
                 "item_code": "STYLE-A",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "provisional_inspection_net_amount": "12",
             }
         ]
@@ -571,7 +765,7 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                     LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
                     LyStyleProfitSourceMap.source_name == "INSP-NO-SCOPE-BRIDGE",
                     LyStyleProfitSourceMap.mapping_status == "unresolved",
-                    LyStyleProfitSourceMap.unresolved_reason == "unable_to_link_profit_scope",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_SCOPE_UNTRUSTED",
                 )
                 .count(),
                 1,
@@ -584,6 +778,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "statement_no": "SETT-MISS-COMPANY",
                 "item_code": "STYLE-A",
                 "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "settlement_locked_net_amount": "31",
             }
         ]
@@ -614,6 +810,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "statement_no": "SETT-MISS-ITEM",
                 "company": "COMP-A",
                 "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "settlement_locked_net_amount": "31",
             }
         ]
@@ -646,6 +844,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "company": "COMP-A",
                 "item_code": "STYLE-A",
                 "work_order": "WO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "settlement_locked_net_amount": "31",
             }
         ]
@@ -662,7 +862,7 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                     LyStyleProfitSourceMap.source_name == "SETT-WO-BRIDGE",
                     LyStyleProfitSourceMap.mapping_status == "unresolved",
                     LyStyleProfitSourceMap.include_in_profit.is_(False),
-                    LyStyleProfitSourceMap.unresolved_reason == "unable_to_link_profit_scope",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_SCOPE_UNTRUSTED",
                 )
                 .count(),
                 1,
@@ -688,6 +888,7 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "company": "COMP-A",
                 "item_code": "STYLE-B",
                 "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
                 "settlement_locked_net_amount": "31",
             }
         ]
@@ -707,6 +908,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "company": "COMP-A",
                 "item_code": "STYLE-A",
                 "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "provisional_inspection_net_amount": "19",
             }
         ]
@@ -718,6 +921,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "company": "COMP-A",
                 "item_code": "STYLE-A",
                 "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
                 "provisional_inspection_net_amount": "19",
             }
         ]
@@ -730,6 +935,36 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
             row_false = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == false_result.snapshot_id).one()
             self.assertEqual(row_true.actual_subcontract_cost, Decimal("19"))
             self.assertEqual(row_false.actual_subcontract_cost, Decimal("0"))
+
+    def test_subcontract_candidate_without_settlement_or_provisional_is_excluded_not_silent(self) -> None:
+        request = self._request(include_provisional=False)
+        request.subcontract_rows = [
+            {
+                "inspection_no": "INSP-NO-AMOUNT",
+                "company": "COMP-A",
+                "item_code": "STYLE-A",
+                "sales_order": "SO-200",
+                "inspected_at": "2026-04-15T10:00:00",
+                "profit_scope_status": "ready",
+                "status": "submitted",
+            }
+        ]
+        request.idempotency_key = "idem-subcontract-no-amount"
+        with self.SessionLocal() as session:
+            result = self.service.create_snapshot(session=session, request=request, operator="u1")
+            row = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == result.snapshot_id).one()
+            self.assertEqual(row.actual_subcontract_cost, Decimal("0"))
+            self.assertEqual(
+                session.query(LyStyleProfitSourceMap)
+                .filter(
+                    LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
+                    LyStyleProfitSourceMap.source_name == "INSP-NO-AMOUNT",
+                    LyStyleProfitSourceMap.mapping_status == "excluded",
+                    LyStyleProfitSourceMap.unresolved_reason == "SUBCONTRACT_UNSETTLED_EXCLUDED",
+                )
+                .count(),
+                1,
+            )
 
     def test_overhead_fixed_zero_and_formula_values(self) -> None:
         with self.SessionLocal() as session:
@@ -885,7 +1120,7 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                 "status": "Submitted",
             }
         ]
-        request.allowed_material_item_codes = []
+        request.allowed_material_item_codes = ["MAT-A"]
         request.idempotency_key = "idem-sle-no-link"
         with self.SessionLocal() as session:
             result = self.service.create_snapshot(session=session, request=request, operator="u1")
@@ -898,7 +1133,7 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
                     LyStyleProfitSourceMap.snapshot_id == result.snapshot_id,
                     LyStyleProfitSourceMap.source_name == "STE-NO-LINK",
                     LyStyleProfitSourceMap.mapping_status == "unresolved",
-                    LyStyleProfitSourceMap.unresolved_reason == "unable_to_link_order_or_material_scope",
+                    LyStyleProfitSourceMap.unresolved_reason == "SLE_SCOPE_UNTRUSTED",
                 )
                 .count()
             )

@@ -32,6 +32,7 @@ from app.core.error_codes import STYLE_PROFIT_INVALID_FORMULA_VERSION
 from app.core.error_codes import STYLE_PROFIT_INVALID_IDEMPOTENCY_KEY
 from app.core.error_codes import STYLE_PROFIT_INVALID_PERIOD
 from app.core.error_codes import STYLE_PROFIT_INVALID_REVENUE_MODE
+from app.core.error_codes import STYLE_PROFIT_REVENUE_SOURCE_REQUIRED
 from app.core.error_codes import STYLE_PROFIT_NOT_FOUND
 from app.core.error_codes import STYLE_PROFIT_SALES_ORDER_REQUIRED
 from app.core.error_codes import STYLE_PROFIT_SOURCE_UNAVAILABLE
@@ -558,7 +559,7 @@ def create_snapshot(
 ):
     action = STYLE_PROFIT_SNAPSHOT_CREATE
     permission_service = PermissionService(session=session)
-    collector = StyleProfitApiSourceCollector(session=session)
+    collector = StyleProfitApiSourceCollector(session=session, request_obj=request)
     service = StyleProfitService()
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
@@ -752,14 +753,14 @@ def create_snapshot(
                     current_user=current_user,
                     resource_id=None,
                     resource_no=resource_no,
-                    error_code=STYLE_PROFIT_SOURCE_UNAVAILABLE,
+                    error_code=STYLE_PROFIT_REVENUE_SOURCE_REQUIRED,
                 )
             except AuditWriteFailed as audit_exc:
                 return _app_err(audit_exc)
             return _err(
-                STYLE_PROFIT_SOURCE_UNAVAILABLE,
-                "未检测到可信收入来源，拒绝创建利润快照",
-                status_of(STYLE_PROFIT_SOURCE_UNAVAILABLE),
+                STYLE_PROFIT_REVENUE_SOURCE_REQUIRED,
+                message_of(STYLE_PROFIT_REVENUE_SOURCE_REQUIRED),
+                status_of(STYLE_PROFIT_REVENUE_SOURCE_REQUIRED),
             )
 
         result = service.create_snapshot(

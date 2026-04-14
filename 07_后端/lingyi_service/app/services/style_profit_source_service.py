@@ -80,6 +80,13 @@ class StyleProfitSourceService:
         "stock entry",
         "purchase receipt",
     }
+    _SLE_REASONS = {
+        "status_untrusted": "SLE_STATUS_UNTRUSTED",
+        "scope_untrusted": "SLE_SCOPE_UNTRUSTED",
+        "material_not_in_bom": "SLE_MATERIAL_NOT_IN_BOM",
+        "cancelled": "SLE_CANCELLED",
+        "draft_or_unsubmitted": "SLE_DRAFT_OR_UNSUBMITTED",
+    }
 
     def __init__(self, session: Session | None = None):
         self.session = session
@@ -164,6 +171,7 @@ class StyleProfitSourceService:
                 style_item_code=normalized_style_item,
             )
             source_doctype = dto.source_doctype
+            sle_like = self._is_sle_like_doctype(source_doctype)
 
             if source_doctype == "Purchase Receipt":
                 dto.mapping_status = "excluded"
@@ -177,7 +185,11 @@ class StyleProfitSourceService:
             if not submitted:
                 dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
-                dto.unresolved_reason = rejected_reason
+                dto.unresolved_reason = (
+                    self._normalize_material_reason(rejected_reason, sle_like=sle_like)
+                    if sle_like
+                    else rejected_reason
+                )
                 if dto.source_status in {"", "unknown"}:
                     dto.source_status = "unknown"
                 unresolved.append(dto)
@@ -185,7 +197,9 @@ class StyleProfitSourceService:
             if dto.source_status == "unknown":
                 dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
-                dto.unresolved_reason = "source_status_unknown"
+                dto.unresolved_reason = (
+                    self._SLE_REASONS["status_untrusted"] if sle_like else "source_status_unknown"
+                )
                 unresolved.append(dto)
                 continue
 
@@ -193,34 +207,37 @@ class StyleProfitSourceService:
             if row_company and row_company != normalized_company:
                 dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
-                dto.unresolved_reason = "company_mismatch"
+                dto.unresolved_reason = (
+                    self._SLE_REASONS["scope_untrusted"] if sle_like else "company_mismatch"
+                )
                 unresolved.append(dto)
                 continue
 
-            row_order = self._normalize_text(row.get("sales_order"))
-            row_work_order = self._normalize_text(row.get("work_order"))
-            row_plan_id = row.get("production_plan_id")
-            has_bridge = bool(row_order or row_work_order or row_plan_id not in (None, ""))
-            bridge_match = False
-            if normalized_order and row_order and row_order == normalized_order:
-                bridge_match = True
-            if normalized_work_order and row_work_order and row_work_order == normalized_work_order:
-                bridge_match = True
-            if row_plan_id not in (None, ""):
-                bridge_match = True
-            if not normalized_order and not normalized_work_order and has_bridge:
-                bridge_match = True
+            row_order = self._normalize_text(
+                row.get("sales_order") or row.get("custom_ly_sales_order")
+            )
+            row_work_order = self._normalize_text(
+                row.get("work_order") or row.get("custom_ly_work_order")
+            )
+            row_job_card = self._normalize_text(
+                row.get("job_card") or row.get("custom_ly_job_card")
+            )
+            row_plan_id = row.get("production_plan_id", row.get("custom_ly_production_plan"))
 
             if normalized_order and row_order and row_order != normalized_order:
                 dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
-                dto.unresolved_reason = "sales_order_mismatch"
+                dto.unresolved_reason = (
+                    self._SLE_REASONS["scope_untrusted"] if sle_like else "sales_order_mismatch"
+                )
                 unresolved.append(dto)
                 continue
             if normalized_work_order and row_work_order and row_work_order != normalized_work_order:
                 dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
-                dto.unresolved_reason = "work_order_mismatch"
+                dto.unresolved_reason = (
+                    self._SLE_REASONS["scope_untrusted"] if sle_like else "work_order_mismatch"
+                )
                 unresolved.append(dto)
                 continue
 
@@ -229,14 +246,34 @@ class StyleProfitSourceService:
                 if source_item not in allowed_materials:
                     dto.mapping_status = "unresolved"
                     dto.include_in_profit = False
-                    dto.unresolved_reason = "material_item_not_in_bom"
+                    dto.unresolved_reason = (
+                        self._SLE_REASONS["material_not_in_bom"] if sle_like else "material_item_not_in_bom"
+                    )
                     unresolved.append(dto)
                     continue
-                material_scope_matched = True
             else:
-                material_scope_matched = False
+                dto.mapping_status = "unresolved"
+                dto.include_in_profit = False
+                dto.unresolved_reason = (
+                    self._SLE_REASONS["material_not_in_bom"] if sle_like else "material_item_not_in_bom"
+                )
+                unresolved.append(dto)
+                continue
 
-            if bridge_match or material_scope_matched:
+            bridge_match = self._is_material_scope_trusted(
+                expected_company=normalized_company,
+                expected_item_code=normalized_style_item,
+                expected_sales_order=normalized_order,
+                expected_work_order=normalized_work_order,
+                row_order=row_order,
+                row_work_order=row_work_order,
+                row_plan_id=row_plan_id,
+                row_job_card=row_job_card,
+                row_voucher_type=self._normalize_text(row.get("voucher_type")),
+                row_voucher_no=self._normalize_text(row.get("voucher_no")),
+            )
+
+            if bridge_match:
                 dto.mapping_status = "mapped"
                 dto.include_in_profit = True
                 dto.unresolved_reason = None
@@ -246,7 +283,9 @@ class StyleProfitSourceService:
 
             dto.mapping_status = "unresolved"
             dto.include_in_profit = False
-            dto.unresolved_reason = "unable_to_link_order_or_material_scope"
+            dto.unresolved_reason = (
+                self._SLE_REASONS["scope_untrusted"] if sle_like else "unable_to_link_order_or_material_scope"
+            )
             unresolved.append(dto)
 
         if purchase_receipt_rows:
@@ -426,6 +465,32 @@ class StyleProfitSourceService:
         *,
         source_doctype: str | None = None,
     ) -> tuple[bool, str]:
+        canonical_doctype = cls._canonical_doctype(
+            source_doctype
+            or row.get("source_doctype")
+            or row.get("doctype")
+            or row.get("voucher_type")
+        )
+        status = cls._normalize_text(row.get("status")).lower()
+
+        if canonical_doctype in {"stock ledger entry", "stock entry"}:
+            if row.get("docstatus") is None:
+                return False, cls._SLE_REASONS["status_untrusted"]
+            if row.get("status") is None or status in cls._STATUS_UNKNOWN:
+                return False, cls._SLE_REASONS["status_untrusted"]
+            if row.get("is_cancelled") is not None and cls._is_cancelled_true(row.get("is_cancelled")):
+                return False, cls._SLE_REASONS["cancelled"]
+            try:
+                if int(row.get("docstatus")) != 1:
+                    return False, cls._SLE_REASONS["draft_or_unsubmitted"]
+            except Exception:
+                return False, cls._SLE_REASONS["status_untrusted"]
+            if status in {"cancelled", "canceled", "void", "return"}:
+                return False, cls._SLE_REASONS["cancelled"]
+            if status in cls._STATUS_NOT_SUBMITTED:
+                return False, cls._SLE_REASONS["draft_or_unsubmitted"]
+            return True, "submitted"
+
         is_cancelled = row.get("is_cancelled")
         if bool(is_cancelled):
             return False, "not_submitted_or_cancelled"
@@ -439,13 +504,6 @@ class StyleProfitSourceService:
                 return False, "source_status_unknown"
             return True, "submitted"
 
-        status = cls._normalize_text(row.get("status")).lower()
-        canonical_doctype = cls._canonical_doctype(
-            source_doctype
-            or row.get("source_doctype")
-            or row.get("doctype")
-            or row.get("voucher_type")
-        )
         if not canonical_doctype:
             return False, "source_status_unknown"
 
@@ -539,6 +597,142 @@ class StyleProfitSourceService:
         except Exception:
             return "unknown"
         return "unknown"
+
+    @classmethod
+    def _is_sle_like_doctype(cls, source_doctype: str) -> bool:
+        return cls._canonical_doctype(source_doctype) in {"stock ledger entry", "stock entry"}
+
+    @classmethod
+    def _normalize_material_reason(cls, reason: str, *, sle_like: bool) -> str:
+        if not sle_like:
+            return reason
+        if reason in cls._SLE_REASONS.values():
+            return reason
+        if reason in {"source_status_unknown"}:
+            return cls._SLE_REASONS["status_untrusted"]
+        if reason in {"not_submitted_or_cancelled"}:
+            return cls._SLE_REASONS["draft_or_unsubmitted"]
+        if reason in {"material_item_not_in_bom"}:
+            return cls._SLE_REASONS["material_not_in_bom"]
+        if reason in {
+            "company_mismatch",
+            "sales_order_mismatch",
+            "work_order_mismatch",
+            "unable_to_link_order_or_material_scope",
+        }:
+            return cls._SLE_REASONS["scope_untrusted"]
+        return cls._SLE_REASONS["status_untrusted"]
+
+    @classmethod
+    def _is_cancelled_true(cls, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        text = cls._normalize_text(value).lower()
+        return text in {"1", "true", "yes", "y"}
+
+    def _is_material_scope_trusted(
+        self,
+        *,
+        expected_company: str,
+        expected_item_code: str,
+        expected_sales_order: str,
+        expected_work_order: str,
+        row_order: str,
+        row_work_order: str,
+        row_plan_id: Any,
+        row_job_card: str,
+        row_voucher_type: str,
+        row_voucher_no: str,
+    ) -> bool:
+        if expected_sales_order and row_order and row_order == expected_sales_order:
+            return True
+        if expected_work_order and row_work_order and row_work_order == expected_work_order:
+            return True
+        if (
+            expected_work_order
+            and self._canonical_doctype(row_voucher_type) == "work order"
+            and row_voucher_no
+            and row_voucher_no == expected_work_order
+        ):
+            return True
+
+        if self.session is None:
+            return False
+
+        try:
+            from app.models.production import LyProductionJobCardLink
+            from app.models.production import LyProductionPlan
+            from app.models.production import LyProductionWorkOrderLink
+        except Exception:
+            return False
+
+        if row_plan_id not in (None, ""):
+            try:
+                plan_id = int(str(row_plan_id).strip())
+                plan = (
+                    self.session.query(LyProductionPlan)
+                    .filter(LyProductionPlan.id == plan_id)
+                    .one_or_none()
+                )
+                if (
+                    plan is not None
+                    and self._normalize_text(plan.company) == expected_company
+                    and self._normalize_text(plan.item_code) == expected_item_code
+                    and self._normalize_text(plan.sales_order) == expected_sales_order
+                ):
+                    return True
+            except Exception:
+                pass
+
+        if row_job_card:
+            try:
+                link = (
+                    self.session.query(LyProductionJobCardLink)
+                    .filter(LyProductionJobCardLink.job_card == row_job_card)
+                    .order_by(LyProductionJobCardLink.id.desc())
+                    .first()
+                )
+                if link is not None:
+                    plan = (
+                        self.session.query(LyProductionPlan)
+                        .filter(LyProductionPlan.id == link.plan_id)
+                        .one_or_none()
+                    )
+                    if (
+                        plan is not None
+                        and self._normalize_text(plan.company) == expected_company
+                        and self._normalize_text(plan.item_code) == expected_item_code
+                        and self._normalize_text(plan.sales_order) == expected_sales_order
+                    ):
+                        return True
+            except Exception:
+                pass
+
+        if row_work_order:
+            try:
+                link = (
+                    self.session.query(LyProductionWorkOrderLink)
+                    .filter(LyProductionWorkOrderLink.work_order == row_work_order)
+                    .order_by(LyProductionWorkOrderLink.id.desc())
+                    .first()
+                )
+                if link is not None:
+                    plan = (
+                        self.session.query(LyProductionPlan)
+                        .filter(LyProductionPlan.id == link.plan_id)
+                        .one_or_none()
+                    )
+                    if (
+                        plan is not None
+                        and self._normalize_text(plan.company) == expected_company
+                        and self._normalize_text(plan.item_code) == expected_item_code
+                        and self._normalize_text(plan.sales_order) == expected_sales_order
+                    ):
+                        return True
+            except Exception:
+                pass
+
+        return False
 
     @staticmethod
     def _normalize_decimal_text(value: Decimal | int | float) -> str:

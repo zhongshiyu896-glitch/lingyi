@@ -29,6 +29,15 @@ class LySubcontractOrder(Base):
         Index("idx_ly_subcontract_company_status", "company", "status"),
         Index("idx_ly_subcontract_company_supplier_status", "company", "supplier", "status"),
         Index("idx_ly_subcontract_company_item_status", "company", "item_code", "status"),
+        Index(
+            "idx_ly_subcontract_profit_scope_order",
+            "company",
+            "item_code",
+            "sales_order",
+            "work_order",
+            "profit_scope_status",
+        ),
+        Index("idx_ly_subcontract_profit_plan", "production_plan_id", "work_order"),
         {"schema": "ly_schema", "comment": "外发加工单"},
     )
 
@@ -53,6 +62,14 @@ class LySubcontractOrder(Base):
     settlement_status = Column(String(32), nullable=False, default="unsettled")
     resource_scope_status = Column(String(32), nullable=False, default="ready")
     scope_error_code = Column(String(64), nullable=True)
+    sales_order = Column(String(140), nullable=True)
+    sales_order_item = Column(String(140), nullable=True)
+    production_plan_id = Column(BigInteger, nullable=True)
+    work_order = Column(String(140), nullable=True)
+    job_card = Column(String(140), nullable=True)
+    profit_scope_status = Column(String(32), nullable=False, default="unresolved")
+    profit_scope_error_code = Column(String(64), nullable=True)
+    profit_scope_resolved_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
@@ -158,6 +175,15 @@ class LySubcontractInspection(Base):
             "id",
         ),
         Index(
+            "idx_ly_subcontract_inspection_profit_scope",
+            "company",
+            "item_code",
+            "sales_order",
+            "work_order",
+            "settlement_status",
+            "inspected_at",
+        ),
+        Index(
             "idx_ly_subcontract_inspection_statement",
             "statement_id",
             "settlement_status",
@@ -175,6 +201,13 @@ class LySubcontractInspection(Base):
     receipt_batch_no = Column(String(64), nullable=True)
     receipt_warehouse = Column(String(140), nullable=True)
     item_code = Column(String(140), nullable=True)
+    sales_order = Column(String(140), nullable=True)
+    sales_order_item = Column(String(140), nullable=True)
+    production_plan_id = Column(BigInteger, nullable=True)
+    work_order = Column(String(140), nullable=True)
+    job_card = Column(String(140), nullable=True)
+    profit_scope_status = Column(String(32), nullable=False, default="unresolved")
+    profit_scope_error_code = Column(String(64), nullable=True)
     inspected_qty = Column(Numeric(18, 6), nullable=False, default=0)
     rejected_qty = Column(Numeric(18, 6), nullable=False, default=0)
     accepted_qty = Column(Numeric(18, 6), nullable=False, default=0)

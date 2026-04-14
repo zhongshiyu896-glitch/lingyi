@@ -346,8 +346,8 @@ class StyleProfitApiTest(StyleProfitApiBase):
                 json=payload,
                 headers=self._headers(),
             )
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["code"], "STYLE_PROFIT_SOURCE_UNAVAILABLE")
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "STYLE_PROFIT_REVENUE_SOURCE_REQUIRED")
 
     def test_create_success_with_fake_collector(self) -> None:
         payload = {

@@ -33,6 +33,11 @@ class SubcontractCreateRequest(BaseModel):
     bom_id: int = Field(..., ge=1)
     planned_qty: Decimal = Field(..., gt=0)
     process_name: str = Field(..., min_length=1, max_length=100)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    production_plan_id: Optional[int] = Field(default=None, ge=1)
+    work_order: Optional[str] = Field(default=None, max_length=140)
+    job_card: Optional[str] = Field(default=None, max_length=140)
 
 
 class SubcontractCreateData(BaseModel):
@@ -75,6 +80,13 @@ class SubcontractListItem(BaseModel):
     net_amount: Decimal = Decimal("0")
     status: str
     resource_scope_status: str = "ready"
+    profit_scope_status: str = "unresolved"
+    profit_scope_error_code: Optional[str] = None
+    sales_order: Optional[str] = None
+    sales_order_item: Optional[str] = None
+    production_plan_id: Optional[int] = None
+    work_order: Optional[str] = None
+    job_card: Optional[str] = None
     latest_issue_outbox_id: Optional[int] = None
     latest_issue_sync_status: Optional[str] = None
     latest_issue_stock_entry_name: Optional[str] = None
@@ -255,6 +267,13 @@ class SubcontractDetailData(BaseModel):
     settlement_status: Optional[str] = None
     resource_scope_status: str
     scope_error_code: Optional[str] = None
+    profit_scope_status: str = "unresolved"
+    profit_scope_error_code: Optional[str] = None
+    sales_order: Optional[str] = None
+    sales_order_item: Optional[str] = None
+    production_plan_id: Optional[int] = None
+    work_order: Optional[str] = None
+    job_card: Optional[str] = None
     latest_issue_outbox_id: Optional[int] = None
     latest_issue_sync_status: Optional[str] = None
     latest_issue_stock_entry_name: Optional[str] = None
@@ -372,6 +391,13 @@ class SubcontractInspectionDetailItem(BaseModel):
     deduction_amount_per_piece: Decimal
     deduction_amount: Decimal
     net_amount: Decimal
+    sales_order: Optional[str] = None
+    sales_order_item: Optional[str] = None
+    production_plan_id: Optional[int] = None
+    work_order: Optional[str] = None
+    job_card: Optional[str] = None
+    profit_scope_status: str = "unresolved"
+    profit_scope_error_code: Optional[str] = None
     inspected_by: Optional[str] = None
     inspected_at: Optional[datetime] = None
     remark: Optional[str] = None

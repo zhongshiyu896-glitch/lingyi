@@ -118,6 +118,8 @@ class StyleProfitServiceTest(unittest.TestCase):
                     "company": "COMP-A",
                     "item_code": "STYLE-A",
                     "sales_order": "SO-100",
+                    "profit_scope_status": "ready",
+                    "inspected_at": "2026-04-15T10:00:00",
                     "settlement_locked_net_amount": "20",
                 }
             ],

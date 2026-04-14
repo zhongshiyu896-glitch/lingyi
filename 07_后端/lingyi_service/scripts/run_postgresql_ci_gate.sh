@@ -19,8 +19,17 @@ if [[ ! -x ".venv/bin/python" ]]; then
   exit 1
 fi
 
-JUNIT_FILE=".pytest-postgresql.xml"
-rm -f "$JUNIT_FILE"
+SETTLEMENT_TEST_TARGET="tests/test_subcontract_settlement_postgresql.py"
+STYLE_PROFIT_TEST_TARGET="tests/test_style_profit_subcontract_postgresql.py"
+SETTLEMENT_JUNIT_FILE=".pytest-postgresql-subcontract-settlement.xml"
+STYLE_PROFIT_JUNIT_FILE=".pytest-postgresql-style-profit-subcontract.xml"
 
-.venv/bin/python -m pytest -q -m postgresql tests/test_subcontract_settlement_postgresql.py --junitxml="$JUNIT_FILE"
-.venv/bin/python scripts/assert_pytest_junit_no_skip.py "$JUNIT_FILE" --expected-tests 4 --expected-skipped 0
+rm -f "$SETTLEMENT_JUNIT_FILE" "$STYLE_PROFIT_JUNIT_FILE"
+
+.venv/bin/python -m pytest -q -m postgresql "$SETTLEMENT_TEST_TARGET" --junitxml="$SETTLEMENT_JUNIT_FILE"
+.venv/bin/python scripts/assert_pytest_junit_no_skip.py "$SETTLEMENT_JUNIT_FILE" --expected-tests 4 --expected-skipped 0
+
+.venv/bin/python -m pytest -q -m postgresql "$STYLE_PROFIT_TEST_TARGET" --junitxml="$STYLE_PROFIT_JUNIT_FILE"
+.venv/bin/python scripts/assert_pytest_junit_no_skip.py "$STYLE_PROFIT_JUNIT_FILE" --expected-tests 4 --expected-skipped 0
+
+echo "PostgreSQL CI hard gate passed: settlement + style-profit gates are both non-skip and green."

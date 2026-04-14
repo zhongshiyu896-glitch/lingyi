@@ -58,9 +58,16 @@ jobs:
         run: |
           bash scripts/run_postgresql_ci_gate.sh
 
-      - name: Upload PostgreSQL JUnit report
+      - name: Upload settlement PostgreSQL JUnit report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: postgresql-gate-junit
-          path: 07_后端/lingyi_service/.pytest-postgresql.xml
+          name: postgresql-settlement-junit
+          path: 07_后端/lingyi_service/.pytest-postgresql-subcontract-settlement.xml
+
+      - name: Upload style-profit PostgreSQL JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgresql-style-profit-junit
+          path: 07_后端/lingyi_service/.pytest-postgresql-style-profit-subcontract.xml
