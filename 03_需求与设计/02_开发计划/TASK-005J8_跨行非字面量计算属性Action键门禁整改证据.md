@@ -110,7 +110,7 @@
 - 仅增强跨行 computed key 捕获与非字面量禁用门禁
 
 ## 10. 提交信息
-- commit：`<待回填>`
+- commit：`ac09a5b`
 - message：`fix: detect multiline computed style profit action keys`
 
 ## 11. 结论
