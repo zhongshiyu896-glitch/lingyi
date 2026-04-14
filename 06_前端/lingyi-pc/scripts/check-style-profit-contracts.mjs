@@ -136,6 +136,98 @@ const interactiveTagPairs = [
   },
 ]
 
+const actionInteractiveKeyRegex = /\b(onClick|handler|command|onSelect)\s*:/
+
+const collectObjectBlocks = (content) => {
+  const blocks = []
+  const stack = []
+
+  let inSingleQuote = false
+  let inDoubleQuote = false
+  let inTemplate = false
+  let inLineComment = false
+  let inBlockComment = false
+  let escaped = false
+
+  for (let idx = 0; idx < content.length; idx += 1) {
+    const ch = content[idx]
+    const next = content[idx + 1]
+
+    if (inLineComment) {
+      if (ch === '\n') inLineComment = false
+      continue
+    }
+    if (inBlockComment) {
+      if (ch === '*' && next === '/') {
+        inBlockComment = false
+        idx += 1
+      }
+      continue
+    }
+
+    if (inSingleQuote || inDoubleQuote || inTemplate) {
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (ch === '\\') {
+        escaped = true
+        continue
+      }
+      if (inSingleQuote && ch === "'") {
+        inSingleQuote = false
+        continue
+      }
+      if (inDoubleQuote && ch === '"') {
+        inDoubleQuote = false
+        continue
+      }
+      if (inTemplate && ch === '`') {
+        inTemplate = false
+        continue
+      }
+      continue
+    }
+
+    if (ch === '/' && next === '/') {
+      inLineComment = true
+      idx += 1
+      continue
+    }
+    if (ch === '/' && next === '*') {
+      inBlockComment = true
+      idx += 1
+      continue
+    }
+
+    if (ch === "'") {
+      inSingleQuote = true
+      continue
+    }
+    if (ch === '"') {
+      inDoubleQuote = true
+      continue
+    }
+    if (ch === '`') {
+      inTemplate = true
+      continue
+    }
+
+    if (ch === '{') {
+      stack.push(idx)
+      continue
+    }
+    if (ch === '}') {
+      const start = stack.pop()
+      if (start !== undefined) {
+        blocks.push({ start, end: idx + 1 })
+      }
+    }
+  }
+
+  return blocks.sort((a, b) => (a.end - a.start) - (b.end - b.start))
+}
+
 const getContextWindow = (content, index, matchLength, radius = 300) => {
   const start = Math.max(0, index - radius)
   const end = Math.min(content.length, index + matchLength + radius)
@@ -182,14 +274,42 @@ const collectExplanationRanges = (content) => {
 const matchExplanationRange = (ranges, start, end) =>
   ranges.find((range) => start >= range.start && end <= range.end)
 
-const shouldAllowReadonlyExplanation = (content, matchIndex, matchLength, ranges) => {
+const findContainingObjectBlock = (blocks, start, end) =>
+  blocks.find((block) => block.start <= start && end <= block.end)
+
+const hasReadonlyExplanationLabelInObject = (content, phrase, range, objectBlocks) => {
+  const block = findContainingObjectBlock(objectBlocks, range.start, range.end)
+  if (!block) return false
+  const segment = content.slice(block.start, block.end)
+  const labelRegex = new RegExp(`\\blabel\\s*:\\s*['"\`]\\s*${escapeRegex(phrase)}\\s*['"\`]`, 'i')
+  return labelRegex.test(segment)
+}
+
+const isReadonlyExplanationObjectContext = (content, phrase, range, objectBlocks) => {
+  if (!hasReadonlyExplanationLabelInObject(content, phrase, range, objectBlocks)) return false
+  const block = findContainingObjectBlock(objectBlocks, range.start, range.end)
+  if (!block) return false
+  const segment = content.slice(block.start, block.end)
+  return !actionInteractiveKeyRegex.test(segment)
+}
+
+const hasInteractiveActionObjectForPhrase = (content, phrase, range, objectBlocks) => {
+  if (!hasReadonlyExplanationLabelInObject(content, phrase, range, objectBlocks)) return false
+  const block = findContainingObjectBlock(objectBlocks, range.start, range.end)
+  if (!block) return false
+  return actionInteractiveKeyRegex.test(content.slice(block.start, block.end))
+}
+
+const shouldAllowReadonlyExplanation = (content, matchIndex, matchLength, ranges, objectBlocks) => {
   const start = matchIndex
   const end = matchIndex + matchLength
   const explanationRange = matchExplanationRange(ranges, start, end)
   if (!explanationRange) return false
+  if (isReadonlyExplanationObjectContext(content, explanationRange.phrase, explanationRange, objectBlocks)) return true
   if (isInsideUnclosedInteractiveTag(content, start)) return false
   if (hasInteractiveContextInWindow(content, start, matchLength)) return false
   if (hasIdentifierContextForPhrase(content, explanationRange.phrase)) return false
+  if (hasInteractiveActionObjectForPhrase(content, explanationRange.phrase, explanationRange, objectBlocks)) return false
   return true
 }
 
@@ -248,6 +368,7 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     const normalized = normalizePath(targetPath)
     const styleProfitSurface = isStyleProfitSurface(targetPath, content, projectRoot)
     const explanationRanges = collectExplanationRanges(content)
+    const objectBlocks = collectObjectBlocks(content)
 
     if (/\bfetch\s*\(/g.test(content) && styleProfitSurface && !fetchWhitelist.has(normalized)) {
       fail(`禁止裸 fetch()，必须走统一 request() 封装: ${targetPath}`)
@@ -287,7 +408,7 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     while (semanticMatch) {
       const matched = semanticMatch[0]
       const index = semanticMatch.index ?? 0
-      if (!shouldAllowReadonlyExplanation(content, index, matched.length, explanationRanges)) {
+      if (!shouldAllowReadonlyExplanation(content, index, matched.length, explanationRanges, objectBlocks)) {
         fail(`禁止前端出现款式利润中文泛化写入口语义: ${targetPath} -> ${matched}`)
         break
       }
@@ -296,10 +417,14 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     semanticWriteEntryRegex.lastIndex = 0
 
     for (const range of explanationRanges) {
+      if (isReadonlyExplanationObjectContext(content, range.phrase, range, objectBlocks)) {
+        continue
+      }
       if (
         isInsideUnclosedInteractiveTag(content, range.start) ||
         hasInteractiveContextInWindow(content, range.start, range.end - range.start) ||
-        hasIdentifierContextForPhrase(content, range.phrase)
+        hasIdentifierContextForPhrase(content, range.phrase) ||
+        hasInteractiveActionObjectForPhrase(content, range.phrase, range, objectBlocks)
       ) {
         fail(`只读说明文案不得出现在交互入口上下文: ${targetPath} -> ${range.phrase}`)
         break

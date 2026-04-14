@@ -84,6 +84,12 @@ const pageTitle = '款式利润报表'
 const listTitle = '利润快照列表'
 const searchTip = '查询'
 const tip = 'company 与 item_code 不能为空'
+const readonlyHelpCards = [
+  { label: '利润计算说明', description: '只读帮助文案' },
+  { label: '返回', onClick: goBack },
+  { label: '查询', onClick: loadRows },
+  { label: '查看详情', onClick: goDetail },
+]
 </script>
 `,
   )
@@ -376,6 +382,90 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    onClick: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'action label before onClick with repeat 400',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    description: 'x'.repeat(400),\n    onClick: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'action onClick before label with repeat 400',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    onClick: openHelp,\n    description: 'x'.repeat(400),\n    label: '利润计算说明',\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'action label 利润率计算规则 with handler',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润率计算规则',\n    handler: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'action label 利润快照来源说明 with command',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润快照来源说明',\n    command: 'open-help',\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'children action node label 利润计算说明 with onSelect',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '父级菜单',\n    children: [\n      {\n        label: '利润计算说明',\n        onSelect: openHelp,\n      },\n    ],\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'action label and handler gap repeat 500',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    description: 'x'.repeat(500),\n    handler: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'action label and onSelect gap repeat 1000',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    description: 'x'.repeat(1000),\n    onSelect: openHelp,\n  },\n]\n</script>\n`,
       )
     },
   },
