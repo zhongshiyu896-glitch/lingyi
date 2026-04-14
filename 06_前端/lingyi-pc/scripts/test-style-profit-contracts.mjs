@@ -106,6 +106,12 @@ const readonlyHelpComputed = {
   ['label']: '利润计算说明',
   description: '只读帮助文案',
 }
+const readonlyHelpComputedMultiline = {
+  [
+    'label'
+  ]: '利润计算说明',
+  description: '只读说明',
+}
 const readonlyActionsComputed = [
   {
     ['label']: '查看详情',
@@ -769,6 +775,88 @@ const failureCases = [
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst labelKey = 'label'\nconst actions = [\n  {\n    onClick: openHelp,\n    [labelKey]: '利润计算说明',\n  },\n]\n</script>\n`,
       )
+    },
+  },
+  {
+    name: 'multiline non-literal computed key [actionMap . onClick] assignment',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    [actionMap\n      .onClick]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'multiline non-literal computed key [ ACTION_KEY ] assignment',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst actions = [\n  {\n    label: '利润计算说明',\n    [\n      ACTION_KEY\n    ]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'multiline non-literal computed key [getActionKey()] assignment',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    [getActionKey(\n      'profit'\n    )]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'multiline non-literal computed method shorthand [actionMap . onClick]()',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    [actionMap\n      .onClick]() {\n      openHelp()\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'multiline non-literal async computed method [ACTION_KEY]() with descendant label',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'submit'\nconst actions = [\n  {\n    meta: {\n      label: '利润快照来源说明',\n    },\n    async [\n      ACTION_KEY\n    ]() {\n      await submitProfit()\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'multiline non-literal computed key with real 1200 filler',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const base = read(root, 'src/App.vue')
+      const longFiller = 'x'.repeat(1200)
+      const appended = `\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    filler: \"${longFiller}\",\n    [actionMap\n      .onClick]: openHelp,\n  },\n]\n</script>\n`
+      const content = `${base}${appended}`
+      assertTrue(
+        Math.abs(content.indexOf('[actionMap') - content.indexOf('利润计算说明')) > 1200,
+        '[multiline non-literal computed assignment long-distance fixture] label 与 [actionMap 真实距离必须超过 1200 字符',
+      )
+      assertDistanceGreaterThan(
+        content,
+        '[actionMap',
+        '利润计算说明',
+        1200,
+        'multiline non-literal computed assignment long-distance fixture',
+      )
+      write(root, 'src/App.vue', content)
     },
   },
   {
