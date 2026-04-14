@@ -141,7 +141,6 @@ const actionInteractiveKeys = ['onClick', 'handler', 'action', 'command', 'onSel
 const actionInteractiveKeySet = new Set(actionInteractiveKeys.map((value) => value.toLowerCase()))
 const explanationFieldNameSet = new Set(['label', 'title', 'text', 'name', 'tooltip', 'description'])
 const dottedExplanationFieldNameSet = new Set(['meta.label', 'meta.title', 'props.label', 'extra.label', 'payload.label'])
-const actionContextNameRegex = /(action|actions|menu|menus|toolbar|toolbars|button|buttons|command|commands|profitaction|profitactions)/i
 const actionInteractiveKeyAlternation = actionInteractiveKeys.map(escapeRegex).join('|')
 const actionInteractiveAssignmentPattern = `(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*:`
 const actionInteractiveMethodPattern = `(?:\\basync\\s+)?(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*\\([^)]*\\)\\s*\\{`
@@ -420,11 +419,6 @@ const getStringLiteralValue = (node) => {
   return null
 }
 
-const isActionLikeNameText = (value) => {
-  if (!value) return false
-  return actionContextNameRegex.test(value)
-}
-
 const collectObjectLiteralsFromSourceFile = (sourceFile) => {
   const objectNodes = []
   const visit = (node) => {
@@ -500,32 +494,11 @@ const collectDynamicComputedKeyInfos = (objectNode) => {
   return findings
 }
 
-const isActionContextObjectAst = (objectNode) => {
-  if (objectHasInteractiveMemberAst(objectNode)) return true
-  let cursor = objectNode
-  while (cursor) {
-    if (ts.isVariableDeclaration(cursor)) {
-      if (ts.isIdentifier(cursor.name) && isActionLikeNameText(cursor.name.text)) return true
-    } else if (ts.isPropertyAssignment(cursor) || ts.isMethodDeclaration(cursor)) {
-      if (cursor.name) {
-        const keyInfo = classifyPropertyNameNode(cursor.name)
-        if (keyInfo.keyClass === 'literal_key' && isActionLikeNameText(keyInfo.keyText)) return true
-      }
-    } else if (ts.isShorthandPropertyAssignment(cursor)) {
-      if (isActionLikeNameText(cursor.name.text)) return true
-    }
-    cursor = cursor.parent || null
-  }
-  return false
-}
-
-const hasSpreadRiskInExplanationChain = (chain, sourceFile) => {
+const hasSpreadRiskInExplanationChain = (chain) => {
   for (const objectNode of chain) {
     for (const member of objectNode.properties) {
       if (!ts.isSpreadAssignment(member)) continue
-      const spreadExpr = member.expression.getText(sourceFile)
-      if (isActionLikeNameText(spreadExpr)) return true
-      if (isActionContextObjectAst(objectNode)) return true
+      return true
     }
   }
   return false
@@ -547,11 +520,10 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
     for (const objectNode of objectNodes) {
       const dynamicKeys = collectDynamicComputedKeyInfos(objectNode)
       if (dynamicKeys.length === 0) continue
-      if (!isActionContextObjectAst(objectNode)) continue
       for (const keyInfo of dynamicKeys) {
         const normalizedExpression = normalizeComputedKeyExpr(keyInfo.expressionText || '')
         failures.push(
-          `style-profit forbids non-literal computed action keys; use explicit onClick/handler/command keys or quoted literal computed keys（款式利润前端禁止非字面量计算属性 action key）: ${targetPath} -> [${normalizedExpression}]`,
+          `style-profit forbids dynamic or unknown computed keys in object literals; use explicit literal keys（款式利润前端禁止动态或无法静态确认的计算属性键，请使用显式字面量键）: ${targetPath} -> [${normalizedExpression}]`,
         )
       }
     }
@@ -566,7 +538,7 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
 
       const hasDynamicOrUnknownKey = chain.some((node) => collectDynamicComputedKeyInfos(node).length > 0)
       const hasInteractiveMember = chain.some((node) => objectHasInteractiveMemberAst(node))
-      const hasSpreadRisk = hasSpreadRiskInExplanationChain(chain, sourceFile)
+      const hasSpreadRisk = hasSpreadRiskInExplanationChain(chain)
       if (hasDynamicOrUnknownKey || hasInteractiveMember || hasSpreadRisk) {
         failures.push(`只读说明文案不得出现在交互入口上下文: ${targetPath} -> ${range.phrase}`)
       }

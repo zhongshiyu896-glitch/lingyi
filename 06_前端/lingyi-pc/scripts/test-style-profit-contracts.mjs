@@ -707,7 +707,7 @@ const failureCases = [
   },
   {
     name: 'non-literal computed key [ACTION_KEY] assignment',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -719,7 +719,7 @@ const failureCases = [
   },
   {
     name: 'non-literal computed key [actionMap.onClick] assignment',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -731,7 +731,7 @@ const failureCases = [
   },
   {
     name: 'non-literal computed key [getActionKey()] assignment',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -743,7 +743,7 @@ const failureCases = [
   },
   {
     name: 'non-literal computed method shorthand [ACTION_KEY]()',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -755,7 +755,7 @@ const failureCases = [
   },
   {
     name: 'non-literal async computed method shorthand [ACTION_KEY]()',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -767,7 +767,7 @@ const failureCases = [
   },
   {
     name: 'non-literal computed label key [labelKey] with ancestor interaction',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -779,7 +779,7 @@ const failureCases = [
   },
   {
     name: 'multiline non-literal computed key [actionMap . onClick] assignment',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -791,7 +791,7 @@ const failureCases = [
   },
   {
     name: 'multiline non-literal computed key [ ACTION_KEY ] assignment',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -803,7 +803,7 @@ const failureCases = [
   },
   {
     name: 'multiline non-literal computed key [getActionKey()] assignment',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -815,7 +815,7 @@ const failureCases = [
   },
   {
     name: 'multiline non-literal computed method shorthand [actionMap . onClick]()',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -827,7 +827,7 @@ const failureCases = [
   },
   {
     name: 'multiline non-literal async computed method [ACTION_KEY]() with descendant label',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -839,7 +839,7 @@ const failureCases = [
   },
   {
     name: 'multiline non-literal computed key with real 1200 filler',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const base = read(root, 'src/App.vue')
       const longFiller = 'x'.repeat(1200)
@@ -861,7 +861,7 @@ const failureCases = [
   },
   {
     name: "non-literal computed key [actionMap['onClick']] assignment",
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -873,7 +873,7 @@ const failureCases = [
   },
   {
     name: 'non-literal computed key [actionMap[\"onClick\"]] assignment',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -885,7 +885,7 @@ const failureCases = [
   },
   {
     name: "non-literal computed key [getActionKey(actionMap['onClick'])] assignment",
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -897,7 +897,7 @@ const failureCases = [
   },
   {
     name: 'non-literal computed key template literal assignment',
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
@@ -909,7 +909,7 @@ const failureCases = [
   },
   {
     name: "long-distance computed key [actionMap['onClick']] assignment",
-    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
     mutate: (root) => {
       const base = read(root, 'src/App.vue')
       const longFiller = 'x'.repeat(1200)
@@ -925,6 +925,102 @@ const failureCases = [
         '利润计算说明',
         1200,
         'long-distance computed key with nested bracket fixture',
+      )
+      write(root, 'src/App.vue', content)
+    },
+  },
+  {
+    name: 'neutral items container with [ACTION_KEY] assignment',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst items = [\n  {\n    label: '查看详情',\n    [ACTION_KEY]: goDetail,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "neutral rows container with [actionMap['onClick']] assignment",
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst rows = [\n  {\n    label: '查询',\n    [actionMap['onClick']]: loadRows,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'neutral configs container with [getActionKey()] assignment',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst configs = [\n  {\n    label: '返回',\n    [getActionKey()]: goBack,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'neutral columns container with dynamic [labelKey]',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst labelKey = 'label'\nconst columns = [\n  {\n    [labelKey]: '利润计算说明',\n    description: '只读说明',\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'unknown computed key factory should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst items = [\n  {\n    label: '查看详情',\n    [unknownKeyFactory()]: goDetail,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'vue script setup neutral items container with [ACTION_KEY]',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
+    mutate: (root) => {
+      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotList.vue')
+      const injected = replaceOrThrow(
+        content,
+        '</script>\n',
+        `const ACTION_KEY = 'onClick'\nconst items = [\n  {\n    label: '查看详情',\n    [ACTION_KEY]: goDetail,\n  },\n]\n</script>\n`,
+        'list vue script setup dynamic key',
+      )
+      write(root, 'src/views/style_profit/StyleProfitSnapshotList.vue', injected)
+    },
+  },
+  {
+    name: 'long-distance neutral items with [ACTION_KEY] assignment',
+    expectedKeyword: 'style-profit forbids dynamic or unknown computed keys in object literals',
+    mutate: (root) => {
+      const base = read(root, 'src/App.vue')
+      const longFiller = 'x'.repeat(1200)
+      const appended = `\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst items = [\n  {\n    label: '查看详情',\n    filler: \"${longFiller}\",\n    [ACTION_KEY]: goDetail,\n  },\n]\n</script>\n`
+      const content = `${base}${appended}`
+      assertTrue(
+        Math.abs(content.indexOf('[ACTION_KEY]') - content.indexOf('查看详情')) > 1200,
+        '[long-distance neutral items dynamic key fixture] label 与 [ACTION_KEY] 真实距离必须超过 1200 字符',
+      )
+      assertDistanceGreaterThan(
+        content,
+        '[ACTION_KEY]',
+        '查看详情',
+        1200,
+        'long-distance neutral items dynamic key fixture',
       )
       write(root, 'src/App.vue', content)
     },
