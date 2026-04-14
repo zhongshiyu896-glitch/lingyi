@@ -578,7 +578,38 @@ const classifyRuntimeMethodName = (objectName, methodName) => {
   return null
 }
 
-const resolveRuntimeMethodFromExpression = (expression, runtimeMethodAliasMap = new Map()) => {
+const resolveRuntimeNamespaceFromExpression = (expression, runtimeNamespaceAliasMap = new Map()) => {
+  const target = unwrapExpression(expression)
+  if (!target) return null
+
+  if (ts.isIdentifier(target)) {
+    if (target.text === 'Object' || target.text === 'Reflect') return target.text
+    return runtimeNamespaceAliasMap.get(target.text) || null
+  }
+
+  return null
+}
+
+const getBindingElementSourceKey = (bindingElement) => {
+  if (!bindingElement) return null
+  const propertyName = bindingElement.propertyName
+  if (!propertyName) {
+    return ts.isIdentifier(bindingElement.name) ? bindingElement.name.text : null
+  }
+  if (ts.isIdentifier(propertyName) || ts.isStringLiteral(propertyName) || ts.isNumericLiteral(propertyName)) {
+    return `${propertyName.text}`
+  }
+  if (ts.isComputedPropertyName(propertyName)) {
+    return getStaticLiteralText(propertyName.expression)
+  }
+  return null
+}
+
+const resolveRuntimeMethodFromExpression = (
+  expression,
+  runtimeMethodAliasMap = new Map(),
+  runtimeNamespaceAliasMap = new Map(),
+) => {
   const target = unwrapExpression(expression)
   if (!target) return null
 
@@ -586,14 +617,18 @@ const resolveRuntimeMethodFromExpression = (expression, runtimeMethodAliasMap = 
     return runtimeMethodAliasMap.get(target.text) || null
   }
 
-  if (ts.isPropertyAccessExpression(target) && ts.isIdentifier(target.expression)) {
-    return classifyRuntimeMethodName(target.expression.text, target.name.text)
+  if (ts.isPropertyAccessExpression(target)) {
+    const namespaceName = resolveRuntimeNamespaceFromExpression(target.expression, runtimeNamespaceAliasMap)
+    if (!namespaceName) return null
+    return classifyRuntimeMethodName(namespaceName, target.name.text)
   }
 
-  if (ts.isElementAccessExpression(target) && ts.isIdentifier(target.expression)) {
+  if (ts.isElementAccessExpression(target)) {
+    const namespaceName = resolveRuntimeNamespaceFromExpression(target.expression, runtimeNamespaceAliasMap)
+    if (!namespaceName) return null
     const methodName = getStaticLiteralText(target.argumentExpression || null)
     if (!methodName) return null
-    return classifyRuntimeMethodName(target.expression.text, methodName)
+    return classifyRuntimeMethodName(namespaceName, methodName)
   }
 
   return null
@@ -601,21 +636,49 @@ const resolveRuntimeMethodFromExpression = (expression, runtimeMethodAliasMap = 
 
 const collectRuntimeAnalysisContext = (sourceFile) => {
   const runtimeMethodAliasMap = new Map()
+  const runtimeNamespaceAliasMap = new Map()
   const objectLiteralVariableMap = new Map()
+  runtimeNamespaceAliasMap.set('Object', 'Object')
+  runtimeNamespaceAliasMap.set('Reflect', 'Reflect')
 
   const visit = (node) => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-      const varName = node.name.text
+    if (ts.isVariableDeclaration(node) && node.initializer) {
       const initializer = unwrapExpression(node.initializer)
-      if (ts.isObjectLiteralExpression(initializer)) {
-        objectLiteralVariableMap.set(varName, initializer)
-      } else if (ts.isIdentifier(initializer) && objectLiteralVariableMap.has(initializer.text)) {
-        objectLiteralVariableMap.set(varName, objectLiteralVariableMap.get(initializer.text))
-      }
+      if (ts.isIdentifier(node.name)) {
+        const varName = node.name.text
+        const namespaceName = resolveRuntimeNamespaceFromExpression(initializer, runtimeNamespaceAliasMap)
+        if (namespaceName) {
+          runtimeNamespaceAliasMap.set(varName, namespaceName)
+        }
 
-      const runtimeMethod = resolveRuntimeMethodFromExpression(initializer, runtimeMethodAliasMap)
-      if (runtimeMethod) {
-        runtimeMethodAliasMap.set(varName, runtimeMethod)
+        if (ts.isObjectLiteralExpression(initializer)) {
+          objectLiteralVariableMap.set(varName, initializer)
+        } else if (ts.isIdentifier(initializer) && objectLiteralVariableMap.has(initializer.text)) {
+          objectLiteralVariableMap.set(varName, objectLiteralVariableMap.get(initializer.text))
+        }
+
+        const runtimeMethod = resolveRuntimeMethodFromExpression(
+          initializer,
+          runtimeMethodAliasMap,
+          runtimeNamespaceAliasMap,
+        )
+        if (runtimeMethod) {
+          runtimeMethodAliasMap.set(varName, runtimeMethod)
+        }
+      } else if (ts.isObjectBindingPattern(node.name)) {
+        const namespaceName = resolveRuntimeNamespaceFromExpression(initializer, runtimeNamespaceAliasMap)
+        if (namespaceName) {
+          for (const element of node.name.elements) {
+            if (!ts.isIdentifier(element.name)) continue
+            const localName = element.name.text
+            const sourceKey = getBindingElementSourceKey(element)
+            if (!sourceKey) continue
+            const runtimeMethod = classifyRuntimeMethodName(namespaceName, sourceKey)
+            if (runtimeMethod) {
+              runtimeMethodAliasMap.set(localName, runtimeMethod)
+            }
+          }
+        }
       }
     } else if (
       ts.isBinaryExpression(node) &&
@@ -624,13 +687,18 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     ) {
       const targetName = node.left.text
       const rhs = unwrapExpression(node.right)
+      const namespaceName = resolveRuntimeNamespaceFromExpression(rhs, runtimeNamespaceAliasMap)
+      if (namespaceName) {
+        runtimeNamespaceAliasMap.set(targetName, namespaceName)
+      }
+
       if (ts.isObjectLiteralExpression(rhs)) {
         objectLiteralVariableMap.set(targetName, rhs)
       } else if (ts.isIdentifier(rhs) && objectLiteralVariableMap.has(rhs.text)) {
         objectLiteralVariableMap.set(targetName, objectLiteralVariableMap.get(rhs.text))
       }
 
-      const runtimeMethod = resolveRuntimeMethodFromExpression(rhs, runtimeMethodAliasMap)
+      const runtimeMethod = resolveRuntimeMethodFromExpression(rhs, runtimeMethodAliasMap, runtimeNamespaceAliasMap)
       if (runtimeMethod) {
         runtimeMethodAliasMap.set(targetName, runtimeMethod)
       }
@@ -640,7 +708,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   }
 
   visit(sourceFile)
-  return { runtimeMethodAliasMap, objectLiteralVariableMap }
+  return { runtimeMethodAliasMap, runtimeNamespaceAliasMap, objectLiteralVariableMap }
 }
 
 const analyzeRuntimeObjectLiteralMembers = (objectNode) => {
@@ -722,7 +790,11 @@ const collectRuntimeDynamicInjectionFindings = (sourceFile, runtimeContext) => {
         }
       }
     } else if (ts.isCallExpression(node)) {
-      const calleeType = resolveRuntimeMethodFromExpression(node.expression, runtimeContext.runtimeMethodAliasMap)
+      const calleeType = resolveRuntimeMethodFromExpression(
+        node.expression,
+        runtimeContext.runtimeMethodAliasMap,
+        runtimeContext.runtimeNamespaceAliasMap,
+      )
       if (calleeType === 'Object.defineProperty') {
         const keyExpr = node.arguments[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
@@ -813,7 +885,11 @@ const collectRuntimeExplicitActionInjectionFindings = (sourceFile, runtimeContex
         }
       }
     } else if (ts.isCallExpression(node)) {
-      const calleeType = resolveRuntimeMethodFromExpression(node.expression, runtimeContext.runtimeMethodAliasMap)
+      const calleeType = resolveRuntimeMethodFromExpression(
+        node.expression,
+        runtimeContext.runtimeMethodAliasMap,
+        runtimeContext.runtimeNamespaceAliasMap,
+      )
       if (calleeType === 'Object.defineProperty') {
         const keyExpr = node.arguments[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
