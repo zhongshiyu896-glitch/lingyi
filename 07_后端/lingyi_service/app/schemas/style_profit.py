@@ -21,6 +21,7 @@ class StyleProfitRevenueSourceDTO(BaseModel):
     unit_rate: Decimal
     amount: Decimal
     revenue_status: str
+    source_status: str = "unknown"
 
 
 class StyleProfitMaterialSourceDTO(BaseModel):
@@ -37,6 +38,7 @@ class StyleProfitMaterialSourceDTO(BaseModel):
     sales_order: str | None = None
     production_plan_id: int | None = None
     work_order: str | None = None
+    job_card: str | None = None
     detail_id: int | None = None
     snapshot_id: int | None = None
     source_type: str | None = None
@@ -62,3 +64,49 @@ class StyleProfitMaterialSourceResolutionDTO(BaseModel):
     unresolved_sources: list[StyleProfitMaterialSourceDTO] = Field(default_factory=list)
     excluded_sources: list[StyleProfitMaterialSourceDTO] = Field(default_factory=list)
     reference_sources: list[StyleProfitMaterialSourceDTO] = Field(default_factory=list)
+
+
+class StyleProfitSnapshotCreateRequest(BaseModel):
+    """Service-level request for immutable style profit snapshot creation."""
+
+    company: str
+    item_code: str
+    sales_order: str | None = None
+    from_date: date
+    to_date: date
+    revenue_mode: str = "actual_first"
+    include_provisional_subcontract: bool = False
+    formula_version: str = "STYLE_PROFIT_V1"
+    idempotency_key: str
+
+    sales_invoice_rows: list[dict[str, Any]] = Field(default_factory=list)
+    sales_order_rows: list[dict[str, Any]] = Field(default_factory=list)
+    bom_material_rows: list[dict[str, Any]] = Field(default_factory=list)
+    bom_operation_rows: list[dict[str, Any]] = Field(default_factory=list)
+    stock_ledger_rows: list[dict[str, Any]] = Field(default_factory=list)
+    purchase_receipt_rows: list[dict[str, Any]] = Field(default_factory=list)
+    workshop_ticket_rows: list[dict[str, Any]] = Field(default_factory=list)
+    subcontract_rows: list[dict[str, Any]] = Field(default_factory=list)
+    allowed_material_item_codes: list[str] = Field(default_factory=list)
+    work_order: str | None = None
+
+
+class StyleProfitSnapshotResult(BaseModel):
+    """Created or replayed style profit snapshot summary."""
+
+    snapshot_id: int
+    snapshot_no: str
+    company: str
+    item_code: str
+    sales_order: str | None
+    revenue_status: str
+    revenue_amount: Decimal
+    actual_total_cost: Decimal
+    standard_total_cost: Decimal
+    profit_amount: Decimal
+    profit_rate: Decimal | None
+    snapshot_status: str
+    unresolved_count: int
+    idempotency_key: str
+    request_hash: str
+    idempotent_replay: bool = False

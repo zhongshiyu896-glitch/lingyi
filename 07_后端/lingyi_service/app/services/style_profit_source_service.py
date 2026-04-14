@@ -34,8 +34,26 @@ class StyleProfitSourceService:
         "revenue_mode",
         "include_provisional_subcontract",
         "formula_version",
+        "work_order",
+        "allowed_material_item_codes",
+        "sales_invoice_rows",
+        "sales_order_rows",
+        "bom_material_rows",
+        "bom_operation_rows",
+        "stock_ledger_rows",
+        "purchase_receipt_rows",
+        "workshop_ticket_rows",
+        "subcontract_rows",
     )
-    _VOLATILE_HASH_KEYS = {"created_at", "operator", "request_id"}
+    _VOLATILE_HASH_KEYS = {
+        "created_at",
+        "updated_at",
+        "operator",
+        "request_id",
+        "snapshot_no",
+        "audit_id",
+        "id",
+    }
     _SENSITIVE_KEYS = {
         "authorization",
         "cookie",
@@ -71,10 +89,7 @@ class StyleProfitSourceService:
         """Build stable request hash without volatile runtime fields."""
         canonical: dict[str, Any] = {}
         for key in cls._HASH_KEYS:
-            canonical[key] = cls._canonicalize(payload.get(key))
-
-        for key in cls._VOLATILE_HASH_KEYS:
-            canonical.pop(key, None)
+            canonical[key] = cls._canonicalize_for_hash(payload.get(key))
 
         encoded = json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
@@ -160,25 +175,26 @@ class StyleProfitSourceService:
 
             submitted, rejected_reason = self._submission_gate(row, source_doctype=source_doctype)
             if not submitted:
-                dto.mapping_status = "excluded"
+                dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
                 dto.unresolved_reason = rejected_reason
-                dto.source_status = rejected_reason
-                excluded.append(dto)
+                if dto.source_status in {"", "unknown"}:
+                    dto.source_status = "unknown"
+                unresolved.append(dto)
                 continue
             if dto.source_status == "unknown":
-                dto.mapping_status = "excluded"
+                dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
                 dto.unresolved_reason = "source_status_unknown"
-                excluded.append(dto)
+                unresolved.append(dto)
                 continue
 
             row_company = self._normalize_text(row.get("company"))
             if row_company and row_company != normalized_company:
-                dto.mapping_status = "excluded"
+                dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
                 dto.unresolved_reason = "company_mismatch"
-                excluded.append(dto)
+                unresolved.append(dto)
                 continue
 
             row_order = self._normalize_text(row.get("sales_order"))
@@ -196,25 +212,25 @@ class StyleProfitSourceService:
                 bridge_match = True
 
             if normalized_order and row_order and row_order != normalized_order:
-                dto.mapping_status = "excluded"
+                dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
                 dto.unresolved_reason = "sales_order_mismatch"
-                excluded.append(dto)
+                unresolved.append(dto)
                 continue
             if normalized_work_order and row_work_order and row_work_order != normalized_work_order:
-                dto.mapping_status = "excluded"
+                dto.mapping_status = "unresolved"
                 dto.include_in_profit = False
                 dto.unresolved_reason = "work_order_mismatch"
-                excluded.append(dto)
+                unresolved.append(dto)
                 continue
 
             source_item = self._normalize_text(dto.source_item_code)
             if allowed_materials:
                 if source_item not in allowed_materials:
-                    dto.mapping_status = "excluded"
+                    dto.mapping_status = "unresolved"
                     dto.include_in_profit = False
                     dto.unresolved_reason = "material_item_not_in_bom"
-                    excluded.append(dto)
+                    unresolved.append(dto)
                     continue
                 material_scope_matched = True
             else:
@@ -264,6 +280,9 @@ class StyleProfitSourceService:
         source_type: str,
         revenue_status: str,
     ) -> list[StyleProfitRevenueSourceDTO]:
+        if not expected_order:
+            return []
+
         collected: list[StyleProfitRevenueSourceDTO] = []
         seen_keys: set[tuple[str, str]] = set()
 
@@ -276,7 +295,7 @@ class StyleProfitSourceService:
             row_item = self._normalize_text(row.get("item_code"))
             if row_company and row_company != expected_company:
                 continue
-            if row_order and row_order != expected_order:
+            if not row_order or row_order != expected_order:
                 continue
             if row_item and row_item != expected_item:
                 continue
@@ -307,6 +326,7 @@ class StyleProfitSourceService:
                     unit_rate=rate,
                     amount=amount,
                     revenue_status=revenue_status,
+                    source_status=self._resolve_revenue_source_status(row),
                 )
             )
 
@@ -340,6 +360,7 @@ class StyleProfitSourceService:
             sales_order=self._none_if_empty(row.get("sales_order")),
             production_plan_id=self._to_int_or_none(row.get("production_plan_id")),
             work_order=self._none_if_empty(row.get("work_order")),
+            job_card=self._none_if_empty(row.get("job_card")),
             detail_id=None,
             snapshot_id=None,
             source_type=source_doctype,
@@ -374,6 +395,7 @@ class StyleProfitSourceService:
             "company",
             "sales_order",
             "work_order",
+            "job_card",
             "production_plan_id",
             "docstatus",
             "status",
@@ -479,6 +501,44 @@ class StyleProfitSourceService:
             except (InvalidOperation, ValueError):
                 return stripped
         return value
+
+    @classmethod
+    def _canonicalize_for_hash(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            canonical: dict[str, Any] = {}
+            for key in sorted(value.keys()):
+                key_text = str(key)
+                if cls._should_drop_hash_key(key_text):
+                    continue
+                canonical[key_text] = cls._canonicalize_for_hash(value[key])
+            return canonical
+        if isinstance(value, list):
+            normalized = [cls._canonicalize_for_hash(v) for v in value]
+            return sorted(
+                normalized,
+                key=lambda item: json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            )
+        return cls._canonicalize(value)
+
+    @classmethod
+    def _should_drop_hash_key(cls, key: str) -> bool:
+        lowered = key.lower().strip()
+        if lowered in cls._VOLATILE_HASH_KEYS:
+            return True
+        return any(sensitive in lowered for sensitive in cls._SENSITIVE_KEYS)
+
+    @classmethod
+    def _resolve_revenue_source_status(cls, row: dict[str, Any]) -> str:
+        status = cls._normalize_text(row.get("status")).lower()
+        if status:
+            return status
+        docstatus = row.get("docstatus")
+        try:
+            if docstatus is not None and int(docstatus) == 1:
+                return "submitted"
+        except Exception:
+            return "unknown"
+        return "unknown"
 
     @staticmethod
     def _normalize_decimal_text(value: Decimal | int | float) -> str:

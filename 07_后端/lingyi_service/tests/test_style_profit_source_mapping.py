@@ -62,6 +62,111 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
         self.assertNotEqual(digest_base, self.service.build_snapshot_request_hash(changed_to))
         self.assertNotEqual(digest_base, self.service.build_snapshot_request_hash(changed_mode))
 
+    def test_request_hash_includes_source_rows_payload(self) -> None:
+        base = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-001",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "sales_invoice_rows": [
+                {"name": "SINV-1", "line_id": "1", "amount": "100", "status": "Paid"},
+            ],
+            "sales_order_rows": [],
+            "bom_material_rows": [],
+            "bom_operation_rows": [],
+            "stock_ledger_rows": [],
+            "workshop_ticket_rows": [],
+            "subcontract_rows": [],
+            "allowed_material_item_codes": ["MAT-A"],
+            "work_order": "WO-1",
+        }
+        changed = {
+            **base,
+            "sales_invoice_rows": [
+                {"name": "SINV-1", "line_id": "1", "amount": "120", "status": "Paid"},
+            ],
+        }
+        self.assertNotEqual(
+            self.service.build_snapshot_request_hash(base),
+            self.service.build_snapshot_request_hash(changed),
+        )
+
+    def test_request_hash_is_order_insensitive_for_source_rows(self) -> None:
+        payload_1 = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-001",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "sales_invoice_rows": [
+                {"name": "SINV-2", "line_id": "2", "amount": "200", "status": "Paid"},
+                {"name": "SINV-1", "line_id": "1", "amount": "100", "status": "Paid"},
+            ],
+            "sales_order_rows": [],
+            "bom_material_rows": [],
+            "bom_operation_rows": [],
+            "stock_ledger_rows": [],
+            "workshop_ticket_rows": [],
+            "subcontract_rows": [],
+            "allowed_material_item_codes": ["MAT-B", "MAT-A"],
+            "work_order": "WO-1",
+        }
+        payload_2 = {
+            **payload_1,
+            "sales_invoice_rows": list(reversed(payload_1["sales_invoice_rows"])),
+            "allowed_material_item_codes": list(reversed(payload_1["allowed_material_item_codes"])),
+        }
+        self.assertEqual(
+            self.service.build_snapshot_request_hash(payload_1),
+            self.service.build_snapshot_request_hash(payload_2),
+        )
+
+    def test_request_hash_excludes_snapshot_no_and_sensitive_fields(self) -> None:
+        base = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-001",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "sales_invoice_rows": [
+                {
+                    "name": "SINV-1",
+                    "line_id": "1",
+                    "amount": "100",
+                    "status": "Paid",
+                    "created_at": "2026-04-14T10:00:00+08:00",
+                    "snapshot_no": "SP-001",
+                    "Authorization": "Bearer x",
+                    "token": "x",
+                }
+            ],
+        }
+        variant = {
+            **base,
+            "sales_invoice_rows": [
+                {
+                    **base["sales_invoice_rows"][0],
+                    "created_at": "2026-04-14T11:00:00+08:00",
+                    "snapshot_no": "SP-002",
+                    "token": "y",
+                }
+            ],
+        }
+        self.assertEqual(
+            self.service.build_snapshot_request_hash(base),
+            self.service.build_snapshot_request_hash(variant),
+        )
+
     def test_is_submitted_empty_row_returns_false(self) -> None:
         self.assertFalse(self.service._is_submitted({}))
 
@@ -172,6 +277,7 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
         self.assertEqual(resolved[0].source_type, "Sales Invoice")
         self.assertEqual(resolved[0].revenue_status, "actual")
         self.assertEqual(resolved[0].amount, Decimal("200"))
+        self.assertEqual(resolved[0].source_status, "submitted")
 
     def test_fallback_to_sales_order_when_no_sales_invoice(self) -> None:
         resolved = self.service.resolve_revenue_sources(
@@ -198,6 +304,98 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
         self.assertEqual(len(resolved), 1)
         self.assertEqual(resolved[0].source_type, "Sales Order")
         self.assertEqual(resolved[0].revenue_status, "estimated")
+        self.assertEqual(resolved[0].source_status, "to deliver")
+
+    def test_revenue_sources_require_expected_sales_order_scope(self) -> None:
+        resolved = self.service.resolve_revenue_sources(
+            company="COMP-A",
+            sales_order="",
+            item_code="STYLE-A",
+            sales_invoice_rows=[
+                {
+                    "name": "SINV-NO-ORDER",
+                    "line_id": "SINV-NO-ORDER-1",
+                    "company": "COMP-A",
+                    "item_code": "STYLE-A",
+                    "qty": "1",
+                    "rate": "100",
+                    "amount": "100",
+                    "docstatus": 1,
+                    "status": "Paid",
+                }
+            ],
+            sales_order_rows=[],
+        )
+        self.assertEqual(resolved, [])
+
+    def test_revenue_source_status_keeps_real_invoice_status(self) -> None:
+        resolved = self.service.resolve_revenue_sources(
+            company="COMP-A",
+            sales_order="SO-PAID",
+            item_code="STYLE-A",
+            sales_invoice_rows=[
+                {
+                    "name": "SINV-PAID",
+                    "line_id": "SINV-PAID-1",
+                    "company": "COMP-A",
+                    "sales_order": "SO-PAID",
+                    "item_code": "STYLE-A",
+                    "qty": "1",
+                    "rate": "100",
+                    "amount": "100",
+                    "status": "Paid",
+                }
+            ],
+            sales_order_rows=[],
+        )
+        self.assertEqual(len(resolved), 1)
+        self.assertEqual(resolved[0].source_status, "paid")
+
+    def test_revenue_source_status_submitted_only_when_docstatus_one_and_status_missing(self) -> None:
+        resolved = self.service.resolve_revenue_sources(
+            company="COMP-A",
+            sales_order="SO-SUBMITTED",
+            item_code="STYLE-A",
+            sales_invoice_rows=[
+                {
+                    "name": "SINV-SUBMITTED",
+                    "line_id": "SINV-SUBMITTED-1",
+                    "company": "COMP-A",
+                    "sales_order": "SO-SUBMITTED",
+                    "item_code": "STYLE-A",
+                    "qty": "1",
+                    "rate": "100",
+                    "amount": "100",
+                    "docstatus": 1,
+                }
+            ],
+            sales_order_rows=[],
+        )
+        self.assertEqual(len(resolved), 1)
+        self.assertEqual(resolved[0].source_status, "submitted")
+
+    def test_revenue_source_status_keeps_real_sales_order_status(self) -> None:
+        resolved = self.service.resolve_revenue_sources(
+            company="COMP-A",
+            sales_order="SO-BILL",
+            item_code="STYLE-A",
+            sales_invoice_rows=[],
+            sales_order_rows=[
+                {
+                    "name": "SO-BILL",
+                    "line_id": "SO-BILL-1",
+                    "company": "COMP-A",
+                    "sales_order": "SO-BILL",
+                    "item_code": "STYLE-A",
+                    "qty": "1",
+                    "rate": "100",
+                    "amount": "100",
+                    "status": "To Bill",
+                }
+            ],
+        )
+        self.assertEqual(len(resolved), 1)
+        self.assertEqual(resolved[0].source_status, "to bill")
 
     def test_draft_or_cancelled_sales_invoice_not_counted(self) -> None:
         resolved = self.service.resolve_revenue_sources(
@@ -333,7 +531,7 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
             "unable_to_link_order_or_material_scope",
         )
 
-    def test_sle_outside_allowed_materials_is_excluded(self) -> None:
+    def test_sle_outside_allowed_materials_is_unresolved(self) -> None:
         result = self.service.resolve_material_cost_sources(
             company="COMP-A",
             sales_order="SO-013",
@@ -355,8 +553,8 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
         )
 
         self.assertEqual(result.actual_material_cost, Decimal("0"))
-        self.assertEqual(len(result.excluded_sources), 1)
-        self.assertEqual(result.excluded_sources[0].unresolved_reason, "material_item_not_in_bom")
+        self.assertEqual(len(result.unresolved_sources), 1)
+        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "material_item_not_in_bom")
 
     def test_source_status_missing_saved_as_unknown_and_not_included(self) -> None:
         result = self.service.resolve_material_cost_sources(
@@ -379,9 +577,9 @@ class StyleProfitSourceMappingTest(unittest.TestCase):
         )
 
         self.assertEqual(result.actual_material_cost, Decimal("0"))
-        self.assertEqual(len(result.excluded_sources), 1)
-        self.assertEqual(result.excluded_sources[0].source_status, "unknown")
-        self.assertEqual(result.excluded_sources[0].unresolved_reason, "source_status_unknown")
+        self.assertEqual(len(result.unresolved_sources), 1)
+        self.assertEqual(result.unresolved_sources[0].source_status, "unknown")
+        self.assertEqual(result.unresolved_sources[0].unresolved_reason, "source_status_unknown")
 
     def test_purchase_receipt_not_directly_counted_into_actual_material_cost(self) -> None:
         result = self.service.resolve_material_cost_sources(
