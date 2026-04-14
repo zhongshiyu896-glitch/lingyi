@@ -560,6 +560,46 @@ const failureCases = [
     },
   },
   {
+    name: 'method shorthand onClick with real 1200 filler',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const base = read(root, 'src/App.vue')
+      const longFiller = 'x'.repeat(1200)
+      const appended = `\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    filler: \"${longFiller}\",\n    onClick() {\n      openHelp()\n    },\n  },\n]\n</script>\n`
+      const content = `${base}${appended}`
+      assertTrue(
+        Math.abs(content.indexOf('onClick()') - content.indexOf('利润计算说明')) > 1200,
+        '[method shorthand onClick long-distance fixture] label 与 onClick() 真实距离必须超过 1200 字符',
+      )
+      assertDistanceGreaterThan(content, 'onClick()', '利润计算说明', 1200, 'method shorthand onClick long-distance fixture')
+      write(root, 'src/App.vue', content)
+    },
+  },
+  {
+    name: 'double-quoted label with double-quoted onClick method name',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    \"label\": \"利润计算说明\",\n    \"onClick\"() {\n      openHelp()\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'single-quoted label with single-quoted handler method name',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    'label': '利润率计算规则',\n    'handler'() {\n      showRule()\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
     name: 'double-quoted children tree ancestor onSelect',
     expectedKeyword: '只读说明文案不得出现在交互入口上下文',
     mutate: (root) => {
@@ -568,6 +608,30 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst menu = [\n  {\n    \"onSelect\": selectMenu,\n    \"children\": [\n      {\n        \"meta\": {\n          \"label\": \"利润计算说明\",\n        },\n      },\n    ],\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'async submit method shorthand with descendant meta label',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    meta: {\n      label: '利润快照来源说明',\n    },\n    async submit() {\n      await submitProfit()\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'children descendant label with ancestor onSelect method shorthand',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst menu = [\n  {\n    onSelect() {\n      selectMenu()\n    },\n    children: [\n      {\n        meta: {\n          label: '利润计算说明',\n        },\n      },\n    ],\n  },\n]\n</script>\n`,
       )
     },
   },

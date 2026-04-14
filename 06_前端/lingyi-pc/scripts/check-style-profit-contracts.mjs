@@ -137,8 +137,11 @@ const interactiveTagPairs = [
 ]
 
 const actionInteractiveKeys = ['onClick', 'handler', 'action', 'command', 'onSelect', 'onCommand', 'callback', 'execute', 'submit']
-const actionInteractiveKeyRegex = new RegExp(
-  `(?:['"\`]\\s*)?(?:${actionInteractiveKeys.map(escapeRegex).join('|')})(?:\\s*['"\`])?\\s*:`,
+const actionInteractiveKeyAlternation = actionInteractiveKeys.map(escapeRegex).join('|')
+const actionInteractiveAssignmentPattern = `(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*:`
+const actionInteractiveMethodPattern = `(?:\\basync\\s+)?(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*\\([^)]*\\)\\s*\\{`
+const actionInteractiveMemberRegex = new RegExp(
+  `(?:${actionInteractiveAssignmentPattern})|(?:${actionInteractiveMethodPattern})`,
   'i',
 )
 const explanationFieldNames = ['label', 'title', 'text', 'name', 'tooltip', 'description']
@@ -319,13 +322,13 @@ const resolveExplanationObjectChain = (content, phrase, range, objectBlocks) => 
 const isReadonlyExplanationObjectContext = (content, phrase, range, objectBlocks) => {
   const chain = resolveExplanationObjectChain(content, phrase, range, objectBlocks)
   if (!chain) return false
-  return chain.every((block) => !actionInteractiveKeyRegex.test(content.slice(block.start, block.end)))
+  return chain.every((block) => !actionInteractiveMemberRegex.test(content.slice(block.start, block.end)))
 }
 
 const hasInteractiveActionObjectForPhrase = (content, phrase, range, objectBlocks) => {
   const chain = resolveExplanationObjectChain(content, phrase, range, objectBlocks)
   if (!chain) return false
-  return chain.some((block) => actionInteractiveKeyRegex.test(content.slice(block.start, block.end)))
+  return chain.some((block) => actionInteractiveMemberRegex.test(content.slice(block.start, block.end)))
 }
 
 const shouldAllowReadonlyExplanation = (content, matchIndex, matchLength, ranges, objectBlocks) => {
