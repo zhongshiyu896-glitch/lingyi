@@ -116,7 +116,7 @@
 - 未提交：`.pytest-postgresql-*.xml`、`coverage`、`dist`、`node_modules`
 
 ## 8. 提交信息
-- commit：`<待回填>`
+- commit：`1aebc16a4df0c0af47946b9feb06c1b673bfeb1d`
 - message：`fix: detect advanced runtime mutator aliases`
 
 ## 9. 结论
