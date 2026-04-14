@@ -140,8 +140,10 @@ const actionInteractiveKeys = ['onClick', 'handler', 'action', 'command', 'onSel
 const actionInteractiveKeyAlternation = actionInteractiveKeys.map(escapeRegex).join('|')
 const actionInteractiveAssignmentPattern = `(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*:`
 const actionInteractiveMethodPattern = `(?:\\basync\\s+)?(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*\\([^)]*\\)\\s*\\{`
+const actionInteractiveComputedAssignmentPattern = `\\[\\s*['"\`]\\s*(?:${actionInteractiveKeyAlternation})\\s*['"\`]\\s*\\]\\s*:`
+const actionInteractiveComputedMethodPattern = `(?:\\basync\\s+)?\\[\\s*['"\`]\\s*(?:${actionInteractiveKeyAlternation})\\s*['"\`]\\s*\\]\\s*\\([^)]*\\)\\s*\\{`
 const actionInteractiveMemberRegex = new RegExp(
-  `(?:${actionInteractiveAssignmentPattern})|(?:${actionInteractiveMethodPattern})`,
+  `(?:${actionInteractiveAssignmentPattern})|(?:${actionInteractiveMethodPattern})|(?:${actionInteractiveComputedAssignmentPattern})|(?:${actionInteractiveComputedMethodPattern})`,
   'i',
 )
 const explanationFieldNames = ['label', 'title', 'text', 'name', 'tooltip', 'description']
@@ -292,7 +294,11 @@ const hasExplanationFieldForPhraseInSegment = (segment, phrase) => {
     `(?:['"\`]\\s*)?(?:${explanationFieldNames.map(escapeRegex).join('|')})(?:\\s*['"\`])?\\s*:\\s*['"\`]\\s*${escaped}\\s*['"\`]`,
     'i',
   )
-  if (plainFieldRegex.test(segment)) return true
+  const computedFieldRegex = new RegExp(
+    `\\[\\s*['"\`]\\s*(?:${explanationFieldNames.map(escapeRegex).join('|')})\\s*['"\`]\\s*\\]\\s*:\\s*['"\`]\\s*${escaped}\\s*['"\`]`,
+    'i',
+  )
+  if (plainFieldRegex.test(segment) || computedFieldRegex.test(segment)) return true
   return dottedExplanationFieldNames.some((fieldName) => {
     const dottedFieldRegex = new RegExp(
       `['"\`]?${escapeRegex(fieldName)}['"\`]?\\s*:\\s*['"\`]\\s*${escaped}\\s*['"\`]`,
