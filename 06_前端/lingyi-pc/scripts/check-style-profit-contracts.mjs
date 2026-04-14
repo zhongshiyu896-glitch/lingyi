@@ -104,9 +104,15 @@ const semanticRouteRegexes = [
   /path\s*:\s*['"]\/reports\/style-profit\/calculate['"]/gi,
 ]
 
+const hasSemanticWriteAction = (segment) => semanticWriteActions.some((action) => segment.includes(action))
+const isPureReadonlyPhrase = (segment) => readonlyPhrases.some((phrase) => segment.trim() === phrase)
+
 const shouldIgnoreSemanticMatch = (content, matchIndex, matchLength) => {
-  const segment = content.slice(matchIndex, matchIndex + matchLength)
-  return readonlyPhrases.some((phrase) => segment.includes(phrase))
+  const segment = content.slice(matchIndex, matchIndex + matchLength).trim()
+  if (hasSemanticWriteAction(segment)) {
+    return false
+  }
+  return isPureReadonlyPhrase(segment)
 }
 
 export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot) => {

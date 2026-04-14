@@ -278,6 +278,30 @@ const failureCases = [
     },
   },
   {
+    name: 'button contains 款式利润报表计算',
+    expectedKeyword: '禁止前端出现款式利润中文泛化写入口语义',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><button>款式利润报表计算</button></template>\n`)
+    },
+  },
+  {
+    name: 'button contains 利润快照列表生成',
+    expectedKeyword: '禁止前端出现款式利润中文泛化写入口语义',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><button>利润快照列表生成</button></template>\n`)
+    },
+  },
+  {
+    name: 'button contains 利润金额重新计算',
+    expectedKeyword: '禁止前端出现款式利润中文泛化写入口语义',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><button>利润金额重新计算</button></template>\n`)
+    },
+  },
+  {
     name: 'function openProfitCalculateDialog appears',
     expectedKeyword: '禁止前端出现款式利润写入口函数/标识符',
     mutate: (root) => {
