@@ -632,6 +632,7 @@ const classifyRuntimeMethodName = (objectName, methodName) => {
   if (objectName === 'Object' && methodName === 'defineProperty') return 'Object.defineProperty'
   if (objectName === 'Object' && methodName === 'defineProperties') return 'Object.defineProperties'
   if (objectName === 'Object' && methodName === 'assign') return 'Object.assign'
+  if (objectName === 'URL' && methodName === 'createObjectURL') return 'URL.createObjectURL'
   if (objectName === 'Reflect' && methodName === 'set') return 'Reflect.set'
   if (objectName === 'Reflect' && methodName === 'apply') return 'Reflect.apply'
   if (objectName === 'Reflect' && methodName === 'get') return 'Reflect.get'
@@ -643,13 +644,13 @@ const resolveRuntimeNamespaceFromExpression = (expression, runtimeNamespaceAlias
   if (!target) return null
 
   if (ts.isIdentifier(target)) {
-    if (target.text === 'Object' || target.text === 'Reflect') return target.text
+    if (target.text === 'Object' || target.text === 'Reflect' || target.text === 'URL') return target.text
     return runtimeNamespaceAliasMap.get(target.text) || null
   }
 
   if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
     const namespaceName = getStaticMemberName(target)
-    if (namespaceName !== 'Object' && namespaceName !== 'Reflect') return null
+    if (namespaceName !== 'Object' && namespaceName !== 'Reflect' && namespaceName !== 'URL') return null
     const baseExpr = target.expression
     const base = unwrapExpression(baseExpr)
     if (ts.isIdentifier(base) && (base.text === 'globalThis' || base.text === 'window')) {
@@ -856,6 +857,7 @@ const runtimeMutatorMethodSet = new Set([
   'Object.assign',
   'Reflect.set',
 ])
+const runtimeBlobUrlMethodSet = new Set(['URL.createObjectURL'])
 const runtimeMutatorSourceMethodSet = new Set([
   'Object.defineProperty',
   'Object.defineProperties',
@@ -866,7 +868,25 @@ const runtimeMutatorSourceMethodSet = new Set([
 const runtimeCodegenSourceMethodSet = new Set(['Global.eval', 'Global.Function'])
 const runtimeTimerMethodSet = new Set(['Global.setTimeout', 'Global.setInterval'])
 
-const runtimeMutatorMemberNameSet = new Set(['defineProperty', 'defineProperties', 'assign', 'set', 'apply', 'get'])
+const runtimeMutatorMemberNameSet = new Set([
+  'defineProperty',
+  'defineProperties',
+  'assign',
+  'createObjectURL',
+  'set',
+  'apply',
+  'get',
+])
+
+const canRuntimeMemberHitMethodSet = (memberName, methodSet = runtimeMutatorMethodSet) => {
+  if (!memberName) return false
+  const globalMethod = classifyRuntimeCodegenGlobalName(memberName)
+  if (globalMethod && methodSet.has(globalMethod)) return true
+  return ['Object', 'Reflect', 'URL'].some((namespaceName) => {
+    const method = classifyRuntimeMethodName(namespaceName, memberName)
+    return Boolean(method && methodSet.has(method))
+  })
+}
 
 const classifyRuntimeCodegenGlobalName = (name) => {
   if (name === 'eval') return 'Global.eval'
@@ -1014,6 +1034,9 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext, methodSet = runt
     if (ts.isIdentifier(baseExpr)) {
       const baseName = baseExpr.text
       if (memberName && runtimeUnknownNamespaceAliasMap.has(baseName) && runtimeMutatorMemberNameSet.has(memberName)) {
+        if (!canRuntimeMemberHitMethodSet(memberName, methodSet)) {
+          return null
+        }
         return { method: null, invoke: 'unknown_namespace_alias', unresolvedTarget: true }
       }
 
@@ -1237,6 +1260,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   const timerStringIdentifierSet = new Set()
   runtimeNamespaceAliasMap.set('Object', 'Object')
   runtimeNamespaceAliasMap.set('Reflect', 'Reflect')
+  runtimeNamespaceAliasMap.set('URL', 'URL')
   runtimeGlobalContainerAliasMap.set('globalThis', 'globalThis')
   runtimeGlobalContainerAliasMap.set('window', 'window')
 
@@ -1425,7 +1449,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
               }
             }
           } else if (globalContainer) {
-            if (sourceKey === 'Object' || sourceKey === 'Reflect') {
+            if (sourceKey === 'Object' || sourceKey === 'Reflect' || sourceKey === 'URL') {
               setRuntimeNamespaceAlias(localName, sourceKey)
             } else {
               const runtimeCodegenSource = classifyRuntimeCodegenGlobalName(sourceKey)
@@ -1509,7 +1533,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         } else if (globalContainer) {
           const { aliases, unresolved } = extractObjectDestructureRuntimeAliases(leftExpr, globalContainer)
           for (const alias of aliases) {
-            if (alias.sourceKey === 'Object' || alias.sourceKey === 'Reflect') {
+            if (alias.sourceKey === 'Object' || alias.sourceKey === 'Reflect' || alias.sourceKey === 'URL') {
               setRuntimeNamespaceAlias(alias.localName, alias.sourceKey)
             } else {
               const runtimeCodegenSource = classifyRuntimeCodegenGlobalName(alias.sourceKey)
@@ -1722,10 +1746,41 @@ const analyzeTimerFirstArgument = (firstArg, runtimeContext) => {
 }
 
 const dynamicImportAllowedLocalPrefixes = ['@/', './', '../']
+const workerAllowedLocalPrefixes = ['@/', './', '../']
+const scriptSrcAllowedLocalPrefixes = ['/', './', '../', '@/']
+const runtimeProtocolPrefixRegex = /^[a-z][a-z0-9+.-]*:/i
+const runtimeCodeLoadingProtocolRegex = /^(?:data|blob|javascript|http|https):/i
+
+const hasRuntimeProtocolPrefix = (value) => {
+  const normalized = `${value || ''}`.trim().toLowerCase()
+  if (!normalized) return false
+  if (normalized.startsWith('//')) return true
+  return runtimeProtocolPrefixRegex.test(normalized)
+}
+
+const hasRuntimeCodeLoadingProtocol = (value) => {
+  const normalized = `${value || ''}`.trim().toLowerCase()
+  if (!normalized) return false
+  if (normalized.startsWith('//')) return true
+  return runtimeCodeLoadingProtocolRegex.test(normalized)
+}
+
 const isSafeStaticDynamicImportPath = (value) => {
   const text = `${value || ''}`.trim()
   if (!text) return false
   return dynamicImportAllowedLocalPrefixes.some((prefix) => text.startsWith(prefix))
+}
+
+const isSafeStaticWorkerPath = (value) => {
+  const text = `${value || ''}`.trim()
+  if (!text) return false
+  return workerAllowedLocalPrefixes.some((prefix) => text.startsWith(prefix))
+}
+
+const isSafeStaticScriptSrcPath = (value) => {
+  const text = `${value || ''}`.trim()
+  if (!text) return false
+  return scriptSrcAllowedLocalPrefixes.some((prefix) => text.startsWith(prefix))
 }
 
 const classifyDynamicImportSourceArgument = (sourceArg) => {
@@ -1739,8 +1794,7 @@ const classifyDynamicImportSourceArgument = (sourceArg) => {
   const staticValue = resolveStaticStringValue(sourceArg)
   if (staticValue !== null) {
     const trimmed = `${staticValue}`.trim()
-    const normalized = trimmed.toLowerCase()
-    if (/^[a-z][a-z0-9+.-]*:/.test(normalized) || normalized.startsWith('//')) {
+    if (hasRuntimeProtocolPrefix(trimmed)) {
       return {
         blocked: true,
         type: 'RuntimeDynamicImportForbiddenProtocol',
@@ -1769,6 +1823,19 @@ const isImportExpressionCall = (callNode) => {
   return callee.kind === ts.SyntaxKind.ImportKeyword
 }
 
+const isImportMetaUrlExpression = (expression) => {
+  const target = unwrapExpression(expression)
+  if (!target || !ts.isPropertyAccessExpression(target)) return false
+  if (target.name.text !== 'url') return false
+  const base = unwrapExpression(target.expression)
+  return Boolean(
+    base &&
+      ts.isMetaProperty(base) &&
+      base.keywordToken === ts.SyntaxKind.ImportKeyword &&
+      base.name.text === 'meta',
+  )
+}
+
 const resolveGlobalMemberNamespace = (expression, memberName) => {
   const target = unwrapExpression(expression)
   if (!target) return null
@@ -1787,15 +1854,103 @@ const resolveGlobalMemberNamespace = (expression, memberName) => {
   return null
 }
 
-const isUrlCreateObjectUrlCall = (callNode) => {
-  const callee = unwrapExpression(callNode.expression)
-  if (!callee) return false
-  if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) return false
-  if (getStaticMemberName(callee) !== 'createObjectURL') return false
-  return Boolean(resolveGlobalMemberNamespace(callee.expression, 'URL'))
+const isSafeWorkerNewUrlExpression = (expression) => {
+  const target = unwrapExpression(expression)
+  if (!target || !ts.isNewExpression(target)) return false
+  if (!resolveGlobalMemberNamespace(target.expression, 'URL')) return false
+  const args = target.arguments || []
+  if (args.length < 2) return false
+  const workerPath = resolveStaticStringValue(args[0])
+  if (workerPath === null || !isSafeStaticWorkerPath(workerPath)) return false
+  return isImportMetaUrlExpression(args[1])
 }
 
-const isWorkerConstructorExpression = (expression) => Boolean(resolveGlobalMemberNamespace(expression, 'Worker'))
+const classifyWorkerSourceArgument = (sourceArg, isBlobUrlSourceExpression) => {
+  if (!sourceArg) {
+    return {
+      blocked: true,
+      type: 'RuntimeWorkerMissingSource',
+      expressionText: '',
+    }
+  }
+  if (isBlobUrlSourceExpression(sourceArg)) {
+    return {
+      blocked: true,
+      type: 'RuntimeWorkerBlobUrlLoad',
+      expressionText: sourceArg.getText ? sourceArg.getText() : '',
+    }
+  }
+  const staticValue = resolveStaticStringValue(sourceArg)
+  if (staticValue !== null) {
+    const trimmed = `${staticValue}`.trim()
+    if (hasRuntimeCodeLoadingProtocol(trimmed)) {
+      return {
+        blocked: true,
+        type: 'RuntimeWorkerForbiddenProtocol',
+        expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
+      }
+    }
+    return {
+      blocked: true,
+      type: 'RuntimeWorkerNonCanonicalLiteral',
+      expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
+    }
+  }
+
+  if (isSafeWorkerNewUrlExpression(sourceArg)) {
+    return { blocked: false }
+  }
+
+  return {
+    blocked: true,
+    type: 'RuntimeWorkerUnresolvedSource',
+    expressionText: sourceArg.getText ? sourceArg.getText() : '',
+  }
+}
+
+const isWorkerConstructorExpression = (expression) =>
+  Boolean(resolveGlobalMemberNamespace(expression, 'Worker') || resolveGlobalMemberNamespace(expression, 'SharedWorker'))
+
+const classifyScriptSrcSourceArgument = (sourceArg, isBlobUrlSourceExpression) => {
+  if (!sourceArg) {
+    return {
+      blocked: true,
+      type: 'RuntimeScriptSrcMissingSource',
+      expressionText: '',
+    }
+  }
+  if (isBlobUrlSourceExpression(sourceArg)) {
+    return {
+      blocked: true,
+      type: 'RuntimeScriptBlobUrlLoad',
+      expressionText: sourceArg.getText ? sourceArg.getText() : '',
+    }
+  }
+  const staticValue = resolveStaticStringValue(sourceArg)
+  if (staticValue !== null) {
+    const trimmed = `${staticValue}`.trim()
+    if (hasRuntimeCodeLoadingProtocol(trimmed)) {
+      return {
+        blocked: true,
+        type: 'RuntimeScriptForbiddenProtocol',
+        expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
+      }
+    }
+    if (!isSafeStaticScriptSrcPath(trimmed)) {
+      return {
+        blocked: true,
+        type: 'RuntimeScriptNonLocalLiteral',
+        expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
+      }
+    }
+    return { blocked: false }
+  }
+  return {
+    blocked: true,
+    type: 'RuntimeScriptUnresolvedSource',
+    expressionText: sourceArg.getText ? sourceArg.getText() : '',
+  }
+}
 
 const isSrcAssignmentLeft = (leftExpression) => {
   const left = unwrapExpression(leftExpression)
@@ -1804,7 +1959,20 @@ const isSrcAssignmentLeft = (leftExpression) => {
   return getStaticMemberName(left) === 'src'
 }
 
-const collectRuntimeDynamicModuleLoadingFindings = (sourceFile) => {
+const resolveScriptSrcSetAttributeCall = (callNode) => {
+  const callee = unwrapExpression(callNode.expression)
+  if (!callee) return null
+  if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) return null
+  if (getStaticMemberName(callee) !== 'setAttribute') return null
+  const attrArg = callNode.arguments[0] || null
+  const attrName = resolveStaticStringValue(attrArg)
+  if (!attrName || `${attrName}`.trim().toLowerCase() !== 'src') return null
+  return {
+    valueArg: callNode.arguments[1] || null,
+  }
+}
+
+const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) => {
   const findings = []
   const seen = new Set()
   const blobUrlIdentifierSet = new Set()
@@ -1817,19 +1985,41 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile) => {
     findings.push({ type, expressionText: normalized })
   }
 
+  const resolveBlobUrlCallDescriptor = (callNode) => {
+    const callDescriptor = resolveRuntimeCallDescriptor(callNode, runtimeContext, runtimeBlobUrlMethodSet)
+    if (!callDescriptor) return null
+    if (callDescriptor.method && runtimeBlobUrlMethodSet.has(callDescriptor.method)) {
+      const normalizedCall = normalizeRuntimeCallArguments(callNode, callDescriptor)
+      if (normalizedCall.unresolved) {
+        return { createsBlobUrl: true, unresolved: true, args: [] }
+      }
+      return { createsBlobUrl: true, unresolved: false, args: normalizedCall.args }
+    }
+    if (callDescriptor.unresolvedTarget) {
+      return { createsBlobUrl: false, unresolvedTarget: true }
+    }
+    return null
+  }
+
   const isBlobUrlSourceExpression = (expression) => {
     const target = unwrapExpression(expression)
     if (!target) return false
     if (ts.isIdentifier(target) && blobUrlIdentifierSet.has(target.text)) return true
-    if (ts.isCallExpression(target) && isUrlCreateObjectUrlCall(target)) return true
+    if (ts.isCallExpression(target)) {
+      const blobCall = resolveBlobUrlCallDescriptor(target)
+      if (blobCall?.createsBlobUrl) return true
+    }
     return false
   }
 
   const collectBlobUrlIdentifiers = (node) => {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
       const initializer = unwrapExpression(node.initializer)
-      if (ts.isCallExpression(initializer) && isUrlCreateObjectUrlCall(initializer)) {
-        blobUrlIdentifierSet.add(node.name.text)
+      if (ts.isCallExpression(initializer)) {
+        const blobCall = resolveBlobUrlCallDescriptor(initializer)
+        if (blobCall?.createsBlobUrl && !blobCall.unresolved) {
+          blobUrlIdentifierSet.add(node.name.text)
+        }
       }
     }
     if (
@@ -1839,8 +2029,11 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile) => {
     ) {
       const target = unwrapExpression(node.right)
       const leftIdentifier = unwrapExpression(node.left)
-      if (ts.isIdentifier(leftIdentifier) && ts.isCallExpression(target) && isUrlCreateObjectUrlCall(target)) {
-        blobUrlIdentifierSet.add(leftIdentifier.text)
+      if (ts.isIdentifier(leftIdentifier) && ts.isCallExpression(target)) {
+        const blobCall = resolveBlobUrlCallDescriptor(target)
+        if (blobCall?.createsBlobUrl && !blobCall.unresolved) {
+          blobUrlIdentifierSet.add(leftIdentifier.text)
+        }
       }
     }
     ts.forEachChild(node, collectBlobUrlIdentifiers)
@@ -1849,28 +2042,51 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile) => {
   const visit = (node) => {
     if (ts.isCallExpression(node)) {
       if (isImportExpressionCall(node)) {
-        const importArgCheck = classifyDynamicImportSourceArgument(node.arguments[0] || null)
+        const importSourceArg = node.arguments[0] || null
+        if (importSourceArg && isBlobUrlSourceExpression(importSourceArg)) {
+          pushFinding('RuntimeDynamicImportBlobUrlSource', importSourceArg.getText(sourceFile))
+          ts.forEachChild(node, visit)
+          return
+        }
+        const importArgCheck = classifyDynamicImportSourceArgument(importSourceArg)
         if (importArgCheck.blocked) {
           pushFinding(importArgCheck.type, importArgCheck.expressionText || node.getText(sourceFile))
         }
       }
-      if (isUrlCreateObjectUrlCall(node)) {
-        pushFinding('RuntimeBlobUrlCreateObjectURL', node.getText(sourceFile))
+      const blobUrlCall = resolveBlobUrlCallDescriptor(node)
+      if (blobUrlCall?.createsBlobUrl) {
+        if (blobUrlCall.unresolved) {
+          pushFinding('RuntimeBlobUrlCreateObjectURLUnresolvedArguments', node.getText(sourceFile))
+        } else {
+          pushFinding('RuntimeBlobUrlCreateObjectURL', node.getText(sourceFile))
+        }
+      } else if (blobUrlCall?.unresolvedTarget) {
+        pushFinding('RuntimeBlobUrlCreateObjectURLUnresolvedTarget', node.getText(sourceFile))
+      }
+
+      const scriptSetSrcCall = resolveScriptSrcSetAttributeCall(node)
+      if (scriptSetSrcCall) {
+        const srcCheck = classifyScriptSrcSourceArgument(scriptSetSrcCall.valueArg, isBlobUrlSourceExpression)
+        if (srcCheck.blocked) {
+          pushFinding(srcCheck.type, srcCheck.expressionText || node.getText(sourceFile))
+        }
       }
     }
 
     if (ts.isNewExpression(node)) {
       if (isWorkerConstructorExpression(node.expression)) {
         const firstArg = node.arguments?.[0] || null
-        if (firstArg && isBlobUrlSourceExpression(firstArg)) {
-          pushFinding('RuntimeWorkerBlobUrlLoad', node.getText(sourceFile))
+        const workerArgCheck = classifyWorkerSourceArgument(firstArg, isBlobUrlSourceExpression)
+        if (workerArgCheck.blocked) {
+          pushFinding(workerArgCheck.type, workerArgCheck.expressionText || node.getText(sourceFile))
         }
       }
     }
 
     if (ts.isBinaryExpression(node) && isRuntimeWriteOperator(node.operatorToken.kind) && isSrcAssignmentLeft(node.left)) {
-      if (isBlobUrlSourceExpression(node.right)) {
-        pushFinding('RuntimeScriptBlobUrlLoad', node.getText(sourceFile))
+      const srcCheck = classifyScriptSrcSourceArgument(node.right, isBlobUrlSourceExpression)
+      if (srcCheck.blocked) {
+        pushFinding(srcCheck.type, srcCheck.expressionText || node.getText(sourceFile))
       }
     }
 
@@ -2249,7 +2465,7 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
     for (const finding of runtimeTimerCallFindings) {
       pushCodegenSourceFailure(finding.type, finding.expressionText)
     }
-    const runtimeDynamicModuleFindings = collectRuntimeDynamicModuleLoadingFindings(sourceFile)
+    const runtimeDynamicModuleFindings = collectRuntimeDynamicModuleLoadingFindings(sourceFile, runtimeContext)
     for (const finding of runtimeDynamicModuleFindings) {
       pushDynamicModuleFailure(finding.type, finding.expressionText)
     }

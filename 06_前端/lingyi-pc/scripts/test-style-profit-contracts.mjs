@@ -239,11 +239,13 @@ import('@/views/style_profit/StyleProfitList.vue')
 import('@/views/style_profit/StyleProfitDetail.vue')
 import('./local-readonly-helper')
 import('../readonly/formatter')
+new Worker(new URL('./readonly-worker.ts', import.meta.url), { type: 'module' })
 const asset = '/assets/logo.png'
 void asset
 </script>
 `,
   )
+  write(root, 'src/readonly-worker.ts', `export {}\n`)
   write(root, 'src/main.ts', `import './style.css'\n`)
   write(root, 'src/views/production/ProductionPlanList.vue', `<template>production</template>\n`)
 }
@@ -3394,6 +3396,210 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst script = document.createElement('script')\nscript.src = URL.createObjectURL(new Blob(['console.log(1)'], { type: 'text/javascript' }))\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via URL.createObjectURL.call(URL, new Blob(...))',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nURL.createObjectURL.call(URL, new Blob(['export default Object.assign'], { type: 'text/javascript' }))\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via URL.createObjectURL.apply(URL, [new Blob(...)])',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nURL.createObjectURL.apply(URL, [new Blob(['export default Reflect.set'], { type: 'text/javascript' })])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via window.URL.createObjectURL.call(window.URL, new Blob(...))',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nwindow.URL.createObjectURL.call(window.URL, new Blob(['console.log(1)'], { type: 'text/javascript' }))\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via globalThis.URL.createObjectURL.apply(globalThis.URL, [new Blob(...)])',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nglobalThis.URL.createObjectURL.apply(globalThis.URL, [new Blob(['console.log(1)'], { type: 'application/javascript' })])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via alias const make = URL.createObjectURL',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst make = URL.createObjectURL\nconst blobUrl = make(new Blob(['export default Object.assign'], { type: 'text/javascript' }))\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via destructured createObjectURL alias',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst { createObjectURL } = URL\ncreateObjectURL(new Blob(['export default Reflect.set'], { type: 'text/javascript' }))\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via namespace alias U.createObjectURL',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst U = URL\nU.createObjectURL(new Blob(['console.log(1)'], { type: 'text/javascript' }))\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via blobUrl variable then import(blobUrl) from alias createObjectURL',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst make = URL.createObjectURL\nconst blobUrl = make(new Blob(['export default Object.assign'], { type: 'text/javascript' }))\nimport(blobUrl)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via blobUrl variable then new Worker(blobUrl)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst blobUrl = URL.createObjectURL(new Blob(['postMessage(1)'], { type: 'text/javascript' }))\nnew Worker(blobUrl)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via blobUrl variable then script.src = blobUrl',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst script = document.createElement('script')\nconst blobUrl = URL.createObjectURL(new Blob(['console.log(1)'], { type: 'text/javascript' }))\nscript.src = blobUrl\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new Worker('data:text/javascript,...', { type: 'module' })",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nnew Worker('data:text/javascript,postMessage(1)', { type: 'module' })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new Worker('blob:https://example.local/worker')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nnew Worker('blob:https://example.local/worker')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new Worker('https://cdn.example.com/worker.js')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nnew Worker('https://cdn.example.com/worker.js')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new SharedWorker('data:text/javascript,postMessage(1)')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nnew SharedWorker('data:text/javascript,postMessage(1)')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via new Worker(workerUrl) unresolved identifier',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst workerUrl = getWorkerUrl()\nnew Worker(workerUrl)\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via script.src = 'data:text/javascript,console.log(1)'",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst script = document.createElement('script')\nscript.src = 'data:text/javascript,console.log(1)'\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via script.src = 'https://cdn.example.com/a.js'",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst script = document.createElement('script')\nscript.src = 'https://cdn.example.com/a.js'\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via script.setAttribute('src', blobUrl)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst script = document.createElement('script')\nconst blobUrl = URL.createObjectURL(new Blob(['console.log(1)'], { type: 'text/javascript' }))\nscript.setAttribute('src', blobUrl)\n</script>\n`,
       )
     },
   },
