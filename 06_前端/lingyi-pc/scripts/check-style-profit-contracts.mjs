@@ -387,14 +387,11 @@ const classifyPropertyNameNode = (nameNode) => {
   if (ts.isComputedPropertyName(nameNode)) {
     const expr = nameNode.expression
     const expressionText = expr.getText()
-    if (
-      ts.isStringLiteral(expr) ||
-      ts.isNoSubstitutionTemplateLiteral(expr) ||
-      ts.isNumericLiteral(expr)
-    ) {
+    const literalText = resolveStaticStringValue(expr)
+    if (literalText !== null) {
       return {
         keyClass: 'literal_key',
-        keyText: `${expr.text}`.toLowerCase(),
+        keyText: `${literalText}`.toLowerCase(),
         expressionText,
       }
     }
@@ -430,6 +427,38 @@ const classifyPropertyNameNode = (nameNode) => {
 const getStringLiteralValue = (node) => {
   if (!node) return null
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
+  return null
+}
+
+const resolveStaticStringValue = (node) => {
+  const target = unwrapExpression(node)
+  if (!target) return null
+
+  if (
+    ts.isStringLiteral(target) ||
+    ts.isNoSubstitutionTemplateLiteral(target) ||
+    ts.isNumericLiteral(target)
+  ) {
+    return `${target.text}`
+  }
+
+  if (ts.isTemplateExpression(target)) {
+    let text = target.head.text
+    for (const span of target.templateSpans) {
+      const exprValue = resolveStaticStringValue(span.expression)
+      if (exprValue === null) return null
+      text += `${exprValue}${span.literal.text}`
+    }
+    return text
+  }
+
+  if (ts.isBinaryExpression(target) && target.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const left = resolveStaticStringValue(target.left)
+    const right = resolveStaticStringValue(target.right)
+    if (left === null || right === null) return null
+    return `${left}${right}`
+  }
+
   return null
 }
 
@@ -513,15 +542,12 @@ const classifyExpressionKeyNode = (expressionNode) => {
     return { keyClass: 'unknown_key', keyText: '', expressionText: '' }
   }
 
-  if (
-    ts.isStringLiteral(expressionNode) ||
-    ts.isNoSubstitutionTemplateLiteral(expressionNode) ||
-    ts.isNumericLiteral(expressionNode)
-  ) {
+  const literalText = resolveStaticStringValue(expressionNode)
+  if (literalText !== null) {
     return {
       keyClass: 'literal_key',
-      keyText: `${expressionNode.text}`.toLowerCase(),
-      expressionText: expressionNode.getText(),
+      keyText: literalText.toLowerCase(),
+      expressionText: expressionNode.getText ? expressionNode.getText() : `${literalText}`,
     }
   }
 
@@ -555,8 +581,28 @@ const isRuntimeWriteOperator = (operatorKind) => runtimeWriteOperatorKinds.has(o
 
 const unwrapExpression = (node) => {
   let current = node
-  while (current && ts.isParenthesizedExpression(current)) {
-    current = current.expression
+  while (current) {
+    if (ts.isParenthesizedExpression(current)) {
+      current = current.expression
+      continue
+    }
+    if (ts.isAsExpression(current) || ts.isTypeAssertionExpression(current)) {
+      current = current.expression
+      continue
+    }
+    if (ts.isSatisfiesExpression(current)) {
+      current = current.expression
+      continue
+    }
+    if (ts.isNonNullExpression(current)) {
+      current = current.expression
+      continue
+    }
+    if (ts.isPartiallyEmittedExpression(current)) {
+      current = current.expression
+      continue
+    }
+    break
   }
   return current
 }
@@ -571,11 +617,7 @@ const normalizeRuntimeCalleeExpression = (node) => {
 
 const getStaticLiteralText = (node) => {
   if (!node) return null
-  const target = unwrapExpression(node)
-  if (ts.isStringLiteral(target) || ts.isNoSubstitutionTemplateLiteral(target) || ts.isNumericLiteral(target)) {
-    return `${target.text}`
-  }
-  return null
+  return resolveStaticStringValue(node)
 }
 
 const getStaticMemberName = (node) => {
@@ -592,6 +634,7 @@ const classifyRuntimeMethodName = (objectName, methodName) => {
   if (objectName === 'Object' && methodName === 'assign') return 'Object.assign'
   if (objectName === 'Reflect' && methodName === 'set') return 'Reflect.set'
   if (objectName === 'Reflect' && methodName === 'apply') return 'Reflect.apply'
+  if (objectName === 'Reflect' && methodName === 'get') return 'Reflect.get'
   return null
 }
 
@@ -745,6 +788,17 @@ const resolveRuntimeMethodFromExpression = (
   }
 
   if (ts.isCallExpression(target)) {
+    const runtimeContext = {
+      runtimeMethodAliasMap,
+      runtimeNamespaceAliasMap,
+      runtimeArrayMethodContainerMap,
+      runtimeObjectMethodContainerMap,
+    }
+    const reflectGetResolved = resolveRuntimeReflectGetCall(target, runtimeContext)
+    if (reflectGetResolved?.method) {
+      return reflectGetResolved.method
+    }
+
     const bindMemberName = getStaticMemberName(target.expression)
     if (bindMemberName !== 'bind') return null
     const bindBaseExpr =
@@ -778,11 +832,66 @@ const runtimeMutatorSourceMethodSet = new Set([
   'Reflect.apply',
 ])
 
-const runtimeMutatorMemberNameSet = new Set(['defineProperty', 'defineProperties', 'assign', 'set', 'apply'])
+const runtimeMutatorMemberNameSet = new Set(['defineProperty', 'defineProperties', 'assign', 'set', 'apply', 'get'])
+
+const resolveRuntimeReflectGetCall = (callNode, runtimeContext) => {
+  const runtimeMethodAliasMap = runtimeContext.runtimeMethodAliasMap || new Map()
+  const runtimeNamespaceAliasMap = runtimeContext.runtimeNamespaceAliasMap || new Map()
+  const runtimeArrayMethodContainerMap = runtimeContext.runtimeArrayMethodContainerMap || new Map()
+  const runtimeObjectMethodContainerMap = runtimeContext.runtimeObjectMethodContainerMap || new Map()
+
+  const callTarget = normalizeRuntimeCalleeExpression(callNode.expression)
+  if (!callTarget) return null
+  const callMethod = resolveRuntimeMethodFromExpression(
+    callTarget,
+    runtimeMethodAliasMap,
+    runtimeNamespaceAliasMap,
+    runtimeArrayMethodContainerMap,
+    runtimeObjectMethodContainerMap,
+  )
+  if (callMethod !== 'Reflect.get') return null
+
+  const targetExpr = callNode.arguments[0] || null
+  const keyExpr = callNode.arguments[1] || null
+  const namespaceName = resolveRuntimeNamespaceFromExpression(targetExpr, runtimeNamespaceAliasMap)
+  const keyText = getStaticLiteralText(keyExpr)
+
+  if (!namespaceName) {
+    return {
+      method: null,
+      unresolved: true,
+      expressionText: keyExpr?.getText?.() || callNode.getText(),
+    }
+  }
+
+  if (keyText === null) {
+    return {
+      method: null,
+      unresolved: true,
+      expressionText: keyExpr?.getText?.() || callNode.getText(),
+    }
+  }
+
+  const runtimeMethod = classifyRuntimeMethodName(namespaceName, keyText)
+  if (runtimeMethod) {
+    return {
+      method: runtimeMethod,
+      unresolved: false,
+      expressionText: `${namespaceName}.${keyText}`,
+    }
+  }
+
+  return {
+    method: null,
+    unresolved: true,
+    expressionText: `${namespaceName}[${keyText}]`,
+  }
+}
 
 const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
   const runtimeMethodAliasMap = runtimeContext.runtimeMethodAliasMap || new Map()
   const runtimeNamespaceAliasMap = runtimeContext.runtimeNamespaceAliasMap || new Map()
+  const runtimeGlobalContainerAliasMap = runtimeContext.runtimeGlobalContainerAliasMap || new Map()
   const runtimeArrayMethodContainerMap = runtimeContext.runtimeArrayMethodContainerMap || new Map()
   const runtimeObjectMethodContainerMap = runtimeContext.runtimeObjectMethodContainerMap || new Map()
   const runtimeUnknownNamespaceAliasMap = runtimeContext.runtimeUnknownNamespaceAliasMap || new Map()
@@ -828,6 +937,15 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
     }
     return { method: null, invoke: 'reflect_apply', unresolvedTarget: true }
   }
+  if (directMethod === 'Reflect.get') {
+    const reflectGetResolved = resolveRuntimeReflectGetCall(callNode, runtimeContext)
+    if (reflectGetResolved?.method && runtimeMutatorMethodSet.has(reflectGetResolved.method)) {
+      return { method: reflectGetResolved.method, invoke: 'reflect_get' }
+    }
+    if (reflectGetResolved?.unresolved) {
+      return { method: null, invoke: 'reflect_get', unresolvedTarget: true }
+    }
+  }
 
   if (directMethod && runtimeMutatorMethodSet.has(directMethod)) {
     return { method: directMethod, invoke: 'direct' }
@@ -836,6 +954,14 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
   if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
     const memberName = getStaticMemberName(target)
     const baseExpr = unwrapExpression(target.expression)
+    const namespaceName = resolveRuntimeNamespaceFromExpression(baseExpr, runtimeNamespaceAliasMap)
+    if (namespaceName && !memberName) {
+      return { method: null, invoke: 'unknown_namespace_member', unresolvedTarget: true }
+    }
+    const globalContainer = resolveGlobalContainerFromExpression(baseExpr, runtimeGlobalContainerAliasMap)
+    if (globalContainer && !memberName) {
+      return { method: null, invoke: 'unknown_global_namespace_member', unresolvedTarget: true }
+    }
 
     if (ts.isIdentifier(baseExpr)) {
       const baseName = baseExpr.text
@@ -1300,6 +1426,12 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
 const collectRuntimeMutatorSourceReferenceFindings = (sourceFile, runtimeContext) => {
   const findings = []
   const seen = new Set()
+  const runtimeMethodAliasMap = runtimeContext.runtimeMethodAliasMap || new Map()
+  const runtimeNamespaceAliasMap = runtimeContext.runtimeNamespaceAliasMap || new Map()
+  const runtimeGlobalContainerAliasMap = runtimeContext.runtimeGlobalContainerAliasMap || new Map()
+  const runtimeArrayMethodContainerMap = runtimeContext.runtimeArrayMethodContainerMap || new Map()
+  const runtimeObjectMethodContainerMap = runtimeContext.runtimeObjectMethodContainerMap || new Map()
+
   const pushFinding = (type, expressionText) => {
     const normalized = normalizeComputedKeyExpr(expressionText || '')
     const dedupeKey = `${type}|${normalized}`
@@ -1316,15 +1448,49 @@ const collectRuntimeMutatorSourceReferenceFindings = (sourceFile, runtimeContext
     ) {
       const runtimeMethod = resolveRuntimeMethodFromExpression(
         node,
-        runtimeContext.runtimeMethodAliasMap,
-        runtimeContext.runtimeNamespaceAliasMap,
-        runtimeContext.runtimeArrayMethodContainerMap,
-        runtimeContext.runtimeObjectMethodContainerMap,
+        runtimeMethodAliasMap,
+        runtimeNamespaceAliasMap,
+        runtimeArrayMethodContainerMap,
+        runtimeObjectMethodContainerMap,
       )
       if (runtimeMethod && runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
         pushFinding('RuntimeMutatorSourceReference', node.getText(sourceFile))
       }
+
+      if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
+        const memberName = getStaticMemberName(node)
+        const baseExpr = unwrapExpression(node.expression)
+        const namespaceName = resolveRuntimeNamespaceFromExpression(baseExpr, runtimeNamespaceAliasMap)
+        if (namespaceName && !memberName) {
+          pushFinding('RuntimeMutatorSourceUnknownNamespaceMember', node.getText(sourceFile))
+        }
+        const globalContainer = resolveGlobalContainerFromExpression(baseExpr, runtimeGlobalContainerAliasMap)
+        if (globalContainer && !memberName) {
+          pushFinding('RuntimeMutatorSourceUnknownGlobalNamespaceMember', node.getText(sourceFile))
+        }
+      }
     }
+
+    if (ts.isCallExpression(node)) {
+      const runtimeMethod = resolveRuntimeMethodFromExpression(
+        node,
+        runtimeMethodAliasMap,
+        runtimeNamespaceAliasMap,
+        runtimeArrayMethodContainerMap,
+        runtimeObjectMethodContainerMap,
+      )
+      if (runtimeMethod && runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
+        pushFinding('RuntimeMutatorSourceCallReference', node.getText(sourceFile))
+      }
+
+      const reflectGetResolved = resolveRuntimeReflectGetCall(node, runtimeContext)
+      if (reflectGetResolved?.method && runtimeMutatorSourceMethodSet.has(reflectGetResolved.method)) {
+        pushFinding('RuntimeMutatorSourceReflectGetReference', node.getText(sourceFile))
+      } else if (reflectGetResolved?.unresolved) {
+        pushFinding('RuntimeMutatorSourceReflectGetUnknownMember', reflectGetResolved.expressionText || node.getText(sourceFile))
+      }
+    }
+
     ts.forEachChild(node, visit)
   }
 

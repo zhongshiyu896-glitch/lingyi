@@ -2384,6 +2384,222 @@ const failureCases = [
     },
   },
   {
+    name: "runtime mutator source via Object['define' + 'Property']",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject['define' + 'Property'](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via Object['ass' + 'ign']",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject['ass' + 'ign'](item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via Reflect['s' + 'et']",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nReflect['s' + 'et'](item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via Reflect['ap' + 'ply']",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nReflect['ap' + 'ply'](Object.defineProperty, Object, [item, 'onClick', { value: openHelp }])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via template literal member key',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject[\`define\${'Property'}\`](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via globalThis['Object']['assign']",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nglobalThis['Object']['assign'](item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via window['Reflect']['set']",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nwindow['Reflect']['set'](item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via globalThis template element chain',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nglobalThis[\`Reflect\`][\`set\`](item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via Reflect.get(Object, 'defineProperty')",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nReflect.get(Object, 'defineProperty')(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via Reflect.get(Object, 'ass' + 'ign')",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nReflect.get(Object, 'ass' + 'ign')(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via Reflect['get'](Reflect, 'set')",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nReflect['get'](Reflect, 'set')(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via Reflect.get unresolved key fail closed',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst dynamicKey = getMutatorName()\nconst item = { label: '利润计算说明' }\nReflect.get(Object, dynamicKey)(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via optional call Object.defineProperty?.',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject.defineProperty?.(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via optional chain Object?.defineProperty?.',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject?.defineProperty?.(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via optional chain Object?.['assign']?.",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject?.['assign']?.(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime mutator source via optional chain Reflect?.['set']?.",
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nReflect?.['set']?.(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via Object[key] unresolved member fail closed',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst key = getMutatorName()\nconst item = { label: '利润计算说明' }\nObject[key](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via globalThis[objKey][methodKey] unresolved chain fail closed',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst objKey = getObjectKey()\nconst methodKey = getMethodKey()\nconst item = { label: '利润计算说明' }\nglobalThis[objKey][methodKey](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
     name: 'non-whitelist file contains bare fetch',
     expectedKeyword: '禁止裸 fetch()，必须走统一 request() 封装',
     mutate: (root) => {
