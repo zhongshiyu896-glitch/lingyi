@@ -136,7 +136,11 @@ const interactiveTagPairs = [
   },
 ]
 
-const actionInteractiveKeyRegex = /\b(onClick|handler|action|command|onSelect|onCommand|callback|execute|submit)\s*:/
+const actionInteractiveKeys = ['onClick', 'handler', 'action', 'command', 'onSelect', 'onCommand', 'callback', 'execute', 'submit']
+const actionInteractiveKeyRegex = new RegExp(
+  `(?:['"\`]\\s*)?(?:${actionInteractiveKeys.map(escapeRegex).join('|')})(?:\\s*['"\`])?\\s*:`,
+  'i',
+)
 const explanationFieldNames = ['label', 'title', 'text', 'name', 'tooltip', 'description']
 const dottedExplanationFieldNames = ['meta.label', 'meta.title', 'props.label', 'extra.label', 'payload.label']
 
@@ -282,7 +286,7 @@ const findContainingObjectBlock = (blocks, start, end) =>
 const hasExplanationFieldForPhraseInSegment = (segment, phrase) => {
   const escaped = escapeRegex(phrase)
   const plainFieldRegex = new RegExp(
-    `\\b(?:${explanationFieldNames.join('|')})\\s*:\\s*['"\`]\\s*${escaped}\\s*['"\`]`,
+    `(?:['"\`]\\s*)?(?:${explanationFieldNames.map(escapeRegex).join('|')})(?:\\s*['"\`])?\\s*:\\s*['"\`]\\s*${escaped}\\s*['"\`]`,
     'i',
   )
   if (plainFieldRegex.test(segment)) return true

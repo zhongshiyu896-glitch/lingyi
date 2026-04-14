@@ -96,6 +96,26 @@ const readonlyHelp = {
   },
   description: '只读帮助文案',
 }
+const readonlyHelpJson = {
+  "meta": {
+    "label": "利润计算说明"
+  },
+  "description": "只读帮助文案"
+}
+const readonlyActionsJson = [
+  {
+    "label": "查看详情",
+    "onClick": goDetail,
+  },
+  {
+    "label": "查询",
+    "onClick": loadRows,
+  },
+  {
+    "label": "返回",
+    "onClick": goBack,
+  },
+]
 </script>
 `,
   )
@@ -179,6 +199,18 @@ const assertTrue = (condition, message) => {
   if (!condition) {
     throw new Error(message)
   }
+}
+
+const assertDistanceGreaterThan = (content, leftToken, rightToken, minDistance, caseName) => {
+  const leftIndex = content.indexOf(leftToken)
+  const rightIndex = content.indexOf(rightToken)
+  assertTrue(leftIndex >= 0, `[${caseName}] 未找到左侧 token: ${leftToken}`)
+  assertTrue(rightIndex >= 0, `[${caseName}] 未找到右侧 token: ${rightToken}`)
+  const distance = Math.abs(rightIndex - leftIndex)
+  assertTrue(
+    distance > minDistance,
+    `[${caseName}] token 距离不足，实际=${distance}，要求>${minDistance}，left=${leftToken}，right=${rightToken}`,
+  )
 }
 
 const runFailureCase = (caseName, mutateFixture, expectedKeyword) => {
@@ -488,50 +520,54 @@ const failureCases = [
     },
   },
   {
-    name: 'ancestor handler with child props label',
+    name: 'single-quoted handler with single-quoted props label',
     expectedKeyword: '只读说明文案不得出现在交互入口上下文',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
         root,
         'src/App.vue',
-        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    handler: showRule,\n    props: {\n      label: '利润率计算规则',\n    },\n  },\n]\n</script>\n`,
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    'handler': showRule,\n    'props': {\n      'label': '利润率计算规则',\n    },\n  },\n]\n</script>\n`,
       )
     },
   },
   {
-    name: 'ancestor command with child extra label',
+    name: 'mixed quoted command with extra quoted label',
     expectedKeyword: '只读说明文案不得出现在交互入口上下文',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
         root,
         'src/App.vue',
-        `${content}\n<script setup lang=\"ts\">\nconst menus = [\n  {\n    command: 'open-profit-source-help',\n    extra: {\n      label: '利润快照来源说明',\n    },\n  },\n]\n</script>\n`,
+        `${content}\n<script setup lang=\"ts\">\nconst menus = [\n  {\n    \"command\": 'open-profit-source-help',\n    extra: {\n      \"label\": '利润快照来源说明',\n    },\n  },\n]\n</script>\n`,
       )
     },
   },
   {
-    name: 'ancestor onClick and descendant label gap repeat 1200',
+    name: 'quoted onClick and quoted meta.label with real 1200 filler',
     expectedKeyword: '只读说明文案不得出现在交互入口上下文',
     mutate: (root) => {
-      const content = read(root, 'src/App.vue')
-      write(
-        root,
-        'src/App.vue',
-        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    onClick: openHelp,\n    filler: 'x'.repeat(1200),\n    meta: {\n      label: '利润计算说明',\n    },\n  },\n]\n</script>\n`,
+      const base = read(root, 'src/App.vue')
+      const longFiller = 'x'.repeat(1200)
+      const appended = `\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    \"onClick\": openHelp,\n    \"filler\": \"${longFiller}\",\n    \"meta\": {\n      \"label\": \"利润计算说明\",\n    },\n  },\n]\n</script>\n`
+      const content = `${base}${appended}`
+      assertTrue(
+        Math.abs(content.indexOf('"label"') - content.indexOf('"onClick"')) > 1200,
+        '[quoted onClick long-distance fixture] onClick 与 label 真实距离必须超过 1200 字符',
       )
+      assertDistanceGreaterThan(content, '"onClick"', '"label"', 1200, 'quoted onClick long-distance fixture')
+      write(root, 'src/App.vue', content)
     },
   },
   {
-    name: 'ancestor onSelect in children tree with descendant meta label',
+    name: 'double-quoted children tree ancestor onSelect',
     expectedKeyword: '只读说明文案不得出现在交互入口上下文',
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(
         root,
         'src/App.vue',
-        `${content}\n<script setup lang=\"ts\">\nconst menu = [\n  {\n    onSelect: selectMenu,\n    children: [\n      {\n        meta: {\n          label: '利润计算说明',\n        },\n      },\n    ],\n  },\n]\n</script>\n`,
+        `${content}\n<script setup lang=\"ts\">\nconst menu = [\n  {\n    \"onSelect\": selectMenu,\n    \"children\": [\n      {\n        \"meta\": {\n          \"label\": \"利润计算说明\",\n        },\n      },\n    ],\n  },\n]\n</script>\n`,
       )
     },
   },
