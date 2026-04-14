@@ -105,7 +105,7 @@
 - 未提交：`.pytest-postgresql-*.xml`、`dist`、`coverage`、`node_modules`
 
 ## 8. 提交信息
-- commit：`<待回填>`
+- commit：`8c55a36`
 - message：`fix: close style profit runtime action-key syntax gaps`
 
 ## 9. 结论
