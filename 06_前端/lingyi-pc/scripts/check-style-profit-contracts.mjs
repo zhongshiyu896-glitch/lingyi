@@ -142,6 +142,7 @@ const actionInteractiveAssignmentPattern = `(?:['"\`]\\s*)?(?:${actionInteractiv
 const actionInteractiveMethodPattern = `(?:\\basync\\s+)?(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*\\([^)]*\\)\\s*\\{`
 const actionInteractiveComputedAssignmentPattern = `\\[\\s*['"\`]\\s*(?:${actionInteractiveKeyAlternation})\\s*['"\`]\\s*\\]\\s*:`
 const actionInteractiveComputedMethodPattern = `(?:\\basync\\s+)?\\[\\s*['"\`]\\s*(?:${actionInteractiveKeyAlternation})\\s*['"\`]\\s*\\]\\s*\\([^)]*\\)\\s*\\{`
+const computedPropertyKeyRegex = /\[\s*([^\]\n]+?)\s*\]\s*(?::|\([^)]*\)\s*\{)/g
 const actionInteractiveMemberRegex = new RegExp(
   `(?:${actionInteractiveAssignmentPattern})|(?:${actionInteractiveMethodPattern})|(?:${actionInteractiveComputedAssignmentPattern})|(?:${actionInteractiveComputedMethodPattern})`,
   'i',
@@ -313,6 +314,11 @@ const collectAncestorObjectBlocks = (blocks, targetBlock) =>
     .filter((block) => block.start <= targetBlock.start && targetBlock.end <= block.end)
     .sort((a, b) => (a.end - a.start) - (b.end - b.start))
 
+const isLiteralComputedKey = (computedExpr) => {
+  const trimmed = computedExpr.trim()
+  return /^['"`][^'"`]+['"`]$/.test(trimmed)
+}
+
 const resolveExplanationObjectChain = (content, phrase, range, objectBlocks) => {
   const block = findContainingObjectBlock(objectBlocks, range.start, range.end)
   if (!block) return null
@@ -483,6 +489,19 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     }
 
     if (styleProfitSurface) {
+      let computedKeyMatch = computedPropertyKeyRegex.exec(content)
+      while (computedKeyMatch) {
+        const keyExpression = computedKeyMatch[1] ?? ''
+        if (!isLiteralComputedKey(keyExpression)) {
+          fail(
+            `style-profit forbids non-literal computed action keys; use explicit onClick/handler/command keys or quoted literal computed keys（款式利润前端禁止非字面量计算属性 action key）: ${targetPath} -> [${keyExpression.trim()}]`,
+          )
+          break
+        }
+        computedKeyMatch = computedPropertyKeyRegex.exec(content)
+      }
+      computedPropertyKeyRegex.lastIndex = 0
+
       if (/\bidempotency_key\b/g.test(content)) {
         fail(`禁止 style-profit 业务面出现 idempotency_key: ${targetPath}`)
       }

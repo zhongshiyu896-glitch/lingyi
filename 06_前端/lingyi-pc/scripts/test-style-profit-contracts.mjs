@@ -106,6 +106,20 @@ const readonlyHelpComputed = {
   ['label']: '利润计算说明',
   description: '只读帮助文案',
 }
+const readonlyActionsComputed = [
+  {
+    ['label']: '查看详情',
+    ['onClick']: goDetail,
+  },
+  {
+    ['label']: '查询',
+    ['onClick']: loadRows,
+  },
+  {
+    ['label']: '返回',
+    ['onClick']: goBack,
+  },
+]
 const readonlyActionsJson = [
   {
     "label": "查看详情",
@@ -682,6 +696,78 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst menu = [\n  {\n    ['onSelect']() {\n      selectMenu()\n    },\n    children: [\n      {\n        meta: {\n          label: '利润计算说明',\n        },\n      },\n    ],\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'non-literal computed key [ACTION_KEY] assignment',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst actions = [\n  {\n    label: '利润计算说明',\n    [ACTION_KEY]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'non-literal computed key [actionMap.onClick] assignment',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    [actionMap.onClick]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'non-literal computed key [getActionKey()] assignment',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    [getActionKey()]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'non-literal computed method shorthand [ACTION_KEY]()',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst actions = [\n  {\n    label: '利润计算说明',\n    [ACTION_KEY]() {\n      openHelp()\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'non-literal async computed method shorthand [ACTION_KEY]()',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'submit'\nconst actions = [\n  {\n    meta: {\n      label: '利润快照来源说明',\n    },\n    async [ACTION_KEY]() {\n      await submitProfit()\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'non-literal computed label key [labelKey] with ancestor interaction',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst labelKey = 'label'\nconst actions = [\n  {\n    onClick: openHelp,\n    [labelKey]: '利润计算说明',\n  },\n]\n</script>\n`,
       )
     },
   },
