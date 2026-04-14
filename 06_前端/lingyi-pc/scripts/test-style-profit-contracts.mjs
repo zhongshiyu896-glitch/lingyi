@@ -150,6 +150,18 @@ const readonlyUiState = { disabled: false }
 readonlyUiState.disabled = true
 const readonlyUiStateNext = { ...readonlyUiState, disabled: true }
 void readonlyUiStateNext
+function refresh() {
+  return true
+}
+setTimeout(() => refresh(), 100)
+setInterval(refresh, 1000)
+const readonlyRecord = { constructor_name: 'safe-constructor-name' }
+const readonlyConstructorName = readonlyRecord['constructor_name']
+const readonlyConstructorText = 'constructor disabled'
+const readonlyNow = new Date()
+void readonlyConstructorName
+void readonlyConstructorText
+void readonlyNow
 </script>
 `,
   )
@@ -2812,6 +2824,238 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst maker = condition ? Function : Function\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setTimeout string argument',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nsetTimeout(\"Object.assign(item, { onClick: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setInterval string argument',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nsetInterval(\"Reflect.set(item, 'onClick', openHelp)\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via window.setTimeout string argument',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nwindow.setTimeout(\"Object.defineProperty(item, 'onClick', { value: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via globalThis.setInterval string argument',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nglobalThis.setInterval(\"Object.assign(item, { onClick: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setTimeout template literal argument',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nsetTimeout(\`Object.assign(item, { onClick: openHelp })\`)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setTimeout concatenated string argument',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nsetTimeout('Object.' + 'assign(item, { onClick: openHelp })')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setTimeout unresolved variable argument',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst code = \"Object.assign(item, { onClick: openHelp })\"\nsetTimeout(code)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via alias const delay = setTimeout',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst delay = setTimeout\ndelay(\"Object.assign(item, { onClick: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via destructured delay from window.setTimeout',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst { setTimeout: delay } = window\ndelay(\"Object.defineProperty(item, 'onClick', { value: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via indirect (0, setTimeout) call',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\n;(0, setTimeout)(\"Reflect.set(item, 'onClick', openHelp)\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via window['set' + 'Timeout'] dynamic member",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nwindow['set' + 'Timeout'](\"Object.assign(item, { onClick: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via (() => {}).constructor(...)',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;(() => {}).constructor('return Object.assign')()(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via []['filter']['constructor'](...)",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;[]['filter']['constructor']('return Reflect.set')()(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via ({}).constructor.constructor(...)',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;({}).constructor.constructor('return Object.defineProperty')()(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via ({})['constructor']['constructor'](...)",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;({})['constructor']['constructor']('return Object.assign')()(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen source const Ctor = (() => {}).constructor',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst Ctor = (() => {}).constructor\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime codegen source container const holder = { make: ({}).constructor.constructor }',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst holder = { make: ({}).constructor.constructor }\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen source array const holder = [Function.prototype.constructor]',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst holder = [Function.prototype.constructor]\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime codegen source conditional constructor vs Function',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst make = condition ? ({}).constructor.constructor : Function\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen source Object.freeze constructor container',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nObject.freeze({ make: ({}).constructor.constructor })\n</script>\n`,
       )
     },
   },

@@ -785,6 +785,7 @@ const resolveRuntimeMethodFromExpression = (
 
     const memberName = getStaticMemberName(target)
     if (!memberName) return null
+    if (memberName === 'constructor') return 'Global.Function'
     const namespaceName = resolveRuntimeNamespaceFromExpression(baseExpr, runtimeNamespaceAliasMap)
     if (namespaceName) {
       return classifyRuntimeMethodName(namespaceName, memberName)
@@ -826,6 +827,26 @@ const resolveRuntimeMethodFromExpression = (
     )
   }
 
+  if (ts.isConditionalExpression(target)) {
+    const whenTrue = resolveRuntimeMethodFromExpression(
+      target.whenTrue,
+      runtimeMethodAliasMap,
+      runtimeNamespaceAliasMap,
+      runtimeArrayMethodContainerMap,
+      runtimeObjectMethodContainerMap,
+      runtimeGlobalContainerAliasMap,
+    )
+    const whenFalse = resolveRuntimeMethodFromExpression(
+      target.whenFalse,
+      runtimeMethodAliasMap,
+      runtimeNamespaceAliasMap,
+      runtimeArrayMethodContainerMap,
+      runtimeObjectMethodContainerMap,
+      runtimeGlobalContainerAliasMap,
+    )
+    if (whenTrue && whenFalse && whenTrue === whenFalse) return whenTrue
+  }
+
   return null
 }
 
@@ -843,12 +864,15 @@ const runtimeMutatorSourceMethodSet = new Set([
   'Reflect.apply',
 ])
 const runtimeCodegenSourceMethodSet = new Set(['Global.eval', 'Global.Function'])
+const runtimeTimerMethodSet = new Set(['Global.setTimeout', 'Global.setInterval'])
 
 const runtimeMutatorMemberNameSet = new Set(['defineProperty', 'defineProperties', 'assign', 'set', 'apply', 'get'])
 
 const classifyRuntimeCodegenGlobalName = (name) => {
   if (name === 'eval') return 'Global.eval'
   if (name === 'Function') return 'Global.Function'
+  if (name === 'setTimeout') return 'Global.setTimeout'
+  if (name === 'setInterval') return 'Global.setInterval'
   return null
 }
 
@@ -1208,6 +1232,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   const runtimeAliasRiskFindings = []
   const runtimeMutatorSourceFindings = []
   const runtimeCodegenSourceFindings = []
+  const timerCallbackIdentifierSet = new Set()
+  const timerStringIdentifierSet = new Set()
   runtimeNamespaceAliasMap.set('Object', 'Object')
   runtimeNamespaceAliasMap.set('Reflect', 'Reflect')
   runtimeGlobalContainerAliasMap.set('globalThis', 'globalThis')
@@ -1292,11 +1318,47 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     })
   }
 
+  const updateTimerIdentifierBinding = (name, initializer) => {
+    const target = unwrapExpression(initializer)
+    if (!target) {
+      timerCallbackIdentifierSet.delete(name)
+      timerStringIdentifierSet.delete(name)
+      return
+    }
+    if (ts.isArrowFunction(target) || ts.isFunctionExpression(target)) {
+      timerCallbackIdentifierSet.add(name)
+      timerStringIdentifierSet.delete(name)
+      return
+    }
+    if (ts.isIdentifier(target) && timerCallbackIdentifierSet.has(target.text)) {
+      timerCallbackIdentifierSet.add(name)
+      timerStringIdentifierSet.delete(name)
+      return
+    }
+    if (ts.isIdentifier(target) && timerStringIdentifierSet.has(target.text)) {
+      timerStringIdentifierSet.add(name)
+      timerCallbackIdentifierSet.delete(name)
+      return
+    }
+    const staticString = resolveStaticStringValue(target)
+    if (staticString !== null) {
+      timerStringIdentifierSet.add(name)
+      timerCallbackIdentifierSet.delete(name)
+      return
+    }
+    timerCallbackIdentifierSet.delete(name)
+    timerStringIdentifierSet.delete(name)
+  }
+
   const visit = (node) => {
-    if (ts.isVariableDeclaration(node) && node.initializer) {
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      timerCallbackIdentifierSet.add(node.name.text)
+      timerStringIdentifierSet.delete(node.name.text)
+    } else if (ts.isVariableDeclaration(node) && node.initializer) {
       const initializer = unwrapExpression(node.initializer)
       if (ts.isIdentifier(node.name)) {
         const varName = node.name.text
+        updateTimerIdentifierBinding(varName, initializer)
         const namespaceName = resolveRuntimeNamespaceFromExpression(initializer, runtimeNamespaceAliasMap)
         if (namespaceName) {
           setRuntimeNamespaceAlias(varName, namespaceName)
@@ -1368,7 +1430,9 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
               const runtimeCodegenSource = classifyRuntimeCodegenGlobalName(sourceKey)
               if (runtimeCodegenSource) {
                 runtimeMethodAliasMap.set(localName, runtimeCodegenSource)
-                pushRuntimeCodegenSourceFinding('ObjectBindingPattern-codegen-source', element.getText())
+                if (runtimeCodegenSourceMethodSet.has(runtimeCodegenSource)) {
+                  pushRuntimeCodegenSourceFinding('ObjectBindingPattern-codegen-source', element.getText())
+                }
               }
             }
           }
@@ -1380,6 +1444,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
 
       if (ts.isIdentifier(leftExpr)) {
         const targetName = leftExpr.text
+        updateTimerIdentifierBinding(targetName, rhs)
         const namespaceName = resolveRuntimeNamespaceFromExpression(rhs, runtimeNamespaceAliasMap)
         if (namespaceName) {
           setRuntimeNamespaceAlias(targetName, namespaceName)
@@ -1449,10 +1514,12 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
               const runtimeCodegenSource = classifyRuntimeCodegenGlobalName(alias.sourceKey)
               if (runtimeCodegenSource) {
                 runtimeMethodAliasMap.set(alias.localName, runtimeCodegenSource)
-                pushRuntimeCodegenSourceFinding(
-                  'ObjectAssignmentPattern-codegen-source',
-                  alias.expressionText || alias.localName,
-                )
+                if (runtimeCodegenSourceMethodSet.has(runtimeCodegenSource)) {
+                  pushRuntimeCodegenSourceFinding(
+                    'ObjectAssignmentPattern-codegen-source',
+                    alias.expressionText || alias.localName,
+                  )
+                }
               }
             }
           }
@@ -1480,6 +1547,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     runtimeAliasRiskFindings,
     runtimeMutatorSourceFindings,
     runtimeCodegenSourceFindings,
+    timerCallbackIdentifierSet,
+    timerStringIdentifierSet,
     objectLiteralVariableMap,
   }
 }
@@ -1586,6 +1655,91 @@ const collectRuntimeCodegenSourceReferenceFindings = (sourceFile, runtimeContext
     typePrefix: 'RuntimeCodegenSource',
     includeUnknownGlobalNamespaceMember: true,
   })
+
+const analyzeTimerFirstArgument = (firstArg, runtimeContext) => {
+  if (!firstArg) {
+    return { blocked: true, type: 'RuntimeTimerCallMissingFirstArg', expressionText: '' }
+  }
+  const staticString = resolveStaticStringValue(firstArg)
+  if (staticString !== null) {
+    return {
+      blocked: true,
+      type: 'RuntimeTimerCallStringArgument',
+      expressionText: firstArg.getText ? firstArg.getText() : staticString,
+    }
+  }
+
+  const target = unwrapExpression(firstArg)
+  if (ts.isArrowFunction(target) || ts.isFunctionExpression(target)) {
+    return { blocked: false }
+  }
+  if (ts.isIdentifier(target)) {
+    const timerCallbackIdentifierSet = runtimeContext.timerCallbackIdentifierSet || new Set()
+    const timerStringIdentifierSet = runtimeContext.timerStringIdentifierSet || new Set()
+    if (timerCallbackIdentifierSet.has(target.text)) {
+      return { blocked: false }
+    }
+    if (timerStringIdentifierSet.has(target.text)) {
+      return {
+        blocked: true,
+        type: 'RuntimeTimerCallStringIdentifierArgument',
+        expressionText: target.getText(),
+      }
+    }
+    return {
+      blocked: true,
+      type: 'RuntimeTimerCallUnresolvedIdentifierArgument',
+      expressionText: target.getText(),
+    }
+  }
+
+  return {
+    blocked: true,
+    type: 'RuntimeTimerCallUnresolvedArgument',
+    expressionText: firstArg.getText ? firstArg.getText() : '',
+  }
+}
+
+const collectRuntimeCodegenTimerCallFindings = (sourceFile, runtimeContext) => {
+  const findings = []
+  const seen = new Set()
+  const runtimeMethodAliasMap = runtimeContext.runtimeMethodAliasMap || new Map()
+  const runtimeNamespaceAliasMap = runtimeContext.runtimeNamespaceAliasMap || new Map()
+  const runtimeGlobalContainerAliasMap = runtimeContext.runtimeGlobalContainerAliasMap || new Map()
+  const runtimeArrayMethodContainerMap = runtimeContext.runtimeArrayMethodContainerMap || new Map()
+  const runtimeObjectMethodContainerMap = runtimeContext.runtimeObjectMethodContainerMap || new Map()
+
+  const pushFinding = (type, expressionText) => {
+    const normalized = normalizeComputedKeyExpr(expressionText || '')
+    const dedupeKey = `${type}|${normalized}`
+    if (seen.has(dedupeKey)) return
+    seen.add(dedupeKey)
+    findings.push({ type, expressionText: normalized })
+  }
+
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const runtimeMethod = resolveRuntimeMethodFromExpression(
+        node.expression,
+        runtimeMethodAliasMap,
+        runtimeNamespaceAliasMap,
+        runtimeArrayMethodContainerMap,
+        runtimeObjectMethodContainerMap,
+        runtimeGlobalContainerAliasMap,
+      )
+      if (runtimeMethod && runtimeTimerMethodSet.has(runtimeMethod)) {
+        const argCheck = analyzeTimerFirstArgument(node.arguments[0] || null, runtimeContext)
+        if (argCheck.blocked) {
+          pushFinding(argCheck.type, argCheck.expressionText || node.getText(sourceFile))
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return findings
+}
 
 const analyzeRuntimeObjectLiteralMembers = (objectNode) => {
   const explicitActionInfos = []
@@ -1900,6 +2054,10 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
     }
     const runtimeCodegenSourceReferences = collectRuntimeCodegenSourceReferenceFindings(sourceFile, runtimeContext)
     for (const finding of runtimeCodegenSourceReferences) {
+      pushCodegenSourceFailure(finding.type, finding.expressionText)
+    }
+    const runtimeTimerCallFindings = collectRuntimeCodegenTimerCallFindings(sourceFile, runtimeContext)
+    for (const finding of runtimeTimerCallFindings) {
       pushCodegenSourceFailure(finding.type, finding.expressionText)
     }
 
