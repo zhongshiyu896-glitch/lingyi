@@ -155,6 +155,11 @@ function refresh() {
 }
 setTimeout(() => refresh(), 100)
 setInterval(refresh, 1000)
+setTimeout.call(window, () => refresh(), 100)
+setTimeout.apply(window, [() => refresh(), 100])
+Reflect.apply(setTimeout, window, [refresh, 100])
+setInterval.call(window, refresh, 1000)
+setInterval.apply(window, [refresh, 1000])
 const readonlyRecord = { constructor_name: 'safe-constructor-name' }
 const readonlyConstructorName = readonlyRecord['constructor_name']
 const readonlyConstructorText = 'constructor disabled'
@@ -2956,6 +2961,222 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nwindow['set' + 'Timeout'](\"Object.assign(item, { onClick: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setTimeout.call string callback',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nsetTimeout.call(window, \"Object.assign(item, { onClick: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setInterval.call string callback',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nsetInterval.call(globalThis, \"Reflect.set(item, 'onClick', openHelp)\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via window.setTimeout.call string callback',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nwindow.setTimeout.call(window, \"Object.defineProperty(item, 'onClick', { value: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via globalThis.setInterval.call string callback',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nglobalThis.setInterval.call(globalThis, \"Reflect.set(item, 'onClick', openHelp)\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via setTimeout['call'] string callback",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nsetTimeout['call'](window, \"Object.assign(item, { onClick: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setTimeout.apply string callback array',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nsetTimeout.apply(window, [\"Object.assign(item, { onClick: openHelp })\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setInterval.apply string callback array',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nsetInterval.apply(globalThis, [\"Reflect.set(item, 'onClick', openHelp)\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via window.setTimeout.apply string callback array',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nwindow.setTimeout.apply(window, [\"Object.defineProperty(item, 'onClick', { value: openHelp })\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via globalThis.setInterval.apply string callback array',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nglobalThis.setInterval.apply(globalThis, [\"Reflect.set(item, 'onClick', openHelp)\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via setTimeout['apply'] string callback array",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nsetTimeout['apply'](window, [\"Object.assign(item, { onClick: openHelp })\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setTimeout.apply unresolved args variable',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [\"Object.assign(item, { onClick: openHelp })\", 0]\nsetTimeout.apply(window, args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via setTimeout.apply unresolved code identifier in args',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst code = \"Object.assign(item, { onClick: openHelp })\"\nsetTimeout.apply(window, [code, 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via Reflect.apply(setTimeout, ...string callback...)',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nReflect.apply(setTimeout, window, [\"Object.assign(item, { onClick: openHelp })\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via Reflect.apply(window.setTimeout, ...string callback...)',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nReflect.apply(window.setTimeout, window, [\"Object.defineProperty(item, 'onClick', { value: openHelp })\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via Reflect.apply(globalThis.setInterval, ...string callback...)',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nReflect.apply(globalThis.setInterval, globalThis, [\"Reflect.set(item, 'onClick', openHelp)\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime codegen via Reflect['apply'](setTimeout, ...string callback...)",
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nReflect['apply'](setTimeout, window, [\"Object.assign(item, { onClick: openHelp })\", 0])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via alias const delay = setTimeout then delay.call string callback',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst delay = setTimeout\ndelay.call(window, \"Object.assign(item, { onClick: openHelp })\")\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime codegen via alias const delay = setTimeout then delay.apply string callback',
+    expectedKeyword: 'style-profit forbids runtime code generation entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst delay = setTimeout\ndelay.apply(window, [\"Object.assign(item, { onClick: openHelp })\", 0])\n</script>\n`,
       )
     },
   },

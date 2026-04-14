@@ -932,7 +932,7 @@ const resolveRuntimeReflectGetCall = (callNode, runtimeContext) => {
   }
 }
 
-const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
+const resolveRuntimeCallDescriptor = (callNode, runtimeContext, methodSet = runtimeMutatorMethodSet) => {
   const runtimeMethodAliasMap = runtimeContext.runtimeMethodAliasMap || new Map()
   const runtimeNamespaceAliasMap = runtimeContext.runtimeNamespaceAliasMap || new Map()
   const runtimeGlobalContainerAliasMap = runtimeContext.runtimeGlobalContainerAliasMap || new Map()
@@ -953,7 +953,7 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
         runtimeObjectMethodContainerMap,
         runtimeGlobalContainerAliasMap,
       )
-      if (baseMethod) {
+      if (baseMethod && methodSet.has(baseMethod)) {
         return { method: baseMethod, invoke: memberName }
       }
     }
@@ -979,14 +979,15 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
           runtimeGlobalContainerAliasMap,
         )
       : null
-    if (reflectApplyMethod && runtimeMutatorMethodSet.has(reflectApplyMethod)) {
+    if (reflectApplyMethod && methodSet.has(reflectApplyMethod)) {
       return { method: reflectApplyMethod, invoke: 'reflect_apply' }
     }
+    if (reflectApplyMethod) return null
     return { method: null, invoke: 'reflect_apply', unresolvedTarget: true }
   }
   if (directMethod === 'Reflect.get') {
     const reflectGetResolved = resolveRuntimeReflectGetCall(callNode, runtimeContext)
-    if (reflectGetResolved?.method && runtimeMutatorMethodSet.has(reflectGetResolved.method)) {
+    if (reflectGetResolved?.method && methodSet.has(reflectGetResolved.method)) {
       return { method: reflectGetResolved.method, invoke: 'reflect_get' }
     }
     if (reflectGetResolved?.unresolved) {
@@ -994,7 +995,7 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext) => {
     }
   }
 
-  if (directMethod && runtimeMutatorMethodSet.has(directMethod)) {
+  if (directMethod && methodSet.has(directMethod)) {
     return { method: directMethod, invoke: 'direct' }
   }
 
@@ -1580,6 +1581,16 @@ const collectRuntimeSourceReferenceFindings = (
     findings.push({ type, expressionText: normalized })
   }
 
+  const isSafeTimerReflectApplyCall = (callNode) => {
+    const callDescriptor = resolveRuntimeCallDescriptor(callNode, runtimeContext, runtimeTimerMethodSet)
+    if (!callDescriptor || !runtimeTimerMethodSet.has(callDescriptor.method || '')) return false
+    if (callDescriptor.invoke !== 'reflect_apply') return false
+    const normalizedCall = normalizeRuntimeCallArguments(callNode, callDescriptor)
+    if (normalizedCall.unresolved) return false
+    const argCheck = analyzeTimerFirstArgument(normalizedCall.args[0] || null, runtimeContext)
+    return !argCheck.blocked
+  }
+
   const visit = (node) => {
     if (
       ts.isIdentifier(node) ||
@@ -1595,7 +1606,17 @@ const collectRuntimeSourceReferenceFindings = (
         runtimeGlobalContainerAliasMap,
       )
       if (runtimeMethod && methodSet.has(runtimeMethod)) {
-        pushFinding(`${typePrefix}Reference`, node.getText(sourceFile))
+        if (
+          runtimeMethod === 'Reflect.apply' &&
+          node.parent &&
+          ts.isCallExpression(node.parent) &&
+          node.parent.expression === node &&
+          isSafeTimerReflectApplyCall(node.parent)
+        ) {
+          // Allow safe timer callback usage through Reflect.apply(timer, thisArg, [callback, delay]).
+        } else {
+          pushFinding(`${typePrefix}Reference`, node.getText(sourceFile))
+        }
       }
 
       if (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
@@ -1703,11 +1724,6 @@ const analyzeTimerFirstArgument = (firstArg, runtimeContext) => {
 const collectRuntimeCodegenTimerCallFindings = (sourceFile, runtimeContext) => {
   const findings = []
   const seen = new Set()
-  const runtimeMethodAliasMap = runtimeContext.runtimeMethodAliasMap || new Map()
-  const runtimeNamespaceAliasMap = runtimeContext.runtimeNamespaceAliasMap || new Map()
-  const runtimeGlobalContainerAliasMap = runtimeContext.runtimeGlobalContainerAliasMap || new Map()
-  const runtimeArrayMethodContainerMap = runtimeContext.runtimeArrayMethodContainerMap || new Map()
-  const runtimeObjectMethodContainerMap = runtimeContext.runtimeObjectMethodContainerMap || new Map()
 
   const pushFinding = (type, expressionText) => {
     const normalized = normalizeComputedKeyExpr(expressionText || '')
@@ -1719,19 +1735,21 @@ const collectRuntimeCodegenTimerCallFindings = (sourceFile, runtimeContext) => {
 
   const visit = (node) => {
     if (ts.isCallExpression(node)) {
-      const runtimeMethod = resolveRuntimeMethodFromExpression(
-        node.expression,
-        runtimeMethodAliasMap,
-        runtimeNamespaceAliasMap,
-        runtimeArrayMethodContainerMap,
-        runtimeObjectMethodContainerMap,
-        runtimeGlobalContainerAliasMap,
-      )
-      if (runtimeMethod && runtimeTimerMethodSet.has(runtimeMethod)) {
-        const argCheck = analyzeTimerFirstArgument(node.arguments[0] || null, runtimeContext)
+      const callDescriptor = resolveRuntimeCallDescriptor(node, runtimeContext, runtimeTimerMethodSet)
+      if (callDescriptor?.method && runtimeTimerMethodSet.has(callDescriptor.method)) {
+        const normalizedCall = normalizeRuntimeCallArguments(node, callDescriptor)
+        if (normalizedCall.unresolved) {
+          pushFinding('RuntimeTimerCallUnresolvedArguments', node.getText(sourceFile))
+          ts.forEachChild(node, visit)
+          return
+        }
+        const argCheck = analyzeTimerFirstArgument(normalizedCall.args[0] || null, runtimeContext)
         if (argCheck.blocked) {
           pushFinding(argCheck.type, argCheck.expressionText || node.getText(sourceFile))
         }
+      } else if (callDescriptor?.invoke === 'reflect_apply' && callDescriptor.unresolvedTarget) {
+        // Timer callee may be hidden behind an unresolved Reflect.apply target.
+        pushFinding('RuntimeTimerCallUnresolvedTarget', node.getText(sourceFile))
       }
     }
     ts.forEachChild(node, visit)
