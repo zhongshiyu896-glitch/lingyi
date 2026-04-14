@@ -770,6 +770,13 @@ const runtimeMutatorMethodSet = new Set([
   'Object.assign',
   'Reflect.set',
 ])
+const runtimeMutatorSourceMethodSet = new Set([
+  'Object.defineProperty',
+  'Object.defineProperties',
+  'Object.assign',
+  'Reflect.set',
+  'Reflect.apply',
+])
 
 const runtimeMutatorMemberNameSet = new Set(['defineProperty', 'defineProperties', 'assign', 'set', 'apply'])
 
@@ -919,7 +926,7 @@ const extractObjectDestructureRuntimeAliases = (leftNode, namespaceName) => {
   for (const prop of left.properties) {
     if (ts.isShorthandPropertyAssignment(prop)) {
       const sourceKey = prop.name.text
-      aliases.push({ localName: sourceKey, sourceKey })
+      aliases.push({ localName: sourceKey, sourceKey, expressionText: prop.getText() })
       continue
     }
     if (ts.isSpreadAssignment(prop)) {
@@ -940,7 +947,7 @@ const extractObjectDestructureRuntimeAliases = (leftNode, namespaceName) => {
       unresolved.push(prop.getText())
       continue
     }
-    aliases.push({ localName: initializer.text, sourceKey: sourceKeyInfo.keyText })
+    aliases.push({ localName: initializer.text, sourceKey: sourceKeyInfo.keyText, expressionText: prop.getText() })
   }
   return { aliases, unresolved }
 }
@@ -1046,6 +1053,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   const runtimeObjectMethodContainerMap = new Map()
   const objectLiteralVariableMap = new Map()
   const runtimeAliasRiskFindings = []
+  const runtimeMutatorSourceFindings = []
   runtimeNamespaceAliasMap.set('Object', 'Object')
   runtimeNamespaceAliasMap.set('Reflect', 'Reflect')
   runtimeGlobalContainerAliasMap.set('globalThis', 'globalThis')
@@ -1114,6 +1122,13 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     runtimeObjectMethodContainerMap.delete(aliasName)
   }
 
+  const pushRuntimeMutatorSourceFinding = (type, expressionText) => {
+    runtimeMutatorSourceFindings.push({
+      type,
+      expressionText: normalizeComputedKeyExpr(expressionText || ''),
+    })
+  }
+
   const visit = (node) => {
     if (ts.isVariableDeclaration(node) && node.initializer) {
       const initializer = unwrapExpression(node.initializer)
@@ -1146,6 +1161,9 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         )
         if (runtimeMethod) {
           runtimeMethodAliasMap.set(varName, runtimeMethod)
+          if (runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
+            pushRuntimeMutatorSourceFinding('VariableDeclaration-mutator-source', initializer.getText())
+          }
         } else {
           runtimeMethodAliasMap.delete(varName)
         }
@@ -1172,6 +1190,9 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
             const runtimeMethod = classifyRuntimeMethodName(namespaceName, sourceKey)
             if (runtimeMethod) {
               runtimeMethodAliasMap.set(localName, runtimeMethod)
+              if (runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
+                pushRuntimeMutatorSourceFinding('ObjectBindingPattern-mutator-source', element.getText())
+              }
             }
           } else if (globalContainer) {
             if (sourceKey === 'Object' || sourceKey === 'Reflect') {
@@ -1213,6 +1234,9 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         )
         if (runtimeMethod) {
           runtimeMethodAliasMap.set(targetName, runtimeMethod)
+          if (runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
+            pushRuntimeMutatorSourceFinding('Assignment-mutator-source', rhs.getText())
+          }
         } else {
           runtimeMethodAliasMap.delete(targetName)
         }
@@ -1225,6 +1249,12 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
             const runtimeMethod = classifyRuntimeMethodName(namespaceName, alias.sourceKey)
             if (runtimeMethod) {
               runtimeMethodAliasMap.set(alias.localName, runtimeMethod)
+              if (runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
+                pushRuntimeMutatorSourceFinding(
+                  'ObjectAssignmentPattern-mutator-source',
+                  alias.expressionText || alias.localName,
+                )
+              }
             }
           }
           for (const expressionText of unresolved) {
@@ -1262,8 +1292,44 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     runtimeArrayMethodContainerMap,
     runtimeObjectMethodContainerMap,
     runtimeAliasRiskFindings,
+    runtimeMutatorSourceFindings,
     objectLiteralVariableMap,
   }
+}
+
+const collectRuntimeMutatorSourceReferenceFindings = (sourceFile, runtimeContext) => {
+  const findings = []
+  const seen = new Set()
+  const pushFinding = (type, expressionText) => {
+    const normalized = normalizeComputedKeyExpr(expressionText || '')
+    const dedupeKey = `${type}|${normalized}`
+    if (seen.has(dedupeKey)) return
+    seen.add(dedupeKey)
+    findings.push({ type, expressionText: normalized })
+  }
+
+  const visit = (node) => {
+    if (
+      ts.isIdentifier(node) ||
+      ts.isPropertyAccessExpression(node) ||
+      ts.isElementAccessExpression(node)
+    ) {
+      const runtimeMethod = resolveRuntimeMethodFromExpression(
+        node,
+        runtimeContext.runtimeMethodAliasMap,
+        runtimeContext.runtimeNamespaceAliasMap,
+        runtimeContext.runtimeArrayMethodContainerMap,
+        runtimeContext.runtimeObjectMethodContainerMap,
+      )
+      if (runtimeMethod && runtimeMutatorSourceMethodSet.has(runtimeMethod)) {
+        pushFinding('RuntimeMutatorSourceReference', node.getText(sourceFile))
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return findings
 }
 
 const analyzeRuntimeObjectLiteralMembers = (objectNode) => {
@@ -1522,6 +1588,17 @@ const hasSpreadRiskInExplanationChain = (chain) => {
 
 const analyzeStyleProfitAstContracts = (targetPath, content) => {
   const failures = []
+  const mutatorSourceFailureSeen = new Set()
+  const pushMutatorSourceFailure = (type, expressionText) => {
+    const normalized = normalizeComputedKeyExpr(expressionText || '')
+    const dedupeKey = `${type}|${normalized}`
+    if (mutatorSourceFailureSeen.has(dedupeKey)) return
+    mutatorSourceFailureSeen.add(dedupeKey)
+    failures.push(
+      `style-profit forbids runtime mutator source references; use object spread and readonly literal actions（款式利润前端禁止 runtime mutator 源引用，请使用对象 spread 与只读字面量 action）: ${targetPath} -> ${type} [${normalized}]`,
+    )
+  }
+
   const scriptBlocks = extractScriptBlocksForAst(targetPath, content)
   for (const block of scriptBlocks) {
     const sourceFile = ts.createSourceFile(
@@ -1543,6 +1620,15 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
           `style-profit forbids dynamic or unknown computed keys in object literals; use explicit literal keys（款式利润前端禁止动态或无法静态确认的计算属性键，请使用显式字面量键）: ${targetPath} -> [${normalizedExpression}]`,
         )
       }
+    }
+
+    for (const finding of runtimeContext.runtimeMutatorSourceFindings) {
+      pushMutatorSourceFailure(finding.type, finding.expressionText)
+    }
+
+    const runtimeMutatorSourceReferences = collectRuntimeMutatorSourceReferenceFindings(sourceFile, runtimeContext)
+    for (const finding of runtimeMutatorSourceReferences) {
+      pushMutatorSourceFailure(finding.type, finding.expressionText)
     }
 
     const runtimeDynamicFindings = collectRuntimeDynamicInjectionFindings(sourceFile, runtimeContext)

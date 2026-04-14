@@ -148,7 +148,8 @@ if (readonlyRuntimeAccess[ACTION_KEY_READ]) {
 }
 const readonlyUiState = { disabled: false }
 readonlyUiState.disabled = true
-Object.assign(readonlyUiState, { disabled: true })
+const readonlyUiStateNext = { ...readonlyUiState, disabled: true }
+void readonlyUiStateNext
 </script>
 `,
   )
@@ -2196,6 +2197,190 @@ const failureCases = [
     mutate: (root) => {
       const content = read(root, 'src/views/style_profit/StyleProfitSnapshotDetail.vue')
       write(root, 'src/views/style_profit/StyleProfitSnapshotDetail.vue', `${content}\nconst generateProfitSnapshot = () => {}\n`)
+    },
+  },
+  {
+    name: 'runtime mutator source via function return Object.defineProperty',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nfunction getMutator() {\n  return Object.defineProperty\n}\nconst item = { label: '利润计算说明' }\ngetMutator()(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via arrow function return Object.assign',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst getMutator = () => Object.assign\nconst item = { label: '利润计算说明' }\ngetMutator()(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via iife return Object.defineProperty',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;(() => Object.defineProperty)()(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via inline array relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;[Object.defineProperty][0](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via inline object relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\n;({ dp: Object.defineProperty }).dp(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via nested array relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst nested = [[Object.defineProperty]]\nconst item = { label: '利润计算说明' }\nnested[0][0](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via Object.freeze wrapper relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst frozen = Object.freeze({ dp: Object.defineProperty })\nconst item = { label: '利润计算说明' }\nfrozen.dp(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via Object.seal wrapper relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst sealed = Object.seal({ assign: Object.assign })\nconst item = { label: '利润计算说明' }\nsealed.assign(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via conditional array relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst mutators = condition ? [Object.defineProperty] : [Object.defineProperty]\nconst item = { label: '利润计算说明' }\nmutators[0](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via conditional object relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst mutators = condition ? { dp: Object.defineProperty } : { dp: Object.defineProperty }\nconst item = { label: '利润计算说明' }\nmutators.dp(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via globalThis Object.assign return relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst getMutator = () => globalThis.Object.assign\nconst item = { label: '利润计算说明' }\ngetMutator()(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via window Reflect.set return relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst getMutator = () => window.Reflect.set\nconst item = { label: '利润计算说明' }\ngetMutator()(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via holder function property relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst holder = { make: () => Object.defineProperty }\nconst item = { label: '利润计算说明' }\nholder.make()(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source via holder array function relay',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst holder = [() => Object.assign]\nconst item = { label: '利润计算说明' }\nholder[0]()(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime mutator source reference without call should fail',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst dangerous = Object.defineProperty\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime mutator source object container without call should fail',
+    expectedKeyword: 'style-profit forbids runtime mutator source references',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst dangerous = { dp: Object.defineProperty }\n</script>\n`)
     },
   },
   {
