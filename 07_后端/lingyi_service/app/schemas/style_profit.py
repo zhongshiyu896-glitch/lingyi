@@ -3,11 +3,24 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import datetime
 from decimal import Decimal
+from typing import Generic
+from typing import TypeVar
 from typing import Any
 
 from pydantic import BaseModel
 from pydantic import Field
+
+T = TypeVar("T")
+
+
+class ApiResponse(BaseModel, Generic[T]):
+    """Unified API envelope."""
+
+    code: str
+    message: str
+    data: T
 
 
 class StyleProfitRevenueSourceDTO(BaseModel):
@@ -110,3 +123,102 @@ class StyleProfitSnapshotResult(BaseModel):
     idempotency_key: str
     request_hash: str
     idempotent_replay: bool = False
+
+
+class StyleProfitSnapshotSelectorRequest(BaseModel):
+    """Client selector for API snapshot creation."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    item_code: str = Field(..., min_length=1, max_length=140)
+    sales_order: str = Field(..., min_length=1, max_length=140)
+    from_date: date
+    to_date: date
+    revenue_mode: str = Field(default="actual_first", min_length=1, max_length=32)
+    include_provisional_subcontract: bool = False
+    formula_version: str = Field(default="STYLE_PROFIT_V1", min_length=1, max_length=32)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+    work_order: str | None = Field(default=None, max_length=140)
+
+
+class StyleProfitSnapshotListItem(BaseModel):
+    """Snapshot list row."""
+
+    id: int
+    snapshot_no: str
+    company: str
+    item_code: str
+    sales_order: str | None = None
+    from_date: date | None = None
+    to_date: date | None = None
+    revenue_status: str
+    revenue_amount: Decimal
+    actual_total_cost: Decimal
+    profit_amount: Decimal
+    profit_rate: Decimal | None
+    snapshot_status: str
+    formula_version: str
+    unresolved_count: int
+    created_at: datetime
+
+
+class StyleProfitSnapshotListData(BaseModel):
+    """Snapshot list payload."""
+
+    items: list[StyleProfitSnapshotListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class StyleProfitDetailItem(BaseModel):
+    """Snapshot detail line payload."""
+
+    id: int
+    line_no: int
+    cost_type: str
+    source_type: str
+    source_name: str
+    item_code: str | None = None
+    qty: Decimal | None = None
+    unit_rate: Decimal | None = None
+    amount: Decimal
+    formula_code: str | None = None
+    is_unresolved: bool
+    unresolved_reason: str | None = None
+    raw_ref: dict[str, Any] | None = None
+    created_at: datetime
+
+
+class StyleProfitSourceMapItem(BaseModel):
+    """Snapshot source map payload."""
+
+    id: int
+    detail_id: int | None = None
+    company: str
+    sales_order: str | None = None
+    style_item_code: str
+    source_item_code: str | None = None
+    source_system: str
+    source_doctype: str
+    source_status: str
+    source_name: str
+    source_line_no: str
+    qty: Decimal | None = None
+    unit_rate: Decimal | None = None
+    amount: Decimal
+    currency: str | None = None
+    warehouse: str | None = None
+    posting_date: date | None = None
+    include_in_profit: bool
+    mapping_status: str
+    unresolved_reason: str | None = None
+    raw_ref: dict[str, Any] | None = None
+    created_at: datetime
+
+
+class StyleProfitSnapshotDetailData(BaseModel):
+    """Snapshot detail API payload."""
+
+    snapshot: StyleProfitSnapshotResult
+    details: list[StyleProfitDetailItem]
+    source_maps: list[StyleProfitSourceMapItem]

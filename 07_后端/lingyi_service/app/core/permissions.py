@@ -54,6 +54,9 @@ PRODUCTION_WORK_ORDER_CREATE = "production:work_order_create"
 PRODUCTION_JOB_CARD_SYNC = "production:job_card_sync"
 PRODUCTION_WORK_ORDER_WORKER = "production:work_order_worker"
 
+STYLE_PROFIT_READ = "style_profit:read"
+STYLE_PROFIT_SNAPSHOT_CREATE = "style_profit:snapshot_create"
+
 ALL_BOM_ACTIONS = {
     BOM_READ,
     BOM_CREATE,
@@ -102,6 +105,11 @@ ALL_PRODUCTION_ACTIONS = {
     PRODUCTION_WORK_ORDER_WORKER,
 }
 
+ALL_STYLE_PROFIT_ACTIONS = {
+    STYLE_PROFIT_READ,
+    STYLE_PROFIT_SNAPSHOT_CREATE,
+}
+
 # 动作别名兼容：保留历史 publish/deactivate，同时支持 submit/cancel。
 ACTION_ALIAS_TO_CANONICAL = {
     BOM_SUBMIT: BOM_PUBLISH,
@@ -110,7 +118,13 @@ ACTION_ALIAS_TO_CANONICAL = {
 
 # 临时方案，生产前替换：static role -> action mapping
 DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
-    "System Manager": set(ALL_BOM_ACTIONS | ALL_WORKSHOP_ACTIONS | ALL_SUBCONTRACT_ACTIONS | ALL_PRODUCTION_ACTIONS),
+    "System Manager": set(
+        ALL_BOM_ACTIONS
+        | ALL_WORKSHOP_ACTIONS
+        | ALL_SUBCONTRACT_ACTIONS
+        | ALL_PRODUCTION_ACTIONS
+        | ALL_STYLE_PROFIT_ACTIONS
+    ),
     "LY Integration Service": {
         WORKSHOP_READ,
         WORKSHOP_JOB_CARD_SYNC,
@@ -158,6 +172,14 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_MATERIAL_CHECK,
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
+        STYLE_PROFIT_READ,
+    },
+    "Finance Manager": {
+        STYLE_PROFIT_READ,
+        STYLE_PROFIT_SNAPSHOT_CREATE,
+    },
+    "Sales Manager": {
+        STYLE_PROFIT_READ,
     },
     "Viewer": {BOM_READ},
 }

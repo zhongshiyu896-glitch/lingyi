@@ -57,6 +57,8 @@ from app.core.permissions import PRODUCTION_MATERIAL_CHECK
 from app.core.permissions import PRODUCTION_WORK_ORDER_CREATE
 from app.core.permissions import PRODUCTION_JOB_CARD_SYNC
 from app.core.permissions import PRODUCTION_WORK_ORDER_WORKER
+from app.core.permissions import STYLE_PROFIT_READ
+from app.core.permissions import STYLE_PROFIT_SNAPSHOT_CREATE
 from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
 from app.core.permissions import get_permission_source
 from app.core.permissions import get_static_actions_for_roles
@@ -121,6 +123,8 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
         PRODUCTION_WORK_ORDER_WORKER,
+        STYLE_PROFIT_READ,
+        STYLE_PROFIT_SNAPSHOT_CREATE,
     },
     "LY Integration Service": {
         WORKSHOP_READ,
@@ -174,6 +178,14 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_MATERIAL_CHECK,
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
+        STYLE_PROFIT_READ,
+    },
+    "Finance Manager": {
+        STYLE_PROFIT_READ,
+        STYLE_PROFIT_SNAPSHOT_CREATE,
+    },
+    "Sales Manager": {
+        STYLE_PROFIT_READ,
     },
     "Workshop Sync Operator": {
         WORKSHOP_READ,
@@ -846,10 +858,97 @@ class PermissionService:
                 detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
             )
 
+    def get_style_profit_user_permissions(
+        self,
+        *,
+        current_user: CurrentUser,
+        request_obj: Request,
+        action: str,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        resource_no: str | None = None,
+    ) -> UserPermissionResult | None:
+        """Prefetch ERPNext user permissions for style-profit resource checks."""
+        if get_permission_source() != "erpnext":
+            return None
+
+        adapter = ERPNextPermissionAdapter(request_obj=request_obj)
+        try:
+            return adapter.get_user_permissions(username=current_user.username)
+        except PermissionSourceUnavailable as exc:
+            self._raise_permission_source_unavailable(
+                exc=exc,
+                request_obj=request_obj,
+                current_user=current_user,
+                module="style_profit",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+
+    def ensure_style_profit_resource_permission(
+        self,
+        *,
+        current_user: CurrentUser,
+        request_obj: Request,
+        action: str,
+        item_code: str | None = None,
+        company: str | None = None,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        resource_no: str | None = None,
+        enforce_action: bool = True,
+        user_permissions: UserPermissionResult | None = None,
+    ) -> None:
+        """Enforce style-profit action + item/company resource permission."""
+        if enforce_action:
+            self.require_action(
+                current_user=current_user,
+                request_obj=request_obj,
+                action=action,
+                module="style_profit",
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_item_code=item_code,
+            )
+
+        if get_permission_source() != "erpnext":
+            return
+
+        permissions = user_permissions or self.get_style_profit_user_permissions(
+            current_user=current_user,
+            request_obj=request_obj,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            resource_no=resource_no,
+        )
+        if permissions is None:
+            return
+
+        adapter = ERPNextPermissionAdapter(request_obj=request_obj)
+        if item_code and not adapter.is_item_permitted(item_code=item_code, user_permissions=permissions):
+            self._record_security_audit_safe(
+                event_type=AUTH_FORBIDDEN_CODE,
+                module="style_profit",
+                action=action,
+                resource_type="ITEM",
+                resource_id=resource_id,
+                resource_no=item_code,
+                user=current_user,
+                deny_reason="资源权限不足：无权访问该 item_code",
+                request_obj=request_obj,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+            )
+
         if company and not adapter.is_company_permitted(company=company, user_permissions=permissions):
             self._record_security_audit_safe(
                 event_type=AUTH_FORBIDDEN_CODE,
-                module="production",
+                module="style_profit",
                 action=action,
                 resource_type="COMPANY",
                 resource_id=resource_id,
@@ -1142,6 +1241,8 @@ class PermissionService:
             return {action for action in action_set if action.startswith("subcontract:")}
         if module == "production":
             return {action for action in action_set if action.startswith("production:")}
+        if module == "style_profit":
+            return {action for action in action_set if action.startswith("style_profit:")}
         return action_set
 
     @staticmethod
@@ -1174,8 +1275,8 @@ class PermissionService:
             "plan_create": False,
             "material_check": False,
             "work_order_create": False,
-            "job_card_sync": False,
             "work_order_worker": False,
+            "snapshot_create": False,
         }
 
         if module == "workshop":
@@ -1210,6 +1311,10 @@ class PermissionService:
             base["work_order_create"] = PRODUCTION_WORK_ORDER_CREATE in actions
             base["job_card_sync"] = PRODUCTION_JOB_CARD_SYNC in actions
             base["work_order_worker"] = PRODUCTION_WORK_ORDER_WORKER in actions
+            return base
+        if module == "style_profit":
+            base["read"] = STYLE_PROFIT_READ in actions
+            base["snapshot_create"] = STYLE_PROFIT_SNAPSHOT_CREATE in actions
             return base
 
         can_update = BOM_UPDATE in actions and status != "active"

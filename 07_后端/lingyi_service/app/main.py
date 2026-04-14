@@ -50,6 +50,8 @@ from app.core.permissions import PRODUCTION_PLAN_CREATE
 from app.core.permissions import PRODUCTION_READ
 from app.core.permissions import PRODUCTION_WORK_ORDER_CREATE
 from app.core.permissions import PRODUCTION_WORK_ORDER_WORKER
+from app.core.permissions import STYLE_PROFIT_READ
+from app.core.permissions import STYLE_PROFIT_SNAPSHOT_CREATE
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import normalize_request_id
@@ -63,6 +65,8 @@ from app.routers.production import get_db_session as production_router_session_d
 from app.routers.production import router as production_router
 from app.routers.workshop import get_db_session as workshop_router_session_dep
 from app.routers.workshop import router as workshop_router
+from app.routers.style_profit import get_db_session as style_profit_router_session_dep
+from app.routers.style_profit import router as style_profit_router
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -95,11 +99,13 @@ app.dependency_overrides[subcontract_router_session_dep] = get_db_session
 app.dependency_overrides[production_router_session_dep] = get_db_session
 app.dependency_overrides[bom_router_session_dep] = get_db_session
 app.dependency_overrides[workshop_router_session_dep] = get_db_session
+app.dependency_overrides[style_profit_router_session_dep] = get_db_session
 app.include_router(auth_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
 app.include_router(bom_router)
 app.include_router(workshop_router)
+app.include_router(style_profit_router)
 
 
 SECURITY_AUDIT_CODES = {
@@ -277,6 +283,14 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         plan_id = _extract_production_plan_id(path)
         return "production", PRODUCTION_READ, "ProductionPlan", plan_id
 
+    if path.startswith("/api/reports/style-profit"):
+        if path in {"/api/reports/style-profit/snapshots", "/api/reports/style-profit/snapshots/"}:
+            if method == "POST":
+                return "style_profit", STYLE_PROFIT_SNAPSHOT_CREATE, "StyleProfitSnapshot", None
+            return "style_profit", STYLE_PROFIT_READ, "StyleProfitSnapshot", None
+        snapshot_id = _extract_style_profit_snapshot_id(path)
+        return "style_profit", STYLE_PROFIT_READ, "StyleProfitSnapshot", snapshot_id
+
     return "unknown", None, None, None
 
 
@@ -320,6 +334,13 @@ def _extract_production_plan_id(path: str) -> str | None:
 
 def _extract_work_order(path: str) -> str | None:
     match = re.match(r"^/api/production/work-orders/([^/]+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_style_profit_snapshot_id(path: str) -> str | None:
+    match = re.match(r"^/api/reports/style-profit/snapshots/(\d+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None
