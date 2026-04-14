@@ -30,6 +30,32 @@ const replaceOrThrow = (input, searchValue, replaceValue, contextName) => {
 const createBaseFixture = (root) => {
   write(
     root,
+    'src/api/request.ts',
+    `const buildAuthHeaders = (headers?: HeadersInit): Headers => {
+  const result = new Headers(headers)
+  result.set('Authorization', 'Bearer token')
+  return result
+}
+
+export const request = async <T>(url: string, init?: RequestInit): Promise<T> => {
+  const response = await fetch(url, { ...init, headers: buildAuthHeaders(init?.headers) })
+  return (await response.json()) as T
+}
+`,
+  )
+
+  write(
+    root,
+    'src/api/auth.ts',
+    `export const fetchModuleActions = async () => {
+  const response = await fetch('/api/auth/actions')
+  return response.json()
+}
+`,
+  )
+
+  write(
+    root,
     'src/api/style_profit.ts',
     `import { request } from '@/api/request'
 
@@ -43,14 +69,16 @@ export const fetchStyleProfitSnapshotDetail = async (snapshotId: number) =>
     root,
     'src/views/style_profit/StyleProfitSnapshotList.vue',
     `<script setup lang="ts">
+const canRead = { value: true }
 const hasRequiredScope = () => true
-async function loadRows() {
+async function loadRows(permissionStore: { loadModuleActions: (module: string) => Promise<void> }) {
+  await permissionStore.loadModuleActions('style_profit')
+  if (!canRead.value) {
+    return
+  }
   if (!hasRequiredScope()) {
     return
   }
-}
-async function onMountedLoad(permissionStore: { loadModuleActions: (module: string) => Promise<void> }) {
-  await permissionStore.loadModuleActions('style_profit')
 }
 const tip = 'company 与 item_code 不能为空'
 </script>
@@ -60,9 +88,19 @@ const tip = 'company 与 item_code 不能为空'
   write(
     root,
     'src/views/style_profit/StyleProfitSnapshotDetail.vue',
-    `<script setup lang="ts">
-async function onMountedLoad(permissionStore: { loadModuleActions: (module: string) => Promise<void> }) {
+    `<template>
+  <el-empty v-if="!canRead" description="无款式利润查看权限" />
+  <el-collapse>
+    <el-collapse-item title="审计信息（仅供审计复核）" name="audit" />
+  </el-collapse>
+</template>
+<script setup lang="ts">
+const canRead = { value: true }
+async function loadDetail(permissionStore: { loadModuleActions: (module: string) => Promise<void> }) {
   await permissionStore.loadModuleActions('style_profit')
+  if (!canRead.value) {
+    return
+  }
 }
 const warning = '存在未解析来源，请财务复核后使用'
 </script>
@@ -78,6 +116,22 @@ const warning = '存在未解析来源，请财务复核后使用'
 ]
 `,
   )
+
+  write(
+    root,
+    'src/stores/permission.ts',
+    `const INTERNAL_ACTION_DENYLIST = [
+  'production:work_order_worker',
+  'subcontract:stock_sync_worker',
+  'workshop:job_card_sync_worker',
+]
+export { INTERNAL_ACTION_DENYLIST }
+`,
+  )
+
+  write(root, 'src/App.vue', `<template><router-view /></template>\n`)
+  write(root, 'src/main.ts', `import './style.css'\n`)
+  write(root, 'src/views/production/ProductionPlanList.vue', `<template>production</template>\n`)
 }
 
 const runCheck = (fixtureRoot) => {
@@ -129,81 +183,66 @@ const runSuccessCase = () => {
 
 const failureCases = [
   {
-    name: 'api contains bare fetch',
-    expectedKeyword: '禁止裸 fetch()',
+    name: 'app exposes generate snapshot button copy',
+    expectedKeyword: '禁止前端出现创建/生成/重算利润快照文案',
     mutate: (root) => {
-      const content = read(root, 'src/api/style_profit.ts')
-      write(root, 'src/api/style_profit.ts', `${content}\nconst invalid = fetch('/forbidden')\n`)
+      write(root, 'src/App.vue', `<template><button>生成利润快照</button></template>\n`)
     },
   },
   {
-    name: 'api contains snapshot_create',
-    expectedKeyword: '禁止前端出现 snapshot_create',
+    name: 'other view exposes style_profit snapshot_create action',
+    expectedKeyword: '禁止前端业务文件出现 style_profit:snapshot_create',
     mutate: (root) => {
-      const content = read(root, 'src/api/style_profit.ts')
-      write(root, 'src/api/style_profit.ts', `${content}\nconst invalid = 'snapshot_create'\n`)
+      write(root, 'src/views/production/ProductionPlanList.vue', `<template>style_profit:snapshot_create</template>\n`)
     },
   },
   {
-    name: 'api contains idempotency_key',
-    expectedKeyword: '禁止前端出现 idempotency_key',
+    name: 'permission store maps snapshot_create true',
+    expectedKeyword: 'permission store 禁止映射 snapshot_create 按钮权限',
     mutate: (root) => {
-      const content = read(root, 'src/api/style_profit.ts')
-      write(root, 'src/api/style_profit.ts', `${content}\nconst invalid = 'idempotency_key'\n`)
+      const content = read(root, 'src/stores/permission.ts')
+      write(root, 'src/stores/permission.ts', `${content}\nconst buttonPermissions = { snapshot_create: true }\n`)
     },
   },
   {
-    name: 'api contains POST',
-    expectedKeyword: '禁止出现 POST 请求',
+    name: 'router has create route',
+    expectedKeyword: '路由禁止出现 /reports/style-profit/create',
+    mutate: (root) => {
+      const content = read(root, 'src/router/index.ts')
+      write(root, 'src/router/index.ts', `${content}\n{ path: '/reports/style-profit/create' }\n`)
+    },
+  },
+  {
+    name: 'detail misses canRead pre-check',
+    expectedKeyword: '详情页缺少 canRead 前置阻断',
+    mutate: (root) => {
+      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotDetail.vue')
+      const replaced = replaceOrThrow(content, 'if (!canRead.value) {', 'if (false) {', 'detail canRead guard')
+      write(root, 'src/views/style_profit/StyleProfitSnapshotDetail.vue', replaced)
+    },
+  },
+  {
+    name: 'style-profit api contains POST',
+    expectedKeyword: '禁止 style-profit 业务面出现 POST 写接口',
     mutate: (root) => {
       const content = read(root, 'src/api/style_profit.ts')
       write(root, 'src/api/style_profit.ts', `${content}\nconst invalid = { method: 'POST' }\n`)
     },
   },
   {
-    name: 'list misses permission loading',
-    expectedKeyword: '列表页必须加载 style_profit 模块权限',
+    name: 'style-profit api contains idempotency_key',
+    expectedKeyword: '禁止 style-profit 业务面出现 idempotency_key',
     mutate: (root) => {
-      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotList.vue')
-      const replaced = replaceOrThrow(
-        content,
-        "await permissionStore.loadModuleActions('style_profit')",
-        "await permissionStore.loadModuleActions('production')",
-        'loadModuleActions style_profit',
-      )
-      write(root, 'src/views/style_profit/StyleProfitSnapshotList.vue', replaced)
+      const content = read(root, 'src/api/style_profit.ts')
+      write(root, 'src/api/style_profit.ts', `${content}\nconst invalid = 'idempotency_key'\n`)
     },
   },
   {
-    name: 'list misses required scope guard',
-    expectedKeyword: '列表页必须在 company/item_code 为空时阻断请求',
+    name: 'non-whitelist file contains bare fetch',
+    expectedKeyword: '禁止裸 fetch()，必须走统一 request() 封装',
     mutate: (root) => {
-      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotList.vue')
-      const replaced = replaceOrThrow(content, 'if (!hasRequiredScope()) {', 'if (false) {', 'required scope guard')
-      write(root, 'src/views/style_profit/StyleProfitSnapshotList.vue', replaced)
-    },
-  },
-  {
-    name: 'detail misses unresolved warning',
-    expectedKeyword: '详情页缺少 unresolved_count 风险提示',
-    mutate: (root) => {
-      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotDetail.vue')
-      const replaced = replaceOrThrow(
-        content,
-        '存在未解析来源，请财务复核后使用',
-        '无提示',
-        'unresolved warning',
-      )
-      write(root, 'src/views/style_profit/StyleProfitSnapshotDetail.vue', replaced)
-    },
-  },
-  {
-    name: 'router misses list path',
-    expectedKeyword: '路由缺少 /reports/style-profit',
-    mutate: (root) => {
-      const content = read(root, 'src/router/index.ts')
-      const replaced = replaceOrThrow(content, "{ path: '/reports/style-profit' },\n", '', 'list route')
-      write(root, 'src/router/index.ts', replaced)
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">const probe = fetch('/forbidden')</script>\n`)
     },
   },
 ]

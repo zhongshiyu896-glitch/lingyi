@@ -34,9 +34,17 @@
             <el-descriptions-item label="利润金额">{{ formatAmount(snapshot.profit_amount) }}</el-descriptions-item>
             <el-descriptions-item label="利润率">{{ formatProfitRate(snapshot.profit_rate) }}</el-descriptions-item>
             <el-descriptions-item label="未解析数量">{{ snapshot.unresolved_count }}</el-descriptions-item>
-            <el-descriptions-item label="幂等回放">{{ snapshot.idempotent_replay ? '是' : '否' }}</el-descriptions-item>
-            <el-descriptions-item label="请求哈希">{{ snapshot.request_hash }}</el-descriptions-item>
           </el-descriptions>
+          <el-collapse v-model="auditPanels" class="audit-collapse">
+            <el-collapse-item title="审计信息（仅供审计复核）" name="audit">
+              <el-descriptions :column="1" border size="small">
+                <el-descriptions-item label="幂等回放">
+                  {{ snapshot.idempotent_replay ? '是' : '否' }}
+                </el-descriptions-item>
+                <el-descriptions-item label="请求哈希">{{ snapshot.request_hash }}</el-descriptions-item>
+              </el-descriptions>
+            </el-collapse-item>
+          </el-collapse>
         </template>
       </template>
     </el-card>
@@ -117,6 +125,7 @@ const loading = ref<boolean>(false)
 const snapshot = ref<StyleProfitSnapshotResult | null>(null)
 const details = ref<StyleProfitDetailItem[]>([])
 const sourceMaps = ref<StyleProfitSourceMapItem[]>([])
+const auditPanels = ref<string[]>([])
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const snapshotId = computed<number>(() => Number(route.query.id || '0'))
@@ -201,5 +210,9 @@ onMounted(async () => {
 
 .warn-alert {
   margin-bottom: 12px;
+}
+
+.audit-collapse {
+  margin-top: 12px;
 }
 </style>
