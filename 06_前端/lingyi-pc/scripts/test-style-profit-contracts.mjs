@@ -240,7 +240,13 @@ import('@/views/style_profit/StyleProfitDetail.vue')
 import('./local-readonly-helper')
 import('../readonly/formatter')
 new Worker(new URL('./readonly-worker.ts', import.meta.url), { type: 'module' })
+const W = Worker
+new W(new URL('./readonly-worker.ts', import.meta.url), { type: 'module' })
+const { Worker: DW } = globalThis
+new DW(new URL('./readonly-worker.ts', import.meta.url), { type: 'module' })
 const asset = '/assets/logo.png'
+const record = { Worker_name: 'readonly-worker' }
+void record['Worker_name']
 void asset
 </script>
 `,
@@ -3601,6 +3607,166 @@ const failureCases = [
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst script = document.createElement('script')\nconst blobUrl = URL.createObjectURL(new Blob(['console.log(1)'], { type: 'text/javascript' }))\nscript.setAttribute('src', blobUrl)\n</script>\n`,
       )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const W = Worker; new W('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst W = Worker\nnew W('data:text/javascript,postMessage(1)', { type: 'module' })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const SW = SharedWorker; new SW('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst SW = SharedWorker\nnew SW('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const G = globalThis; new G.Worker('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst G = globalThis\nnew G.Worker('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const Win = window; new Win.SharedWorker('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst Win = window\nnew Win.SharedWorker('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const G = globalThis; new G['Worker']('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst G = globalThis\nnew G['Worker']('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const G = globalThis; new G['Work' + 'er']('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst G = globalThis\nnew G['Work' + 'er']('data:text/javascript,postMessage(1)')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const { Worker: W } = globalThis; new W('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst { Worker: W } = globalThis\nnew W('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const { SharedWorker: SW } = window; new SW('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst { SharedWorker: SW } = window\nnew SW('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via assignment destructure Worker alias then new W('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nlet W\n;({ Worker: W } = globalThis)\nnew W('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via conditional alias Worker/Worker then new W('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst W = condition ? Worker : Worker\nnew W('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via conditional alias globalThis.Worker/window.Worker then new W('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst W = condition ? globalThis.Worker : window.Worker\nnew W('data:text/javascript,postMessage(1)')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via conditional alias Worker/unknownCtor then new W('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst condition = true\nconst unknownCtor = Date\nconst W = condition ? Worker : unknownCtor\nnew W('data:text/javascript,postMessage(1)')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via array container [Worker] then new constructors[0]('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst constructors = [Worker]\nnew constructors[0]('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via object container { W: Worker } then new constructors.W('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst constructors = { W: Worker }\nnew constructors.W('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via array container [Worker, ...extra] then new constructors[0]('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst extra = []\nconst constructors = [Worker, ...extra]\nnew constructors[0]('data:text/javascript,postMessage(1)')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via object container { W: Worker, ...extra } then new constructors.W('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst extra = {}\nconst constructors = { W: Worker, ...extra }\nnew constructors.W('data:text/javascript,postMessage(1)')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via alias Worker with unresolved workerUrl source",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst W = Worker\nconst workerUrl = getWorkerUrl()\nnew W(workerUrl)\n</script>\n`)
     },
   },
   {
