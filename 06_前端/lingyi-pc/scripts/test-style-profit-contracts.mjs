@@ -90,6 +90,12 @@ const readonlyHelpCards = [
   { label: '查询', onClick: loadRows },
   { label: '查看详情', onClick: goDetail },
 ]
+const readonlyHelp = {
+  meta: {
+    label: '利润计算说明',
+  },
+  description: '只读帮助文案',
+}
 </script>
 `,
   )
@@ -466,6 +472,114 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    description: 'x'.repeat(1000),\n    onSelect: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor onClick with child meta label',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    key: 'profit-help',\n    onClick: openHelp,\n    meta: {\n      label: '利润计算说明',\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor handler with child props label',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    handler: showRule,\n    props: {\n      label: '利润率计算规则',\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor command with child extra label',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst menus = [\n  {\n    command: 'open-profit-source-help',\n    extra: {\n      label: '利润快照来源说明',\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor onClick and descendant label gap repeat 1200',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    onClick: openHelp,\n    filler: 'x'.repeat(1200),\n    meta: {\n      label: '利润计算说明',\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor onSelect in children tree with descendant meta label',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst menu = [\n  {\n    onSelect: selectMenu,\n    children: [\n      {\n        meta: {\n          label: '利润计算说明',\n        },\n      },\n    ],\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor execute with payload label',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    execute: runHelp,\n    payload: {\n      label: '利润计算说明',\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor onCommand with child meta title',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst menu = [\n  {\n    onCommand: openHelp,\n    meta: {\n      title: '利润计算说明',\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor callback with child payload label',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    callback: openHelp,\n    payload: {\n      label: '利润快照来源说明',\n    },\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'ancestor submit with child extra description',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    submit: submitHelp,\n    extra: {\n      description: '利润率计算规则',\n    },\n  },\n]\n</script>\n`,
       )
     },
   },

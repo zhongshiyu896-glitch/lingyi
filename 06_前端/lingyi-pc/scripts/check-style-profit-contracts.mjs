@@ -136,7 +136,9 @@ const interactiveTagPairs = [
   },
 ]
 
-const actionInteractiveKeyRegex = /\b(onClick|handler|command|onSelect)\s*:/
+const actionInteractiveKeyRegex = /\b(onClick|handler|action|command|onSelect|onCommand|callback|execute|submit)\s*:/
+const explanationFieldNames = ['label', 'title', 'text', 'name', 'tooltip', 'description']
+const dottedExplanationFieldNames = ['meta.label', 'meta.title', 'props.label', 'extra.label', 'payload.label']
 
 const collectObjectBlocks = (content) => {
   const blocks = []
@@ -277,27 +279,49 @@ const matchExplanationRange = (ranges, start, end) =>
 const findContainingObjectBlock = (blocks, start, end) =>
   blocks.find((block) => block.start <= start && end <= block.end)
 
-const hasReadonlyExplanationLabelInObject = (content, phrase, range, objectBlocks) => {
+const hasExplanationFieldForPhraseInSegment = (segment, phrase) => {
+  const escaped = escapeRegex(phrase)
+  const plainFieldRegex = new RegExp(
+    `\\b(?:${explanationFieldNames.join('|')})\\s*:\\s*['"\`]\\s*${escaped}\\s*['"\`]`,
+    'i',
+  )
+  if (plainFieldRegex.test(segment)) return true
+  return dottedExplanationFieldNames.some((fieldName) => {
+    const dottedFieldRegex = new RegExp(
+      `['"\`]?${escapeRegex(fieldName)}['"\`]?\\s*:\\s*['"\`]\\s*${escaped}\\s*['"\`]`,
+      'i',
+    )
+    return dottedFieldRegex.test(segment)
+  })
+}
+
+const collectAncestorObjectBlocks = (blocks, targetBlock) =>
+  blocks
+    .filter((block) => block.start <= targetBlock.start && targetBlock.end <= block.end)
+    .sort((a, b) => (a.end - a.start) - (b.end - b.start))
+
+const resolveExplanationObjectChain = (content, phrase, range, objectBlocks) => {
   const block = findContainingObjectBlock(objectBlocks, range.start, range.end)
-  if (!block) return false
-  const segment = content.slice(block.start, block.end)
-  const labelRegex = new RegExp(`\\blabel\\s*:\\s*['"\`]\\s*${escapeRegex(phrase)}\\s*['"\`]`, 'i')
-  return labelRegex.test(segment)
+  if (!block) return null
+  const chain = collectAncestorObjectBlocks(objectBlocks, block)
+  if (chain.length === 0) return null
+  const hasExplanationField = chain.some((chainBlock) =>
+    hasExplanationFieldForPhraseInSegment(content.slice(chainBlock.start, chainBlock.end), phrase),
+  )
+  if (!hasExplanationField) return null
+  return chain
 }
 
 const isReadonlyExplanationObjectContext = (content, phrase, range, objectBlocks) => {
-  if (!hasReadonlyExplanationLabelInObject(content, phrase, range, objectBlocks)) return false
-  const block = findContainingObjectBlock(objectBlocks, range.start, range.end)
-  if (!block) return false
-  const segment = content.slice(block.start, block.end)
-  return !actionInteractiveKeyRegex.test(segment)
+  const chain = resolveExplanationObjectChain(content, phrase, range, objectBlocks)
+  if (!chain) return false
+  return chain.every((block) => !actionInteractiveKeyRegex.test(content.slice(block.start, block.end)))
 }
 
 const hasInteractiveActionObjectForPhrase = (content, phrase, range, objectBlocks) => {
-  if (!hasReadonlyExplanationLabelInObject(content, phrase, range, objectBlocks)) return false
-  const block = findContainingObjectBlock(objectBlocks, range.start, range.end)
-  if (!block) return false
-  return actionInteractiveKeyRegex.test(content.slice(block.start, block.end))
+  const chain = resolveExplanationObjectChain(content, phrase, range, objectBlocks)
+  if (!chain) return false
+  return chain.some((block) => actionInteractiveKeyRegex.test(content.slice(block.start, block.end)))
 }
 
 const shouldAllowReadonlyExplanation = (content, matchIndex, matchLength, ranges, objectBlocks) => {
