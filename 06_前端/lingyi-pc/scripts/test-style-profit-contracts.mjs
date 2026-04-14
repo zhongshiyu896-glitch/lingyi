@@ -1263,6 +1263,126 @@ const failureCases = [
     },
   },
   {
+    name: "runtime explicit action key injection via Object['defineProperty'] literal key",
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject['defineProperty'](item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime explicit action key injection via Reflect['set'] literal key",
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nReflect['set'](item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime explicit action key injection via Object['assign'] literal source",
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject['assign'](item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via defineProperty alias call',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst defineProperty = Object.defineProperty\nconst item = { label: '利润计算说明' }\ndefineProperty(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via assign alias call',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst assign = Object.assign\nconst item = { label: '利润计算说明' }\nassign(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via set alias call',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst set = Reflect.set\nconst item = { label: '利润计算说明' }\nset(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via Object.assign variable source',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst action = { onClick: openHelp }\nconst item = { label: '利润计算说明' }\nObject.assign(item, action)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime explicit action key injection via Object['assign'] variable source",
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst action = { handler: openHelp }\nconst item = { label: '利润计算说明' }\nObject['assign'](item, action)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via Object.assign multi-source variable',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst base = { disabled: false }\nconst action = { onClick: openHelp }\nconst extra = { tooltip: '说明' }\nconst item = { label: '利润计算说明' }\nObject.assign(item, base, action, extra)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic source merge fail closed when source unresolved',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject.assign(item, actionSource)\n</script>\n`,
+      )
+    },
+  },
+  {
     name: "descendant meta label with ancestor [actionMap['onClick']] assignment",
     expectedKeyword: '只读说明文案不得出现在交互入口上下文',
     mutate: (root) => {

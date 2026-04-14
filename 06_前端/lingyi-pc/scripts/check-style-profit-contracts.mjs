@@ -553,13 +553,157 @@ const runtimeWriteOperatorKinds = new Set([
 
 const isRuntimeWriteOperator = (operatorKind) => runtimeWriteOperatorKinds.has(operatorKind)
 
-const isGlobalMemberCall = (node, objectName, methodName) =>
-  ts.isPropertyAccessExpression(node) &&
-  ts.isIdentifier(node.expression) &&
-  node.expression.text === objectName &&
-  node.name.text === methodName
+const unwrapExpression = (node) => {
+  let current = node
+  while (current && ts.isParenthesizedExpression(current)) {
+    current = current.expression
+  }
+  return current
+}
 
-const collectRuntimeDynamicInjectionFindings = (sourceFile) => {
+const getStaticLiteralText = (node) => {
+  if (!node) return null
+  const target = unwrapExpression(node)
+  if (ts.isStringLiteral(target) || ts.isNoSubstitutionTemplateLiteral(target) || ts.isNumericLiteral(target)) {
+    return `${target.text}`
+  }
+  return null
+}
+
+const classifyRuntimeMethodName = (objectName, methodName) => {
+  if (objectName === 'Object' && methodName === 'defineProperty') return 'Object.defineProperty'
+  if (objectName === 'Object' && methodName === 'defineProperties') return 'Object.defineProperties'
+  if (objectName === 'Object' && methodName === 'assign') return 'Object.assign'
+  if (objectName === 'Reflect' && methodName === 'set') return 'Reflect.set'
+  return null
+}
+
+const resolveRuntimeMethodFromExpression = (expression, runtimeMethodAliasMap = new Map()) => {
+  const target = unwrapExpression(expression)
+  if (!target) return null
+
+  if (ts.isIdentifier(target)) {
+    return runtimeMethodAliasMap.get(target.text) || null
+  }
+
+  if (ts.isPropertyAccessExpression(target) && ts.isIdentifier(target.expression)) {
+    return classifyRuntimeMethodName(target.expression.text, target.name.text)
+  }
+
+  if (ts.isElementAccessExpression(target) && ts.isIdentifier(target.expression)) {
+    const methodName = getStaticLiteralText(target.argumentExpression || null)
+    if (!methodName) return null
+    return classifyRuntimeMethodName(target.expression.text, methodName)
+  }
+
+  return null
+}
+
+const collectRuntimeAnalysisContext = (sourceFile) => {
+  const runtimeMethodAliasMap = new Map()
+  const objectLiteralVariableMap = new Map()
+
+  const visit = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const varName = node.name.text
+      const initializer = unwrapExpression(node.initializer)
+      if (ts.isObjectLiteralExpression(initializer)) {
+        objectLiteralVariableMap.set(varName, initializer)
+      } else if (ts.isIdentifier(initializer) && objectLiteralVariableMap.has(initializer.text)) {
+        objectLiteralVariableMap.set(varName, objectLiteralVariableMap.get(initializer.text))
+      }
+
+      const runtimeMethod = resolveRuntimeMethodFromExpression(initializer, runtimeMethodAliasMap)
+      if (runtimeMethod) {
+        runtimeMethodAliasMap.set(varName, runtimeMethod)
+      }
+    } else if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isIdentifier(node.left)
+    ) {
+      const targetName = node.left.text
+      const rhs = unwrapExpression(node.right)
+      if (ts.isObjectLiteralExpression(rhs)) {
+        objectLiteralVariableMap.set(targetName, rhs)
+      } else if (ts.isIdentifier(rhs) && objectLiteralVariableMap.has(rhs.text)) {
+        objectLiteralVariableMap.set(targetName, objectLiteralVariableMap.get(rhs.text))
+      }
+
+      const runtimeMethod = resolveRuntimeMethodFromExpression(rhs, runtimeMethodAliasMap)
+      if (runtimeMethod) {
+        runtimeMethodAliasMap.set(targetName, runtimeMethod)
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return { runtimeMethodAliasMap, objectLiteralVariableMap }
+}
+
+const analyzeRuntimeObjectLiteralMembers = (objectNode) => {
+  const explicitActionInfos = []
+  const dynamicInfos = []
+  let hasSpread = false
+
+  for (const member of objectNode.properties) {
+    if (ts.isSpreadAssignment(member)) {
+      hasSpread = true
+      continue
+    }
+    const keyInfo = classifyMemberNameForRuntime(member)
+    if (keyInfo.keyClass === 'literal_key') {
+      if (actionInteractiveKeySet.has(keyInfo.keyText)) {
+        explicitActionInfos.push(keyInfo)
+      }
+      continue
+    }
+    dynamicInfos.push(keyInfo)
+  }
+
+  return { explicitActionInfos, dynamicInfos, hasSpread }
+}
+
+const resolveAssignSourceAnalysis = (sourceArg, sourceFile, runtimeContext) => {
+  const source = unwrapExpression(sourceArg)
+  if (ts.isObjectLiteralExpression(source)) {
+    return {
+      ...analyzeRuntimeObjectLiteralMembers(source),
+      unresolved: false,
+      expressionText: source.getText(sourceFile),
+    }
+  }
+
+  if (ts.isIdentifier(source)) {
+    const mappedObject = runtimeContext.objectLiteralVariableMap.get(source.text) || null
+    if (mappedObject) {
+      return {
+        ...analyzeRuntimeObjectLiteralMembers(mappedObject),
+        unresolved: false,
+        expressionText: source.text,
+      }
+    }
+    return {
+      explicitActionInfos: [],
+      dynamicInfos: [],
+      hasSpread: false,
+      unresolved: true,
+      expressionText: source.text,
+    }
+  }
+
+  return {
+    explicitActionInfos: [],
+    dynamicInfos: [],
+    hasSpread: false,
+    unresolved: true,
+    expressionText: source ? source.getText(sourceFile) : '',
+  }
+}
+
+const collectRuntimeDynamicInjectionFindings = (sourceFile, runtimeContext) => {
   const findings = []
 
   const pushFinding = (type, expressionText) => {
@@ -578,34 +722,41 @@ const collectRuntimeDynamicInjectionFindings = (sourceFile) => {
         }
       }
     } else if (ts.isCallExpression(node)) {
-      const callee = node.expression
-      if (isGlobalMemberCall(callee, 'Object', 'defineProperty')) {
+      const calleeType = resolveRuntimeMethodFromExpression(node.expression, runtimeContext.runtimeMethodAliasMap)
+      if (calleeType === 'Object.defineProperty') {
         const keyExpr = node.arguments[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
         if (keyInfo.keyClass !== 'literal_key') {
           pushFinding('Object.defineProperty', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
         }
-      } else if (isGlobalMemberCall(callee, 'Object', 'defineProperties')) {
+      } else if (calleeType === 'Object.defineProperties') {
         const descriptorArg = node.arguments[1]
         if (descriptorArg && ts.isObjectLiteralExpression(descriptorArg)) {
-          const dynamicInfos = collectDynamicComputedKeyInfos(descriptorArg)
-          for (const dynamicInfo of dynamicInfos) {
+          const analysis = analyzeRuntimeObjectLiteralMembers(descriptorArg)
+          for (const dynamicInfo of analysis.dynamicInfos) {
             pushFinding('Object.defineProperties', dynamicInfo.expressionText || descriptorArg.getText(sourceFile))
           }
+          if (analysis.hasSpread) {
+            pushFinding('Object.defineProperties', descriptorArg.getText(sourceFile))
+          }
+        } else if (descriptorArg) {
+          pushFinding('Object.defineProperties', descriptorArg.getText(sourceFile))
         }
-      } else if (isGlobalMemberCall(callee, 'Reflect', 'set')) {
+      } else if (calleeType === 'Reflect.set') {
         const keyExpr = node.arguments[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
         if (keyInfo.keyClass !== 'literal_key') {
           pushFinding('Reflect.set', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
         }
-      } else if (isGlobalMemberCall(callee, 'Object', 'assign')) {
+      } else if (calleeType === 'Object.assign') {
         const sourceArgs = node.arguments.slice(1)
         for (const sourceArg of sourceArgs) {
-          if (!ts.isObjectLiteralExpression(sourceArg)) continue
-          const dynamicInfos = collectDynamicComputedKeyInfos(sourceArg)
-          for (const dynamicInfo of dynamicInfos) {
-            pushFinding('Object.assign', dynamicInfo.expressionText || sourceArg.getText(sourceFile))
+          const analysis = resolveAssignSourceAnalysis(sourceArg, sourceFile, runtimeContext)
+          for (const dynamicInfo of analysis.dynamicInfos) {
+            pushFinding('Object.assign', dynamicInfo.expressionText || analysis.expressionText)
+          }
+          if (analysis.hasSpread || analysis.unresolved) {
+            pushFinding('Object.assign', analysis.expressionText)
           }
         }
       }
@@ -638,7 +789,7 @@ const classifyMemberNameForRuntime = (member) => {
   return { keyClass: 'unknown_key', keyText: '', expressionText: '' }
 }
 
-const collectRuntimeExplicitActionInjectionFindings = (sourceFile) => {
+const collectRuntimeExplicitActionInjectionFindings = (sourceFile, runtimeContext) => {
   const findings = []
 
   const pushFinding = (type, expressionText) => {
@@ -662,38 +813,38 @@ const collectRuntimeExplicitActionInjectionFindings = (sourceFile) => {
         }
       }
     } else if (ts.isCallExpression(node)) {
-      const callee = node.expression
-      if (isGlobalMemberCall(callee, 'Object', 'defineProperty')) {
+      const calleeType = resolveRuntimeMethodFromExpression(node.expression, runtimeContext.runtimeMethodAliasMap)
+      if (calleeType === 'Object.defineProperty') {
         const keyExpr = node.arguments[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
         if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
           pushFinding('Object.defineProperty-explicit-action', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
         }
-      } else if (isGlobalMemberCall(callee, 'Object', 'defineProperties')) {
+      } else if (calleeType === 'Object.defineProperties') {
         const descriptorArg = node.arguments[1]
-        if (descriptorArg && ts.isObjectLiteralExpression(descriptorArg)) {
-          for (const member of descriptorArg.properties) {
-            const keyInfo = classifyMemberNameForRuntime(member)
-            if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
-              pushFinding('Object.defineProperties-explicit-action', keyInfo.expressionText || descriptorArg.getText(sourceFile))
-            }
+        const resolvedDescriptor = ts.isObjectLiteralExpression(descriptorArg)
+          ? descriptorArg
+          : ts.isIdentifier(descriptorArg)
+            ? runtimeContext.objectLiteralVariableMap.get(descriptorArg.text) || null
+            : null
+        if (resolvedDescriptor) {
+          const analysis = analyzeRuntimeObjectLiteralMembers(resolvedDescriptor)
+          for (const keyInfo of analysis.explicitActionInfos) {
+            pushFinding('Object.defineProperties-explicit-action', keyInfo.expressionText || resolvedDescriptor.getText(sourceFile))
           }
         }
-      } else if (isGlobalMemberCall(callee, 'Reflect', 'set')) {
+      } else if (calleeType === 'Reflect.set') {
         const keyExpr = node.arguments[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
         if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
           pushFinding('Reflect.set-explicit-action', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
         }
-      } else if (isGlobalMemberCall(callee, 'Object', 'assign')) {
+      } else if (calleeType === 'Object.assign') {
         const sourceArgs = node.arguments.slice(1)
         for (const sourceArg of sourceArgs) {
-          if (!ts.isObjectLiteralExpression(sourceArg)) continue
-          for (const member of sourceArg.properties) {
-            const keyInfo = classifyMemberNameForRuntime(member)
-            if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
-              pushFinding('Object.assign-explicit-action', keyInfo.expressionText || sourceArg.getText(sourceFile))
-            }
+          const analysis = resolveAssignSourceAnalysis(sourceArg, sourceFile, runtimeContext)
+          for (const keyInfo of analysis.explicitActionInfos) {
+            pushFinding('Object.assign-explicit-action', keyInfo.expressionText || analysis.expressionText)
           }
         }
       }
@@ -727,6 +878,7 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
       true,
       block.scriptKind,
     )
+    const runtimeContext = collectRuntimeAnalysisContext(sourceFile)
     const objectNodes = collectObjectLiteralsFromSourceFile(sourceFile)
 
     for (const objectNode of objectNodes) {
@@ -740,14 +892,14 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
       }
     }
 
-    const runtimeDynamicFindings = collectRuntimeDynamicInjectionFindings(sourceFile)
+    const runtimeDynamicFindings = collectRuntimeDynamicInjectionFindings(sourceFile, runtimeContext)
     for (const finding of runtimeDynamicFindings) {
       failures.push(
         `style-profit forbids runtime dynamic property injection; use explicit literal keys（款式利润前端禁止运行时动态属性注入，请使用显式字面量键）: ${targetPath} -> ${finding.type} [${finding.expressionText}]`,
       )
     }
 
-    const runtimeExplicitActionFindings = collectRuntimeExplicitActionInjectionFindings(sourceFile)
+    const runtimeExplicitActionFindings = collectRuntimeExplicitActionInjectionFindings(sourceFile, runtimeContext)
     for (const finding of runtimeExplicitActionFindings) {
       failures.push(
         `style-profit forbids runtime explicit action-key injection; use object-literal readonly actions only（款式利润前端禁止运行时显式 action key 注入）: ${targetPath} -> ${finding.type} [${finding.expressionText}]`,
