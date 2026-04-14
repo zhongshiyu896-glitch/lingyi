@@ -78,5 +78,5 @@
 - 未提交 `.pytest-postgresql-*.xml`、`coverage`、`dist`、`node_modules` 等运行生成物
 
 ## 8. 提交信息
-- commit hash：58143331c87b22e1d4c826b58ce4f59c9cf60260
+- commit hash：58143339bca0eab36e89295fe335ed1433258df9
 - commit message：`fix: harden style profit timer call apply sinks`
