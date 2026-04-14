@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -137,12 +138,15 @@ const interactiveTagPairs = [
 ]
 
 const actionInteractiveKeys = ['onClick', 'handler', 'action', 'command', 'onSelect', 'onCommand', 'callback', 'execute', 'submit']
+const actionInteractiveKeySet = new Set(actionInteractiveKeys.map((value) => value.toLowerCase()))
+const explanationFieldNameSet = new Set(['label', 'title', 'text', 'name', 'tooltip', 'description'])
+const dottedExplanationFieldNameSet = new Set(['meta.label', 'meta.title', 'props.label', 'extra.label', 'payload.label'])
+const actionContextNameRegex = /(action|actions|menu|menus|toolbar|toolbars|button|buttons|command|commands|profitaction|profitactions)/i
 const actionInteractiveKeyAlternation = actionInteractiveKeys.map(escapeRegex).join('|')
 const actionInteractiveAssignmentPattern = `(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*:`
 const actionInteractiveMethodPattern = `(?:\\basync\\s+)?(?:['"\`]\\s*)?(?:${actionInteractiveKeyAlternation})(?:\\s*['"\`])?\\s*\\([^)]*\\)\\s*\\{`
 const actionInteractiveComputedAssignmentPattern = `\\[\\s*['"\`]\\s*(?:${actionInteractiveKeyAlternation})\\s*['"\`]\\s*\\]\\s*:`
 const actionInteractiveComputedMethodPattern = `(?:\\basync\\s+)?\\[\\s*['"\`]\\s*(?:${actionInteractiveKeyAlternation})\\s*['"\`]\\s*\\]\\s*\\([^)]*\\)\\s*\\{`
-const computedPropertyKeyRegex = /[,{]\s*(?:async\s+)?\[\s*([^\]]+?)\s*\]\s*(?::|\([^)]*\)\s*\{)/g
 const actionInteractiveMemberRegex = new RegExp(
   `(?:${actionInteractiveAssignmentPattern})|(?:${actionInteractiveMethodPattern})|(?:${actionInteractiveComputedAssignmentPattern})|(?:${actionInteractiveComputedMethodPattern})`,
   'i',
@@ -316,7 +320,260 @@ const collectAncestorObjectBlocks = (blocks, targetBlock) =>
 
 const normalizeComputedKeyExpr = (computedExpr) => computedExpr.replace(/\s+/g, ' ').trim()
 
-const isLiteralComputedKey = (computedExpr) => /^['"`][^'"`]+['"`]$/.test(normalizeComputedKeyExpr(computedExpr))
+const getScriptKindByPath = (targetPath) => {
+  if (targetPath.endsWith('.tsx')) return ts.ScriptKind.TSX
+  if (targetPath.endsWith('.jsx')) return ts.ScriptKind.JSX
+  if (targetPath.endsWith('.js')) return ts.ScriptKind.JS
+  return ts.ScriptKind.TS
+}
+
+const getVueScriptKindByAttrs = (attrsRaw) => {
+  const attrs = attrsRaw || ''
+  const langMatch = attrs.match(/\blang\s*=\s*['"]([^'"]+)['"]/i)
+  const lang = (langMatch?.[1] || '').toLowerCase()
+  if (lang === 'tsx') return ts.ScriptKind.TSX
+  if (lang === 'jsx') return ts.ScriptKind.JSX
+  if (lang === 'js' || lang === 'javascript') return ts.ScriptKind.JS
+  return ts.ScriptKind.TS
+}
+
+const extractScriptBlocksForAst = (targetPath, content) => {
+  if (!targetPath.endsWith('.vue')) {
+    return [
+      {
+        label: 'script',
+        content,
+        scriptKind: getScriptKindByPath(targetPath),
+      },
+    ]
+  }
+
+  const blocks = []
+  const scriptRegex = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi
+  let matched = scriptRegex.exec(content)
+  while (matched) {
+    const attrs = matched[1] || ''
+    const scriptContent = matched[2] || ''
+    if (scriptContent.trim()) {
+      blocks.push({
+        label: /\bsetup\b/i.test(attrs) ? 'script setup' : 'script',
+        content: scriptContent,
+        scriptKind: getVueScriptKindByAttrs(attrs),
+      })
+    }
+    matched = scriptRegex.exec(content)
+  }
+  return blocks
+}
+
+const classifyPropertyNameNode = (nameNode) => {
+  if (!nameNode) {
+    return { keyClass: 'unknown_key', keyText: '', expressionText: '' }
+  }
+
+  if (ts.isComputedPropertyName(nameNode)) {
+    const expr = nameNode.expression
+    const expressionText = expr.getText()
+    if (
+      ts.isStringLiteral(expr) ||
+      ts.isNoSubstitutionTemplateLiteral(expr) ||
+      ts.isNumericLiteral(expr)
+    ) {
+      return {
+        keyClass: 'literal_key',
+        keyText: `${expr.text}`.toLowerCase(),
+        expressionText,
+      }
+    }
+    return {
+      keyClass: 'dynamic_computed_key',
+      keyText: '',
+      expressionText,
+    }
+  }
+
+  if (ts.isIdentifier(nameNode)) {
+    return {
+      keyClass: 'literal_key',
+      keyText: nameNode.text.toLowerCase(),
+      expressionText: nameNode.text,
+    }
+  }
+  if (ts.isStringLiteral(nameNode) || ts.isNumericLiteral(nameNode)) {
+    return {
+      keyClass: 'literal_key',
+      keyText: `${nameNode.text}`.toLowerCase(),
+      expressionText: nameNode.text,
+    }
+  }
+
+  return {
+    keyClass: 'unknown_key',
+    keyText: '',
+    expressionText: '',
+  }
+}
+
+const getStringLiteralValue = (node) => {
+  if (!node) return null
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
+  return null
+}
+
+const isActionLikeNameText = (value) => {
+  if (!value) return false
+  return actionContextNameRegex.test(value)
+}
+
+const collectObjectLiteralsFromSourceFile = (sourceFile) => {
+  const objectNodes = []
+  const visit = (node) => {
+    if (ts.isObjectLiteralExpression(node)) {
+      objectNodes.push(node)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return objectNodes
+}
+
+const findSmallestContainingObjectNode = (objectNodes, start, end) =>
+  objectNodes
+    .filter((node) => node.getStart() <= start && end <= node.end)
+    .sort((a, b) => (a.end - a.getStart()) - (b.end - b.getStart()))[0] || null
+
+const collectAstObjectChain = (node) => {
+  const chain = []
+  let cursor = node
+  while (cursor) {
+    if (ts.isObjectLiteralExpression(cursor)) {
+      chain.push(cursor)
+    }
+    cursor = cursor.parent || null
+  }
+  return chain
+}
+
+const memberHasInteractiveLiteralKey = (member) => {
+  if (ts.isSpreadAssignment(member)) return false
+  if (ts.isShorthandPropertyAssignment(member)) {
+    return actionInteractiveKeySet.has(member.name.text.toLowerCase())
+  }
+  if (!('name' in member) || !member.name) return false
+  const keyInfo = classifyPropertyNameNode(member.name)
+  return keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)
+}
+
+const memberDynamicComputedKeyInfo = (member) => {
+  if (ts.isSpreadAssignment(member)) return null
+  if (!('name' in member) || !member.name) return null
+  const keyInfo = classifyPropertyNameNode(member.name)
+  if (keyInfo.keyClass === 'dynamic_computed_key') return keyInfo
+  if (keyInfo.keyClass === 'unknown_key') return keyInfo
+  return null
+}
+
+const objectHasInteractiveMemberAst = (objectNode) =>
+  objectNode.properties.some((member) => memberHasInteractiveLiteralKey(member))
+
+const objectHasExplanationFieldPhraseAst = (objectNode, phrase) => {
+  for (const member of objectNode.properties) {
+    if (!ts.isPropertyAssignment(member)) continue
+    if (!member.name) continue
+    const keyInfo = classifyPropertyNameNode(member.name)
+    if (keyInfo.keyClass !== 'literal_key') continue
+    if (!explanationFieldNameSet.has(keyInfo.keyText) && !dottedExplanationFieldNameSet.has(keyInfo.keyText)) {
+      continue
+    }
+    const literalValue = getStringLiteralValue(member.initializer)
+    if (literalValue === phrase) return true
+  }
+  return false
+}
+
+const collectDynamicComputedKeyInfos = (objectNode) => {
+  const findings = []
+  for (const member of objectNode.properties) {
+    const dynamicInfo = memberDynamicComputedKeyInfo(member)
+    if (dynamicInfo) findings.push(dynamicInfo)
+  }
+  return findings
+}
+
+const isActionContextObjectAst = (objectNode) => {
+  if (objectHasInteractiveMemberAst(objectNode)) return true
+  let cursor = objectNode
+  while (cursor) {
+    if (ts.isVariableDeclaration(cursor)) {
+      if (ts.isIdentifier(cursor.name) && isActionLikeNameText(cursor.name.text)) return true
+    } else if (ts.isPropertyAssignment(cursor) || ts.isMethodDeclaration(cursor)) {
+      if (cursor.name) {
+        const keyInfo = classifyPropertyNameNode(cursor.name)
+        if (keyInfo.keyClass === 'literal_key' && isActionLikeNameText(keyInfo.keyText)) return true
+      }
+    } else if (ts.isShorthandPropertyAssignment(cursor)) {
+      if (isActionLikeNameText(cursor.name.text)) return true
+    }
+    cursor = cursor.parent || null
+  }
+  return false
+}
+
+const hasSpreadRiskInExplanationChain = (chain, sourceFile) => {
+  for (const objectNode of chain) {
+    for (const member of objectNode.properties) {
+      if (!ts.isSpreadAssignment(member)) continue
+      const spreadExpr = member.expression.getText(sourceFile)
+      if (isActionLikeNameText(spreadExpr)) return true
+      if (isActionContextObjectAst(objectNode)) return true
+    }
+  }
+  return false
+}
+
+const analyzeStyleProfitAstContracts = (targetPath, content) => {
+  const failures = []
+  const scriptBlocks = extractScriptBlocksForAst(targetPath, content)
+  for (const block of scriptBlocks) {
+    const sourceFile = ts.createSourceFile(
+      `${path.basename(targetPath)}#${block.label}`,
+      block.content,
+      ts.ScriptTarget.Latest,
+      true,
+      block.scriptKind,
+    )
+    const objectNodes = collectObjectLiteralsFromSourceFile(sourceFile)
+
+    for (const objectNode of objectNodes) {
+      const dynamicKeys = collectDynamicComputedKeyInfos(objectNode)
+      if (dynamicKeys.length === 0) continue
+      if (!isActionContextObjectAst(objectNode)) continue
+      for (const keyInfo of dynamicKeys) {
+        const normalizedExpression = normalizeComputedKeyExpr(keyInfo.expressionText || '')
+        failures.push(
+          `style-profit forbids non-literal computed action keys; use explicit onClick/handler/command keys or quoted literal computed keys（款式利润前端禁止非字面量计算属性 action key）: ${targetPath} -> [${normalizedExpression}]`,
+        )
+      }
+    }
+
+    const explanationRanges = collectExplanationRanges(block.content)
+    for (const range of explanationRanges) {
+      const targetObject = findSmallestContainingObjectNode(objectNodes, range.start, range.end)
+      if (!targetObject) continue
+      const chain = collectAstObjectChain(targetObject)
+      const hasExplanationField = chain.some((node) => objectHasExplanationFieldPhraseAst(node, range.phrase))
+      if (!hasExplanationField) continue
+
+      const hasDynamicOrUnknownKey = chain.some((node) => collectDynamicComputedKeyInfos(node).length > 0)
+      const hasInteractiveMember = chain.some((node) => objectHasInteractiveMemberAst(node))
+      const hasSpreadRisk = hasSpreadRiskInExplanationChain(chain, sourceFile)
+      if (hasDynamicOrUnknownKey || hasInteractiveMember || hasSpreadRisk) {
+        failures.push(`只读说明文案不得出现在交互入口上下文: ${targetPath} -> ${range.phrase}`)
+      }
+    }
+  }
+  return failures
+}
 
 const resolveExplanationObjectChain = (content, phrase, range, objectBlocks) => {
   const block = findContainingObjectBlock(objectBlocks, range.start, range.end)
@@ -412,6 +669,13 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     const explanationRanges = collectExplanationRanges(content)
     const objectBlocks = collectObjectBlocks(content)
 
+    if (styleProfitSurface) {
+      const astFailures = analyzeStyleProfitAstContracts(targetPath, content)
+      for (const message of astFailures) {
+        fail(message)
+      }
+    }
+
     if (/\bfetch\s*\(/g.test(content) && styleProfitSurface && !fetchWhitelist.has(normalized)) {
       fail(`禁止裸 fetch()，必须走统一 request() 封装: ${targetPath}`)
     }
@@ -488,20 +752,6 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     }
 
     if (styleProfitSurface) {
-      let computedKeyMatch = computedPropertyKeyRegex.exec(content)
-      while (computedKeyMatch) {
-        const keyExpression = computedKeyMatch[1] ?? ''
-        if (!isLiteralComputedKey(keyExpression)) {
-          const normalizedExpression = normalizeComputedKeyExpr(keyExpression)
-          fail(
-            `style-profit forbids non-literal computed action keys; use explicit onClick/handler/command keys or quoted literal computed keys（款式利润前端禁止非字面量计算属性 action key）: ${targetPath} -> [${normalizedExpression}]`,
-          )
-          break
-        }
-        computedKeyMatch = computedPropertyKeyRegex.exec(content)
-      }
-      computedPropertyKeyRegex.lastIndex = 0
-
       if (/\bidempotency_key\b/g.test(content)) {
         fail(`禁止 style-profit 业务面出现 idempotency_key: ${targetPath}`)
       }

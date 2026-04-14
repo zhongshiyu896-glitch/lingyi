@@ -860,6 +860,100 @@ const failureCases = [
     },
   },
   {
+    name: "non-literal computed key [actionMap['onClick']] assignment",
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    [actionMap['onClick']]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'non-literal computed key [actionMap[\"onClick\"]] assignment',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    [actionMap[\"onClick\"]]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "non-literal computed key [getActionKey(actionMap['onClick'])] assignment",
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    [getActionKey(actionMap['onClick'])]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'non-literal computed key template literal assignment',
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst prefix = 'on'\nconst actions = [\n  {\n    label: '利润计算说明',\n    [\`\${prefix}Click\`]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "long-distance computed key [actionMap['onClick']] assignment",
+    expectedKeyword: 'style-profit forbids non-literal computed action keys',
+    mutate: (root) => {
+      const base = read(root, 'src/App.vue')
+      const longFiller = 'x'.repeat(1200)
+      const appended = `\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    filler: \"${longFiller}\",\n    [actionMap['onClick']]: openHelp,\n  },\n]\n</script>\n`
+      const content = `${base}${appended}`
+      assertTrue(
+        Math.abs(content.indexOf('[actionMap') - content.indexOf('利润计算说明')) > 1200,
+        '[long-distance computed key with nested bracket fixture] label 与 [actionMap 真实距离必须超过 1200 字符',
+      )
+      assertDistanceGreaterThan(
+        content,
+        '[actionMap',
+        '利润计算说明',
+        1200,
+        'long-distance computed key with nested bracket fixture',
+      )
+      write(root, 'src/App.vue', content)
+    },
+  },
+  {
+    name: "descendant meta label with ancestor [actionMap['onClick']] assignment",
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    meta: {\n      label: '利润快照来源说明',\n    },\n    [actionMap['onClick']]: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'spread profitAction with explanation label',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    ...profitAction,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
     name: 'async submit method shorthand with descendant meta label',
     expectedKeyword: '只读说明文案不得出现在交互入口上下文',
     mutate: (root) => {
