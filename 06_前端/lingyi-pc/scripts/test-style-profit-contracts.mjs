@@ -140,6 +140,12 @@ const readonlyActionsJson = [
     "onClick": goBack,
   },
 ]
+const ACTION_KEY_READ = 'onClick'
+const readonlyRuntimeAccess = { label: '查看详情', onClick: goDetail }
+const readonlyAccessValue = readonlyRuntimeAccess[ACTION_KEY_READ]
+if (readonlyRuntimeAccess[ACTION_KEY_READ]) {
+  void readonlyAccessValue
+}
 </script>
 `,
   )
@@ -1021,6 +1027,114 @@ const failureCases = [
         '查看详情',
         1200,
         'long-distance neutral items dynamic key fixture',
+      )
+      write(root, 'src/App.vue', content)
+    },
+  },
+  {
+    name: 'runtime injection via item[ACTION_KEY] assignment',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst item = { label: '查看详情' }\nitem[ACTION_KEY] = goDetail\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime injection via item[actionMap['onClick']] assignment",
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '查看详情' }\nitem[actionMap['onClick']] = goDetail\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime injection via Object.defineProperty dynamic key',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst item = { label: '查看详情' }\nObject.defineProperty(item, ACTION_KEY, { value: goDetail })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime injection via Reflect.set dynamic key',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst item = { label: '查看详情' }\nReflect.set(item, ACTION_KEY, goDetail)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime injection via Object.defineProperties dynamic key',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst item = { label: '查看详情' }\nObject.defineProperties(item, {\n  [ACTION_KEY]: { value: goDetail },\n})\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime injection via Object.assign dynamic source key',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst item = { label: '查看详情' }\nObject.assign(item, {\n  [ACTION_KEY]: goDetail,\n})\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'vue script setup runtime injection via item[ACTION_KEY] assignment',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotList.vue')
+      const injected = replaceOrThrow(
+        content,
+        '</script>\n',
+        `const ACTION_KEY = 'onClick'\nconst item = { label: '查看详情' }\nitem[ACTION_KEY] = goDetail\n</script>\n`,
+        'list vue script setup runtime dynamic injection',
+      )
+      write(root, 'src/views/style_profit/StyleProfitSnapshotList.vue', injected)
+    },
+  },
+  {
+    name: 'long-distance runtime injection via item[ACTION_KEY] assignment',
+    expectedKeyword: 'style-profit forbids runtime dynamic property injection',
+    mutate: (root) => {
+      const base = read(root, 'src/App.vue')
+      const longFiller = 'x'.repeat(1200)
+      const appended = `\n<script setup lang=\"ts\">\nconst ACTION_KEY = 'onClick'\nconst item = {\n  label: '查看详情',\n  filler: \"${longFiller}\",\n}\nitem[ACTION_KEY] = goDetail\n</script>\n`
+      const content = `${base}${appended}`
+      assertTrue(
+        Math.abs(content.indexOf('item[ACTION_KEY]') - content.indexOf('查看详情')) > 1200,
+        '[long-distance runtime injection fixture] label 与 item[ACTION_KEY] 真实距离必须超过 1200 字符',
+      )
+      assertDistanceGreaterThan(
+        content,
+        'item[ACTION_KEY]',
+        '查看详情',
+        1200,
+        'long-distance runtime injection fixture',
       )
       write(root, 'src/App.vue', content)
     },

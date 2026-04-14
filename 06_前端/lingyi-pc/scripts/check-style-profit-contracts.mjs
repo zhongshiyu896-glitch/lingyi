@@ -494,6 +494,116 @@ const collectDynamicComputedKeyInfos = (objectNode) => {
   return findings
 }
 
+const classifyExpressionKeyNode = (expressionNode) => {
+  if (!expressionNode) {
+    return { keyClass: 'unknown_key', keyText: '', expressionText: '' }
+  }
+
+  if (
+    ts.isStringLiteral(expressionNode) ||
+    ts.isNoSubstitutionTemplateLiteral(expressionNode) ||
+    ts.isNumericLiteral(expressionNode)
+  ) {
+    return {
+      keyClass: 'literal_key',
+      keyText: `${expressionNode.text}`.toLowerCase(),
+      expressionText: expressionNode.getText(),
+    }
+  }
+
+  return {
+    keyClass: 'dynamic_computed_key',
+    keyText: '',
+    expressionText: expressionNode.getText(),
+  }
+}
+
+const runtimeWriteOperatorKinds = new Set([
+  ts.SyntaxKind.EqualsToken,
+  ts.SyntaxKind.PlusEqualsToken,
+  ts.SyntaxKind.MinusEqualsToken,
+  ts.SyntaxKind.AsteriskEqualsToken,
+  ts.SyntaxKind.AsteriskAsteriskEqualsToken,
+  ts.SyntaxKind.SlashEqualsToken,
+  ts.SyntaxKind.PercentEqualsToken,
+  ts.SyntaxKind.LessThanLessThanEqualsToken,
+  ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,
+  ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken,
+  ts.SyntaxKind.AmpersandEqualsToken,
+  ts.SyntaxKind.BarEqualsToken,
+  ts.SyntaxKind.CaretEqualsToken,
+  ts.SyntaxKind.BarBarEqualsToken,
+  ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+  ts.SyntaxKind.QuestionQuestionEqualsToken,
+])
+
+const isRuntimeWriteOperator = (operatorKind) => runtimeWriteOperatorKinds.has(operatorKind)
+
+const isGlobalMemberCall = (node, objectName, methodName) =>
+  ts.isPropertyAccessExpression(node) &&
+  ts.isIdentifier(node.expression) &&
+  node.expression.text === objectName &&
+  node.name.text === methodName
+
+const collectRuntimeDynamicInjectionFindings = (sourceFile) => {
+  const findings = []
+
+  const pushFinding = (type, expressionText) => {
+    findings.push({
+      type,
+      expressionText: normalizeComputedKeyExpr(expressionText || ''),
+    })
+  }
+
+  const visit = (node) => {
+    if (ts.isBinaryExpression(node)) {
+      if (isRuntimeWriteOperator(node.operatorToken.kind) && ts.isElementAccessExpression(node.left)) {
+        const keyInfo = classifyExpressionKeyNode(node.left.argumentExpression || null)
+        if (keyInfo.keyClass !== 'literal_key') {
+          pushFinding('ElementAccessExpression-write', keyInfo.expressionText || node.left.getText(sourceFile))
+        }
+      }
+    } else if (ts.isCallExpression(node)) {
+      const callee = node.expression
+      if (isGlobalMemberCall(callee, 'Object', 'defineProperty')) {
+        const keyExpr = node.arguments[1] || null
+        const keyInfo = classifyExpressionKeyNode(keyExpr)
+        if (keyInfo.keyClass !== 'literal_key') {
+          pushFinding('Object.defineProperty', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
+        }
+      } else if (isGlobalMemberCall(callee, 'Object', 'defineProperties')) {
+        const descriptorArg = node.arguments[1]
+        if (descriptorArg && ts.isObjectLiteralExpression(descriptorArg)) {
+          const dynamicInfos = collectDynamicComputedKeyInfos(descriptorArg)
+          for (const dynamicInfo of dynamicInfos) {
+            pushFinding('Object.defineProperties', dynamicInfo.expressionText || descriptorArg.getText(sourceFile))
+          }
+        }
+      } else if (isGlobalMemberCall(callee, 'Reflect', 'set')) {
+        const keyExpr = node.arguments[1] || null
+        const keyInfo = classifyExpressionKeyNode(keyExpr)
+        if (keyInfo.keyClass !== 'literal_key') {
+          pushFinding('Reflect.set', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
+        }
+      } else if (isGlobalMemberCall(callee, 'Object', 'assign')) {
+        const sourceArgs = node.arguments.slice(1)
+        for (const sourceArg of sourceArgs) {
+          if (!ts.isObjectLiteralExpression(sourceArg)) continue
+          const dynamicInfos = collectDynamicComputedKeyInfos(sourceArg)
+          for (const dynamicInfo of dynamicInfos) {
+            pushFinding('Object.assign', dynamicInfo.expressionText || sourceArg.getText(sourceFile))
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return findings
+}
+
 const hasSpreadRiskInExplanationChain = (chain) => {
   for (const objectNode of chain) {
     for (const member of objectNode.properties) {
@@ -526,6 +636,13 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
           `style-profit forbids dynamic or unknown computed keys in object literals; use explicit literal keys（款式利润前端禁止动态或无法静态确认的计算属性键，请使用显式字面量键）: ${targetPath} -> [${normalizedExpression}]`,
         )
       }
+    }
+
+    const runtimeDynamicFindings = collectRuntimeDynamicInjectionFindings(sourceFile)
+    for (const finding of runtimeDynamicFindings) {
+      failures.push(
+        `style-profit forbids runtime dynamic property injection; use explicit literal keys（款式利润前端禁止运行时动态属性注入，请使用显式字面量键）: ${targetPath} -> ${finding.type} [${finding.expressionText}]`,
+      )
     }
 
     const explanationRanges = collectExplanationRanges(block.content)
