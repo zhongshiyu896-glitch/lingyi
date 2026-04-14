@@ -104,7 +104,7 @@
 - 未提交：`.pytest-postgresql-*.xml`
 
 ## 9. 提交信息
-- commit：`<待回填>`
+- commit：`573ee24`
 - message：`fix: detect computed style profit action keys`
 
 ## 10. 结论
