@@ -112,7 +112,7 @@
 - 未提交：`.pytest-postgresql-*.xml`
 
 ## 9. 提交信息
-- commit：`<待提交后回填>`
+- commit：`2800fe5`
 - message：`fix: parse style profit action keys with typescript ast`
 
 ## 10. 结论
