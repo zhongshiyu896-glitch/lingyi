@@ -570,6 +570,14 @@ const getStaticLiteralText = (node) => {
   return null
 }
 
+const getStaticMemberName = (node) => {
+  const target = unwrapExpression(node)
+  if (!target) return null
+  if (ts.isPropertyAccessExpression(target)) return target.name.text
+  if (ts.isElementAccessExpression(target)) return getStaticLiteralText(target.argumentExpression || null)
+  return null
+}
+
 const classifyRuntimeMethodName = (objectName, methodName) => {
   if (objectName === 'Object' && methodName === 'defineProperty') return 'Object.defineProperty'
   if (objectName === 'Object' && methodName === 'defineProperties') return 'Object.defineProperties'
@@ -585,6 +593,16 @@ const resolveRuntimeNamespaceFromExpression = (expression, runtimeNamespaceAlias
   if (ts.isIdentifier(target)) {
     if (target.text === 'Object' || target.text === 'Reflect') return target.text
     return runtimeNamespaceAliasMap.get(target.text) || null
+  }
+
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const namespaceName = getStaticMemberName(target)
+    if (namespaceName !== 'Object' && namespaceName !== 'Reflect') return null
+    const baseExpr = target.expression
+    const base = unwrapExpression(baseExpr)
+    if (ts.isIdentifier(base) && (base.text === 'globalThis' || base.text === 'window')) {
+      return namespaceName
+    }
   }
 
   return null
@@ -617,21 +635,98 @@ const resolveRuntimeMethodFromExpression = (
     return runtimeMethodAliasMap.get(target.text) || null
   }
 
-  if (ts.isPropertyAccessExpression(target)) {
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const memberName = getStaticMemberName(target)
+    if (!memberName) return null
     const namespaceName = resolveRuntimeNamespaceFromExpression(target.expression, runtimeNamespaceAliasMap)
     if (!namespaceName) return null
-    return classifyRuntimeMethodName(namespaceName, target.name.text)
+    return classifyRuntimeMethodName(namespaceName, memberName)
   }
 
-  if (ts.isElementAccessExpression(target)) {
-    const namespaceName = resolveRuntimeNamespaceFromExpression(target.expression, runtimeNamespaceAliasMap)
-    if (!namespaceName) return null
-    const methodName = getStaticLiteralText(target.argumentExpression || null)
-    if (!methodName) return null
-    return classifyRuntimeMethodName(namespaceName, methodName)
+  if (ts.isCallExpression(target)) {
+    const bindMemberName = getStaticMemberName(target.expression)
+    if (bindMemberName !== 'bind') return null
+    const bindBaseExpr =
+      ts.isPropertyAccessExpression(target.expression) || ts.isElementAccessExpression(target.expression)
+        ? target.expression.expression
+        : null
+    if (!bindBaseExpr) return null
+    return resolveRuntimeMethodFromExpression(bindBaseExpr, runtimeMethodAliasMap, runtimeNamespaceAliasMap)
   }
 
   return null
+}
+
+const resolveRuntimeCallDescriptor = (calleeExpression, runtimeMethodAliasMap = new Map(), runtimeNamespaceAliasMap = new Map()) => {
+  const target = unwrapExpression(calleeExpression)
+  if (!target) return null
+
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const memberName = getStaticMemberName(target)
+    if (memberName === 'call' || memberName === 'apply') {
+      const baseMethod = resolveRuntimeMethodFromExpression(
+        target.expression,
+        runtimeMethodAliasMap,
+        runtimeNamespaceAliasMap,
+      )
+      if (baseMethod) {
+        return { method: baseMethod, invoke: memberName }
+      }
+    }
+  }
+
+  const directMethod = resolveRuntimeMethodFromExpression(target, runtimeMethodAliasMap, runtimeNamespaceAliasMap)
+  if (directMethod) {
+    return { method: directMethod, invoke: 'direct' }
+  }
+  return null
+}
+
+const normalizeRuntimeCallArguments = (callNode, callDescriptor) => {
+  const args = Array.from(callNode.arguments)
+  if (callDescriptor.invoke === 'direct') {
+    return { unresolved: false, args }
+  }
+  if (callDescriptor.invoke === 'call') {
+    return { unresolved: false, args: args.slice(1) }
+  }
+  if (callDescriptor.invoke === 'apply') {
+    if (args.length < 2) return { unresolved: true, args: [] }
+    const applyArg = unwrapExpression(args[1])
+    if (!ts.isArrayLiteralExpression(applyArg)) {
+      return { unresolved: true, args: [] }
+    }
+    const normalized = []
+    for (const element of applyArg.elements) {
+      if (ts.isSpreadElement(element) || ts.isOmittedExpression(element)) {
+        return { unresolved: true, args: [] }
+      }
+      normalized.push(element)
+    }
+    return { unresolved: false, args: normalized }
+  }
+  return { unresolved: true, args: [] }
+}
+
+const extractObjectDestructureRuntimeAliases = (leftNode, namespaceName) => {
+  const aliases = []
+  const left = unwrapExpression(leftNode)
+  if (!ts.isObjectLiteralExpression(left)) return aliases
+
+  for (const prop of left.properties) {
+    if (ts.isShorthandPropertyAssignment(prop)) {
+      const sourceKey = prop.name.text
+      aliases.push({ localName: sourceKey, sourceKey })
+      continue
+    }
+    if (!ts.isPropertyAssignment(prop)) continue
+    const sourceKey = getStaticMemberName(prop.name) || (ts.isIdentifier(prop.name) ? prop.name.text : null)
+    if (!sourceKey) continue
+    const initializer = unwrapExpression(prop.initializer)
+    if (!ts.isIdentifier(initializer)) continue
+    aliases.push({ localName: initializer.text, sourceKey })
+  }
+  return aliases
 }
 
 const collectRuntimeAnalysisContext = (sourceFile) => {
@@ -680,27 +775,42 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           }
         }
       }
-    } else if (
-      ts.isBinaryExpression(node) &&
-      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-      ts.isIdentifier(node.left)
-    ) {
-      const targetName = node.left.text
+    } else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
       const rhs = unwrapExpression(node.right)
-      const namespaceName = resolveRuntimeNamespaceFromExpression(rhs, runtimeNamespaceAliasMap)
-      if (namespaceName) {
-        runtimeNamespaceAliasMap.set(targetName, namespaceName)
-      }
+      const leftExpr = unwrapExpression(node.left)
 
-      if (ts.isObjectLiteralExpression(rhs)) {
-        objectLiteralVariableMap.set(targetName, rhs)
-      } else if (ts.isIdentifier(rhs) && objectLiteralVariableMap.has(rhs.text)) {
-        objectLiteralVariableMap.set(targetName, objectLiteralVariableMap.get(rhs.text))
-      }
+      if (ts.isIdentifier(leftExpr)) {
+        const targetName = leftExpr.text
+        const namespaceName = resolveRuntimeNamespaceFromExpression(rhs, runtimeNamespaceAliasMap)
+        if (namespaceName) {
+          runtimeNamespaceAliasMap.set(targetName, namespaceName)
+        }
 
-      const runtimeMethod = resolveRuntimeMethodFromExpression(rhs, runtimeMethodAliasMap, runtimeNamespaceAliasMap)
-      if (runtimeMethod) {
-        runtimeMethodAliasMap.set(targetName, runtimeMethod)
+        if (ts.isObjectLiteralExpression(rhs)) {
+          objectLiteralVariableMap.set(targetName, rhs)
+        } else if (ts.isIdentifier(rhs) && objectLiteralVariableMap.has(rhs.text)) {
+          objectLiteralVariableMap.set(targetName, objectLiteralVariableMap.get(rhs.text))
+        }
+
+        const runtimeMethod = resolveRuntimeMethodFromExpression(
+          rhs,
+          runtimeMethodAliasMap,
+          runtimeNamespaceAliasMap,
+        )
+        if (runtimeMethod) {
+          runtimeMethodAliasMap.set(targetName, runtimeMethod)
+        }
+      } else {
+        const namespaceName = resolveRuntimeNamespaceFromExpression(rhs, runtimeNamespaceAliasMap)
+        if (namespaceName) {
+          const aliases = extractObjectDestructureRuntimeAliases(leftExpr, namespaceName)
+          for (const alias of aliases) {
+            const runtimeMethod = classifyRuntimeMethodName(namespaceName, alias.sourceKey)
+            if (runtimeMethod) {
+              runtimeMethodAliasMap.set(alias.localName, runtimeMethod)
+            }
+          }
+        }
       }
     }
 
@@ -790,19 +900,31 @@ const collectRuntimeDynamicInjectionFindings = (sourceFile, runtimeContext) => {
         }
       }
     } else if (ts.isCallExpression(node)) {
-      const calleeType = resolveRuntimeMethodFromExpression(
+      const callDescriptor = resolveRuntimeCallDescriptor(
         node.expression,
         runtimeContext.runtimeMethodAliasMap,
         runtimeContext.runtimeNamespaceAliasMap,
       )
-      if (calleeType === 'Object.defineProperty') {
-        const keyExpr = node.arguments[1] || null
+      if (!callDescriptor) {
+        ts.forEachChild(node, visit)
+        return
+      }
+      const normalizedCall = normalizeRuntimeCallArguments(node, callDescriptor)
+
+      if (callDescriptor.invoke === 'apply' && normalizedCall.unresolved) {
+        pushFinding(`${callDescriptor.method}.apply`, node.getText(sourceFile))
+        ts.forEachChild(node, visit)
+        return
+      }
+
+      if (callDescriptor.method === 'Object.defineProperty') {
+        const keyExpr = normalizedCall.args[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
         if (keyInfo.keyClass !== 'literal_key') {
           pushFinding('Object.defineProperty', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
         }
-      } else if (calleeType === 'Object.defineProperties') {
-        const descriptorArg = node.arguments[1]
+      } else if (callDescriptor.method === 'Object.defineProperties') {
+        const descriptorArg = normalizedCall.args[1]
         if (descriptorArg && ts.isObjectLiteralExpression(descriptorArg)) {
           const analysis = analyzeRuntimeObjectLiteralMembers(descriptorArg)
           for (const dynamicInfo of analysis.dynamicInfos) {
@@ -814,14 +936,14 @@ const collectRuntimeDynamicInjectionFindings = (sourceFile, runtimeContext) => {
         } else if (descriptorArg) {
           pushFinding('Object.defineProperties', descriptorArg.getText(sourceFile))
         }
-      } else if (calleeType === 'Reflect.set') {
-        const keyExpr = node.arguments[1] || null
+      } else if (callDescriptor.method === 'Reflect.set') {
+        const keyExpr = normalizedCall.args[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
         if (keyInfo.keyClass !== 'literal_key') {
           pushFinding('Reflect.set', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
         }
-      } else if (calleeType === 'Object.assign') {
-        const sourceArgs = node.arguments.slice(1)
+      } else if (callDescriptor.method === 'Object.assign') {
+        const sourceArgs = normalizedCall.args.slice(1)
         for (const sourceArg of sourceArgs) {
           const analysis = resolveAssignSourceAnalysis(sourceArg, sourceFile, runtimeContext)
           for (const dynamicInfo of analysis.dynamicInfos) {
@@ -885,19 +1007,31 @@ const collectRuntimeExplicitActionInjectionFindings = (sourceFile, runtimeContex
         }
       }
     } else if (ts.isCallExpression(node)) {
-      const calleeType = resolveRuntimeMethodFromExpression(
+      const callDescriptor = resolveRuntimeCallDescriptor(
         node.expression,
         runtimeContext.runtimeMethodAliasMap,
         runtimeContext.runtimeNamespaceAliasMap,
       )
-      if (calleeType === 'Object.defineProperty') {
-        const keyExpr = node.arguments[1] || null
+      if (!callDescriptor) {
+        ts.forEachChild(node, visit)
+        return
+      }
+      const normalizedCall = normalizeRuntimeCallArguments(node, callDescriptor)
+
+      if (callDescriptor.invoke === 'apply' && normalizedCall.unresolved) {
+        pushFinding(`${callDescriptor.method}.apply-explicit-action`, node.getText(sourceFile))
+        ts.forEachChild(node, visit)
+        return
+      }
+
+      if (callDescriptor.method === 'Object.defineProperty') {
+        const keyExpr = normalizedCall.args[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
         if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
           pushFinding('Object.defineProperty-explicit-action', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
         }
-      } else if (calleeType === 'Object.defineProperties') {
-        const descriptorArg = node.arguments[1]
+      } else if (callDescriptor.method === 'Object.defineProperties') {
+        const descriptorArg = normalizedCall.args[1]
         const resolvedDescriptor = ts.isObjectLiteralExpression(descriptorArg)
           ? descriptorArg
           : ts.isIdentifier(descriptorArg)
@@ -909,14 +1043,14 @@ const collectRuntimeExplicitActionInjectionFindings = (sourceFile, runtimeContex
             pushFinding('Object.defineProperties-explicit-action', keyInfo.expressionText || resolvedDescriptor.getText(sourceFile))
           }
         }
-      } else if (calleeType === 'Reflect.set') {
-        const keyExpr = node.arguments[1] || null
+      } else if (callDescriptor.method === 'Reflect.set') {
+        const keyExpr = normalizedCall.args[1] || null
         const keyInfo = classifyExpressionKeyNode(keyExpr)
         if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
           pushFinding('Reflect.set-explicit-action', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
         }
-      } else if (calleeType === 'Object.assign') {
-        const sourceArgs = node.arguments.slice(1)
+      } else if (callDescriptor.method === 'Object.assign') {
+        const sourceArgs = normalizedCall.args.slice(1)
         for (const sourceArg of sourceArgs) {
           const analysis = resolveAssignSourceAnalysis(sourceArg, sourceFile, runtimeContext)
           for (const keyInfo of analysis.explicitActionInfos) {
