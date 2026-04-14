@@ -146,6 +146,9 @@ const readonlyAccessValue = readonlyRuntimeAccess[ACTION_KEY_READ]
 if (readonlyRuntimeAccess[ACTION_KEY_READ]) {
   void readonlyAccessValue
 }
+const readonlyUiState = { disabled: false }
+readonlyUiState.disabled = true
+Object.assign(readonlyUiState, { disabled: true })
 </script>
 `,
   )
@@ -1135,6 +1138,126 @@ const failureCases = [
         '查看详情',
         1200,
         'long-distance runtime injection fixture',
+      )
+      write(root, 'src/App.vue', content)
+    },
+  },
+  {
+    name: "runtime explicit action key injection via item['onClick'] assignment",
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nitem['onClick'] = openHelp\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via item.onClick assignment',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nitem.onClick = openHelp\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via Object.defineProperty literal key',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject.defineProperty(item, 'onClick', { value: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via Object.assign literal key',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject.assign(item, { onClick: openHelp })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via Reflect.set literal key',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nReflect.set(item, 'onClick', openHelp)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime explicit action key injection via Object.defineProperties literal key',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '利润计算说明' }\nObject.defineProperties(item, {\n  onClick: { value: openHelp },\n})\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime explicit action key injection with readonly label '查看详情'",
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst item = { label: '查看详情' }\nitem['onClick'] = goDetail\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'vue script setup runtime explicit action key injection via Object.assign',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotList.vue')
+      const injected = replaceOrThrow(
+        content,
+        '</script>\n',
+        `const item = { label: '利润计算说明' }\nObject.assign(item, { onClick: openHelp })\n</script>\n`,
+        'list vue script setup explicit runtime action injection',
+      )
+      write(root, 'src/views/style_profit/StyleProfitSnapshotList.vue', injected)
+    },
+  },
+  {
+    name: 'long-distance runtime explicit action key injection via Object.defineProperty',
+    expectedKeyword: 'style-profit forbids runtime explicit action-key injection',
+    mutate: (root) => {
+      const base = read(root, 'src/App.vue')
+      const longFiller = 'x'.repeat(1200)
+      const appended = `\n<script setup lang=\"ts\">\nconst item = {\n  label: '利润计算说明',\n  filler: \"${longFiller}\",\n}\nObject.defineProperty(item, 'onClick', { value: openHelp })\n</script>\n`
+      const content = `${base}${appended}`
+      assertTrue(
+        Math.abs(content.indexOf("Object.defineProperty") - content.indexOf('利润计算说明')) > 1200,
+        '[long-distance runtime explicit action injection fixture] label 与 Object.defineProperty 真实距离必须超过 1200 字符',
+      )
+      assertDistanceGreaterThan(
+        content,
+        'Object.defineProperty',
+        '利润计算说明',
+        1200,
+        'long-distance runtime explicit action injection fixture',
       )
       write(root, 'src/App.vue', content)
     },

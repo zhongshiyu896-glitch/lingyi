@@ -137,7 +137,21 @@ const interactiveTagPairs = [
   },
 ]
 
-const actionInteractiveKeys = ['onClick', 'handler', 'action', 'command', 'onSelect', 'onCommand', 'callback', 'execute', 'submit']
+const actionInteractiveKeys = [
+  'onClick',
+  'handler',
+  'action',
+  'command',
+  'onSelect',
+  'onCommand',
+  'callback',
+  'execute',
+  'submit',
+  'onConfirm',
+  'onSubmit',
+  'click',
+  'open',
+]
 const actionInteractiveKeySet = new Set(actionInteractiveKeys.map((value) => value.toLowerCase()))
 const explanationFieldNameSet = new Set(['label', 'title', 'text', 'name', 'tooltip', 'description'])
 const dottedExplanationFieldNameSet = new Set(['meta.label', 'meta.title', 'props.label', 'extra.label', 'payload.label'])
@@ -604,6 +618,94 @@ const collectRuntimeDynamicInjectionFindings = (sourceFile) => {
   return findings
 }
 
+const classifyMemberNameForRuntime = (member) => {
+  if (ts.isSpreadAssignment(member)) {
+    return { keyClass: 'unknown_key', keyText: '', expressionText: member.expression.getText() }
+  }
+
+  if (ts.isShorthandPropertyAssignment(member)) {
+    return {
+      keyClass: 'literal_key',
+      keyText: member.name.text.toLowerCase(),
+      expressionText: member.name.text,
+    }
+  }
+
+  if ('name' in member && member.name) {
+    return classifyPropertyNameNode(member.name)
+  }
+
+  return { keyClass: 'unknown_key', keyText: '', expressionText: '' }
+}
+
+const collectRuntimeExplicitActionInjectionFindings = (sourceFile) => {
+  const findings = []
+
+  const pushFinding = (type, expressionText) => {
+    findings.push({
+      type,
+      expressionText: normalizeComputedKeyExpr(expressionText || ''),
+    })
+  }
+
+  const visit = (node) => {
+    if (ts.isBinaryExpression(node) && isRuntimeWriteOperator(node.operatorToken.kind)) {
+      if (ts.isElementAccessExpression(node.left)) {
+        const keyInfo = classifyExpressionKeyNode(node.left.argumentExpression || null)
+        if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
+          pushFinding('ElementAccessExpression-explicit-action-write', keyInfo.expressionText || node.left.getText(sourceFile))
+        }
+      } else if (ts.isPropertyAccessExpression(node.left)) {
+        const keyText = node.left.name.text.toLowerCase()
+        if (actionInteractiveKeySet.has(keyText)) {
+          pushFinding('PropertyAccessExpression-explicit-action-write', node.left.getText(sourceFile))
+        }
+      }
+    } else if (ts.isCallExpression(node)) {
+      const callee = node.expression
+      if (isGlobalMemberCall(callee, 'Object', 'defineProperty')) {
+        const keyExpr = node.arguments[1] || null
+        const keyInfo = classifyExpressionKeyNode(keyExpr)
+        if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
+          pushFinding('Object.defineProperty-explicit-action', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
+        }
+      } else if (isGlobalMemberCall(callee, 'Object', 'defineProperties')) {
+        const descriptorArg = node.arguments[1]
+        if (descriptorArg && ts.isObjectLiteralExpression(descriptorArg)) {
+          for (const member of descriptorArg.properties) {
+            const keyInfo = classifyMemberNameForRuntime(member)
+            if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
+              pushFinding('Object.defineProperties-explicit-action', keyInfo.expressionText || descriptorArg.getText(sourceFile))
+            }
+          }
+        }
+      } else if (isGlobalMemberCall(callee, 'Reflect', 'set')) {
+        const keyExpr = node.arguments[1] || null
+        const keyInfo = classifyExpressionKeyNode(keyExpr)
+        if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
+          pushFinding('Reflect.set-explicit-action', keyInfo.expressionText || keyExpr?.getText(sourceFile) || '')
+        }
+      } else if (isGlobalMemberCall(callee, 'Object', 'assign')) {
+        const sourceArgs = node.arguments.slice(1)
+        for (const sourceArg of sourceArgs) {
+          if (!ts.isObjectLiteralExpression(sourceArg)) continue
+          for (const member of sourceArg.properties) {
+            const keyInfo = classifyMemberNameForRuntime(member)
+            if (keyInfo.keyClass === 'literal_key' && actionInteractiveKeySet.has(keyInfo.keyText)) {
+              pushFinding('Object.assign-explicit-action', keyInfo.expressionText || sourceArg.getText(sourceFile))
+            }
+          }
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return findings
+}
+
 const hasSpreadRiskInExplanationChain = (chain) => {
   for (const objectNode of chain) {
     for (const member of objectNode.properties) {
@@ -642,6 +744,13 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
     for (const finding of runtimeDynamicFindings) {
       failures.push(
         `style-profit forbids runtime dynamic property injection; use explicit literal keys（款式利润前端禁止运行时动态属性注入，请使用显式字面量键）: ${targetPath} -> ${finding.type} [${finding.expressionText}]`,
+      )
+    }
+
+    const runtimeExplicitActionFindings = collectRuntimeExplicitActionInjectionFindings(sourceFile)
+    for (const finding of runtimeExplicitActionFindings) {
+      failures.push(
+        `style-profit forbids runtime explicit action-key injection; use object-literal readonly actions only（款式利润前端禁止运行时显式 action key 注入）: ${targetPath} -> ${finding.type} [${finding.expressionText}]`,
       )
     }
 
