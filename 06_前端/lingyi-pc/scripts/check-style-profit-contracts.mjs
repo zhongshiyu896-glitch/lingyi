@@ -1721,6 +1721,167 @@ const analyzeTimerFirstArgument = (firstArg, runtimeContext) => {
   }
 }
 
+const dynamicImportAllowedLocalPrefixes = ['@/', './', '../']
+const isSafeStaticDynamicImportPath = (value) => {
+  const text = `${value || ''}`.trim()
+  if (!text) return false
+  return dynamicImportAllowedLocalPrefixes.some((prefix) => text.startsWith(prefix))
+}
+
+const classifyDynamicImportSourceArgument = (sourceArg) => {
+  if (!sourceArg) {
+    return {
+      blocked: true,
+      type: 'RuntimeDynamicImportMissingSource',
+      expressionText: '',
+    }
+  }
+  const staticValue = resolveStaticStringValue(sourceArg)
+  if (staticValue !== null) {
+    const trimmed = `${staticValue}`.trim()
+    const normalized = trimmed.toLowerCase()
+    if (/^[a-z][a-z0-9+.-]*:/.test(normalized) || normalized.startsWith('//')) {
+      return {
+        blocked: true,
+        type: 'RuntimeDynamicImportForbiddenProtocol',
+        expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
+      }
+    }
+    if (!isSafeStaticDynamicImportPath(trimmed)) {
+      return {
+        blocked: true,
+        type: 'RuntimeDynamicImportNonLocalLiteral',
+        expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
+      }
+    }
+    return { blocked: false }
+  }
+  return {
+    blocked: true,
+    type: 'RuntimeDynamicImportUnresolvedSource',
+    expressionText: sourceArg.getText ? sourceArg.getText() : '',
+  }
+}
+
+const isImportExpressionCall = (callNode) => {
+  const callee = unwrapExpression(callNode.expression)
+  if (!callee) return false
+  return callee.kind === ts.SyntaxKind.ImportKeyword
+}
+
+const resolveGlobalMemberNamespace = (expression, memberName) => {
+  const target = unwrapExpression(expression)
+  if (!target) return null
+  if (ts.isIdentifier(target) && target.text === memberName) return memberName
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const currentMemberName = getStaticMemberName(target)
+    const baseExpr = unwrapExpression(target.expression)
+    if (
+      currentMemberName === memberName &&
+      ts.isIdentifier(baseExpr) &&
+      (baseExpr.text === 'window' || baseExpr.text === 'globalThis')
+    ) {
+      return `${baseExpr.text}.${memberName}`
+    }
+  }
+  return null
+}
+
+const isUrlCreateObjectUrlCall = (callNode) => {
+  const callee = unwrapExpression(callNode.expression)
+  if (!callee) return false
+  if (!(ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) return false
+  if (getStaticMemberName(callee) !== 'createObjectURL') return false
+  return Boolean(resolveGlobalMemberNamespace(callee.expression, 'URL'))
+}
+
+const isWorkerConstructorExpression = (expression) => Boolean(resolveGlobalMemberNamespace(expression, 'Worker'))
+
+const isSrcAssignmentLeft = (leftExpression) => {
+  const left = unwrapExpression(leftExpression)
+  if (!left) return false
+  if (!(ts.isPropertyAccessExpression(left) || ts.isElementAccessExpression(left))) return false
+  return getStaticMemberName(left) === 'src'
+}
+
+const collectRuntimeDynamicModuleLoadingFindings = (sourceFile) => {
+  const findings = []
+  const seen = new Set()
+  const blobUrlIdentifierSet = new Set()
+
+  const pushFinding = (type, expressionText) => {
+    const normalized = normalizeComputedKeyExpr(expressionText || '')
+    const dedupeKey = `${type}|${normalized}`
+    if (seen.has(dedupeKey)) return
+    seen.add(dedupeKey)
+    findings.push({ type, expressionText: normalized })
+  }
+
+  const isBlobUrlSourceExpression = (expression) => {
+    const target = unwrapExpression(expression)
+    if (!target) return false
+    if (ts.isIdentifier(target) && blobUrlIdentifierSet.has(target.text)) return true
+    if (ts.isCallExpression(target) && isUrlCreateObjectUrlCall(target)) return true
+    return false
+  }
+
+  const collectBlobUrlIdentifiers = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const initializer = unwrapExpression(node.initializer)
+      if (ts.isCallExpression(initializer) && isUrlCreateObjectUrlCall(initializer)) {
+        blobUrlIdentifierSet.add(node.name.text)
+      }
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      isRuntimeWriteOperator(node.operatorToken.kind) &&
+      ts.isIdentifier(unwrapExpression(node.left))
+    ) {
+      const target = unwrapExpression(node.right)
+      const leftIdentifier = unwrapExpression(node.left)
+      if (ts.isIdentifier(leftIdentifier) && ts.isCallExpression(target) && isUrlCreateObjectUrlCall(target)) {
+        blobUrlIdentifierSet.add(leftIdentifier.text)
+      }
+    }
+    ts.forEachChild(node, collectBlobUrlIdentifiers)
+  }
+
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      if (isImportExpressionCall(node)) {
+        const importArgCheck = classifyDynamicImportSourceArgument(node.arguments[0] || null)
+        if (importArgCheck.blocked) {
+          pushFinding(importArgCheck.type, importArgCheck.expressionText || node.getText(sourceFile))
+        }
+      }
+      if (isUrlCreateObjectUrlCall(node)) {
+        pushFinding('RuntimeBlobUrlCreateObjectURL', node.getText(sourceFile))
+      }
+    }
+
+    if (ts.isNewExpression(node)) {
+      if (isWorkerConstructorExpression(node.expression)) {
+        const firstArg = node.arguments?.[0] || null
+        if (firstArg && isBlobUrlSourceExpression(firstArg)) {
+          pushFinding('RuntimeWorkerBlobUrlLoad', node.getText(sourceFile))
+        }
+      }
+    }
+
+    if (ts.isBinaryExpression(node) && isRuntimeWriteOperator(node.operatorToken.kind) && isSrcAssignmentLeft(node.left)) {
+      if (isBlobUrlSourceExpression(node.right)) {
+        pushFinding('RuntimeScriptBlobUrlLoad', node.getText(sourceFile))
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  collectBlobUrlIdentifiers(sourceFile)
+  visit(sourceFile)
+  return findings
+}
+
 const collectRuntimeCodegenTimerCallFindings = (sourceFile, runtimeContext) => {
   const findings = []
   const seen = new Set()
@@ -2017,6 +2178,7 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
   const failures = []
   const mutatorSourceFailureSeen = new Set()
   const codegenSourceFailureSeen = new Set()
+  const dynamicModuleFailureSeen = new Set()
   const pushMutatorSourceFailure = (type, expressionText) => {
     const normalized = normalizeComputedKeyExpr(expressionText || '')
     const dedupeKey = `${type}|${normalized}`
@@ -2033,6 +2195,15 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
     codegenSourceFailureSeen.add(dedupeKey)
     failures.push(
       `style-profit forbids runtime code generation entry points; use static readonly helpers（款式利润前端禁止运行时代码生成入口）: ${targetPath} -> ${type} [${normalized}]`,
+    )
+  }
+  const pushDynamicModuleFailure = (type, expressionText) => {
+    const normalized = normalizeComputedKeyExpr(expressionText || '')
+    const dedupeKey = `${type}|${normalized}`
+    if (dynamicModuleFailureSeen.has(dedupeKey)) return
+    dynamicModuleFailureSeen.add(dedupeKey)
+    failures.push(
+      `style-profit forbids dynamic module loading entry points; use static local import literals only（款式利润前端禁止动态模块加载入口）: ${targetPath} -> ${type} [${normalized}]`,
     )
   }
 
@@ -2077,6 +2248,10 @@ const analyzeStyleProfitAstContracts = (targetPath, content) => {
     const runtimeTimerCallFindings = collectRuntimeCodegenTimerCallFindings(sourceFile, runtimeContext)
     for (const finding of runtimeTimerCallFindings) {
       pushCodegenSourceFailure(finding.type, finding.expressionText)
+    }
+    const runtimeDynamicModuleFindings = collectRuntimeDynamicModuleLoadingFindings(sourceFile)
+    for (const finding of runtimeDynamicModuleFindings) {
+      pushDynamicModuleFailure(finding.type, finding.expressionText)
     }
 
     const runtimeDynamicFindings = collectRuntimeDynamicInjectionFindings(sourceFile, runtimeContext)
