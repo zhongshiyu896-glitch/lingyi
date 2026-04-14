@@ -94,7 +94,7 @@
 - 未提交：`.pytest-postgresql-*.xml`
 
 ## 10. 提交信息
-- commit：`<待回填>`
+- commit：`db05e29`
 - message：`fix: forbid dynamic style profit action keys`
 
 ## 11. 结论
