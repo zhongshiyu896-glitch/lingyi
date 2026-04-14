@@ -115,31 +115,57 @@ const readonlyExplanationPhrases = [
   '未解析来源处理说明',
 ]
 
-const interactiveContextRegexes = [
-  /<\s*el-button\b/i,
-  /<\s*button\b/i,
-  /<\s*el-menu-item\b/i,
-  /<\s*menu-item\b/i,
-  /@click\b/i,
-  /\bonClick\b/i,
-  /\brouter\.push\b/i,
-  /\bpath\s*:/i,
-  /\bname\s*:/i,
-  /\bfunction\s+[A-Za-z_]\w*/i,
-  /\bconst\s+[A-Za-z_]\w*\s*=/i,
-  /\blet\s+[A-Za-z_]\w*\s*=/i,
-  /\bvar\s+[A-Za-z_]\w*\s*=/i,
+const interactiveContextWindowRegexes = [/@click\b/i, /\bonClick\b/i, /\brouter\.push\b/i, /\bpath\s*:/i, /\bname\s*:/i]
+
+const interactiveTagPairs = [
+  {
+    open: /<\s*el-button\b[^>]*>/gi,
+    close: /<\s*\/\s*el-button\s*>/gi,
+  },
+  {
+    open: /<\s*button\b[^>]*>/gi,
+    close: /<\s*\/\s*button\s*>/gi,
+  },
+  {
+    open: /<\s*el-menu-item\b[^>]*>/gi,
+    close: /<\s*\/\s*el-menu-item\s*>/gi,
+  },
+  {
+    open: /<\s*menu-item\b[^>]*>/gi,
+    close: /<\s*\/\s*menu-item\s*>/gi,
+  },
 ]
 
-const findLineContext = (content, index) => {
-  const lineStart = content.lastIndexOf('\n', index)
-  const lineEnd = content.indexOf('\n', index)
-  const start = lineStart === -1 ? 0 : lineStart + 1
-  const end = lineEnd === -1 ? content.length : lineEnd
+const getContextWindow = (content, index, matchLength, radius = 300) => {
+  const start = Math.max(0, index - radius)
+  const end = Math.min(content.length, index + matchLength + radius)
   return content.slice(start, end)
 }
 
-const isInteractiveContext = (lineText) => interactiveContextRegexes.some((regex) => regex.test(lineText))
+const matchCount = (content, regex) => {
+  const cloned = new RegExp(regex.source, regex.flags)
+  const matches = content.match(cloned)
+  return matches ? matches.length : 0
+}
+
+const isInsideUnclosedInteractiveTag = (content, index) => {
+  const prefix = content.slice(0, index)
+  return interactiveTagPairs.some((pair) => matchCount(prefix, pair.open) > matchCount(prefix, pair.close))
+}
+
+const hasInteractiveContextInWindow = (content, index, matchLength) => {
+  const window = getContextWindow(content, index, matchLength)
+  return interactiveContextWindowRegexes.some((regex) => regex.test(window))
+}
+
+const hasIdentifierContextForPhrase = (content, phrase) => {
+  const escaped = escapeRegex(phrase)
+  const identifierRegexes = [
+    new RegExp(`\\bfunction\\s+[^\\s(]*${escaped}[^\\s(]*`, 'i'),
+    new RegExp(`\\b(const|let|var)\\s+[^=\\n]*${escaped}[^=\\n]*=`, 'i'),
+  ]
+  return identifierRegexes.some((regex) => regex.test(content))
+}
 
 const collectExplanationRanges = (content) => {
   const ranges = []
@@ -161,8 +187,9 @@ const shouldAllowReadonlyExplanation = (content, matchIndex, matchLength, ranges
   const end = matchIndex + matchLength
   const explanationRange = matchExplanationRange(ranges, start, end)
   if (!explanationRange) return false
-  const line = findLineContext(content, matchIndex)
-  if (isInteractiveContext(line)) return false
+  if (isInsideUnclosedInteractiveTag(content, start)) return false
+  if (hasInteractiveContextInWindow(content, start, matchLength)) return false
+  if (hasIdentifierContextForPhrase(content, explanationRange.phrase)) return false
   return true
 }
 
@@ -269,8 +296,11 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
     semanticWriteEntryRegex.lastIndex = 0
 
     for (const range of explanationRanges) {
-      const line = findLineContext(content, range.start)
-      if (isInteractiveContext(line)) {
+      if (
+        isInsideUnclosedInteractiveTag(content, range.start) ||
+        hasInteractiveContextInWindow(content, range.start, range.end - range.start) ||
+        hasIdentifierContextForPhrase(content, range.phrase)
+      ) {
         fail(`只读说明文案不得出现在交互入口上下文: ${targetPath} -> ${range.phrase}`)
         break
       }

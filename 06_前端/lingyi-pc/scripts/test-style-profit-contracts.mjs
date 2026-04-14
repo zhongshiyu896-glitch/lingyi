@@ -109,6 +109,8 @@ const tip = 'company 与 item_code 不能为空'
   <p>利润快照来源说明</p>
   <p>利润金额展示规则</p>
   <p>未解析来源处理说明</p>
+  <section>利润快照来源说明</section>
+  <el-alert title="实际成本计算口径说明" />
 </template>
 <script setup lang="ts">
 const canRead = { value: true }
@@ -334,6 +336,58 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<template><el-menu-item @click=\"openHelp\">利润快照来源说明</el-menu-item></template>\n`,
+      )
+    },
+  },
+  {
+    name: 'multiline el-button contains 利润计算说明',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><el-button>\n  利润计算说明\n</el-button></template>\n`)
+    },
+  },
+  {
+    name: 'multiline button contains 利润率计算规则',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><button>\n  利润率计算规则\n</button></template>\n`)
+    },
+  },
+  {
+    name: 'multiline el-menu-item click contains 利润快照来源说明',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<template><el-menu-item @click=\"openHelp\">\n  利润快照来源说明\n</el-menu-item></template>\n`,
+      )
+    },
+  },
+  {
+    name: 'multiline action config contains 利润计算说明 with onClick',
+    expectedKeyword: '只读说明文案不得出现在交互入口上下文',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst actions = [\n  {\n    label: '利润计算说明',\n    onClick: openHelp,\n  },\n]\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'multiline route config has /reports/style-profit/calculate',
+    expectedKeyword: '禁止前端出现款式利润写入口路由',
+    mutate: (root) => {
+      const content = read(root, 'src/router/index.ts')
+      write(
+        root,
+        'src/router/index.ts',
+        `${content}\n{\n  path: '/reports/style-profit/calculate',\n  name: 'ProfitCalculationHelp',\n}\n`,
       )
     },
   },
