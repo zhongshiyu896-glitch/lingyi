@@ -10,6 +10,8 @@ const normalizePath = (targetPath) => targetPath.replace(/\\/g, '/')
 
 const read = (targetPath) => readFileSync(targetPath, 'utf8')
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 const collectFiles = (dirPath) => {
   if (!existsSync(dirPath)) return []
   const files = []
@@ -52,6 +54,59 @@ const isStyleProfitSurface = (targetPath, content, projectRoot) => {
   if (normalized.startsWith('src/components/')) return true
   if (/(style-profit|style_profit)/i.test(content)) return true
   return false
+}
+
+const readonlyPhrases = [
+  '款式利润报表',
+  '利润快照列表',
+  '利润快照详情',
+  '查看详情',
+  '查询',
+  '筛选',
+  '搜索',
+  '返回',
+  '审计信息',
+  '利润明细',
+  '来源追溯',
+  '利润率',
+  '利润金额',
+]
+
+const semanticDomainWords = ['款式利润', '利润快照', '利润报表', '毛利', '净利', '利润核算', '利润']
+const semanticWriteActions = ['新建', '创建', '生成', '重算', '重新计算', '计算', '核算', '提交', '保存', '一键生成']
+
+const domainAlternation = semanticDomainWords.map(escapeRegex).join('|')
+const actionAlternation = semanticWriteActions.map(escapeRegex).join('|')
+const semanticWriteEntryRegex = new RegExp(
+  `(${domainAlternation}).{0,16}(${actionAlternation})|(${actionAlternation}).{0,16}(${domainAlternation})`,
+  'g',
+)
+
+const semanticIdentifierRegexes = [
+  /\bcreateProfit\b/gi,
+  /\bgenerateProfit\b/gi,
+  /\brecalculateProfit\b/gi,
+  /\bcreateSnapshot\b/gi,
+  /\bgenerateSnapshot\b/gi,
+  /\brecalculateSnapshot\b/gi,
+  /\bprofitCreate\b/gi,
+  /\bprofitGenerate\b/gi,
+  /\bprofitRecalculate\b/gi,
+  /\bgenerateProfitSnapshot\b/gi,
+  /\bopenProfitCalculateDialog\b/gi,
+]
+
+const semanticRouteRegexes = [
+  /path\s*:\s*['"]\/reports\/style-profit\/create['"]/gi,
+  /path\s*:\s*['"]\/reports\/style-profit\/new['"]/gi,
+  /path\s*:\s*['"]\/reports\/style-profit\/generate['"]/gi,
+  /path\s*:\s*['"]\/reports\/style-profit\/recalculate['"]/gi,
+  /path\s*:\s*['"]\/reports\/style-profit\/calculate['"]/gi,
+]
+
+const shouldIgnoreSemanticMatch = (content, matchIndex, matchLength) => {
+  const segment = content.slice(matchIndex, matchIndex + matchLength)
+  return readonlyPhrases.some((phrase) => segment.includes(phrase))
 }
 
 export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot) => {
@@ -141,6 +196,32 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
         fail(`${rule.message}: ${targetPath}`)
       }
       rule.regex.lastIndex = 0
+    }
+
+    let semanticMatch = semanticWriteEntryRegex.exec(content)
+    while (semanticMatch) {
+      const matched = semanticMatch[0]
+      const index = semanticMatch.index ?? 0
+      if (!shouldIgnoreSemanticMatch(content, index, matched.length)) {
+        fail(`禁止前端出现款式利润中文泛化写入口语义: ${targetPath} -> ${matched}`)
+        break
+      }
+      semanticMatch = semanticWriteEntryRegex.exec(content)
+    }
+    semanticWriteEntryRegex.lastIndex = 0
+
+    for (const rule of semanticIdentifierRegexes) {
+      if (rule.test(content)) {
+        fail(`禁止前端出现款式利润写入口函数/标识符: ${targetPath}`)
+      }
+      rule.lastIndex = 0
+    }
+
+    for (const rule of semanticRouteRegexes) {
+      if (rule.test(content)) {
+        fail(`禁止前端出现款式利润写入口路由: ${targetPath}`)
+      }
+      rule.lastIndex = 0
     }
 
     if (styleProfitSurface) {

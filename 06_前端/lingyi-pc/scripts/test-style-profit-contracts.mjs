@@ -80,6 +80,9 @@ async function loadRows(permissionStore: { loadModuleActions: (module: string) =
     return
   }
 }
+const pageTitle = '款式利润报表'
+const listTitle = '利润快照列表'
+const searchTip = '查询'
 const tip = 'company 与 item_code 不能为空'
 </script>
 `,
@@ -93,6 +96,11 @@ const tip = 'company 与 item_code 不能为空'
   <el-collapse>
     <el-collapse-item title="审计信息（仅供审计复核）" name="audit" />
   </el-collapse>
+  <div>查看详情</div>
+  <div>利润明细</div>
+  <div>来源追溯</div>
+  <div>利润金额</div>
+  <div>利润率</div>
 </template>
 <script setup lang="ts">
 const canRead = { value: true }
@@ -235,6 +243,62 @@ const failureCases = [
     mutate: (root) => {
       const content = read(root, 'src/api/style_profit.ts')
       write(root, 'src/api/style_profit.ts', `${content}\nconst invalid = 'idempotency_key'\n`)
+    },
+  },
+  {
+    name: 'button contains 款式利润计算',
+    expectedKeyword: '禁止前端出现款式利润中文泛化写入口语义',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><el-button>款式利润计算</el-button></template>\n`)
+    },
+  },
+  {
+    name: 'button contains 利润报表重算',
+    expectedKeyword: '禁止前端出现款式利润中文泛化写入口语义',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><el-button>利润报表重算</el-button></template>\n`)
+    },
+  },
+  {
+    name: 'button contains 毛利核算',
+    expectedKeyword: '禁止前端出现款式利润中文泛化写入口语义',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><el-button>毛利核算</el-button></template>\n`)
+    },
+  },
+  {
+    name: 'button contains 利润一键生成',
+    expectedKeyword: '禁止前端出现款式利润中文泛化写入口语义',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<template><el-button>利润一键生成</el-button></template>\n`)
+    },
+  },
+  {
+    name: 'function openProfitCalculateDialog appears',
+    expectedKeyword: '禁止前端出现款式利润写入口函数/标识符',
+    mutate: (root) => {
+      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotList.vue')
+      write(root, 'src/views/style_profit/StyleProfitSnapshotList.vue', `${content}\nfunction openProfitCalculateDialog() {}\n`)
+    },
+  },
+  {
+    name: 'router has /reports/style-profit/calculate route',
+    expectedKeyword: '禁止前端出现款式利润写入口路由',
+    mutate: (root) => {
+      const content = read(root, 'src/router/index.ts')
+      write(root, 'src/router/index.ts', `${content}\n{ path: '/reports/style-profit/calculate' }\n`)
+    },
+  },
+  {
+    name: 'identifier generateProfitSnapshot appears',
+    expectedKeyword: '禁止前端出现款式利润写入口函数/标识符',
+    mutate: (root) => {
+      const content = read(root, 'src/views/style_profit/StyleProfitSnapshotDetail.vue')
+      write(root, 'src/views/style_profit/StyleProfitSnapshotDetail.vue', `${content}\nconst generateProfitSnapshot = () => {}\n`)
     },
   },
   {
