@@ -1173,6 +1173,9 @@ const runtimeKnownSafeConstructorNameSet = new Set([
   'Date',
   'URL',
   'Error',
+  'RegExp',
+  'Map',
+  'Set',
   'TypeError',
   'RangeError',
   'ReferenceError',
@@ -2648,45 +2651,33 @@ const resolveWorkerInvocationSourceArg = (ctorDescriptor, runtimeArgs = []) => {
   return combined[0] || null
 }
 
-const classifyUnknownWorkerConstructTargetSource = (sourceArg, isBlobUrlSourceExpression) => {
+const classifyUnknownWorkerConstructTargetSourceStrict = (sourceArg, isBlobUrlSourceExpression) => {
   if (!sourceArg) return { blocked: false }
-  if (isBlobUrlSourceExpression(sourceArg)) {
+
+  const target = unwrapExpression(sourceArg)
+  if (!target || isBlobUrlSourceExpression(sourceArg)) {
     return {
       blocked: true,
       type: 'RuntimeWorkerConstructorUnknownTarget',
       expressionText: sourceArg.getText ? sourceArg.getText() : '',
     }
   }
+
   const staticValue = resolveStaticStringValue(sourceArg)
-  if (staticValue === null) return { blocked: false }
-  const trimmed = `${staticValue}`.trim()
-  if (!hasRuntimeCodeLoadingProtocol(trimmed)) return { blocked: false }
-  return {
-    blocked: true,
-    type: 'RuntimeWorkerConstructorUnknownTarget',
-    expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
-  }
-}
-
-const classifyUnknownWorkerConstructTargetSourceStrict = (sourceArg, isBlobUrlSourceExpression) => {
-  if (!sourceArg) return { blocked: false }
-
-  const firstPass = classifyUnknownWorkerConstructTargetSource(sourceArg, isBlobUrlSourceExpression)
-  if (firstPass.blocked) return firstPass
-
-  if (isSafeWorkerNewUrlExpression(sourceArg)) return { blocked: false }
-
-  const target = unwrapExpression(sourceArg)
-  if (!target) {
+  if (staticValue !== null) {
     return {
       blocked: true,
       type: 'RuntimeWorkerConstructorUnknownTarget',
-      expressionText: '',
+      expressionText: sourceArg.getText ? sourceArg.getText() : `${staticValue}`.trim(),
     }
   }
 
-  if (ts.isStringLiteral(target) || ts.isNoSubstitutionTemplateLiteral(target)) {
-    return { blocked: false }
+  if (isSafeWorkerNewUrlExpression(sourceArg)) {
+    return {
+      blocked: true,
+      type: 'RuntimeWorkerConstructorUnknownTarget',
+      expressionText: sourceArg.getText ? sourceArg.getText() : '',
+    }
   }
 
   if (
@@ -2706,7 +2697,9 @@ const classifyUnknownWorkerConstructTargetSourceStrict = (sourceArg, isBlobUrlSo
     }
   }
 
-  return { blocked: false }
+  return {
+    blocked: false,
+  }
 }
 
 const classifyScriptSrcSourceArgument = (sourceArg, isBlobUrlSourceExpression) => {
