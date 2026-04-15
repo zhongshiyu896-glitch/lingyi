@@ -591,6 +591,15 @@ const runtimeArrayMutatingMethodNameSet = new Set([
   'copyWithin',
 ])
 
+const runtimeArrayIterationMethodNameSet = new Set([
+  'forEach',
+  'map',
+  'some',
+  'every',
+  'filter',
+  'find',
+])
+
 const runtimeArrayStatusRank = {
   clean: 0,
   tainted: 1,
@@ -1960,6 +1969,56 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     return null
   }
 
+  const resolveRuntimeArrayAliasExpressionAtPosition = (aliasName, usagePosition) => {
+    if (!aliasName) return null
+    const state = getRuntimeArrayStateByAlias(aliasName)
+    if (!state) return null
+    let effectiveStatus = 'clean'
+    for (const event of state.mutation_events || []) {
+      if (Number.isFinite(usagePosition) && event.position > usagePosition) continue
+      if ((runtimeArrayStatusRank[event.status] || 0) > (runtimeArrayStatusRank[effectiveStatus] || 0)) {
+        effectiveStatus = event.status
+      }
+    }
+    if (effectiveStatus !== 'clean') return null
+    return state.initial_elements || null
+  }
+
+  const resolveRuntimeStaticArrayElementsAtPosition = (expression, usagePosition, depth = 0) => {
+    if (!expression || depth > 8) return null
+    const target = unwrapExpression(expression)
+    if (!target) return null
+    if (ts.isArrayLiteralExpression(target)) return Array.from(target.elements)
+    if (ts.isIdentifier(target)) {
+      const cleanArrayElements = resolveRuntimeArrayAliasExpressionAtPosition(target.text, usagePosition)
+      if (cleanArrayElements) {
+        return Array.from(cleanArrayElements)
+      }
+      const mapped = arrayLiteralVariableMap.get(target.text) || null
+      return mapped ? Array.from(mapped.elements) : null
+    }
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = resolveRuntimeStaticArrayElementsAtPosition(target.whenTrue, usagePosition, depth + 1)
+      const whenFalse = resolveRuntimeStaticArrayElementsAtPosition(target.whenFalse, usagePosition, depth + 1)
+      if (whenTrue && whenFalse && whenTrue.length === whenFalse.length) {
+        const same = whenTrue.every((node, idx) => node.getText() === whenFalse[idx]?.getText())
+        if (same) return whenTrue
+      }
+    }
+    return null
+  }
+
+  const resolveRuntimeIterationElementExpression = (iterableExpression, usagePosition) => {
+    const sourceArrayElements = resolveRuntimeStaticArrayElementsAtPosition(iterableExpression, usagePosition)
+    if (!sourceArrayElements) {
+      return { expression: null, unresolved: true }
+    }
+    return {
+      expression: sourceArrayElements[0] || null,
+      unresolved: sourceArrayElements.length === 0,
+    }
+  }
+
   const markRuntimeTrackedArraysUnknownForDestructure = (sourceExpression, reason, position) => {
     const aliases = collectArrayAliasIdentifiersInExpression(sourceExpression)
     if (aliases.size > 0) {
@@ -2502,9 +2561,13 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       function_id: `fn_${runtimeFunctionSummaryIdCounter += 1}`,
       declared_name: declaredName,
       aliases: new Set(),
+      parameter_alias_bindings: new Map(),
       captures_tracked_arrays: new Set(),
       mutates_array_ids: new Set(),
       escapes_array_ids: new Set(),
+      captures_parameter_aliases: new Set(),
+      mutates_parameter_aliases: new Set(),
+      escapes_parameter_aliases: new Set(),
       has_unknown_side_effect: false,
       summary_confidence: 'exact',
     }
@@ -2517,17 +2580,26 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       if (!name) return
       const root = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, name)
       summary.captures_tracked_arrays.add(root)
+      if (summary.parameter_alias_bindings.has(root)) {
+        summary.captures_parameter_aliases.add(root)
+      }
     }
     const registerMutatedName = (name) => {
       if (!name) return
       const root = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, name)
       summary.mutates_array_ids.add(root)
+      if (summary.parameter_alias_bindings.has(root)) {
+        summary.mutates_parameter_aliases.add(root)
+      }
       registerCapturedName(root)
     }
     const registerEscapedName = (name) => {
       if (!name) return
       const root = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, name)
       summary.escapes_array_ids.add(root)
+      if (summary.parameter_alias_bindings.has(root)) {
+        summary.escapes_parameter_aliases.add(root)
+      }
       registerCapturedName(root)
     }
     const markFunctionSummaryUnknown = () => {
@@ -2809,6 +2881,104 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       }
     }
 
+    const registerRuntimeFunctionParameterAlias = (aliasName, descriptor) => {
+      if (!aliasName) return
+      summary.parameter_alias_bindings.set(aliasName, descriptor)
+      localArrayAliasMap.set(aliasName, aliasName)
+    }
+
+    const bindRuntimeFunctionParameterPattern = (patternNode, paramIndex, path = [], inheritedUnresolved = false) => {
+      const pattern = unwrapExpression(patternNode)
+      if (!pattern) {
+        markFunctionSummaryUnknown()
+        return
+      }
+
+      if (ts.isIdentifier(pattern)) {
+        registerRuntimeFunctionParameterAlias(pattern.text, {
+          param_index: paramIndex,
+          path: Array.from(path),
+          unresolved: inheritedUnresolved,
+        })
+        if (inheritedUnresolved) {
+          markFunctionSummaryUnknown()
+        }
+        return
+      }
+
+      if (ts.isArrayBindingPattern(pattern)) {
+        pattern.elements.forEach((element, index) => {
+          if (ts.isOmittedExpression(element)) return
+          if (!ts.isBindingElement(element)) {
+            markFunctionSummaryUnknown()
+            return
+          }
+          if (element.dotDotDotToken) {
+            bindRuntimeFunctionParameterPattern(
+              element.name,
+              paramIndex,
+              [...path, { kind: 'array_rest' }],
+              true,
+            )
+            return
+          }
+          bindRuntimeFunctionParameterPattern(
+            element.name,
+            paramIndex,
+            [...path, { kind: 'array_index', index }],
+            inheritedUnresolved || Boolean(element.initializer),
+          )
+        })
+        return
+      }
+
+      if (ts.isObjectBindingPattern(pattern)) {
+        pattern.elements.forEach((element) => {
+          if (!ts.isBindingElement(element)) {
+            markFunctionSummaryUnknown()
+            return
+          }
+          if (element.dotDotDotToken) {
+            bindRuntimeFunctionParameterPattern(
+              element.name,
+              paramIndex,
+              [...path, { kind: 'object_rest' }],
+              true,
+            )
+            return
+          }
+          const sourceKey = getBindingElementSourceKey(element)
+          if (!sourceKey) {
+            bindRuntimeFunctionParameterPattern(
+              element.name,
+              paramIndex,
+              [...path, { kind: 'object_unknown' }],
+              true,
+            )
+            return
+          }
+          bindRuntimeFunctionParameterPattern(
+            element.name,
+            paramIndex,
+            [...path, { kind: 'object_key', key: sourceKey }],
+            inheritedUnresolved || Boolean(element.initializer),
+          )
+        })
+        return
+      }
+
+      markFunctionSummaryUnknown()
+    }
+
+    const bindRuntimeFunctionParameterAliases = () => {
+      if (!Array.isArray(functionNode.parameters)) return
+      functionNode.parameters.forEach((parameter, index) => {
+        bindRuntimeFunctionParameterPattern(parameter.name, index, [], Boolean(parameter.initializer))
+      })
+    }
+
+    bindRuntimeFunctionParameterAliases()
+
     const analyzeFunctionBodyNode = (node) => {
       if (!node) return
 
@@ -2899,6 +3069,11 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       if (ts.isCallExpression(node)) {
         const calleeExpr = normalizeRuntimeCalleeExpression(node.expression)
         let treatedAsKnownMutatingCall = false
+        const directIdentifierCallee = ts.isIdentifier(calleeExpr) ? calleeExpr.text : null
+        const nestedSummary =
+          directIdentifierCallee && runtimeFunctionSummaryMap.has(directIdentifierCallee)
+            ? runtimeFunctionSummaryMap.get(directIdentifierCallee)
+            : null
 
         if (ts.isPropertyAccessExpression(calleeExpr) || ts.isElementAccessExpression(calleeExpr)) {
           const memberName = getStaticMemberName(calleeExpr)
@@ -2924,29 +3099,25 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           }
         }
 
+        if (!treatedAsKnownMutatingCall && nestedSummary) {
+          for (const mutateName of nestedSummary.mutates_array_ids || []) {
+            registerMutatedName(mutateName)
+          }
+          for (const escapeName of nestedSummary.escapes_array_ids || []) {
+            registerEscapedName(escapeName)
+          }
+          if (nestedSummary.has_unknown_side_effect) {
+            markFunctionSummaryUnknown()
+          }
+          treatedAsKnownMutatingCall = true
+        }
+
         for (const argNode of node.arguments) {
           const identifiers = collectRuntimeIdentifiersInExpression(argNode)
           if (!treatedAsKnownMutatingCall) {
             applyIdentifierSetAsEscaped(identifiers)
           } else {
             identifiers.forEach((identifierName) => registerCapturedName(identifierName))
-          }
-        }
-
-        if (!treatedAsKnownMutatingCall) {
-          const directIdentifierCallee = ts.isIdentifier(calleeExpr) ? calleeExpr.text : null
-          if (directIdentifierCallee && runtimeFunctionSummaryMap.has(directIdentifierCallee)) {
-            const nestedSummary = runtimeFunctionSummaryMap.get(directIdentifierCallee)
-            for (const mutateName of nestedSummary.mutates_array_ids || []) {
-              registerMutatedName(mutateName)
-            }
-            for (const escapeName of nestedSummary.escapes_array_ids || []) {
-              registerEscapedName(escapeName)
-            }
-            if (nestedSummary.has_unknown_side_effect) {
-              markFunctionSummaryUnknown()
-            }
-            treatedAsKnownMutatingCall = true
           }
         }
 
@@ -3053,10 +3224,145 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     runtimeFunctionSummaryMap.delete(aliasName)
   }
 
-  const applyRuntimeFunctionSummaryAtCall = (summary, callNode) => {
+  const resolveRuntimeFunctionParameterBindingExpression = (callArguments, bindingDescriptor, callPosition) => {
+    if (!bindingDescriptor || !Array.isArray(callArguments)) {
+      return { expression: null, unresolved: true }
+    }
+    let currentExpression = callArguments[bindingDescriptor.param_index] || null
+    if (!currentExpression) {
+      return { expression: null, unresolved: true }
+    }
+    if (bindingDescriptor.unresolved) {
+      return { expression: null, unresolved: true }
+    }
+
+    const path = Array.isArray(bindingDescriptor.path) ? bindingDescriptor.path : []
+    for (const step of path) {
+      if (!currentExpression) {
+        return { expression: null, unresolved: true }
+      }
+
+      if (step?.kind === 'array_index') {
+        const elements = resolveRuntimeStaticArrayElementsAtPosition(currentExpression, callPosition)
+        if (!elements) {
+          return { expression: null, unresolved: true }
+        }
+        currentExpression = elements[step.index] || null
+        if (!currentExpression) {
+          return { expression: null, unresolved: true }
+        }
+        continue
+      }
+
+      if (step?.kind === 'object_key') {
+        const objectLiteral = resolveRuntimeStaticObjectLiteral(currentExpression)
+        if (!objectLiteral) {
+          return { expression: null, unresolved: true }
+        }
+        const propertyResult = resolveRuntimeObjectPropertyExpressionByKey(objectLiteral, step.key)
+        if (propertyResult.unresolved || !propertyResult.expression) {
+          return { expression: null, unresolved: true }
+        }
+        currentExpression = propertyResult.expression
+        continue
+      }
+
+      return { expression: null, unresolved: true }
+    }
+
+    return { expression: currentExpression, unresolved: false }
+  }
+
+  const applyRuntimeFunctionParameterAliasState = (
+    summary,
+    aliasNames,
+    status,
+    reason,
+    callArguments,
+    callPosition,
+  ) => {
+    let marked = false
+    let unresolved = false
+    let sawTrackedCandidate = false
+    for (const aliasName of aliasNames || []) {
+      const bindingDescriptor = summary.parameter_alias_bindings?.get(aliasName) || null
+      if (!bindingDescriptor) continue
+      const callArgExpression = callArguments[bindingDescriptor.param_index] || null
+      if (callArgExpression) {
+        const callArgAliases = collectArrayAliasIdentifiersInExpression(callArgExpression)
+        if (callArgAliases.size > 0) {
+          sawTrackedCandidate = true
+        }
+      }
+      const resolved = resolveRuntimeFunctionParameterBindingExpression(callArguments, bindingDescriptor, callPosition)
+      if (resolved.unresolved || !resolved.expression) {
+        unresolved = true
+        continue
+      }
+
+      const directAliasName = resolveRuntimeArrayAliasNameFromExpression(resolved.expression)
+      if (directAliasName && runtimeArrayAliasMap.has(directAliasName)) {
+        markRuntimeArrayAliasState(directAliasName, status, reason, callPosition)
+        marked = true
+        continue
+      }
+
+      const referencedAliases = collectArrayAliasIdentifiersInExpression(resolved.expression)
+      if (referencedAliases.size > 0) {
+        sawTrackedCandidate = true
+        for (const referencedAlias of referencedAliases) {
+          markRuntimeArrayAliasState(referencedAlias, status, reason, callPosition)
+        }
+        marked = true
+        continue
+      }
+
+      unresolved = true
+    }
+    return { marked, unresolved, sawTrackedCandidate }
+  }
+
+  const applyRuntimeFunctionSummaryAtCall = (summary, callNode, options = null) => {
     if (!summary) return false
-    const callPosition = callNode.getStart()
+    const callPosition =
+      options && Number.isFinite(options.callPosition)
+        ? options.callPosition
+        : callNode && typeof callNode.getStart === 'function'
+          ? callNode.getStart()
+          : Number.MAX_SAFE_INTEGER
+    const callArguments =
+      options && Array.isArray(options.callArguments)
+        ? options.callArguments
+        : callNode && Array.isArray(callNode.arguments)
+          ? callNode.arguments
+          : []
     const summaryName = summary.declared_name || summary.function_id
+
+    const parameterMutateResult = applyRuntimeFunctionParameterAliasState(
+      summary,
+      summary.mutates_parameter_aliases,
+      'tainted',
+      `FunctionCallMutate.${summaryName}`,
+      callArguments,
+      callPosition,
+    )
+    const parameterEscapeResult = applyRuntimeFunctionParameterAliasState(
+      summary,
+      summary.escapes_parameter_aliases,
+      'escaped',
+      `FunctionCallEscape.${summaryName}`,
+      callArguments,
+      callPosition,
+    )
+    if (
+      (parameterMutateResult.unresolved || parameterEscapeResult.unresolved) &&
+      (parameterMutateResult.sawTrackedCandidate || parameterEscapeResult.sawTrackedCandidate) &&
+      runtimeArrayAliasMap.size > 0
+    ) {
+      for (const aliasName of runtimeArrayAliasMap.keys()) {
+        markRuntimeArrayAliasState(aliasName, 'unknown', `FunctionCallParamUnknown.${summaryName}`, callPosition)
+      }
+    }
 
     for (const mutateName of summary.mutates_array_ids || []) {
       if (runtimeArrayAliasMap.has(mutateName)) {
@@ -3081,6 +3387,18 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           }
         }
       }
+      const parameterCaptureResult = applyRuntimeFunctionParameterAliasState(
+        summary,
+        summary.captures_parameter_aliases,
+        'unknown',
+        `FunctionCallUnknown.${summaryName}`,
+        callArguments,
+        callPosition,
+      )
+      marked = marked || parameterCaptureResult.marked
+      if (parameterCaptureResult.unresolved && parameterCaptureResult.sawTrackedCandidate) {
+        marked = false
+      }
       if (!marked) {
         for (const aliasName of runtimeArrayAliasMap.keys()) {
           markRuntimeArrayAliasState(aliasName, 'unknown', `FunctionCallUnknown.${summaryName}`, callPosition)
@@ -3101,6 +3419,65 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
 
   collectHoistedFunctionSummaries(sourceFile)
 
+  const markAllRuntimeArraysUnknownAtPosition = (reason, position) => {
+    for (const aliasName of runtimeArrayAliasMap.keys()) {
+      markRuntimeArrayAliasState(aliasName, 'unknown', reason, position)
+    }
+  }
+
+  const applyRuntimeIterationCallbackSummaryAtCall = (callNode, calleeExpression) => {
+    if (!(ts.isPropertyAccessExpression(calleeExpression) || ts.isElementAccessExpression(calleeExpression))) {
+      return false
+    }
+    const memberName = getStaticMemberName(calleeExpression)
+    if (!memberName || !runtimeArrayIterationMethodNameSet.has(memberName)) {
+      return false
+    }
+    if (callNode.arguments.length === 0) return false
+
+    const callbackExpression = unwrapExpression(callNode.arguments[0])
+    if (!callbackExpression) {
+      if (runtimeArrayAliasMap.size > 0) {
+        markAllRuntimeArraysUnknownAtPosition(`IterationCallbackMissing.${memberName}`, callNode.getStart())
+      }
+      return true
+    }
+
+    const callbackSummary = resolveRuntimeFunctionSummaryFromExpression(callbackExpression)
+    const iterableExpression = unwrapExpression(calleeExpression.expression)
+    const iterableElements = resolveRuntimeStaticArrayElementsAtPosition(iterableExpression, callNode.getStart())
+    const callbackHasPotentialArraySideEffect =
+      Boolean(callbackSummary) &&
+      (
+        (callbackSummary.mutates_parameter_aliases && callbackSummary.mutates_parameter_aliases.size > 0) ||
+        (callbackSummary.escapes_parameter_aliases && callbackSummary.escapes_parameter_aliases.size > 0) ||
+        callbackSummary.has_unknown_side_effect ||
+        callbackSummary.summary_confidence === 'unknown'
+      )
+    if (!iterableElements) {
+      if (runtimeArrayAliasMap.size > 0 && callbackHasPotentialArraySideEffect) {
+        markAllRuntimeArraysUnknownAtPosition(`IterationIterableUnknown.${memberName}`, callNode.getStart())
+      }
+      return true
+    }
+    if (!callbackSummary) {
+      if (runtimeArrayAliasMap.size > 0) {
+        markAllRuntimeArraysUnknownAtPosition(`IterationCallbackUnknown.${memberName}`, callNode.getStart())
+      }
+      return true
+    }
+
+    if (iterableElements.length === 0) return true
+    for (const elementExpression of iterableElements) {
+      if (!elementExpression) continue
+      applyRuntimeFunctionSummaryAtCall(callbackSummary, callNode, {
+        callArguments: [elementExpression],
+        callPosition: callNode.getStart(),
+      })
+    }
+    return true
+  }
+
   const visit = (node) => {
     if (ts.isReturnStatement(node) && node.expression) {
       markArrayAliasesEscapedInExpression(node.expression, 'ReturnEscape', node.getStart())
@@ -3114,6 +3491,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       if (runtimeFunctionSummary) {
         appliedRuntimeFunctionSummary = applyRuntimeFunctionSummaryAtCall(runtimeFunctionSummary, node)
       }
+      applyRuntimeIterationCallbackSummaryAtCall(node, callee)
 
       if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
         const baseExpr = unwrapExpression(callee.expression)
@@ -3161,10 +3539,12 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         hasExplicitReflectConstructArrayArg = true
       }
 
-      node.arguments.forEach((argNode, index) => {
-        if (hasExplicitReflectConstructArrayArg && index === 1) return
-        markArrayAliasesEscapedInExpression(argNode, 'CallArgumentEscape', node.getStart())
-      })
+      if (!appliedRuntimeFunctionSummary) {
+        node.arguments.forEach((argNode, index) => {
+          if (hasExplicitReflectConstructArrayArg && index === 1) return
+          markArrayAliasesEscapedInExpression(argNode, 'CallArgumentEscape', node.getStart())
+        })
+      }
 
       if (!appliedRuntimeFunctionSummary && node.arguments.length === 0 && runtimeArrayAliasMap.size > 0) {
         const runtimeMethod = resolveRuntimeMethodFromExpression(
@@ -3217,6 +3597,85 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
 
       if (ts.isIdentifier(rightExpr) && runtimeArrayAliasMap.has(rightExpr.text) && !ts.isIdentifier(leftExpr)) {
         markRuntimeArrayAliasState(rightExpr.text, 'escaped', 'ArrayAliasEscapedByAssignment', node.getStart())
+      }
+    }
+
+    if (ts.isForOfStatement(node)) {
+      const forOfPosition = node.getStart()
+      const iterationValueResult = resolveRuntimeIterationElementExpression(node.expression, forOfPosition)
+      if (iterationValueResult.unresolved) {
+        markRuntimeTrackedArraysUnknownForDestructure(node.expression, 'ForOf.UnresolvedIterable', forOfPosition)
+      } else {
+        const iterationValueExpression = iterationValueResult.expression
+        if (ts.isVariableDeclarationList(node.initializer)) {
+          if (node.initializer.declarations.length !== 1) {
+            markRuntimeTrackedArraysUnknownForDestructure(
+              node.expression,
+              'ForOf.UnresolvedVariableDeclarationList',
+              forOfPosition,
+            )
+          } else {
+            const declaration = node.initializer.declarations[0]
+            if (ts.isIdentifier(declaration.name)) {
+              const bindResult = bindRuntimeArrayAliasFromSourceExpression(
+                declaration.name.text,
+                iterationValueExpression,
+                forOfPosition,
+                'ForOf.VariableBinding',
+              )
+              if (bindResult.unresolved) {
+                markRuntimeTrackedArraysUnknownForDestructure(
+                  iterationValueExpression,
+                  'ForOf.VariableBindingUnresolved',
+                  forOfPosition,
+                )
+              }
+            } else if (ts.isArrayBindingPattern(declaration.name) || ts.isObjectBindingPattern(declaration.name)) {
+              bindRuntimeArrayAliasesFromBindingPattern(
+                declaration.name,
+                iterationValueExpression,
+                forOfPosition,
+                'ForOf.BindingPattern',
+              )
+            } else {
+              markRuntimeTrackedArraysUnknownForDestructure(
+                iterationValueExpression,
+                'ForOf.UnsupportedBinding',
+                forOfPosition,
+              )
+            }
+          }
+        } else {
+          const assignmentTarget = unwrapExpression(node.initializer)
+          if (ts.isIdentifier(assignmentTarget)) {
+            const bindResult = bindRuntimeArrayAliasFromSourceExpression(
+              assignmentTarget.text,
+              iterationValueExpression,
+              forOfPosition,
+              'ForOf.AssignmentBinding',
+            )
+            if (bindResult.unresolved) {
+              markRuntimeTrackedArraysUnknownForDestructure(
+                iterationValueExpression,
+                'ForOf.AssignmentBindingUnresolved',
+                forOfPosition,
+              )
+            }
+          } else if (ts.isArrayLiteralExpression(assignmentTarget) || ts.isObjectLiteralExpression(assignmentTarget)) {
+            bindRuntimeArrayAliasesFromAssignmentPattern(
+              assignmentTarget,
+              iterationValueExpression,
+              forOfPosition,
+              'ForOf.AssignmentPattern',
+            )
+          } else {
+            markRuntimeTrackedArraysUnknownForDestructure(
+              iterationValueExpression,
+              'ForOf.UnsupportedInitializer',
+              forOfPosition,
+            )
+          }
+        }
       }
     }
 
