@@ -244,6 +244,10 @@ const W = Worker
 new W(new URL('./readonly-worker.ts', import.meta.url), { type: 'module' })
 const { Worker: DW } = globalThis
 new DW(new URL('./readonly-worker.ts', import.meta.url), { type: 'module' })
+const BW = Worker.bind(null)
+new BW(new URL('./readonly-worker.ts', import.meta.url), { type: 'module' })
+Reflect.construct(Worker, [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }])
+Reflect.construct(Date, [])
 const asset = '/assets/logo.png'
 const record = { Worker_name: 'readonly-worker' }
 void record['Worker_name']
@@ -3767,6 +3771,174 @@ const failureCases = [
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst W = Worker\nconst workerUrl = getWorkerUrl()\nnew W(workerUrl)\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new (Worker.bind(null))('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nnew (Worker.bind(null))('data:text/javascript,postMessage(1)', { type: 'module' })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new (SharedWorker.bind(null))('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nnew (SharedWorker.bind(null))('data:text/javascript,postMessage(1)')\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const BW = Worker.bind(null); new BW('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst BW = Worker.bind(null)\nnew BW('data:text/javascript,postMessage(1)', { type: 'module' })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const BSW = SharedWorker.bind(null); new BSW('data:...')",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst BSW = SharedWorker.bind(null)\nnew BSW('data:text/javascript,postMessage(1)')\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const BW = Worker.bind(null, 'data:...'); new BW(...)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst BW = Worker.bind(null, 'data:text/javascript,postMessage(1)')\nnew BW({ type: 'module' })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via Reflect.construct(Worker, ['data:...'])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nReflect.construct(Worker, ['data:text/javascript,postMessage(1)', { type: 'module' }])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via Reflect.construct(SharedWorker, ['data:...'])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nReflect.construct(SharedWorker, ['data:text/javascript,postMessage(1)'])\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const rc = Reflect.construct; rc(Worker, ['data:...'])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst rc = Reflect.construct\nrc(Worker, ['data:text/javascript,postMessage(1)'])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const { construct } = Reflect; construct(Worker, ['data:...'])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst { construct } = Reflect\nconstruct(Worker, ['data:text/javascript,postMessage(1)'])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via Reflect['construct'](Worker, ['data:...'])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nReflect['construct'](Worker, ['data:text/javascript,postMessage(1)'])\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Reflect.construct(Worker, [workerUrl]) unresolved identifier',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst workerUrl = getWorkerUrl()\nReflect.construct(Worker, [workerUrl])\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const args = ['data:...']; Reflect.construct(Worker, args)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = ['data:text/javascript,postMessage(1)']\nReflect.construct(Worker, args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via const args = [workerUrl]; Reflect.construct(Worker, args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst workerUrl = getWorkerUrl()\nconst args = [workerUrl]\nReflect.construct(Worker, args)\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Reflect.construct(Worker, [...args]) spread args',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst args = ['data:text/javascript,postMessage(1)']\nReflect.construct(Worker, [...args])\n</script>\n`)
+    },
+  },
+  {
+    name: "runtime dynamic module loading via Reflect.construct(unknownCtor, ['data:...'])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = Date\nReflect.construct(unknownCtor, ['data:text/javascript,postMessage(1)'])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via Reflect.construct(Worker, ['data:...'], SafeCtor)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nclass SafeCtor {}\nReflect.construct(Worker, ['data:text/javascript,postMessage(1)'], SafeCtor)\n</script>\n`,
+      )
     },
   },
   {

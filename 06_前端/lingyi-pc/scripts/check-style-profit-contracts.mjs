@@ -635,6 +635,7 @@ const classifyRuntimeMethodName = (objectName, methodName) => {
   if (objectName === 'URL' && methodName === 'createObjectURL') return 'URL.createObjectURL'
   if (objectName === 'Reflect' && methodName === 'set') return 'Reflect.set'
   if (objectName === 'Reflect' && methodName === 'apply') return 'Reflect.apply'
+  if (objectName === 'Reflect' && methodName === 'construct') return 'Reflect.construct'
   if (objectName === 'Reflect' && methodName === 'get') return 'Reflect.get'
   return null
 }
@@ -752,17 +753,23 @@ const resolveRuntimeWorkerConstructorFromExpression = (
   runtimeObjectConstructorContainerMap = new Map(),
   runtimeGlobalContainerAliasMap = new Map(),
 ) => {
+  const buildResolved = (constructorName, boundArgs = []) => ({
+    constructorName,
+    boundArgs,
+    unresolved: false,
+  })
   const target = normalizeRuntimeCalleeExpression(expression)
   if (!target) return null
 
   if (ts.isIdentifier(target)) {
     const direct = classifyRuntimeWorkerConstructorName(target.text)
-    if (direct) return { constructorName: direct, unresolved: false }
+    if (direct) return buildResolved(direct, [])
     const aliasResolved = runtimeConstructorAliasMap.get(target.text)
-    if (aliasResolved) return { constructorName: aliasResolved, unresolved: false }
+    if (aliasResolved?.constructorName) return buildResolved(aliasResolved.constructorName, aliasResolved.boundArgs || [])
     if (runtimeUnknownConstructorAliasMap.has(target.text)) {
       return {
         constructorName: null,
+        boundArgs: [],
         unresolved: true,
         expressionText: runtimeUnknownConstructorAliasMap.get(target.text) || target.text,
       }
@@ -779,7 +786,7 @@ const resolveRuntimeWorkerConstructorFromExpression = (
       if (workerName) {
         const globalContainer = resolveGlobalContainerFromExpression(baseExpr, runtimeGlobalContainerAliasMap)
         if (globalContainer) {
-          return { constructorName: workerName, unresolved: false }
+          return buildResolved(workerName, [])
         }
       }
     } else {
@@ -787,6 +794,7 @@ const resolveRuntimeWorkerConstructorFromExpression = (
       if (globalContainer) {
         return {
           constructorName: null,
+          boundArgs: [],
           unresolved: true,
           expressionText: target.getText ? target.getText() : '',
         }
@@ -800,6 +808,7 @@ const resolveRuntimeWorkerConstructorFromExpression = (
         if (arrayContainer.unresolved) {
           return {
             constructorName: null,
+            boundArgs: [],
             unresolved: true,
             expressionText: target.getText ? target.getText() : '',
           }
@@ -809,19 +818,18 @@ const resolveRuntimeWorkerConstructorFromExpression = (
           if (index === null || index < 0 || index >= arrayContainer.constructors.length) {
             return {
               constructorName: null,
+              boundArgs: [],
               unresolved: true,
               expressionText: target.getText ? target.getText() : '',
             }
           }
           const resolvedCtor = arrayContainer.constructors[index] || null
           if (resolvedCtor) {
-            return {
-              constructorName: resolvedCtor,
-              unresolved: false,
-            }
+            return buildResolved(resolvedCtor.constructorName, resolvedCtor.boundArgs || [])
           }
           return {
             constructorName: null,
+            boundArgs: [],
             unresolved: true,
             expressionText: target.getText ? target.getText() : '',
           }
@@ -833,6 +841,7 @@ const resolveRuntimeWorkerConstructorFromExpression = (
         if (objectContainer.unresolved) {
           return {
             constructorName: null,
+            boundArgs: [],
             unresolved: true,
             expressionText: target.getText ? target.getText() : '',
           }
@@ -841,19 +850,18 @@ const resolveRuntimeWorkerConstructorFromExpression = (
         if (!normalizedMemberName || !objectContainer.constructorsByKey.has(normalizedMemberName)) {
           return {
             constructorName: null,
+            boundArgs: [],
             unresolved: true,
             expressionText: target.getText ? target.getText() : '',
           }
         }
         const resolvedCtor = objectContainer.constructorsByKey.get(normalizedMemberName) || null
         if (resolvedCtor) {
-          return {
-            constructorName: resolvedCtor,
-            unresolved: false,
-          }
+          return buildResolved(resolvedCtor.constructorName, resolvedCtor.boundArgs || [])
         }
         return {
           constructorName: null,
+          boundArgs: [],
           unresolved: true,
           expressionText: target.getText ? target.getText() : '',
         }
@@ -861,6 +869,36 @@ const resolveRuntimeWorkerConstructorFromExpression = (
     }
 
     return null
+  }
+
+  if (ts.isCallExpression(target)) {
+    const callee = normalizeRuntimeCalleeExpression(target.expression)
+    if (callee && (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+      const memberName = getStaticMemberName(callee)
+      if (memberName === 'bind') {
+        const baseCtor = resolveRuntimeWorkerConstructorFromExpression(
+          callee.expression,
+          runtimeConstructorAliasMap,
+          runtimeUnknownConstructorAliasMap,
+          runtimeNamespaceAliasMap,
+          runtimeArrayConstructorContainerMap,
+          runtimeObjectConstructorContainerMap,
+          runtimeGlobalContainerAliasMap,
+        )
+        if (baseCtor?.constructorName && !baseCtor.unresolved) {
+          const bindArgs = target.arguments.slice(1)
+          return buildResolved(baseCtor.constructorName, [...(baseCtor.boundArgs || []), ...bindArgs])
+        }
+        if (baseCtor?.unresolved) {
+          return {
+            constructorName: null,
+            boundArgs: [],
+            unresolved: true,
+            expressionText: target.getText ? target.getText() : '',
+          }
+        }
+      }
+    }
   }
 
   if (ts.isConditionalExpression(target)) {
@@ -888,13 +926,16 @@ const resolveRuntimeWorkerConstructorFromExpression = (
       !whenTrue.unresolved &&
       !whenFalse.unresolved &&
       whenTrue.constructorName &&
-      whenTrue.constructorName === whenFalse.constructorName
+      whenTrue.constructorName === whenFalse.constructorName &&
+      (whenTrue.boundArgs?.length || 0) === 0 &&
+      (whenFalse.boundArgs?.length || 0) === 0
     ) {
       return whenTrue
     }
     if (whenTrue || whenFalse) {
       return {
         constructorName: null,
+        boundArgs: [],
         unresolved: true,
         expressionText: target.getText ? target.getText() : '',
       }
@@ -1020,6 +1061,7 @@ const runtimeMutatorMethodSet = new Set([
 ])
 const runtimeWorkerConstructorNameSet = new Set(['Worker', 'SharedWorker'])
 const runtimeBlobUrlMethodSet = new Set(['URL.createObjectURL'])
+const runtimeWorkerConstructorMethodSet = new Set(['Reflect.construct'])
 const runtimeMutatorSourceMethodSet = new Set([
   'Object.defineProperty',
   'Object.defineProperties',
@@ -1037,6 +1079,7 @@ const runtimeMutatorMemberNameSet = new Set([
   'createObjectURL',
   'set',
   'apply',
+  'construct',
   'get',
 ])
 
@@ -1442,7 +1485,7 @@ const analyzeRuntimeWorkerArrayLiteral = (
       runtimeGlobalContainerAliasMap,
     )
     if (ctorResolved?.constructorName && !ctorResolved.unresolved) {
-      constructors.push(ctorResolved.constructorName)
+      constructors.push({ constructorName: ctorResolved.constructorName, boundArgs: ctorResolved.boundArgs || [] })
       hasCtor = true
       continue
     }
@@ -1500,7 +1543,10 @@ const analyzeRuntimeWorkerObjectLiteral = (
       runtimeGlobalContainerAliasMap,
     )
     if (ctorResolved?.constructorName && !ctorResolved.unresolved) {
-      constructorsByKey.set(keyInfo.keyText, ctorResolved.constructorName)
+      constructorsByKey.set(keyInfo.keyText, {
+        constructorName: ctorResolved.constructorName,
+        boundArgs: ctorResolved.boundArgs || [],
+      })
       hasCtor = true
       continue
     }
@@ -1525,6 +1571,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   const runtimeArrayConstructorContainerMap = new Map()
   const runtimeObjectConstructorContainerMap = new Map()
   const objectLiteralVariableMap = new Map()
+  const arrayLiteralVariableMap = new Map()
   const runtimeAliasRiskFindings = []
   const runtimeMutatorSourceFindings = []
   const runtimeCodegenSourceFindings = []
@@ -1612,7 +1659,10 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       runtimeGlobalContainerAliasMap,
     )
     if (resolvedCtor?.constructorName && !resolvedCtor.unresolved) {
-      runtimeConstructorAliasMap.set(aliasName, resolvedCtor.constructorName)
+      runtimeConstructorAliasMap.set(aliasName, {
+        constructorName: resolvedCtor.constructorName,
+        boundArgs: resolvedCtor.boundArgs || [],
+      })
       runtimeUnknownConstructorAliasMap.delete(aliasName)
       return
     }
@@ -1752,6 +1802,16 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           objectLiteralVariableMap.set(varName, initializer)
         } else if (ts.isIdentifier(initializer) && objectLiteralVariableMap.has(initializer.text)) {
           objectLiteralVariableMap.set(varName, objectLiteralVariableMap.get(initializer.text))
+        } else {
+          objectLiteralVariableMap.delete(varName)
+        }
+
+        if (ts.isArrayLiteralExpression(initializer)) {
+          arrayLiteralVariableMap.set(varName, initializer)
+        } else if (ts.isIdentifier(initializer) && arrayLiteralVariableMap.has(initializer.text)) {
+          arrayLiteralVariableMap.set(varName, arrayLiteralVariableMap.get(initializer.text))
+        } else {
+          arrayLiteralVariableMap.delete(varName)
         }
         setRuntimeContainerAliases(varName, initializer)
         setRuntimeConstructorContainerAliases(varName, initializer)
@@ -1807,7 +1867,10 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
             if (sourceKey === 'Object' || sourceKey === 'Reflect' || sourceKey === 'URL') {
               setRuntimeNamespaceAlias(localName, sourceKey)
             } else if (sourceKey === 'Worker' || sourceKey === 'SharedWorker') {
-              runtimeConstructorAliasMap.set(localName, sourceKey)
+              runtimeConstructorAliasMap.set(localName, {
+                constructorName: sourceKey,
+                boundArgs: [],
+              })
               runtimeUnknownConstructorAliasMap.delete(localName)
             } else {
               const runtimeCodegenSource = classifyRuntimeCodegenGlobalName(sourceKey)
@@ -1843,6 +1906,16 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           objectLiteralVariableMap.set(targetName, rhs)
         } else if (ts.isIdentifier(rhs) && objectLiteralVariableMap.has(rhs.text)) {
           objectLiteralVariableMap.set(targetName, objectLiteralVariableMap.get(rhs.text))
+        } else {
+          objectLiteralVariableMap.delete(targetName)
+        }
+
+        if (ts.isArrayLiteralExpression(rhs)) {
+          arrayLiteralVariableMap.set(targetName, rhs)
+        } else if (ts.isIdentifier(rhs) && arrayLiteralVariableMap.has(rhs.text)) {
+          arrayLiteralVariableMap.set(targetName, arrayLiteralVariableMap.get(rhs.text))
+        } else {
+          arrayLiteralVariableMap.delete(targetName)
         }
         setRuntimeContainerAliases(targetName, rhs)
         setRuntimeConstructorContainerAliases(targetName, rhs)
@@ -1896,7 +1969,10 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
             if (alias.sourceKey === 'Object' || alias.sourceKey === 'Reflect' || alias.sourceKey === 'URL') {
               setRuntimeNamespaceAlias(alias.localName, alias.sourceKey)
             } else if (alias.sourceKey === 'Worker' || alias.sourceKey === 'SharedWorker') {
-              runtimeConstructorAliasMap.set(alias.localName, alias.sourceKey)
+              runtimeConstructorAliasMap.set(alias.localName, {
+                constructorName: alias.sourceKey,
+                boundArgs: [],
+              })
               runtimeUnknownConstructorAliasMap.delete(alias.localName)
             } else {
               const runtimeCodegenSource = classifyRuntimeCodegenGlobalName(alias.sourceKey)
@@ -1942,6 +2018,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     timerCallbackIdentifierSet,
     timerStringIdentifierSet,
     objectLiteralVariableMap,
+    arrayLiteralVariableMap,
   }
 }
 
@@ -2286,6 +2363,63 @@ const resolveWorkerConstructorDescriptor = (expression, runtimeContext) =>
     runtimeContext.runtimeGlobalContainerAliasMap || new Map(),
   )
 
+const resolveRuntimeArgumentArrayElements = (argumentExpression, runtimeContext) => {
+  const target = unwrapExpression(argumentExpression)
+  if (!target) {
+    return { unresolved: true, args: [], expressionText: '' }
+  }
+
+  if (ts.isArrayLiteralExpression(target)) {
+    const normalized = []
+    for (const element of target.elements) {
+      if (ts.isSpreadElement(element) || ts.isOmittedExpression(element)) {
+        return { unresolved: true, args: [], expressionText: target.getText() }
+      }
+      normalized.push(element)
+    }
+    return { unresolved: false, args: normalized, expressionText: target.getText() }
+  }
+
+  if (ts.isIdentifier(target)) {
+    const mappedArray = runtimeContext.arrayLiteralVariableMap?.get(target.text) || null
+    if (mappedArray) {
+      return resolveRuntimeArgumentArrayElements(mappedArray, runtimeContext)
+    }
+    return { unresolved: true, args: [], expressionText: target.text }
+  }
+
+  return {
+    unresolved: true,
+    args: [],
+    expressionText: target.getText ? target.getText() : '',
+  }
+}
+
+const resolveWorkerInvocationSourceArg = (ctorDescriptor, runtimeArgs = []) => {
+  const combined = [...(ctorDescriptor?.boundArgs || []), ...runtimeArgs]
+  return combined[0] || null
+}
+
+const classifyUnknownWorkerConstructTargetSource = (sourceArg, isBlobUrlSourceExpression) => {
+  if (!sourceArg) return { blocked: false }
+  if (isBlobUrlSourceExpression(sourceArg)) {
+    return {
+      blocked: true,
+      type: 'RuntimeWorkerConstructorUnknownTarget',
+      expressionText: sourceArg.getText ? sourceArg.getText() : '',
+    }
+  }
+  const staticValue = resolveStaticStringValue(sourceArg)
+  if (staticValue === null) return { blocked: false }
+  const trimmed = `${staticValue}`.trim()
+  if (!hasRuntimeCodeLoadingProtocol(trimmed)) return { blocked: false }
+  return {
+    blocked: true,
+    type: 'RuntimeWorkerConstructorUnknownTarget',
+    expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
+  }
+}
+
 const classifyScriptSrcSourceArgument = (sourceArg, isBlobUrlSourceExpression) => {
   if (!sourceArg) {
     return {
@@ -2446,6 +2580,49 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
           pushFinding(srcCheck.type, srcCheck.expressionText || node.getText(sourceFile))
         }
       }
+
+      const workerConstructCall = resolveRuntimeCallDescriptor(node, runtimeContext, runtimeWorkerConstructorMethodSet)
+      if (workerConstructCall?.method === 'Reflect.construct') {
+        const normalizedCall = normalizeRuntimeCallArguments(node, workerConstructCall)
+        if (normalizedCall.unresolved) {
+          pushFinding('RuntimeWorkerConstructUnresolvedArguments', node.getText(sourceFile))
+          ts.forEachChild(node, visit)
+          return
+        }
+
+        const ctorExpr = normalizedCall.args[0] || null
+        const workerCtorDescriptor = resolveWorkerConstructorDescriptor(ctorExpr, runtimeContext)
+        const argsArrayExpr = normalizedCall.args[1] || null
+        const runtimeArgs = resolveRuntimeArgumentArrayElements(argsArrayExpr, runtimeContext)
+
+        if (workerCtorDescriptor?.unresolved) {
+          pushFinding(
+            'RuntimeWorkerConstructorUnresolved',
+            workerCtorDescriptor.expressionText || ctorExpr?.getText?.() || node.getText(sourceFile),
+          )
+          ts.forEachChild(node, visit)
+          return
+        }
+
+        if (runtimeArgs.unresolved) {
+          pushFinding('RuntimeWorkerConstructUnresolvedArguments', runtimeArgs.expressionText || node.getText(sourceFile))
+          ts.forEachChild(node, visit)
+          return
+        }
+
+        if (workerCtorDescriptor?.constructorName) {
+          const sourceArg = resolveWorkerInvocationSourceArg(workerCtorDescriptor, runtimeArgs.args)
+          const workerArgCheck = classifyWorkerSourceArgument(sourceArg, isBlobUrlSourceExpression)
+          if (workerArgCheck.blocked) {
+            pushFinding(workerArgCheck.type, workerArgCheck.expressionText || node.getText(sourceFile))
+          }
+        } else {
+          const unknownSourceCheck = classifyUnknownWorkerConstructTargetSource(runtimeArgs.args[0] || null, isBlobUrlSourceExpression)
+          if (unknownSourceCheck.blocked) {
+            pushFinding(unknownSourceCheck.type, unknownSourceCheck.expressionText || node.getText(sourceFile))
+          }
+        }
+      }
     }
 
     if (ts.isNewExpression(node)) {
@@ -2456,8 +2633,9 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
           workerCtorDescriptor.expressionText || node.expression.getText(sourceFile),
         )
       } else if (workerCtorDescriptor?.constructorName) {
-        const firstArg = node.arguments?.[0] || null
-        const workerArgCheck = classifyWorkerSourceArgument(firstArg, isBlobUrlSourceExpression)
+        const workerArgs = Array.from(node.arguments || [])
+        const sourceArg = resolveWorkerInvocationSourceArg(workerCtorDescriptor, workerArgs)
+        const workerArgCheck = classifyWorkerSourceArgument(sourceArg, isBlobUrlSourceExpression)
         if (workerArgCheck.blocked) {
           pushFinding(workerArgCheck.type, workerArgCheck.expressionText || node.getText(sourceFile))
         }
