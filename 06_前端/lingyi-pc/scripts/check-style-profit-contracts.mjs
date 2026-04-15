@@ -2148,6 +2148,376 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     timerStringIdentifierSet.delete(name)
   }
 
+  const runtimeFunctionSummaryMap = new Map()
+  const runtimeFunctionNodeSummaryMap = new Map()
+  let runtimeFunctionSummaryIdCounter = 0
+
+  const resolveRuntimeFunctionLocalAliasRoot = (aliasMap, name) => {
+    let current = name
+    const seen = new Set()
+    while (aliasMap.has(current) && !seen.has(current)) {
+      seen.add(current)
+      const next = aliasMap.get(current)
+      if (!next || next === current) break
+      current = next
+    }
+    return current
+  }
+
+  const collectRuntimeIdentifiersInExpression = (expressionNode, set = new Set()) => {
+    const target = unwrapExpression(expressionNode)
+    if (!target) return set
+    const visitExpression = (node) => {
+      const current = unwrapExpression(node)
+      if (!current) return
+      if (ts.isIdentifier(current)) {
+        set.add(current.text)
+      }
+      ts.forEachChild(current, visitExpression)
+    }
+    visitExpression(target)
+    return set
+  }
+
+  const analyzeRuntimeFunctionSummary = (functionNode) => {
+    if (!functionNode) {
+      return {
+        function_id: `fn_${runtimeFunctionSummaryIdCounter += 1}`,
+        declared_name: '',
+        aliases: new Set(),
+        captures_tracked_arrays: new Set(),
+        mutates_array_ids: new Set(),
+        escapes_array_ids: new Set(),
+        has_unknown_side_effect: true,
+        summary_confidence: 'unknown',
+      }
+    }
+    if (runtimeFunctionNodeSummaryMap.has(functionNode)) {
+      return runtimeFunctionNodeSummaryMap.get(functionNode)
+    }
+
+    const declaredName = ts.isFunctionDeclaration(functionNode) && functionNode.name ? functionNode.name.text : ''
+    const summary = {
+      function_id: `fn_${runtimeFunctionSummaryIdCounter += 1}`,
+      declared_name: declaredName,
+      aliases: new Set(),
+      captures_tracked_arrays: new Set(),
+      mutates_array_ids: new Set(),
+      escapes_array_ids: new Set(),
+      has_unknown_side_effect: false,
+      summary_confidence: 'exact',
+    }
+    runtimeFunctionNodeSummaryMap.set(functionNode, summary)
+
+    const localArrayAliasMap = new Map()
+    const registerCapturedName = (name) => {
+      if (!name) return
+      const root = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, name)
+      summary.captures_tracked_arrays.add(root)
+    }
+    const registerMutatedName = (name) => {
+      if (!name) return
+      const root = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, name)
+      summary.mutates_array_ids.add(root)
+      registerCapturedName(root)
+    }
+    const registerEscapedName = (name) => {
+      if (!name) return
+      const root = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, name)
+      summary.escapes_array_ids.add(root)
+      registerCapturedName(root)
+    }
+    const markFunctionSummaryUnknown = () => {
+      summary.has_unknown_side_effect = true
+      if (summary.summary_confidence === 'exact') {
+        summary.summary_confidence = 'conservative'
+      }
+    }
+
+    const applyIdentifierSetAsEscaped = (identifierSet) => {
+      for (const identifierName of identifierSet) {
+        registerEscapedName(identifierName)
+      }
+    }
+
+    const analyzeFunctionBodyNode = (node) => {
+      if (!node) return
+
+      if (
+        ts.isFunctionDeclaration(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isArrowFunction(node) ||
+        ts.isMethodDeclaration(node)
+      ) {
+        if (node === functionNode) {
+          ts.forEachChild(node, analyzeFunctionBodyNode)
+        }
+        return
+      }
+
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+        const rhs = unwrapExpression(node.initializer)
+        if (ts.isIdentifier(rhs)) {
+          const resolved = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, rhs.text)
+          localArrayAliasMap.set(node.name.text, resolved)
+          registerCapturedName(resolved)
+        } else {
+          const identifiers = collectRuntimeIdentifiersInExpression(rhs)
+          if (identifiers.has(node.name.text)) {
+            markFunctionSummaryUnknown()
+          }
+          identifiers.forEach((identifierName) => registerCapturedName(identifierName))
+        }
+      }
+
+      if (ts.isBinaryExpression(node) && isRuntimeWriteOperator(node.operatorToken.kind)) {
+        const leftExpr = unwrapExpression(node.left)
+        const rightExpr = unwrapExpression(node.right)
+
+        if (node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(leftExpr)) {
+          if (ts.isIdentifier(rightExpr)) {
+            const resolved = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, rightExpr.text)
+            localArrayAliasMap.set(leftExpr.text, resolved)
+            registerCapturedName(resolved)
+          } else {
+            localArrayAliasMap.delete(leftExpr.text)
+            collectRuntimeIdentifiersInExpression(rightExpr).forEach((identifierName) =>
+              registerCapturedName(identifierName),
+            )
+          }
+        }
+
+        if (ts.isElementAccessExpression(leftExpr)) {
+          const baseExpr = unwrapExpression(leftExpr.expression)
+          if (ts.isIdentifier(baseExpr)) {
+            registerMutatedName(baseExpr.text)
+          } else {
+            markFunctionSummaryUnknown()
+          }
+        } else if (ts.isPropertyAccessExpression(leftExpr)) {
+          const baseExpr = unwrapExpression(leftExpr.expression)
+          if (leftExpr.name.text === 'length' && ts.isIdentifier(baseExpr)) {
+            registerMutatedName(baseExpr.text)
+          } else if (ts.isIdentifier(baseExpr)) {
+            registerCapturedName(baseExpr.text)
+          }
+        }
+
+        collectRuntimeIdentifiersInExpression(rightExpr).forEach((identifierName) =>
+          registerCapturedName(identifierName),
+        )
+      }
+
+      if (ts.isReturnStatement(node) && node.expression) {
+        const identifiers = collectRuntimeIdentifiersInExpression(node.expression)
+        applyIdentifierSetAsEscaped(identifiers)
+      }
+
+      if (ts.isCallExpression(node)) {
+        const calleeExpr = normalizeRuntimeCalleeExpression(node.expression)
+        let treatedAsKnownMutatingCall = false
+
+        if (ts.isPropertyAccessExpression(calleeExpr) || ts.isElementAccessExpression(calleeExpr)) {
+          const memberName = getStaticMemberName(calleeExpr)
+          const baseExpr = unwrapExpression(calleeExpr.expression)
+          if (ts.isIdentifier(baseExpr) && memberName && runtimeArrayMutatingMethodNameSet.has(memberName)) {
+            registerMutatedName(baseExpr.text)
+            treatedAsKnownMutatingCall = true
+          } else if (ts.isIdentifier(baseExpr) && !memberName) {
+            markFunctionSummaryUnknown()
+            registerCapturedName(baseExpr.text)
+          } else if (memberName === 'call' || memberName === 'apply') {
+            const invokedExpr = normalizeRuntimeCalleeExpression(calleeExpr.expression)
+            const invokedMethodName = getStaticMemberName(invokedExpr)
+            if (invokedMethodName && runtimeArrayMutatingMethodNameSet.has(invokedMethodName)) {
+              const thisArg = unwrapExpression(node.arguments[0] || null)
+              if (ts.isIdentifier(thisArg)) {
+                registerMutatedName(thisArg.text)
+              } else {
+                markFunctionSummaryUnknown()
+              }
+              treatedAsKnownMutatingCall = true
+            }
+          }
+        }
+
+        for (const argNode of node.arguments) {
+          const identifiers = collectRuntimeIdentifiersInExpression(argNode)
+          if (!treatedAsKnownMutatingCall) {
+            applyIdentifierSetAsEscaped(identifiers)
+          } else {
+            identifiers.forEach((identifierName) => registerCapturedName(identifierName))
+          }
+        }
+
+        if (!treatedAsKnownMutatingCall) {
+          const directIdentifierCallee = ts.isIdentifier(calleeExpr) ? calleeExpr.text : null
+          if (directIdentifierCallee && runtimeFunctionSummaryMap.has(directIdentifierCallee)) {
+            const nestedSummary = runtimeFunctionSummaryMap.get(directIdentifierCallee)
+            for (const mutateName of nestedSummary.mutates_array_ids || []) {
+              registerMutatedName(mutateName)
+            }
+            for (const escapeName of nestedSummary.escapes_array_ids || []) {
+              registerEscapedName(escapeName)
+            }
+            if (nestedSummary.has_unknown_side_effect) {
+              markFunctionSummaryUnknown()
+            }
+            treatedAsKnownMutatingCall = true
+          }
+        }
+
+        if (!treatedAsKnownMutatingCall) {
+          markFunctionSummaryUnknown()
+        }
+      }
+
+      ts.forEachChild(node, analyzeFunctionBodyNode)
+    }
+
+    if (ts.isArrowFunction(functionNode) && !ts.isBlock(functionNode.body)) {
+      analyzeFunctionBodyNode(functionNode.body)
+    } else if (ts.isBlock(functionNode.body)) {
+      functionNode.body.statements.forEach((statement) => analyzeFunctionBodyNode(statement))
+    } else if (ts.isFunctionDeclaration(functionNode) && functionNode.body) {
+      functionNode.body.statements.forEach((statement) => analyzeFunctionBodyNode(statement))
+    } else {
+      summary.summary_confidence = 'unknown'
+      summary.has_unknown_side_effect = true
+    }
+
+    if (summary.summary_confidence === 'exact' && summary.has_unknown_side_effect) {
+      summary.summary_confidence = 'conservative'
+    }
+    if (
+      summary.summary_confidence === 'exact' &&
+      summary.mutates_array_ids.size === 0 &&
+      summary.escapes_array_ids.size === 0 &&
+      summary.captures_tracked_arrays.size === 0
+    ) {
+      summary.summary_confidence = 'exact'
+    }
+
+    return summary
+  }
+
+  const resolveRuntimeFunctionSummaryFromExpression = (expression, depth = 0) => {
+    if (depth > 10) return null
+    const target = normalizeRuntimeCalleeExpression(expression)
+    if (!target) return null
+
+    if (ts.isIdentifier(target)) {
+      return runtimeFunctionSummaryMap.get(target.text) || null
+    }
+
+    if (ts.isFunctionExpression(target) || ts.isArrowFunction(target)) {
+      return analyzeRuntimeFunctionSummary(target)
+    }
+
+    if (ts.isCallExpression(target)) {
+      const callee = normalizeRuntimeCalleeExpression(target.expression)
+      if (callee && (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee))) {
+        const memberName = getStaticMemberName(callee)
+        if (memberName === 'bind') {
+          return resolveRuntimeFunctionSummaryFromExpression(callee.expression, depth + 1)
+        }
+      }
+
+      const returnExpr = resolveFunctionLikeReturnExpression(target.expression)
+      if (returnExpr) {
+        return resolveRuntimeFunctionSummaryFromExpression(returnExpr, depth + 1)
+      }
+      return null
+    }
+
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = resolveRuntimeFunctionSummaryFromExpression(target.whenTrue, depth + 1)
+      const whenFalse = resolveRuntimeFunctionSummaryFromExpression(target.whenFalse, depth + 1)
+      if (whenTrue && whenFalse && whenTrue.function_id === whenFalse.function_id) {
+        return whenTrue
+      }
+      return null
+    }
+
+    if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+      const memberName = getStaticMemberName(target)
+      if (memberName === 'call' || memberName === 'apply' || memberName === 'bind') {
+        return resolveRuntimeFunctionSummaryFromExpression(target.expression, depth + 1)
+      }
+      if (ts.isIdentifier(target.expression)) {
+        const baseName = target.expression.text
+        const objectContainer = runtimeObjectMethodContainerMap.get(baseName) || null
+        if (objectContainer && !objectContainer.unresolved) {
+          return null
+        }
+        const arrayContainer = runtimeArrayMethodContainerMap.get(baseName) || null
+        if (arrayContainer && !arrayContainer.unresolved) {
+          return null
+        }
+      }
+    }
+
+    return null
+  }
+
+  const setRuntimeFunctionAliasBinding = (aliasName, initializer) => {
+    const summary = resolveRuntimeFunctionSummaryFromExpression(initializer)
+    if (summary) {
+      runtimeFunctionSummaryMap.set(aliasName, summary)
+      summary.aliases.add(aliasName)
+      return
+    }
+    runtimeFunctionSummaryMap.delete(aliasName)
+  }
+
+  const applyRuntimeFunctionSummaryAtCall = (summary, callNode) => {
+    if (!summary) return false
+    const callPosition = callNode.getStart()
+    const summaryName = summary.declared_name || summary.function_id
+
+    for (const mutateName of summary.mutates_array_ids || []) {
+      if (runtimeArrayAliasMap.has(mutateName)) {
+        markRuntimeArrayAliasState(mutateName, 'tainted', `FunctionCallMutate.${summaryName}`, callPosition)
+      }
+    }
+
+    for (const escapeName of summary.escapes_array_ids || []) {
+      if (runtimeArrayAliasMap.has(escapeName)) {
+        markRuntimeArrayAliasState(escapeName, 'escaped', `FunctionCallEscape.${summaryName}`, callPosition)
+      }
+    }
+
+    if (summary.has_unknown_side_effect || summary.summary_confidence === 'unknown') {
+      let marked = false
+      const captureNames = Array.from(summary.captures_tracked_arrays || [])
+      if (captureNames.length > 0) {
+        for (const captureName of captureNames) {
+          if (runtimeArrayAliasMap.has(captureName)) {
+            markRuntimeArrayAliasState(captureName, 'unknown', `FunctionCallUnknown.${summaryName}`, callPosition)
+            marked = true
+          }
+        }
+      }
+      if (!marked) {
+        for (const aliasName of runtimeArrayAliasMap.keys()) {
+          markRuntimeArrayAliasState(aliasName, 'unknown', `FunctionCallUnknown.${summaryName}`, callPosition)
+        }
+      }
+    }
+    return true
+  }
+
+  const collectHoistedFunctionSummaries = (node) => {
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      const summary = analyzeRuntimeFunctionSummary(node)
+      runtimeFunctionSummaryMap.set(node.name.text, summary)
+      summary.aliases.add(node.name.text)
+    }
+    ts.forEachChild(node, collectHoistedFunctionSummaries)
+  }
+
+  collectHoistedFunctionSummaries(sourceFile)
+
   const visit = (node) => {
     if (ts.isReturnStatement(node) && node.expression) {
       markArrayAliasesEscapedInExpression(node.expression, 'ReturnEscape', node.getStart())
@@ -2156,6 +2526,11 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     if (ts.isCallExpression(node)) {
       const callee = normalizeRuntimeCalleeExpression(node.expression)
       let hasExplicitReflectConstructArrayArg = false
+      let appliedRuntimeFunctionSummary = false
+      const runtimeFunctionSummary = resolveRuntimeFunctionSummaryFromExpression(callee)
+      if (runtimeFunctionSummary) {
+        appliedRuntimeFunctionSummary = applyRuntimeFunctionSummaryAtCall(runtimeFunctionSummary, node)
+      }
 
       if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
         const baseExpr = unwrapExpression(callee.expression)
@@ -2207,6 +2582,32 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         if (hasExplicitReflectConstructArrayArg && index === 1) return
         markArrayAliasesEscapedInExpression(argNode, 'CallArgumentEscape', node.getStart())
       })
+
+      if (!appliedRuntimeFunctionSummary && node.arguments.length === 0 && runtimeArrayAliasMap.size > 0) {
+        const runtimeMethod = resolveRuntimeMethodFromExpression(
+          callee,
+          runtimeMethodAliasMap,
+          runtimeNamespaceAliasMap,
+          runtimeArrayMethodContainerMap,
+          runtimeObjectMethodContainerMap,
+          runtimeGlobalContainerAliasMap,
+        )
+        const memberName =
+          ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)
+            ? getStaticMemberName(callee)
+            : null
+        const looksLikePotentialFunctionAliasCall =
+          ts.isIdentifier(callee) ||
+          (ts.isElementAccessExpression(callee) && ts.isIdentifier(unwrapExpression(callee.expression))) ||
+          (ts.isPropertyAccessExpression(callee) &&
+            ts.isIdentifier(unwrapExpression(callee.expression)) &&
+            (memberName === 'call' || memberName === 'apply' || memberName === 'bind'))
+        if (!runtimeMethod && looksLikePotentialFunctionAliasCall) {
+          for (const aliasName of runtimeArrayAliasMap.keys()) {
+            markRuntimeArrayAliasState(aliasName, 'unknown', 'UnknownFunctionCallPotentialArraySideEffect', node.getStart())
+          }
+        }
+      }
     }
 
     if (ts.isBinaryExpression(node) && isRuntimeWriteOperator(node.operatorToken.kind)) {
@@ -2284,6 +2685,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         setRuntimeConstructorContainerAliases(varName, initializer)
         setRuntimeConstructorAliasBinding(varName, initializer)
         setRuntimeConstructorFactoryAliasBinding(varName, initializer)
+        setRuntimeFunctionAliasBinding(varName, initializer)
 
         const runtimeMethod = resolveRuntimeMethodFromExpression(
           initializer,
@@ -2390,6 +2792,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         setRuntimeConstructorContainerAliases(targetName, rhs)
         setRuntimeConstructorAliasBinding(targetName, rhs)
         setRuntimeConstructorFactoryAliasBinding(targetName, rhs)
+        setRuntimeFunctionAliasBinding(targetName, rhs)
 
         const runtimeMethod = resolveRuntimeMethodFromExpression(
           rhs,

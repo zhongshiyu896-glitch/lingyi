@@ -256,6 +256,18 @@ new W(...spreadWorkerArgs)
 const spreadWorkerAlias = spreadWorkerArgs
 new Worker(...spreadWorkerAlias)
 Reflect.construct(Worker, spreadWorkerArgs)
+function noop() {}
+noop()
+const noopArrow = () => {}
+noopArrow()
+const safeWorkerArgsAfterNoop = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]
+new Worker(...safeWorkerArgsAfterNoop)
+const safeArgsUsedBeforePoison = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]
+new Worker(...safeArgsUsedBeforePoison)
+function poisonAfterUse() {
+  safeArgsUsedBeforePoison[0] = 'data:text/javascript,postMessage(1)'
+}
+poisonAfterUse()
 const dateArgs = ['2026-04-15']
 new Date(...dateArgs)
 const urlArgs = ['./readonly-worker.ts', import.meta.url]
@@ -4662,6 +4674,198 @@ const failureCases = [
     mutate: (root) => {
       const content = read(root, 'src/App.vue')
       write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nnew unknownCtor(...[])\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via hoisted poison() mutates args before new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\npoison()\nnew Worker(...args)\nfunction poison() {\n  args[0] = 'data:text/javascript,postMessage(1)'\n}\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via hoisted poison() splice mutates args before new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\npoison()\nnew Worker(...args)\nfunction poison() {\n  args.splice(0, 1, 'data:text/javascript,postMessage(1)')\n}\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via hoisted poison() alias mutation before new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\npoison()\nnew Worker(...args)\nfunction poison() {\n  const alias = args\n  alias[0] = 'data:text/javascript,postMessage(1)'\n}\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via arrow poison() mutates args before new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nconst poison = () => {\n  args[0] = 'data:text/javascript,postMessage(1)'\n}\npoison()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via function expression poison() mutates args before new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nconst poison = function () {\n  args.unshift('data:text/javascript,postMessage(1)')\n}\npoison()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via function alias run() then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nfunction poison() {\n  args[0] = 'data:text/javascript,postMessage(1)'\n}\nconst run = poison\nrun()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via poison.call(null) then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nfunction poison() {\n  args[0] = 'data:text/javascript,postMessage(1)'\n}\npoison.call(null)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via poison.apply(null) then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nfunction poison() {\n  args[0] = 'data:text/javascript,postMessage(1)'\n}\npoison.apply(null)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via bound poison() then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nfunction poison() {\n  args[0] = 'data:text/javascript,postMessage(1)'\n}\nconst bound = poison.bind(null)\nbound()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via closure-return poison() then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nconst poison = (() => () => {\n  args[0] = 'data:text/javascript,postMessage(1)'\n})()\npoison()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via IIFE mutates args then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\n(() => {\n  args[0] = 'data:text/javascript,postMessage(1)'\n})()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via maybePoison() unknown no-arg call then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nmaybePoison()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via unknown(args) escape then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nunknown(args)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via hoisted poison() then Reflect.construct(Worker, args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\npoison()\nReflect.construct(Worker, args)\nfunction poison() {\n  args[0] = 'data:text/javascript,postMessage(1)'\n}\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via hoisted poison() then new unknownCtor(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\npoison()\nnew unknownCtor(...args)\nfunction poison() {\n  args[0] = '/runtime/style-profit-worker.js'\n}\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via function array container fns[0]() then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nfunction poison() {\n  args[0] = 'data:text/javascript,postMessage(1)'\n}\nconst fns = [poison]\nfns[0]()\nnew Worker(...args)\n</script>\n`,
+      )
     },
   },
   {
