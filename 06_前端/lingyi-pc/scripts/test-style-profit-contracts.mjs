@@ -250,6 +250,13 @@ Reflect.construct(Worker, [new URL('./readonly-worker.ts', import.meta.url), { t
 Reflect.construct(Date, [])
 const getWorker = () => Worker
 new (getWorker())(new URL('./readonly-worker.ts', import.meta.url), { type: 'module' })
+const spreadWorkerArgs = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]
+new Worker(...spreadWorkerArgs)
+new W(...spreadWorkerArgs)
+const dateArgs = ['2026-04-15']
+new Date(...dateArgs)
+const urlArgs = ['./readonly-worker.ts', import.meta.url]
+new URL(...urlArgs)
 new Date('2026-04-15')
 new Error('readonly message')
 new URL('./readonly-worker.ts', import.meta.url)
@@ -4276,6 +4283,190 @@ const failureCases = [
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nclass SafeCtor {}\nReflect.construct(unknownCtor, ['/runtime/style-profit-worker.js'], SafeCtor)\n</script>\n`,
       )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const args=['/runtime/style-profit-worker.js', {type:'module'}]; new unknownCtor(...args)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = ['/runtime/style-profit-worker.js', { type: 'module' }]\nnew unknownCtor(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const args=['./readonly-worker.ts', {type:'module'}]; new unknownCtor(...args)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = ['./readonly-worker.ts', { type: 'module' }]\nnew unknownCtor(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via const args=[workerUrl, {type}] ; new unknownCtor(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst workerUrl = getWorkerUrl()\nconst args = [workerUrl, { type: 'module' }]\nnew unknownCtor(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via const args=[blobWorkerUrl, {type}] ; new unknownCtor(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst blobWorkerUrl = URL.createObjectURL(new Blob(['postMessage(1)'], { type: 'text/javascript' }))\nconst args = [blobWorkerUrl, { type: 'module' }]\nnew unknownCtor(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via const args=[new URL('./readonly-worker.ts', import.meta.url), {type}] ; new unknownCtor(...args)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nnew unknownCtor(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new unknownCtor(...['/runtime/style-profit-worker.js', { type: 'module' }])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nnew unknownCtor(...['/runtime/style-profit-worker.js', { type: 'module' }])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new unknownCtor('/runtime/style-profit-worker.js', ...rest)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst rest = [{ type: 'module' }]\nnew unknownCtor('/runtime/style-profit-worker.js', ...rest)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via new unknownCtor(...args, { type: module }) unresolved args',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = getArgs()\nnew unknownCtor(...args, { type: 'module' })\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via new unknownCtor(...getArgs())',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nnew unknownCtor(...getArgs())\n</script>\n`)
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via new unknownCtor(...(condition ? safeArgs : unsafeArgs))',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst condition = true\nconst safeArgs = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nconst unsafeArgs = ['/runtime/style-profit-worker.js', { type: 'module' }]\nnew unknownCtor(...(condition ? safeArgs : unsafeArgs))\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via new unknownCtor(...[...args])',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = ['/runtime/style-profit-worker.js', { type: 'module' }]\nnew unknownCtor(...[...args])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via new (getWorker())(...['/runtime/style-profit-worker.js', { type: 'module' }])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst getWorker = () => Worker\nnew (getWorker())(...['/runtime/style-profit-worker.js', { type: 'module' }])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Reflect.construct(unknownCtor, [...args]) unresolved args',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = getArgs()\nReflect.construct(unknownCtor, [...args])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via Reflect.construct(unknownCtor, [['/runtime/style-profit-worker.js'][0]])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nReflect.construct(unknownCtor, [['/runtime/style-profit-worker.js'][0]])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via Reflect.construct(getWorker(), [...['/runtime/style-profit-worker.js', { type: 'module' }]])",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst getWorker = () => Worker\nReflect.construct(getWorker(), [...['/runtime/style-profit-worker.js', { type: 'module' }]])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via new unknownCtor(...[]) should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(root, 'src/App.vue', `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nnew unknownCtor(...[])\n</script>\n`)
     },
   },
   {

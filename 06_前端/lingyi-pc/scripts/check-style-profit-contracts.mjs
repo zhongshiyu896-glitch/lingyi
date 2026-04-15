@@ -2614,21 +2614,165 @@ const resolveWorkerConstructorDescriptor = (expression, runtimeContext) =>
     runtimeContext.runtimeGlobalContainerAliasMap || new Map(),
   )
 
-const resolveRuntimeArgumentArrayElements = (argumentExpression, runtimeContext) => {
-  const target = unwrapExpression(argumentExpression)
+const resolveRuntimeInvocationArgConfidence = (args, hasSpread, unresolved) => {
+  if (unresolved) {
+    return hasSpread ? 'unsafe_spread' : 'unknown'
+  }
+  const firstArg = args[0] || null
+  if (!firstArg) {
+    return hasSpread ? 'unknown' : 'static'
+  }
+  if (resolveStaticStringValue(firstArg) !== null || isSafeWorkerNewUrlExpression(firstArg)) {
+    return 'static_url_like'
+  }
+  if (
+    ts.isNumericLiteral(firstArg) ||
+    ts.isStringLiteral(firstArg) ||
+    ts.isNoSubstitutionTemplateLiteral(firstArg) ||
+    firstArg.kind === ts.SyntaxKind.TrueKeyword ||
+    firstArg.kind === ts.SyntaxKind.FalseKeyword ||
+    firstArg.kind === ts.SyntaxKind.NullKeyword
+  ) {
+    return 'static'
+  }
+  return 'unknown'
+}
+
+const resolveRuntimeSpreadArgumentElements = (spreadExpression, runtimeContext, depth = 0) => {
+  if (depth > 12) {
+    return {
+      unresolved: true,
+      args: [],
+      hasSpread: true,
+      expressionText: spreadExpression?.getText ? spreadExpression.getText() : '',
+    }
+  }
+  const target = unwrapExpression(spreadExpression)
   if (!target) {
-    return { unresolved: true, args: [], expressionText: '' }
+    return {
+      unresolved: true,
+      args: [],
+      hasSpread: true,
+      expressionText: '',
+    }
   }
 
   if (ts.isArrayLiteralExpression(target)) {
-    const normalized = []
-    for (const element of target.elements) {
-      if (ts.isSpreadElement(element) || ts.isOmittedExpression(element)) {
-        return { unresolved: true, args: [], expressionText: target.getText() }
-      }
-      normalized.push(element)
+    return resolveRuntimeInvocationArgumentsFromNodes(Array.from(target.elements), runtimeContext, depth + 1)
+  }
+
+  if (ts.isIdentifier(target)) {
+    const mappedArray = runtimeContext.arrayLiteralVariableMap?.get(target.text) || null
+    if (mappedArray) {
+      return resolveRuntimeInvocationArgumentsFromNodes(Array.from(mappedArray.elements), runtimeContext, depth + 1)
     }
-    return { unresolved: false, args: normalized, expressionText: target.getText() }
+    return {
+      unresolved: true,
+      args: [],
+      hasSpread: true,
+      expressionText: target.text,
+    }
+  }
+
+  return {
+    unresolved: true,
+    args: [],
+    hasSpread: true,
+    expressionText: target.getText ? target.getText() : '',
+  }
+}
+
+const resolveRuntimeInvocationArgumentsFromNodes = (argumentNodes, runtimeContext, depth = 0) => {
+  if (depth > 12) {
+    return {
+      unresolved: true,
+      args: [],
+      hasSpread: false,
+      arg_confidence: 'unknown',
+      expressionText: '',
+    }
+  }
+
+  const normalizedArgs = []
+  let hasSpread = false
+  let unresolvedExpressionText = ''
+
+  for (const rawArg of argumentNodes) {
+    const arg = unwrapExpression(rawArg)
+    if (!arg) {
+      return {
+        unresolved: true,
+        args: [],
+        hasSpread,
+        arg_confidence: resolveRuntimeInvocationArgConfidence([], hasSpread, true),
+        expressionText: unresolvedExpressionText || '',
+      }
+    }
+
+    if (ts.isSpreadElement(arg)) {
+      hasSpread = true
+      const spreadResolved = resolveRuntimeSpreadArgumentElements(arg.expression, runtimeContext, depth + 1)
+      if (spreadResolved.unresolved) {
+        unresolvedExpressionText = spreadResolved.expressionText || arg.getText()
+        return {
+          unresolved: true,
+          args: [],
+          hasSpread: true,
+          arg_confidence: resolveRuntimeInvocationArgConfidence([], true, true),
+          expressionText: unresolvedExpressionText,
+        }
+      }
+      normalizedArgs.push(...spreadResolved.args)
+      continue
+    }
+
+    if (ts.isOmittedExpression(arg)) {
+      unresolvedExpressionText = arg.getText ? arg.getText() : ''
+      return {
+        unresolved: true,
+        args: [],
+        hasSpread,
+        arg_confidence: resolveRuntimeInvocationArgConfidence([], hasSpread, true),
+        expressionText: unresolvedExpressionText,
+      }
+    }
+
+    normalizedArgs.push(arg)
+  }
+
+  return {
+    unresolved: false,
+    args: normalizedArgs,
+    hasSpread,
+    arg_confidence: resolveRuntimeInvocationArgConfidence(normalizedArgs, hasSpread, false),
+    expressionText: '',
+  }
+}
+
+const resolveRuntimeArgumentArrayElements = (argumentExpression, runtimeContext) => {
+  const target = unwrapExpression(argumentExpression)
+  if (!target) {
+    return { unresolved: true, args: [], hasSpread: false, arg_confidence: 'unknown', expressionText: '' }
+  }
+
+  if (ts.isArrayLiteralExpression(target)) {
+    const resolved = resolveRuntimeInvocationArgumentsFromNodes(Array.from(target.elements), runtimeContext)
+    if (resolved.unresolved) {
+      return {
+        unresolved: true,
+        args: [],
+        hasSpread: resolved.hasSpread,
+        arg_confidence: resolved.arg_confidence,
+        expressionText: resolved.expressionText || target.getText(),
+      }
+    }
+    return {
+      unresolved: false,
+      args: resolved.args,
+      hasSpread: resolved.hasSpread,
+      arg_confidence: resolved.arg_confidence,
+      expressionText: target.getText(),
+    }
   }
 
   if (ts.isIdentifier(target)) {
@@ -2636,12 +2780,14 @@ const resolveRuntimeArgumentArrayElements = (argumentExpression, runtimeContext)
     if (mappedArray) {
       return resolveRuntimeArgumentArrayElements(mappedArray, runtimeContext)
     }
-    return { unresolved: true, args: [], expressionText: target.text }
+    return { unresolved: true, args: [], hasSpread: false, arg_confidence: 'unknown', expressionText: target.text }
   }
 
   return {
     unresolved: true,
     args: [],
+    hasSpread: false,
+    arg_confidence: 'unknown',
     expressionText: target.getText ? target.getText() : '',
   }
 }
@@ -2846,7 +2992,22 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
 
   const resolveConstructorInvocationDescriptorFromNewExpression = (newNode) => {
     const ctorInfo = resolveCtorKindForDescriptor(newNode.expression)
-    const runtimeArgs = Array.from(newNode.arguments || [])
+    const normalizedArgs = resolveRuntimeInvocationArgumentsFromNodes(Array.from(newNode.arguments || []), runtimeContext)
+    if (normalizedArgs.unresolved) {
+      return {
+        ctor_kind: 'unknown',
+        ctor_confidence: 'unknown',
+        url_expression: null,
+        options_expression: null,
+        source_trace: newNode.getText(sourceFile),
+        unresolved_constructor: false,
+        unresolved_expression: normalizedArgs.expressionText || '',
+        unresolved_args: true,
+        has_spread: normalizedArgs.hasSpread,
+        arg_confidence: normalizedArgs.arg_confidence,
+      }
+    }
+    const runtimeArgs = normalizedArgs.args
     const sourceArg =
       ctorInfo.workerCtorDescriptor?.constructorName && !ctorInfo.workerCtorDescriptor.unresolved
         ? resolveWorkerInvocationSourceArg(ctorInfo.workerCtorDescriptor, runtimeArgs)
@@ -2859,6 +3020,9 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
       source_trace: newNode.getText(sourceFile),
       unresolved_constructor: Boolean(ctorInfo.workerCtorDescriptor?.unresolved),
       unresolved_expression: ctorInfo.workerCtorDescriptor?.expressionText || '',
+      unresolved_args: false,
+      has_spread: normalizedArgs.hasSpread,
+      arg_confidence: normalizedArgs.arg_confidence,
     }
   }
 
@@ -2877,6 +3041,8 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
         unresolved_constructor: false,
         unresolved_expression: runtimeArgs.expressionText || '',
         unresolved_args: true,
+        has_spread: runtimeArgs.hasSpread,
+        arg_confidence: runtimeArgs.arg_confidence,
       }
     }
     const sourceArg =
@@ -2892,6 +3058,8 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
       unresolved_constructor: Boolean(ctorInfo.workerCtorDescriptor?.unresolved),
       unresolved_expression: ctorInfo.workerCtorDescriptor?.expressionText || '',
       unresolved_args: false,
+      has_spread: runtimeArgs.hasSpread,
+      arg_confidence: runtimeArgs.arg_confidence,
     }
   }
 
@@ -2920,6 +3088,13 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
     }
 
     if (descriptor.ctor_kind === 'unknown' && descriptor.ctor_confidence === 'unknown') {
+      if (
+        !descriptor.url_expression &&
+        (descriptor.has_spread || descriptor.arg_confidence === 'unknown' || descriptor.arg_confidence === 'unsafe_spread')
+      ) {
+        pushFinding('RuntimeWorkerConstructorUnknownTarget', descriptor.source_trace || '')
+        return
+      }
       const unknownSourceCheck = classifyUnknownWorkerConstructTargetSourceStrict(
         descriptor.url_expression,
         isBlobUrlSourceExpression,
