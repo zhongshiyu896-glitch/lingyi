@@ -52,6 +52,12 @@ from app.core.permissions import PRODUCTION_WORK_ORDER_CREATE
 from app.core.permissions import PRODUCTION_WORK_ORDER_WORKER
 from app.core.permissions import STYLE_PROFIT_READ
 from app.core.permissions import STYLE_PROFIT_SNAPSHOT_CREATE
+from app.core.permissions import FACTORY_STATEMENT_CREATE
+from app.core.permissions import FACTORY_STATEMENT_CONFIRM
+from app.core.permissions import FACTORY_STATEMENT_CANCEL
+from app.core.permissions import FACTORY_STATEMENT_READ
+from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
+from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import normalize_request_id
@@ -67,6 +73,8 @@ from app.routers.workshop import get_db_session as workshop_router_session_dep
 from app.routers.workshop import router as workshop_router
 from app.routers.style_profit import get_db_session as style_profit_router_session_dep
 from app.routers.style_profit import router as style_profit_router
+from app.routers.factory_statement import get_db_session as factory_statement_router_session_dep
+from app.routers.factory_statement import router as factory_statement_router
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -100,12 +108,14 @@ app.dependency_overrides[production_router_session_dep] = get_db_session
 app.dependency_overrides[bom_router_session_dep] = get_db_session
 app.dependency_overrides[workshop_router_session_dep] = get_db_session
 app.dependency_overrides[style_profit_router_session_dep] = get_db_session
+app.dependency_overrides[factory_statement_router_session_dep] = get_db_session
 app.include_router(auth_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
 app.include_router(bom_router)
 app.include_router(workshop_router)
 app.include_router(style_profit_router)
+app.include_router(factory_statement_router)
 
 
 SECURITY_AUDIT_CODES = {
@@ -291,6 +301,32 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         snapshot_id = _extract_style_profit_snapshot_id(path)
         return "style_profit", STYLE_PROFIT_READ, "StyleProfitSnapshot", snapshot_id
 
+    if path.startswith("/api/factory-statements"):
+        if path in {"/api/factory-statements", "/api/factory-statements/"}:
+            if method == "POST":
+                return "factory_statement", FACTORY_STATEMENT_CREATE, "FactoryStatement", None
+            return "factory_statement", FACTORY_STATEMENT_READ, "FactoryStatement", None
+        if path.endswith("/internal/payable-draft-sync/run-once"):
+            return (
+                "factory_statement",
+                FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER,
+                "FactoryStatementPayableWorker",
+                None,
+            )
+        statement_id = _extract_factory_statement_id(path)
+        if path.endswith("/confirm"):
+            return "factory_statement", FACTORY_STATEMENT_CONFIRM, "FactoryStatement", statement_id
+        if path.endswith("/cancel"):
+            return "factory_statement", FACTORY_STATEMENT_CANCEL, "FactoryStatement", statement_id
+        if path.endswith("/payable-draft"):
+            return (
+                "factory_statement",
+                FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
+                "FactoryStatement",
+                statement_id,
+            )
+        return "factory_statement", FACTORY_STATEMENT_READ, "FactoryStatement", statement_id
+
     return "unknown", None, None, None
 
 
@@ -341,6 +377,13 @@ def _extract_work_order(path: str) -> str | None:
 
 def _extract_style_profit_snapshot_id(path: str) -> str | None:
     match = re.match(r"^/api/reports/style-profit/snapshots/(\d+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_factory_statement_id(path: str) -> str | None:
+    match = re.match(r"^/api/factory-statements/(\d+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None

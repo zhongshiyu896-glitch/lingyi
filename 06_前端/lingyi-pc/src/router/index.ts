@@ -83,6 +83,24 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/style_profit/StyleProfitSnapshotDetail.vue'),
     meta: { module: 'style_profit' },
   },
+  {
+    path: '/factory-statements/list',
+    name: 'FactoryStatementList',
+    component: () => import('@/views/factory_statement/FactoryStatementList.vue'),
+    meta: { module: 'factory_statement' },
+  },
+  {
+    path: '/factory-statements/detail',
+    name: 'FactoryStatementDetail',
+    component: () => import('@/views/factory_statement/FactoryStatementDetail.vue'),
+    meta: { module: 'factory_statement' },
+  },
+  {
+    path: '/factory-statements/print',
+    name: 'FactoryStatementPrint',
+    component: () => import('@/views/factory_statement/FactoryStatementPrint.vue'),
+    meta: { module: 'factory_statement' },
+  },
 ]
 
 const router = createRouter({

@@ -59,6 +59,12 @@ from app.core.permissions import PRODUCTION_JOB_CARD_SYNC
 from app.core.permissions import PRODUCTION_WORK_ORDER_WORKER
 from app.core.permissions import STYLE_PROFIT_READ
 from app.core.permissions import STYLE_PROFIT_SNAPSHOT_CREATE
+from app.core.permissions import FACTORY_STATEMENT_CREATE
+from app.core.permissions import FACTORY_STATEMENT_CONFIRM
+from app.core.permissions import FACTORY_STATEMENT_CANCEL
+from app.core.permissions import FACTORY_STATEMENT_READ
+from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
+from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
 from app.core.permissions import get_permission_source
 from app.core.permissions import get_static_actions_for_roles
@@ -125,6 +131,12 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_WORK_ORDER_WORKER,
         STYLE_PROFIT_READ,
         STYLE_PROFIT_SNAPSHOT_CREATE,
+        FACTORY_STATEMENT_READ,
+        FACTORY_STATEMENT_CREATE,
+        FACTORY_STATEMENT_CONFIRM,
+        FACTORY_STATEMENT_CANCEL,
+        FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
+        FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER,
     },
     "LY Integration Service": {
         WORKSHOP_READ,
@@ -134,6 +146,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_WORK_ORDER_WORKER,
         PRODUCTION_READ,
         PRODUCTION_JOB_CARD_SYNC,
+        FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER,
     },
     "BOM Manager": {BOM_READ, BOM_CREATE, BOM_UPDATE, BOM_PUBLISH, BOM_SUBMIT, BOM_DEACTIVATE, BOM_CANCEL, BOM_SET_DEFAULT},
     "BOM Editor": {BOM_READ, BOM_CREATE, BOM_UPDATE},
@@ -183,6 +196,11 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
     "Finance Manager": {
         STYLE_PROFIT_READ,
         STYLE_PROFIT_SNAPSHOT_CREATE,
+        FACTORY_STATEMENT_READ,
+        FACTORY_STATEMENT_CREATE,
+        FACTORY_STATEMENT_CONFIRM,
+        FACTORY_STATEMENT_CANCEL,
+        FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
     },
     "Sales Manager": {
         STYLE_PROFIT_READ,
@@ -202,6 +220,11 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         SUBCONTRACT_SETTLEMENT_READ,
         SUBCONTRACT_SETTLEMENT_LOCK,
         SUBCONTRACT_SETTLEMENT_RELEASE,
+        FACTORY_STATEMENT_READ,
+        FACTORY_STATEMENT_CREATE,
+        FACTORY_STATEMENT_CONFIRM,
+        FACTORY_STATEMENT_CANCEL,
+        FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
     },
     "Subcontract Operator": {
         SUBCONTRACT_READ,
@@ -962,6 +985,109 @@ class PermissionService:
                 detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
             )
 
+    def get_factory_statement_user_permissions(
+        self,
+        *,
+        current_user: CurrentUser,
+        request_obj: Request,
+        action: str,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        resource_no: str | None = None,
+    ) -> UserPermissionResult | None:
+        """Prefetch ERPNext user permissions for factory-statement resource checks."""
+        if get_permission_source() != "erpnext":
+            return None
+
+        adapter = ERPNextPermissionAdapter(request_obj=request_obj)
+        try:
+            return adapter.get_user_permissions(username=current_user.username)
+        except PermissionSourceUnavailable as exc:
+            self._raise_permission_source_unavailable(
+                exc=exc,
+                request_obj=request_obj,
+                current_user=current_user,
+                module="factory_statement",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
+
+    def ensure_factory_statement_resource_permission(
+        self,
+        *,
+        current_user: CurrentUser,
+        request_obj: Request,
+        action: str,
+        company: str | None = None,
+        supplier: str | None = None,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        resource_no: str | None = None,
+        enforce_action: bool = True,
+        user_permissions: UserPermissionResult | None = None,
+    ) -> None:
+        """Enforce factory-statement action + company/supplier resource permission."""
+        if enforce_action:
+            self.require_action(
+                current_user=current_user,
+                request_obj=request_obj,
+                action=action,
+                module="factory_statement",
+                resource_type=resource_type,
+                resource_id=resource_id,
+            )
+
+        if get_permission_source() != "erpnext":
+            return
+
+        permissions = user_permissions or self.get_factory_statement_user_permissions(
+            current_user=current_user,
+            request_obj=request_obj,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            resource_no=resource_no,
+        )
+        if permissions is None:
+            return
+
+        adapter = ERPNextPermissionAdapter(request_obj=request_obj)
+        if company and not adapter.is_company_permitted(company=company, user_permissions=permissions):
+            self._record_security_audit_safe(
+                event_type=AUTH_FORBIDDEN_CODE,
+                module="factory_statement",
+                action=action,
+                resource_type="COMPANY",
+                resource_id=resource_id,
+                resource_no=company,
+                user=current_user,
+                deny_reason="资源权限不足：无权访问该 company",
+                request_obj=request_obj,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+            )
+
+        if supplier and not adapter.is_supplier_permitted(supplier=supplier, user_permissions=permissions):
+            self._record_security_audit_safe(
+                event_type=AUTH_FORBIDDEN_CODE,
+                module="factory_statement",
+                action=action,
+                resource_type="SUPPLIER",
+                resource_id=resource_id,
+                resource_no=supplier,
+                user=current_user,
+                deny_reason="资源权限不足：无权访问该 supplier",
+                request_obj=request_obj,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+            )
+
     def record_security_denial(
         self,
         *,
@@ -1243,6 +1369,8 @@ class PermissionService:
             return {action for action in action_set if action.startswith("production:")}
         if module == "style_profit":
             return {action for action in action_set if action.startswith("style_profit:")}
+        if module == "factory_statement":
+            return {action for action in action_set if action.startswith("factory_statement:")}
         return action_set
 
     @staticmethod
@@ -1277,6 +1405,12 @@ class PermissionService:
             "work_order_create": False,
             "work_order_worker": False,
             "snapshot_create": False,
+            "factory_statement_create": False,
+            "factory_statement_read": False,
+            "factory_statement_confirm": False,
+            "factory_statement_cancel": False,
+            "factory_statement_payable_draft_create": False,
+            "factory_statement_payable_draft_worker": False,
         }
 
         if module == "workshop":
@@ -1315,6 +1449,18 @@ class PermissionService:
         if module == "style_profit":
             base["read"] = STYLE_PROFIT_READ in actions
             base["snapshot_create"] = STYLE_PROFIT_SNAPSHOT_CREATE in actions
+            return base
+        if module == "factory_statement":
+            base["read"] = FACTORY_STATEMENT_READ in actions
+            base["create"] = FACTORY_STATEMENT_CREATE in actions
+            base["confirm"] = FACTORY_STATEMENT_CONFIRM in actions
+            base["cancel"] = FACTORY_STATEMENT_CANCEL in actions
+            base["factory_statement_read"] = FACTORY_STATEMENT_READ in actions
+            base["factory_statement_create"] = FACTORY_STATEMENT_CREATE in actions
+            base["factory_statement_confirm"] = FACTORY_STATEMENT_CONFIRM in actions
+            base["factory_statement_cancel"] = FACTORY_STATEMENT_CANCEL in actions
+            base["factory_statement_payable_draft_create"] = FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE in actions
+            base["factory_statement_payable_draft_worker"] = FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER in actions
             return base
 
         can_update = BOM_UPDATE in actions and status != "active"

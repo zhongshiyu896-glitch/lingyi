@@ -15,7 +15,9 @@
     "test:production-contracts": "node scripts/test-production-contracts.mjs",
     "check:style-profit-contracts": "node scripts/check-style-profit-contracts.mjs",
     "test:style-profit-contracts": "node scripts/test-style-profit-contracts.mjs",
-    "verify": "npm run check:production-contracts && npm run test:production-contracts && npm run check:style-profit-contracts && npm run test:style-profit-contracts && npm run typecheck && npm run build"
+    "check:factory-statement-contracts": "node scripts/check-factory-statement-contracts.mjs",
+    "test:factory-statement-contracts": "node scripts/test-factory-statement-contracts.mjs",
+    "verify": "npm run check:production-contracts && npm run test:production-contracts && npm run check:style-profit-contracts && npm run test:style-profit-contracts && npm run check:factory-statement-contracts && npm run test:factory-statement-contracts && npm run typecheck && npm run build"
   },
   "dependencies": {
     "element-plus": "^2.11.5",
