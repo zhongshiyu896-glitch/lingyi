@@ -94,4 +94,4 @@
 ## 6. 提交信息
 
 - 代码提交：`3d15229`（`fix: harden worker equivalent constructor sinks`）
-- 证据提交：待提交后补充
+- 证据提交：`1fd3f0f`（`docs: add task 005j26 worker sink evidence`）
