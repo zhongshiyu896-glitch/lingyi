@@ -253,6 +253,9 @@ new (getWorker())(new URL('./readonly-worker.ts', import.meta.url), { type: 'mod
 const spreadWorkerArgs = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]
 new Worker(...spreadWorkerArgs)
 new W(...spreadWorkerArgs)
+const spreadWorkerAlias = spreadWorkerArgs
+new Worker(...spreadWorkerAlias)
+Reflect.construct(Worker, spreadWorkerArgs)
 const dateArgs = ['2026-04-15']
 new Date(...dateArgs)
 const urlArgs = ['./readonly-worker.ts', import.meta.url]
@@ -4458,6 +4461,198 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst getWorker = () => Worker\nReflect.construct(getWorker(), [...['/runtime/style-profit-worker.js', { type: 'module' }]])\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args[0] mutation then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs[0] = 'data:text/javascript,postMessage(1)'\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via args['0'] mutation then new Worker(...args)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs['0'] = 'data:text/javascript,postMessage(1)'\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via alias[0] mutation then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nconst alias = args\nalias[0] = 'data:text/javascript,postMessage(1)'\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via alias.splice mutation then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nconst alias = args\nalias.splice(0, 1, 'data:text/javascript,postMessage(1)')\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args.splice mutation then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs.splice(0, 1, 'data:text/javascript,postMessage(1)')\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args.unshift mutation then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs.unshift('data:text/javascript,postMessage(1)')\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args.push mutation then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs.push('extra')\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args.reverse mutation then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs.reverse()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args.fill mutation then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs.fill('data:text/javascript,postMessage(1)')\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via mutate(args) escape then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nmutate(args)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via store.args escape then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nconst store = {}\nstore.args = args\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.splice.call(args) then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nArray.prototype.splice.call(args, 0, 1, 'data:text/javascript,postMessage(1)')\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args[methodName](...) then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst methodName = getMethod()\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs[methodName]('data:text/javascript,postMessage(1)')\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args[0] mutation then Reflect.construct(Worker, args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs[0] = 'data:text/javascript,postMessage(1)'\nReflect.construct(Worker, args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: "runtime dynamic module loading via alias mutation then new unknownCtor(...args)",
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = ['./readonly-worker.ts', { type: 'module' }]\nconst alias = args\nalias[0] = 'data:text/javascript,postMessage(1)'\nnew unknownCtor(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via args re-assigned from getArgs then new Worker(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nlet args = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]\nargs = getArgs()\nnew Worker(...args)\n</script>\n`,
       )
     },
   },

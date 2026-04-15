@@ -579,6 +579,25 @@ const runtimeWriteOperatorKinds = new Set([
 
 const isRuntimeWriteOperator = (operatorKind) => runtimeWriteOperatorKinds.has(operatorKind)
 
+const runtimeArrayMutatingMethodNameSet = new Set([
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+  'fill',
+  'copyWithin',
+])
+
+const runtimeArrayStatusRank = {
+  clean: 0,
+  tainted: 1,
+  escaped: 2,
+  unknown: 3,
+}
+
 const unwrapExpression = (node) => {
   let current = node
   while (current) {
@@ -1728,6 +1747,9 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   const runtimeObjectConstructorContainerMap = new Map()
   const objectLiteralVariableMap = new Map()
   const arrayLiteralVariableMap = new Map()
+  const runtimeArrayStateMap = new Map()
+  const runtimeArrayAliasMap = new Map()
+  let runtimeArrayStateIdCounter = 0
   const runtimeAliasRiskFindings = []
   const runtimeMutatorSourceFindings = []
   const runtimeCodegenSourceFindings = []
@@ -1746,6 +1768,110 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
 
   const markRuntimeNamespaceAliasUnknown = (aliasName, expressionText) => {
     runtimeUnknownNamespaceAliasMap.set(aliasName, expressionText || aliasName)
+  }
+
+  const getRuntimeArrayStateByAlias = (aliasName) => {
+    const arrayId = runtimeArrayAliasMap.get(aliasName)
+    if (!arrayId) return null
+    return runtimeArrayStateMap.get(arrayId) || null
+  }
+
+  const unbindRuntimeArrayAlias = (aliasName) => {
+    const previousState = getRuntimeArrayStateByAlias(aliasName)
+    if (previousState) {
+      previousState.aliases.delete(aliasName)
+    }
+    runtimeArrayAliasMap.delete(aliasName)
+  }
+
+  const bindRuntimeArrayAlias = (aliasName, arrayId) => {
+    unbindRuntimeArrayAlias(aliasName)
+    runtimeArrayAliasMap.set(aliasName, arrayId)
+    const state = runtimeArrayStateMap.get(arrayId)
+    if (state) {
+      state.aliases.add(aliasName)
+    }
+  }
+
+  const registerRuntimeArrayState = (aliasName, arrayLiteral, declarationPosition) => {
+    const arrayId = `array_${runtimeArrayStateIdCounter += 1}`
+    const state = {
+      array_id: arrayId,
+      initial_elements: Array.from(arrayLiteral.elements),
+      aliases: new Set(),
+      status: 'clean',
+      mutation_reasons: [],
+      mutation_events: [],
+      declaration_position: declarationPosition,
+      last_safe_position: Number.MAX_SAFE_INTEGER,
+    }
+    runtimeArrayStateMap.set(arrayId, state)
+    bindRuntimeArrayAlias(aliasName, arrayId)
+    return state
+  }
+
+  const markRuntimeArrayState = (arrayId, status, reason, position) => {
+    const state = runtimeArrayStateMap.get(arrayId)
+    if (!state) return
+    const normalizedStatus = runtimeArrayStatusRank[status] !== undefined ? status : 'unknown'
+    const normalizedPosition = Number.isFinite(position) ? position : Number.MAX_SAFE_INTEGER
+    state.mutation_events.push({
+      status: normalizedStatus,
+      reason,
+      position: normalizedPosition,
+    })
+    if ((runtimeArrayStatusRank[normalizedStatus] || 0) > (runtimeArrayStatusRank[state.status] || 0)) {
+      state.status = normalizedStatus
+    }
+    state.mutation_reasons.push(reason)
+    if (Number.isFinite(normalizedPosition)) {
+      state.last_safe_position = Math.min(state.last_safe_position, normalizedPosition - 1)
+    }
+  }
+
+  const markRuntimeArrayAliasState = (aliasName, status, reason, position) => {
+    const state = getRuntimeArrayStateByAlias(aliasName)
+    if (!state) return
+    markRuntimeArrayState(state.array_id, status, reason, position)
+  }
+
+  const bindRuntimeArrayAliasFromInitializer = (aliasName, initializer, declarationPosition) => {
+    if (ts.isArrayLiteralExpression(initializer)) {
+      registerRuntimeArrayState(aliasName, initializer, declarationPosition)
+      return
+    }
+    if (ts.isIdentifier(initializer) && runtimeArrayAliasMap.has(initializer.text)) {
+      const sourceArrayId = runtimeArrayAliasMap.get(initializer.text)
+      if (sourceArrayId) {
+        bindRuntimeArrayAlias(aliasName, sourceArrayId)
+        return
+      }
+    }
+    unbindRuntimeArrayAlias(aliasName)
+  }
+
+  const collectArrayAliasIdentifiersInExpression = (node, collected = new Set()) => {
+    const target = unwrapExpression(node)
+    if (!target) return collected
+
+    const visitExpression = (expr) => {
+      const current = unwrapExpression(expr)
+      if (!current) return
+      if (ts.isIdentifier(current) && runtimeArrayAliasMap.has(current.text)) {
+        collected.add(current.text)
+      }
+      ts.forEachChild(current, visitExpression)
+    }
+
+    visitExpression(target)
+    return collected
+  }
+
+  const markArrayAliasesEscapedInExpression = (node, reason, position) => {
+    const aliases = collectArrayAliasIdentifiersInExpression(node)
+    for (const aliasName of aliases) {
+      markRuntimeArrayAliasState(aliasName, 'escaped', reason, position)
+    }
   }
 
   const setRuntimeContainerAliases = (aliasName, initializer) => {
@@ -2023,6 +2149,93 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   }
 
   const visit = (node) => {
+    if (ts.isReturnStatement(node) && node.expression) {
+      markArrayAliasesEscapedInExpression(node.expression, 'ReturnEscape', node.getStart())
+    }
+
+    if (ts.isCallExpression(node)) {
+      const callee = normalizeRuntimeCalleeExpression(node.expression)
+      let hasExplicitReflectConstructArrayArg = false
+
+      if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
+        const baseExpr = unwrapExpression(callee.expression)
+        const memberName = getStaticMemberName(callee)
+        if (ts.isIdentifier(baseExpr) && runtimeArrayAliasMap.has(baseExpr.text)) {
+          if (memberName && runtimeArrayMutatingMethodNameSet.has(memberName)) {
+            markRuntimeArrayAliasState(baseExpr.text, 'tainted', `ArrayMutatingMethod.${memberName}`, node.getStart())
+          } else if (!memberName) {
+            markRuntimeArrayAliasState(baseExpr.text, 'unknown', 'ArrayDynamicMethodCall', node.getStart())
+          }
+        }
+
+        if ((memberName === 'call' || memberName === 'apply') && (ts.isPropertyAccessExpression(callee.expression) || ts.isElementAccessExpression(callee.expression))) {
+          const invokedMethodExpr = normalizeRuntimeCalleeExpression(callee.expression)
+          const invokedMethodName = getStaticMemberName(invokedMethodExpr)
+          if (invokedMethodName && runtimeArrayMutatingMethodNameSet.has(invokedMethodName)) {
+            const thisArg = unwrapExpression(node.arguments[0] || null)
+            if (ts.isIdentifier(thisArg) && runtimeArrayAliasMap.has(thisArg.text)) {
+              markRuntimeArrayAliasState(
+                thisArg.text,
+                'tainted',
+                `ArrayMutatingMethod.${invokedMethodName}.${memberName}`,
+                node.getStart(),
+              )
+            } else if (thisArg) {
+              markArrayAliasesEscapedInExpression(thisArg, 'ArrayMutatingMethodUnknownTarget', node.getStart())
+            }
+          }
+        }
+      }
+
+      const workerConstructCallDescriptor = resolveRuntimeCallDescriptor(
+        node,
+        {
+          runtimeMethodAliasMap,
+          runtimeNamespaceAliasMap,
+          runtimeGlobalContainerAliasMap,
+          runtimeArrayMethodContainerMap,
+          runtimeObjectMethodContainerMap,
+          runtimeUnknownNamespaceAliasMap,
+        },
+        runtimeWorkerConstructorMethodSet,
+      )
+      if (workerConstructCallDescriptor?.method === 'Reflect.construct') {
+        hasExplicitReflectConstructArrayArg = true
+      }
+
+      node.arguments.forEach((argNode, index) => {
+        if (hasExplicitReflectConstructArrayArg && index === 1) return
+        markArrayAliasesEscapedInExpression(argNode, 'CallArgumentEscape', node.getStart())
+      })
+    }
+
+    if (ts.isBinaryExpression(node) && isRuntimeWriteOperator(node.operatorToken.kind)) {
+      const leftExpr = unwrapExpression(node.left)
+      const rightExpr = unwrapExpression(node.right)
+
+      if (ts.isElementAccessExpression(leftExpr)) {
+        const baseExpr = unwrapExpression(leftExpr.expression)
+        if (ts.isIdentifier(baseExpr) && runtimeArrayAliasMap.has(baseExpr.text)) {
+          markRuntimeArrayAliasState(baseExpr.text, 'tainted', 'ArrayElementWrite', node.getStart())
+        }
+      } else if (ts.isPropertyAccessExpression(leftExpr)) {
+        const baseExpr = unwrapExpression(leftExpr.expression)
+        if (leftExpr.name.text === 'length' && ts.isIdentifier(baseExpr) && runtimeArrayAliasMap.has(baseExpr.text)) {
+          markRuntimeArrayAliasState(baseExpr.text, 'tainted', 'ArrayLengthWrite', node.getStart())
+        }
+      } else if (
+        ts.isIdentifier(leftExpr) &&
+        runtimeArrayAliasMap.has(leftExpr.text) &&
+        node.operatorToken.kind !== ts.SyntaxKind.EqualsToken
+      ) {
+        markRuntimeArrayAliasState(leftExpr.text, 'unknown', 'ArrayIdentifierCompoundWrite', node.getStart())
+      }
+
+      if (ts.isIdentifier(rightExpr) && runtimeArrayAliasMap.has(rightExpr.text) && !ts.isIdentifier(leftExpr)) {
+        markRuntimeArrayAliasState(rightExpr.text, 'escaped', 'ArrayAliasEscapedByAssignment', node.getStart())
+      }
+    }
+
     if (ts.isFunctionDeclaration(node) && node.name) {
       timerCallbackIdentifierSet.add(node.name.text)
       timerStringIdentifierSet.delete(node.name.text)
@@ -2057,6 +2270,15 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           arrayLiteralVariableMap.set(varName, arrayLiteralVariableMap.get(initializer.text))
         } else {
           arrayLiteralVariableMap.delete(varName)
+        }
+        bindRuntimeArrayAliasFromInitializer(varName, initializer, node.getStart())
+        if (
+          ts.isVariableDeclarationList(node.parent) &&
+          ts.isVariableStatement(node.parent.parent) &&
+          node.parent.parent.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) &&
+          runtimeArrayAliasMap.has(varName)
+        ) {
+          markRuntimeArrayAliasState(varName, 'escaped', 'ArrayEscapedByExport', node.getStart())
         }
         setRuntimeContainerAliases(varName, initializer)
         setRuntimeConstructorContainerAliases(varName, initializer)
@@ -2163,6 +2385,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         } else {
           arrayLiteralVariableMap.delete(targetName)
         }
+        bindRuntimeArrayAliasFromInitializer(targetName, rhs, node.getStart())
         setRuntimeContainerAliases(targetName, rhs)
         setRuntimeConstructorContainerAliases(targetName, rhs)
         setRuntimeConstructorAliasBinding(targetName, rhs)
@@ -2268,6 +2491,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     timerStringIdentifierSet,
     objectLiteralVariableMap,
     arrayLiteralVariableMap,
+    runtimeArrayStateMap,
+    runtimeArrayAliasMap,
   }
 }
 
@@ -2638,6 +2863,70 @@ const resolveRuntimeInvocationArgConfidence = (args, hasSpread, unresolved) => {
   return 'unknown'
 }
 
+const resolveRuntimeArrayStateAtUsage = (runtimeContext, identifierName, usagePosition) => {
+  const aliasMap = runtimeContext.runtimeArrayAliasMap || new Map()
+  const stateMap = runtimeContext.runtimeArrayStateMap || new Map()
+  const arrayId = aliasMap.get(identifierName)
+  if (!arrayId) return null
+  const state = stateMap.get(arrayId) || null
+  if (!state) return null
+
+  const events = state.mutation_events || []
+  let effectiveStatus = 'clean'
+  const reasons = []
+  for (const event of events) {
+    if (usagePosition !== null && usagePosition !== undefined && Number.isFinite(usagePosition)) {
+      if (event.position > usagePosition) continue
+    }
+    reasons.push(event.reason)
+    if ((runtimeArrayStatusRank[event.status] || 0) > (runtimeArrayStatusRank[effectiveStatus] || 0)) {
+      effectiveStatus = event.status
+    }
+  }
+
+  return {
+    array_id: state.array_id,
+    initial_elements: state.initial_elements || [],
+    effective_status: effectiveStatus,
+    reasons,
+    declaration_position: state.declaration_position,
+    last_safe_position: state.last_safe_position,
+  }
+}
+
+const resolveRuntimeArrayElementsFromIdentifier = (identifierNode, runtimeContext, usagePosition) => {
+  const arrayStateAtUsage = resolveRuntimeArrayStateAtUsage(runtimeContext, identifierNode.text, usagePosition)
+  if (arrayStateAtUsage) {
+    if (arrayStateAtUsage.effective_status === 'clean') {
+      return {
+        unresolved: false,
+        elements: arrayStateAtUsage.initial_elements,
+        expressionText: identifierNode.text,
+      }
+    }
+    return {
+      unresolved: true,
+      elements: [],
+      expressionText: `${identifierNode.text}#${arrayStateAtUsage.effective_status}`,
+    }
+  }
+
+  const mappedArray = runtimeContext.arrayLiteralVariableMap?.get(identifierNode.text) || null
+  if (mappedArray) {
+    return {
+      unresolved: false,
+      elements: Array.from(mappedArray.elements),
+      expressionText: identifierNode.text,
+    }
+  }
+
+  return {
+    unresolved: true,
+    elements: [],
+    expressionText: identifierNode.text,
+  }
+}
+
 const resolveRuntimeSpreadArgumentElements = (spreadExpression, runtimeContext, depth = 0) => {
   if (depth > 12) {
     return {
@@ -2662,15 +2951,15 @@ const resolveRuntimeSpreadArgumentElements = (spreadExpression, runtimeContext, 
   }
 
   if (ts.isIdentifier(target)) {
-    const mappedArray = runtimeContext.arrayLiteralVariableMap?.get(target.text) || null
-    if (mappedArray) {
-      return resolveRuntimeInvocationArgumentsFromNodes(Array.from(mappedArray.elements), runtimeContext, depth + 1)
+    const resolvedArray = resolveRuntimeArrayElementsFromIdentifier(target, runtimeContext, target.getStart())
+    if (!resolvedArray.unresolved) {
+      return resolveRuntimeInvocationArgumentsFromNodes(resolvedArray.elements, runtimeContext, depth + 1)
     }
     return {
       unresolved: true,
       args: [],
       hasSpread: true,
-      expressionText: target.text,
+      expressionText: resolvedArray.expressionText || target.text,
     }
   }
 
@@ -2776,11 +3065,17 @@ const resolveRuntimeArgumentArrayElements = (argumentExpression, runtimeContext)
   }
 
   if (ts.isIdentifier(target)) {
-    const mappedArray = runtimeContext.arrayLiteralVariableMap?.get(target.text) || null
-    if (mappedArray) {
-      return resolveRuntimeArgumentArrayElements(mappedArray, runtimeContext)
+    const resolvedArray = resolveRuntimeArrayElementsFromIdentifier(target, runtimeContext, target.getStart())
+    if (!resolvedArray.unresolved) {
+      return resolveRuntimeInvocationArgumentsFromNodes(resolvedArray.elements, runtimeContext)
     }
-    return { unresolved: true, args: [], hasSpread: false, arg_confidence: 'unknown', expressionText: target.text }
+    return {
+      unresolved: true,
+      args: [],
+      hasSpread: false,
+      arg_confidence: 'unknown',
+      expressionText: resolvedArray.expressionText || target.text,
+    }
   }
 
   return {
