@@ -294,8 +294,49 @@ noopDestructure([spreadWorkerArgs])
   readonly(callbackAlias)
   return 0
 }, 0)
+const readonlyIterationArgs = [new URL('./readonly-worker.ts', import.meta.url), { type: 'module' }]
+Array.prototype.reduce.call(
+  [[readonlyIterationArgs]],
+  (acc, [callbackAlias]) => {
+    readonly(callbackAlias)
+    return acc
+  },
+  0,
+)
+Array.prototype.flatMap.call([[readonlyIterationArgs]], ([callbackAlias]) => {
+  readonly(callbackAlias)
+  return []
+})
+Reflect.apply(Array.prototype.findIndex, [[readonlyIterationArgs]], [
+  ([callbackAlias]) => {
+    readonly(callbackAlias)
+    return false
+  },
+])
+const reduceBound = Array.prototype.reduce.bind([[readonlyIterationArgs]])
+reduceBound((acc, [callbackAlias]) => {
+  readonly(callbackAlias)
+  return acc
+}, 0)
+const findIndexBound = Array.prototype.findIndex.bind([[readonlyIterationArgs]])
+findIndexBound(([callbackAlias]) => {
+  readonly(callbackAlias)
+  return false
+})
+Function.prototype.call.call(
+  Array.prototype.reduce,
+  [[readonlyIterationArgs]],
+  (acc, [callbackAlias]) => {
+    readonly(callbackAlias)
+    return acc
+  },
+  0,
+)
 const nums = [[1]]
 void nums.reduce((acc, [n]) => acc + n, 0)
+void Array.prototype.reduce.call([[1]], (acc, [n]) => acc + n, 0)
+const reduceBoundNums = Array.prototype.reduce.bind([[1]])
+void reduceBoundNums((acc, [n]) => acc + n, 0)
 Reflect.construct(Worker, spreadWorkerArgs)
 function noop() {}
 noop()
@@ -5412,6 +5453,390 @@ const failureCases = [
         root,
         'src/App.vue',
         `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\n[[args]].reduce((acc, [alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return acc\n}, 0)\nReflect.construct(Worker, args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.call callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.reduce.call(\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduceRight.call callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.reduceRight.call(\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.findIndex.call callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.findIndex.call(\n  [[args]],\n  ([alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return false\n  },\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.flatMap.call callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.flatMap.call(\n  [[args]],\n  ([alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return []\n  },\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.findLast.call callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.findLast.call(\n  [[args]],\n  ([alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return false\n  },\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.findLastIndex.call callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.findLastIndex.call(\n  [[args]],\n  ([alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return false\n  },\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.apply callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.reduce.apply([[args]], [\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n])\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.flatMap.apply callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.flatMap.apply([[args]], [\n  ([alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return []\n  },\n])\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Reflect.apply(Array.prototype.reduce) callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nReflect.apply(Array.prototype.reduce, [[args]], [\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n])\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Reflect.apply(Array.prototype.findIndex) callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nReflect.apply(Array.prototype.findIndex, [[args]], [\n  ([alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return false\n  },\n])\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype[reduce].call callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype['reduce'].call(\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via reduce alias call should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst reduce = Array.prototype.reduce\nreduce.call(\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype namespace alias call should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst AP = Array.prototype\nAP.reduce.call(\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.apply unresolved args array should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst argArray = getArgs()\nArray.prototype.reduce.apply([[args]], argArray)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Reflect.apply(Array.prototype.reduce) unresolved args array should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst argArray = getArgs()\nReflect.apply(Array.prototype.reduce, [[args]], argArray)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.call then new unknownCtor(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst unknownCtor = getCtor()\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.reduce.call(\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = '/runtime/style-profit-worker.js'\n    return acc\n  },\n  0,\n)\nnew unknownCtor(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.call then Reflect.construct(Worker, args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang=\"ts\">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.reduce.call(\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nReflect.construct(Worker, args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.bind([[args]]) callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst reduceBound = Array.prototype.reduce.bind([[args]])\nreduceBound((acc, [alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return acc\n}, 0)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.bind([[args]], callback, 0)()',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst reduceBound = Array.prototype.reduce.bind([[args]], (acc, [alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return acc\n}, 0)\nreduceBound()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.bind([[args]], callback) then later initialValue',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst reduceBound = Array.prototype.reduce.bind([[args]], (acc, [alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return acc\n})\nreduceBound(0)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduceRight.bind([[args]]) callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst reduceRightBound = Array.prototype.reduceRight.bind([[args]])\nreduceRightBound((acc, [alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return acc\n}, 0)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.findIndex.bind([[args]]) callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst findIndexBound = Array.prototype.findIndex.bind([[args]])\nfindIndexBound(([alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return false\n})\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.flatMap.bind([[args]]) callback alias mutation',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst flatMapBound = Array.prototype.flatMap.bind([[args]])\nflatMapBound(([alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return []\n})\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Function.prototype.call.call(Array.prototype.reduce, ...)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nFunction.prototype.call.call(\n  Array.prototype.reduce,\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.call.call(Array.prototype.reduce, ...)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.reduce.call.call(\n  Array.prototype.reduce,\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Function.prototype.call.call(Array.prototype.findIndex, ...)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nFunction.prototype.call.call(\n  Array.prototype.findIndex,\n  [[args]],\n  ([alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return false\n  },\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Function.prototype.call.call(Array.prototype.flatMap, ...)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nFunction.prototype.call.call(\n  Array.prototype.flatMap,\n  [[args]],\n  ([alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return []\n  },\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.bind(collection) unresolved iterable should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst collection = getCollection()\nconst bound = Array.prototype.reduce.bind(collection)\nbound((acc, [alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return acc\n}, 0)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.bind([[args]], ...dynamicArgs) should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst dynamicArgs = getArgs()\nconst bound = Array.prototype.reduce.bind([[args]], ...dynamicArgs)\nbound()\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via call alias = Function.prototype.call.call should fail closed',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nconst call = Function.prototype.call.call\ncall(\n  Array.prototype.reduce,\n  [[args]],\n  (acc, [alias]) => {\n    alias[0] = 'data:text/javascript,postMessage(1)'\n    return acc\n  },\n  0,\n)\nnew Worker(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.bind mutation then new unknownCtor(...args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst unknownCtor = getCtor()\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.reduce.bind([[args]], (acc, [alias]) => {\n  alias[0] = '/runtime/style-profit-worker.js'\n  return acc\n}, 0)()\nnew unknownCtor(...args)\n</script>\n`,
+      )
+    },
+  },
+  {
+    name: 'runtime dynamic module loading via Array.prototype.reduce.bind mutation then Reflect.construct(Worker, args)',
+    expectedKeyword: 'style-profit forbids dynamic module loading entry points',
+    mutate: (root) => {
+      const content = read(root, 'src/App.vue')
+      write(
+        root,
+        'src/App.vue',
+        `${content}\n<script setup lang="ts">\nconst args = [new URL('./readonly-worker.ts', import.meta.url)]\nArray.prototype.reduce.bind([[args]], (acc, [alias]) => {\n  alias[0] = 'data:text/javascript,postMessage(1)'\n  return acc\n}, 0)()\nReflect.construct(Worker, args)\n</script>\n`,
       )
     },
   },

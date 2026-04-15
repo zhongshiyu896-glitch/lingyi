@@ -662,6 +662,72 @@ const getStaticMemberName = (node) => {
   return null
 }
 
+const isStaticArrayNamespaceExpression = (expression, depth = 0) => {
+  if (!expression || depth > 8) return false
+  const target = normalizeRuntimeCalleeExpression(expression)
+  if (!target) return false
+
+  if (ts.isIdentifier(target)) {
+    return target.text === 'Array'
+  }
+
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const memberName = getStaticMemberName(target)
+    if (memberName !== 'Array') return false
+    const baseExpr = unwrapExpression(target.expression)
+    return Boolean(ts.isIdentifier(baseExpr) && (baseExpr.text === 'globalThis' || baseExpr.text === 'window'))
+  }
+
+  if (ts.isConditionalExpression(target)) {
+    const whenTrue = isStaticArrayNamespaceExpression(target.whenTrue, depth + 1)
+    const whenFalse = isStaticArrayNamespaceExpression(target.whenFalse, depth + 1)
+    return whenTrue && whenFalse
+  }
+
+  return false
+}
+
+const isStaticArrayPrototypeExpression = (expression, depth = 0) => {
+  if (!expression || depth > 8) return false
+  const target = normalizeRuntimeCalleeExpression(expression)
+  if (!target) return false
+
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const memberName = getStaticMemberName(target)
+    if (memberName !== 'prototype') return false
+    return isStaticArrayNamespaceExpression(target.expression, depth + 1)
+  }
+
+  if (ts.isConditionalExpression(target)) {
+    const whenTrue = isStaticArrayPrototypeExpression(target.whenTrue, depth + 1)
+    const whenFalse = isStaticArrayPrototypeExpression(target.whenFalse, depth + 1)
+    return whenTrue && whenFalse
+  }
+
+  return false
+}
+
+const resolveStaticArrayPrototypeIterationMethodName = (expression, depth = 0) => {
+  if (!expression || depth > 8) return null
+  const target = normalizeRuntimeCalleeExpression(expression)
+  if (!target) return null
+
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const memberName = getStaticMemberName(target)
+    if (!memberName || !runtimeArrayIterationMethodDescriptorMap.has(memberName)) return null
+    if (!isStaticArrayPrototypeExpression(target.expression, depth + 1)) return null
+    return memberName
+  }
+
+  if (ts.isConditionalExpression(target)) {
+    const whenTrue = resolveStaticArrayPrototypeIterationMethodName(target.whenTrue, depth + 1)
+    const whenFalse = resolveStaticArrayPrototypeIterationMethodName(target.whenFalse, depth + 1)
+    if (whenTrue && whenFalse && whenTrue === whenFalse) return whenTrue
+  }
+
+  return null
+}
+
 const classifyRuntimeMethodName = (objectName, methodName) => {
   if (objectName === 'Object' && methodName === 'defineProperty') return 'Object.defineProperty'
   if (objectName === 'Object' && methodName === 'defineProperties') return 'Object.defineProperties'
@@ -1394,6 +1460,9 @@ const resolveRuntimeCallDescriptor = (callNode, runtimeContext, methodSet = runt
       return { method: reflectApplyMethod, invoke: 'reflect_apply' }
     }
     if (reflectApplyMethod) return null
+    if (reflectApplyTarget && resolveStaticArrayPrototypeIterationMethodName(reflectApplyTarget)) {
+      return null
+    }
     return { method: null, invoke: 'reflect_apply', unresolvedTarget: true }
   }
   if (directMethod === 'Reflect.get') {
@@ -1764,6 +1833,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   const arrayLiteralVariableMap = new Map()
   const runtimeArrayStateMap = new Map()
   const runtimeArrayAliasMap = new Map()
+  const runtimeIterationInvocationAliasMap = new Map()
+  const runtimeIterationCallCallAliasMap = new Map()
   let runtimeArrayStateIdCounter = 0
   const runtimeAliasRiskFindings = []
   const runtimeMutatorSourceFindings = []
@@ -3431,16 +3502,682 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     }
   }
 
+  const runtimeInvocationContext = {
+    arrayLiteralVariableMap,
+    runtimeArrayStateMap,
+    runtimeArrayAliasMap,
+  }
+
+  const isRuntimeArrayNamespaceExpression = (expression, depth = 0) => {
+    if (!expression || depth > 8) return false
+    const target = normalizeRuntimeCalleeExpression(expression)
+    if (!target) return false
+
+    if (ts.isIdentifier(target)) {
+      return target.text === 'Array'
+    }
+
+    if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+      const memberName = getStaticMemberName(target)
+      if (memberName !== 'Array') return false
+      const globalContainer = resolveGlobalContainerFromExpression(target.expression, runtimeGlobalContainerAliasMap)
+      return Boolean(globalContainer)
+    }
+
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = isRuntimeArrayNamespaceExpression(target.whenTrue, depth + 1)
+      const whenFalse = isRuntimeArrayNamespaceExpression(target.whenFalse, depth + 1)
+      return whenTrue && whenFalse
+    }
+
+    return false
+  }
+
+  const isRuntimeArrayPrototypeExpression = (expression, depth = 0) => {
+    if (!expression || depth > 8) return false
+    const target = normalizeRuntimeCalleeExpression(expression)
+    if (!target) return false
+
+    if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+      const memberName = getStaticMemberName(target)
+      if (memberName !== 'prototype') return false
+      return isRuntimeArrayNamespaceExpression(target.expression, depth + 1)
+    }
+
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = isRuntimeArrayPrototypeExpression(target.whenTrue, depth + 1)
+      const whenFalse = isRuntimeArrayPrototypeExpression(target.whenFalse, depth + 1)
+      return whenTrue && whenFalse
+    }
+
+    return false
+  }
+
+  const resolveRuntimeArrayIterationMethodFromTargetExpression = (expression, depth = 0) => {
+    if (!expression || depth > 8) {
+      return { methodName: null, unresolved: true, expressionText: expression?.getText?.() || '' }
+    }
+    const target = normalizeRuntimeCalleeExpression(expression)
+    if (!target) return { methodName: null, unresolved: false, expressionText: '' }
+
+    if (ts.isIdentifier(target)) {
+      if (runtimeArrayIterationMethodDescriptorMap.has(target.text)) {
+        return { methodName: null, unresolved: true, expressionText: target.getText(sourceFile) }
+      }
+      return { methodName: null, unresolved: false, expressionText: target.getText(sourceFile) }
+    }
+
+    if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+      const memberName = getStaticMemberName(target)
+      const baseExpression = unwrapExpression(target.expression)
+      if (memberName && runtimeArrayIterationMethodDescriptorMap.has(memberName)) {
+        if (isRuntimeArrayPrototypeExpression(baseExpression, depth + 1)) {
+          return { methodName: memberName, unresolved: false, expressionText: target.getText(sourceFile) }
+        }
+        return { methodName: null, unresolved: true, expressionText: target.getText(sourceFile) }
+      }
+      if (!memberName && isRuntimeArrayPrototypeExpression(baseExpression, depth + 1)) {
+        return { methodName: null, unresolved: true, expressionText: target.getText(sourceFile) }
+      }
+      return { methodName: null, unresolved: false, expressionText: target.getText(sourceFile) }
+    }
+
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = resolveRuntimeArrayIterationMethodFromTargetExpression(target.whenTrue, depth + 1)
+      const whenFalse = resolveRuntimeArrayIterationMethodFromTargetExpression(target.whenFalse, depth + 1)
+      if (
+        whenTrue.methodName &&
+        whenFalse.methodName &&
+        !whenTrue.unresolved &&
+        !whenFalse.unresolved &&
+        whenTrue.methodName === whenFalse.methodName
+      ) {
+        return { methodName: whenTrue.methodName, unresolved: false, expressionText: target.getText(sourceFile) }
+      }
+      if (
+        whenTrue.methodName ||
+        whenFalse.methodName ||
+        whenTrue.unresolved ||
+        whenFalse.unresolved
+      ) {
+        return { methodName: null, unresolved: true, expressionText: target.getText(sourceFile) }
+      }
+      return { methodName: null, unresolved: false, expressionText: target.getText(sourceFile) }
+    }
+
+    return { methodName: null, unresolved: false, expressionText: target.getText?.(sourceFile) || '' }
+  }
+
+  const buildRuntimeIterationCallDescriptor = ({
+    argumentMode,
+    methodName,
+    iterableExpression,
+    invocationArguments = [],
+    unresolvedTarget = false,
+    unresolvedArguments = false,
+    unresolvedIterable = false,
+    unresolvedExpression = '',
+    boundArgs = [],
+    laterArgs = [],
+  }) => {
+    if (unresolvedTarget) {
+      return {
+        matched: true,
+        argumentMode,
+        methodName: null,
+        iterableExpression: null,
+        callbackExpression: null,
+        initialValueExpression: null,
+        unresolvedTarget: true,
+        unresolvedExpression,
+        boundArgs,
+        laterArgs,
+      }
+    }
+    if (unresolvedArguments) {
+      return {
+        matched: true,
+        argumentMode,
+        methodName,
+        iterableExpression: null,
+        callbackExpression: null,
+        initialValueExpression: null,
+        unresolvedArguments: true,
+        unresolvedExpression,
+        boundArgs,
+        laterArgs,
+      }
+    }
+    if (unresolvedIterable || !iterableExpression) {
+      return {
+        matched: true,
+        argumentMode,
+        methodName,
+        iterableExpression: null,
+        callbackExpression: null,
+        initialValueExpression: null,
+        unresolvedIterable: true,
+        unresolvedExpression,
+        boundArgs,
+        laterArgs,
+      }
+    }
+    const methodDescriptor = methodName ? runtimeArrayIterationMethodDescriptorMap.get(methodName) || null : null
+    const callbackArgumentIndex = methodDescriptor?.callback_argument_index ?? 0
+    return {
+      matched: true,
+      argumentMode,
+      methodName,
+      iterableExpression,
+      callbackExpression: unwrapExpression(invocationArguments[callbackArgumentIndex] || null),
+      initialValueExpression: unwrapExpression(invocationArguments[callbackArgumentIndex + 1] || null),
+      unresolvedArguments: false,
+      unresolvedExpression: '',
+      boundArgs,
+      laterArgs,
+    }
+  }
+
+  const resolveRuntimeArrayIterationBindAliasDescriptorFromExpression = (expression) => {
+    const target = normalizeRuntimeCalleeExpression(expression)
+    if (!target || !ts.isCallExpression(target)) return null
+    const bindCallee = normalizeRuntimeCalleeExpression(target.expression)
+    if (!(bindCallee && (ts.isPropertyAccessExpression(bindCallee) || ts.isElementAccessExpression(bindCallee)))) {
+      return null
+    }
+    const bindMemberName = getStaticMemberName(bindCallee)
+    if (bindMemberName !== 'bind') return null
+
+    const targetMethod = resolveRuntimeArrayIterationMethodFromTargetExpression(bindCallee.expression)
+    if (!targetMethod.methodName) {
+      if (!targetMethod.unresolved) return null
+      return buildRuntimeIterationCallDescriptor({
+        argumentMode: 'bind',
+        methodName: null,
+        iterableExpression: null,
+        unresolvedTarget: true,
+        unresolvedExpression: targetMethod.expressionText || target.getText(sourceFile),
+      })
+    }
+
+    const normalizedBindArgs = resolveRuntimeInvocationArgumentsFromNodes(
+      Array.from(target.arguments),
+      runtimeInvocationContext,
+    )
+    if (normalizedBindArgs.unresolved) {
+      return buildRuntimeIterationCallDescriptor({
+        argumentMode: 'bind',
+        methodName: targetMethod.methodName,
+        iterableExpression: null,
+        unresolvedArguments: true,
+        unresolvedExpression: normalizedBindArgs.expressionText || target.getText(sourceFile),
+      })
+    }
+
+    const iterableExpression = unwrapExpression(normalizedBindArgs.args[0] || null)
+    if (!iterableExpression) {
+      return buildRuntimeIterationCallDescriptor({
+        argumentMode: 'bind',
+        methodName: targetMethod.methodName,
+        iterableExpression: null,
+        unresolvedIterable: true,
+        unresolvedExpression: target.getText(sourceFile),
+      })
+    }
+
+    return buildRuntimeIterationCallDescriptor({
+      argumentMode: 'bind',
+      methodName: targetMethod.methodName,
+      iterableExpression,
+      invocationArguments: normalizedBindArgs.args.slice(1),
+      boundArgs: normalizedBindArgs.args.slice(1),
+      laterArgs: [],
+    })
+  }
+
+  const resolveRuntimeArrayIterationCallCallDescriptorFromNormalizedArgs = (
+    normalizedArguments,
+    callNode,
+    argumentMode = 'call_call',
+  ) => {
+    if (normalizedArguments.unresolved) {
+      return buildRuntimeIterationCallDescriptor({
+        argumentMode,
+        methodName: null,
+        iterableExpression: null,
+        unresolvedArguments: true,
+        unresolvedExpression: normalizedArguments.expressionText || callNode.getText(sourceFile),
+      })
+    }
+
+    const targetMethodExpression = unwrapExpression(normalizedArguments.args[0] || null)
+    const targetMethod = resolveRuntimeArrayIterationMethodFromTargetExpression(targetMethodExpression)
+    if (!targetMethod.methodName) {
+      if (!targetMethod.unresolved) return null
+      return buildRuntimeIterationCallDescriptor({
+        argumentMode,
+        methodName: null,
+        iterableExpression: null,
+        unresolvedTarget: true,
+        unresolvedExpression: targetMethod.expressionText || callNode.getText(sourceFile),
+      })
+    }
+
+    const iterableExpression = unwrapExpression(normalizedArguments.args[1] || null)
+    const invocationArguments = normalizedArguments.args.slice(2)
+    return buildRuntimeIterationCallDescriptor({
+      argumentMode,
+      methodName: targetMethod.methodName,
+      iterableExpression,
+      invocationArguments,
+      boundArgs: [],
+      laterArgs: invocationArguments,
+      unresolvedExpression: callNode.getText(sourceFile),
+    })
+  }
+
+  const resolveRuntimeArrayIterationCallDescriptor = (callNode, calleeExpression) => {
+    const resolveCallArguments = () =>
+      resolveRuntimeInvocationArgumentsFromNodes(Array.from(callNode.arguments), runtimeInvocationContext)
+
+    if (ts.isIdentifier(calleeExpression)) {
+      const bindAliasDescriptor = runtimeIterationInvocationAliasMap.get(calleeExpression.text) || null
+      if (bindAliasDescriptor) {
+        if (bindAliasDescriptor.unresolvedTarget) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'bind',
+            methodName: null,
+            iterableExpression: null,
+            unresolvedTarget: true,
+            unresolvedExpression: bindAliasDescriptor.unresolvedExpression || calleeExpression.text,
+            boundArgs: bindAliasDescriptor.boundArgs || [],
+          })
+        }
+        if (bindAliasDescriptor.unresolvedArguments) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'bind',
+            methodName: bindAliasDescriptor.methodName || null,
+            iterableExpression: null,
+            unresolvedArguments: true,
+            unresolvedExpression: bindAliasDescriptor.unresolvedExpression || calleeExpression.text,
+            boundArgs: bindAliasDescriptor.boundArgs || [],
+          })
+        }
+        if (bindAliasDescriptor.unresolvedIterable) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'bind',
+            methodName: bindAliasDescriptor.methodName || null,
+            iterableExpression: null,
+            unresolvedIterable: true,
+            unresolvedExpression: bindAliasDescriptor.unresolvedExpression || calleeExpression.text,
+            boundArgs: bindAliasDescriptor.boundArgs || [],
+          })
+        }
+        const normalizedArguments = resolveCallArguments()
+        if (normalizedArguments.unresolved) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'bind',
+            methodName: bindAliasDescriptor.methodName || null,
+            iterableExpression: null,
+            unresolvedArguments: true,
+            unresolvedExpression: normalizedArguments.expressionText || callNode.getText(sourceFile),
+            boundArgs: bindAliasDescriptor.boundArgs || [],
+          })
+        }
+        const boundArgs = Array.from(bindAliasDescriptor.boundArgs || [])
+        const laterArgs = normalizedArguments.args
+        return buildRuntimeIterationCallDescriptor({
+          argumentMode: 'bind',
+          methodName: bindAliasDescriptor.methodName || null,
+          iterableExpression: unwrapExpression(bindAliasDescriptor.iterableExpression || null),
+          invocationArguments: [...boundArgs, ...laterArgs],
+          unresolvedExpression: bindAliasDescriptor.unresolvedExpression || callNode.getText(sourceFile),
+          boundArgs,
+          laterArgs,
+        })
+      }
+
+      const callCallAliasDescriptor = runtimeIterationCallCallAliasMap.get(calleeExpression.text) || null
+      if (callCallAliasDescriptor) {
+        if (callCallAliasDescriptor.unresolved) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'call_call',
+            methodName: null,
+            iterableExpression: null,
+            unresolvedTarget: true,
+            unresolvedExpression: callCallAliasDescriptor.expressionText || calleeExpression.text,
+          })
+        }
+        const normalizedArguments = resolveCallArguments()
+        const callCallDescriptor = resolveRuntimeArrayIterationCallCallDescriptorFromNormalizedArgs(
+          normalizedArguments,
+          callNode,
+          'call_call',
+        )
+        if (callCallDescriptor) return callCallDescriptor
+      }
+    }
+
+    if (ts.isCallExpression(calleeExpression)) {
+      const inlineBindDescriptor = resolveRuntimeArrayIterationBindAliasDescriptorFromExpression(calleeExpression)
+      if (inlineBindDescriptor) {
+        if (
+          inlineBindDescriptor.unresolvedTarget ||
+          inlineBindDescriptor.unresolvedArguments ||
+          inlineBindDescriptor.unresolvedIterable
+        ) {
+          return inlineBindDescriptor
+        }
+        const normalizedArguments = resolveCallArguments()
+        if (normalizedArguments.unresolved) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'bind',
+            methodName: inlineBindDescriptor.methodName || null,
+            iterableExpression: null,
+            unresolvedArguments: true,
+            unresolvedExpression: normalizedArguments.expressionText || callNode.getText(sourceFile),
+            boundArgs: inlineBindDescriptor.boundArgs || [],
+          })
+        }
+        const boundArgs = Array.from(inlineBindDescriptor.boundArgs || [])
+        const laterArgs = normalizedArguments.args
+        return buildRuntimeIterationCallDescriptor({
+          argumentMode: 'bind',
+          methodName: inlineBindDescriptor.methodName || null,
+          iterableExpression: unwrapExpression(inlineBindDescriptor.iterableExpression || null),
+          invocationArguments: [...boundArgs, ...laterArgs],
+          unresolvedExpression: inlineBindDescriptor.unresolvedExpression || callNode.getText(sourceFile),
+          boundArgs,
+          laterArgs,
+        })
+      }
+    }
+
+    if (ts.isPropertyAccessExpression(calleeExpression) || ts.isElementAccessExpression(calleeExpression)) {
+      const memberName = getStaticMemberName(calleeExpression)
+
+      if (memberName && runtimeArrayIterationMethodDescriptorMap.has(memberName)) {
+        const normalizedArguments = resolveCallArguments()
+        if (normalizedArguments.unresolved) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'direct',
+            methodName: memberName,
+            iterableExpression: null,
+            unresolvedArguments: true,
+            unresolvedExpression: normalizedArguments.expressionText || callNode.getText(sourceFile),
+          })
+        }
+        return buildRuntimeIterationCallDescriptor({
+          argumentMode: 'direct',
+          methodName: memberName,
+          iterableExpression: unwrapExpression(calleeExpression.expression),
+          invocationArguments: normalizedArguments.args,
+          unresolvedExpression: callNode.getText(sourceFile),
+        })
+      }
+
+      if (memberName === 'call') {
+        const callBaseExpression = normalizeRuntimeCalleeExpression(calleeExpression.expression)
+        if (callBaseExpression && (ts.isPropertyAccessExpression(callBaseExpression) || ts.isElementAccessExpression(callBaseExpression))) {
+          const callBaseMemberName = getStaticMemberName(callBaseExpression)
+          if (callBaseMemberName === 'call') {
+            const normalizedArguments = resolveCallArguments()
+            const callCallDescriptor = resolveRuntimeArrayIterationCallCallDescriptorFromNormalizedArgs(
+              normalizedArguments,
+              callNode,
+              'call_call',
+            )
+            if (callCallDescriptor) return callCallDescriptor
+          }
+        }
+      }
+
+      if (memberName === 'call' || memberName === 'apply') {
+        const targetMethod = resolveRuntimeArrayIterationMethodFromTargetExpression(calleeExpression.expression)
+        if (!targetMethod.methodName) {
+          if (targetMethod.unresolved) {
+            return buildRuntimeIterationCallDescriptor({
+              argumentMode: memberName,
+              methodName: null,
+              iterableExpression: null,
+              unresolvedTarget: true,
+              unresolvedExpression: targetMethod.expressionText || callNode.getText(sourceFile),
+            })
+          }
+          return null
+        }
+
+        const normalizedArguments = resolveCallArguments()
+        if (normalizedArguments.unresolved) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: memberName,
+            methodName: targetMethod.methodName,
+            iterableExpression: null,
+            unresolvedArguments: true,
+            unresolvedExpression: normalizedArguments.expressionText || callNode.getText(sourceFile),
+          })
+        }
+
+        const iterableExpression = unwrapExpression(normalizedArguments.args[0] || null)
+        if (memberName === 'call') {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'call',
+            methodName: targetMethod.methodName,
+            iterableExpression,
+            invocationArguments: normalizedArguments.args.slice(1),
+            unresolvedExpression: callNode.getText(sourceFile),
+            boundArgs: [],
+            laterArgs: normalizedArguments.args.slice(1),
+          })
+        }
+
+        const applyArgumentExpression = unwrapExpression(normalizedArguments.args[1] || null)
+        const applyArguments = resolveRuntimeArgumentArrayElements(applyArgumentExpression, runtimeInvocationContext)
+        if (applyArguments.unresolved) {
+          return buildRuntimeIterationCallDescriptor({
+            argumentMode: 'apply',
+            methodName: targetMethod.methodName,
+            iterableExpression,
+            unresolvedArguments: true,
+            unresolvedExpression: applyArguments.expressionText || callNode.getText(sourceFile),
+          })
+        }
+        return buildRuntimeIterationCallDescriptor({
+          argumentMode: 'apply',
+          methodName: targetMethod.methodName,
+          iterableExpression,
+          invocationArguments: applyArguments.args,
+          unresolvedExpression: callNode.getText(sourceFile),
+          boundArgs: [],
+          laterArgs: applyArguments.args,
+        })
+      }
+    }
+
+    const runtimeMethod = resolveRuntimeMethodFromExpression(
+      calleeExpression,
+      runtimeMethodAliasMap,
+      runtimeNamespaceAliasMap,
+      runtimeArrayMethodContainerMap,
+      runtimeObjectMethodContainerMap,
+      runtimeGlobalContainerAliasMap,
+    )
+    if (runtimeMethod !== 'Reflect.apply') {
+      return null
+    }
+
+    const normalizedArguments = resolveCallArguments()
+    if (normalizedArguments.unresolved) {
+      return buildRuntimeIterationCallDescriptor({
+        argumentMode: 'reflect_apply',
+        methodName: null,
+        iterableExpression: null,
+        unresolvedArguments: true,
+        unresolvedExpression: normalizedArguments.expressionText || callNode.getText(sourceFile),
+      })
+    }
+
+    const targetMethodExpression = unwrapExpression(normalizedArguments.args[0] || null)
+    const targetMethod = resolveRuntimeArrayIterationMethodFromTargetExpression(targetMethodExpression)
+    if (!targetMethod.methodName) {
+      if (targetMethod.unresolved) {
+        return buildRuntimeIterationCallDescriptor({
+          argumentMode: 'reflect_apply',
+          methodName: null,
+          iterableExpression: null,
+          unresolvedTarget: true,
+          unresolvedExpression: targetMethod.expressionText || callNode.getText(sourceFile),
+        })
+      }
+      return null
+    }
+
+    const iterableExpression = unwrapExpression(normalizedArguments.args[1] || null)
+    const reflectApplyArgumentExpression = unwrapExpression(normalizedArguments.args[2] || null)
+    const reflectApplyArguments = resolveRuntimeArgumentArrayElements(
+      reflectApplyArgumentExpression,
+      runtimeInvocationContext,
+    )
+    if (reflectApplyArguments.unresolved) {
+      return buildRuntimeIterationCallDescriptor({
+        argumentMode: 'reflect_apply',
+        methodName: targetMethod.methodName,
+        iterableExpression,
+        unresolvedArguments: true,
+        unresolvedExpression: reflectApplyArguments.expressionText || callNode.getText(sourceFile),
+      })
+    }
+
+    return buildRuntimeIterationCallDescriptor({
+      argumentMode: 'reflect_apply',
+      methodName: targetMethod.methodName,
+      iterableExpression,
+      invocationArguments: reflectApplyArguments.args,
+      unresolvedExpression: callNode.getText(sourceFile),
+      boundArgs: [],
+      laterArgs: reflectApplyArguments.args,
+    })
+  }
+
+  const resolveRuntimeIterationCallCallAliasFromExpression = (expression, depth = 0) => {
+    if (!expression || depth > 8) return { matched: false, unresolved: true, expressionText: '' }
+    const target = normalizeRuntimeCalleeExpression(expression)
+    if (!target) return { matched: false, unresolved: true, expressionText: '' }
+
+    if (ts.isIdentifier(target)) {
+      const existingAlias = runtimeIterationCallCallAliasMap.get(target.text) || null
+      if (existingAlias) {
+        return {
+          matched: true,
+          unresolved: Boolean(existingAlias.unresolved),
+          expressionText: existingAlias.expressionText || target.text,
+        }
+      }
+      return { matched: false, unresolved: false, expressionText: target.text }
+    }
+
+    if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+      const memberName = getStaticMemberName(target)
+      if (memberName !== 'call') return { matched: false, unresolved: false, expressionText: target.getText(sourceFile) }
+      const innerTarget = normalizeRuntimeCalleeExpression(target.expression)
+      if (innerTarget && (ts.isPropertyAccessExpression(innerTarget) || ts.isElementAccessExpression(innerTarget))) {
+        const innerMemberName = getStaticMemberName(innerTarget)
+        if (innerMemberName === 'call') {
+          return { matched: true, unresolved: false, expressionText: target.getText(sourceFile) }
+        }
+      }
+      return { matched: false, unresolved: true, expressionText: target.getText(sourceFile) }
+    }
+
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = resolveRuntimeIterationCallCallAliasFromExpression(target.whenTrue, depth + 1)
+      const whenFalse = resolveRuntimeIterationCallCallAliasFromExpression(target.whenFalse, depth + 1)
+      if (whenTrue.matched && whenFalse.matched) {
+        return {
+          matched: true,
+          unresolved: Boolean(whenTrue.unresolved || whenFalse.unresolved),
+          expressionText: target.getText(sourceFile),
+        }
+      }
+      if (whenTrue.matched || whenFalse.matched || whenTrue.unresolved || whenFalse.unresolved) {
+        return { matched: true, unresolved: true, expressionText: target.getText(sourceFile) }
+      }
+      return { matched: false, unresolved: false, expressionText: target.getText(sourceFile) }
+    }
+
+    return { matched: false, unresolved: false, expressionText: target.getText?.(sourceFile) || '' }
+  }
+
+  const setRuntimeIterationInvocationAliasBinding = (aliasName, initializer) => {
+    const target = normalizeRuntimeCalleeExpression(initializer)
+    if (ts.isIdentifier(target)) {
+      const existingAlias = runtimeIterationInvocationAliasMap.get(target.text) || null
+      if (existingAlias) {
+        runtimeIterationInvocationAliasMap.set(aliasName, {
+          ...existingAlias,
+          boundArgs: Array.from(existingAlias.boundArgs || []),
+        })
+        return
+      }
+      runtimeIterationInvocationAliasMap.delete(aliasName)
+      return
+    }
+
+    const bindDescriptor = resolveRuntimeArrayIterationBindAliasDescriptorFromExpression(target)
+    if (!bindDescriptor) {
+      runtimeIterationInvocationAliasMap.delete(aliasName)
+      return
+    }
+    runtimeIterationInvocationAliasMap.set(aliasName, {
+      ...bindDescriptor,
+      boundArgs: Array.from(bindDescriptor.boundArgs || []),
+    })
+  }
+
+  const setRuntimeIterationCallCallAliasBinding = (aliasName, initializer) => {
+    const resolvedAlias = resolveRuntimeIterationCallCallAliasFromExpression(initializer)
+    if (!resolvedAlias.matched) {
+      runtimeIterationCallCallAliasMap.delete(aliasName)
+      return
+    }
+    runtimeIterationCallCallAliasMap.set(aliasName, {
+      unresolved: Boolean(resolvedAlias.unresolved),
+      expressionText: resolvedAlias.expressionText || aliasName,
+    })
+  }
+
   const applyRuntimeIterationCallbackSummaryAtCall = (callNode, calleeExpression) => {
-    if (!(ts.isPropertyAccessExpression(calleeExpression) || ts.isElementAccessExpression(calleeExpression))) {
+    const iterationCallDescriptor = resolveRuntimeArrayIterationCallDescriptor(callNode, calleeExpression)
+    if (!iterationCallDescriptor || !iterationCallDescriptor.matched) {
       return false
     }
-    const memberName = getStaticMemberName(calleeExpression)
+    const memberName = iterationCallDescriptor.methodName || 'unknown'
+    if (iterationCallDescriptor.unresolvedTarget && runtimeArrayAliasMap.size > 0) {
+      markAllRuntimeArraysUnknownAtPosition(
+        `IterationCallTargetUnknown.${iterationCallDescriptor.argumentMode || 'unknown'}.${memberName}`,
+        callNode.getStart(),
+      )
+      return true
+    }
+    if (iterationCallDescriptor.unresolvedArguments && runtimeArrayAliasMap.size > 0) {
+      markAllRuntimeArraysUnknownAtPosition(
+        `IterationCallArgumentsUnknown.${iterationCallDescriptor.argumentMode || 'unknown'}.${memberName}`,
+        callNode.getStart(),
+      )
+      return true
+    }
+    if (iterationCallDescriptor.unresolvedIterable && runtimeArrayAliasMap.size > 0) {
+      markAllRuntimeArraysUnknownAtPosition(
+        `IterationIterableUnknown.${iterationCallDescriptor.argumentMode || 'unknown'}.${memberName}`,
+        callNode.getStart(),
+      )
+      return true
+    }
+
     const methodDescriptor = memberName ? runtimeArrayIterationMethodDescriptorMap.get(memberName) || null : null
     if (!methodDescriptor) {
       return false
     }
-    if (callNode.arguments.length === 0) return false
 
     const callbackArgumentIndex = methodDescriptor.callback_argument_index
     const currentItemParameterIndex = methodDescriptor.current_item_parameter_index
@@ -3457,7 +4194,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       return true
     }
 
-    const callbackExpression = unwrapExpression(callNode.arguments[callbackArgumentIndex] || null)
+    const callbackExpression = unwrapExpression(iterationCallDescriptor.callbackExpression || null)
     if (!callbackExpression) {
       if (runtimeArrayAliasMap.size > 0) {
         markAllRuntimeArraysUnknownAtPosition(`IterationCallbackMissing.${memberName}`, callNode.getStart())
@@ -3466,7 +4203,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     }
 
     const callbackSummary = resolveRuntimeFunctionSummaryFromExpression(callbackExpression)
-    const iterableExpression = unwrapExpression(calleeExpression.expression)
+    const iterableExpression = unwrapExpression(iterationCallDescriptor.iterableExpression || null)
     const iterableElements = resolveRuntimeStaticArrayElementsAtPosition(iterableExpression, callNode.getStart())
     const callbackHasPotentialArraySideEffect =
       Boolean(callbackSummary) &&
@@ -3497,7 +4234,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         callbackArguments.push(undefined)
       }
       if (currentItemParameterIndex > 0) {
-        const accumulatorExpression = unwrapExpression(callNode.arguments[callbackArgumentIndex + 1] || null)
+        const accumulatorExpression = unwrapExpression(iterationCallDescriptor.initialValueExpression || null)
         if (accumulatorExpression) {
           callbackArguments[0] = accumulatorExpression
         } else if (iterableElements[0]) {
@@ -3526,7 +4263,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       if (runtimeFunctionSummary) {
         appliedRuntimeFunctionSummary = applyRuntimeFunctionSummaryAtCall(runtimeFunctionSummary, node)
       }
-      applyRuntimeIterationCallbackSummaryAtCall(node, callee)
+      const appliedRuntimeIterationSummary = applyRuntimeIterationCallbackSummaryAtCall(node, callee)
 
       if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
         const baseExpr = unwrapExpression(callee.expression)
@@ -3574,14 +4311,19 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         hasExplicitReflectConstructArrayArg = true
       }
 
-      if (!appliedRuntimeFunctionSummary) {
+      if (!appliedRuntimeFunctionSummary && !appliedRuntimeIterationSummary) {
         node.arguments.forEach((argNode, index) => {
           if (hasExplicitReflectConstructArrayArg && index === 1) return
           markArrayAliasesEscapedInExpression(argNode, 'CallArgumentEscape', node.getStart())
         })
       }
 
-      if (!appliedRuntimeFunctionSummary && node.arguments.length === 0 && runtimeArrayAliasMap.size > 0) {
+      if (
+        !appliedRuntimeFunctionSummary &&
+        !appliedRuntimeIterationSummary &&
+        node.arguments.length === 0 &&
+        runtimeArrayAliasMap.size > 0
+      ) {
         const runtimeMethod = resolveRuntimeMethodFromExpression(
           callee,
           runtimeMethodAliasMap,
@@ -3763,6 +4505,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         setRuntimeConstructorAliasBinding(varName, initializer)
         setRuntimeConstructorFactoryAliasBinding(varName, initializer)
         setRuntimeFunctionAliasBinding(varName, initializer)
+        setRuntimeIterationInvocationAliasBinding(varName, initializer)
+        setRuntimeIterationCallCallAliasBinding(varName, initializer)
 
         const runtimeMethod = resolveRuntimeMethodFromExpression(
           initializer,
@@ -3874,6 +4618,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         setRuntimeConstructorAliasBinding(targetName, rhs)
         setRuntimeConstructorFactoryAliasBinding(targetName, rhs)
         setRuntimeFunctionAliasBinding(targetName, rhs)
+        setRuntimeIterationInvocationAliasBinding(targetName, rhs)
+        setRuntimeIterationCallCallAliasBinding(targetName, rhs)
 
         const runtimeMethod = resolveRuntimeMethodFromExpression(
           rhs,
@@ -4021,6 +4767,43 @@ const collectRuntimeSourceReferenceFindings = (
     return !argCheck.blocked
   }
 
+  const isSafeIterationReflectApplyCall = (callNode) => {
+    const targetMethodName = resolveStaticArrayPrototypeIterationMethodName(callNode.arguments[0] || null)
+    return Boolean(targetMethodName)
+  }
+
+  const resolveChainedCalleeCallExpression = (startNode) => {
+    let current = startNode
+    while (
+      current?.parent &&
+      (ts.isPropertyAccessExpression(current.parent) || ts.isElementAccessExpression(current.parent)) &&
+      current.parent.expression === current
+    ) {
+      current = current.parent
+    }
+    if (current?.parent && ts.isCallExpression(current.parent) && current.parent.expression === current) {
+      return current.parent
+    }
+    return null
+  }
+
+  const isSafeIterationCallCallReference = (node) => {
+    const callNode = resolveChainedCalleeCallExpression(node)
+    if (!callNode) return false
+    const callTarget = normalizeRuntimeCalleeExpression(callNode.expression)
+    if (!(callTarget && (ts.isPropertyAccessExpression(callTarget) || ts.isElementAccessExpression(callTarget)))) {
+      return false
+    }
+    if (getStaticMemberName(callTarget) !== 'call') return false
+    const innerCallTarget = normalizeRuntimeCalleeExpression(callTarget.expression)
+    if (!(innerCallTarget && (ts.isPropertyAccessExpression(innerCallTarget) || ts.isElementAccessExpression(innerCallTarget)))) {
+      return false
+    }
+    if (getStaticMemberName(innerCallTarget) !== 'call') return false
+    const targetMethodName = resolveStaticArrayPrototypeIterationMethodName(callNode.arguments[0] || null)
+    return Boolean(targetMethodName)
+  }
+
   const visit = (node) => {
     if (
       ts.isIdentifier(node) ||
@@ -4041,9 +4824,11 @@ const collectRuntimeSourceReferenceFindings = (
           node.parent &&
           ts.isCallExpression(node.parent) &&
           node.parent.expression === node &&
-          isSafeTimerReflectApplyCall(node.parent)
+          (isSafeTimerReflectApplyCall(node.parent) || isSafeIterationReflectApplyCall(node.parent))
         ) {
           // Allow safe timer callback usage through Reflect.apply(timer, thisArg, [callback, delay]).
+        } else if (runtimeMethod === 'Global.Function' && isSafeIterationCallCallReference(node)) {
+          // Allow Function.prototype.call.call(Array.prototype.xxx, ...) call forwarding without treating it as codegen source.
         } else {
           pushFinding(`${typePrefix}Reference`, node.getText(sourceFile))
         }
