@@ -748,16 +748,72 @@ const resolveRuntimeWorkerConstructorFromExpression = (
   expression,
   runtimeConstructorAliasMap = new Map(),
   runtimeUnknownConstructorAliasMap = new Map(),
+  runtimeConstructorFactoryAliasMap = new Map(),
+  runtimeUnknownConstructorFactoryAliasMap = new Map(),
   runtimeNamespaceAliasMap = new Map(),
   runtimeArrayConstructorContainerMap = new Map(),
   runtimeObjectConstructorContainerMap = new Map(),
   runtimeGlobalContainerAliasMap = new Map(),
+  depth = 0,
 ) => {
   const buildResolved = (constructorName, boundArgs = []) => ({
     constructorName,
     boundArgs,
     unresolved: false,
   })
+  if (depth > 12) {
+    return {
+      constructorName: null,
+      boundArgs: [],
+      unresolved: true,
+      expressionText: expression?.getText ? expression.getText() : '',
+    }
+  }
+
+  const resolveCtorFromFunctionLike = (functionLikeNode) => {
+    const targetFunction = unwrapExpression(functionLikeNode)
+    if (!targetFunction) return null
+    if (!ts.isFunctionExpression(targetFunction) && !ts.isArrowFunction(targetFunction)) return null
+
+    let returnExpr = null
+    if (ts.isArrowFunction(targetFunction) && !ts.isBlock(targetFunction.body)) {
+      returnExpr = targetFunction.body
+    } else if (ts.isBlock(targetFunction.body)) {
+      let found = null
+      for (const statement of targetFunction.body.statements) {
+        if (ts.isEmptyStatement(statement)) continue
+        if (ts.isReturnStatement(statement)) {
+          if (!statement.expression || found) {
+            return {
+              constructorName: null,
+              boundArgs: [],
+              unresolved: true,
+              expressionText: targetFunction.getText ? targetFunction.getText() : '',
+            }
+          }
+          found = statement.expression
+          continue
+        }
+        return null
+      }
+      returnExpr = found
+    }
+
+    if (!returnExpr) return null
+    return resolveRuntimeWorkerConstructorFromExpression(
+      returnExpr,
+      runtimeConstructorAliasMap,
+      runtimeUnknownConstructorAliasMap,
+      runtimeConstructorFactoryAliasMap,
+      runtimeUnknownConstructorFactoryAliasMap,
+      runtimeNamespaceAliasMap,
+      runtimeArrayConstructorContainerMap,
+      runtimeObjectConstructorContainerMap,
+      runtimeGlobalContainerAliasMap,
+      depth + 1,
+    )
+  }
+
   const target = normalizeRuntimeCalleeExpression(expression)
   if (!target) return null
 
@@ -766,12 +822,24 @@ const resolveRuntimeWorkerConstructorFromExpression = (
     if (direct) return buildResolved(direct, [])
     const aliasResolved = runtimeConstructorAliasMap.get(target.text)
     if (aliasResolved?.constructorName) return buildResolved(aliasResolved.constructorName, aliasResolved.boundArgs || [])
+    const factoryResolved = runtimeConstructorFactoryAliasMap.get(target.text)
+    if (factoryResolved?.constructorName) {
+      return buildResolved(factoryResolved.constructorName, factoryResolved.boundArgs || [])
+    }
     if (runtimeUnknownConstructorAliasMap.has(target.text)) {
       return {
         constructorName: null,
         boundArgs: [],
         unresolved: true,
         expressionText: runtimeUnknownConstructorAliasMap.get(target.text) || target.text,
+      }
+    }
+    if (runtimeUnknownConstructorFactoryAliasMap.has(target.text)) {
+      return {
+        constructorName: null,
+        boundArgs: [],
+        unresolved: true,
+        expressionText: runtimeUnknownConstructorFactoryAliasMap.get(target.text) || target.text,
       }
     }
     return null
@@ -880,10 +948,13 @@ const resolveRuntimeWorkerConstructorFromExpression = (
           callee.expression,
           runtimeConstructorAliasMap,
           runtimeUnknownConstructorAliasMap,
+          runtimeConstructorFactoryAliasMap,
+          runtimeUnknownConstructorFactoryAliasMap,
           runtimeNamespaceAliasMap,
           runtimeArrayConstructorContainerMap,
           runtimeObjectConstructorContainerMap,
           runtimeGlobalContainerAliasMap,
+          depth + 1,
         )
         if (baseCtor?.constructorName && !baseCtor.unresolved) {
           const bindArgs = target.arguments.slice(1)
@@ -899,6 +970,38 @@ const resolveRuntimeWorkerConstructorFromExpression = (
         }
       }
     }
+
+    const calleeResolvedByFactory = resolveRuntimeWorkerConstructorFromExpression(
+      target.expression,
+      runtimeConstructorAliasMap,
+      runtimeUnknownConstructorAliasMap,
+      runtimeConstructorFactoryAliasMap,
+      runtimeUnknownConstructorFactoryAliasMap,
+      runtimeNamespaceAliasMap,
+      runtimeArrayConstructorContainerMap,
+      runtimeObjectConstructorContainerMap,
+      runtimeGlobalContainerAliasMap,
+      depth + 1,
+    )
+    if (calleeResolvedByFactory?.constructorName && !calleeResolvedByFactory.unresolved) {
+      return buildResolved(calleeResolvedByFactory.constructorName, calleeResolvedByFactory.boundArgs || [])
+    }
+    if (calleeResolvedByFactory?.unresolved) {
+      return {
+        constructorName: null,
+        boundArgs: [],
+        unresolved: true,
+        expressionText: calleeResolvedByFactory.expressionText || (target.getText ? target.getText() : ''),
+      }
+    }
+
+    const functionLikeResolved = resolveCtorFromFunctionLike(target.expression)
+    if (functionLikeResolved?.constructorName && !functionLikeResolved.unresolved) {
+      return buildResolved(functionLikeResolved.constructorName, functionLikeResolved.boundArgs || [])
+    }
+    if (functionLikeResolved?.unresolved) {
+      return functionLikeResolved
+    }
   }
 
   if (ts.isConditionalExpression(target)) {
@@ -906,19 +1009,25 @@ const resolveRuntimeWorkerConstructorFromExpression = (
       target.whenTrue,
       runtimeConstructorAliasMap,
       runtimeUnknownConstructorAliasMap,
+      runtimeConstructorFactoryAliasMap,
+      runtimeUnknownConstructorFactoryAliasMap,
       runtimeNamespaceAliasMap,
       runtimeArrayConstructorContainerMap,
       runtimeObjectConstructorContainerMap,
       runtimeGlobalContainerAliasMap,
+      depth + 1,
     )
     const whenFalse = resolveRuntimeWorkerConstructorFromExpression(
       target.whenFalse,
       runtimeConstructorAliasMap,
       runtimeUnknownConstructorAliasMap,
+      runtimeConstructorFactoryAliasMap,
+      runtimeUnknownConstructorFactoryAliasMap,
       runtimeNamespaceAliasMap,
       runtimeArrayConstructorContainerMap,
       runtimeObjectConstructorContainerMap,
       runtimeGlobalContainerAliasMap,
+      depth + 1,
     )
     if (
       whenTrue &&
@@ -1060,6 +1169,15 @@ const runtimeMutatorMethodSet = new Set([
   'Reflect.set',
 ])
 const runtimeWorkerConstructorNameSet = new Set(['Worker', 'SharedWorker'])
+const runtimeKnownSafeConstructorNameSet = new Set([
+  'Date',
+  'URL',
+  'Error',
+  'TypeError',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+])
 const runtimeBlobUrlMethodSet = new Set(['URL.createObjectURL'])
 const runtimeWorkerConstructorMethodSet = new Set(['Reflect.construct'])
 const runtimeMutatorSourceMethodSet = new Set([
@@ -1086,6 +1204,31 @@ const runtimeMutatorMemberNameSet = new Set([
 const classifyRuntimeWorkerConstructorName = (name) => {
   if (!name) return null
   if (runtimeWorkerConstructorNameSet.has(name)) return name
+  return null
+}
+
+const resolveKnownSafeConstructorFromExpression = (expression, runtimeGlobalContainerAliasMap = new Map()) => {
+  const target = normalizeRuntimeCalleeExpression(expression)
+  if (!target) return null
+
+  if (ts.isIdentifier(target) && runtimeKnownSafeConstructorNameSet.has(target.text)) {
+    return target.text
+  }
+
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const memberName = getStaticMemberName(target)
+    if (!memberName || !runtimeKnownSafeConstructorNameSet.has(memberName)) return null
+    const globalContainer = resolveGlobalContainerFromExpression(target.expression, runtimeGlobalContainerAliasMap)
+    if (globalContainer) return memberName
+    return null
+  }
+
+  if (ts.isConditionalExpression(target)) {
+    const whenTrue = resolveKnownSafeConstructorFromExpression(target.whenTrue, runtimeGlobalContainerAliasMap)
+    const whenFalse = resolveKnownSafeConstructorFromExpression(target.whenFalse, runtimeGlobalContainerAliasMap)
+    if (whenTrue && whenFalse && whenTrue === whenFalse) return whenTrue
+  }
+
   return null
 }
 
@@ -1460,6 +1603,8 @@ const analyzeRuntimeWorkerArrayLiteral = (
   arrayLiteral,
   runtimeConstructorAliasMap = new Map(),
   runtimeUnknownConstructorAliasMap = new Map(),
+  runtimeConstructorFactoryAliasMap = new Map(),
+  runtimeUnknownConstructorFactoryAliasMap = new Map(),
   runtimeNamespaceAliasMap = new Map(),
   runtimeArrayConstructorContainerMap = new Map(),
   runtimeObjectConstructorContainerMap = new Map(),
@@ -1479,6 +1624,8 @@ const analyzeRuntimeWorkerArrayLiteral = (
       element,
       runtimeConstructorAliasMap,
       runtimeUnknownConstructorAliasMap,
+      runtimeConstructorFactoryAliasMap,
+      runtimeUnknownConstructorFactoryAliasMap,
       runtimeNamespaceAliasMap,
       runtimeArrayConstructorContainerMap,
       runtimeObjectConstructorContainerMap,
@@ -1505,6 +1652,8 @@ const analyzeRuntimeWorkerObjectLiteral = (
   objectLiteral,
   runtimeConstructorAliasMap = new Map(),
   runtimeUnknownConstructorAliasMap = new Map(),
+  runtimeConstructorFactoryAliasMap = new Map(),
+  runtimeUnknownConstructorFactoryAliasMap = new Map(),
   runtimeNamespaceAliasMap = new Map(),
   runtimeArrayConstructorContainerMap = new Map(),
   runtimeObjectConstructorContainerMap = new Map(),
@@ -1537,6 +1686,8 @@ const analyzeRuntimeWorkerObjectLiteral = (
       property.initializer,
       runtimeConstructorAliasMap,
       runtimeUnknownConstructorAliasMap,
+      runtimeConstructorFactoryAliasMap,
+      runtimeUnknownConstructorFactoryAliasMap,
       runtimeNamespaceAliasMap,
       runtimeArrayConstructorContainerMap,
       runtimeObjectConstructorContainerMap,
@@ -1563,6 +1714,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
   const runtimeMethodAliasMap = new Map()
   const runtimeConstructorAliasMap = new Map()
   const runtimeUnknownConstructorAliasMap = new Map()
+  const runtimeConstructorFactoryAliasMap = new Map()
+  const runtimeUnknownConstructorFactoryAliasMap = new Map()
   const runtimeNamespaceAliasMap = new Map()
   const runtimeUnknownNamespaceAliasMap = new Map()
   const runtimeGlobalContainerAliasMap = new Map()
@@ -1653,6 +1806,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       initializer,
       runtimeConstructorAliasMap,
       runtimeUnknownConstructorAliasMap,
+      runtimeConstructorFactoryAliasMap,
+      runtimeUnknownConstructorFactoryAliasMap,
       runtimeNamespaceAliasMap,
       runtimeArrayConstructorContainerMap,
       runtimeObjectConstructorContainerMap,
@@ -1680,6 +1835,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         initializer,
         runtimeConstructorAliasMap,
         runtimeUnknownConstructorAliasMap,
+        runtimeConstructorFactoryAliasMap,
+        runtimeUnknownConstructorFactoryAliasMap,
         runtimeNamespaceAliasMap,
         runtimeArrayConstructorContainerMap,
         runtimeObjectConstructorContainerMap,
@@ -1699,6 +1856,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         initializer,
         runtimeConstructorAliasMap,
         runtimeUnknownConstructorAliasMap,
+        runtimeConstructorFactoryAliasMap,
+        runtimeUnknownConstructorFactoryAliasMap,
         runtimeNamespaceAliasMap,
         runtimeArrayConstructorContainerMap,
         runtimeObjectConstructorContainerMap,
@@ -1730,6 +1889,88 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
 
     runtimeArrayConstructorContainerMap.delete(aliasName)
     runtimeObjectConstructorContainerMap.delete(aliasName)
+  }
+
+  const resolveFunctionLikeReturnExpression = (functionLikeNode) => {
+    const target = unwrapExpression(functionLikeNode)
+    if (!target) return null
+    if (!ts.isFunctionDeclaration(target) && !ts.isFunctionExpression(target) && !ts.isArrowFunction(target)) {
+      return null
+    }
+
+    if (ts.isArrowFunction(target) && !ts.isBlock(target.body)) {
+      return target.body
+    }
+
+    if (!ts.isBlock(target.body)) return null
+
+    let foundReturn = null
+    for (const statement of target.body.statements) {
+      if (ts.isEmptyStatement(statement)) continue
+      if (ts.isReturnStatement(statement)) {
+        if (!statement.expression || foundReturn) return undefined
+        foundReturn = statement.expression
+        continue
+      }
+      return null
+    }
+    return foundReturn
+  }
+
+  const setRuntimeConstructorFactoryAliasBinding = (aliasName, initializer) => {
+    const returnExpr = resolveFunctionLikeReturnExpression(initializer)
+    if (!returnExpr) {
+      if (ts.isIdentifier(initializer) && runtimeConstructorFactoryAliasMap.has(initializer.text)) {
+        runtimeConstructorFactoryAliasMap.set(aliasName, runtimeConstructorFactoryAliasMap.get(initializer.text))
+        runtimeUnknownConstructorFactoryAliasMap.delete(aliasName)
+        return
+      }
+      if (ts.isIdentifier(initializer) && runtimeUnknownConstructorFactoryAliasMap.has(initializer.text)) {
+        runtimeConstructorFactoryAliasMap.delete(aliasName)
+        runtimeUnknownConstructorFactoryAliasMap.set(
+          aliasName,
+          runtimeUnknownConstructorFactoryAliasMap.get(initializer.text),
+        )
+        return
+      }
+      runtimeConstructorFactoryAliasMap.delete(aliasName)
+      runtimeUnknownConstructorFactoryAliasMap.delete(aliasName)
+      return
+    }
+
+    if (returnExpr === undefined) {
+      runtimeConstructorFactoryAliasMap.delete(aliasName)
+      runtimeUnknownConstructorFactoryAliasMap.set(aliasName, initializer.getText ? initializer.getText() : aliasName)
+      return
+    }
+
+    const resolvedCtor = resolveRuntimeWorkerConstructorFromExpression(
+      returnExpr,
+      runtimeConstructorAliasMap,
+      runtimeUnknownConstructorAliasMap,
+      runtimeConstructorFactoryAliasMap,
+      runtimeUnknownConstructorFactoryAliasMap,
+      runtimeNamespaceAliasMap,
+      runtimeArrayConstructorContainerMap,
+      runtimeObjectConstructorContainerMap,
+      runtimeGlobalContainerAliasMap,
+    )
+
+    if (resolvedCtor?.constructorName && !resolvedCtor.unresolved) {
+      runtimeConstructorFactoryAliasMap.set(aliasName, {
+        constructorName: resolvedCtor.constructorName,
+        boundArgs: resolvedCtor.boundArgs || [],
+      })
+      runtimeUnknownConstructorFactoryAliasMap.delete(aliasName)
+      return
+    }
+
+    runtimeConstructorFactoryAliasMap.delete(aliasName)
+    if (resolvedCtor?.unresolved) {
+      runtimeUnknownConstructorFactoryAliasMap.set(aliasName, resolvedCtor.expressionText || returnExpr.getText())
+    } else {
+      runtimeUnknownConstructorFactoryAliasMap.delete(aliasName)
+    }
   }
 
   const pushRuntimeMutatorSourceFinding = (type, expressionText) => {
@@ -1782,6 +2023,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     if (ts.isFunctionDeclaration(node) && node.name) {
       timerCallbackIdentifierSet.add(node.name.text)
       timerStringIdentifierSet.delete(node.name.text)
+      setRuntimeConstructorFactoryAliasBinding(node.name.text, node)
     } else if (ts.isVariableDeclaration(node) && node.initializer) {
       const initializer = unwrapExpression(node.initializer)
       if (ts.isIdentifier(node.name)) {
@@ -1816,6 +2058,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         setRuntimeContainerAliases(varName, initializer)
         setRuntimeConstructorContainerAliases(varName, initializer)
         setRuntimeConstructorAliasBinding(varName, initializer)
+        setRuntimeConstructorFactoryAliasBinding(varName, initializer)
 
         const runtimeMethod = resolveRuntimeMethodFromExpression(
           initializer,
@@ -1920,6 +2163,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         setRuntimeContainerAliases(targetName, rhs)
         setRuntimeConstructorContainerAliases(targetName, rhs)
         setRuntimeConstructorAliasBinding(targetName, rhs)
+        setRuntimeConstructorFactoryAliasBinding(targetName, rhs)
 
         const runtimeMethod = resolveRuntimeMethodFromExpression(
           rhs,
@@ -2005,6 +2249,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     runtimeMethodAliasMap,
     runtimeConstructorAliasMap,
     runtimeUnknownConstructorAliasMap,
+    runtimeConstructorFactoryAliasMap,
+    runtimeUnknownConstructorFactoryAliasMap,
     runtimeNamespaceAliasMap,
     runtimeUnknownNamespaceAliasMap,
     runtimeGlobalContainerAliasMap,
@@ -2357,6 +2603,8 @@ const resolveWorkerConstructorDescriptor = (expression, runtimeContext) =>
     expression,
     runtimeContext.runtimeConstructorAliasMap || new Map(),
     runtimeContext.runtimeUnknownConstructorAliasMap || new Map(),
+    runtimeContext.runtimeConstructorFactoryAliasMap || new Map(),
+    runtimeContext.runtimeUnknownConstructorFactoryAliasMap || new Map(),
     runtimeContext.runtimeNamespaceAliasMap || new Map(),
     runtimeContext.runtimeArrayConstructorContainerMap || new Map(),
     runtimeContext.runtimeObjectConstructorContainerMap || new Map(),
@@ -2418,6 +2666,47 @@ const classifyUnknownWorkerConstructTargetSource = (sourceArg, isBlobUrlSourceEx
     type: 'RuntimeWorkerConstructorUnknownTarget',
     expressionText: sourceArg.getText ? sourceArg.getText() : trimmed,
   }
+}
+
+const classifyUnknownWorkerConstructTargetSourceStrict = (sourceArg, isBlobUrlSourceExpression) => {
+  if (!sourceArg) return { blocked: false }
+
+  const firstPass = classifyUnknownWorkerConstructTargetSource(sourceArg, isBlobUrlSourceExpression)
+  if (firstPass.blocked) return firstPass
+
+  if (isSafeWorkerNewUrlExpression(sourceArg)) return { blocked: false }
+
+  const target = unwrapExpression(sourceArg)
+  if (!target) {
+    return {
+      blocked: true,
+      type: 'RuntimeWorkerConstructorUnknownTarget',
+      expressionText: '',
+    }
+  }
+
+  if (ts.isStringLiteral(target) || ts.isNoSubstitutionTemplateLiteral(target)) {
+    return { blocked: false }
+  }
+
+  if (
+    ts.isIdentifier(target) ||
+    ts.isTemplateExpression(target) ||
+    ts.isCallExpression(target) ||
+    ts.isConditionalExpression(target) ||
+    ts.isPropertyAccessExpression(target) ||
+    ts.isElementAccessExpression(target) ||
+    ts.isBinaryExpression(target) ||
+    ts.isTaggedTemplateExpression(target)
+  ) {
+    return {
+      blocked: true,
+      type: 'RuntimeWorkerConstructorUnknownTarget',
+      expressionText: sourceArg.getText ? sourceArg.getText() : '',
+    }
+  }
+
+  return { blocked: false }
 }
 
 const classifyScriptSrcSourceArgument = (sourceArg, isBlobUrlSourceExpression) => {
@@ -2521,6 +2810,133 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
     return false
   }
 
+  const resolveCtorKindForDescriptor = (ctorExpression) => {
+    const workerCtorDescriptor = resolveWorkerConstructorDescriptor(ctorExpression, runtimeContext)
+    if (workerCtorDescriptor?.unresolved) {
+      return {
+        ctor_kind: 'unknown',
+        ctor_confidence: 'unknown',
+        workerCtorDescriptor,
+      }
+    }
+    if (workerCtorDescriptor?.constructorName === 'Worker') {
+      return {
+        ctor_kind: 'worker',
+        ctor_confidence: 'known',
+        workerCtorDescriptor,
+      }
+    }
+    if (workerCtorDescriptor?.constructorName === 'SharedWorker') {
+      return {
+        ctor_kind: 'shared_worker',
+        ctor_confidence: 'known',
+        workerCtorDescriptor,
+      }
+    }
+    const knownSafeCtor = resolveKnownSafeConstructorFromExpression(
+      ctorExpression,
+      runtimeContext.runtimeGlobalContainerAliasMap || new Map(),
+    )
+    if (knownSafeCtor) {
+      return {
+        ctor_kind: 'safe_known_constructor',
+        ctor_confidence: 'known',
+        workerCtorDescriptor: null,
+      }
+    }
+    return {
+      ctor_kind: 'unknown',
+      ctor_confidence: 'unknown',
+      workerCtorDescriptor: null,
+    }
+  }
+
+  const resolveConstructorInvocationDescriptorFromNewExpression = (newNode) => {
+    const ctorInfo = resolveCtorKindForDescriptor(newNode.expression)
+    const runtimeArgs = Array.from(newNode.arguments || [])
+    const sourceArg =
+      ctorInfo.workerCtorDescriptor?.constructorName && !ctorInfo.workerCtorDescriptor.unresolved
+        ? resolveWorkerInvocationSourceArg(ctorInfo.workerCtorDescriptor, runtimeArgs)
+        : runtimeArgs[0] || null
+    return {
+      ctor_kind: ctorInfo.ctor_kind,
+      ctor_confidence: ctorInfo.ctor_confidence,
+      url_expression: sourceArg,
+      options_expression: runtimeArgs[1] || null,
+      source_trace: newNode.getText(sourceFile),
+      unresolved_constructor: Boolean(ctorInfo.workerCtorDescriptor?.unresolved),
+      unresolved_expression: ctorInfo.workerCtorDescriptor?.expressionText || '',
+    }
+  }
+
+  const resolveConstructorInvocationDescriptorFromReflectConstructCall = (callNode, normalizedCall) => {
+    const ctorExpr = normalizedCall.args[0] || null
+    const ctorInfo = resolveCtorKindForDescriptor(ctorExpr)
+    const argsArrayExpr = normalizedCall.args[1] || null
+    const runtimeArgs = resolveRuntimeArgumentArrayElements(argsArrayExpr, runtimeContext)
+    if (runtimeArgs.unresolved) {
+      return {
+        ctor_kind: 'unknown',
+        ctor_confidence: 'unknown',
+        url_expression: null,
+        options_expression: null,
+        source_trace: callNode.getText(sourceFile),
+        unresolved_constructor: false,
+        unresolved_expression: runtimeArgs.expressionText || '',
+        unresolved_args: true,
+      }
+    }
+    const sourceArg =
+      ctorInfo.workerCtorDescriptor?.constructorName && !ctorInfo.workerCtorDescriptor.unresolved
+        ? resolveWorkerInvocationSourceArg(ctorInfo.workerCtorDescriptor, runtimeArgs.args)
+        : runtimeArgs.args[0] || null
+    return {
+      ctor_kind: ctorInfo.ctor_kind,
+      ctor_confidence: ctorInfo.ctor_confidence,
+      url_expression: sourceArg,
+      options_expression: runtimeArgs.args[1] || null,
+      source_trace: callNode.getText(sourceFile),
+      unresolved_constructor: Boolean(ctorInfo.workerCtorDescriptor?.unresolved),
+      unresolved_expression: ctorInfo.workerCtorDescriptor?.expressionText || '',
+      unresolved_args: false,
+    }
+  }
+
+  const applyConstructorInvocationDescriptor = (descriptor) => {
+    if (descriptor.unresolved_constructor) {
+      pushFinding(
+        'RuntimeWorkerConstructorUnresolved',
+        descriptor.unresolved_expression || descriptor.source_trace || '',
+      )
+      return
+    }
+    if (descriptor.unresolved_args) {
+      pushFinding(
+        'RuntimeWorkerConstructUnresolvedArguments',
+        descriptor.unresolved_expression || descriptor.source_trace || '',
+      )
+      return
+    }
+
+    if (descriptor.ctor_kind === 'worker' || descriptor.ctor_kind === 'shared_worker') {
+      const workerArgCheck = classifyWorkerSourceArgument(descriptor.url_expression, isBlobUrlSourceExpression)
+      if (workerArgCheck.blocked) {
+        pushFinding(workerArgCheck.type, workerArgCheck.expressionText || descriptor.source_trace)
+      }
+      return
+    }
+
+    if (descriptor.ctor_kind === 'unknown' && descriptor.ctor_confidence === 'unknown') {
+      const unknownSourceCheck = classifyUnknownWorkerConstructTargetSourceStrict(
+        descriptor.url_expression,
+        isBlobUrlSourceExpression,
+      )
+      if (unknownSourceCheck.blocked) {
+        pushFinding(unknownSourceCheck.type, unknownSourceCheck.expressionText || descriptor.source_trace)
+      }
+    }
+  }
+
   const collectBlobUrlIdentifiers = (node) => {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
       const initializer = unwrapExpression(node.initializer)
@@ -2589,57 +3005,14 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
           ts.forEachChild(node, visit)
           return
         }
-
-        const ctorExpr = normalizedCall.args[0] || null
-        const workerCtorDescriptor = resolveWorkerConstructorDescriptor(ctorExpr, runtimeContext)
-        const argsArrayExpr = normalizedCall.args[1] || null
-        const runtimeArgs = resolveRuntimeArgumentArrayElements(argsArrayExpr, runtimeContext)
-
-        if (workerCtorDescriptor?.unresolved) {
-          pushFinding(
-            'RuntimeWorkerConstructorUnresolved',
-            workerCtorDescriptor.expressionText || ctorExpr?.getText?.() || node.getText(sourceFile),
-          )
-          ts.forEachChild(node, visit)
-          return
-        }
-
-        if (runtimeArgs.unresolved) {
-          pushFinding('RuntimeWorkerConstructUnresolvedArguments', runtimeArgs.expressionText || node.getText(sourceFile))
-          ts.forEachChild(node, visit)
-          return
-        }
-
-        if (workerCtorDescriptor?.constructorName) {
-          const sourceArg = resolveWorkerInvocationSourceArg(workerCtorDescriptor, runtimeArgs.args)
-          const workerArgCheck = classifyWorkerSourceArgument(sourceArg, isBlobUrlSourceExpression)
-          if (workerArgCheck.blocked) {
-            pushFinding(workerArgCheck.type, workerArgCheck.expressionText || node.getText(sourceFile))
-          }
-        } else {
-          const unknownSourceCheck = classifyUnknownWorkerConstructTargetSource(runtimeArgs.args[0] || null, isBlobUrlSourceExpression)
-          if (unknownSourceCheck.blocked) {
-            pushFinding(unknownSourceCheck.type, unknownSourceCheck.expressionText || node.getText(sourceFile))
-          }
-        }
+        const descriptor = resolveConstructorInvocationDescriptorFromReflectConstructCall(node, normalizedCall)
+        applyConstructorInvocationDescriptor(descriptor)
       }
     }
 
     if (ts.isNewExpression(node)) {
-      const workerCtorDescriptor = resolveWorkerConstructorDescriptor(node.expression, runtimeContext)
-      if (workerCtorDescriptor?.unresolved) {
-        pushFinding(
-          'RuntimeWorkerConstructorUnresolved',
-          workerCtorDescriptor.expressionText || node.expression.getText(sourceFile),
-        )
-      } else if (workerCtorDescriptor?.constructorName) {
-        const workerArgs = Array.from(node.arguments || [])
-        const sourceArg = resolveWorkerInvocationSourceArg(workerCtorDescriptor, workerArgs)
-        const workerArgCheck = classifyWorkerSourceArgument(sourceArg, isBlobUrlSourceExpression)
-        if (workerArgCheck.blocked) {
-          pushFinding(workerArgCheck.type, workerArgCheck.expressionText || node.getText(sourceFile))
-        }
-      }
+      const descriptor = resolveConstructorInvocationDescriptorFromNewExpression(node)
+      applyConstructorInvocationDescriptor(descriptor)
     }
 
     if (ts.isBinaryExpression(node) && isRuntimeWriteOperator(node.operatorToken.kind) && isSrcAssignmentLeft(node.left)) {
