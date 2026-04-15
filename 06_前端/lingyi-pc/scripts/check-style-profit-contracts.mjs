@@ -591,13 +591,19 @@ const runtimeArrayMutatingMethodNameSet = new Set([
   'copyWithin',
 ])
 
-const runtimeArrayIterationMethodNameSet = new Set([
-  'forEach',
-  'map',
-  'some',
-  'every',
-  'filter',
-  'find',
+const runtimeArrayIterationMethodDescriptorMap = new Map([
+  ['forEach', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['map', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['some', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['every', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['filter', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['find', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['findIndex', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['findLast', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['findLastIndex', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['flatMap', { callback_argument_index: 0, current_item_parameter_index: 0 }],
+  ['reduce', { callback_argument_index: 0, current_item_parameter_index: 1 }],
+  ['reduceRight', { callback_argument_index: 0, current_item_parameter_index: 1 }],
 ])
 
 const runtimeArrayStatusRank = {
@@ -3430,12 +3436,28 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       return false
     }
     const memberName = getStaticMemberName(calleeExpression)
-    if (!memberName || !runtimeArrayIterationMethodNameSet.has(memberName)) {
+    const methodDescriptor = memberName ? runtimeArrayIterationMethodDescriptorMap.get(memberName) || null : null
+    if (!methodDescriptor) {
       return false
     }
     if (callNode.arguments.length === 0) return false
 
-    const callbackExpression = unwrapExpression(callNode.arguments[0])
+    const callbackArgumentIndex = methodDescriptor.callback_argument_index
+    const currentItemParameterIndex = methodDescriptor.current_item_parameter_index
+    if (!Number.isInteger(callbackArgumentIndex) || callbackArgumentIndex < 0) {
+      if (runtimeArrayAliasMap.size > 0) {
+        markAllRuntimeArraysUnknownAtPosition(`IterationDescriptorUnknown.${memberName}`, callNode.getStart())
+      }
+      return true
+    }
+    if (!Number.isInteger(currentItemParameterIndex) || currentItemParameterIndex < 0) {
+      if (runtimeArrayAliasMap.size > 0) {
+        markAllRuntimeArraysUnknownAtPosition(`IterationDescriptorUnknown.${memberName}`, callNode.getStart())
+      }
+      return true
+    }
+
+    const callbackExpression = unwrapExpression(callNode.arguments[callbackArgumentIndex] || null)
     if (!callbackExpression) {
       if (runtimeArrayAliasMap.size > 0) {
         markAllRuntimeArraysUnknownAtPosition(`IterationCallbackMissing.${memberName}`, callNode.getStart())
@@ -3470,8 +3492,21 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     if (iterableElements.length === 0) return true
     for (const elementExpression of iterableElements) {
       if (!elementExpression) continue
+      const callbackArguments = []
+      for (let index = 0; index <= currentItemParameterIndex; index += 1) {
+        callbackArguments.push(undefined)
+      }
+      if (currentItemParameterIndex > 0) {
+        const accumulatorExpression = unwrapExpression(callNode.arguments[callbackArgumentIndex + 1] || null)
+        if (accumulatorExpression) {
+          callbackArguments[0] = accumulatorExpression
+        } else if (iterableElements[0]) {
+          callbackArguments[0] = iterableElements[0]
+        }
+      }
+      callbackArguments[currentItemParameterIndex] = elementExpression
       applyRuntimeFunctionSummaryAtCall(callbackSummary, callNode, {
-        callArguments: [elementExpression],
+        callArguments: callbackArguments,
         callPosition: callNode.getStart(),
       })
     }
