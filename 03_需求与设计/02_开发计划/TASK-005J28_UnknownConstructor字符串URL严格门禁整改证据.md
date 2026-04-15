@@ -119,4 +119,4 @@ safe known constructor 仅用于构造器本身识别，不会给 unknown constr
 ## 7. 提交信息
 
 - 代码提交：`9fd4be4`（`fix: harden unknown constructor worker url gate`）
-- 文档提交：待本证据文件提交后回填
+- 文档提交：`f51ecf7`（`docs: add task 005j28 strict gate evidence`）
