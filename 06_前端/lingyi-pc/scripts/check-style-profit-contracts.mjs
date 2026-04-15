@@ -1874,6 +1874,307 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     }
   }
 
+  const resolveRuntimeStaticArrayLiteral = (expression, depth = 0) => {
+    if (!expression || depth > 8) return null
+    const target = unwrapExpression(expression)
+    if (!target) return null
+    if (ts.isArrayLiteralExpression(target)) return target
+    if (ts.isIdentifier(target)) {
+      return arrayLiteralVariableMap.get(target.text) || null
+    }
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = resolveRuntimeStaticArrayLiteral(target.whenTrue, depth + 1)
+      const whenFalse = resolveRuntimeStaticArrayLiteral(target.whenFalse, depth + 1)
+      if (whenTrue && whenFalse && whenTrue.getText() === whenFalse.getText()) return whenTrue
+    }
+    return null
+  }
+
+  const resolveRuntimeStaticObjectLiteral = (expression, depth = 0) => {
+    if (!expression || depth > 8) return null
+    const target = unwrapExpression(expression)
+    if (!target) return null
+    if (ts.isObjectLiteralExpression(target)) return target
+    if (ts.isIdentifier(target)) {
+      return objectLiteralVariableMap.get(target.text) || null
+    }
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = resolveRuntimeStaticObjectLiteral(target.whenTrue, depth + 1)
+      const whenFalse = resolveRuntimeStaticObjectLiteral(target.whenFalse, depth + 1)
+      if (whenTrue && whenFalse && whenTrue.getText() === whenFalse.getText()) return whenTrue
+    }
+    return null
+  }
+
+  const resolveRuntimeObjectPropertyExpressionByKey = (objectLiteral, keyText) => {
+    if (!objectLiteral || !keyText) return { expression: null, unresolved: true }
+    let matchedExpression = null
+    let unresolved = false
+    for (const property of objectLiteral.properties) {
+      if (ts.isSpreadAssignment(property)) {
+        unresolved = true
+        continue
+      }
+      if (ts.isMethodDeclaration(property)) {
+        const keyInfo = classifyMemberNameForRuntime(property)
+        if (keyInfo.keyClass === 'literal_key' && keyInfo.keyText === keyText.toLowerCase()) {
+          matchedExpression = property
+        }
+        continue
+      }
+      if (ts.isShorthandPropertyAssignment(property)) {
+        const keyInfo = classifyMemberNameForRuntime(property)
+        if (keyInfo.keyClass === 'literal_key' && keyInfo.keyText === keyText.toLowerCase()) {
+          matchedExpression = property.name
+        }
+        continue
+      }
+      if (!ts.isPropertyAssignment(property)) {
+        unresolved = true
+        continue
+      }
+      const keyInfo = classifyMemberNameForRuntime(property)
+      if (keyInfo.keyClass !== 'literal_key') {
+        unresolved = true
+        continue
+      }
+      if (keyInfo.keyText === keyText.toLowerCase()) {
+        matchedExpression = property.initializer
+      }
+    }
+    return { expression: matchedExpression, unresolved }
+  }
+
+  const resolveRuntimeArrayAliasNameFromExpression = (expression, depth = 0) => {
+    if (!expression || depth > 8) return null
+    const target = unwrapExpression(expression)
+    if (!target) return null
+    if (ts.isIdentifier(target) && runtimeArrayAliasMap.has(target.text)) {
+      return target.text
+    }
+    if (ts.isConditionalExpression(target)) {
+      const whenTrue = resolveRuntimeArrayAliasNameFromExpression(target.whenTrue, depth + 1)
+      const whenFalse = resolveRuntimeArrayAliasNameFromExpression(target.whenFalse, depth + 1)
+      if (whenTrue && whenFalse && whenTrue === whenFalse) return whenTrue
+    }
+    return null
+  }
+
+  const markRuntimeTrackedArraysUnknownForDestructure = (sourceExpression, reason, position) => {
+    const aliases = collectArrayAliasIdentifiersInExpression(sourceExpression)
+    if (aliases.size > 0) {
+      for (const aliasName of aliases) {
+        markRuntimeArrayAliasState(aliasName, 'unknown', reason, position)
+      }
+      return
+    }
+    for (const aliasName of runtimeArrayAliasMap.keys()) {
+      markRuntimeArrayAliasState(aliasName, 'unknown', reason, position)
+    }
+  }
+
+  const bindRuntimeArrayAliasFromSourceExpression = (aliasName, sourceExpression, position, reasonPrefix) => {
+    if (!aliasName) return { bound: false, unresolved: false }
+    if (!sourceExpression) {
+      unbindRuntimeArrayAlias(aliasName)
+      return { bound: false, unresolved: false }
+    }
+    const sourceAliasName = resolveRuntimeArrayAliasNameFromExpression(sourceExpression)
+    if (sourceAliasName) {
+      const sourceArrayId = runtimeArrayAliasMap.get(sourceAliasName)
+      if (sourceArrayId) {
+        bindRuntimeArrayAlias(aliasName, sourceArrayId)
+        return { bound: true, unresolved: false }
+      }
+    }
+    unbindRuntimeArrayAlias(aliasName)
+    const referencedAliases = collectArrayAliasIdentifiersInExpression(sourceExpression)
+    for (const referencedAlias of referencedAliases) {
+      markRuntimeArrayAliasState(referencedAlias, 'unknown', `${reasonPrefix}.UnresolvedSource`, position)
+    }
+    return { bound: false, unresolved: true }
+  }
+
+  const bindRuntimeArrayAliasesFromBindingPattern = (bindingPattern, sourceExpression, position, reasonPrefix) => {
+    let unresolved = false
+    let bound = false
+
+    const markUnresolved = () => {
+      unresolved = true
+    }
+
+    const bindPattern = (patternNode, valueExpression) => {
+      const pattern = unwrapExpression(patternNode)
+      if (!pattern) {
+        markUnresolved()
+        return
+      }
+
+      if (ts.isIdentifier(pattern)) {
+        const result = bindRuntimeArrayAliasFromSourceExpression(pattern.text, valueExpression, position, reasonPrefix)
+        if (result.bound) bound = true
+        if (result.unresolved) markUnresolved()
+        return
+      }
+
+      if (ts.isArrayBindingPattern(pattern)) {
+        const sourceArrayLiteral = resolveRuntimeStaticArrayLiteral(valueExpression)
+        if (!sourceArrayLiteral && valueExpression) {
+          markUnresolved()
+        }
+        pattern.elements.forEach((element, index) => {
+          if (ts.isOmittedExpression(element)) return
+          if (!ts.isBindingElement(element)) {
+            markUnresolved()
+            return
+          }
+          if (element.dotDotDotToken) {
+            markUnresolved()
+            bindPattern(element.name, null)
+            return
+          }
+          let elementValueExpression = sourceArrayLiteral ? sourceArrayLiteral.elements[index] || null : null
+          if (!elementValueExpression && element.initializer) {
+            elementValueExpression = element.initializer
+            markUnresolved()
+          }
+          bindPattern(element.name, elementValueExpression)
+        })
+        return
+      }
+
+      if (ts.isObjectBindingPattern(pattern)) {
+        const sourceObjectLiteral = resolveRuntimeStaticObjectLiteral(valueExpression)
+        if (!sourceObjectLiteral && valueExpression) {
+          markUnresolved()
+        }
+        pattern.elements.forEach((element) => {
+          if (!ts.isBindingElement(element)) {
+            markUnresolved()
+            return
+          }
+          if (element.dotDotDotToken) {
+            markUnresolved()
+            bindPattern(element.name, null)
+            return
+          }
+          const sourceKey = getBindingElementSourceKey(element)
+          if (!sourceKey) {
+            markUnresolved()
+            bindPattern(element.name, element.initializer || null)
+            return
+          }
+          const propertyResult = sourceObjectLiteral
+            ? resolveRuntimeObjectPropertyExpressionByKey(sourceObjectLiteral, sourceKey)
+            : { expression: null, unresolved: true }
+          if (propertyResult.unresolved) markUnresolved()
+          let propertyValueExpression = propertyResult.expression
+          if (!propertyValueExpression && element.initializer) {
+            propertyValueExpression = element.initializer
+            markUnresolved()
+          }
+          bindPattern(element.name, propertyValueExpression)
+        })
+        return
+      }
+
+      markUnresolved()
+    }
+
+    bindPattern(bindingPattern, sourceExpression)
+    if (unresolved && runtimeArrayAliasMap.size > 0) {
+      markRuntimeTrackedArraysUnknownForDestructure(sourceExpression, `${reasonPrefix}.UnresolvedBindingPattern`, position)
+    }
+    return { unresolved, bound }
+  }
+
+  const bindRuntimeArrayAliasesFromAssignmentPattern = (leftPatternExpression, sourceExpression, position, reasonPrefix) => {
+    let unresolved = false
+    let bound = false
+
+    const markUnresolved = () => {
+      unresolved = true
+    }
+
+    const bindAssignmentTarget = (targetExpression, valueExpression) => {
+      const target = unwrapExpression(targetExpression)
+      if (!target) {
+        markUnresolved()
+        return
+      }
+
+      if (ts.isIdentifier(target)) {
+        const result = bindRuntimeArrayAliasFromSourceExpression(target.text, valueExpression, position, reasonPrefix)
+        if (result.bound) bound = true
+        if (result.unresolved) markUnresolved()
+        return
+      }
+
+      if (ts.isArrayLiteralExpression(target)) {
+        const sourceArrayLiteral = resolveRuntimeStaticArrayLiteral(valueExpression)
+        if (!sourceArrayLiteral && valueExpression) {
+          markUnresolved()
+        }
+        target.elements.forEach((element, index) => {
+          if (ts.isOmittedExpression(element)) return
+          if (ts.isSpreadElement(element)) {
+            markUnresolved()
+            bindAssignmentTarget(element.expression, null)
+            return
+          }
+          const elementValueExpression = sourceArrayLiteral ? sourceArrayLiteral.elements[index] || null : null
+          bindAssignmentTarget(element, elementValueExpression)
+        })
+        return
+      }
+
+      if (ts.isObjectLiteralExpression(target)) {
+        const sourceObjectLiteral = resolveRuntimeStaticObjectLiteral(valueExpression)
+        if (!sourceObjectLiteral && valueExpression) {
+          markUnresolved()
+        }
+        target.properties.forEach((property) => {
+          if (ts.isSpreadAssignment(property)) {
+            markUnresolved()
+            return
+          }
+          if (ts.isShorthandPropertyAssignment(property)) {
+            const propertyResult = sourceObjectLiteral
+              ? resolveRuntimeObjectPropertyExpressionByKey(sourceObjectLiteral, property.name.text)
+              : { expression: null, unresolved: true }
+            if (propertyResult.unresolved) markUnresolved()
+            bindAssignmentTarget(property.name, propertyResult.expression)
+            return
+          }
+          if (!ts.isPropertyAssignment(property)) {
+            markUnresolved()
+            return
+          }
+          const sourceKeyInfo = classifyDestructureSourceKeyNode(property.name)
+          if (sourceKeyInfo.keyClass !== 'literal_key') {
+            markUnresolved()
+            bindAssignmentTarget(property.initializer, null)
+            return
+          }
+          const propertyResult = sourceObjectLiteral
+            ? resolveRuntimeObjectPropertyExpressionByKey(sourceObjectLiteral, sourceKeyInfo.keyText)
+            : { expression: null, unresolved: true }
+          if (propertyResult.unresolved) markUnresolved()
+          bindAssignmentTarget(property.initializer, propertyResult.expression)
+        })
+        return
+      }
+
+      markUnresolved()
+    }
+
+    bindAssignmentTarget(leftPatternExpression, sourceExpression)
+    if (unresolved && runtimeArrayAliasMap.size > 0) {
+      markRuntimeTrackedArraysUnknownForDestructure(sourceExpression, `${reasonPrefix}.UnresolvedAssignmentPattern`, position)
+    }
+    return { unresolved, bound }
+  }
+
   const setRuntimeContainerAliases = (aliasName, initializer) => {
     if (ts.isArrayLiteralExpression(initializer)) {
       const arrayAnalysis = analyzeRuntimeMutatorArrayLiteral(
@@ -2210,6 +2511,8 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
     runtimeFunctionNodeSummaryMap.set(functionNode, summary)
 
     const localArrayAliasMap = new Map()
+    const localArrayLiteralMap = new Map()
+    const localObjectLiteralMap = new Map()
     const registerCapturedName = (name) => {
       if (!name) return
       const root = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, name)
@@ -2240,6 +2543,272 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
       }
     }
 
+    const updateFunctionLocalStaticLiteralMaps = (identifierName, initializerExpression) => {
+      if (!identifierName) return
+      const initializer = unwrapExpression(initializerExpression)
+      if (!initializer) {
+        localArrayLiteralMap.delete(identifierName)
+        localObjectLiteralMap.delete(identifierName)
+        return
+      }
+
+      if (ts.isArrayLiteralExpression(initializer)) {
+        localArrayLiteralMap.set(identifierName, initializer)
+      } else if (ts.isIdentifier(initializer) && localArrayLiteralMap.has(initializer.text)) {
+        localArrayLiteralMap.set(identifierName, localArrayLiteralMap.get(initializer.text))
+      } else {
+        localArrayLiteralMap.delete(identifierName)
+      }
+
+      if (ts.isObjectLiteralExpression(initializer)) {
+        localObjectLiteralMap.set(identifierName, initializer)
+      } else if (ts.isIdentifier(initializer) && localObjectLiteralMap.has(initializer.text)) {
+        localObjectLiteralMap.set(identifierName, localObjectLiteralMap.get(initializer.text))
+      } else {
+        localObjectLiteralMap.delete(identifierName)
+      }
+    }
+
+    const resolveRuntimeFunctionAliasNameFromExpression = (expression, depth = 0) => {
+      if (!expression || depth > 8) return null
+      const target = unwrapExpression(expression)
+      if (!target) return null
+      if (ts.isIdentifier(target)) {
+        return resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, target.text)
+      }
+      if (ts.isConditionalExpression(target)) {
+        const whenTrue = resolveRuntimeFunctionAliasNameFromExpression(target.whenTrue, depth + 1)
+        const whenFalse = resolveRuntimeFunctionAliasNameFromExpression(target.whenFalse, depth + 1)
+        if (whenTrue && whenFalse && whenTrue === whenFalse) return whenTrue
+      }
+      return null
+    }
+
+    const resolveRuntimeFunctionStaticArrayLiteral = (expression, depth = 0) => {
+      if (!expression || depth > 8) return null
+      const target = unwrapExpression(expression)
+      if (!target) return null
+      if (ts.isArrayLiteralExpression(target)) return target
+      if (ts.isIdentifier(target)) {
+        return localArrayLiteralMap.get(target.text) || null
+      }
+      if (ts.isConditionalExpression(target)) {
+        const whenTrue = resolveRuntimeFunctionStaticArrayLiteral(target.whenTrue, depth + 1)
+        const whenFalse = resolveRuntimeFunctionStaticArrayLiteral(target.whenFalse, depth + 1)
+        if (whenTrue && whenFalse && whenTrue.getText() === whenFalse.getText()) return whenTrue
+      }
+      return null
+    }
+
+    const resolveRuntimeFunctionStaticObjectLiteral = (expression, depth = 0) => {
+      if (!expression || depth > 8) return null
+      const target = unwrapExpression(expression)
+      if (!target) return null
+      if (ts.isObjectLiteralExpression(target)) return target
+      if (ts.isIdentifier(target)) {
+        return localObjectLiteralMap.get(target.text) || null
+      }
+      if (ts.isConditionalExpression(target)) {
+        const whenTrue = resolveRuntimeFunctionStaticObjectLiteral(target.whenTrue, depth + 1)
+        const whenFalse = resolveRuntimeFunctionStaticObjectLiteral(target.whenFalse, depth + 1)
+        if (whenTrue && whenFalse && whenTrue.getText() === whenFalse.getText()) return whenTrue
+      }
+      return null
+    }
+
+    const bindRuntimeFunctionLocalAliasFromSourceExpression = (aliasName, sourceExpression) => {
+      if (!aliasName) return { bound: false, unresolved: false }
+      if (!sourceExpression) {
+        localArrayAliasMap.delete(aliasName)
+        return { bound: false, unresolved: true }
+      }
+      const resolvedAlias = resolveRuntimeFunctionAliasNameFromExpression(sourceExpression)
+      if (resolvedAlias) {
+        localArrayAliasMap.set(aliasName, resolvedAlias)
+        registerCapturedName(resolvedAlias)
+        return { bound: true, unresolved: false }
+      }
+
+      localArrayAliasMap.delete(aliasName)
+      const identifiers = collectRuntimeIdentifiersInExpression(sourceExpression)
+      identifiers.forEach((identifierName) => registerCapturedName(identifierName))
+      return { bound: false, unresolved: true }
+    }
+
+    const bindRuntimeFunctionAliasesFromBindingPattern = (bindingPattern, sourceExpression) => {
+      let unresolved = false
+
+      const markUnresolved = () => {
+        unresolved = true
+      }
+
+      const bindPattern = (patternNode, valueExpression) => {
+        const pattern = unwrapExpression(patternNode)
+        if (!pattern) {
+          markUnresolved()
+          return
+        }
+
+        if (ts.isIdentifier(pattern)) {
+          const result = bindRuntimeFunctionLocalAliasFromSourceExpression(pattern.text, valueExpression)
+          if (result.unresolved) markUnresolved()
+          return
+        }
+
+        if (ts.isArrayBindingPattern(pattern)) {
+          const sourceArrayLiteral = resolveRuntimeFunctionStaticArrayLiteral(valueExpression)
+          if (!sourceArrayLiteral && valueExpression) {
+            markUnresolved()
+          }
+          pattern.elements.forEach((element, index) => {
+            if (ts.isOmittedExpression(element)) return
+            if (!ts.isBindingElement(element)) {
+              markUnresolved()
+              return
+            }
+            if (element.dotDotDotToken) {
+              markUnresolved()
+              bindPattern(element.name, null)
+              return
+            }
+            let elementValueExpression = sourceArrayLiteral ? sourceArrayLiteral.elements[index] || null : null
+            if (!elementValueExpression && element.initializer) {
+              elementValueExpression = element.initializer
+              markUnresolved()
+            }
+            bindPattern(element.name, elementValueExpression)
+          })
+          return
+        }
+
+        if (ts.isObjectBindingPattern(pattern)) {
+          const sourceObjectLiteral = resolveRuntimeFunctionStaticObjectLiteral(valueExpression)
+          if (!sourceObjectLiteral && valueExpression) {
+            markUnresolved()
+          }
+          pattern.elements.forEach((element) => {
+            if (!ts.isBindingElement(element)) {
+              markUnresolved()
+              return
+            }
+            if (element.dotDotDotToken) {
+              markUnresolved()
+              bindPattern(element.name, null)
+              return
+            }
+            const sourceKey = getBindingElementSourceKey(element)
+            if (!sourceKey) {
+              markUnresolved()
+              bindPattern(element.name, element.initializer || null)
+              return
+            }
+            const propertyResult = sourceObjectLiteral
+              ? resolveRuntimeObjectPropertyExpressionByKey(sourceObjectLiteral, sourceKey)
+              : { expression: null, unresolved: true }
+            if (propertyResult.unresolved) markUnresolved()
+            let propertyValueExpression = propertyResult.expression
+            if (!propertyValueExpression && element.initializer) {
+              propertyValueExpression = element.initializer
+              markUnresolved()
+            }
+            bindPattern(element.name, propertyValueExpression)
+          })
+          return
+        }
+
+        markUnresolved()
+      }
+
+      bindPattern(bindingPattern, sourceExpression)
+      if (unresolved) {
+        markFunctionSummaryUnknown()
+      }
+    }
+
+    const bindRuntimeFunctionAliasesFromAssignmentPattern = (leftPatternExpression, sourceExpression) => {
+      let unresolved = false
+
+      const markUnresolved = () => {
+        unresolved = true
+      }
+
+      const bindTarget = (targetExpression, valueExpression) => {
+        const target = unwrapExpression(targetExpression)
+        if (!target) {
+          markUnresolved()
+          return
+        }
+
+        if (ts.isIdentifier(target)) {
+          const result = bindRuntimeFunctionLocalAliasFromSourceExpression(target.text, valueExpression)
+          if (result.unresolved) markUnresolved()
+          return
+        }
+
+        if (ts.isArrayLiteralExpression(target)) {
+          const sourceArrayLiteral = resolveRuntimeFunctionStaticArrayLiteral(valueExpression)
+          if (!sourceArrayLiteral && valueExpression) {
+            markUnresolved()
+          }
+          target.elements.forEach((element, index) => {
+            if (ts.isOmittedExpression(element)) return
+            if (ts.isSpreadElement(element)) {
+              markUnresolved()
+              bindTarget(element.expression, null)
+              return
+            }
+            const elementValueExpression = sourceArrayLiteral ? sourceArrayLiteral.elements[index] || null : null
+            bindTarget(element, elementValueExpression)
+          })
+          return
+        }
+
+        if (ts.isObjectLiteralExpression(target)) {
+          const sourceObjectLiteral = resolveRuntimeFunctionStaticObjectLiteral(valueExpression)
+          if (!sourceObjectLiteral && valueExpression) {
+            markUnresolved()
+          }
+          target.properties.forEach((property) => {
+            if (ts.isSpreadAssignment(property)) {
+              markUnresolved()
+              return
+            }
+            if (ts.isShorthandPropertyAssignment(property)) {
+              const propertyResult = sourceObjectLiteral
+                ? resolveRuntimeObjectPropertyExpressionByKey(sourceObjectLiteral, property.name.text)
+                : { expression: null, unresolved: true }
+              if (propertyResult.unresolved) markUnresolved()
+              bindTarget(property.name, propertyResult.expression)
+              return
+            }
+            if (!ts.isPropertyAssignment(property)) {
+              markUnresolved()
+              return
+            }
+            const sourceKeyInfo = classifyDestructureSourceKeyNode(property.name)
+            if (sourceKeyInfo.keyClass !== 'literal_key') {
+              markUnresolved()
+              bindTarget(property.initializer, null)
+              return
+            }
+            const propertyResult = sourceObjectLiteral
+              ? resolveRuntimeObjectPropertyExpressionByKey(sourceObjectLiteral, sourceKeyInfo.keyText)
+              : { expression: null, unresolved: true }
+            if (propertyResult.unresolved) markUnresolved()
+            bindTarget(property.initializer, propertyResult.expression)
+          })
+          return
+        }
+
+        markUnresolved()
+      }
+
+      bindTarget(leftPatternExpression, sourceExpression)
+      if (unresolved) {
+        markFunctionSummaryUnknown()
+      }
+    }
+
     const analyzeFunctionBodyNode = (node) => {
       if (!node) return
 
@@ -2255,18 +2824,26 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         return
       }
 
-      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      if (ts.isVariableDeclaration(node) && node.initializer) {
         const rhs = unwrapExpression(node.initializer)
-        if (ts.isIdentifier(rhs)) {
-          const resolved = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, rhs.text)
-          localArrayAliasMap.set(node.name.text, resolved)
-          registerCapturedName(resolved)
-        } else {
-          const identifiers = collectRuntimeIdentifiersInExpression(rhs)
-          if (identifiers.has(node.name.text)) {
-            markFunctionSummaryUnknown()
+        if (ts.isIdentifier(node.name)) {
+          const localName = node.name.text
+          updateFunctionLocalStaticLiteralMaps(localName, rhs)
+          if (ts.isIdentifier(rhs)) {
+            const resolved = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, rhs.text)
+            localArrayAliasMap.set(localName, resolved)
+            registerCapturedName(resolved)
+          } else {
+            localArrayAliasMap.delete(localName)
+            const identifiers = collectRuntimeIdentifiersInExpression(rhs)
+            if (identifiers.has(localName)) {
+              markFunctionSummaryUnknown()
+            }
+            identifiers.forEach((identifierName) => registerCapturedName(identifierName))
           }
-          identifiers.forEach((identifierName) => registerCapturedName(identifierName))
+        } else if (ts.isArrayBindingPattern(node.name) || ts.isObjectBindingPattern(node.name)) {
+          bindRuntimeFunctionAliasesFromBindingPattern(node.name, rhs)
+          collectRuntimeIdentifiersInExpression(rhs).forEach((identifierName) => registerCapturedName(identifierName))
         }
       }
 
@@ -2275,6 +2852,7 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         const rightExpr = unwrapExpression(node.right)
 
         if (node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(leftExpr)) {
+          updateFunctionLocalStaticLiteralMaps(leftExpr.text, rightExpr)
           if (ts.isIdentifier(rightExpr)) {
             const resolved = resolveRuntimeFunctionLocalAliasRoot(localArrayAliasMap, rightExpr.text)
             localArrayAliasMap.set(leftExpr.text, resolved)
@@ -2285,6 +2863,11 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
               registerCapturedName(identifierName),
             )
           }
+        } else if (
+          node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+          (ts.isArrayLiteralExpression(leftExpr) || ts.isObjectLiteralExpression(leftExpr))
+        ) {
+          bindRuntimeFunctionAliasesFromAssignmentPattern(leftExpr, rightExpr)
         }
 
         if (ts.isElementAccessExpression(leftExpr)) {
@@ -2706,7 +3289,11 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
         } else {
           runtimeMethodAliasMap.delete(varName)
         }
-      } else if (ts.isObjectBindingPattern(node.name)) {
+      } else if (ts.isArrayBindingPattern(node.name) || ts.isObjectBindingPattern(node.name)) {
+        bindRuntimeArrayAliasesFromBindingPattern(node.name, initializer, node.getStart(), 'VariableDestructure')
+      }
+
+      if (ts.isObjectBindingPattern(node.name)) {
         const namespaceName = resolveRuntimeNamespaceFromExpression(initializer, runtimeNamespaceAliasMap)
         const globalContainer = resolveGlobalContainerFromExpression(initializer, runtimeGlobalContainerAliasMap)
         for (const element of node.name.elements) {
@@ -2814,6 +3401,10 @@ const collectRuntimeAnalysisContext = (sourceFile) => {
           runtimeMethodAliasMap.delete(targetName)
         }
       } else {
+        if (ts.isArrayLiteralExpression(leftExpr) || ts.isObjectLiteralExpression(leftExpr)) {
+          bindRuntimeArrayAliasesFromAssignmentPattern(leftExpr, rhs, node.getStart(), 'AssignmentDestructure')
+        }
+
         const namespaceName = resolveRuntimeNamespaceFromExpression(rhs, runtimeNamespaceAliasMap)
         const globalContainer = resolveGlobalContainerFromExpression(rhs, runtimeGlobalContainerAliasMap)
         if (namespaceName) {
