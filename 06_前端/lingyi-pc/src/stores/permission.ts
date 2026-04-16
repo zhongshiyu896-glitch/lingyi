@@ -39,6 +39,9 @@ interface ButtonPermissions {
   factory_statement_cancel: boolean
   factory_statement_payable_draft_create: boolean
   factory_statement_payable_draft_worker: boolean
+  sales_inventory_read: boolean
+  sales_inventory_export: boolean
+  sales_inventory_diagnostic: boolean
 }
 
 interface PermissionState {
@@ -84,6 +87,9 @@ const emptyButtonPermissions = (): ButtonPermissions => ({
   factory_statement_cancel: false,
   factory_statement_payable_draft_create: false,
   factory_statement_payable_draft_worker: false,
+  sales_inventory_read: false,
+  sales_inventory_export: false,
+  sales_inventory_diagnostic: false,
 })
 
 const INTERNAL_NON_UI_ACTIONS = new Set<string>([
@@ -91,6 +97,7 @@ const INTERNAL_NON_UI_ACTIONS = new Set<string>([
   'subcontract:stock_sync_worker',
   'production:work_order_worker',
   'factory_statement:payable_draft_worker',
+  'sales_inventory:diagnostic',
 ])
 
 const forceClearInternalButtonPermissions = (buttons: ButtonPermissions): ButtonPermissions => ({
@@ -99,6 +106,7 @@ const forceClearInternalButtonPermissions = (buttons: ButtonPermissions): Button
   work_order_worker: false,
   job_card_sync_worker: false,
   factory_statement_payable_draft_worker: false,
+  sales_inventory_diagnostic: false,
 })
 
 const state = reactive<PermissionState>({

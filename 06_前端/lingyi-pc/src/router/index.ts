@@ -101,6 +101,30 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/factory_statement/FactoryStatementPrint.vue'),
     meta: { module: 'factory_statement' },
   },
+  {
+    path: '/sales-inventory/sales-orders',
+    name: 'SalesInventorySalesOrderList',
+    component: () => import('@/views/sales_inventory/SalesInventorySalesOrderList.vue'),
+    meta: { module: 'sales_inventory' },
+  },
+  {
+    path: '/sales-inventory/sales-orders/detail',
+    name: 'SalesInventorySalesOrderDetail',
+    component: () => import('@/views/sales_inventory/SalesInventorySalesOrderDetail.vue'),
+    meta: { module: 'sales_inventory' },
+  },
+  {
+    path: '/sales-inventory/stock-ledger',
+    name: 'SalesInventoryStockLedger',
+    component: () => import('@/views/sales_inventory/SalesInventoryStockLedger.vue'),
+    meta: { module: 'sales_inventory' },
+  },
+  {
+    path: '/sales-inventory/references',
+    name: 'SalesInventoryReferenceList',
+    component: () => import('@/views/sales_inventory/SalesInventoryReferenceList.vue'),
+    meta: { module: 'sales_inventory' },
+  },
 ]
 
 const router = createRouter({
