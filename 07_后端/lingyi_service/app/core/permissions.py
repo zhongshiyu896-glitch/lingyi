@@ -63,6 +63,42 @@ FACTORY_STATEMENT_CANCEL = "factory_statement:cancel"
 FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE = "factory_statement:payable_draft_create"
 FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER = "factory_statement:payable_draft_worker"
 
+PERMISSION_AUDIT_READ = "permission_audit:read"
+PERMISSION_AUDIT_MANAGE = "permission_audit:manage"
+PERMISSION_AUDIT_DIAGNOSTIC = "permission_audit:diagnostic"
+
+ERPNEXT_ADAPTER_READ = "erpnext_adapter:read"
+ERPNEXT_ADAPTER_DRY_RUN = "erpnext_adapter:dry_run"
+ERPNEXT_ADAPTER_DIAGNOSTIC = "erpnext_adapter:diagnostic"
+
+OUTBOX_READ = "outbox:read"
+OUTBOX_RETRY = "outbox:retry"
+OUTBOX_MANAGE = "outbox:manage"
+OUTBOX_DRY_RUN = "outbox:dry_run"
+OUTBOX_DIAGNOSTIC = "outbox:diagnostic"
+OUTBOX_WORKER = "outbox:worker"
+
+FRONTEND_CONTRACT_READ = "frontend_contract:read"
+FRONTEND_CONTRACT_MANAGE = "frontend_contract:manage"
+FRONTEND_CONTRACT_DIAGNOSTIC = "frontend_contract:diagnostic"
+
+SALES_READ = "sales:read"
+SALES_EXPORT = "sales:export"
+INVENTORY_READ = "inventory:read"
+INVENTORY_EXPORT = "inventory:export"
+
+QUALITY_READ = "quality:read"
+QUALITY_CREATE = "quality:create"
+QUALITY_UPDATE = "quality:update"
+QUALITY_CONFIRM = "quality:confirm"
+QUALITY_CANCEL = "quality:cancel"
+QUALITY_EXPORT = "quality:export"
+QUALITY_DRY_RUN = "quality:dry_run"
+QUALITY_DIAGNOSTIC = "quality:diagnostic"
+QUALITY_WORKER = "quality:worker"
+
+DASHBOARD_READ = "dashboard:read"
+
 ALL_BOM_ACTIONS = {
     BOM_READ,
     BOM_CREATE,
@@ -125,6 +161,59 @@ ALL_FACTORY_STATEMENT_ACTIONS = {
     FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER,
 }
 
+ALL_PERMISSION_AUDIT_ACTIONS = {
+    PERMISSION_AUDIT_READ,
+    PERMISSION_AUDIT_MANAGE,
+    PERMISSION_AUDIT_DIAGNOSTIC,
+}
+
+ALL_ERPNEXT_ADAPTER_ACTIONS = {
+    ERPNEXT_ADAPTER_READ,
+    ERPNEXT_ADAPTER_DRY_RUN,
+    ERPNEXT_ADAPTER_DIAGNOSTIC,
+}
+
+ALL_OUTBOX_ACTIONS = {
+    OUTBOX_READ,
+    OUTBOX_RETRY,
+    OUTBOX_MANAGE,
+    OUTBOX_DRY_RUN,
+    OUTBOX_DIAGNOSTIC,
+    OUTBOX_WORKER,
+}
+
+ALL_FRONTEND_CONTRACT_ACTIONS = {
+    FRONTEND_CONTRACT_READ,
+    FRONTEND_CONTRACT_MANAGE,
+    FRONTEND_CONTRACT_DIAGNOSTIC,
+}
+
+ALL_SALES_ACTIONS = {
+    SALES_READ,
+    SALES_EXPORT,
+}
+
+ALL_INVENTORY_ACTIONS = {
+    INVENTORY_READ,
+    INVENTORY_EXPORT,
+}
+
+ALL_QUALITY_ACTIONS = {
+    QUALITY_READ,
+    QUALITY_CREATE,
+    QUALITY_UPDATE,
+    QUALITY_CONFIRM,
+    QUALITY_CANCEL,
+    QUALITY_EXPORT,
+    QUALITY_DRY_RUN,
+    QUALITY_DIAGNOSTIC,
+    QUALITY_WORKER,
+}
+
+ALL_DASHBOARD_ACTIONS = {
+    DASHBOARD_READ,
+}
+
 # 动作别名兼容：保留历史 publish/deactivate，同时支持 submit/cancel。
 ACTION_ALIAS_TO_CANONICAL = {
     BOM_SUBMIT: BOM_PUBLISH,
@@ -140,6 +229,14 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_PRODUCTION_ACTIONS
         | ALL_STYLE_PROFIT_ACTIONS
         | ALL_FACTORY_STATEMENT_ACTIONS
+        | ALL_PERMISSION_AUDIT_ACTIONS
+        | ALL_ERPNEXT_ADAPTER_ACTIONS
+        | ALL_OUTBOX_ACTIONS
+        | ALL_FRONTEND_CONTRACT_ACTIONS
+        | ALL_SALES_ACTIONS
+        | ALL_INVENTORY_ACTIONS
+        | ALL_QUALITY_ACTIONS
+        | ALL_DASHBOARD_ACTIONS
     ),
     "LY Integration Service": {
         WORKSHOP_READ,
@@ -209,6 +306,23 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
     },
     "Viewer": {BOM_READ},
+}
+
+MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
+    "bom": set(ALL_BOM_ACTIONS),
+    "workshop": set(ALL_WORKSHOP_ACTIONS),
+    "subcontract": set(ALL_SUBCONTRACT_ACTIONS),
+    "production": set(ALL_PRODUCTION_ACTIONS),
+    "style_profit": set(ALL_STYLE_PROFIT_ACTIONS),
+    "factory_statement": set(ALL_FACTORY_STATEMENT_ACTIONS),
+    "permission_audit": set(ALL_PERMISSION_AUDIT_ACTIONS),
+    "erpnext_adapter": set(ALL_ERPNEXT_ADAPTER_ACTIONS),
+    "outbox": set(ALL_OUTBOX_ACTIONS),
+    "frontend_contract": set(ALL_FRONTEND_CONTRACT_ACTIONS),
+    "sales": set(ALL_SALES_ACTIONS),
+    "inventory": set(ALL_INVENTORY_ACTIONS),
+    "quality": set(ALL_QUALITY_ACTIONS),
+    "dashboard": set(ALL_DASHBOARD_ACTIONS),
 }
 
 

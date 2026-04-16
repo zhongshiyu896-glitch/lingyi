@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
+import json
 from typing import Any
 
 from fastapi import Request
@@ -51,6 +52,45 @@ class AuditContext:
 
 class AuditService:
     """Write and snapshot operation audit records."""
+
+    SECURITY_EVENT_TYPES = {
+        "AUTH_UNAUTHORIZED",
+        "AUTH_UNAUTHENTICATED",
+        "AUTH_FORBIDDEN",
+        "RESOURCE_ACCESS_DENIED",
+        "PERMISSION_SOURCE_UNAVAILABLE",
+        "INTERNAL_API_FORBIDDEN",
+        "REQUEST_ID_REJECTED",
+        "EXTERNAL_SERVICE_UNAVAILABLE",
+    }
+
+    OPERATION_EVENT_TYPES = {
+        "create",
+        "update",
+        "confirm",
+        "cancel",
+        "export",
+        "dry_run",
+        "dry-run",
+        "diagnostic",
+        "worker_run",
+        "retry",
+    }
+
+    _SENSITIVE_FIELD_KEYWORDS = {
+        "authorization",
+        "cookie",
+        "token",
+        "secret",
+        "password",
+        "passwd",
+        "pwd",
+        "dsn",
+        "api_key",
+        "apikey",
+        "private_key",
+        "privatekey",
+    }
 
     def __init__(self, session: Session):
         self.session = session
@@ -252,10 +292,22 @@ class AuditService:
         permission_source: str | None,
         request_obj: Request,
         dedupe_key: str | None = None,
+        reason_code: str | None = None,
+        resource_scope: dict[str, Any] | None = None,
     ) -> None:
         """Record security denial/permission-source-unavailable audit."""
         context = AuditContext.from_request(request_obj)
+        normalized_reason_code = (reason_code or event_type or "").strip() or "SECURITY_DENY"
         safe_deny_reason = sanitize_log_message(deny_reason) or REDACTED_MESSAGE
+        if resource_scope:
+            try:
+                serialized_scope = json.dumps(resource_scope, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            except Exception:
+                serialized_scope = ""
+            safe_scope = sanitize_log_message(serialized_scope) if serialized_scope else ""
+            if safe_scope and safe_scope != REDACTED_MESSAGE:
+                safe_deny_reason = f"{safe_deny_reason} scope={safe_scope}"
+        safe_deny_reason = f"[{normalized_reason_code}] {safe_deny_reason}"
         safe_dedupe_key = (dedupe_key or "")[:64] or None
         safe_resource_no = sanitize_log_message(resource_no) if resource_no else None
         if safe_resource_no == REDACTED_MESSAGE:
@@ -326,7 +378,9 @@ class AuditService:
             raise AuditWriteFailed() from exc
 
     @classmethod
-    def _normalize(cls, payload: Any) -> Any:
+    def _normalize(cls, payload: Any, key_hint: str | None = None) -> Any:
+        if cls._is_sensitive_key(key_hint):
+            return REDACTED_MESSAGE
         if payload is None:
             return None
         if isinstance(payload, Decimal):
@@ -334,7 +388,25 @@ class AuditService:
         if isinstance(payload, (datetime, date)):
             return payload.isoformat()
         if isinstance(payload, dict):
-            return {str(k): cls._normalize(v) for k, v in payload.items()}
+            normalized: dict[str, Any] = {}
+            for raw_key, value in payload.items():
+                key_text = str(raw_key)
+                normalized[key_text] = cls._normalize(value, key_text)
+            return normalized
         if isinstance(payload, list):
-            return [cls._normalize(item) for item in payload]
+            return [cls._normalize(item, key_hint) for item in payload]
+        if isinstance(payload, str):
+            sanitized = sanitize_log_message(payload)
+            if sanitized:
+                return sanitized
+            return REDACTED_MESSAGE if cls._is_sensitive_key(key_hint) else payload
         return payload
+
+    @classmethod
+    def _is_sensitive_key(cls, key_hint: str | None) -> bool:
+        if not key_hint:
+            return False
+        lowered = str(key_hint).strip().lower()
+        if not lowered:
+            return False
+        return any(token in lowered for token in cls._SENSITIVE_FIELD_KEYWORDS)

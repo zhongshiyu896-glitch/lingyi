@@ -17,10 +17,13 @@ from app.core.auth import CurrentUser
 from app.core.auth import is_internal_worker_principal
 from app.core.exceptions import AuditWriteFailed
 from app.core.exceptions import PermissionSourceUnavailable
+from app.core.error_codes import RESOURCE_ACCESS_DENIED
+from app.core.error_codes import RESOURCE_SCOPE_FIELD_UNKNOWN
 from app.core.logging import REDACTED_MESSAGE
 from app.core.logging import log_safe_error
 from app.core.logging import sanitize_log_message
 from app.core.permissions import AUTH_FORBIDDEN_CODE
+from app.core.permissions import DEFAULT_STATIC_ROLE_ACTIONS
 from app.core.permissions import BOM_CANCEL
 from app.core.permissions import BOM_CREATE
 from app.core.permissions import BOM_DEACTIVATE
@@ -65,6 +68,7 @@ from app.core.permissions import FACTORY_STATEMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_READ
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
+from app.core.permissions import MODULE_ACTION_REGISTRY
 from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
 from app.core.permissions import get_permission_source
 from app.core.permissions import get_static_actions_for_roles
@@ -89,6 +93,17 @@ class PermissionAggregation:
     resource_type: str | None = None
     resource_id: int | None = None
     status: str | None = None
+
+
+RESOURCE_SCOPE_FIELD_NAMES = (
+    "company",
+    "item_code",
+    "supplier",
+    "warehouse",
+    "work_order",
+    "sales_order",
+    "bom_id",
+)
 
 
 ERP_ROLE_ACTIONS: dict[str, set[str]] = {
@@ -241,6 +256,9 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
     },
 }
 
+# 与 core.permissions 的 System Manager 动作保持一致，避免双份清单漂移。
+ERP_ROLE_ACTIONS["System Manager"] = set(DEFAULT_STATIC_ROLE_ACTIONS.get("System Manager", set()))
+
 
 class PermissionService:
     """Aggregate actions from static or ERPNext permission source."""
@@ -274,7 +292,7 @@ class PermissionService:
             if not bom:
                 raise HTTPException(
                     status_code=404,
-                    detail={"code": "BOM_NOT_FOUND", "message": "BOM 不存在", "data": {}},
+                    detail={"code": "BOM_NOT_FOUND", "message": "BOM 不存在", "data": None},
                 )
             resolved_item_code = str(bom.item_code)
             resource_status = str(bom.status)
@@ -362,7 +380,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
         return agg
 
@@ -408,7 +426,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
         return agg
 
@@ -458,8 +476,222 @@ class PermissionService:
         )
         raise HTTPException(
             status_code=403,
-            detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+            detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
         )
+
+    @staticmethod
+    def _normalize_scope_value(value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    def _raise_resource_access_denied(
+        self,
+        *,
+        module: str,
+        action: str,
+        field_name: str,
+        field_value: str | None,
+        current_user: CurrentUser,
+        request_obj: Request,
+        resource_type: str | None,
+        resource_id: int | None,
+        resource_no: str | None,
+        deny_reason: str,
+    ) -> None:
+        self._record_security_audit_safe(
+            event_type="RESOURCE_ACCESS_DENIED",
+            module=module,
+            action=action,
+            resource_type=(resource_type or field_name).upper(),
+            resource_id=resource_id,
+            resource_no=resource_no or field_value,
+            user=current_user,
+            deny_reason=deny_reason,
+            request_obj=request_obj,
+            reason_code=RESOURCE_ACCESS_DENIED,
+            resource_scope={"field": field_name, "value": field_value},
+        )
+        raise HTTPException(
+            status_code=403,
+            detail={"code": RESOURCE_ACCESS_DENIED, "message": "资源权限不足，禁止访问", "data": None},
+        )
+
+    def ensure_resource_scope_permission(
+        self,
+        *,
+        current_user: CurrentUser,
+        request_obj: Request,
+        module: str,
+        action: str,
+        resource_scope: dict[str, Any] | None = None,
+        required_fields: tuple[str, ...] = (),
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        resource_no: str | None = None,
+        enforce_action: bool = True,
+        user_permissions: UserPermissionResult | None = None,
+    ) -> None:
+        """Unified resource-scope guard for company/item/supplier/... fields.
+
+        口径：
+        - 先动作权限，再资源权限；
+        - 缺关键字段 fail closed；
+        - Company-only 不自动推导 Item 权限；
+        - 无法静态验证的 scope 字段在 ERPNext 模式下 fail closed。
+        """
+        if enforce_action:
+            self.require_action(
+                current_user=current_user,
+                request_obj=request_obj,
+                action=action,
+                module=module,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_item_code=self._normalize_scope_value((resource_scope or {}).get("item_code")),
+            )
+
+        scope = resource_scope or {}
+        normalized_scope: dict[str, str | None] = {}
+        for name in RESOURCE_SCOPE_FIELD_NAMES:
+            normalized_scope[name] = self._normalize_scope_value(scope.get(name))
+
+        for field_name in required_fields:
+            if field_name not in RESOURCE_SCOPE_FIELD_NAMES:
+                self._record_security_audit_safe(
+                    event_type="RESOURCE_ACCESS_DENIED",
+                    module=module,
+                    action=action,
+                    resource_type=(resource_type or "RESOURCE_SCOPE").upper(),
+                    resource_id=resource_id,
+                    resource_no=resource_no,
+                    user=current_user,
+                    deny_reason=f"资源权限字段配置错误: {field_name}",
+                    request_obj=request_obj,
+                    reason_code=RESOURCE_SCOPE_FIELD_UNKNOWN,
+                    resource_scope={"field": field_name, "value": None},
+                )
+                raise HTTPException(
+                    status_code=500,
+                    detail={
+                        "code": RESOURCE_SCOPE_FIELD_UNKNOWN,
+                        "message": "资源权限字段配置错误",
+                        "data": None,
+                    },
+                )
+            if not normalized_scope.get(field_name):
+                self._raise_resource_access_denied(
+                    module=module,
+                    action=action,
+                    field_name=field_name,
+                    field_value=None,
+                    current_user=current_user,
+                    request_obj=request_obj,
+                    resource_type=resource_type,
+                    resource_id=resource_id,
+                    resource_no=resource_no,
+                    deny_reason=f"缺少关键资源范围字段: {field_name}",
+                )
+
+        if get_permission_source() != "erpnext":
+            return
+
+        permissions = user_permissions
+        if permissions is None:
+            adapter = ERPNextPermissionAdapter(request_obj=request_obj)
+            try:
+                permissions = adapter.get_user_permissions(username=current_user.username)
+            except PermissionSourceUnavailable as exc:
+                self._raise_permission_source_unavailable(
+                    exc=exc,
+                    request_obj=request_obj,
+                    current_user=current_user,
+                    module=module,
+                    action=action,
+                    resource_type=resource_type,
+                    resource_id=resource_id,
+                    resource_no=resource_no,
+                )
+        if permissions is None:
+            return
+
+        adapter = ERPNextPermissionAdapter(request_obj=request_obj)
+        company = normalized_scope.get("company")
+        item_code = normalized_scope.get("item_code")
+        supplier = normalized_scope.get("supplier")
+        warehouse = normalized_scope.get("warehouse")
+
+        if company and not adapter.is_company_permitted(company=company, user_permissions=permissions):
+            self._raise_resource_access_denied(
+                module=module,
+                action=action,
+                field_name="company",
+                field_value=company,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                deny_reason="资源权限不足：无权访问该 company",
+            )
+        if item_code and not adapter.is_item_permitted(item_code=item_code, user_permissions=permissions):
+            self._raise_resource_access_denied(
+                module=module,
+                action=action,
+                field_name="item_code",
+                field_value=item_code,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                deny_reason="资源权限不足：无权访问该 item_code",
+            )
+        if supplier and not adapter.is_supplier_permitted(supplier=supplier, user_permissions=permissions):
+            self._raise_resource_access_denied(
+                module=module,
+                action=action,
+                field_name="supplier",
+                field_value=supplier,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                deny_reason="资源权限不足：无权访问该 supplier",
+            )
+        if warehouse and not adapter.is_warehouse_permitted(warehouse=warehouse, user_permissions=permissions):
+            self._raise_resource_access_denied(
+                module=module,
+                action=action,
+                field_name="warehouse",
+                field_value=warehouse,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                deny_reason="资源权限不足：无权访问该 warehouse",
+            )
+
+        # 当前 ERPNext 权限源无 work_order/sales_order/bom_id 授权矩阵，保持 fail closed。
+        for unsupported_field in ("work_order", "sales_order", "bom_id"):
+            field_value = normalized_scope.get(unsupported_field)
+            if not field_value:
+                continue
+            self._raise_resource_access_denied(
+                module=module,
+                action=action,
+                field_name=unsupported_field,
+                field_value=field_value,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                deny_reason=f"资源权限不足：无法校验 {unsupported_field} 作用域",
+            )
 
     def require_internal_worker_principal(
         self,
@@ -486,7 +718,7 @@ class PermissionService:
         )
         raise HTTPException(
             status_code=403,
-            detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+            detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
         )
 
     def get_workshop_user_permissions(
@@ -573,7 +805,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
         if company and not ERPNextPermissionAdapter.is_company_permitted(company=company, user_permissions=permissions):
@@ -590,7 +822,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
         if job_card and resource_type and resource_type.upper() == "JOBCARD":
@@ -651,7 +883,7 @@ class PermissionService:
         )
         raise HTTPException(
             status_code=403,
-            detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+            detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
         )
 
     def get_subcontract_user_permissions(
@@ -740,7 +972,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
         if company and not adapter.is_company_permitted(company=company, user_permissions=permissions):
@@ -757,7 +989,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
         if supplier and not adapter.is_supplier_permitted(supplier=supplier, user_permissions=permissions):
@@ -774,7 +1006,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
         if warehouse and not adapter.is_warehouse_permitted(warehouse=warehouse, user_permissions=permissions):
@@ -791,7 +1023,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
     def get_production_user_permissions(
@@ -878,7 +1110,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
     def get_style_profit_user_permissions(
@@ -965,7 +1197,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
         if company and not adapter.is_company_permitted(company=company, user_permissions=permissions):
@@ -982,7 +1214,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
     def get_factory_statement_user_permissions(
@@ -1068,7 +1300,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
         if supplier and not adapter.is_supplier_permitted(supplier=supplier, user_permissions=permissions):
@@ -1085,7 +1317,7 @@ class PermissionService:
             )
             raise HTTPException(
                 status_code=403,
-                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": {}},
+                detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
             )
 
     def record_security_denial(
@@ -1245,7 +1477,7 @@ class PermissionService:
             detail={
                 "code": PERMISSION_SOURCE_UNAVAILABLE_CODE,
                 "message": "权限来源暂时不可用",
-                "data": {},
+                "data": None,
             },
         ) from exc
 
@@ -1301,6 +1533,8 @@ class PermissionService:
         user: CurrentUser | None,
         deny_reason: str,
         request_obj: Request,
+        reason_code: str | None = None,
+        resource_scope: dict[str, Any] | None = None,
         raise_on_failure: bool = False,
     ) -> None:
         try:
@@ -1315,6 +1549,8 @@ class PermissionService:
                 deny_reason=deny_reason,
                 permission_source=get_permission_source(),
                 request_obj=request_obj,
+                reason_code=reason_code,
+                resource_scope=resource_scope,
             )
             self.session.commit()
             request_obj.state.security_audit_recorded = True
@@ -1359,18 +1595,12 @@ class PermissionService:
 
     @staticmethod
     def _filter_actions_by_module(*, action_set: set[str], module: str) -> set[str]:
-        if module == "bom":
-            return {action for action in action_set if action.startswith("bom:")}
-        if module == "workshop":
-            return {action for action in action_set if action.startswith("workshop:")}
-        if module == "subcontract":
-            return {action for action in action_set if action.startswith("subcontract:")}
-        if module == "production":
-            return {action for action in action_set if action.startswith("production:")}
-        if module == "style_profit":
-            return {action for action in action_set if action.startswith("style_profit:")}
-        if module == "factory_statement":
-            return {action for action in action_set if action.startswith("factory_statement:")}
+        registered_actions = MODULE_ACTION_REGISTRY.get(module)
+        if registered_actions is not None:
+            return {action for action in action_set if action in registered_actions}
+        if module:
+            prefix = f"{module}:"
+            return {action for action in action_set if action.startswith(prefix)}
         return action_set
 
     @staticmethod
@@ -1411,6 +1641,42 @@ class PermissionService:
             "factory_statement_cancel": False,
             "factory_statement_payable_draft_create": False,
             "factory_statement_payable_draft_worker": False,
+            "manage": False,
+            "retry": False,
+            "dry_run": False,
+            "diagnostic": False,
+            "worker": False,
+            "export": False,
+            "confirm": False,
+            "permission_audit_read": False,
+            "permission_audit_manage": False,
+            "permission_audit_diagnostic": False,
+            "erpnext_adapter_read": False,
+            "erpnext_adapter_dry_run": False,
+            "erpnext_adapter_diagnostic": False,
+            "outbox_read": False,
+            "outbox_retry": False,
+            "outbox_manage": False,
+            "outbox_dry_run": False,
+            "outbox_diagnostic": False,
+            "outbox_worker": False,
+            "frontend_contract_read": False,
+            "frontend_contract_manage": False,
+            "frontend_contract_diagnostic": False,
+            "sales_read": False,
+            "sales_export": False,
+            "inventory_read": False,
+            "inventory_export": False,
+            "quality_read": False,
+            "quality_create": False,
+            "quality_update": False,
+            "quality_confirm": False,
+            "quality_cancel": False,
+            "quality_export": False,
+            "quality_dry_run": False,
+            "quality_diagnostic": False,
+            "quality_worker": False,
+            "dashboard_read": False,
         }
 
         if module == "workshop":
@@ -1461,6 +1727,80 @@ class PermissionService:
             base["factory_statement_cancel"] = FACTORY_STATEMENT_CANCEL in actions
             base["factory_statement_payable_draft_create"] = FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE in actions
             base["factory_statement_payable_draft_worker"] = FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER in actions
+            return base
+        if module == "permission_audit":
+            base["read"] = "permission_audit:read" in actions
+            base["manage"] = "permission_audit:manage" in actions
+            base["diagnostic"] = "permission_audit:diagnostic" in actions
+            base["permission_audit_read"] = base["read"]
+            base["permission_audit_manage"] = base["manage"]
+            base["permission_audit_diagnostic"] = base["diagnostic"]
+            return base
+        if module == "erpnext_adapter":
+            base["read"] = "erpnext_adapter:read" in actions
+            base["dry_run"] = "erpnext_adapter:dry_run" in actions
+            base["diagnostic"] = "erpnext_adapter:diagnostic" in actions
+            base["erpnext_adapter_read"] = base["read"]
+            base["erpnext_adapter_dry_run"] = base["dry_run"]
+            base["erpnext_adapter_diagnostic"] = base["diagnostic"]
+            return base
+        if module == "outbox":
+            base["read"] = "outbox:read" in actions
+            base["retry"] = "outbox:retry" in actions
+            base["manage"] = "outbox:manage" in actions
+            base["dry_run"] = "outbox:dry_run" in actions
+            base["diagnostic"] = "outbox:diagnostic" in actions
+            base["worker"] = "outbox:worker" in actions
+            base["outbox_read"] = base["read"]
+            base["outbox_retry"] = base["retry"]
+            base["outbox_manage"] = base["manage"]
+            base["outbox_dry_run"] = base["dry_run"]
+            base["outbox_diagnostic"] = base["diagnostic"]
+            base["outbox_worker"] = base["worker"]
+            return base
+        if module == "frontend_contract":
+            base["read"] = "frontend_contract:read" in actions
+            base["manage"] = "frontend_contract:manage" in actions
+            base["diagnostic"] = "frontend_contract:diagnostic" in actions
+            base["frontend_contract_read"] = base["read"]
+            base["frontend_contract_manage"] = base["manage"]
+            base["frontend_contract_diagnostic"] = base["diagnostic"]
+            return base
+        if module == "sales":
+            base["read"] = "sales:read" in actions
+            base["export"] = "sales:export" in actions
+            base["sales_read"] = base["read"]
+            base["sales_export"] = base["export"]
+            return base
+        if module == "inventory":
+            base["read"] = "inventory:read" in actions
+            base["export"] = "inventory:export" in actions
+            base["inventory_read"] = base["read"]
+            base["inventory_export"] = base["export"]
+            return base
+        if module == "quality":
+            base["read"] = "quality:read" in actions
+            base["create"] = "quality:create" in actions
+            base["update"] = "quality:update" in actions
+            base["confirm"] = "quality:confirm" in actions
+            base["cancel"] = "quality:cancel" in actions
+            base["export"] = "quality:export" in actions
+            base["dry_run"] = "quality:dry_run" in actions
+            base["diagnostic"] = "quality:diagnostic" in actions
+            base["worker"] = "quality:worker" in actions
+            base["quality_read"] = base["read"]
+            base["quality_create"] = base["create"]
+            base["quality_update"] = base["update"]
+            base["quality_confirm"] = base["confirm"]
+            base["quality_cancel"] = base["cancel"]
+            base["quality_export"] = base["export"]
+            base["quality_dry_run"] = base["dry_run"]
+            base["quality_diagnostic"] = base["diagnostic"]
+            base["quality_worker"] = base["worker"]
+            return base
+        if module == "dashboard":
+            base["read"] = "dashboard:read" in actions
+            base["dashboard_read"] = base["read"]
             return base
 
         can_update = BOM_UPDATE in actions and status != "active"

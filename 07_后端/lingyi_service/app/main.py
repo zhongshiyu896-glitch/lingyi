@@ -16,7 +16,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
 from app.core.logging import log_safe_error
+from app.core.error_codes import AUTH_UNAUTHENTICATED
+from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
+from app.core.error_codes import INTERNAL_API_FORBIDDEN
 from app.core.error_codes import INTERNAL_API_DISABLED
+from app.core.error_codes import REQUEST_ID_REJECTED
+from app.core.error_codes import RESOURCE_ACCESS_DENIED
 from app.core.error_codes import WORKSHOP_DRY_RUN_DISABLED
 from app.core.permissions import AUTH_FORBIDDEN_CODE
 from app.core.permissions import AUTH_UNAUTHORIZED_CODE
@@ -119,6 +124,11 @@ app.include_router(factory_statement_router)
 
 
 SECURITY_AUDIT_CODES = {
+    AUTH_UNAUTHENTICATED,
+    RESOURCE_ACCESS_DENIED,
+    EXTERNAL_SERVICE_UNAVAILABLE,
+    INTERNAL_API_FORBIDDEN,
+    REQUEST_ID_REJECTED,
     AUTH_UNAUTHORIZED_CODE,
     AUTH_FORBIDDEN_CODE,
     PERMISSION_SOURCE_UNAVAILABLE_CODE,

@@ -5,13 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.core.error_codes import AUDIT_WRITE_FAILED
+from app.core.error_codes import AUTH_UNAUTHENTICATED
 from app.core.error_codes import BOM_INTERNAL_ERROR
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.error_codes import DATABASE_WRITE_FAILED
 from app.core.error_codes import ERPNEXT_SERVICE_ACCOUNT_FORBIDDEN
+from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.error_codes import ERPNEXT_SERVICE_UNAVAILABLE
+from app.core.error_codes import INTERNAL_ERROR
 from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import PERMISSION_SOURCE_UNAVAILABLE
+from app.core.error_codes import RESOURCE_ACCESS_DENIED
+from app.core.error_codes import RESOURCE_NOT_FOUND
 from app.core.error_codes import SERVICE_ACCOUNT_RESOURCE_FORBIDDEN
 from app.core.error_codes import SERVICE_ACCOUNT_RESOURCE_SCOPE_REQUIRED
 from app.core.error_codes import SUBCONTRACT_COMPANY_AMBIGUOUS
@@ -51,6 +56,27 @@ class BusinessException(AppException):
 
 class PermissionException(AppException):
     """Permission exception."""
+
+
+class AuthUnauthenticatedError(AppException):
+    """Raised when request is unauthenticated."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=AUTH_UNAUTHENTICATED, message=message)
+
+
+class ResourceAccessDeniedError(AppException):
+    """Raised when authenticated principal has no resource scope."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=RESOURCE_ACCESS_DENIED, message=message)
+
+
+class ResourceNotFoundError(AppException):
+    """Raised when target resource does not exist."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=RESOURCE_NOT_FOUND, message=message)
 
 
 @dataclass
@@ -244,6 +270,20 @@ class PermissionSourceUnavailableError(AppException):
 
     def __init__(self, message: str | None = None):
         super().__init__(code=PERMISSION_SOURCE_UNAVAILABLE, message=message)
+
+
+class ExternalServiceUnavailableError(AppException):
+    """Raised when downstream external service is unavailable."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=EXTERNAL_SERVICE_UNAVAILABLE, message=message)
+
+
+class InternalError(AppException):
+    """Raised for generic internal failures."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=INTERNAL_ERROR, message=message)
 
 
 def is_default_bom_unique_conflict(exc: BaseException) -> bool:
