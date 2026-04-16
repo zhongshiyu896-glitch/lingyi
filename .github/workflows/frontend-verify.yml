@@ -1,20 +1,24 @@
 name: Frontend Verify Hard Gate
+# Required Check: Frontend Verify Hard Gate / lingyi-pc-verify
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - "06_前端/lingyi-pc/**"
+      - "scripts/ci/**"
       - ".github/workflows/frontend-verify.yml"
   push:
     branches:
       - main
     paths:
       - "06_前端/lingyi-pc/**"
+      - "scripts/ci/**"
       - ".github/workflows/frontend-verify.yml"
 
 jobs:
   lingyi-pc-verify:
+    name: lingyi-pc-verify
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,8 +42,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare report directory
+        run: mkdir -p .ci-reports
+
       - name: Run frontend verify
         run: npm run verify
 
+      - name: Run explicit frontend contract fixtures
+        run: |
+          npm run test:frontend-contract-engine | tee .ci-reports/frontend-contract-engine.txt
+          npm run test:style-profit-contracts | tee .ci-reports/style-profit-contracts.txt
+          npm run test:factory-statement-contracts | tee .ci-reports/factory-statement-contracts.txt
+          npm run test:sales-inventory-contracts | tee .ci-reports/sales-inventory-contracts.txt
+          npm run test:quality-contracts | tee .ci-reports/quality-contracts.txt
+
       - name: Audit high vulnerabilities
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high | tee .ci-reports/npm-audit.txt
+
+      - name: Collect frontend CI metadata
+        if: always()
+        run: ../../scripts/ci/write_ci_metadata.sh .ci-reports "Frontend Verify Hard Gate"
+
+      - name: Sensitive scan frontend report
+        if: always()
+        run: ../../scripts/ci/assert_no_sensitive_values.py .ci-reports > .ci-reports/sensitive-scan.txt
+
+      - name: Upload frontend verify report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-verify-report-${{ github.sha }}
+          path: 06_前端/lingyi-pc/.ci-reports

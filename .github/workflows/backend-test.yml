@@ -1,0 +1,66 @@
+name: Backend Test Hard Gate
+# Required Check: Backend Test Hard Gate / lingyi-service-test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "07_后端/lingyi_service/**"
+      - "scripts/ci/**"
+      - ".github/workflows/backend-test.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "07_后端/lingyi_service/**"
+      - "scripts/ci/**"
+      - ".github/workflows/backend-test.yml"
+
+jobs:
+  lingyi-service-test:
+    name: lingyi-service-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "07_后端/lingyi_service"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Prepare report directory
+        run: mkdir -p .ci-reports
+
+      - name: Run pytest hard gate
+        run: .venv/bin/python -m pytest -q --junitxml=.ci-reports/backend-pytest.xml
+
+      - name: Run unittest hard gate
+        run: .venv/bin/python -m unittest discover | tee .ci-reports/backend-unittest.txt
+
+      - name: Run py_compile hard gate
+        run: .venv/bin/python -m py_compile $(find app tests -name '*.py' -print)
+
+      - name: Collect backend CI metadata
+        if: always()
+        run: ../../scripts/ci/write_ci_metadata.sh .ci-reports "Backend Test Hard Gate"
+
+      - name: Sensitive scan backend report
+        if: always()
+        run: ../../scripts/ci/assert_no_sensitive_values.py .ci-reports > .ci-reports/sensitive-scan.txt
+
+      - name: Upload backend test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-report-${{ github.sha }}
+          path: 07_后端/lingyi_service/.ci-reports

@@ -1,27 +1,31 @@
 name: Backend PostgreSQL Hard Gate
+# Required Check: Backend PostgreSQL Hard Gate / postgresql-non-skip-gate
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - "07_后端/lingyi_service/**"
+      - "scripts/ci/**"
       - ".github/workflows/backend-postgresql.yml"
   push:
     branches:
       - main
     paths:
       - "07_后端/lingyi_service/**"
+      - "scripts/ci/**"
       - ".github/workflows/backend-postgresql.yml"
 
 jobs:
-  subcontract-postgresql-gate:
+  postgresql-non-skip-gate:
+    name: postgresql-non-skip-gate
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: lingyi
-          POSTGRES_PASSWORD: lingyi_pwd
+          POSTGRES_PASSWORD: ${{ secrets.LINGYI_CI_POSTGRES_PASSWORD }}
           POSTGRES_DB: lingyi_test_ci
         ports:
           - 5432:5432
@@ -37,7 +41,7 @@ jobs:
 
     env:
       POSTGRES_TEST_ALLOW_DESTRUCTIVE: "true"
-      POSTGRES_TEST_DSN: "postgresql+psycopg://lingyi:lingyi_pwd@127.0.0.1:5432/lingyi_test_ci"
+      POSTGRES_TEST_DSN: "postgresql+psycopg://lingyi:${{ secrets.LINGYI_CI_POSTGRES_PASSWORD }}@127.0.0.1:5432/lingyi_test_ci"
 
     steps:
       - name: Checkout
@@ -54,9 +58,28 @@ jobs:
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/python -m pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Assert PostgreSQL CI secret is configured
+        run: test -n "${{ secrets.LINGYI_CI_POSTGRES_PASSWORD }}"
+
+      - name: Prepare report directory
+        run: mkdir -p .ci-reports
+
+      - name: Collect PostgreSQL CI metadata before gate
+        run: ../../scripts/ci/write_ci_metadata.sh .ci-reports "Backend PostgreSQL Hard Gate"
+
       - name: Run PostgreSQL hard gate
         run: |
-          bash scripts/run_postgresql_ci_gate.sh
+          bash scripts/run_postgresql_ci_gate.sh | tee .ci-reports/postgresql-gate.txt
+
+      - name: Copy PostgreSQL JUnit reports
+        if: always()
+        run: |
+          cp -f .pytest-postgresql-subcontract-settlement.xml .ci-reports/ 2>/dev/null || true
+          cp -f .pytest-postgresql-style-profit-subcontract.xml .ci-reports/ 2>/dev/null || true
+
+      - name: Sensitive scan PostgreSQL report
+        if: always()
+        run: ../../scripts/ci/assert_no_sensitive_values.py .ci-reports > .ci-reports/sensitive-scan.txt
 
       - name: Upload settlement PostgreSQL JUnit report
         if: always()
@@ -71,3 +94,10 @@ jobs:
         with:
           name: postgresql-style-profit-junit
           path: 07_后端/lingyi_service/.pytest-postgresql-style-profit-subcontract.xml
+
+      - name: Upload PostgreSQL non-skip report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgresql-non-skip-report-${{ github.sha }}
+          path: 07_后端/lingyi_service/.ci-reports
