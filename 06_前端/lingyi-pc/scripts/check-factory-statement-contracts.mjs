@@ -1,6 +1,13 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  FRONTEND_WRITE_GUARD_COMMON_RULES,
+  runContractCli,
+  runFrontendContractEngine,
+  validateCsvFormulaGuardContent,
+  validateModuleContractConfig,
+} from './frontend-contract-engine.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -31,21 +38,6 @@ const collectFiles = (dirPath) => {
   return files
 }
 
-const parseCliArgs = (argv) => {
-  let projectRoot = defaultProjectRoot
-  for (let idx = 0; idx < argv.length; idx += 1) {
-    if (argv[idx] === '--project-root') {
-      const next = argv[idx + 1]
-      if (!next) {
-        throw new Error('参数错误：--project-root 需要路径值')
-      }
-      projectRoot = path.resolve(next)
-      idx += 1
-    }
-  }
-  return { projectRoot }
-}
-
 export const checkFactoryStatementContracts = (projectRootInput = defaultProjectRoot) => {
   const projectRoot = path.resolve(projectRootInput)
 
@@ -64,6 +56,48 @@ export const checkFactoryStatementContracts = (projectRootInput = defaultProject
 
   const failures = []
   const fail = (message) => failures.push(message)
+
+  const engineRuleIds = new Set([
+    'FWG-API-002',
+    'FWG-RUN-001',
+    'FWG-RUN-002',
+    'FWG-RUN-003',
+    'FWG-RUN-004',
+    'FWG-RUN-005',
+    'FWG-RUN-006',
+  ])
+
+  const moduleConfig = {
+    module: 'factory_statement',
+    surface: {
+      moduleKey: 'factory_statement',
+      scanScopes: ['api', 'views', 'router', 'stores', 'components', 'utils'],
+      entryGlobs: ['src/**'],
+      extraPaths: ['src/App.vue'],
+    },
+    allowedApis: [
+      'fetchFactoryStatements',
+      'fetchFactoryStatementDetail',
+      'createFactoryStatement',
+      'confirmFactoryStatement',
+      'cancelFactoryStatement',
+      'createFactoryStatementPayableDraft',
+    ],
+    forbiddenApis: ['/api/resource', '/api/factory-statements/internal', 'payable-draft-sync/run-once'],
+    forbiddenActions: ['submitPurchaseInvoice', 'createPaymentEntry', 'createGlEntry'],
+    allowedReadOnlyActions: ['read', 'list', 'detail', 'export'],
+    allowedHttpMethods: ['GET', 'POST'],
+    rules: FRONTEND_WRITE_GUARD_COMMON_RULES.filter((rule) => engineRuleIds.has(rule.id)),
+    enforceHttpMethodPolicy: false,
+    enforceForbiddenActions: false,
+  }
+
+  const configValidation = validateModuleContractConfig(moduleConfig)
+  if (!configValidation.ok) {
+    for (const message of configValidation.failures) {
+      fail(`[FWG-CONFIG-001] ${message}`)
+    }
+  }
 
   const requiredFiles = [apiPath, listViewPath, detailViewPath, printViewPath, exportUtilPath, permissionStorePath, appPath]
   for (const requiredFile of requiredFiles) {
@@ -93,6 +127,15 @@ export const checkFactoryStatementContracts = (projectRootInput = defaultProject
       targetPath,
       content: read(targetPath),
     }))
+
+  if (configValidation.ok) {
+    const engineResult = runFrontendContractEngine(projectRoot, moduleConfig)
+    if (!engineResult.ok) {
+      for (const message of engineResult.failures) {
+        fail(message)
+      }
+    }
+  }
 
   const forbiddenRules = [
     {
@@ -290,35 +333,8 @@ export const checkFactoryStatementContracts = (projectRootInput = defaultProject
     if (/parseFloat\s*\(/.test(exportUtilContent) || /Number\s*\(/.test(exportUtilContent)) {
       fail('导出工具禁止 Number/parseFloat 对金额字段重算')
     }
-    if (!exportUtilContent.includes('FORMULA_INJECTION_PREFIX')) {
-      fail('CSV 公式注入防护缺少 FORMULA_INJECTION_PREFIX')
-    }
-    if (!exportUtilContent.includes('neutralizeCsvFormula')) {
-      fail('CSV 公式注入防护缺少 neutralizeCsvFormula')
-    }
-    if (!/FORMULA_INJECTION_PREFIX\s*=\s*\/\^\[[^\]]*=/.test(exportUtilContent)) {
-      fail('CSV 公式注入前缀缺少 = 覆盖')
-    }
-    if (!/FORMULA_INJECTION_PREFIX\s*=\s*\/\^\[[^\]]*\+/.test(exportUtilContent)) {
-      fail('CSV 公式注入前缀缺少 + 覆盖')
-    }
-    if (!/FORMULA_INJECTION_PREFIX\s*=\s*\/\^\[[^\]]*\\-/.test(exportUtilContent)) {
-      fail('CSV 公式注入前缀缺少 - 覆盖')
-    }
-    if (!/FORMULA_INJECTION_PREFIX\s*=\s*\/\^\[[^\]]*@/.test(exportUtilContent)) {
-      fail('CSV 公式注入前缀缺少 @ 覆盖')
-    }
-    if (!/FORMULA_INJECTION_PREFIX\s*=\s*\/\^\[[^\]]*\\t/.test(exportUtilContent)) {
-      fail('CSV 公式注入前缀缺少 tab 覆盖')
-    }
-    if (!/FORMULA_INJECTION_PREFIX\s*=\s*\/\^\[[^\]]*\\r/.test(exportUtilContent)) {
-      fail('CSV 公式注入前缀缺少 CR 覆盖')
-    }
-    if (!/FORMULA_INJECTION_PREFIX\s*=\s*\/\^\[[^\]]*\\n/.test(exportUtilContent)) {
-      fail('CSV 公式注入前缀缺少 LF 覆盖')
-    }
-    if (!/neutralizeCsvFormula\s*\(\s*toText\(value\)\s*\)/.test(exportUtilContent)) {
-      fail('escapeCsvCell 必须调用 neutralizeCsvFormula(toText(value))')
+    for (const csvFailure of validateCsvFormulaGuardContent(exportUtilContent)) {
+      fail(csvFailure)
     }
   }
 
@@ -367,20 +383,10 @@ export const checkFactoryStatementContracts = (projectRootInput = defaultProject
   }
 }
 
-const runCli = () => {
-  const { projectRoot } = parseCliArgs(process.argv.slice(2))
-  const result = checkFactoryStatementContracts(projectRoot)
-  if (!result.ok) {
-    console.error('Factory statement contract check failed:')
-    for (const [idx, message] of result.failures.entries()) {
-      console.error(`${idx + 1}. ${message}`)
-    }
-    process.exit(1)
-  }
-  console.log('Factory statement contract check passed.')
-  console.log(`Scanned files: ${result.scannedFiles}`)
-}
-
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-  runCli()
+  runContractCli({
+    check: checkFactoryStatementContracts,
+    passMessage: 'Factory statement contract check passed.',
+    failTitle: 'Factory statement contract check failed:',
+  })
 }

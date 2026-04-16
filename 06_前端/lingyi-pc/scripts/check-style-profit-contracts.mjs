@@ -2,6 +2,12 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
+import {
+  FRONTEND_WRITE_GUARD_COMMON_RULES,
+  runContractCli,
+  runFrontendContractEngine,
+  validateModuleContractConfig,
+} from './frontend-contract-engine.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -29,21 +35,6 @@ const collectFiles = (dirPath) => {
   }
   walk(dirPath)
   return files
-}
-
-const parseCliArgs = (argv) => {
-  let projectRoot = defaultProjectRoot
-  for (let idx = 0; idx < argv.length; idx += 1) {
-    if (argv[idx] === '--project-root') {
-      const next = argv[idx + 1]
-      if (!next) {
-        throw new Error('参数错误：--project-root 需要路径值')
-      }
-      projectRoot = path.resolve(next)
-      idx += 1
-    }
-  }
-  return { projectRoot }
 }
 
 const isStyleProfitSurface = (targetPath, content, projectRoot) => {
@@ -6234,6 +6225,34 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
   const failures = []
   const fail = (message) => failures.push(message)
 
+  const moduleConfig = {
+    module: 'style_profit',
+    surface: {
+      moduleKey: 'style_profit',
+      scanScopes: ['api', 'views', 'router', 'stores', 'components', 'utils'],
+      entryGlobs: ['src/**'],
+      extraPaths: ['src/App.vue', 'src/main.ts'],
+    },
+    allowedApis: ['fetchStyleProfitSnapshots', 'fetchStyleProfitSnapshotDetail'],
+    forbiddenApis: ['/api/resource', '/internal/'],
+    forbiddenActions: ['create', 'update', 'delete', 'confirm', 'cancel', 'generate', 'recalculate', 'sync', 'submit'],
+    allowedReadOnlyActions: ['read', 'query', 'detail', 'export'],
+    allowedHttpMethods: ['GET'],
+    rules: FRONTEND_WRITE_GUARD_COMMON_RULES,
+    enforceHttpMethodPolicy: false,
+    enforceForbiddenActions: false,
+    surfaceMatcher: ({ targetPath, content: sourceContent, projectRoot: sourceRoot }) =>
+      isStyleProfitSurface(targetPath, sourceContent, sourceRoot),
+  }
+
+  const configValidation = validateModuleContractConfig(moduleConfig)
+  if (!configValidation.ok) {
+    for (const message of configValidation.failures) {
+      fail(`[FWG-CONFIG-001] ${message}`)
+    }
+    return { ok: false, failures, scannedFiles: 0 }
+  }
+
   if (!existsSync(srcRoot)) {
     fail(`缺少目录: ${srcRoot}`)
     return { ok: false, failures, scannedFiles: 0 }
@@ -6246,6 +6265,13 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
   }
   if (failures.length > 0) {
     return { ok: false, failures, scannedFiles: 0 }
+  }
+
+  const engineResult = runFrontendContractEngine(projectRoot, moduleConfig)
+  if (!engineResult.ok) {
+    for (const message of engineResult.failures) {
+      fail(message)
+    }
   }
 
   const targetFiles = [
@@ -6427,20 +6453,10 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
   }
 }
 
-const runCli = () => {
-  const { projectRoot } = parseCliArgs(process.argv.slice(2))
-  const result = checkStyleProfitContracts(projectRoot)
-  if (!result.ok) {
-    console.error('Style-profit contract check failed:')
-    for (const [idx, message] of result.failures.entries()) {
-      console.error(`${idx + 1}. ${message}`)
-    }
-    process.exit(1)
-  }
-  console.log('Style-profit contract check passed.')
-  console.log(`Scanned files: ${result.scannedFiles}`)
-}
-
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
-  runCli()
+  runContractCli({
+    check: checkStyleProfitContracts,
+    passMessage: 'Style-profit contract check passed.',
+    failTitle: 'Style-profit contract check failed:',
+  })
 }
