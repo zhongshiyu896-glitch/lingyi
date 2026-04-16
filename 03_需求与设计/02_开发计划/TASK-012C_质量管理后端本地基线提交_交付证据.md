@@ -5,7 +5,7 @@
 - 任务：TASK-012C 质量管理后端本地基线提交
 - 前置审计：TASK-012B1 审计通过
 - 提交前 HEAD：`ab5ea7bb12b7f05904eccbdda4a6cecfd7bd0614`
-- 状态：待提交
+- 状态：已提交
 - 生产发布：未发生
 - push / remote / PR：未发生
 
@@ -62,5 +62,5 @@
 
 ## 6. 提交后回填
 
-- 提交 SHA：待提交后回填
-- 提交信息：待提交后回填
+- 提交 SHA：`007aea9d0b9f13efe856161f1853f5d93f9aa7c2`
+- 提交信息：`feat: add quality management backend baseline`
