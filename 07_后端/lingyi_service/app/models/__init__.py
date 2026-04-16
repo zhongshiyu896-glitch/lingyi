@@ -11,6 +11,10 @@ from app.models.factory_statement import LyFactoryStatementItem
 from app.models.factory_statement import LyFactoryStatementLog
 from app.models.factory_statement import LyFactoryStatementOperation
 from app.models.factory_statement import LyFactoryStatementPayableOutbox
+from app.models.quality import LyQualityDefect
+from app.models.quality import LyQualityInspection
+from app.models.quality import LyQualityInspectionItem
+from app.models.quality import LyQualityOperationLog
 from app.models.style_profit import LyCostAllocationRule
 from app.models.style_profit import LyStyleProfitDetail
 from app.models.style_profit import LyStyleProfitSnapshot
@@ -28,6 +32,10 @@ __all__ = [
     "LyFactoryStatementLog",
     "LyFactoryStatementOperation",
     "LyFactoryStatementPayableOutbox",
+    "LyQualityInspection",
+    "LyQualityInspectionItem",
+    "LyQualityDefect",
+    "LyQualityOperationLog",
     "LyStyleProfitSnapshot",
     "LyStyleProfitDetail",
     "LyStyleProfitSourceMap",

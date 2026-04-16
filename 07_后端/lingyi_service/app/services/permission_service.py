@@ -71,6 +71,13 @@ from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_EXPORT
 from app.core.permissions import SALES_INVENTORY_READ
+from app.core.permissions import QUALITY_CANCEL
+from app.core.permissions import QUALITY_CONFIRM
+from app.core.permissions import QUALITY_CREATE
+from app.core.permissions import QUALITY_DIAGNOSTIC
+from app.core.permissions import QUALITY_EXPORT
+from app.core.permissions import QUALITY_READ
+from app.core.permissions import QUALITY_UPDATE
 from app.core.permissions import MODULE_ACTION_REGISTRY
 from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
 from app.core.permissions import get_permission_source
@@ -107,6 +114,8 @@ RESOURCE_SCOPE_FIELD_NAMES = (
     "work_order",
     "sales_order",
     "bom_id",
+    "source_type",
+    "source_id",
 )
 
 
@@ -232,6 +241,27 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         STYLE_PROFIT_READ,
         SALES_INVENTORY_READ,
         SALES_INVENTORY_EXPORT,
+    },
+    "Quality Manager": {
+        QUALITY_READ,
+        QUALITY_CREATE,
+        QUALITY_UPDATE,
+        QUALITY_CONFIRM,
+        QUALITY_CANCEL,
+        QUALITY_EXPORT,
+        QUALITY_DIAGNOSTIC,
+    },
+    "Quality Inspector": {
+        QUALITY_READ,
+        QUALITY_CREATE,
+        QUALITY_UPDATE,
+        QUALITY_CONFIRM,
+        QUALITY_CANCEL,
+        QUALITY_EXPORT,
+    },
+    "Quality Viewer": {
+        QUALITY_READ,
+        QUALITY_EXPORT,
     },
     "Workshop Sync Operator": {
         WORKSHOP_READ,

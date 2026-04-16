@@ -304,6 +304,27 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         SALES_INVENTORY_READ,
         SALES_INVENTORY_EXPORT,
     },
+    "Quality Manager": {
+        QUALITY_READ,
+        QUALITY_CREATE,
+        QUALITY_UPDATE,
+        QUALITY_CONFIRM,
+        QUALITY_CANCEL,
+        QUALITY_EXPORT,
+        QUALITY_DIAGNOSTIC,
+    },
+    "Quality Inspector": {
+        QUALITY_READ,
+        QUALITY_CREATE,
+        QUALITY_UPDATE,
+        QUALITY_CONFIRM,
+        QUALITY_CANCEL,
+        QUALITY_EXPORT,
+    },
+    "Quality Viewer": {
+        QUALITY_READ,
+        QUALITY_EXPORT,
+    },
     "Subcontract Manager": {
         SUBCONTRACT_READ,
         SUBCONTRACT_CREATE,

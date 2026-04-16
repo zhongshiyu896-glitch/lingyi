@@ -65,6 +65,13 @@ from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
+from app.core.permissions import QUALITY_CANCEL
+from app.core.permissions import QUALITY_CONFIRM
+from app.core.permissions import QUALITY_CREATE
+from app.core.permissions import QUALITY_DIAGNOSTIC
+from app.core.permissions import QUALITY_EXPORT
+from app.core.permissions import QUALITY_READ
+from app.core.permissions import QUALITY_UPDATE
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import normalize_request_id
@@ -84,6 +91,8 @@ from app.routers.factory_statement import get_db_session as factory_statement_ro
 from app.routers.factory_statement import router as factory_statement_router
 from app.routers.sales_inventory import get_db_session as sales_inventory_router_session_dep
 from app.routers.sales_inventory import router as sales_inventory_router
+from app.routers.quality import get_db_session as quality_router_session_dep
+from app.routers.quality import router as quality_router
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -119,6 +128,7 @@ app.dependency_overrides[workshop_router_session_dep] = get_db_session
 app.dependency_overrides[style_profit_router_session_dep] = get_db_session
 app.dependency_overrides[factory_statement_router_session_dep] = get_db_session
 app.dependency_overrides[sales_inventory_router_session_dep] = get_db_session
+app.dependency_overrides[quality_router_session_dep] = get_db_session
 app.include_router(auth_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
@@ -127,6 +137,7 @@ app.include_router(workshop_router)
 app.include_router(style_profit_router)
 app.include_router(factory_statement_router)
 app.include_router(sales_inventory_router)
+app.include_router(quality_router)
 
 
 SECURITY_AUDIT_CODES = {
@@ -356,6 +367,26 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             return "sales_inventory", SALES_INVENTORY_READ, "Customer", None
         return "sales_inventory", SALES_INVENTORY_READ, "SalesInventory", None
 
+    if path.startswith("/api/quality"):
+        if path.endswith("/statistics"):
+            return "quality", QUALITY_READ, "QualityStatistics", None
+        if path.endswith("/diagnostic"):
+            return "quality", QUALITY_DIAGNOSTIC, "QualityDiagnostic", None
+        if path.endswith("/export"):
+            return "quality", QUALITY_EXPORT, "QualityInspection", None
+        inspection_id = _extract_quality_inspection_id(path)
+        if path in {"/api/quality/inspections", "/api/quality/inspections/"}:
+            if method == "POST":
+                return "quality", QUALITY_CREATE, "QualityInspection", None
+            return "quality", QUALITY_READ, "QualityInspection", None
+        if path.endswith("/confirm"):
+            return "quality", QUALITY_CONFIRM, "QualityInspection", inspection_id
+        if path.endswith("/cancel"):
+            return "quality", QUALITY_CANCEL, "QualityInspection", inspection_id
+        if method == "PATCH":
+            return "quality", QUALITY_UPDATE, "QualityInspection", inspection_id
+        return "quality", QUALITY_READ, "QualityInspection", inspection_id
+
     return "unknown", None, None, None
 
 
@@ -427,6 +458,13 @@ def _extract_sales_order_name(path: str) -> str | None:
 
 def _extract_sales_inventory_item(path: str) -> str | None:
     match = re.match(r"^/api/sales-inventory/items/([^/]+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_quality_inspection_id(path: str) -> str | None:
+    match = re.match(r"^/api/quality/inspections/(\\d+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None
