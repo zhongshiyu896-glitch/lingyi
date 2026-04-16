@@ -64,7 +64,6 @@ const SURFACE_SCOPE_TO_PATH = {
 }
 
 const ALLOWED_SCAN_SCOPES = new Set(Object.keys(SURFACE_SCOPE_TO_PATH))
-const LEGACY_FIXTURE_OPTIONAL_MODULES = new Set(['style_profit', 'factory_statement'])
 const DEFAULT_SCAN_FILE_REGEX = /\.(?:ts|tsx|js|jsx|vue|mjs|cjs|json)$/i
 
 export const validateModuleContractConfig = (config) => {
@@ -110,17 +109,14 @@ export const validateModuleContractConfig = (config) => {
     failures.push('模块门禁配置缺少 rules 数组')
   }
 
-  const requireFixture = !LEGACY_FIXTURE_OPTIONAL_MODULES.has(config.module)
-  if (requireFixture) {
-    if (!config.fixture || typeof config.fixture !== 'object') {
-      failures.push(`模块门禁配置缺少 fixture: ${config.module ?? '<unknown-module>'}`)
-    } else {
-      if (!Array.isArray(config.fixture.positive) || config.fixture.positive.length === 0) {
-        failures.push(`模块门禁配置缺少非空 fixture.positive: ${config.module ?? '<unknown-module>'}`)
-      }
-      if (!Array.isArray(config.fixture.negative) || config.fixture.negative.length === 0) {
-        failures.push(`模块门禁配置缺少非空 fixture.negative: ${config.module ?? '<unknown-module>'}`)
-      }
+  if (!config.fixture || typeof config.fixture !== 'object') {
+    failures.push(`模块门禁配置缺少 fixture: ${config.module ?? '<unknown-module>'}`)
+  } else {
+    if (!Array.isArray(config.fixture.positive) || config.fixture.positive.length === 0) {
+      failures.push(`模块门禁配置缺少非空 fixture.positive: ${config.module ?? '<unknown-module>'}`)
+    }
+    if (!Array.isArray(config.fixture.negative) || config.fixture.negative.length === 0) {
+      failures.push(`模块门禁配置缺少非空 fixture.negative: ${config.module ?? '<unknown-module>'}`)
     }
   }
 

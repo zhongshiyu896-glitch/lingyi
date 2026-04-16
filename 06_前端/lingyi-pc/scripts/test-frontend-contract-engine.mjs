@@ -371,6 +371,24 @@ const configFailureCases = [
     },
   },
   {
+    name: 'legacy style_profit missing fixture should fail closed',
+    expectedKeyword: '模块门禁配置缺少 fixture',
+    mutateFixture: null,
+    mutateConfig: (config) => {
+      config.module = 'style_profit'
+      delete config.fixture
+    },
+  },
+  {
+    name: 'legacy factory_statement missing fixture should fail closed',
+    expectedKeyword: '模块门禁配置缺少 fixture',
+    mutateFixture: null,
+    mutateConfig: (config) => {
+      config.module = 'factory_statement'
+      delete config.fixture
+    },
+  },
+  {
     name: 'empty fixture positive should fail closed',
     expectedKeyword: '模块门禁配置缺少非空 fixture.positive',
     mutateFixture: null,

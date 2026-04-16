@@ -75,6 +75,10 @@ export const checkFactoryStatementContracts = (projectRootInput = defaultProject
       entryGlobs: ['src/**'],
       extraPaths: ['src/App.vue'],
     },
+    fixture: {
+      positive: ['scripts/test-factory-statement-contracts.mjs:minimal legal fixture'],
+      negative: ['scripts/test-factory-statement-contracts.mjs:factory-statement write-entry negative fixtures'],
+    },
     allowedApis: [
       'fetchFactoryStatements',
       'fetchFactoryStatementDetail',

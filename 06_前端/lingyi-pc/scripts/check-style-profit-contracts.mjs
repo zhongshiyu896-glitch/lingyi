@@ -6233,6 +6233,10 @@ export const checkStyleProfitContracts = (projectRootInput = defaultProjectRoot)
       entryGlobs: ['src/**'],
       extraPaths: ['src/App.vue', 'src/main.ts'],
     },
+    fixture: {
+      positive: ['scripts/test-style-profit-contracts.mjs:minimal legal fixture'],
+      negative: ['scripts/test-style-profit-contracts.mjs:style-profit write-entry negative fixtures'],
+    },
     allowedApis: ['fetchStyleProfitSnapshots', 'fetchStyleProfitSnapshotDetail'],
     forbiddenApis: ['/api/resource', '/internal/'],
     forbiddenActions: ['create', 'update', 'delete', 'confirm', 'cancel', 'generate', 'recalculate', 'sync', 'submit'],
