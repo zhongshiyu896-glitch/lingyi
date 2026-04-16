@@ -68,6 +68,9 @@ from app.core.permissions import FACTORY_STATEMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_READ
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
+from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
+from app.core.permissions import SALES_INVENTORY_EXPORT
+from app.core.permissions import SALES_INVENTORY_READ
 from app.core.permissions import MODULE_ACTION_REGISTRY
 from app.core.permissions import PERMISSION_SOURCE_UNAVAILABLE_CODE
 from app.core.permissions import get_permission_source
@@ -100,6 +103,7 @@ RESOURCE_SCOPE_FIELD_NAMES = (
     "item_code",
     "supplier",
     "warehouse",
+    "customer",
     "work_order",
     "sales_order",
     "bom_id",
@@ -152,6 +156,9 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_CANCEL,
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
         FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER,
+        SALES_INVENTORY_READ,
+        SALES_INVENTORY_EXPORT,
+        SALES_INVENTORY_DIAGNOSTIC,
     },
     "LY Integration Service": {
         WORKSHOP_READ,
@@ -162,6 +169,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_READ,
         PRODUCTION_JOB_CARD_SYNC,
         FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER,
+        SALES_INVENTORY_DIAGNOSTIC,
     },
     "BOM Manager": {BOM_READ, BOM_CREATE, BOM_UPDATE, BOM_PUBLISH, BOM_SUBMIT, BOM_DEACTIVATE, BOM_CANCEL, BOM_SET_DEFAULT},
     "BOM Editor": {BOM_READ, BOM_CREATE, BOM_UPDATE},
@@ -207,6 +215,7 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
         STYLE_PROFIT_READ,
+        SALES_INVENTORY_READ,
     },
     "Finance Manager": {
         STYLE_PROFIT_READ,
@@ -216,9 +225,13 @@ ERP_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_CONFIRM,
         FACTORY_STATEMENT_CANCEL,
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
+        SALES_INVENTORY_READ,
+        SALES_INVENTORY_EXPORT,
     },
     "Sales Manager": {
         STYLE_PROFIT_READ,
+        SALES_INVENTORY_READ,
+        SALES_INVENTORY_EXPORT,
     },
     "Workshop Sync Operator": {
         WORKSHOP_READ,
@@ -621,6 +634,7 @@ class PermissionService:
         item_code = normalized_scope.get("item_code")
         supplier = normalized_scope.get("supplier")
         warehouse = normalized_scope.get("warehouse")
+        customer = normalized_scope.get("customer")
 
         if company and not adapter.is_company_permitted(company=company, user_permissions=permissions):
             self._raise_resource_access_denied(
@@ -673,6 +687,19 @@ class PermissionService:
                 resource_id=resource_id,
                 resource_no=resource_no,
                 deny_reason="资源权限不足：无权访问该 warehouse",
+            )
+        if customer and not adapter.is_customer_permitted(customer=customer, user_permissions=permissions):
+            self._raise_resource_access_denied(
+                module=module,
+                action=action,
+                field_name="customer",
+                field_value=customer,
+                current_user=current_user,
+                request_obj=request_obj,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                deny_reason="资源权限不足：无权访问该 customer",
             )
 
         # 当前 ERPNext 权限源无 work_order/sales_order/bom_id 授权矩阵，保持 fail closed。
@@ -885,6 +912,35 @@ class PermissionService:
             status_code=403,
             detail={"code": AUTH_FORBIDDEN_CODE, "message": "无权限访问该资源", "data": None},
         )
+
+    def get_sales_inventory_user_permissions(
+        self,
+        *,
+        current_user: CurrentUser,
+        request_obj: Request,
+        action: str,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        resource_no: str | None = None,
+    ) -> UserPermissionResult | None:
+        """Prefetch ERPNext user permissions for sales/inventory read filtering."""
+        if get_permission_source() != "erpnext":
+            return None
+
+        adapter = ERPNextPermissionAdapter(request_obj=request_obj)
+        try:
+            return adapter.get_user_permissions(username=current_user.username)
+        except PermissionSourceUnavailable as exc:
+            self._raise_permission_source_unavailable(
+                exc=exc,
+                request_obj=request_obj,
+                current_user=current_user,
+                module="sales_inventory",
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+            )
 
     def get_subcontract_user_permissions(
         self,

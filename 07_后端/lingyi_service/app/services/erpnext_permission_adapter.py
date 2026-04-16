@@ -27,6 +27,7 @@ class UserPermissionResult:
     allowed_companies: set[str]
     allowed_suppliers: set[str] = field(default_factory=set)
     allowed_warehouses: set[str] = field(default_factory=set)
+    allowed_customers: set[str] = field(default_factory=set)
 
 
 class ERPNextPermissionAdapter:
@@ -79,7 +80,7 @@ class ERPNextPermissionAdapter:
 
         filters = parse.quote(
             json.dumps(
-                [["user", "=", username], ["applicable_for", "in", ["Item", "Company", "Supplier", "Warehouse"]]]
+                [["user", "=", username], ["applicable_for", "in", ["Item", "Company", "Supplier", "Warehouse", "Customer"]]]
             ),
             safe="",
         )
@@ -110,12 +111,14 @@ class ERPNextPermissionAdapter:
                 allowed_companies=set(),
                 allowed_suppliers=set(),
                 allowed_warehouses=set(),
+                allowed_customers=set(),
             )
 
         allowed_items: set[str] = set()
         allowed_companies: set[str] = set()
         allowed_suppliers: set[str] = set()
         allowed_warehouses: set[str] = set()
+        allowed_customers: set[str] = set()
         for row in rows:
             if not isinstance(row, dict):
                 raise PermissionSourceUnavailable(
@@ -147,6 +150,8 @@ class ERPNextPermissionAdapter:
                 allowed_suppliers.add(target_value)
             elif allow_name == "Warehouse":
                 allowed_warehouses.add(target_value)
+            elif allow_name == "Customer":
+                allowed_customers.add(target_value)
 
         return UserPermissionResult(
             source_available=True,
@@ -155,6 +160,7 @@ class ERPNextPermissionAdapter:
             allowed_companies=allowed_companies,
             allowed_suppliers=allowed_suppliers,
             allowed_warehouses=allowed_warehouses,
+            allowed_customers=allowed_customers,
         )
 
     def get_workflow_actions(self, *, doctype: str, docname: str | None = None) -> list[str]:
@@ -212,6 +218,17 @@ class ERPNextPermissionAdapter:
         if user_permissions.allowed_warehouses:
             return warehouse in user_permissions.allowed_warehouses
         return True
+
+    @staticmethod
+    def is_customer_permitted(*, customer: str, user_permissions: UserPermissionResult) -> bool:
+        """Check customer-level access under ERPNext User Permission constraints."""
+        if user_permissions.unrestricted:
+            return True
+        if user_permissions.allowed_customers:
+            return customer in user_permissions.allowed_customers
+        # Customer is a TASK-011 resource boundary. Empty customer facts under a
+        # restricted permission set must not degrade into "all customers".
+        return False
 
     def _get_json(self, path: str, *, strict: bool = False, operation: str = "") -> dict[str, Any] | None:
         headers = self._build_headers()

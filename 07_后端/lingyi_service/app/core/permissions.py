@@ -82,6 +82,10 @@ FRONTEND_CONTRACT_READ = "frontend_contract:read"
 FRONTEND_CONTRACT_MANAGE = "frontend_contract:manage"
 FRONTEND_CONTRACT_DIAGNOSTIC = "frontend_contract:diagnostic"
 
+SALES_INVENTORY_READ = "sales_inventory:read"
+SALES_INVENTORY_EXPORT = "sales_inventory:export"
+SALES_INVENTORY_DIAGNOSTIC = "sales_inventory:diagnostic"
+
 SALES_READ = "sales:read"
 SALES_EXPORT = "sales:export"
 INVENTORY_READ = "inventory:read"
@@ -188,6 +192,12 @@ ALL_FRONTEND_CONTRACT_ACTIONS = {
     FRONTEND_CONTRACT_DIAGNOSTIC,
 }
 
+ALL_SALES_INVENTORY_ACTIONS = {
+    SALES_INVENTORY_READ,
+    SALES_INVENTORY_EXPORT,
+    SALES_INVENTORY_DIAGNOSTIC,
+}
+
 ALL_SALES_ACTIONS = {
     SALES_READ,
     SALES_EXPORT,
@@ -233,6 +243,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_ERPNEXT_ADAPTER_ACTIONS
         | ALL_OUTBOX_ACTIONS
         | ALL_FRONTEND_CONTRACT_ACTIONS
+        | ALL_SALES_INVENTORY_ACTIONS
         | ALL_SALES_ACTIONS
         | ALL_INVENTORY_ACTIONS
         | ALL_QUALITY_ACTIONS
@@ -275,6 +286,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         PRODUCTION_WORK_ORDER_CREATE,
         PRODUCTION_JOB_CARD_SYNC,
         STYLE_PROFIT_READ,
+        SALES_INVENTORY_READ,
     },
     "Finance Manager": {
         STYLE_PROFIT_READ,
@@ -284,9 +296,13 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         FACTORY_STATEMENT_CONFIRM,
         FACTORY_STATEMENT_CANCEL,
         FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE,
+        SALES_INVENTORY_READ,
+        SALES_INVENTORY_EXPORT,
     },
     "Sales Manager": {
         STYLE_PROFIT_READ,
+        SALES_INVENTORY_READ,
+        SALES_INVENTORY_EXPORT,
     },
     "Subcontract Manager": {
         SUBCONTRACT_READ,
@@ -319,6 +335,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "erpnext_adapter": set(ALL_ERPNEXT_ADAPTER_ACTIONS),
     "outbox": set(ALL_OUTBOX_ACTIONS),
     "frontend_contract": set(ALL_FRONTEND_CONTRACT_ACTIONS),
+    "sales_inventory": set(ALL_SALES_INVENTORY_ACTIONS),
     "sales": set(ALL_SALES_ACTIONS),
     "inventory": set(ALL_INVENTORY_ACTIONS),
     "quality": set(ALL_QUALITY_ACTIONS),

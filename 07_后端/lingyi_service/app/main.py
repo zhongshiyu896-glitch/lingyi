@@ -63,6 +63,8 @@ from app.core.permissions import FACTORY_STATEMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_READ
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
+from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
+from app.core.permissions import SALES_INVENTORY_READ
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import normalize_request_id
@@ -80,6 +82,8 @@ from app.routers.style_profit import get_db_session as style_profit_router_sessi
 from app.routers.style_profit import router as style_profit_router
 from app.routers.factory_statement import get_db_session as factory_statement_router_session_dep
 from app.routers.factory_statement import router as factory_statement_router
+from app.routers.sales_inventory import get_db_session as sales_inventory_router_session_dep
+from app.routers.sales_inventory import router as sales_inventory_router
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -114,6 +118,7 @@ app.dependency_overrides[bom_router_session_dep] = get_db_session
 app.dependency_overrides[workshop_router_session_dep] = get_db_session
 app.dependency_overrides[style_profit_router_session_dep] = get_db_session
 app.dependency_overrides[factory_statement_router_session_dep] = get_db_session
+app.dependency_overrides[sales_inventory_router_session_dep] = get_db_session
 app.include_router(auth_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
@@ -121,6 +126,7 @@ app.include_router(bom_router)
 app.include_router(workshop_router)
 app.include_router(style_profit_router)
 app.include_router(factory_statement_router)
+app.include_router(sales_inventory_router)
 
 
 SECURITY_AUDIT_CODES = {
@@ -337,6 +343,19 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             )
         return "factory_statement", FACTORY_STATEMENT_READ, "FactoryStatement", statement_id
 
+    if path.startswith("/api/sales-inventory"):
+        if path.endswith("/diagnostic"):
+            return "sales_inventory", SALES_INVENTORY_DIAGNOSTIC, "SalesInventoryDiagnostic", None
+        if "/sales-orders/" in path:
+            return "sales_inventory", SALES_INVENTORY_READ, "SalesOrder", _extract_sales_order_name(path)
+        if path.startswith("/api/sales-inventory/items/"):
+            return "sales_inventory", SALES_INVENTORY_READ, "Item", _extract_sales_inventory_item(path)
+        if path.endswith("/warehouses"):
+            return "sales_inventory", SALES_INVENTORY_READ, "Warehouse", None
+        if path.endswith("/customers"):
+            return "sales_inventory", SALES_INVENTORY_READ, "Customer", None
+        return "sales_inventory", SALES_INVENTORY_READ, "SalesInventory", None
+
     return "unknown", None, None, None
 
 
@@ -394,6 +413,20 @@ def _extract_style_profit_snapshot_id(path: str) -> str | None:
 
 def _extract_factory_statement_id(path: str) -> str | None:
     match = re.match(r"^/api/factory-statements/(\d+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_sales_order_name(path: str) -> str | None:
+    match = re.match(r"^/api/sales-inventory/sales-orders/([^/]+)(?:$|/)", path)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _extract_sales_inventory_item(path: str) -> str | None:
+    match = re.match(r"^/api/sales-inventory/items/([^/]+)(?:$|/)", path)
     if match:
         return match.group(1)
     return None
