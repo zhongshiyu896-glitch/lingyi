@@ -12,6 +12,12 @@ from app.core.error_codes import DATABASE_WRITE_FAILED
 from app.core.error_codes import ERPNEXT_SERVICE_ACCOUNT_FORBIDDEN
 from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.error_codes import ERPNEXT_SERVICE_UNAVAILABLE
+from app.core.error_codes import ERPNEXT_TIMEOUT
+from app.core.error_codes import ERPNEXT_AUTH_FAILED
+from app.core.error_codes import ERPNEXT_RESOURCE_NOT_FOUND
+from app.core.error_codes import ERPNEXT_RESPONSE_INVALID
+from app.core.error_codes import ERPNEXT_DOCSTATUS_REQUIRED
+from app.core.error_codes import ERPNEXT_DOCSTATUS_INVALID
 from app.core.error_codes import INTERNAL_ERROR
 from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import PERMISSION_SOURCE_UNAVAILABLE
@@ -231,6 +237,48 @@ class ERPNextServiceAccountForbiddenError(AppException):
 
     def __init__(self, message: str | None = None):
         super().__init__(code=ERPNEXT_SERVICE_ACCOUNT_FORBIDDEN, message=message)
+
+
+class ERPNextTimeoutError(AppException):
+    """Raised when ERPNext request times out."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=ERPNEXT_TIMEOUT, message=message)
+
+
+class ERPNextAuthFailedError(AppException):
+    """Raised when ERPNext returns 401/403 for integration calls."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=ERPNEXT_AUTH_FAILED, message=message)
+
+
+class ERPNextResourceNotFoundError(AppException):
+    """Raised when ERPNext returns 404 for required resource."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=ERPNEXT_RESOURCE_NOT_FOUND, message=message)
+
+
+class ERPNextResponseInvalidError(AppException):
+    """Raised when ERPNext response schema is malformed."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=ERPNEXT_RESPONSE_INVALID, message=message)
+
+
+class ERPNextDocstatusRequiredError(AppException):
+    """Raised when ERPNext response omits required docstatus."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=ERPNEXT_DOCSTATUS_REQUIRED, message=message)
+
+
+class ERPNextDocstatusInvalidError(AppException):
+    """Raised when ERPNext docstatus/status violates fail-closed policy."""
+
+    def __init__(self, message: str | None = None):
+        super().__init__(code=ERPNEXT_DOCSTATUS_INVALID, message=message)
 
 
 class InternalApiDisabledError(AppException):
