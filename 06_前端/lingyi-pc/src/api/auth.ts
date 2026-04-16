@@ -43,6 +43,13 @@ export interface ActionPermissionData {
     stock_sync_worker?: boolean
     work_order_worker?: boolean
     job_card_sync_worker?: boolean
+    quality_read?: boolean
+    quality_create?: boolean
+    quality_update?: boolean
+    quality_confirm?: boolean
+    quality_cancel?: boolean
+    quality_export?: boolean
+    quality_diagnostic?: boolean
   }
 }
 

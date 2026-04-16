@@ -125,6 +125,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/sales_inventory/SalesInventoryReferenceList.vue'),
     meta: { module: 'sales_inventory' },
   },
+  {
+    path: '/quality/inspections',
+    name: 'QualityInspectionList',
+    component: () => import('@/views/quality/QualityInspectionList.vue'),
+    meta: { module: 'quality' },
+  },
+  {
+    path: '/quality/inspections/detail',
+    name: 'QualityInspectionDetail',
+    component: () => import('@/views/quality/QualityInspectionDetail.vue'),
+    meta: { module: 'quality' },
+  },
 ]
 
 const router = createRouter({
