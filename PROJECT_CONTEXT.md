@@ -38,6 +38,7 @@ first.
 ## Persistent Memory Plan
 
 - Global memory lives in `/Users/hh/.codex/AGENTS.md`.
+- Built-in Codex memory is enabled and seeded in `/Users/hh/.codex/memories`.
 - Project rules live in `AGENTS.md`.
 - Core project facts live in `CORE_MEMORY.md`.
 - Supporting project context lives in this file.

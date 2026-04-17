@@ -21,6 +21,8 @@ Read it before `PROJECT_CONTEXT.md`.
 
 ## Workflow Rules
 
+- Built-in Codex memory is enabled on this Mac and seeded at
+  `/Users/hh/.codex/memories` for cross-window continuity.
 - This worktree has many untracked artifacts and probes. Do not run `git add .`
   or bulk-commit without explicit confirmation.
 - Stage only files that belong to the current task.
