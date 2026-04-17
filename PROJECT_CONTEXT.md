@@ -4,8 +4,9 @@ Last updated: 2026-04-17
 
 ## Purpose
 
-This file is the durable memory for Codex windows working in this repository.
-Future threads should read it before making decisions.
+This file is supporting project memory for Codex windows working in this
+repository. `CORE_MEMORY.md` is the canonical short memory and should be read
+first.
 
 ## Current GitHub State
 
@@ -38,5 +39,18 @@ Future threads should read it before making decisions.
 
 - Global memory lives in `/Users/hh/.codex/AGENTS.md`.
 - Project rules live in `AGENTS.md`.
-- Project facts live in this file.
-- Future Codex windows should update this file when durable facts change.
+- Core project facts live in `CORE_MEMORY.md`.
+- Supporting project context lives in this file.
+- Future Codex windows should update memory when durable facts change, then
+  remove stale or duplicated entries in the same pass.
+
+## Memory Pruning Rules
+
+- Keep `CORE_MEMORY.md` short enough to read at the start of every window.
+- Keep this file focused on context that explains current project state.
+- Do not preserve command transcripts, screenshots, one-off probe filenames,
+  temporary errors, or old failed attempts unless they explain a current setup
+  decision.
+- Prefer replacing outdated facts over appending new versions of the same fact.
+- If a detail only helps the current conversation, leave it out of durable
+  memory and mention it in the final answer.
