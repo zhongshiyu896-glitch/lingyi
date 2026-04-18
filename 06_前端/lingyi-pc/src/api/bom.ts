@@ -1,9 +1,4 @@
-export interface ApiResponse<T> {
-  code: string
-  message: string
-  data: T
-  trace_id?: string
-}
+import { request, type ApiResponse } from '@/api/request'
 
 export interface BomItemPayload {
   material_item_code: string
@@ -113,52 +108,10 @@ const toQuery = (params: Record<string, string | number | undefined>): string =>
   return query.toString()
 }
 
-const buildAuthHeaders = (headers?: HeadersInit): Headers => {
-  const result = new Headers(headers)
-  const storedToken =
-    window.localStorage.getItem('LY_AUTH_TOKEN') || window.localStorage.getItem('token') || ''
-  if (storedToken) {
-    const normalized =
-      storedToken.startsWith('Bearer ') || storedToken.startsWith('token ')
-        ? storedToken
-        : `Bearer ${storedToken}`
-    result.set('Authorization', normalized)
-  }
-  return result
-}
-
-const handleAuthError = (code?: string): never => {
-  if (code === 'AUTH_FORBIDDEN') {
-    throw new Error('无权执行该操作')
-  }
-  window.alert('登录已失效，请重新登录')
-  window.location.href = '/login'
-  throw new Error('未登录或 Token 无效')
-}
-
-const request = async <T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> => {
-  const response = await fetch(url, {
-    ...init,
-    credentials: 'include',
-    headers: buildAuthHeaders(init?.headers),
-  })
-  const payload = (await response.json()) as ApiResponse<T>
-  if (response.status === 401 || payload.code === 'AUTH_UNAUTHORIZED') {
-    handleAuthError('AUTH_UNAUTHORIZED')
-  }
-  if (response.status === 403 || payload.code === 'AUTH_FORBIDDEN') {
-    handleAuthError('AUTH_FORBIDDEN')
-  }
-  if (!response.ok || payload.code !== '0') {
-    throw new Error(payload.message || '请求失败')
-  }
-  return payload
-}
-
 export const createBom = (payload: BomCreatePayload): Promise<ApiResponse<{ name: string }>> =>
   request('/api/bom/', {
     method: 'POST',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
 
@@ -178,22 +131,22 @@ export const updateBomDraft = (
 ): Promise<ApiResponse<{ name: string; status: string; updated_at: string }>> =>
   request(`/api/bom/${bomId}`, {
     method: 'PUT',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
 
 export const setDefaultBom = (bomId: number): Promise<ApiResponse<{ name: string; item_code: string; is_default: boolean }>> =>
-  request(`/api/bom/${bomId}/set-default`, { method: 'POST', headers: buildAuthHeaders() })
+  request(`/api/bom/${bomId}/set-default`, { method: 'POST' })
 
 export const activateBom = (
   bomId: number,
 ): Promise<ApiResponse<{ name: string; status: string; effective_date?: string | null }>> =>
-  request(`/api/bom/${bomId}/activate`, { method: 'POST', headers: buildAuthHeaders() })
+  request(`/api/bom/${bomId}/activate`, { method: 'POST' })
 
 export const deactivateBom = (bomId: number, reason: string): Promise<ApiResponse<{ name: string; status: string }>> =>
   request(`/api/bom/${bomId}/deactivate`, {
     method: 'POST',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason }),
   })
 
@@ -203,6 +156,6 @@ export const explodeBom = (
 ): Promise<ApiResponse<BomExplodeData>> =>
   request(`/api/bom/${bomId}/explode`, {
     method: 'POST',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })

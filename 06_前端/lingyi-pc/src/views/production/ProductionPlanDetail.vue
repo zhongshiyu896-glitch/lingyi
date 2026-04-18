@@ -52,39 +52,14 @@
       <el-button type="primary" :loading="checkingMaterials" @click="runMaterialCheck">执行物料检查</el-button>
     </el-card>
 
-    <el-card v-if="canCreateWorkOrderAction" shadow="never">
-      <template #header><span>创建 Work Order 同步任务</span></template>
-      <el-form :model="createWorkOrderForm" label-width="150px">
-        <el-form-item label="成品仓（fg_warehouse）">
-          <el-input v-model="createWorkOrderForm.fg_warehouse" placeholder="Finished Goods - LY" />
-        </el-form-item>
-        <el-form-item label="在制仓（wip_warehouse）">
-          <el-input v-model="createWorkOrderForm.wip_warehouse" placeholder="Work In Progress - LY" />
-        </el-form-item>
-        <el-form-item label="开始日期">
-          <el-date-picker
-            v-model="createWorkOrderForm.start_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="选择开始日期"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="幂等键">
-          <el-input v-model="createWorkOrderForm.idempotency_key" />
-        </el-form-item>
-      </el-form>
-      <el-button type="primary" :loading="creatingWorkOrder" @click="createWorkOrderOutbox">创建同步任务</el-button>
-    </el-card>
-
-    <el-card v-if="canSyncJobCardsAction" shadow="never">
-      <template #header><span>同步 Job Card</span></template>
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="目标 Work Order">{{ currentWorkOrder }}</el-descriptions-item>
-      </el-descriptions>
-      <div class="sync-action">
-        <el-button type="success" :loading="syncingJobCards" @click="syncJobCards">同步 Job Card</el-button>
-      </div>
+    <el-card v-if="canRead" shadow="never">
+      <template #header><span>写入口状态</span></template>
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        title="当前阶段已冻结 create-work-order / sync-job-cards；仅保留本地生产计划草稿与只读工单工序投影。"
+      />
     </el-card>
 
     <el-card v-if="canRead" shadow="never">
@@ -133,9 +108,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   checkProductionMaterials,
-  createProductionWorkOrder,
   fetchProductionPlanDetail,
-  syncProductionJobCards,
   type ProductionPlanDetailData,
 } from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
@@ -147,24 +120,13 @@ const permissionStore = usePermissionStore()
 const detail = ref<ProductionPlanDetailData | null>(null)
 const loading = ref<boolean>(false)
 const checkingMaterials = ref<boolean>(false)
-const creatingWorkOrder = ref<boolean>(false)
-const syncingJobCards = ref<boolean>(false)
 
 const materialCheckForm = reactive({
   warehouse: 'WIP Warehouse - LY',
 })
 
-const createWorkOrderForm = reactive({
-  fg_warehouse: 'Finished Goods - LY',
-  wip_warehouse: 'Work In Progress - LY',
-  start_date: '',
-  idempotency_key: '',
-})
-
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const canMaterialCheck = computed<boolean>(() => permissionStore.state.buttonPermissions.material_check)
-const canWorkOrderCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.work_order_create)
-const canJobCardSync = computed<boolean>(() => permissionStore.state.buttonPermissions.job_card_sync)
 
 const planId = computed<number>(() => Number(route.query.id || '0'))
 const status = computed<string>(() => detail.value?.status || '')
@@ -179,22 +141,6 @@ const canMaterialCheckAction = computed<boolean>(() => {
   const allowed = new Set(['planned', 'material_checked', 'work_order_pending', 'work_order_created'])
   return canMaterialCheck.value && allowed.has(status.value)
 })
-
-const canCreateWorkOrderAction = computed<boolean>(() => {
-  const allowed = new Set(['planned', 'material_checked', 'work_order_pending', 'work_order_created'])
-  return canWorkOrderCreate.value && allowed.has(status.value)
-})
-
-const canSyncJobCardsAction = computed<boolean>(() => {
-  return canJobCardSync.value && !!currentWorkOrder.value
-})
-
-const buildIdempotencyKey = (prefix: string): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${prefix}-${crypto.randomUUID()}`
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-}
 
 const statusLabel = (value: string): string => {
   const labels: Record<string, string> = {
@@ -235,17 +181,6 @@ const ensurePlanId = (): number => {
   return planId.value
 }
 
-const resetWorkOrderIdempotency = (): void => {
-  createWorkOrderForm.idempotency_key = buildIdempotencyKey('work-order')
-}
-
-const applyDefaultWorkOrderStartDate = (): void => {
-  if (createWorkOrderForm.start_date) {
-    return
-  }
-  createWorkOrderForm.start_date = detail.value?.planned_start_date || new Date().toISOString().slice(0, 10)
-}
-
 const loadDetail = async (): Promise<void> => {
   if (!canRead.value) {
     detail.value = null
@@ -255,7 +190,6 @@ const loadDetail = async (): Promise<void> => {
   try {
     const result = await fetchProductionPlanDetail(ensurePlanId())
     detail.value = result.data
-    applyDefaultWorkOrderStartDate()
   } catch (error) {
     ElMessage.error((error as Error).message)
   } finally {
@@ -278,46 +212,6 @@ const runMaterialCheck = async (): Promise<void> => {
   }
 }
 
-const createWorkOrderOutbox = async (): Promise<void> => {
-  creatingWorkOrder.value = true
-  try {
-    const result = await createProductionWorkOrder(ensurePlanId(), {
-      fg_warehouse: createWorkOrderForm.fg_warehouse,
-      wip_warehouse: createWorkOrderForm.wip_warehouse,
-      start_date: createWorkOrderForm.start_date,
-      idempotency_key: createWorkOrderForm.idempotency_key,
-    })
-    if (['pending', 'processing'].includes(result.data.sync_status)) {
-      ElMessage.success('Work Order 已进入同步队列')
-    } else {
-      ElMessage.success('Work Order 同步任务创建成功')
-    }
-    resetWorkOrderIdempotency()
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    creatingWorkOrder.value = false
-  }
-}
-
-const syncJobCards = async (): Promise<void> => {
-  if (!currentWorkOrder.value) {
-    ElMessage.error('当前无可同步 Work Order')
-    return
-  }
-  syncingJobCards.value = true
-  try {
-    await syncProductionJobCards(currentWorkOrder.value)
-    ElMessage.success('Job Card 同步完成')
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    syncingJobCards.value = false
-  }
-}
-
 const goBack = (): void => {
   router.push('/production/plans')
 }
@@ -325,14 +219,11 @@ const goBack = (): void => {
 watch(
   () => planId.value,
   async () => {
-    createWorkOrderForm.start_date = ''
     await loadDetail()
   },
 )
 
 onMounted(async () => {
-  resetWorkOrderIdempotency()
-  createWorkOrderForm.start_date = ''
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('production')
@@ -354,9 +245,5 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.sync-action {
-  margin-top: 12px;
 }
 </style>

@@ -1,0 +1,650 @@
+{
+  "task_id": "TASK-S-002",
+  "generated_at": "2026-04-14T13:06:30+00:00",
+  "base_url": "http://127.0.0.1:18080",
+  "module": "all",
+  "modules_run": [
+    "bom",
+    "workshop",
+    "production",
+    "subcontract"
+  ],
+  "execution_command": "python tools/acceptance_smoke/run_smoke.py --config tools/acceptance_smoke/config.example.json",
+  "total_cases": 13,
+  "passed": 13,
+  "failed": 0,
+  "skipped": 0,
+  "elapsed_ms": 19.438,
+  "cases": [
+    {
+      "id": "bom-create-001",
+      "module": "bom",
+      "name": "Create BOM (actual router path)",
+      "endpoint": "/api/bom/",
+      "requirement_endpoint": "POST /api/bom/apparel-boms",
+      "method": "POST",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 14.531,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/bom/",
+        "headers": {
+          "Authorization": "<redacted>",
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "payload": {
+          "item_code": "SMOKE-ITEM-001",
+          "version_no": "SMOKE-V1",
+          "bom_items": [
+            {
+              "material_item_code": "SMOKE-MAT-001",
+              "qty_per_piece": 1,
+              "loss_rate": 0,
+              "uom": "PCS",
+              "remark": "smoke"
+            }
+          ],
+          "operations": [
+            {
+              "process_name": "CUT",
+              "sequence_no": 1,
+              "is_subcontract": false,
+              "wage_rate": 1
+            }
+          ]
+        },
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "70"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"name\": \"BOM-SMOKE-001\"}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "bom-list-001",
+      "module": "bom",
+      "name": "List BOM",
+      "endpoint": "/api/bom/",
+      "requirement_endpoint": "GET /api/bom/apparel-boms",
+      "method": "GET",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.492,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/bom/?page=1&page_size=20",
+        "headers": {
+          "Authorization": "<redacted>"
+        },
+        "query": {
+          "page": 1,
+          "page_size": 20
+        },
+        "payload": null,
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "136"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"items\": [{\"id\": 101, \"bom_no\": \"BOM-SMOKE-001\"}], \"total\": 1, \"page\": 1, \"page_size\": 20}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "bom-detail-001",
+      "module": "bom",
+      "name": "Get BOM detail",
+      "endpoint": "/api/bom/101",
+      "requirement_endpoint": "GET /api/bom/apparel-boms/{id}",
+      "method": "GET",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.44,
+      "error": null,
+      "depends_on": [
+        "bom-list-001"
+      ],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/bom/101",
+        "headers": {
+          "Authorization": "<redacted>"
+        },
+        "query": {},
+        "payload": null,
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "123"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"bom\": {\"id\": 101, \"bom_no\": \"BOM-SMOKE-001\"}, \"items\": [], \"operations\": []}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "workshop-register-001",
+      "module": "workshop",
+      "name": "Register workshop ticket",
+      "endpoint": "/api/workshop/tickets/register",
+      "requirement_endpoint": null,
+      "method": "POST",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.313,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/workshop/tickets/register",
+        "headers": {
+          "Authorization": "<redacted>",
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "payload": {
+          "ticket_key": "SMOKE-TICKET-001",
+          "job_card": "SMOKE-JOBCARD-001",
+          "item_code": "SMOKE-ITEM-001",
+          "employee": "SMOKE-EMP-001",
+          "process_name": "CUT",
+          "qty": 1,
+          "work_date": "2026-04-14",
+          "source": "manual",
+          "source_ref": "task-s-002"
+        },
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "86"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"ticket_id\": 201, \"ticket_no\": \"WT-001\"}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "workshop-reversal-001",
+      "module": "workshop",
+      "name": "Reverse workshop ticket",
+      "endpoint": "/api/workshop/tickets/reversal",
+      "requirement_endpoint": null,
+      "method": "POST",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.306,
+      "error": null,
+      "depends_on": [
+        "workshop-register-001"
+      ],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/workshop/tickets/reversal",
+        "headers": {
+          "Authorization": "<redacted>",
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "payload": {
+          "ticket_key": "SMOKE-TICKET-001-R",
+          "job_card": "SMOKE-JOBCARD-001",
+          "item_code": "SMOKE-ITEM-001",
+          "employee": "SMOKE-EMP-001",
+          "process_name": "CUT",
+          "qty": 1,
+          "work_date": "2026-04-14",
+          "original_ticket_id": "201",
+          "reason": "smoke-reversal"
+        },
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "88"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"ticket_id\": 201, \"ticket_no\": \"WT-001-R\"}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "workshop-ticket-list-001",
+      "module": "workshop",
+      "name": "List workshop tickets",
+      "endpoint": "/api/workshop/tickets",
+      "requirement_endpoint": null,
+      "method": "GET",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.393,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/workshop/tickets?page=1&page_size=20",
+        "headers": {
+          "Authorization": "<redacted>"
+        },
+        "query": {
+          "page": 1,
+          "page_size": 20
+        },
+        "payload": null,
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "132"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"items\": [{\"id\": 201, \"ticket_no\": \"WT-001\"}], \"total\": 1, \"page\": 1, \"page_size\": 20}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "workshop-daily-wage-001",
+      "module": "workshop",
+      "name": "List workshop daily wages",
+      "endpoint": "/api/workshop/daily-wages",
+      "requirement_endpoint": null,
+      "method": "GET",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.337,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/workshop/daily-wages?page=1&page_size=20",
+        "headers": {
+          "Authorization": "<redacted>"
+        },
+        "query": {
+          "page": 1,
+          "page_size": 20
+        },
+        "payload": null,
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "117"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"items\": [], \"total\": 0, \"total_amount\": 0, \"page\": 1, \"page_size\": 20}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "production-plan-create-001",
+      "module": "production",
+      "name": "Create production plan",
+      "endpoint": "/api/production/plans",
+      "requirement_endpoint": null,
+      "method": "POST",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.294,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/production/plans",
+        "headers": {
+          "Authorization": "<redacted>",
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "payload": {
+          "sales_order": "SO-SMOKE-001",
+          "sales_order_item": "SOI-SMOKE-001",
+          "item_code": "SMOKE-ITEM-001",
+          "planned_qty": 10,
+          "idempotency_key": "SMOKE-IDEMP-PLAN-001"
+        },
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "129"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"plan_id\": 301, \"plan_no\": \"PP-001\", \"status\": \"draft\", \"company\": \"SMOKE-COMPANY\"}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "production-plan-list-001",
+      "module": "production",
+      "name": "List production plans",
+      "endpoint": "/api/production/plans",
+      "requirement_endpoint": null,
+      "method": "GET",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.276,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/production/plans?page=1&page_size=20",
+        "headers": {
+          "Authorization": "<redacted>"
+        },
+        "query": {
+          "page": 1,
+          "page_size": 20
+        },
+        "payload": null,
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "130"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"items\": [{\"id\": 301, \"plan_no\": \"PP-001\"}], \"total\": 1, \"page\": 1, \"page_size\": 20}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "production-material-check-001",
+      "module": "production",
+      "name": "Run production material check",
+      "endpoint": "/api/production/plans/301/material-check",
+      "requirement_endpoint": null,
+      "method": "POST",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.375,
+      "error": null,
+      "depends_on": [
+        "production-plan-create-001"
+      ],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/production/plans/301/material-check",
+        "headers": {
+          "Authorization": "<redacted>",
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "payload": {
+          "warehouse": "SMOKE-WH-001"
+        },
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "95"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"plan_id\": 301, \"snapshot_count\": 0, \"items\": []}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "subcontract-create-001",
+      "module": "subcontract",
+      "name": "Create subcontract order (actual router path)",
+      "endpoint": "/api/subcontract/",
+      "requirement_endpoint": "POST /api/subcontract/orders",
+      "method": "POST",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.266,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/subcontract/",
+        "headers": {
+          "Authorization": "<redacted>",
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "payload": {
+          "supplier": "SMOKE-SUPPLIER-001",
+          "item_code": "SMOKE-ITEM-001",
+          "bom_id": 1,
+          "planned_qty": 10,
+          "process_name": "SEW",
+          "sales_order": "SO-SMOKE-001",
+          "sales_order_item": "SOI-SMOKE-001"
+        },
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "91"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"name\": \"SC-001\", \"company\": \"SMOKE-COMPANY\"}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "subcontract-list-001",
+      "module": "subcontract",
+      "name": "List subcontract orders",
+      "endpoint": "/api/subcontract/",
+      "requirement_endpoint": "GET /api/subcontract/orders",
+      "method": "GET",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.311,
+      "error": null,
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/subcontract/?page=1&page_size=20",
+        "headers": {
+          "Authorization": "<redacted>"
+        },
+        "query": {
+          "page": 1,
+          "page_size": 20
+        },
+        "payload": null,
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "137"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"items\": [{\"id\": 401, \"subcontract_no\": \"SC-001\"}], \"total\": 1, \"page\": 1, \"page_size\": 20}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "subcontract-issue-material-001",
+      "module": "subcontract",
+      "name": "Issue subcontract material",
+      "endpoint": "/api/subcontract/401/issue-material",
+      "requirement_endpoint": "POST /api/subcontract/orders/{id}/issue-materials",
+      "method": "POST",
+      "expected_status": 200,
+      "actual_status": 200,
+      "expected_code": "0",
+      "actual_code": "0",
+      "pass": true,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.392,
+      "error": null,
+      "depends_on": [
+        "subcontract-list-001"
+      ],
+      "request": {
+        "url": "http://127.0.0.1:18080/api/subcontract/401/issue-material",
+        "headers": {
+          "Authorization": "<redacted>",
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "payload": {
+          "idempotency_key": "SMOKE-IDEMP-ISSUE-001",
+          "warehouse": "SMOKE-WH-001",
+          "materials": [
+            {
+              "material_item_code": "SMOKE-MAT-001",
+              "required_qty": 10,
+              "issued_qty": 5
+            }
+          ]
+        },
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {
+          "Server": "BaseHTTP/0.6 Python/3.14.3",
+          "Date": "Tue, 14 Apr 2026 13:06:30 GMT",
+          "Content-Type": "application/json",
+          "Content-Length": "115"
+        },
+        "body_preview": "{\"code\": \"0\", \"message\": \"success\", \"data\": {\"outbox_id\": 1, \"issue_batch_no\": \"IB-001\", \"sync_status\": \"pending\"}}",
+        "transport_error": null,
+        "json_parse_error": null
+      }
+    }
+  ],
+  "module_summary": {
+    "bom": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "elapsed_ms": 15.463,
+      "pass_rate": 100.0
+    },
+    "workshop": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "elapsed_ms": 1.349,
+      "pass_rate": 100.0
+    },
+    "production": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "elapsed_ms": 0.945,
+      "pass_rate": 100.0
+    },
+    "subcontract": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "elapsed_ms": 0.969,
+      "pass_rate": 100.0
+    }
+  },
+  "fatal_error": null,
+  "token_provided": true,
+  "report_dir": "/Users/hh/Desktop/领意服装管理系统_副本/03_需求与设计/06_交付与验收/TASK-S-002/sample_reports",
+  "cases_dir": "/Users/hh/Desktop/领意服装管理系统_副本/07_后端/lingyi_service/tools/acceptance_smoke/cases",
+  "config_path": "/Users/hh/Desktop/领意服装管理系统_副本/07_后端/lingyi_service/tools/acceptance_smoke/config.example.json",
+  "execution_mode": "sequential"
+}

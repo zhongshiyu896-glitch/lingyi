@@ -1,0 +1,32 @@
+{
+  "task_id": "B-R51-EVIDENCE-SYNC",
+  "generated_at": "2026-04-09T17:40:35+08:00",
+  "source_dir": "/Users/hh/Desktop/衣算云",
+  "target_dir": "/Users/hh/Desktop/领意服装管理系统/01_需求与资料/衣算云文档",
+  "scope": {
+    "version_range": "R18-R50",
+    "date_range": "20260406-20260409"
+  },
+  "synced_count": 0,
+  "missing_count": 33,
+  "conflict_count": 1,
+  "source_candidates": [],
+  "target_existing_versions": [18, 19, 20, 21, 22, 23, 24, 25],
+  "missing_versions": [
+    18, 19, 20, 21, 22, 23, 24, 25,
+    26, 27, 28, 29, 30, 31, 32, 33,
+    34, 35, 36, 37, 38, 39, 40, 41,
+    42, 43, 44, 45, 46, 47, 48, 49,
+    50
+  ],
+  "both_sides_missing_versions": [
+    26, 27, 28, 29, 30, 31, 32, 33,
+    34, 35, 36, 37, 38, 39, 40, 41,
+    42, 43, 44, 45, 46, 47, 48, 49,
+    50
+  ],
+  "notes": [
+    "source_lag_detected",
+    "no_new_file_copied"
+  ]
+}

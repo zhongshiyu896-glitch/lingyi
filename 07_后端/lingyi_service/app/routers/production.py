@@ -227,6 +227,49 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return dict(value)
 
 
+def _deny_frozen_write(
+    *,
+    session: Session,
+    permission_service: PermissionService,
+    audit: AuditService,
+    context: AuditContext,
+    request: Request,
+    current_user: CurrentUser,
+    action: str,
+    resource_type: str,
+    resource_id: int | None,
+    resource_no: str | None,
+    before_data: dict[str, Any] | None,
+    deny_reason: str,
+    response_message: str,
+) -> JSONResponse:
+    permission_service.record_security_denial(
+        request_obj=request,
+        current_user=current_user,
+        action=action,
+        module="production",
+        resource_type=resource_type,
+        resource_id=resource_id,
+        resource_no=resource_no,
+        deny_reason=deny_reason,
+    )
+    _record_failure_safely(
+        session=session,
+        audit=audit,
+        context=context,
+        request=request,
+        action=action,
+        current_user=current_user,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        resource_no=resource_no,
+        before_data=before_data,
+        after_data=None,
+        error_code=AUTH_FORBIDDEN,
+    )
+    return _err(AUTH_FORBIDDEN, response_message)
+
+
 def _resolve_read_scope(
     *,
     permission_service: PermissionService,
@@ -574,26 +617,21 @@ def create_work_order_outbox(
             resource_no=str(plan_id),
             enforce_action=False,
         )
-        data = service.create_work_order_outbox(
-            plan_id=plan_id,
-            payload=payload,
-            operator=current_user.username,
-            request_id=request_id,
-        )
-        audit.record_success(
-            module="production",
+        return _deny_frozen_write(
+            session=session,
+            permission_service=permission_service,
+            audit=audit,
+            context=context,
+            request=request,
+            current_user=current_user,
             action=action,
-            operator=current_user.username,
-            operator_roles=current_user.roles,
             resource_type="production_plan",
             resource_id=plan_id,
             resource_no=str(plan_id),
             before_data=before_data,
-            after_data=_as_dict(data),
-            context=context,
+            deny_reason="写入口冻结：create-work-order 在 TASK-021B 阶段不开放",
+            response_message="create-work-order 已冻结，当前阶段仅允许本地草稿与只读投影",
         )
-        _commit_or_raise_write_error(session=session, request=request, action=action)
-        return _ok(data)
     except HTTPException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _http_exc_err(exc)
@@ -671,25 +709,21 @@ def sync_job_cards(
             resource_no=work_order,
             enforce_action=False,
         )
-        data = service.sync_job_cards(
-            work_order=work_order,
-            operator=current_user.username,
-            request_id=request_id,
-        )
-        audit.record_success(
-            module="production",
+        return _deny_frozen_write(
+            session=session,
+            permission_service=permission_service,
+            audit=audit,
+            context=context,
+            request=request,
+            current_user=current_user,
             action=action,
-            operator=current_user.username,
-            operator_roles=current_user.roles,
             resource_type="production_work_order",
             resource_id=plan_id,
             resource_no=work_order,
             before_data=before_data,
-            after_data=_as_dict(data),
-            context=context,
+            deny_reason="写入口冻结：sync-job-cards 在 TASK-021B 阶段不开放",
+            response_message="sync-job-cards 已冻结，当前阶段仅允许只读工序投影",
         )
-        _commit_or_raise_write_error(session=session, request=request, action=action)
-        return _ok(data)
     except HTTPException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _http_exc_err(exc)

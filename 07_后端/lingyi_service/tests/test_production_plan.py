@@ -387,7 +387,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "AUDIT_WRITE_FAILED")
 
-    def test_material_check_and_create_work_order_outbox(self) -> None:
+    def test_material_check_and_create_work_order_is_frozen(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
             create_response = self.client.post(
                 "/api/production/plans",
@@ -408,22 +408,14 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(check_response.json()["data"]["items"][0]["warehouse"], "WIP Warehouse - LY")
         self.assertIsNotNone(check_response.json()["data"]["items"][0]["checked_at"])
 
-        with patch.object(ERPNextProductionAdapter, "create_work_order") as create_wo_mock, patch.object(
-            ERPNextProductionAdapter,
-            "submit_work_order",
-        ) as submit_wo_mock:
-            outbox_response = self.client.post(
-                f"/api/production/plans/{plan_id}/create-work-order",
-                headers=self._headers(),
-                json=self._create_work_order_payload(idempotency_key="idem-create-wo-001"),
-            )
-
-        self.assertEqual(outbox_response.status_code, 200)
-        outbox_data = outbox_response.json()["data"]
-        self.assertEqual(outbox_data["sync_status"], "pending")
-        self.assertTrue(str(outbox_data["event_key"]).startswith("pwo:"))
-        self.assertEqual(create_wo_mock.call_count, 0)
-        self.assertEqual(submit_wo_mock.call_count, 0)
+        outbox_response = self.client.post(
+            f"/api/production/plans/{plan_id}/create-work-order",
+            headers=self._headers(),
+            json=self._create_work_order_payload(idempotency_key="idem-create-wo-001"),
+        )
+        self.assertEqual(outbox_response.status_code, 403)
+        self.assertEqual(outbox_response.json()["code"], "AUTH_FORBIDDEN")
+        self.assertIn("冻结", outbox_response.json()["message"])
 
         with self.SessionLocal() as session:
             outbox_rows = (
@@ -431,11 +423,7 @@ class ProductionPlanTest(unittest.TestCase):
                 .filter(LyProductionWorkOrderOutbox.plan_id == plan_id)
                 .all()
             )
-            self.assertEqual(len(outbox_rows), 1)
-            self.assertEqual(outbox_rows[0].status, "pending")
-            self.assertEqual(outbox_rows[0].payload_json.get("fg_warehouse"), "FG-WH-001")
-            self.assertEqual(outbox_rows[0].payload_json.get("wip_warehouse"), "WIP-WH-001")
-            self.assertEqual(outbox_rows[0].payload_json.get("planned_start_date"), "2026-04-13")
+            self.assertEqual(len(outbox_rows), 0)
 
     def test_plan_detail_returns_work_order_link_fields(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
@@ -489,7 +477,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
 
-    def test_create_work_order_requires_required_fields_and_unified_envelope(self) -> None:
+    def test_create_work_order_frozen_returns_unified_envelope(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
             create_response = self.client.post(
                 "/api/production/plans",
@@ -498,53 +486,21 @@ class ProductionPlanTest(unittest.TestCase):
             )
         plan_id = create_response.json()["data"]["plan_id"]
 
-        fg_missing = self.client.post(
-            f"/api/production/plans/{plan_id}/create-work-order",
-            headers=self._headers(),
-            json={
-                "wip_warehouse": "WIP-WH",
-                "start_date": "2026-04-13",
-                "idempotency_key": "idem-create-wo-fg-missing",
-            },
-        )
-        self.assertEqual(fg_missing.status_code, 400)
-        self.assertEqual(fg_missing.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
-
-        wip_missing = self.client.post(
-            f"/api/production/plans/{plan_id}/create-work-order",
-            headers=self._headers(),
-            json={
-                "fg_warehouse": "FG-WH",
-                "start_date": "2026-04-13",
-                "idempotency_key": "idem-create-wo-wip-missing",
-            },
-        )
-        self.assertEqual(wip_missing.status_code, 400)
-        self.assertEqual(wip_missing.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
-
-        date_missing = self.client.post(
-            f"/api/production/plans/{plan_id}/create-work-order",
-            headers=self._headers(),
-            json={
-                "fg_warehouse": "FG-WH",
-                "wip_warehouse": "WIP-WH",
-                "idempotency_key": "idem-create-wo-date-missing",
-            },
-        )
-        self.assertEqual(date_missing.status_code, 400)
-        self.assertEqual(date_missing.json()["code"], "PRODUCTION_START_DATE_REQUIRED")
-
-        idem_missing = self.client.post(
+        frozen_response = self.client.post(
             f"/api/production/plans/{plan_id}/create-work-order",
             headers=self._headers(),
             json={
                 "fg_warehouse": "FG-WH",
                 "wip_warehouse": "WIP-WH",
                 "start_date": "2026-04-13",
+                "idempotency_key": "idem-create-wo-frozen",
             },
         )
-        self.assertEqual(idem_missing.status_code, 400)
-        self.assertEqual(idem_missing.json()["code"], "PRODUCTION_IDEMPOTENCY_KEY_REQUIRED")
+        self.assertEqual(frozen_response.status_code, 403)
+        payload = frozen_response.json()
+        self.assertEqual(payload["code"], "AUTH_FORBIDDEN")
+        self.assertIn("冻结", payload["message"])
+        self.assertIn("data", payload)
 
 
 if __name__ == "__main__":

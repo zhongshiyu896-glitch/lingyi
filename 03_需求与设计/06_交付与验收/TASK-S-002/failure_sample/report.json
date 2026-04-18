@@ -1,0 +1,145 @@
+{
+  "task_id": "TASK-S-002",
+  "generated_at": "2026-04-15T01:13:37+00:00",
+  "base_url": "http://127.0.0.1:18081",
+  "module": "bom",
+  "modules_run": [
+    "bom"
+  ],
+  "execution_command": "python tools/acceptance_smoke/run_smoke.py --module bom --base-url http://127.0.0.1:18081 --token <redacted> --report-dir ../../03_需求与设计/06_交付与验收/TASK-S-002/failure_sample",
+  "total_cases": 3,
+  "passed": 0,
+  "failed": 2,
+  "skipped": 1,
+  "elapsed_ms": 14.644,
+  "cases": [
+    {
+      "id": "bom-create-001",
+      "module": "bom",
+      "name": "Create BOM (actual router path)",
+      "endpoint": "/api/bom/",
+      "requirement_endpoint": "POST /api/bom/apparel-boms",
+      "method": "POST",
+      "expected_status": 200,
+      "actual_status": null,
+      "expected_code": "0",
+      "actual_code": null,
+      "pass": false,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 13.879,
+      "error": "transport_error=[Errno 61] Connection refused; status_mismatch(expected=200,actual=None); code_mismatch(expected=0,actual=None); extract_failed:response_not_json_object",
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18081/api/bom/",
+        "headers": {
+          "Authorization": "<redacted>",
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "payload": {
+          "item_code": "SMOKE-ITEM-001",
+          "version_no": "SMOKE-V1",
+          "bom_items": [
+            {
+              "material_item_code": "SMOKE-MAT-001",
+              "qty_per_piece": 1,
+              "loss_rate": 0,
+              "uom": "PCS",
+              "remark": "smoke"
+            }
+          ],
+          "operations": [
+            {
+              "process_name": "CUT",
+              "sequence_no": 1,
+              "is_subcontract": false,
+              "wage_rate": 1
+            }
+          ]
+        },
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {},
+        "body_preview": "",
+        "transport_error": "[Errno 61] Connection refused",
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "bom-list-001",
+      "module": "bom",
+      "name": "List BOM",
+      "endpoint": "/api/bom/",
+      "requirement_endpoint": "GET /api/bom/apparel-boms",
+      "method": "GET",
+      "expected_status": 200,
+      "actual_status": null,
+      "expected_code": "0",
+      "actual_code": null,
+      "pass": false,
+      "skipped": false,
+      "skip_reason": null,
+      "elapsed_ms": 0.261,
+      "error": "transport_error=[Errno 61] Connection refused; status_mismatch(expected=200,actual=None); code_mismatch(expected=0,actual=None); extract_failed:response_not_json_object",
+      "depends_on": [],
+      "request": {
+        "url": "http://127.0.0.1:18081/api/bom/?page=1&page_size=20",
+        "headers": {
+          "Authorization": "<redacted>"
+        },
+        "query": {
+          "page": 1,
+          "page_size": 20
+        },
+        "payload": null,
+        "timeout_seconds": 15.0
+      },
+      "response": {
+        "headers": {},
+        "body_preview": "",
+        "transport_error": "[Errno 61] Connection refused",
+        "json_parse_error": null
+      }
+    },
+    {
+      "id": "bom-detail-001",
+      "module": "bom",
+      "name": "Get BOM detail",
+      "endpoint": "/api/bom/{{bom_id}}",
+      "requirement_endpoint": "GET /api/bom/apparel-boms/{id}",
+      "method": "GET",
+      "expected_status": 200,
+      "actual_status": null,
+      "expected_code": "0",
+      "actual_code": null,
+      "pass": false,
+      "skipped": true,
+      "skip_reason": "dependency_not_passed:bom-list-001",
+      "elapsed_ms": 0.001,
+      "error": "dependency_not_passed:bom-list-001",
+      "depends_on": [
+        "bom-list-001"
+      ],
+      "request": {},
+      "response": {}
+    }
+  ],
+  "module_summary": {
+    "bom": {
+      "total": 3,
+      "passed": 0,
+      "failed": 2,
+      "skipped": 1,
+      "elapsed_ms": 14.141,
+      "pass_rate": 0.0
+    }
+  },
+  "fatal_error": null,
+  "token_provided": true,
+  "report_dir": "/Users/hh/Desktop/领意服装管理系统_副本/03_需求与设计/06_交付与验收/TASK-S-002/failure_sample",
+  "cases_dir": "/Users/hh/Desktop/领意服装管理系统_副本/07_后端/lingyi_service/tools/acceptance_smoke/cases",
+  "config_path": null,
+  "execution_mode": "sequential"
+}

@@ -56,6 +56,9 @@ from app.services.permission_service import PermissionService
 router = APIRouter(prefix="/api/bom", tags=["bom"])
 logger = logging.getLogger(__name__)
 
+BOM_ACTIVATE_ACTION = "bom:activate"
+BOM_EXPLODE_ACTION = "bom:explode"
+
 
 def get_db_session() -> Generator[Session, None, None]:
     """Yield SQLAlchemy session. Overridden in app.main."""
@@ -70,7 +73,7 @@ def _ok(data: Any) -> dict[str, Any]:
 def _err(code: str, message: str, status_code: int | None = None) -> JSONResponse:
     return JSONResponse(
         status_code=status_code or status_of(code, 400),
-        content={"code": code, "message": message, "data": {}},
+        content={"code": code, "message": message, "data": None},
     )
 
 
@@ -196,6 +199,50 @@ def _record_failure_safely(
                 "user_id": current_user.username,
             },
         )
+
+
+def _require_any_action(
+    *,
+    permission_service: PermissionService,
+    current_user: CurrentUser,
+    request_obj: Request,
+    actions: tuple[str, ...],
+    module: str = "bom",
+    resource_type: str | None = None,
+    resource_id: int | None = None,
+    resource_item_code: str | None = None,
+) -> None:
+    """Require one action from a primary+fallback set.
+
+    Notes:
+    - `actions[0]` is the canonical action frozen by design.
+    - subsequent actions are compatibility aliases kept for historical role sets.
+    """
+    if not actions:
+        raise ValueError("actions must not be empty")
+
+    agg = permission_service.get_actions(
+        current_user=current_user,
+        request_obj=request_obj,
+        module=module,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        resource_item_code=resource_item_code,
+        action_context=actions[0],
+    )
+    if any(action in set(agg.actions) for action in actions):
+        return
+
+    # Reuse baseline denied-path auditing and response envelope.
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request_obj,
+        action=actions[0],
+        module=module,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        resource_item_code=resource_item_code,
+    )
 
 
 @router.post("/")
@@ -514,10 +561,12 @@ def activate_bom(
     session: Session = Depends(get_db_session),
 ):
     """发布 BOM。"""
-    PermissionService(session=session).require_action(
+    permission_service = PermissionService(session=session)
+    _require_any_action(
+        permission_service=permission_service,
         current_user=current_user,
         request_obj=request,
-        action=BOM_PUBLISH,
+        actions=(BOM_ACTIVATE_ACTION, BOM_PUBLISH),
         module="bom",
         resource_type="bom",
         resource_id=bom_id,
@@ -526,7 +575,7 @@ def activate_bom(
     service = BomService(session=session)
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
-    action = BOM_PUBLISH
+    action = BOM_ACTIVATE_ACTION
     before_data = None
     after_data = None
 
@@ -678,11 +727,12 @@ def explode_bom(
     session: Session = Depends(get_db_session),
 ):
     """展开 BOM。"""
-    # 读权限动作：bom:read（含资源级校验）
-    PermissionService(session=session).require_action(
+    permission_service = PermissionService(session=session)
+    _require_any_action(
+        permission_service=permission_service,
         current_user=current_user,
         request_obj=request,
-        action=BOM_READ,
+        actions=(BOM_EXPLODE_ACTION, BOM_READ),
         module="bom",
         resource_type="bom",
         resource_id=bom_id,
@@ -694,4 +744,4 @@ def explode_bom(
     except AppException as exc:
         return _app_err(exc)
     except Exception as exc:
-        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+        return _app_err(_unknown_to_internal_error(request, BOM_EXPLODE_ACTION, exc))

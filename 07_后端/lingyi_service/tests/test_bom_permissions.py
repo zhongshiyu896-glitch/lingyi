@@ -173,6 +173,7 @@ class BomPermissionFailClosedTest(unittest.TestCase):
             payload = resp.json()
             self.assertEqual(resp.status_code, 503)
             self.assertEqual(payload.get("code"), PERMISSION_SOURCE_UNAVAILABLE_CODE)
+            self.assertIsNone(payload.get("data"))
 
     def test_unrestricted_access_when_user_permission_query_succeeds_with_zero_rows(self) -> None:
         with patch.object(
@@ -220,8 +221,10 @@ class BomPermissionFailClosedTest(unittest.TestCase):
 
         self.assertEqual(detail_denied.status_code, 403)
         self.assertEqual(detail_denied.json().get("code"), "AUTH_FORBIDDEN")
+        self.assertIsNone(detail_denied.json().get("data"))
         self.assertEqual(explode_denied.status_code, 403)
         self.assertEqual(explode_denied.json().get("code"), "AUTH_FORBIDDEN")
+        self.assertIsNone(explode_denied.json().get("data"))
 
 
 if __name__ == "__main__":

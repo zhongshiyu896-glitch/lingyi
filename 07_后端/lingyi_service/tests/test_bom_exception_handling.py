@@ -195,6 +195,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), AUDIT_WRITE_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_create_bom_returns_database_write_failed_when_business_write_fails(self) -> None:
         with patch.object(BomService, "create_bom", side_effect=DatabaseWriteFailed()):
@@ -203,6 +204,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_WRITE_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_create_bom_returns_database_write_failed_when_commit_raises(self) -> None:
         with patch.object(BomService, "create_bom", return_value=BomNameData(name="BOM-TEST")), patch.object(
@@ -218,6 +220,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_WRITE_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_update_bom_returns_database_write_failed_when_commit_raises(self) -> None:
         with patch.object(
@@ -237,6 +240,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_WRITE_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_activate_bom_returns_database_write_failed_when_commit_raises(self) -> None:
         with patch.object(
@@ -256,6 +260,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_WRITE_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_deactivate_bom_returns_database_write_failed_when_commit_raises(self) -> None:
         with patch.object(
@@ -279,6 +284,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_WRITE_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_set_default_returns_database_write_failed_when_commit_raises(self) -> None:
         with patch.object(
@@ -298,6 +304,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_WRITE_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_set_default_returns_default_conflict_when_commit_integrity_hits_partial_unique_index(self) -> None:
         integrity_exc = IntegrityError(
@@ -322,6 +329,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 409)
         self.assertEqual(payload.get("code"), BOM_DEFAULT_CONFLICT)
+        self.assertIsNone(payload.get("data"))
 
     def test_commit_failure_rollback_failure_does_not_override_database_write_failed(self) -> None:
         with patch.object(BomService, "create_bom", return_value=BomNameData(name="BOM-TEST")), patch.object(
@@ -340,6 +348,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_WRITE_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_snapshot_resource_database_read_failed_returns_database_read_failed(self) -> None:
         with patch.object(AuditService, "snapshot_resource", side_effect=DatabaseReadFailed()):
@@ -348,6 +357,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_READ_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_snapshot_resource_unknown_error_returns_internal_error(self) -> None:
         with patch.object(AuditService, "snapshot_resource", side_effect=RuntimeError("snapshot boom")):
@@ -356,6 +366,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), BOM_INTERNAL_ERROR)
+        self.assertIsNone(payload.get("data"))
 
     def test_create_bom_returns_internal_error_when_unknown_runtime_error_occurs(self) -> None:
         with patch.object(BomService, "create_bom", side_effect=RuntimeError("boom")):
@@ -364,6 +375,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), BOM_INTERNAL_ERROR)
+        self.assertIsNone(payload.get("data"))
 
     def test_get_bom_detail_returns_database_read_failed_when_read_raises(self) -> None:
         with patch.object(BomService, "get_bom_detail", side_effect=DatabaseReadFailed()):
@@ -372,12 +384,14 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload.get("code"), DATABASE_READ_FAILED)
+        self.assertIsNone(payload.get("data"))
 
     def test_update_active_bom_returns_published_locked(self) -> None:
         response = self.client.put("/api/bom/1", headers=self._headers(), json=self._update_payload())
         payload_json = response.json()
         self.assertEqual(response.status_code, 409)
         self.assertEqual(payload_json.get("code"), BOM_PUBLISHED_LOCKED)
+        self.assertIsNone(payload_json.get("data"))
 
     def test_set_default_conflict_returns_bom_default_conflict(self) -> None:
         with patch.object(
@@ -390,6 +404,7 @@ class BomExceptionHandlingTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 409)
         self.assertEqual(payload.get("code"), BOM_DEFAULT_CONFLICT)
+        self.assertIsNone(payload.get("data"))
 
 
 if __name__ == "__main__":

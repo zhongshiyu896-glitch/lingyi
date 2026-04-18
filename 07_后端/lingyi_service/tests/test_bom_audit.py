@@ -152,6 +152,7 @@ class BomAuditBehaviorTest(unittest.TestCase):
         payload_json = response.json()
         self.assertEqual(response.status_code, 500)
         self.assertEqual(payload_json.get("code"), AUDIT_WRITE_FAILED)
+        self.assertIsNone(payload_json.get("data"))
         self.assertEqual(self._count_bom_rows(), before_count)
         self.assertRegex(response.headers.get("X-Request-ID", ""), self.REQUEST_ID_PATTERN)
 
@@ -166,6 +167,7 @@ class BomAuditBehaviorTest(unittest.TestCase):
         payload = response.json()
         self.assertEqual(response.status_code, 403)
         self.assertEqual(payload.get("code"), "AUTH_FORBIDDEN")
+        self.assertIsNone(payload.get("data"))
         self.assertTrue(any("security_audit_write_failed" in message for message in log_ctx.output))
         response_request_id = response.headers.get("X-Request-ID", "")
         self.assertRegex(response_request_id, self.REQUEST_ID_PATTERN)

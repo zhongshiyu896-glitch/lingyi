@@ -16,7 +16,7 @@
           <el-input v-model="form.item_code" :disabled="isEditMode" placeholder="Item Code" />
         </el-form-item>
         <el-form-item label="版本号">
-          <el-input v-model="form.version_no" placeholder="如：V1" />
+          <el-input v-model="form.version_no" :disabled="!isDraftEditable" placeholder="如：V1" />
         </el-form-item>
         <el-form-item label="状态">
           <el-tag>{{ statusText }}</el-tag>
@@ -25,7 +25,7 @@
 
       <div class="actions">
         <el-button
-          v-if="(isEditMode && canUpdate) || (!isEditMode && canCreate)"
+          v-if="isDraftEditable && ((isEditMode && canUpdate) || (!isEditMode && canCreate))"
           type="primary"
           :loading="saving"
           @click="saveDraft"
@@ -40,13 +40,19 @@
         >
           设为默认
         </el-button>
-        <el-button v-if="canPublish" type="success" :disabled="!isEditMode" :loading="activating" @click="activate">
+        <el-button
+          v-if="canPublish"
+          type="success"
+          :disabled="!isEditMode || status !== 'draft'"
+          :loading="activating"
+          @click="activate"
+        >
           发布
         </el-button>
         <el-button
           v-if="canDeactivate"
           type="danger"
-          :disabled="!isEditMode"
+          :disabled="!isEditMode || status !== 'active'"
           :loading="deactivating"
           @click="deactivate"
         >
@@ -59,48 +65,48 @@
       <template #header>
         <div class="card-header">
           <span>物料明细</span>
-          <el-button size="small" @click="addBomItem">新增物料</el-button>
+          <el-button size="small" :disabled="!isDraftEditable" @click="addBomItem">新增物料</el-button>
         </div>
       </template>
       <el-table :data="bomItems" border>
         <el-table-column label="物料编码" min-width="180">
           <template #default="scope">
-            <el-input v-model="scope.row.material_item_code" />
+            <el-input v-model="scope.row.material_item_code" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="颜色" min-width="120">
           <template #default="scope">
-            <el-input v-model="scope.row.color" />
+            <el-input v-model="scope.row.color" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="尺码" min-width="100">
           <template #default="scope">
-            <el-input v-model="scope.row.size" />
+            <el-input v-model="scope.row.size" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="单件用量" min-width="120">
           <template #default="scope">
-            <el-input-number v-model="scope.row.qty_per_piece" :min="0.000001" :step="0.1" />
+            <el-input-number v-model="scope.row.qty_per_piece" :disabled="!isDraftEditable" :min="0.000001" :step="0.1" />
           </template>
         </el-table-column>
         <el-table-column label="损耗率" min-width="120">
           <template #default="scope">
-            <el-input-number v-model="scope.row.loss_rate" :min="0" :step="0.01" />
+            <el-input-number v-model="scope.row.loss_rate" :disabled="!isDraftEditable" :min="0" :step="0.01" />
           </template>
         </el-table-column>
         <el-table-column label="单位" min-width="100">
           <template #default="scope">
-            <el-input v-model="scope.row.uom" />
+            <el-input v-model="scope.row.uom" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="备注" min-width="160">
           <template #default="scope">
-            <el-input v-model="scope.row.remark" />
+            <el-input v-model="scope.row.remark" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="90">
           <template #default="scope">
-            <el-button link type="danger" @click="removeBomItem(scope.$index)">删除</el-button>
+            <el-button link type="danger" :disabled="!isDraftEditable" @click="removeBomItem(scope.$index)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -110,30 +116,30 @@
       <template #header>
         <div class="card-header">
           <span>工序明细</span>
-          <el-button size="small" @click="addOperation">新增工序</el-button>
+          <el-button size="small" :disabled="!isDraftEditable" @click="addOperation">新增工序</el-button>
         </div>
       </template>
       <el-table :data="operations" border>
         <el-table-column label="工序名称" min-width="180">
           <template #default="scope">
-            <el-input v-model="scope.row.process_name" />
+            <el-input v-model="scope.row.process_name" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="序号" width="100">
           <template #default="scope">
-            <el-input-number v-model="scope.row.sequence_no" :min="1" :step="1" />
+            <el-input-number v-model="scope.row.sequence_no" :disabled="!isDraftEditable" :min="1" :step="1" />
           </template>
         </el-table-column>
         <el-table-column label="外发" width="100">
           <template #default="scope">
-            <el-switch v-model="scope.row.is_subcontract" />
+            <el-switch v-model="scope.row.is_subcontract" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="本厂工价" min-width="120">
           <template #default="scope">
             <el-input-number
               v-model="scope.row.wage_rate"
-              :disabled="scope.row.is_subcontract"
+              :disabled="!isDraftEditable || scope.row.is_subcontract"
               :min="0"
               :step="0.1"
             />
@@ -143,7 +149,7 @@
           <template #default="scope">
             <el-input-number
               v-model="scope.row.subcontract_cost_per_piece"
-              :disabled="!scope.row.is_subcontract"
+              :disabled="!isDraftEditable || !scope.row.is_subcontract"
               :min="0"
               :step="0.1"
             />
@@ -151,12 +157,12 @@
         </el-table-column>
         <el-table-column label="备注" min-width="160">
           <template #default="scope">
-            <el-input v-model="scope.row.remark" />
+            <el-input v-model="scope.row.remark" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="90">
           <template #default="scope">
-            <el-button link type="danger" @click="removeOperation(scope.$index)">删除</el-button>
+            <el-button link type="danger" :disabled="!isDraftEditable" @click="removeOperation(scope.$index)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -298,6 +304,7 @@ const canUpdate = computed<boolean>(() => permissionStore.state.buttonPermission
 const canPublish = computed<boolean>(() => permissionStore.state.buttonPermissions.publish)
 const canDeactivate = computed<boolean>(() => permissionStore.state.buttonPermissions.deactivate)
 const canSetDefault = computed<boolean>(() => permissionStore.state.buttonPermissions.set_default)
+const isDraftEditable = computed<boolean>(() => !isEditMode.value || status.value === 'draft')
 const statusText = computed<string>(() => {
   if (status.value === 'active') return '已发布'
   if (status.value === 'inactive') return '已停用'
@@ -559,15 +566,18 @@ const explode = async (): Promise<void> => {
 }
 
 const addBomItem = (): void => {
+  if (!isDraftEditable.value) return
   bomItems.value.push(emptyBomItem())
 }
 
 const removeBomItem = (index: number): void => {
+  if (!isDraftEditable.value) return
   if (bomItems.value.length <= 1) return
   bomItems.value.splice(index, 1)
 }
 
 const addOperation = (): void => {
+  if (!isDraftEditable.value) return
   operations.value.push({
     ...emptyOperation(),
     sequence_no: operations.value.length + 1,
@@ -575,6 +585,7 @@ const addOperation = (): void => {
 }
 
 const removeOperation = (index: number): void => {
+  if (!isDraftEditable.value) return
   if (operations.value.length <= 1) return
   operations.value.splice(index, 1)
 }
