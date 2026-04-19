@@ -92,6 +92,8 @@ export interface ProductionPlanDetailData {
   sync_status?: string | null
   last_synced_at?: string | null
   latest_work_order_outbox?: ProductionWorkOrderOutboxSummary | null
+  write_entry_frozen: boolean
+  write_entry_frozen_reason?: string | null
   material_snapshots: ProductionPlanMaterialSnapshotItem[]
   job_cards: ProductionJobCardLinkItem[]
   created_at: string

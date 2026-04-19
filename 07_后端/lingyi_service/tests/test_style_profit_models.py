@@ -495,6 +495,25 @@ class StyleProfitModelTest(unittest.TestCase):
             self.assertIsNotNone(refreshed)
             self.assertEqual(str(refreshed.status), "disabled")
 
+    def test_snapshot_default_allocation_status_not_enabled(self) -> None:
+        with self.SessionLocal() as session:
+            snapshot = LyStyleProfitSnapshot(
+                snapshot_no="SP-20260414-DEFAULT-STATUS",
+                company="COMP-A",
+                sales_order="SO-DEFAULT-STATUS-001",
+                item_code="STYLE-A",
+                idempotency_key="idem-default-status",
+                request_hash="hash-default-status",
+                created_by="tester",
+            )
+            session.add(snapshot)
+            session.commit()
+
+            refreshed = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == snapshot.id).first()
+            self.assertIsNotNone(refreshed)
+            self.assertEqual(str(refreshed.allocation_status), "not_enabled")
+            self.assertFalse(bool(refreshed.include_provisional_subcontract))
+
 
 if __name__ == "__main__":
     unittest.main()

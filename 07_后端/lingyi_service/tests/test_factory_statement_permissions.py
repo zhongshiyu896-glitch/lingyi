@@ -13,6 +13,7 @@ from app.models.audit import LySecurityAuditLog
 from app.models.factory_statement import LyFactoryStatement
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
+from app.models.factory_statement import LyFactoryStatementPayableOutbox
 from tests.test_factory_statement_api import FactoryStatementApiBase
 
 
@@ -210,6 +211,46 @@ class FactoryStatementPermissionTest(FactoryStatementApiBase):
             )
         self.assertEqual(str(statement.statement_status), "draft")
         self.assertEqual(op_count, 0)
+
+    def test_no_payable_draft_permission_returns_403_and_no_outbox(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(role="Finance Manager"),
+            json=self._create_payload(idempotency_key="idem-no-payable-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        confirmed = self.client.post(
+            f"/api/factory-statements/{statement_id}/confirm",
+            headers=self._headers(role="Finance Manager"),
+            json={"idempotency_key": "idem-no-payable-confirm", "remark": "ok"},
+        )
+        self.assertEqual(confirmed.status_code, 200)
+
+        denied = self.client.post(
+            f"/api/factory-statements/{statement_id}/payable-draft",
+            headers=self._headers(role="Viewer"),
+            json={
+                "idempotency_key": "idem-no-payable-draft-op",
+                "payable_account": "2202.01",
+                "cost_center": "CC-01",
+                "posting_date": "2026-04-30",
+                "remark": "x",
+            },
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(denied.json()["code"], "FACTORY_STATEMENT_PERMISSION_DENIED")
+
+        with self.SessionLocal() as session:
+            statement = session.query(LyFactoryStatement).filter(LyFactoryStatement.id == statement_id).one()
+            outbox_count = (
+                session.query(LyFactoryStatementPayableOutbox)
+                .filter(LyFactoryStatementPayableOutbox.statement_id == statement_id)
+                .count()
+            )
+        self.assertEqual(str(statement.statement_status), "confirmed")
+        self.assertEqual(outbox_count, 0)
 
 
 if __name__ == "__main__":

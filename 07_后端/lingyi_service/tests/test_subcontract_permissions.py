@@ -619,6 +619,17 @@ class SubcontractPermissionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
 
+    def test_internal_stock_sync_run_once_forbidden_for_non_worker_role(self) -> None:
+        os.environ["ENABLE_SUBCONTRACT_INTERNAL_STOCK_WORKER_API"] = "true"
+        response = self.client.post(
+            "/api/subcontract/internal/stock-sync/run-once?dry_run=true&batch_size=1",
+            headers=self._headers(role="Subcontract Manager"),
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySubcontractStockOutbox).count(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

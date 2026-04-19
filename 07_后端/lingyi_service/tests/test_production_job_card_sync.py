@@ -149,16 +149,17 @@ class ProductionJobCardSyncTest(unittest.TestCase):
             ),
         ]
 
-    def test_sync_job_cards_is_frozen_for_regular_path(self) -> None:
+    def test_sync_job_cards_updates_local_projection_for_regular_path(self) -> None:
         with patch.object(ERPNextProductionAdapter, "list_job_cards", return_value=self._cards()):
             response = self.client.post(
                 "/api/production/work-orders/WO-JC-001/sync-job-cards",
                 headers=self._headers(),
             )
 
-        self.assertEqual(response.status_code, 403)
-        self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
-        self.assertIn("冻结", response.json()["message"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+        self.assertEqual(response.json()["data"]["work_order"], "WO-JC-001")
+        self.assertEqual(response.json()["data"]["synced_count"], 2)
 
         with self.SessionLocal() as session:
             rows = (
@@ -167,14 +168,16 @@ class ProductionJobCardSyncTest(unittest.TestCase):
                 .order_by(LyProductionJobCardLink.job_card.asc())
                 .all()
             )
-            self.assertEqual(len(rows), 0)
+            self.assertEqual(len(rows), 2)
+            self.assertEqual(rows[0].work_order, "WO-JC-001")
+            self.assertEqual(rows[0].operation, "Cut")
 
             audit_row = (
                 session.query(LyOperationAuditLog)
                 .filter(
                     LyOperationAuditLog.module == "production",
                     LyOperationAuditLog.action == "production:job_card_sync",
-                    LyOperationAuditLog.result == "failed",
+                    LyOperationAuditLog.result == "success",
                 )
                 .order_by(LyOperationAuditLog.id.desc())
                 .first()

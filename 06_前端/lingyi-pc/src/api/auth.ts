@@ -54,17 +54,7 @@ export interface ActionPermissionData {
 }
 
 const buildAuthHeaders = (headers?: HeadersInit): Headers => {
-  const result = new Headers(headers)
-  const storedToken =
-    window.localStorage.getItem('LY_AUTH_TOKEN') || window.localStorage.getItem('token') || ''
-  if (storedToken) {
-    const normalized =
-      storedToken.startsWith('Bearer ') || storedToken.startsWith('token ')
-        ? storedToken
-        : `Bearer ${storedToken}`
-    result.set('Authorization', normalized)
-  }
-  return result
+  return new Headers(headers)
 }
 
 const request = async <T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> => {
@@ -77,7 +67,7 @@ const request = async <T>(url: string, init?: RequestInit): Promise<ApiResponse<
   if (response.status === 401 || payload.code === 'AUTH_UNAUTHORIZED') {
     window.alert('登录已失效，请重新登录')
     window.location.href = '/login'
-    throw new Error('未登录或 Token 无效')
+    throw new Error('未登录或会话无效')
   }
   if (response.status === 403 || payload.code === 'AUTH_FORBIDDEN') {
     throw new Error('无权执行该操作')

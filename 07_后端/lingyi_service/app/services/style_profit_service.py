@@ -1694,6 +1694,8 @@ class StyleProfitService:
             profit_amount=Decimal(str(snapshot.profit_amount)),
             profit_rate=Decimal(str(snapshot.profit_rate)) if snapshot.profit_rate is not None else None,
             snapshot_status=str(snapshot.snapshot_status),
+            allocation_status=str(snapshot.allocation_status),
+            include_provisional_subcontract=bool(snapshot.include_provisional_subcontract),
             unresolved_count=int(snapshot.unresolved_count or 0),
             idempotency_key=str(snapshot.idempotency_key),
             request_hash=str(snapshot.request_hash),

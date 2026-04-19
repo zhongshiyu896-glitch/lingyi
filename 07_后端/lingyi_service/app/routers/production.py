@@ -617,21 +617,26 @@ def create_work_order_outbox(
             resource_no=str(plan_id),
             enforce_action=False,
         )
-        return _deny_frozen_write(
-            session=session,
-            permission_service=permission_service,
-            audit=audit,
-            context=context,
-            request=request,
-            current_user=current_user,
+        data = service.create_work_order_outbox(
+            plan_id=plan_id,
+            payload=payload,
+            operator=current_user.username,
+            request_id=request_id,
+        )
+        audit.record_success(
+            module="production",
             action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
             resource_type="production_plan",
             resource_id=plan_id,
             resource_no=str(plan_id),
             before_data=before_data,
-            deny_reason="写入口冻结：create-work-order 在 TASK-021B 阶段不开放",
-            response_message="create-work-order 已冻结，当前阶段仅允许本地草稿与只读投影",
+            after_data=_as_dict(data),
+            context=context,
         )
+        _commit_or_raise_write_error(session=session, request=request, action=action)
+        return _ok(data)
     except HTTPException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _http_exc_err(exc)
@@ -709,21 +714,25 @@ def sync_job_cards(
             resource_no=work_order,
             enforce_action=False,
         )
-        return _deny_frozen_write(
-            session=session,
-            permission_service=permission_service,
-            audit=audit,
-            context=context,
-            request=request,
-            current_user=current_user,
+        data = service.sync_job_cards(
+            work_order=work_order,
+            operator=current_user.username,
+            request_id=request_id,
+        )
+        audit.record_success(
+            module="production",
             action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
             resource_type="production_work_order",
             resource_id=plan_id,
             resource_no=work_order,
             before_data=before_data,
-            deny_reason="写入口冻结：sync-job-cards 在 TASK-021B 阶段不开放",
-            response_message="sync-job-cards 已冻结，当前阶段仅允许只读工序投影",
+            after_data=_as_dict(data),
+            context=context,
         )
+        _commit_or_raise_write_error(session=session, request=request, action=action)
+        return _ok(data)
     except HTTPException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _http_exc_err(exc)

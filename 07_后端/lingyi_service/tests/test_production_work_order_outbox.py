@@ -370,6 +370,67 @@ class ProductionWorkOrderOutboxTest(unittest.TestCase):
             self.assertIsNotNone(outbox)
             self.assertNotEqual(outbox.status, "succeeded")
 
+    def test_worker_dry_run_has_no_outbox_or_erpnext_side_effect(self) -> None:
+        outbox_id = self._seed_due_outbox()
+        with patch.object(ERPNextProductionAdapter, "find_work_order_by_plan") as find_mock, patch.object(
+            ERPNextProductionAdapter,
+            "create_work_order",
+        ) as create_mock, patch.object(
+            ERPNextProductionAdapter,
+            "submit_work_order",
+        ) as submit_mock:
+            response = self.client.post(
+                "/api/production/internal/work-order-sync/run-once",
+                headers=self._headers(),
+                json={"batch_size": 10, "dry_run": True},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        self.assertTrue(payload["data"]["dry_run"])
+        self.assertGreaterEqual(int(payload["data"]["processed_count"]), 1)
+        self.assertEqual(int(payload["data"]["succeeded_count"]), 0)
+        self.assertEqual(int(payload["data"]["failed_count"]), 0)
+        self.assertEqual(int(payload["data"]["dead_count"]), 0)
+        self.assertEqual(find_mock.call_count, 0)
+        self.assertEqual(create_mock.call_count, 0)
+        self.assertEqual(submit_mock.call_count, 0)
+
+        with self.SessionLocal() as session:
+            outbox = session.query(LyProductionWorkOrderOutbox).filter(LyProductionWorkOrderOutbox.id == outbox_id).first()
+            self.assertIsNotNone(outbox)
+            self.assertEqual(outbox.status, "pending")
+            self.assertEqual(int(outbox.attempts or 0), 0)
+            self.assertIsNone(outbox.locked_by)
+            self.assertIsNone(outbox.locked_at)
+            self.assertIsNone(outbox.lease_until)
+
+    def test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp(self) -> None:
+        outbox_id = self._seed_due_outbox(status="processing")
+        with self.SessionLocal() as session:
+            row = session.query(LyProductionWorkOrderOutbox).filter(LyProductionWorkOrderOutbox.id == outbox_id).first()
+            self.assertIsNotNone(row)
+            row.attempts = int(row.max_attempts or 5)
+            row.locked_by = "worker-old"
+            row.locked_at = datetime.utcnow()
+            row.lease_until = datetime.utcnow() + timedelta(minutes=3)
+            session.commit()
+
+            service = ProductionWorkOrderOutboxService(session=session)
+            updated = service.mark_failed(
+                outbox_id=outbox_id,
+                error_code="PRODUCTION_WORK_ORDER_SYNC_FAILED",
+                error_message="sync failed",
+            )
+            session.commit()
+
+            self.assertEqual(updated.status, "dead")
+            self.assertIsNotNone(updated.next_retry_at)
+            self.assertIsNone(updated.locked_by)
+            self.assertIsNone(updated.locked_at)
+            self.assertIsNone(updated.lease_until)
+
     def test_claim_due_with_two_sessions_does_not_double_claim(self) -> None:
         self._seed_due_outbox()
         session_a = self.SessionLocal()

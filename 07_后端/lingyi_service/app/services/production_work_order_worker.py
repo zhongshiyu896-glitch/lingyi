@@ -128,7 +128,10 @@ class ProductionWorkOrderWorker:
                 (
                     (
                         LyProductionWorkOrderOutbox.status.in_(["pending", "failed"])
-                        & (LyProductionWorkOrderOutbox.next_retry_at <= now)
+                        & (
+                            LyProductionWorkOrderOutbox.next_retry_at.is_(None)
+                            | (LyProductionWorkOrderOutbox.next_retry_at <= now)
+                        )
                     )
                     | (
                         (LyProductionWorkOrderOutbox.status == "processing")

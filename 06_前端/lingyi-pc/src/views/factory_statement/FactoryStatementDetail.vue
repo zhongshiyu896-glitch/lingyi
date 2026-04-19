@@ -43,7 +43,7 @@
             type="warning"
             :closable="false"
             show-icon
-            title="当前存在应付草稿同步流程，暂不可取消对账单。"
+            title="当前存在应付草稿同步流程，取消操作不可用。"
             class="warn-alert"
           />
           <el-alert
@@ -56,31 +56,6 @@
           />
 
           <div class="action-row">
-            <el-button
-              v-if="canConfirm"
-              type="primary"
-              :loading="confirming"
-              @click="openConfirmDialog"
-            >
-              确认对账单
-            </el-button>
-            <el-button
-              v-if="canCancel || (canCancelPermission && isDraftOrConfirmed)"
-              type="danger"
-              :disabled="!canCancel"
-              :loading="cancelling"
-              @click="openCancelDialog"
-            >
-              取消对账单
-            </el-button>
-            <el-button
-              v-if="canCreatePayableDraft"
-              type="success"
-              :loading="creatingPayable"
-              @click="openPayableDialog"
-            >
-              生成应付草稿
-            </el-button>
             <el-button type="info" plain :disabled="loading || !detail" @click="openPrintView">
               打印
             </el-button>
@@ -136,66 +111,6 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="confirmDialogVisible" title="确认对账单" width="480px" destroy-on-close>
-      <el-form :model="confirmForm" label-width="120px">
-        <el-form-item label="幂等键" required>
-          <el-input v-model="confirmForm.idempotency_key" clearable placeholder="idempotency_key" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="confirmForm.remark" type="textarea" :rows="3" maxlength="200" show-word-limit />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="confirmDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="confirming" @click="submitConfirm">确认</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="cancelDialogVisible" title="取消对账单" width="480px" destroy-on-close>
-      <el-form :model="cancelForm" label-width="120px">
-        <el-form-item label="幂等键" required>
-          <el-input v-model="cancelForm.idempotency_key" clearable placeholder="idempotency_key" />
-        </el-form-item>
-        <el-form-item label="取消原因">
-          <el-input v-model="cancelForm.reason" type="textarea" :rows="3" maxlength="200" show-word-limit />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="cancelDialogVisible = false">返回</el-button>
-        <el-button type="danger" :loading="cancelling" @click="submitCancel">确认取消</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="payableDialogVisible" title="生成应付草稿" width="560px" destroy-on-close>
-      <el-form :model="payableForm" label-width="120px">
-        <el-form-item label="应付科目" required>
-          <el-input v-model="payableForm.payable_account" clearable placeholder="payable_account" />
-        </el-form-item>
-        <el-form-item label="成本中心" required>
-          <el-input v-model="payableForm.cost_center" clearable placeholder="cost_center" />
-        </el-form-item>
-        <el-form-item label="过账日期" required>
-          <el-date-picker
-            v-model="payableForm.posting_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="posting_date"
-            clearable
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="幂等键" required>
-          <el-input v-model="payableForm.idempotency_key" clearable placeholder="idempotency_key" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="payableForm.remark" type="textarea" :rows="3" maxlength="200" show-word-limit />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="payableDialogVisible = false">取消</el-button>
-        <el-button type="success" :loading="creatingPayable" @click="submitPayableDraft">提交</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -204,9 +119,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  cancelFactoryStatement,
-  confirmFactoryStatement,
-  createFactoryStatementPayableDraft,
   fetchFactoryStatementDetail,
   type FactoryStatementDetailData,
   type FactoryStatementDetailItem,
@@ -222,37 +134,14 @@ const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
-const confirming = ref<boolean>(false)
-const cancelling = ref<boolean>(false)
-const creatingPayable = ref<boolean>(false)
 
 const detail = ref<FactoryStatementDetailData | null>(null)
 const items = ref<FactoryStatementDetailItem[]>([])
 const logs = ref<FactoryStatementLogItem[]>([])
 
-const confirmDialogVisible = ref<boolean>(false)
-const cancelDialogVisible = ref<boolean>(false)
-const payableDialogVisible = ref<boolean>(false)
-
-const confirmForm = ref({ idempotency_key: '', remark: '' })
-const cancelForm = ref({ idempotency_key: '', reason: '' })
-const payableForm = ref({
-  payable_account: '',
-  cost_center: '',
-  posting_date: '',
-  idempotency_key: '',
-  remark: '',
-})
-
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
-const canConfirmPermission = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
-const canCancelPermission = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
-const canPayablePermission = computed<boolean>(
-  () => permissionStore.state.buttonPermissions.factory_statement_payable_draft_create,
-)
 
 const statementId = computed<number>(() => Number(route.query.id || '0'))
-const statementStatus = computed<string>(() => detail.value?.statement_status || '')
 
 const hasPayableSummary = computed<boolean>(
   () => detail.value?.payable_outbox_status !== undefined && detail.value?.purchase_invoice_name !== undefined,
@@ -272,21 +161,6 @@ const effectiveOutboxStatus = computed<string>(() => {
 
 const hasActivePayableOutbox = computed<boolean>(
   () => !hasPayableSummary.value || ACTIVE_PAYABLE_OUTBOX_STATUS.has(effectiveOutboxStatus.value),
-)
-const isDraftOrConfirmed = computed<boolean>(
-  () => statementStatus.value === 'draft' || statementStatus.value === 'confirmed',
-)
-
-const canConfirm = computed<boolean>(() => canConfirmPermission.value && statementStatus.value === 'draft')
-const canCancel = computed<boolean>(
-  () => canCancelPermission.value && isDraftOrConfirmed.value && hasPayableSummary.value && !hasActivePayableOutbox.value,
-)
-const canCreatePayableDraft = computed<boolean>(
-  () =>
-    canPayablePermission.value &&
-    statementStatus.value === 'confirmed' &&
-    hasPayableSummary.value &&
-    !hasActivePayableOutbox.value,
 )
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -399,127 +273,6 @@ const loadDetail = async (): Promise<void> => {
     ElMessage.error((error as Error).message)
   } finally {
     loading.value = false
-  }
-}
-
-const resetConfirmForm = (): void => {
-  confirmForm.value.idempotency_key = ''
-  confirmForm.value.remark = ''
-}
-
-const resetCancelForm = (): void => {
-  cancelForm.value.idempotency_key = ''
-  cancelForm.value.reason = ''
-}
-
-const resetPayableForm = (): void => {
-  payableForm.value.payable_account = ''
-  payableForm.value.cost_center = ''
-  payableForm.value.posting_date = ''
-  payableForm.value.idempotency_key = ''
-  payableForm.value.remark = ''
-}
-
-const openConfirmDialog = (): void => {
-  resetConfirmForm()
-  confirmDialogVisible.value = true
-}
-
-const openCancelDialog = (): void => {
-  if (!canCancel.value) {
-    ElMessage.warning('当前状态不可取消')
-    return
-  }
-  resetCancelForm()
-  cancelDialogVisible.value = true
-}
-
-const openPayableDialog = (): void => {
-  resetPayableForm()
-  payableDialogVisible.value = true
-}
-
-const submitConfirm = async (): Promise<void> => {
-  if (!canConfirm.value) {
-    ElMessage.warning('当前状态不可确认')
-    return
-  }
-  const idempotencyKey = confirmForm.value.idempotency_key.trim()
-  if (!idempotencyKey) {
-    ElMessage.warning('idempotency_key 不能为空')
-    return
-  }
-
-  confirming.value = true
-  try {
-    const result = await confirmFactoryStatement(statementId.value, {
-      idempotency_key: idempotencyKey,
-      remark: confirmForm.value.remark.trim() || undefined,
-    })
-    ElMessage.success(`确认成功：${result.data.statement_no}`)
-    confirmDialogVisible.value = false
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    confirming.value = false
-  }
-}
-
-const submitCancel = async (): Promise<void> => {
-  if (!canCancel.value) {
-    ElMessage.warning('当前状态不可取消')
-    return
-  }
-  const idempotencyKey = cancelForm.value.idempotency_key.trim()
-  if (!idempotencyKey) {
-    ElMessage.warning('idempotency_key 不能为空')
-    return
-  }
-
-  cancelling.value = true
-  try {
-    const result = await cancelFactoryStatement(statementId.value, {
-      idempotency_key: idempotencyKey,
-      reason: cancelForm.value.reason.trim() || undefined,
-    })
-    ElMessage.success(`已取消：${result.data.statement_no}`)
-    cancelDialogVisible.value = false
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    cancelling.value = false
-  }
-}
-
-const submitPayableDraft = async (): Promise<void> => {
-  if (!canCreatePayableDraft.value) {
-    ElMessage.warning('当前状态不可生成应付草稿')
-    return
-  }
-  const payload = {
-    payable_account: payableForm.value.payable_account.trim(),
-    cost_center: payableForm.value.cost_center.trim(),
-    posting_date: payableForm.value.posting_date,
-    idempotency_key: payableForm.value.idempotency_key.trim(),
-    remark: payableForm.value.remark.trim() || undefined,
-  }
-  if (!payload.payable_account || !payload.cost_center || !payload.posting_date || !payload.idempotency_key) {
-    ElMessage.warning('请完整填写 payable_account/cost_center/posting_date/idempotency_key')
-    return
-  }
-
-  creatingPayable.value = true
-  try {
-    const result = await createFactoryStatementPayableDraft(statementId.value, payload)
-    ElMessage.success(`已创建应付草稿 outbox：${result.data.payable_outbox_id}`)
-    payableDialogVisible.value = false
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    creatingPayable.value = false
   }
 }
 

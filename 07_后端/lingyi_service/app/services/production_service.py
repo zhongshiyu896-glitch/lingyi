@@ -54,6 +54,10 @@ from app.services.erpnext_production_adapter import ERPNextProductionAdapter
 from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 from app.services.production_work_order_outbox_service import ProductionWorkOrderOutboxService
 
+PRODUCTION_WRITE_ENTRY_FROZEN_REASON = (
+    "TASK-021C 阶段仅保留候选写入口（本地 outbox / 工序投影）；普通前端仍冻结 create-work-order / sync-job-cards。"
+)
+
 
 class ProductionService:
     """Production plan service."""
@@ -278,6 +282,8 @@ class ProductionService:
             sync_status=(str(work_order_link.sync_status) if work_order_link and work_order_link.sync_status else None),
             last_synced_at=(work_order_link.last_synced_at if work_order_link else None),
             latest_work_order_outbox=summary,
+            write_entry_frozen=True,
+            write_entry_frozen_reason=PRODUCTION_WRITE_ENTRY_FROZEN_REASON,
             material_snapshots=[
                 ProductionPlanMaterialSnapshotItem(
                     bom_item_id=(int(row.bom_item_id) if row.bom_item_id is not None else None),

@@ -65,11 +65,22 @@
           <el-table-column label="实际总成本" width="130">
             <template #default="scope">{{ formatAmount(scope.row.actual_total_cost) }}</template>
           </el-table-column>
+          <el-table-column label="标准总成本" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.standard_total_cost) }}</template>
+          </el-table-column>
           <el-table-column label="利润金额" width="130">
             <template #default="scope">{{ formatAmount(scope.row.profit_amount) }}</template>
           </el-table-column>
           <el-table-column label="利润率" width="110">
             <template #default="scope">{{ formatProfitRate(scope.row.profit_rate) }}</template>
+          </el-table-column>
+          <el-table-column prop="allocation_status" label="分摊状态" width="120" />
+          <el-table-column label="暂估纳入" width="120">
+            <template #default="scope">
+              <el-tag :type="scope.row.include_provisional_subcontract ? 'warning' : 'info'">
+                {{ scope.row.include_provisional_subcontract ? '是' : '否' }}
+              </el-tag>
+            </template>
           </el-table-column>
           <el-table-column label="状态" min-width="150">
             <template #default="scope">

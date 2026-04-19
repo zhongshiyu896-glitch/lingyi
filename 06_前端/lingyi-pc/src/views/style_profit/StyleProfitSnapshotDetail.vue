@@ -34,6 +34,10 @@
             <el-descriptions-item label="利润金额">{{ formatAmount(snapshot.profit_amount) }}</el-descriptions-item>
             <el-descriptions-item label="利润率">{{ formatProfitRate(snapshot.profit_rate) }}</el-descriptions-item>
             <el-descriptions-item label="未解析数量">{{ snapshot.unresolved_count }}</el-descriptions-item>
+            <el-descriptions-item label="分摊状态">{{ snapshot.allocation_status }}</el-descriptions-item>
+            <el-descriptions-item label="纳入暂估外发">
+              {{ snapshot.include_provisional_subcontract ? '是' : '否' }}
+            </el-descriptions-item>
           </el-descriptions>
           <el-collapse v-model="auditPanels" class="audit-collapse">
             <el-collapse-item title="审计信息（仅供审计复核）" name="audit">
@@ -83,11 +87,14 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="source_system" label="来源系统" min-width="110" />
         <el-table-column prop="source_doctype" label="来源单据类型" min-width="140" />
+        <el-table-column prop="source_status" label="来源状态" min-width="120" />
         <el-table-column prop="source_name" label="来源单据号" min-width="170" />
         <el-table-column prop="source_line_no" label="来源行号" min-width="120" />
         <el-table-column prop="style_item_code" label="款式编码" min-width="120" />
         <el-table-column prop="source_item_code" label="来源编码" min-width="120" />
         <el-table-column prop="sales_order" label="销售订单" min-width="140" />
+        <el-table-column prop="warehouse" label="仓库" min-width="120" />
+        <el-table-column prop="posting_date" label="过账日期" min-width="120" />
         <el-table-column label="金额" width="120">
           <template #default="scope">{{ formatAmount(scope.row.amount) }}</template>
         </el-table-column>

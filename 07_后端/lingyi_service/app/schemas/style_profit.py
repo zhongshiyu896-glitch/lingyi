@@ -14,6 +14,20 @@ from pydantic import Field
 
 T = TypeVar("T")
 
+STYLE_PROFIT_CLIENT_SOURCE_FIELDS: frozenset[str] = frozenset(
+    {
+        "sales_invoice_rows",
+        "sales_order_rows",
+        "bom_material_rows",
+        "bom_operation_rows",
+        "stock_ledger_rows",
+        "purchase_receipt_rows",
+        "workshop_ticket_rows",
+        "subcontract_rows",
+        "allowed_material_item_codes",
+    }
+)
+
 
 class ApiResponse(BaseModel, Generic[T]):
     """Unified API envelope."""
@@ -103,6 +117,10 @@ class StyleProfitSnapshotCreateRequest(BaseModel):
     allowed_material_item_codes: list[str] = Field(default_factory=list)
     work_order: str | None = None
 
+    def has_revenue_sources(self) -> bool:
+        """Return True when trusted revenue rows are available."""
+        return bool(self.sales_invoice_rows or self.sales_order_rows)
+
 
 class StyleProfitSnapshotResult(BaseModel):
     """Created or replayed style profit snapshot summary."""
@@ -119,6 +137,8 @@ class StyleProfitSnapshotResult(BaseModel):
     profit_amount: Decimal
     profit_rate: Decimal | None
     snapshot_status: str
+    allocation_status: str
+    include_provisional_subcontract: bool
     unresolved_count: int
     idempotency_key: str
     request_hash: str
@@ -153,9 +173,12 @@ class StyleProfitSnapshotListItem(BaseModel):
     revenue_status: str
     revenue_amount: Decimal
     actual_total_cost: Decimal
+    standard_total_cost: Decimal
     profit_amount: Decimal
     profit_rate: Decimal | None
     snapshot_status: str
+    allocation_status: str
+    include_provisional_subcontract: bool
     formula_version: str
     unresolved_count: int
     created_at: datetime

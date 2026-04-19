@@ -146,6 +146,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
             self.assertEqual(row.actual_revenue_amount, Decimal("200"))
             self.assertEqual(row.estimated_revenue_amount, Decimal("0"))
             self.assertEqual(row.revenue_amount, Decimal("200"))
+            self.assertEqual(result.allocation_status, "not_enabled")
+            self.assertFalse(result.include_provisional_subcontract)
 
     def test_actual_first_falls_back_to_sales_order_without_invoice(self) -> None:
         request = self._request(revenue_mode="actual_first")
@@ -935,6 +937,8 @@ class StyleProfitSnapshotCalculationTest(unittest.TestCase):
             row_false = session.query(LyStyleProfitSnapshot).filter(LyStyleProfitSnapshot.id == false_result.snapshot_id).one()
             self.assertEqual(row_true.actual_subcontract_cost, Decimal("19"))
             self.assertEqual(row_false.actual_subcontract_cost, Decimal("0"))
+            self.assertTrue(true_result.include_provisional_subcontract)
+            self.assertFalse(false_result.include_provisional_subcontract)
 
     def test_subcontract_candidate_without_settlement_or_provisional_is_excluded_not_silent(self) -> None:
         request = self._request(include_provisional=False)

@@ -13,9 +13,12 @@ export interface StyleProfitSnapshotListItem {
   revenue_status: string
   revenue_amount: NumericLike
   actual_total_cost: NumericLike
+  standard_total_cost: NumericLike
   profit_amount: NumericLike
   profit_rate?: NumericLike | null
   snapshot_status: string
+  allocation_status: string
+  include_provisional_subcontract: boolean
   formula_version: string
   unresolved_count: number
   created_at: string
@@ -41,6 +44,8 @@ export interface StyleProfitSnapshotResult {
   profit_amount: NumericLike
   profit_rate?: NumericLike | null
   snapshot_status: string
+  allocation_status: string
+  include_provisional_subcontract: boolean
   unresolved_count: number
   request_hash: string
   idempotent_replay: boolean

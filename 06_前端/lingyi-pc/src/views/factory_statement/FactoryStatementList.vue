@@ -4,14 +4,6 @@
       <template #header>
         <div class="header-row">
           <span>加工厂对账单列表</span>
-          <el-button
-            v-if="canCreate"
-            type="primary"
-            :disabled="!canRead"
-            @click="openCreateDialog"
-          >
-            生成对账单草稿
-          </el-button>
         </div>
       </template>
 
@@ -113,43 +105,6 @@
       </template>
     </el-card>
 
-    <el-dialog v-model="createDialogVisible" title="生成对账单草稿" width="520px" destroy-on-close>
-      <el-form :model="createForm" label-width="120px">
-        <el-form-item label="公司" required>
-          <el-input v-model="createForm.company" clearable placeholder="company" />
-        </el-form-item>
-        <el-form-item label="供应商" required>
-          <el-input v-model="createForm.supplier" clearable placeholder="supplier" />
-        </el-form-item>
-        <el-form-item label="开始日期" required>
-          <el-date-picker
-            v-model="createForm.from_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="from_date"
-            clearable
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="结束日期" required>
-          <el-date-picker
-            v-model="createForm.to_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="to_date"
-            clearable
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="幂等键" required>
-          <el-input v-model="createForm.idempotency_key" clearable placeholder="idempotency_key" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="submitCreate">提交</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -158,7 +113,6 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  createFactoryStatement,
   fetchFactoryStatements,
   type FactoryStatementListItem,
 } from '@/api/factory_statement'
@@ -168,13 +122,10 @@ const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
-const creating = ref<boolean>(false)
-const createDialogVisible = ref<boolean>(false)
 const rows = ref<FactoryStatementListItem[]>([])
 const total = ref<number>(0)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
-const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_create)
 
 const query = reactive({
   supplier: '',
@@ -183,14 +134,6 @@ const query = reactive({
   to_date: '',
   page: 1,
   page_size: 20,
-})
-
-const createForm = reactive({
-  company: '',
-  supplier: '',
-  from_date: '',
-  to_date: '',
-  idempotency_key: '',
 })
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -292,54 +235,6 @@ const onSizeChange = (size: number): void => {
   query.page_size = size
   query.page = 1
   loadRows()
-}
-
-const resetCreateForm = (): void => {
-  createForm.company = ''
-  createForm.supplier = ''
-  createForm.from_date = ''
-  createForm.to_date = ''
-  createForm.idempotency_key = ''
-}
-
-const openCreateDialog = (): void => {
-  resetCreateForm()
-  createDialogVisible.value = true
-}
-
-const submitCreate = async (): Promise<void> => {
-  if (!canCreate.value) {
-    ElMessage.warning('无创建权限')
-    return
-  }
-  if (
-    !createForm.company.trim() ||
-    !createForm.supplier.trim() ||
-    !createForm.from_date ||
-    !createForm.to_date ||
-    !createForm.idempotency_key.trim()
-  ) {
-    ElMessage.warning('请完整填写 company/supplier/from_date/to_date/idempotency_key')
-    return
-  }
-
-  creating.value = true
-  try {
-    const result = await createFactoryStatement({
-      company: createForm.company.trim(),
-      supplier: createForm.supplier.trim(),
-      from_date: createForm.from_date,
-      to_date: createForm.to_date,
-      idempotency_key: createForm.idempotency_key.trim(),
-    })
-    ElMessage.success(`已生成草稿：${result.data.statement_no}`)
-    createDialogVisible.value = false
-    await loadRows()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    creating.value = false
-  }
 }
 
 onMounted(async () => {

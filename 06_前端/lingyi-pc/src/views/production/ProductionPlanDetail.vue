@@ -58,7 +58,7 @@
         type="warning"
         :closable="false"
         show-icon
-        title="当前阶段已冻结 create-work-order / sync-job-cards；仅保留本地生产计划草稿与只读工单工序投影。"
+        :title="writeEntryFrozenMessage"
       />
     </el-card>
 
@@ -135,6 +135,11 @@ const currentWorkOrder = computed<string>(
 )
 const workOrderSyncStatusLabel = computed<string>(() =>
   syncStatusLabel(detail.value?.sync_status || detail.value?.latest_work_order_outbox?.status || null),
+)
+const writeEntryFrozenMessage = computed<string>(
+  () =>
+    detail.value?.write_entry_frozen_reason ||
+    '当前阶段已冻结 create-work-order / sync-job-cards；仅保留本地生产计划草稿与只读工单工序投影。',
 )
 
 const canMaterialCheckAction = computed<boolean>(() => {

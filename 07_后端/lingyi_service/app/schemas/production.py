@@ -143,6 +143,8 @@ class ProductionPlanDetailData(BaseModel):
     sync_status: Optional[str] = None
     last_synced_at: Optional[datetime] = None
     latest_work_order_outbox: Optional[ProductionWorkOrderOutboxSummary] = None
+    write_entry_frozen: bool = True
+    write_entry_frozen_reason: Optional[str] = None
     material_snapshots: List[ProductionPlanMaterialSnapshotItem] = Field(default_factory=list)
     job_cards: List[ProductionJobCardLinkItem] = Field(default_factory=list)
     created_at: datetime

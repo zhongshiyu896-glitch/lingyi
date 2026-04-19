@@ -5,17 +5,7 @@ export interface ApiResponse<T> {
 }
 
 const buildAuthHeaders = (headers?: HeadersInit): Headers => {
-  const result = new Headers(headers)
-  const storedToken =
-    window.localStorage.getItem('LY_AUTH_TOKEN') || window.localStorage.getItem('token') || ''
-  if (storedToken) {
-    const normalized =
-      storedToken.startsWith('Bearer ') || storedToken.startsWith('token ')
-        ? storedToken
-        : `Bearer ${storedToken}`
-    result.set('Authorization', normalized)
-  }
-  return result
+  return new Headers(headers)
 }
 
 const parsePayload = async <T>(response: Response): Promise<ApiResponse<T> | null> => {

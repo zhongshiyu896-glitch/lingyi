@@ -4,7 +4,6 @@
       <template #header>
         <div class="header-row">
           <span>外发单列表</span>
-          <el-button v-if="canCreate" type="primary" @click="openCreateDialog">新建外发单</el-button>
         </div>
       </template>
 
@@ -73,30 +72,6 @@
         </div>
       </template>
     </el-card>
-
-    <el-dialog v-model="createVisible" title="新建外发单" width="560px">
-      <el-form :model="createForm" label-width="110px">
-        <el-form-item label="加工厂">
-          <el-input v-model="createForm.supplier" />
-        </el-form-item>
-        <el-form-item label="款式">
-          <el-input v-model="createForm.item_code" />
-        </el-form-item>
-        <el-form-item label="BOM ID">
-          <el-input-number v-model="createForm.bom_id" :min="1" />
-        </el-form-item>
-        <el-form-item label="计划数量">
-          <el-input-number v-model="createForm.planned_qty" :min="1" :step="1" />
-        </el-form-item>
-        <el-form-item label="工序">
-          <el-input v-model="createForm.process_name" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="createVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="createOrder">创建</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -105,7 +80,6 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  createSubcontractOrder,
   fetchSubcontractOrders,
   type SubcontractOrderListItem,
 } from '@/api/subcontract'
@@ -114,27 +88,16 @@ import { usePermissionStore } from '@/stores/permission'
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
-const creating = ref<boolean>(false)
-const createVisible = ref<boolean>(false)
 const rows = ref<SubcontractOrderListItem[]>([])
 const total = ref<number>(0)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
-const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.create)
 
 const query = reactive({
   supplier: '',
   status: '',
   page: 1,
   page_size: 20,
-})
-
-const createForm = reactive({
-  supplier: '',
-  item_code: '',
-  bom_id: 1,
-  planned_qty: 1,
-  process_name: '',
 })
 
 const statusLabel = (value: string): string => {
@@ -193,29 +156,6 @@ const loadOrders = async (): Promise<void> => {
     ElMessage.error((error as Error).message)
   } finally {
     loading.value = false
-  }
-}
-
-const openCreateDialog = (): void => {
-  createForm.supplier = ''
-  createForm.item_code = ''
-  createForm.bom_id = 1
-  createForm.planned_qty = 1
-  createForm.process_name = ''
-  createVisible.value = true
-}
-
-const createOrder = async (): Promise<void> => {
-  creating.value = true
-  try {
-    await createSubcontractOrder(createForm)
-    ElMessage.success('外发单创建成功')
-    createVisible.value = false
-    await loadOrders()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    creating.value = false
   }
 }
 

@@ -16,6 +16,26 @@ from tests.test_style_profit_api import StyleProfitApiBase
 class StyleProfitApiPermissionTest(StyleProfitApiBase):
     """Validate authn/authz and fail-closed permission behavior."""
 
+    def test_style_profit_actions_matrix_excludes_cost_gate_actions(self) -> None:
+        forbidden_actions = {
+            "cost:diagnostic",
+            "cost:dry_run",
+            "cost:adjustment_draft",
+            "style_profit:diagnostic",
+            "style_profit:dry_run",
+            "style_profit:adjustment_draft",
+        }
+        for role in ("System Manager", "Finance Manager", "Production Manager", "Sales Manager", "Viewer"):
+            with self.subTest(role=role):
+                response = self.client.get(
+                    "/api/auth/actions",
+                    params={"module": "style_profit"},
+                    headers=self._headers(role=role),
+                )
+                self.assertEqual(response.status_code, 200)
+                actions = set(response.json()["data"]["actions"])
+                self.assertTrue(forbidden_actions.isdisjoint(actions))
+
     def test_style_profit_actions_matrix_static(self) -> None:
         expected = {
             "System Manager": {"style_profit:read", "style_profit:snapshot_create"},

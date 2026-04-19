@@ -56,6 +56,7 @@ from app.schemas.style_profit import StyleProfitSnapshotListItem
 from app.schemas.style_profit import StyleProfitSnapshotResult
 from app.schemas.style_profit import StyleProfitSnapshotSelectorRequest
 from app.schemas.style_profit import StyleProfitSourceMapItem
+from app.schemas.style_profit import STYLE_PROFIT_CLIENT_SOURCE_FIELDS
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
 from app.services.permission_service import PermissionService
@@ -64,19 +65,6 @@ from app.services.style_profit_service import STYLE_PROFIT_SOURCE_READ_FAILED
 from app.services.style_profit_service import StyleProfitService
 
 router = APIRouter(prefix="/api/reports/style-profit", tags=["style_profit"])
-
-
-_FORBIDDEN_CLIENT_SOURCE_FIELDS = {
-    "sales_invoice_rows",
-    "sales_order_rows",
-    "bom_material_rows",
-    "bom_operation_rows",
-    "stock_ledger_rows",
-    "purchase_receipt_rows",
-    "workshop_ticket_rows",
-    "subcontract_rows",
-    "allowed_material_item_codes",
-}
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -133,6 +121,8 @@ def _to_snapshot_result(snapshot: LyStyleProfitSnapshot, *, idempotent_replay: b
         profit_amount=Decimal(str(snapshot.profit_amount)),
         profit_rate=Decimal(str(snapshot.profit_rate)) if snapshot.profit_rate is not None else None,
         snapshot_status=str(snapshot.snapshot_status),
+        allocation_status=str(snapshot.allocation_status),
+        include_provisional_subcontract=bool(snapshot.include_provisional_subcontract),
         unresolved_count=int(snapshot.unresolved_count or 0),
         idempotency_key=str(snapshot.idempotency_key),
         request_hash=str(snapshot.request_hash),
@@ -152,9 +142,12 @@ def _to_list_item(row: LyStyleProfitSnapshot) -> StyleProfitSnapshotListItem:
         revenue_status=str(row.revenue_status),
         revenue_amount=Decimal(str(row.revenue_amount)),
         actual_total_cost=Decimal(str(row.actual_total_cost)),
+        standard_total_cost=Decimal(str(row.standard_total_cost)),
         profit_amount=Decimal(str(row.profit_amount)),
         profit_rate=Decimal(str(row.profit_rate)) if row.profit_rate is not None else None,
         snapshot_status=str(row.snapshot_status),
+        allocation_status=str(row.allocation_status),
+        include_provisional_subcontract=bool(row.include_provisional_subcontract),
         formula_version=str(row.formula_version),
         unresolved_count=int(row.unresolved_count or 0),
         created_at=row.created_at if isinstance(row.created_at, datetime) else datetime.utcnow(),
@@ -618,7 +611,7 @@ def create_snapshot(
             enforce_action=False,
         )
 
-        forbidden_fields = sorted(_FORBIDDEN_CLIENT_SOURCE_FIELDS & set(normalized_payload.keys()))
+        forbidden_fields = sorted(STYLE_PROFIT_CLIENT_SOURCE_FIELDS & set(normalized_payload.keys()))
         if forbidden_fields:
             try:
                 _record_failure_safely(
@@ -742,7 +735,7 @@ def create_snapshot(
 
         resource_no = selector.sales_order
         create_request: StyleProfitSnapshotCreateRequest = collector.collect(selector)
-        if not create_request.sales_invoice_rows and not create_request.sales_order_rows:
+        if not create_request.has_revenue_sources():
             try:
                 _record_failure_safely(
                     session=session,

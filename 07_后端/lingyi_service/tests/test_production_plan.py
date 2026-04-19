@@ -387,7 +387,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "AUDIT_WRITE_FAILED")
 
-    def test_material_check_and_create_work_order_is_frozen(self) -> None:
+    def test_material_check_and_create_work_order_creates_local_outbox_candidate(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
             create_response = self.client.post(
                 "/api/production/plans",
@@ -413,9 +413,11 @@ class ProductionPlanTest(unittest.TestCase):
             headers=self._headers(),
             json=self._create_work_order_payload(idempotency_key="idem-create-wo-001"),
         )
-        self.assertEqual(outbox_response.status_code, 403)
-        self.assertEqual(outbox_response.json()["code"], "AUTH_FORBIDDEN")
-        self.assertIn("冻结", outbox_response.json()["message"])
+        self.assertEqual(outbox_response.status_code, 200)
+        self.assertEqual(outbox_response.json()["code"], "0")
+        self.assertGreater(int(outbox_response.json()["data"]["outbox_id"]), 0)
+        self.assertEqual(outbox_response.json()["data"]["sync_status"], "pending")
+        self.assertTrue(str(outbox_response.json()["data"]["event_key"]).startswith("pwo:"))
 
         with self.SessionLocal() as session:
             outbox_rows = (
@@ -423,7 +425,8 @@ class ProductionPlanTest(unittest.TestCase):
                 .filter(LyProductionWorkOrderOutbox.plan_id == plan_id)
                 .all()
             )
-            self.assertEqual(len(outbox_rows), 0)
+            self.assertEqual(len(outbox_rows), 1)
+            self.assertEqual(outbox_rows[0].status, "pending")
 
     def test_plan_detail_returns_work_order_link_fields(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
@@ -459,6 +462,9 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(data["erpnext_status"], "Submitted")
         self.assertEqual(data["sync_status"], "succeeded")
         self.assertIsNotNone(data["last_synced_at"])
+        self.assertTrue(data["write_entry_frozen"])
+        self.assertIn("TASK-021C", data["write_entry_frozen_reason"])
+        self.assertIn("普通前端", data["write_entry_frozen_reason"])
 
     def test_material_check_requires_warehouse(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
@@ -477,7 +483,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
 
-    def test_create_work_order_frozen_returns_unified_envelope(self) -> None:
+    def test_create_work_order_candidate_returns_unified_envelope(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
             create_response = self.client.post(
                 "/api/production/plans",
@@ -496,11 +502,22 @@ class ProductionPlanTest(unittest.TestCase):
                 "idempotency_key": "idem-create-wo-frozen",
             },
         )
-        self.assertEqual(frozen_response.status_code, 403)
+        self.assertEqual(frozen_response.status_code, 200)
         payload = frozen_response.json()
-        self.assertEqual(payload["code"], "AUTH_FORBIDDEN")
-        self.assertIn("冻结", payload["message"])
+        self.assertEqual(payload["code"], "0")
+        self.assertEqual(payload["message"], "success")
         self.assertIn("data", payload)
+        self.assertGreater(int(payload["data"]["outbox_id"]), 0)
+
+        detail_response = self.client.get(
+            f"/api/production/plans/{plan_id}",
+            headers=self._headers(),
+        )
+        self.assertEqual(detail_response.status_code, 200)
+        detail = detail_response.json()["data"]
+        self.assertTrue(detail["write_entry_frozen"])
+        self.assertIn("TASK-021C", detail["write_entry_frozen_reason"])
+        self.assertIn("普通前端", detail["write_entry_frozen_reason"])
 
 
 if __name__ == "__main__":

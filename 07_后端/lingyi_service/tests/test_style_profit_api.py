@@ -194,6 +194,8 @@ class StyleProfitApiBase(unittest.TestCase):
                 qty=Decimal("10"),
                 unit_rate=Decimal("10"),
                 amount=Decimal("100"),
+                warehouse="WH-A",
+                posting_date=date(2026, 4, 15),
                 include_in_profit=True,
                 mapping_status="mapped",
                 raw_ref={"source": "seed"},
@@ -203,6 +205,21 @@ class StyleProfitApiBase(unittest.TestCase):
 
 class StyleProfitApiTest(StyleProfitApiBase):
     """Core API path tests."""
+
+    def test_unexposed_diagnostic_endpoint_returns_404_for_reader(self) -> None:
+        response = self.client.get(
+            "/api/reports/style-profit/diagnostic",
+            headers=self._headers(role="Finance Manager"),
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_unexposed_adjustment_draft_endpoint_returns_404_for_writer(self) -> None:
+        response = self.client.post(
+            "/api/reports/style-profit/adjustment-draft",
+            json={"company": "COMP-A"},
+            headers=self._headers(role="Finance Manager"),
+        )
+        self.assertEqual(response.status_code, 404)
 
     def test_list_requires_company_and_item_code(self) -> None:
         response = self.client.get(
@@ -223,6 +240,9 @@ class StyleProfitApiTest(StyleProfitApiBase):
         self.assertEqual(payload["code"], "0")
         self.assertEqual(payload["data"]["total"], 1)
         self.assertEqual(payload["data"]["items"][0]["snapshot_no"], "SP-API-0001")
+        self.assertEqual(Decimal(str(payload["data"]["items"][0]["standard_total_cost"])), Decimal("30"))
+        self.assertEqual(payload["data"]["items"][0]["allocation_status"], "not_enabled")
+        self.assertFalse(payload["data"]["items"][0]["include_provisional_subcontract"])
 
     def test_detail_success_returns_snapshot_details_and_source_maps(self) -> None:
         with self.SessionLocal() as session:
@@ -236,8 +256,14 @@ class StyleProfitApiTest(StyleProfitApiBase):
         payload = response.json()
         self.assertEqual(payload["code"], "0")
         self.assertEqual(payload["data"]["snapshot"]["snapshot_no"], "SP-API-0001")
+        self.assertEqual(payload["data"]["snapshot"]["allocation_status"], "not_enabled")
+        self.assertFalse(payload["data"]["snapshot"]["include_provisional_subcontract"])
         self.assertEqual(len(payload["data"]["details"]), 1)
         self.assertEqual(len(payload["data"]["source_maps"]), 1)
+        source_map = payload["data"]["source_maps"][0]
+        self.assertEqual(source_map["source_status"], "to bill")
+        self.assertEqual(source_map["warehouse"], "WH-A")
+        self.assertEqual(source_map["posting_date"], "2026-04-15")
 
     def test_create_rejects_client_source_rows(self) -> None:
         payload = {

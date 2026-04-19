@@ -226,6 +226,32 @@ class ProductionPermissionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
 
+    def test_internal_worker_denied_when_principal_check_fails(self) -> None:
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=True,
+                allowed_items=set(),
+                allowed_companies=set(),
+            ),
+        ), patch("app.routers.production.is_internal_worker_principal", return_value=False):
+            response = self.client.post(
+                "/api/production/internal/work-order-sync/run-once",
+                headers=self._headers(role="System Manager"),
+                json={"batch_size": 5, "dry_run": True},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            self.assertIsNotNone(row)
+            self.assertEqual(row.module, "production")
+            self.assertEqual(row.event_type, "AUTH_FORBIDDEN")
+            self.assertEqual(row.resource_type, "production_work_order_worker")
+
 
 if __name__ == "__main__":
     unittest.main()
