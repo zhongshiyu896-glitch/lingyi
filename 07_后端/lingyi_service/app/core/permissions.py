@@ -110,6 +110,9 @@ QUALITY_DIAGNOSTIC = "quality:diagnostic"
 QUALITY_WORKER = "quality:worker"
 
 DASHBOARD_READ = "dashboard:read"
+REPORT_READ = "report:read"
+REPORT_EXPORT = "report:export"
+REPORT_DIAGNOSTIC = "report:diagnostic"
 
 ALL_BOM_ACTIONS = {
     BOM_READ,
@@ -243,6 +246,12 @@ ALL_DASHBOARD_ACTIONS = {
     DASHBOARD_READ,
 }
 
+ALL_REPORT_ACTIONS = {
+    REPORT_READ,
+    REPORT_EXPORT,
+    REPORT_DIAGNOSTIC,
+}
+
 # 动作别名兼容：保留历史 publish/deactivate，同时支持 submit/cancel。
 ACTION_ALIAS_TO_CANONICAL = {
     BOM_SUBMIT: BOM_PUBLISH,
@@ -268,6 +277,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_WAREHOUSE_ACTIONS
         | ALL_QUALITY_ACTIONS
         | ALL_DASHBOARD_ACTIONS
+        | ALL_REPORT_ACTIONS
     ),
     "LY Integration Service": {
         WORKSHOP_READ,
@@ -382,6 +392,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "warehouse": set(ALL_WAREHOUSE_ACTIONS),
     "quality": set(ALL_QUALITY_ACTIONS),
     "dashboard": set(ALL_DASHBOARD_ACTIONS),
+    "report": set(ALL_REPORT_ACTIONS),
 }
 
 

@@ -1,20 +1,25 @@
 # HANDOVER_STATUS
 
-任务：TASK-050I
+任务：TASK-060G
 状态：待执行（已放行）
 当前角色：B Engineer
 下一角色：B Engineer
-更新时间：2026-04-20 21:53 CST+8
+更新时间：2026-04-21 02:22 CST+8
 
 ## 当前交接
-- A 已接收 TASK-050H 审计意见书第402份通过结论。
-- 仓库管理增强本地封版复审已通过。
-- 当前进入 TASK-050I：仓库管理增强本地封版白名单提交。
+- A Technical Architect 已完成 TASK-060F 通过后的主线收口。
+- 当前正式派发 TASK-060G 报表与仪表盘本地封版白名单提交。
+- B Engineer 需按任务单完成验证、证据、显式白名单暂存、本地 commit，并在提交后切换控制面至待审计。
 
-## 执行入口
-- 任务单：/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-050I_仓库管理增强本地封版白名单提交_工程任务单.md
+## 执行边界
+- 允许本地 commit。
+- 禁止 git add . / git add -A。
+- 禁止非白名单文件进入暂存区。
+- 禁止 push / PR / tag / 生产发布。
+- 禁止 commit 后回填 hash 到证据文件并创建第二个 metadata commit。
 
-## 下一步
-- B Engineer 按任务单执行验证、白名单暂存、本地 commit 与证据输出。
-- 完成后回交 C Auditor 审计。
-- 仍禁止 push / PR / tag / 生产发布。
+## 交付物
+- TASK-060G_报表与仪表盘本地封版提交证据.md
+- 本地 commit：chore: seal report dashboard baseline
+- 工程师会话日志完成记录
+- READY_FOR_AUDIT / C Auditor / TASK-060G 控制面写回

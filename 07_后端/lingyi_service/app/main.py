@@ -76,6 +76,10 @@ from app.core.permissions import QUALITY_WORKER
 from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import WAREHOUSE_EXPORT
 from app.core.permissions import WAREHOUSE_DIAGNOSTIC
+from app.core.permissions import DASHBOARD_READ
+from app.core.permissions import REPORT_DIAGNOSTIC
+from app.core.permissions import REPORT_EXPORT
+from app.core.permissions import REPORT_READ
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import normalize_request_id
@@ -101,6 +105,10 @@ from app.routers.cross_module_view import get_db_session as cross_module_view_ro
 from app.routers.cross_module_view import router as cross_module_view_router
 from app.routers.warehouse import get_db_session as warehouse_router_session_dep
 from app.routers.warehouse import router as warehouse_router
+from app.routers.dashboard import get_db_session as dashboard_router_session_dep
+from app.routers.dashboard import router as dashboard_router
+from app.routers.report import get_db_session as report_router_session_dep
+from app.routers.report import router as report_router
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -139,6 +147,8 @@ app.dependency_overrides[sales_inventory_router_session_dep] = get_db_session
 app.dependency_overrides[quality_router_session_dep] = get_db_session
 app.dependency_overrides[cross_module_view_router_session_dep] = get_db_session
 app.dependency_overrides[warehouse_router_session_dep] = get_db_session
+app.dependency_overrides[dashboard_router_session_dep] = get_db_session
+app.dependency_overrides[report_router_session_dep] = get_db_session
 app.include_router(auth_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
@@ -150,6 +160,8 @@ app.include_router(sales_inventory_router)
 app.include_router(quality_router)
 app.include_router(cross_module_view_router)
 app.include_router(warehouse_router)
+app.include_router(dashboard_router)
+app.include_router(report_router)
 
 
 SECURITY_AUDIT_CODES = {
@@ -340,6 +352,16 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         snapshot_id = _extract_style_profit_snapshot_id(path)
         return "style_profit", STYLE_PROFIT_READ, "StyleProfitSnapshot", snapshot_id
 
+    if path in {"/api/reports/diagnostic", "/api/reports/diagnostic/"}:
+        return "report", REPORT_DIAGNOSTIC, "ReportDiagnostic", None
+    if path in {"/api/reports/catalog", "/api/reports/catalog/"}:
+        return "report", REPORT_READ, "ReportCatalog", None
+    if path in {"/api/reports/catalog/export", "/api/reports/catalog/export/"}:
+        return "report", REPORT_EXPORT, "ReportCatalogExport", None
+    if path.startswith("/api/reports/catalog/"):
+        report_key = path.removeprefix("/api/reports/catalog/").split("/", 1)[0]
+        return "report", REPORT_READ, "ReportCatalog", report_key or None
+
     if path.startswith("/api/factory-statements"):
         if path in {"/api/factory-statements", "/api/factory-statements/"}:
             if method == "POST":
@@ -410,6 +432,9 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             return "warehouse", WAREHOUSE_EXPORT, "WarehouseExport", None
         if path.endswith("/diagnostic"):
             return "warehouse", WAREHOUSE_DIAGNOSTIC, "WarehouseDiagnostic", None
+
+    if path.startswith("/api/dashboard"):
+        return "dashboard", DASHBOARD_READ, "DashboardOverview", None
 
     return "unknown", None, None, None
 

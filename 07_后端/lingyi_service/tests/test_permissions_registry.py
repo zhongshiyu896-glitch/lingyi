@@ -22,6 +22,9 @@ from app.core.permissions import PERMISSION_AUDIT_MANAGE
 from app.core.permissions import PERMISSION_AUDIT_READ
 from app.core.permissions import PRODUCTION_READ
 from app.core.permissions import QUALITY_WORKER
+from app.core.permissions import REPORT_DIAGNOSTIC
+from app.core.permissions import REPORT_EXPORT
+from app.core.permissions import REPORT_READ
 from app.core.permissions import SUBCONTRACT_READ
 from app.core.permissions import WAREHOUSE_ALERT_READ
 from app.core.permissions import WAREHOUSE_DIAGNOSTIC
@@ -111,6 +114,9 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
             "quality:diagnostic",
             "quality:worker",
             "dashboard:read",
+            "report:read",
+            "report:export",
+            "report:diagnostic",
             "warehouse:read",
             "warehouse:alert_read",
             "warehouse:export",
@@ -138,6 +144,13 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
             WAREHOUSE_WORKER,
         }
         self.assertTrue(expected.issubset(actions or set()))
+
+    def test_report_actions_registered(self) -> None:
+        actions = MODULE_ACTION_REGISTRY.get("report")
+        self.assertIsNotNone(actions)
+        self.assertIn(REPORT_READ, actions or set())
+        self.assertIn(REPORT_EXPORT, actions or set())
+        self.assertIn(REPORT_DIAGNOSTIC, actions or set())
 
     def test_legacy_actions_not_lost(self) -> None:
         flattened = {action for actions in MODULE_ACTION_REGISTRY.values() for action in actions}

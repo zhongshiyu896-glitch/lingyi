@@ -72,6 +72,12 @@ const routes: RouteRecordRaw[] = [
     meta: { module: 'workshop' },
   },
   {
+    path: '/reports/catalog',
+    name: 'ReportCatalog',
+    component: () => import('@/views/reports/ReportCatalog.vue'),
+    meta: { module: 'report' },
+  },
+  {
     path: '/reports/style-profit',
     name: 'StyleProfitSnapshotList',
     component: () => import('@/views/style_profit/StyleProfitSnapshotList.vue'),
@@ -130,6 +136,12 @@ const routes: RouteRecordRaw[] = [
     name: 'WarehouseDashboard',
     component: () => import('@/views/warehouse/WarehouseDashboard.vue'),
     meta: { module: 'warehouse' },
+  },
+  {
+    path: '/dashboard/overview',
+    name: 'DashboardOverview',
+    component: () => import('@/views/dashboard/DashboardOverview.vue'),
+    meta: { module: 'dashboard' },
   },
   {
     path: '/quality/inspections',
