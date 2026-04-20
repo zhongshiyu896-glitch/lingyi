@@ -73,6 +73,9 @@ from app.core.permissions import QUALITY_EXPORT
 from app.core.permissions import QUALITY_READ
 from app.core.permissions import QUALITY_UPDATE
 from app.core.permissions import QUALITY_WORKER
+from app.core.permissions import WAREHOUSE_WORKER
+from app.core.permissions import WAREHOUSE_EXPORT
+from app.core.permissions import WAREHOUSE_DIAGNOSTIC
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import normalize_request_id
@@ -96,6 +99,8 @@ from app.routers.quality import get_db_session as quality_router_session_dep
 from app.routers.quality import router as quality_router
 from app.routers.cross_module_view import get_db_session as cross_module_view_router_session_dep
 from app.routers.cross_module_view import router as cross_module_view_router
+from app.routers.warehouse import get_db_session as warehouse_router_session_dep
+from app.routers.warehouse import router as warehouse_router
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -133,6 +138,7 @@ app.dependency_overrides[factory_statement_router_session_dep] = get_db_session
 app.dependency_overrides[sales_inventory_router_session_dep] = get_db_session
 app.dependency_overrides[quality_router_session_dep] = get_db_session
 app.dependency_overrides[cross_module_view_router_session_dep] = get_db_session
+app.dependency_overrides[warehouse_router_session_dep] = get_db_session
 app.include_router(auth_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
@@ -143,6 +149,7 @@ app.include_router(factory_statement_router)
 app.include_router(sales_inventory_router)
 app.include_router(quality_router)
 app.include_router(cross_module_view_router)
+app.include_router(warehouse_router)
 
 
 SECURITY_AUDIT_CODES = {
@@ -395,6 +402,14 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         if method == "PATCH":
             return "quality", QUALITY_UPDATE, "QualityInspection", inspection_id
         return "quality", QUALITY_READ, "QualityInspection", inspection_id
+
+    if path.startswith("/api/warehouse"):
+        if path.endswith("/internal/stock-entry-sync/run-once"):
+            return "warehouse", WAREHOUSE_WORKER, "WarehouseStockEntryWorker", None
+        if path.endswith("/export"):
+            return "warehouse", WAREHOUSE_EXPORT, "WarehouseExport", None
+        if path.endswith("/diagnostic"):
+            return "warehouse", WAREHOUSE_DIAGNOSTIC, "WarehouseDiagnostic", None
 
     return "unknown", None, None, None
 

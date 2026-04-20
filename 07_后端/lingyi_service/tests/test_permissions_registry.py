@@ -23,6 +23,14 @@ from app.core.permissions import PERMISSION_AUDIT_READ
 from app.core.permissions import PRODUCTION_READ
 from app.core.permissions import QUALITY_WORKER
 from app.core.permissions import SUBCONTRACT_READ
+from app.core.permissions import WAREHOUSE_ALERT_READ
+from app.core.permissions import WAREHOUSE_DIAGNOSTIC
+from app.core.permissions import WAREHOUSE_EXPORT
+from app.core.permissions import WAREHOUSE_INVENTORY_COUNT
+from app.core.permissions import WAREHOUSE_READ
+from app.core.permissions import WAREHOUSE_STOCK_ENTRY_CANCEL
+from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
+from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import get_static_actions_for_roles
 from app.models.audit import Base as AuditBase
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
@@ -103,10 +111,33 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
             "quality:diagnostic",
             "quality:worker",
             "dashboard:read",
+            "warehouse:read",
+            "warehouse:alert_read",
+            "warehouse:export",
+            "warehouse:diagnostic",
+            "warehouse:stock_entry_draft",
+            "warehouse:stock_entry_cancel",
+            "warehouse:inventory_count",
+            "warehouse:worker",
         }
         flattened = {action for actions in MODULE_ACTION_REGISTRY.values() for action in actions}
         for action in expected:
             self.assertIn(action, flattened)
+
+    def test_warehouse_actions_registered(self) -> None:
+        actions = MODULE_ACTION_REGISTRY.get("warehouse")
+        self.assertIsNotNone(actions)
+        expected = {
+            WAREHOUSE_READ,
+            WAREHOUSE_ALERT_READ,
+            WAREHOUSE_EXPORT,
+            WAREHOUSE_DIAGNOSTIC,
+            WAREHOUSE_STOCK_ENTRY_DRAFT,
+            WAREHOUSE_STOCK_ENTRY_CANCEL,
+            WAREHOUSE_INVENTORY_COUNT,
+            WAREHOUSE_WORKER,
+        }
+        self.assertTrue(expected.issubset(actions or set()))
 
     def test_legacy_actions_not_lost(self) -> None:
         flattened = {action for actions in MODULE_ACTION_REGISTRY.values() for action in actions}

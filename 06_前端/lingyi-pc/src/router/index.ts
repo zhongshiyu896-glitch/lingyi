@@ -126,6 +126,12 @@ const routes: RouteRecordRaw[] = [
     meta: { module: 'sales_inventory' },
   },
   {
+    path: '/warehouse',
+    name: 'WarehouseDashboard',
+    component: () => import('@/views/warehouse/WarehouseDashboard.vue'),
+    meta: { module: 'warehouse' },
+  },
+  {
     path: '/quality/inspections',
     name: 'QualityInspectionList',
     component: () => import('@/views/quality/QualityInspectionList.vue'),

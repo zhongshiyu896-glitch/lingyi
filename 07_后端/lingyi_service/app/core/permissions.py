@@ -90,6 +90,14 @@ SALES_READ = "sales:read"
 SALES_EXPORT = "sales:export"
 INVENTORY_READ = "inventory:read"
 INVENTORY_EXPORT = "inventory:export"
+WAREHOUSE_READ = "warehouse:read"
+WAREHOUSE_ALERT_READ = "warehouse:alert_read"
+WAREHOUSE_EXPORT = "warehouse:export"
+WAREHOUSE_DIAGNOSTIC = "warehouse:diagnostic"
+WAREHOUSE_STOCK_ENTRY_DRAFT = "warehouse:stock_entry_draft"
+WAREHOUSE_STOCK_ENTRY_CANCEL = "warehouse:stock_entry_cancel"
+WAREHOUSE_INVENTORY_COUNT = "warehouse:inventory_count"
+WAREHOUSE_WORKER = "warehouse:worker"
 
 QUALITY_READ = "quality:read"
 QUALITY_CREATE = "quality:create"
@@ -208,6 +216,17 @@ ALL_INVENTORY_ACTIONS = {
     INVENTORY_EXPORT,
 }
 
+ALL_WAREHOUSE_ACTIONS = {
+    WAREHOUSE_READ,
+    WAREHOUSE_ALERT_READ,
+    WAREHOUSE_EXPORT,
+    WAREHOUSE_DIAGNOSTIC,
+    WAREHOUSE_STOCK_ENTRY_DRAFT,
+    WAREHOUSE_STOCK_ENTRY_CANCEL,
+    WAREHOUSE_INVENTORY_COUNT,
+    WAREHOUSE_WORKER,
+}
+
 ALL_QUALITY_ACTIONS = {
     QUALITY_READ,
     QUALITY_CREATE,
@@ -246,6 +265,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_SALES_INVENTORY_ACTIONS
         | ALL_SALES_ACTIONS
         | ALL_INVENTORY_ACTIONS
+        | ALL_WAREHOUSE_ACTIONS
         | ALL_QUALITY_ACTIONS
         | ALL_DASHBOARD_ACTIONS
     ),
@@ -359,6 +379,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "sales_inventory": set(ALL_SALES_INVENTORY_ACTIONS),
     "sales": set(ALL_SALES_ACTIONS),
     "inventory": set(ALL_INVENTORY_ACTIONS),
+    "warehouse": set(ALL_WAREHOUSE_ACTIONS),
     "quality": set(ALL_QUALITY_ACTIONS),
     "dashboard": set(ALL_DASHBOARD_ACTIONS),
 }
