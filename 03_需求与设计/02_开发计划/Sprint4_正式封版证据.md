@@ -106,7 +106,7 @@ rg -n 'outbox|worker|run-once|run_once' \
 
 ## 8. 本地 commit hash
 
-> 待提交后回填（`git rev-parse --short HEAD`）。
+> 3ceb692
 
 ## 9. 残余风险
 
