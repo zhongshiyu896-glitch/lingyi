@@ -8,11 +8,8 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from decimal import ROUND_HALF_UP
-import json
 import os
 from typing import Any
-from urllib import parse
-from urllib import request as urllib_request
 
 from fastapi import Request
 from sqlalchemy.orm import Session
@@ -26,7 +23,6 @@ from app.core.error_codes import QUALITY_INVALID_QTY
 from app.core.error_codes import QUALITY_NOT_FOUND
 from app.core.error_codes import QUALITY_QTY_MISMATCH
 from app.core.error_codes import QUALITY_SOURCE_UNAVAILABLE
-from app.core.error_codes import message_of
 from app.core.exceptions import BusinessException
 from app.models.quality import LyQualityDefect
 from app.models.quality import LyQualityInspection
@@ -40,6 +36,7 @@ from app.schemas.quality import QualityExportRow
 from app.schemas.quality import QualityDiagnosticData
 from app.schemas.quality import QualityInspectionActionData
 from app.schemas.quality import QualityInspectionCreateRequest
+from app.schemas.quality import QualityInspectionDefectCreateRequest
 from app.schemas.quality import QualityInspectionDetailData
 from app.schemas.quality import QualityInspectionItemData
 from app.schemas.quality import QualityInspectionItemInput
@@ -47,13 +44,22 @@ from app.schemas.quality import QualityInspectionListData
 from app.schemas.quality import QualityInspectionListItem
 from app.schemas.quality import QualityInspectionUpdateRequest
 from app.schemas.quality import QualityOperationLogData
+from app.schemas.quality import QualityStatisticsAggregateData
 from app.schemas.quality import QualityStatisticsData
+from app.schemas.quality import QualityStatisticsTrendData
+from app.schemas.quality import QualityStatisticsTrendPoint
+from app.schemas.quality_outbox import QualityOutboxStatusData
 from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
-from app.services.erpnext_fail_closed_adapter import map_erpnext_exception
-from app.services.erpnext_fail_closed_adapter import normalize_erpnext_response
-from app.services.erpnext_fail_closed_adapter import require_submitted_doc
+from app.services.erpnext_quality_adapter import ERPNextQualityAdapter
+from app.services.quality_outbox_service import QualityOutboxService
 
 SOURCE_TYPES = {"incoming_material", "subcontract_receipt", "finished_goods", "manual"}
+SOURCE_TYPE_LABELS = {
+    "incoming_material": "来料检验",
+    "subcontract_receipt": "外发收货检验",
+    "finished_goods": "成品检验",
+    "manual": "手工检验",
+}
 RESULT_VALUES = {"pending", "pass", "fail", "partial"}
 FINAL_STATUSES = {"confirmed", "cancelled"}
 _RATE_QUANT = Decimal("0.000001")
@@ -73,6 +79,7 @@ class QualitySourceValidator:
     def __init__(self, request_obj: Request | None = None):
         self.request_obj = request_obj
         self.base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
+        self.adapter = ERPNextQualityAdapter(request_obj=request_obj, base_url=self.base_url)
 
     def validate_for_payload(
         self,
@@ -108,62 +115,11 @@ class QualitySourceValidator:
         return QualitySourceValidationSnapshot(master_data=master_data, source=source_snapshot)
 
     def _require_resource(self, doctype: str, name: str, *, require_submitted: bool) -> dict[str, Any]:
-        if not self.base_url:
-            raise BusinessException(code=QUALITY_SOURCE_UNAVAILABLE, message=message_of(QUALITY_SOURCE_UNAVAILABLE))
-        headers = self._build_headers()
-        if not headers:
-            raise BusinessException(code=QUALITY_SOURCE_UNAVAILABLE, message="ERPNext 质量来源校验缺少鉴权上下文")
-        fields = parse.quote(
-            json.dumps(
-                [
-                    "name",
-                    "company",
-                    "docstatus",
-                    "disabled",
-                    "status",
-                    "supplier",
-                    "item_code",
-                    "items",
-                ],
-                separators=(",", ":"),
-            ),
-            safe="",
+        return self.adapter.require_resource(
+            doctype=doctype,
+            name=name,
+            require_submitted=require_submitted,
         )
-        path = f"/api/resource/{parse.quote(doctype)}/{parse.quote(name, safe='')}?fields={fields}"
-        req = urllib_request.Request(url=f"{self.base_url}{path}", method="GET", headers=headers)
-        try:
-            with urllib_request.urlopen(req, timeout=5) as response:
-                body = response.read().decode("utf-8")
-            payload = json.loads(body)
-            normalized = normalize_erpnext_response(payload, doctype=doctype, resource_name=name)
-            if require_submitted:
-                normalized = require_submitted_doc(normalized)
-            if not isinstance(normalized.data, dict):
-                raise TypeError("normalized data is not dict")
-            data = dict(normalized.data)
-            if _truthy_disabled(data.get("disabled")):
-                raise BusinessException(code=QUALITY_INVALID_SOURCE, message=f"{doctype} 已禁用")
-            return data
-        except BusinessException:
-            raise
-        except ERPNextAdapterException as exc:
-            raise BusinessException(code=_quality_code_for_erpnext(exc), message=exc.safe_message) from exc
-        except Exception as exc:
-            mapped = map_erpnext_exception(exc, doctype=doctype, resource_name=name)
-            raise BusinessException(code=_quality_code_for_erpnext(mapped), message=mapped.safe_message) from exc
-
-    def _build_headers(self) -> dict[str, str] | None:
-        headers: dict[str, str] = {"Accept": "application/json"}
-        if self.request_obj is not None:
-            authorization = self.request_obj.headers.get("Authorization")
-            cookie = self.request_obj.headers.get("Cookie")
-            if authorization:
-                headers["Authorization"] = authorization
-            if cookie:
-                headers["Cookie"] = cookie
-        if "Authorization" not in headers and "Cookie" not in headers:
-            return None
-        return headers
 
 
 class QualityService:
@@ -172,6 +128,7 @@ class QualityService:
     def __init__(self, session: Session, source_validator: QualitySourceValidator | None = None):
         self.session = session
         self.source_validator = source_validator or QualitySourceValidator()
+        self.outbox_service = QualityOutboxService(session=session)
 
     def create_inspection(
         self,
@@ -282,6 +239,13 @@ class QualityService:
             request_id=request_id,
             remark=remark,
         )
+        self.outbox_service.create_outbox(
+            inspection_id=int(inspection.id),
+            company=str(inspection.company),
+            payload_json=self._build_outbox_payload(inspection),
+            created_by=operator,
+            max_attempts=3,
+        )
         self.session.flush()
         return QualityInspectionActionData(
             id=int(inspection.id),
@@ -289,6 +253,31 @@ class QualityService:
             status="confirmed",
             operator=operator,
             operated_at=now,
+        )
+
+    def get_outbox_status(self, inspection_id: int) -> QualityOutboxStatusData:
+        inspection = self._get_or_raise(inspection_id)
+        row = self.outbox_service.find_latest_by_inspection(inspection_id=int(inspection.id))
+        if row is None:
+            return QualityOutboxStatusData(
+                inspection_id=int(inspection.id),
+                status="not_queued",
+                attempts=0,
+                max_attempts=3,
+                next_retry_at=None,
+                last_error_code=None,
+                last_error_message=None,
+                stock_entry_name=None,
+            )
+        return QualityOutboxStatusData(
+            inspection_id=int(inspection.id),
+            status=str(row.status),
+            attempts=int(row.attempts or 0),
+            max_attempts=int(row.max_attempts or 3),
+            next_retry_at=row.next_retry_at,
+            last_error_code=_text(row.last_error_code),
+            last_error_message=_text(row.last_error_message),
+            stock_entry_name=_text(row.stock_entry_name),
         )
 
     def cancel_inspection(
@@ -306,6 +295,7 @@ class QualityService:
         inspection.status = "cancelled"
         inspection.cancelled_by = operator
         inspection.cancelled_at = now
+        inspection.cancel_reason = _text(reason)
         inspection.updated_by = operator
         self._add_log(
             inspection=inspection,
@@ -324,6 +314,72 @@ class QualityService:
             operator=operator,
             operated_at=now,
         )
+
+    def add_defects(
+        self,
+        *,
+        inspection_id: int,
+        payload: QualityInspectionDefectCreateRequest,
+        operator: str,
+        request_id: str | None,
+    ) -> QualityInspectionDetailData:
+        inspection = self._get_or_raise(inspection_id)
+        if inspection.status != "draft":
+            raise BusinessException(code=QUALITY_INVALID_STATUS)
+
+        line_to_item_id: dict[int, int] = {
+            int(row.line_no): int(row.id)
+            for row in (
+                self.session.query(LyQualityInspectionItem)
+                .filter(LyQualityInspectionItem.inspection_id == inspection.id)
+                .order_by(LyQualityInspectionItem.line_no.asc())
+                .all()
+            )
+        }
+
+        existing_defect_qty = (
+            self.session.query(LyQualityDefect)
+            .filter(LyQualityDefect.inspection_id == inspection.id)
+            .all()
+        )
+        existing_total = sum((_decimal(row.defect_qty) for row in existing_defect_qty), Decimal("0"))
+        incoming_total = sum((_decimal(defect.defect_qty) for defect in payload.defects), Decimal("0"))
+        next_total = existing_total + incoming_total
+        if next_total > _decimal(inspection.inspected_qty):
+            raise BusinessException(code=QUALITY_INVALID_QTY, message="缺陷数量不能超过检验数量")
+
+        for defect in payload.defects:
+            item_id = None
+            if defect.item_line_no is not None:
+                item_id = line_to_item_id.get(int(defect.item_line_no))
+                if item_id is None:
+                    raise BusinessException(code=QUALITY_INVALID_SOURCE, message="缺陷记录引用的明细行不存在")
+            self.session.add(
+                LyQualityDefect(
+                    inspection_id=inspection.id,
+                    item_id=item_id,
+                    defect_code=_clean_required(defect.defect_code, QUALITY_INVALID_SOURCE),
+                    defect_name=_clean_required(defect.defect_name, QUALITY_INVALID_SOURCE),
+                    defect_qty=_decimal(defect.defect_qty),
+                    severity=_normalize_severity(defect.severity),
+                    remark=_text(defect.remark),
+                )
+            )
+
+        inspection.defect_qty = next_total
+        inspection.defect_rate = _rate(next_total, _decimal(inspection.inspected_qty))
+        inspection.updated_by = operator
+        self._add_log(
+            inspection=inspection,
+            action="update",
+            from_status=str(inspection.status),
+            to_status=str(inspection.status),
+            operator=operator,
+            request_id=request_id,
+            remark="add_defect",
+        )
+        self.session.flush()
+        return self.get_detail_data(inspection.id)
 
     def list_inspections(
         self,
@@ -417,8 +473,43 @@ class QualityService:
         by_result: dict[str, int] = {}
         for row in rows:
             by_result[str(row.result)] = by_result.get(str(row.result), 0) + 1
+        by_supplier = self._build_group_aggregates(
+            rows=rows,
+            key_getter=lambda row: _group_key(row.supplier, "unknown_supplier"),
+            label_getter=lambda row, key: _text(row.supplier) or "未填写供应商",
+        )
+        by_item_code = self._build_group_aggregates(
+            rows=rows,
+            key_getter=lambda row: _group_key(row.item_code, "unknown_item"),
+            label_getter=lambda row, key: _text(row.item_code) or "未填写物料",
+        )
+        by_warehouse = self._build_group_aggregates(
+            rows=rows,
+            key_getter=lambda row: _group_key(row.warehouse, "unknown_warehouse"),
+            label_getter=lambda row, key: _text(row.warehouse) or "未填写仓库",
+        )
+        by_source_type = self._build_group_aggregates(
+            rows=rows,
+            key_getter=lambda row: _group_key(row.source_type, "unknown_source_type"),
+            label_getter=lambda row, key: SOURCE_TYPE_LABELS.get(_text(row.source_type), _text(row.source_type) or "未知来源"),
+        )
+        top_defective_suppliers = sorted(
+            by_supplier,
+            key=lambda row: (row.overall_defect_rate, row.total_rejected_qty, row.total_count, row.key),
+            reverse=True,
+        )[:5]
+        top_defective_items = sorted(
+            by_item_code,
+            key=lambda row: (row.overall_defect_rate, row.total_rejected_qty, row.total_count, row.key),
+            reverse=True,
+        )[:5]
         return QualityStatisticsData(
             total_count=len(rows),
+            total_inspected_qty=inspected,
+            total_accepted_qty=accepted,
+            total_rejected_qty=rejected,
+            total_defect_qty=defects,
+            overall_defect_rate=_rate(defects, inspected),
             inspected_qty=inspected,
             accepted_qty=accepted,
             rejected_qty=rejected,
@@ -426,12 +517,142 @@ class QualityService:
             defect_rate=_rate(defects, inspected),
             rejected_rate=_rate(rejected, inspected),
             by_result=by_result,
+            by_supplier=by_supplier,
+            by_item_code=by_item_code,
+            by_warehouse=by_warehouse,
+            by_source_type=by_source_type,
+            top_defective_suppliers=top_defective_suppliers,
+            top_defective_items=top_defective_items,
         )
+
+    def statistics_trend(
+        self,
+        *,
+        period: str,
+        company: str | None = None,
+        item_code: str | None = None,
+        supplier: str | None = None,
+        warehouse: str | None = None,
+        source_type: str | None = None,
+        source_id: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+    ) -> QualityStatisticsTrendData:
+        rows = self._filtered_query(
+            company=company,
+            item_code=item_code,
+            supplier=supplier,
+            warehouse=warehouse,
+            source_type=source_type,
+            source_id=source_id,
+            status=None,
+            from_date=from_date,
+            to_date=to_date,
+        ).filter(LyQualityInspection.status != "cancelled").all()
+        trend: dict[str, dict[str, Decimal | int]] = {}
+        for row in rows:
+            date_key = _trend_period_key(row.inspection_date, period)
+            bucket = trend.setdefault(
+                date_key,
+                {
+                    "total_count": 0,
+                    "total_inspected_qty": Decimal("0"),
+                    "total_accepted_qty": Decimal("0"),
+                    "total_rejected_qty": Decimal("0"),
+                    "total_defect_qty": Decimal("0"),
+                },
+            )
+            bucket["total_count"] = int(bucket["total_count"]) + 1
+            bucket["total_inspected_qty"] = _decimal(bucket["total_inspected_qty"]) + _decimal(row.inspected_qty)
+            bucket["total_accepted_qty"] = _decimal(bucket["total_accepted_qty"]) + _decimal(row.accepted_qty)
+            bucket["total_rejected_qty"] = _decimal(bucket["total_rejected_qty"]) + _decimal(row.rejected_qty)
+            bucket["total_defect_qty"] = _decimal(bucket["total_defect_qty"]) + _decimal(row.defect_qty)
+
+        points = [
+            QualityStatisticsTrendPoint(
+                period_key=key,
+                inspection_count=int(value["total_count"]),
+                defect_rate=_rate(
+                    _decimal(value["total_defect_qty"]),
+                    _decimal(value["total_inspected_qty"]),
+                ),
+                rejected_rate=_rate(
+                    _decimal(value["total_rejected_qty"]),
+                    _decimal(value["total_inspected_qty"]),
+                ),
+                period=key,
+                total_count=int(value["total_count"]),
+                total_inspected_qty=_decimal(value["total_inspected_qty"]),
+                total_accepted_qty=_decimal(value["total_accepted_qty"]),
+                total_rejected_qty=_decimal(value["total_rejected_qty"]),
+                total_defect_qty=_decimal(value["total_defect_qty"]),
+                overall_defect_rate=_rate(
+                    _decimal(value["total_defect_qty"]),
+                    _decimal(value["total_inspected_qty"]),
+                ),
+            )
+            for key, value in sorted(trend.items(), key=lambda item: item[0])
+        ]
+        return QualityStatisticsTrendData(period=period, points=points)
 
     def export_rows(self, **filters: Any) -> QualityExportData:
         data = self.list_inspections(page=1, page_size=1000, **filters)
         rows = [QualityExportRow(**item.model_dump()) for item in data.items]
         return QualityExportData(rows=rows, total=len(rows))
+
+    def export_details(
+        self,
+        *,
+        company: str | None = None,
+        item_code: str | None = None,
+        supplier: str | None = None,
+        warehouse: str | None = None,
+        source_type: str | None = None,
+        source_id: str | None = None,
+        status: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        inspection_id: int | None = None,
+    ) -> list[QualityInspectionDetailData]:
+        if inspection_id is not None:
+            detail = self.get_detail_data(inspection_id)
+            if detail.status == "cancelled":
+                return []
+            if not self._detail_matches_filters(
+                detail=detail,
+                company=company,
+                item_code=item_code,
+                supplier=supplier,
+                warehouse=warehouse,
+                source_type=source_type,
+                source_id=source_id,
+                status=status,
+                from_date=from_date,
+                to_date=to_date,
+            ):
+                return []
+            return [detail]
+
+        if _text(status) == "cancelled":
+            return []
+
+        rows = (
+            self._filtered_query(
+                company=company,
+                item_code=item_code,
+                supplier=supplier,
+                warehouse=warehouse,
+                source_type=source_type,
+                source_id=source_id,
+                status=status,
+                from_date=from_date,
+                to_date=to_date,
+            )
+            .filter(LyQualityInspection.status != "cancelled")
+            .order_by(LyQualityInspection.inspection_date.desc(), LyQualityInspection.id.desc())
+            .all()
+        )
+        return [self.get_detail_data(int(row.id)) for row in rows]
 
     def diagnostic(self, **filters: Any) -> QualityDiagnosticData:
         rows = self._filtered_query(status=None, **filters).all()
@@ -466,6 +687,93 @@ class QualityService:
         if filters.get("to_date"):
             query = query.filter(LyQualityInspection.inspection_date <= filters["to_date"])
         return query
+
+    @staticmethod
+    def _detail_matches_filters(
+        *,
+        detail: QualityInspectionDetailData,
+        company: str | None = None,
+        item_code: str | None = None,
+        supplier: str | None = None,
+        warehouse: str | None = None,
+        source_type: str | None = None,
+        source_id: str | None = None,
+        status: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+    ) -> bool:
+        if company and detail.company != company:
+            return False
+        if item_code and detail.item_code != item_code:
+            return False
+        if supplier and (_text(detail.supplier) or "") != supplier:
+            return False
+        if warehouse and (_text(detail.warehouse) or "") != warehouse:
+            return False
+        if source_type and detail.source_type != source_type:
+            return False
+        if source_id and (_text(detail.source_id) or "") != source_id:
+            return False
+        if status and detail.status != status:
+            return False
+        if from_date and detail.inspection_date < from_date:
+            return False
+        if to_date and detail.inspection_date > to_date:
+            return False
+        return True
+
+    def _build_group_aggregates(
+        self,
+        *,
+        rows: list[LyQualityInspection],
+        key_getter,
+        label_getter,
+    ) -> list[QualityStatisticsAggregateData]:
+        grouped: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            key = str(key_getter(row))
+            group = grouped.setdefault(
+                key,
+                {
+                    "key": key,
+                    "label": str(label_getter(row, key)),
+                    "total_count": 0,
+                    "total_inspected_qty": Decimal("0"),
+                    "total_accepted_qty": Decimal("0"),
+                    "total_rejected_qty": Decimal("0"),
+                    "total_defect_qty": Decimal("0"),
+                },
+            )
+            group["total_count"] = int(group["total_count"]) + 1
+            group["total_inspected_qty"] = _decimal(group["total_inspected_qty"]) + _decimal(row.inspected_qty)
+            group["total_accepted_qty"] = _decimal(group["total_accepted_qty"]) + _decimal(row.accepted_qty)
+            group["total_rejected_qty"] = _decimal(group["total_rejected_qty"]) + _decimal(row.rejected_qty)
+            group["total_defect_qty"] = _decimal(group["total_defect_qty"]) + _decimal(row.defect_qty)
+        return [
+            QualityStatisticsAggregateData(
+                key=str(value["key"]),
+                label=str(value["label"]),
+                count=int(value["total_count"]),
+                defect_rate=_rate(
+                    _decimal(value["total_defect_qty"]),
+                    _decimal(value["total_inspected_qty"]),
+                ),
+                total_count=int(value["total_count"]),
+                total_inspected_qty=_decimal(value["total_inspected_qty"]),
+                total_accepted_qty=_decimal(value["total_accepted_qty"]),
+                total_rejected_qty=_decimal(value["total_rejected_qty"]),
+                total_defect_qty=_decimal(value["total_defect_qty"]),
+                overall_defect_rate=_rate(
+                    _decimal(value["total_defect_qty"]),
+                    _decimal(value["total_inspected_qty"]),
+                ),
+            )
+            for value in sorted(
+                grouped.values(),
+                key=lambda item: (int(item["total_count"]), str(item["key"])),
+                reverse=True,
+            )
+        ]
 
     def _get_or_raise(self, inspection_id: int) -> LyQualityInspection:
         row = self.session.query(LyQualityInspection).filter(LyQualityInspection.id == inspection_id).one_or_none()
@@ -617,6 +925,22 @@ class QualityService:
             )
             for row in rows
         ]
+
+    @staticmethod
+    def _build_outbox_payload(inspection: LyQualityInspection) -> dict[str, Any]:
+        return {
+            "inspection_id": int(inspection.id),
+            "inspection_no": str(inspection.inspection_no),
+            "company": str(inspection.company),
+            "source_type": str(inspection.source_type),
+            "source_id": _text(inspection.source_id),
+            "item_code": str(inspection.item_code),
+            "supplier": _text(inspection.supplier),
+            "warehouse": _text(inspection.warehouse),
+            "accepted_qty": str(_decimal(inspection.accepted_qty)),
+            "rejected_qty": str(_decimal(inspection.rejected_qty)),
+            "confirmed_at": inspection.confirmed_at.isoformat() if inspection.confirmed_at else None,
+        }
 
 
 def _normalize_create_payload(payload: QualityInspectionCreateRequest) -> dict[str, Any]:
@@ -814,12 +1138,21 @@ def _text(value: Any) -> str | None:
     return text or None
 
 
+def _group_key(value: Any, fallback: str) -> str:
+    return _text(value) or fallback
+
+
+def _trend_period_key(inspection_date: date, period: str) -> str:
+    if period == "monthly":
+        return inspection_date.strftime("%Y-%m")
+    if period == "weekly":
+        iso = inspection_date.isocalendar()
+        return f"{iso.year}-W{iso.week:02d}"
+    raise BusinessException(code=QUALITY_INVALID_SOURCE, message="趋势周期仅支持 monthly 或 weekly")
+
+
 def _now() -> datetime:
     return datetime.now(UTC)
-
-
-def _truthy_disabled(value: Any) -> bool:
-    return str(value).strip().lower() in {"1", "true", "yes"}
 
 
 def _validate_source_ownership(
@@ -912,6 +1245,7 @@ def _to_detail(
         confirmed_at=row.confirmed_at,
         cancelled_by=_text(row.cancelled_by),
         cancelled_at=row.cancelled_at,
+        cancel_reason=_text(row.cancel_reason),
         source_snapshot=row.source_snapshot if isinstance(row.source_snapshot, dict) else None,
         items=[
             QualityInspectionItemData(

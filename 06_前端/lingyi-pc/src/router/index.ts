@@ -137,6 +137,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/quality/QualityInspectionDetail.vue'),
     meta: { module: 'quality' },
   },
+  {
+    path: '/cross-module/view',
+    name: 'CrossModuleView',
+    component: () => import('@/views/cross_module/CrossModuleView.vue'),
+    meta: { module: 'sales_inventory' },
+  },
 ]
 
 const router = createRouter({

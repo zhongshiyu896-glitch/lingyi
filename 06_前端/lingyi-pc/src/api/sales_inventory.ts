@@ -114,6 +114,46 @@ export interface CustomerItem {
   disabled?: boolean | null
 }
 
+export interface SalesInventoryAggregationQuery {
+  company?: string
+  item_code?: string
+  warehouse?: string
+}
+
+export interface SalesInventoryAggregationItem {
+  item_code: string
+  warehouse: string
+  actual_qty: NumericLike
+  ordered_qty: NumericLike
+  indented_qty: NumericLike
+  safety_stock: NumericLike
+  reorder_level: NumericLike
+  is_below_safety: boolean
+  is_below_reorder: boolean
+}
+
+export interface SalesInventoryAggregationData {
+  company?: string | null
+  item_code?: string | null
+  warehouse?: string | null
+  items: SalesInventoryAggregationItem[]
+}
+
+export interface SalesOrderFulfillmentItem {
+  company?: string | null
+  sales_order: string
+  item_code: string
+  warehouse?: string | null
+  ordered_qty: NumericLike
+  actual_qty: NumericLike
+  fulfillment_rate: NumericLike
+}
+
+export interface SalesOrderFulfillmentData {
+  company?: string | null
+  items: SalesOrderFulfillmentItem[]
+}
+
 const toQuery = (params: Record<string, unknown>): string => {
   const query = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
@@ -187,4 +227,22 @@ export const fetchSalesInventoryCustomers = async (
 ): Promise<ApiResponse<SalesInventoryListData<CustomerItem>>> => {
   const queryString = toQuery({ page: query.page ?? 1, page_size: query.page_size ?? 20 })
   return request<SalesInventoryListData<CustomerItem>>(`/api/sales-inventory/customers?${queryString}`)
+}
+
+export const fetchSalesInventoryAggregation = async (
+  query: SalesInventoryAggregationQuery,
+): Promise<ApiResponse<SalesInventoryAggregationData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+  })
+  return request<SalesInventoryAggregationData>(`/api/sales-inventory/aggregation?${queryString}`)
+}
+
+export const fetchSalesInventorySalesOrderFulfillment = async (
+  query: Pick<SalesInventoryAggregationQuery, 'company'>,
+): Promise<ApiResponse<SalesOrderFulfillmentData>> => {
+  const queryString = toQuery({ company: query.company })
+  return request<SalesOrderFulfillmentData>(`/api/sales-inventory/sales-order-fulfillment?${queryString}`)
 }

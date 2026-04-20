@@ -63,6 +63,9 @@ class ERPNextSalesInventoryAdapter:
         company: str | None = None,
         customer: str | None = None,
         item_code: str | None = None,
+        item_name: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[dict[str, Any]], int]:
@@ -74,6 +77,12 @@ class ERPNextSalesInventoryAdapter:
             filters.append(["customer", "=", customer])
         if item_code:
             filters.append(["items", "item_code", "=", item_code])
+        if item_name:
+            filters.append(["items", "item_name", "like", f"%{item_name}%"])
+        if from_date is not None:
+            filters.append(["transaction_date", ">=", from_date.isoformat()])
+        if to_date is not None:
+            filters.append(["transaction_date", "<=", to_date.isoformat()])
         rows = self._list_resource(
             doctype="Sales Order",
             fields=self.SALES_ORDER_FIELDS,
@@ -107,6 +116,8 @@ class ERPNextSalesInventoryAdapter:
         item_code: str,
         company: str | None = None,
         warehouse: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[dict[str, Any]], int, int]:
@@ -116,6 +127,10 @@ class ERPNextSalesInventoryAdapter:
             filters.append(["company", "=", company])
         if warehouse:
             filters.append(["warehouse", "=", warehouse])
+        if from_date is not None:
+            filters.append(["posting_date", ">=", from_date.isoformat()])
+        if to_date is not None:
+            filters.append(["posting_date", "<=", to_date.isoformat()])
         rows = self._list_resource(
             doctype="Stock Ledger Entry",
             fields=self.SLE_FIELDS,

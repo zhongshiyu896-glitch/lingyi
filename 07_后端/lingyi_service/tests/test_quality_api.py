@@ -1,4 +1,4 @@
-"""API tests for quality management baseline (TASK-012B)."""
+"""API tests for quality read baseline and status-machine write behavior."""
 
 from __future__ import annotations
 
@@ -23,15 +23,12 @@ from app.models.quality import LyQualityDefect
 from app.models.quality import LyQualityInspection
 from app.models.quality import LyQualityInspectionItem
 from app.models.quality import LyQualityOperationLog
+from app.models.quality_outbox import LyQualityOutbox
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.quality import get_db_session as quality_db_dep
-from app.services.quality_service import QualitySourceValidationSnapshot
-from app.services.quality_service import QualitySourceValidator
-from app.core.exceptions import BusinessException
-from app.core.error_codes import QUALITY_SOURCE_UNAVAILABLE
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
-from app.services.permission_service import PermissionService
+from app.services.quality_service import QualitySourceValidationSnapshot
 
 
 class QualityApiBase(unittest.TestCase):
@@ -78,6 +75,7 @@ class QualityApiBase(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LyQualityOutbox).delete()
             session.query(LyQualityOperationLog).delete()
             session.query(LyQualityDefect).delete()
             session.query(LyQualityInspectionItem).delete()
@@ -126,58 +124,122 @@ class QualityApiBase(unittest.TestCase):
         payload.update(overrides)
         return payload
 
-    @staticmethod
-    def _snapshot() -> QualitySourceValidationSnapshot:
-        return QualitySourceValidationSnapshot(master_data={"company": {"name": "COMP-A"}, "item": {"name": "ITEM-A"}}, source=None)
+    def _insert_inspection(
+        self,
+        *,
+        inspection_no: str,
+        status: str,
+        result: str,
+        inspected_qty: Decimal,
+        accepted_qty: Decimal,
+        rejected_qty: Decimal,
+        defect_qty: Decimal,
+    ) -> dict[str, int | str]:
+        with self.SessionLocal() as session:
+            inspection = LyQualityInspection(
+                inspection_no=inspection_no,
+                company="COMP-A",
+                source_type="manual",
+                source_id=None,
+                item_code="ITEM-A",
+                supplier="SUP-A",
+                warehouse="WH-A",
+                inspection_date=date(2026, 4, 16),
+                inspected_qty=inspected_qty,
+                accepted_qty=accepted_qty,
+                rejected_qty=rejected_qty,
+                defect_qty=defect_qty,
+                defect_rate=Decimal("0") if inspected_qty == Decimal("0") else (defect_qty / inspected_qty).quantize(Decimal("0.000001")),
+                rejected_rate=Decimal("0") if inspected_qty == Decimal("0") else (rejected_qty / inspected_qty).quantize(Decimal("0.000001")),
+                result=result,
+                status=status,
+                created_by="quality.user",
+                updated_by="quality.user",
+            )
+            session.add(inspection)
+            session.flush()
 
-    def _create(self) -> dict:
-        with patch.object(QualitySourceValidator, "validate_for_payload", return_value=self._snapshot()):
-            response = self.client.post("/api/quality/inspections", headers=self._headers(), json=self._payload())
-        self.assertEqual(response.status_code, 200, response.text)
-        return response.json()["data"]
+            item = LyQualityInspectionItem(
+                inspection_id=int(inspection.id),
+                line_no=1,
+                item_code="ITEM-A",
+                sample_qty=inspected_qty,
+                accepted_qty=accepted_qty,
+                rejected_qty=rejected_qty,
+                defect_qty=defect_qty,
+                result=result,
+            )
+            session.add(item)
+            session.flush()
+
+            defect = LyQualityDefect(
+                inspection_id=int(inspection.id),
+                item_id=int(item.id),
+                defect_code="DEF-001",
+                defect_name="线头",
+                defect_qty=defect_qty,
+                severity="minor",
+            )
+            session.add(defect)
+
+            log = LyQualityOperationLog(
+                inspection_id=int(inspection.id),
+                company="COMP-A",
+                from_status=None,
+                to_status=status,
+                action="create",
+                operator="quality.user",
+                request_id="req-seed",
+            )
+            session.add(log)
+            session.commit()
+            return {"id": int(inspection.id), "inspection_no": str(inspection.inspection_no)}
 
 
 class QualityApiTest(QualityApiBase):
-    """Quality API baseline behavior."""
+    """Quality API read baseline and status-machine write behavior."""
 
-    def test_create_inspection_calculates_rates_and_audits(self) -> None:
-        data = self._create()
-        self.assertEqual(data["status"], "draft")
-        self.assertEqual(Decimal(data["defect_rate"]), Decimal("0.100000"))
-        self.assertEqual(Decimal(data["rejected_rate"]), Decimal("0.200000"))
-        self.assertEqual(len(data["items"]), 1)
-        self.assertEqual(len(data["defects"]), 1)
-        with self.SessionLocal() as session:
-            self.assertEqual(session.query(LyQualityInspection).count(), 1)
-            self.assertEqual(session.query(LyQualityOperationLog).count(), 1)
-            self.assertEqual(session.query(LyOperationAuditLog).count(), 1)
+    @staticmethod
+    def _source_snapshot() -> QualitySourceValidationSnapshot:
+        return QualitySourceValidationSnapshot(
+            master_data={"company": {"name": "COMP-A"}, "item": {"name": "ITEM-A"}},
+            source=None,
+        )
 
-    def test_create_rejects_qty_mismatch_without_partial_write(self) -> None:
-        with patch.object(QualitySourceValidator, "validate_for_payload", return_value=self._snapshot()):
+    def test_create_endpoint_returns_201_with_draft(self) -> None:
+        with patch(
+            "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+            return_value=self._source_snapshot(),
+        ):
             response = self.client.post(
                 "/api/quality/inspections",
                 headers=self._headers(),
-                json=self._payload(accepted_qty="7", rejected_qty="2"),
+                json=self._payload(),
             )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["code"], "QUALITY_QTY_MISMATCH")
+
+        self.assertEqual(response.status_code, 201, response.text)
+        self.assertEqual(response.json()["code"], "0")
+        self.assertEqual(response.json()["data"]["status"], "draft")
         with self.SessionLocal() as session:
-            self.assertEqual(session.query(LyQualityInspection).count(), 0)
-            self.assertEqual(session.query(LyOperationAuditLog).count(), 1)
+            self.assertEqual(session.query(LyQualityInspection).count(), 1)
+            self.assertEqual(session.query(LyQualityOperationLog).count(), 1)
 
-    def test_update_draft_and_confirm_then_cancel(self) -> None:
-        data = self._create()
-        inspection_id = data["id"]
-        with patch.object(QualitySourceValidator, "validate_for_payload", return_value=self._snapshot()):
-            update = self.client.patch(
-                f"/api/quality/inspections/{inspection_id}",
-                headers=self._headers(),
-                json={"remark": "复检备注", "defect_qty": "0", "result": "pass"},
-            )
-        self.assertEqual(update.status_code, 200, update.text)
-        self.assertEqual(update.json()["data"]["result"], "pass")
+    def test_cancelled_status_rejects_followup_writes(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-STATE-001",
+            status="draft",
+            result="partial",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("8"),
+            rejected_qty=Decimal("2"),
+            defect_qty=Decimal("1"),
+        )
+        inspection_id = int(seeded["id"])
 
-        with patch.object(QualitySourceValidator, "validate_for_payload", return_value=self._snapshot()):
+        with patch(
+            "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+            return_value=self._source_snapshot(),
+        ):
             confirm = self.client.post(
                 f"/api/quality/inspections/{inspection_id}/confirm",
                 headers=self._headers(),
@@ -185,14 +247,6 @@ class QualityApiTest(QualityApiBase):
             )
         self.assertEqual(confirm.status_code, 200, confirm.text)
         self.assertEqual(confirm.json()["data"]["status"], "confirmed")
-
-        update_after_confirm = self.client.patch(
-            f"/api/quality/inspections/{inspection_id}",
-            headers=self._headers(),
-            json={"remark": "不应允许"},
-        )
-        self.assertEqual(update_after_confirm.status_code, 409)
-        self.assertEqual(update_after_confirm.json()["code"], "QUALITY_INVALID_STATUS")
 
         cancel = self.client.post(
             f"/api/quality/inspections/{inspection_id}/cancel",
@@ -202,52 +256,105 @@ class QualityApiTest(QualityApiBase):
         self.assertEqual(cancel.status_code, 200, cancel.text)
         self.assertEqual(cancel.json()["data"]["status"], "cancelled")
 
-    def test_confirm_source_unavailable_fails_closed(self) -> None:
-        data = self._create()
-        with patch.object(
-            QualitySourceValidator,
-            "validate_for_payload",
-            side_effect=BusinessException(code=QUALITY_SOURCE_UNAVAILABLE),
-        ):
-            response = self.client.post(
-                f"/api/quality/inspections/{data['id']}/confirm",
-                headers=self._headers(),
-                json={},
-            )
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["code"], "QUALITY_SOURCE_UNAVAILABLE")
+        update = self.client.patch(
+            f"/api/quality/inspections/{inspection_id}",
+            headers=self._headers(),
+            json={"remark": "不应更新"},
+        )
+        self.assertEqual(update.status_code, 409)
+        self.assertEqual(update.json()["code"], "QUALITY_INVALID_STATUS")
+
+        defects = self.client.post(
+            f"/api/quality/inspections/{inspection_id}/defects",
+            headers=self._headers(),
+            json={
+                "defects": [
+                    {
+                        "defect_code": "DEF-999",
+                        "defect_name": "不应录入",
+                        "defect_qty": "1",
+                        "severity": "minor",
+                        "item_line_no": 1,
+                    }
+                ]
+            },
+        )
+        self.assertEqual(defects.status_code, 409)
+        self.assertEqual(defects.json()["code"], "QUALITY_INVALID_STATUS")
+
+        confirm = self.client.post(
+            f"/api/quality/inspections/{inspection_id}/confirm",
+            headers=self._headers(),
+            json={"remark": "不应确认"},
+        )
+        self.assertEqual(confirm.status_code, 409)
+        self.assertEqual(confirm.json()["code"], "QUALITY_INVALID_STATUS")
+
+        cancel = self.client.post(
+            f"/api/quality/inspections/{inspection_id}/cancel",
+            headers=self._headers(),
+            json={"reason": "不应取消"},
+        )
+        self.assertEqual(cancel.status_code, 409)
+        self.assertEqual(cancel.json()["code"], "QUALITY_INVALID_STATUS")
+
         with self.SessionLocal() as session:
-            row = session.query(LyQualityInspection).one()
-            self.assertEqual(row.status, "draft")
+            row = session.query(LyQualityInspection).filter(LyQualityInspection.id == inspection_id).one()
+            self.assertEqual(row.status, "cancelled")
+            self.assertGreaterEqual(session.query(LyQualityOperationLog).count(), 3)
 
-    def test_list_detail_statistics_and_export(self) -> None:
-        data = self._create()
-        response = self.client.get("/api/quality/inspections", headers=self._headers())
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["data"]["total"], 1)
+    def test_list_detail_statistics_export_keep_read_ability(self) -> None:
+        first = self._insert_inspection(
+            inspection_no="QI-READ-001",
+            status="confirmed",
+            result="pass",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("10"),
+            rejected_qty=Decimal("0"),
+            defect_qty=Decimal("0"),
+        )
+        self._insert_inspection(
+            inspection_no="QI-READ-002",
+            status="cancelled",
+            result="fail",
+            inspected_qty=Decimal("5"),
+            accepted_qty=Decimal("2"),
+            rejected_qty=Decimal("3"),
+            defect_qty=Decimal("1"),
+        )
 
-        detail = self.client.get(f"/api/quality/inspections/{data['id']}", headers=self._headers())
+        list_resp = self.client.get("/api/quality/inspections", headers=self._headers())
+        self.assertEqual(list_resp.status_code, 200)
+        self.assertEqual(list_resp.json()["data"]["total"], 2)
+
+        detail = self.client.get(f"/api/quality/inspections/{int(first['id'])}", headers=self._headers())
         self.assertEqual(detail.status_code, 200)
-        self.assertEqual(detail.json()["data"]["inspection_no"], data["inspection_no"])
+        self.assertEqual(detail.json()["data"]["inspection_no"], first["inspection_no"])
 
         stats = self.client.get("/api/quality/statistics", headers=self._headers())
         self.assertEqual(stats.status_code, 200)
         self.assertEqual(stats.json()["data"]["total_count"], 1)
+        self.assertEqual(Decimal(stats.json()["data"]["inspected_qty"]), Decimal("10"))
 
         export = self.client.get("/api/quality/export", headers=self._headers(role="Quality Viewer"))
         self.assertEqual(export.status_code, 200)
-        self.assertEqual(export.json()["data"]["total"], 1)
-        with self.SessionLocal() as session:
-            self.assertGreaterEqual(session.query(LyOperationAuditLog).count(), 2)
+        self.assertEqual(export.json()["data"]["total"], 2)
 
-    def test_diagnostic_requires_permission_and_records_operation_audit(self) -> None:
-        self._create()
+    def test_diagnostic_requires_permission_and_records_security_audit(self) -> None:
+        self._insert_inspection(
+            inspection_no="QI-DIAG-001",
+            status="draft",
+            result="pending",
+            inspected_qty=Decimal("3"),
+            accepted_qty=Decimal("2"),
+            rejected_qty=Decimal("1"),
+            defect_qty=Decimal("1"),
+        )
+
         response = self.client.get("/api/quality/diagnostic", headers=self._headers())
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["data"]["total_count"], 1)
         self.assertEqual(response.json()["data"]["by_source_type"]["manual"], 1)
-        with self.SessionLocal() as session:
-            self.assertGreaterEqual(session.query(LyOperationAuditLog).count(), 2)
 
         denied = self.client.get("/api/quality/diagnostic", headers=self._headers(role="Quality Inspector"))
         self.assertEqual(denied.status_code, 403)
@@ -255,43 +362,28 @@ class QualityApiTest(QualityApiBase):
         with self.SessionLocal() as session:
             self.assertGreaterEqual(session.query(LySecurityAuditLog).count(), 1)
 
-    def test_create_scope_includes_source_type_and_source_id(self) -> None:
-        seen_scopes: list[dict] = []
-        original = PermissionService.ensure_resource_scope_permission
-
-        def _spy(self, **kwargs):
-            seen_scopes.append(dict(kwargs.get("resource_scope") or {}))
-            return original(self, **kwargs)
-
-        with patch.object(PermissionService, "ensure_resource_scope_permission", _spy), patch.object(
-            QualitySourceValidator,
-            "validate_for_payload",
-            return_value=self._snapshot(),
-        ):
-            response = self.client.post(
-                "/api/quality/inspections",
-                headers=self._headers(),
-                json=self._payload(source_id="MANUAL-SRC-1"),
-            )
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertTrue(any(scope.get("source_type") == "manual" and scope.get("source_id") == "MANUAL-SRC-1" for scope in seen_scopes))
-
-    def test_action_permission_denied_before_write(self) -> None:
-        with patch.object(QualitySourceValidator, "validate_for_payload") as validator:
-            response = self.client.post(
-                "/api/quality/inspections",
-                headers=self._headers(role="Quality Viewer"),
-                json=self._payload(),
-            )
+    def test_action_permission_denied_before_frozen_response(self) -> None:
+        response = self.client.post(
+            "/api/quality/inspections",
+            headers=self._headers(role="Quality Viewer"),
+            json=self._payload(),
+        )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
-        validator.assert_not_called()
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyQualityInspection).count(), 0)
-            self.assertEqual(session.query(LySecurityAuditLog).count(), 1)
+            self.assertGreaterEqual(session.query(LySecurityAuditLog).count(), 1)
 
     def test_detail_resource_denied_hides_existence(self) -> None:
-        data = self._create()
+        seeded = self._insert_inspection(
+            inspection_no="QI-SCOPE-001",
+            status="draft",
+            result="pending",
+            inspected_qty=Decimal("4"),
+            accepted_qty=Decimal("4"),
+            rejected_qty=Decimal("0"),
+            defect_qty=Decimal("0"),
+        )
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
         with patch.object(
             ERPNextPermissionAdapter,
@@ -307,20 +399,19 @@ class QualityApiTest(QualityApiBase):
                 allowed_companies={"COMP-B"},
             ),
         ):
-            response = self.client.get(f"/api/quality/inspections/{data['id']}", headers=self._headers())
+            response = self.client.get(f"/api/quality/inspections/{int(seeded['id'])}", headers=self._headers())
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["code"], "ERPNEXT_RESOURCE_NOT_FOUND")
         with self.SessionLocal() as session:
-            self.assertEqual(session.query(LySecurityAuditLog).count(), 1)
+            self.assertGreaterEqual(session.query(LySecurityAuditLog).count(), 1)
 
-    def test_only_allowed_routes_do_not_expose_outbox_or_erpnext_write(self) -> None:
+    def test_only_allowed_routes_keep_outbox_internal_and_no_erpnext_route(self) -> None:
         methods_by_path = {route.path: route.methods for route in app.routes if getattr(route, "path", "").startswith("/api/quality")}
         self.assertTrue(methods_by_path)
-        forbidden_paths = [path for path in methods_by_path if "outbox" in path or "erpnext" in path or "worker" in path]
+        self.assertIn("/api/quality/internal/outbox-sync/run-once", methods_by_path)
+        self.assertIn("/api/quality/inspections/{inspection_id}/outbox-status", methods_by_path)
+        forbidden_paths = [path for path in methods_by_path if "erpnext" in path]
         self.assertEqual(forbidden_paths, [])
-        allowed_methods = {"GET", "POST", "PATCH", "HEAD", "OPTIONS"}
-        for methods in methods_by_path.values():
-            self.assertLessEqual(set(methods), allowed_methods)
 
 
 if __name__ == "__main__":

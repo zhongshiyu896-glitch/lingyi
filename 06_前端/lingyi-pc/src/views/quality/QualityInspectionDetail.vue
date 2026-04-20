@@ -38,7 +38,10 @@
 
           <div class="action-row">
             <el-button v-if="canUpdate" type="primary" :loading="updating" @click="openUpdateDialog">
-              更新检验结果
+              编辑草稿
+            </el-button>
+            <el-button v-if="canUpdate" type="warning" :loading="defecting" @click="openDefectDialog">
+              录入缺陷
             </el-button>
             <el-button v-if="canConfirm" type="success" :loading="confirming" @click="openConfirmDialog">
               确认检验单
@@ -106,7 +109,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="updateDialogVisible" title="更新检验结果" width="520px" destroy-on-close>
+    <el-dialog v-model="updateDialogVisible" title="编辑草稿" width="520px" destroy-on-close>
       <el-form :model="updateForm" label-width="120px">
         <el-form-item label="合格数量">
           <el-input v-model="updateForm.accepted_qty" clearable />
@@ -135,22 +138,53 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="confirmDialogVisible" title="确认检验单" width="480px" destroy-on-close>
-      <el-form :model="confirmForm" label-width="120px">
+    <el-dialog v-model="defectDialogVisible" title="录入缺陷" width="520px" destroy-on-close>
+      <el-form :model="defectForm" label-width="120px">
+        <el-form-item label="缺陷编码" required>
+          <el-input v-model="defectForm.defect_code" clearable />
+        </el-form-item>
+        <el-form-item label="缺陷名称" required>
+          <el-input v-model="defectForm.defect_name" clearable />
+        </el-form-item>
+        <el-form-item label="缺陷数量" required>
+          <el-input v-model="defectForm.defect_qty" clearable />
+        </el-form-item>
+        <el-form-item label="严重度">
+          <el-select v-model="defectForm.severity" style="width: 100%">
+            <el-option label="轻微" value="minor" />
+            <el-option label="一般" value="major" />
+            <el-option label="严重" value="critical" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="明细行号">
+          <el-input v-model="defectForm.item_line_no" clearable placeholder="可选，填 1/2/3 ..." />
+        </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="confirmForm.remark" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <el-input v-model="defectForm.remark" type="textarea" :rows="3" maxlength="255" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="defectDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="defecting" :disabled="!canUpdate" @click="submitDefect">提交</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="confirmDialogVisible" title="确认检验单" width="480px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="确认备注">
+          <el-input v-model="confirmRemark" type="textarea" :rows="3" maxlength="200" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="confirmDialogVisible = false">取消</el-button>
-        <el-button type="success" :loading="confirming" :disabled="!canConfirm" @click="submitConfirm">确认</el-button>
+        <el-button type="primary" :loading="confirming" :disabled="!canConfirm" @click="submitConfirm">确认</el-button>
       </template>
     </el-dialog>
 
     <el-dialog v-model="cancelDialogVisible" title="取消检验单" width="480px" destroy-on-close>
-      <el-form :model="cancelForm" label-width="120px">
+      <el-form label-width="120px">
         <el-form-item label="取消原因">
-          <el-input v-model="cancelForm.reason" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <el-input v-model="cancelReason" type="textarea" :rows="3" maxlength="200" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -166,10 +200,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  addDefectRecord,
   cancelQualityInspection,
   confirmQualityInspection,
   fetchQualityInspectionDetail,
-  updateQualityInspection,
+  updateDraftInspection,
   type QualityInspectionDetailData,
 } from '@/api/quality'
 import { usePermissionStore } from '@/stores/permission'
@@ -180,28 +215,29 @@ const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
 const updating = ref<boolean>(false)
+const defecting = ref<boolean>(false)
 const confirming = ref<boolean>(false)
 const cancelling = ref<boolean>(false)
 const detail = ref<QualityInspectionDetailData | null>(null)
 
 const updateDialogVisible = ref<boolean>(false)
+const defectDialogVisible = ref<boolean>(false)
 const confirmDialogVisible = ref<boolean>(false)
 const cancelDialogVisible = ref<boolean>(false)
 
 const updateForm = ref({ accepted_qty: '0', rejected_qty: '0', defect_qty: '0', result: 'pending', remark: '' })
-const confirmForm = ref({ remark: '' })
-const cancelForm = ref({ reason: '' })
+const defectForm = ref({ defect_code: '', defect_name: '', defect_qty: '0', severity: 'minor', item_line_no: '', remark: '' })
+const confirmRemark = ref<string>('')
+const cancelReason = ref<string>('')
 
 const inspectionId = computed<number>(() => Number(route.query.id || '0'))
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_read)
 const canUpdatePermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_update)
 const canConfirmPermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_confirm)
 const canCancelPermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_cancel)
-const isDraft = computed<boolean>(() => detail.value?.status === 'draft')
-const isCancellable = computed<boolean>(() => detail.value?.status === 'draft' || detail.value?.status === 'confirmed')
-const canUpdate = computed<boolean>(() => canUpdatePermission.value && isDraft.value)
-const canConfirm = computed<boolean>(() => canConfirmPermission.value && isDraft.value)
-const canCancel = computed<boolean>(() => canCancelPermission.value && isCancellable.value)
+const canUpdate = computed<boolean>(() => canUpdatePermission.value && detail.value?.status === 'draft')
+const canConfirm = computed<boolean>(() => canConfirmPermission.value && detail.value?.status === 'draft')
+const canCancel = computed<boolean>(() => canCancelPermission.value && detail.value?.status === 'confirmed')
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') return '-'
@@ -280,28 +316,18 @@ const openUpdateDialog = (): void => {
   updateDialogVisible.value = true
 }
 
-const openConfirmDialog = (): void => {
-  confirmForm.value = { remark: '' }
-  confirmDialogVisible.value = true
-}
-
-const openCancelDialog = (): void => {
-  cancelForm.value = { reason: '' }
-  cancelDialogVisible.value = true
-}
-
 const submitUpdate = async (): Promise<void> => {
   if (!canUpdate.value || !detail.value) return
   updating.value = true
   try {
-    await updateQualityInspection(detail.value.id, {
+    await updateDraftInspection(detail.value.id, {
       accepted_qty: updateForm.value.accepted_qty,
       rejected_qty: updateForm.value.rejected_qty,
       defect_qty: updateForm.value.defect_qty,
       result: updateForm.value.result,
       remark: updateForm.value.remark.trim() || null,
     })
-    ElMessage.success('质量检验单已更新')
+    ElMessage.success('草稿质检单已更新')
     updateDialogVisible.value = false
     await loadDetail()
   } catch (error) {
@@ -311,12 +337,53 @@ const submitUpdate = async (): Promise<void> => {
   }
 }
 
+const openDefectDialog = (): void => {
+  defectForm.value = { defect_code: '', defect_name: '', defect_qty: '0', severity: 'minor', item_line_no: '', remark: '' }
+  defectDialogVisible.value = true
+}
+
+const openConfirmDialog = (): void => {
+  confirmRemark.value = ''
+  confirmDialogVisible.value = true
+}
+
+const openCancelDialog = (): void => {
+  cancelReason.value = ''
+  cancelDialogVisible.value = true
+}
+
+const submitDefect = async (): Promise<void> => {
+  if (!canUpdate.value || !detail.value) return
+  defecting.value = true
+  try {
+    await addDefectRecord(detail.value.id, {
+      defects: [
+        {
+          defect_code: defectForm.value.defect_code.trim(),
+          defect_name: defectForm.value.defect_name.trim(),
+          defect_qty: defectForm.value.defect_qty,
+          severity: defectForm.value.severity,
+          item_line_no: defectForm.value.item_line_no.trim() ? Number(defectForm.value.item_line_no.trim()) : null,
+          remark: defectForm.value.remark.trim() || null,
+        },
+      ],
+    })
+    ElMessage.success('缺陷已录入')
+    defectDialogVisible.value = false
+    await loadDetail()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    defecting.value = false
+  }
+}
+
 const submitConfirm = async (): Promise<void> => {
   if (!canConfirm.value || !detail.value) return
   confirming.value = true
   try {
-    await confirmQualityInspection(detail.value.id, { remark: confirmForm.value.remark.trim() || null })
-    ElMessage.success('质量检验单已确认')
+    await confirmQualityInspection(detail.value.id, confirmRemark.value.trim() || null)
+    ElMessage.success('检验单已确认')
     confirmDialogVisible.value = false
     await loadDetail()
   } catch (error) {
@@ -330,8 +397,8 @@ const submitCancel = async (): Promise<void> => {
   if (!canCancel.value || !detail.value) return
   cancelling.value = true
   try {
-    await cancelQualityInspection(detail.value.id, { reason: cancelForm.value.reason.trim() || null })
-    ElMessage.success('质量检验单已取消')
+    await cancelQualityInspection(detail.value.id, { reason: cancelReason.value.trim() || null })
+    ElMessage.success('检验单已取消')
     cancelDialogVisible.value = false
     await loadDetail()
   } catch (error) {

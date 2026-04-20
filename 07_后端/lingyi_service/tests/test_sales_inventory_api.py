@@ -19,6 +19,7 @@ from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.sales_inventory import get_db_session as sales_inventory_db_dep
+from app.schemas.sales_inventory import SalesOrderFulfillmentData
 from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
@@ -108,6 +109,64 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         self.assertEqual(payload["data"]["items"][0]["name"], "SO-001")
         with self.SessionLocal() as session:
             self.assertEqual(session.query(LyOperationAuditLog).count(), 0)
+
+    def test_list_sales_orders_supports_item_name_and_date_range_filters(self) -> None:
+        with patch.object(
+            ERPNextSalesInventoryAdapter,
+            "list_sales_orders",
+            return_value=([], 0),
+        ) as mocked_list:
+            response = self.client.get(
+                "/api/sales-inventory/sales-orders"
+                "?company=COMP-A&customer=CUST-A&item_code=ITEM-A&item_name=%E6%B5%8B%E8%AF%95&from_date=2026-04-01&to_date=2026-04-30",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        mocked_list.assert_called_once()
+        kwargs = mocked_list.call_args.kwargs
+        self.assertEqual(kwargs["company"], "COMP-A")
+        self.assertEqual(kwargs["customer"], "CUST-A")
+        self.assertEqual(kwargs["item_code"], "ITEM-A")
+        self.assertEqual(kwargs["item_name"], "测试")
+        self.assertEqual(str(kwargs["from_date"]), "2026-04-01")
+        self.assertEqual(str(kwargs["to_date"]), "2026-04-30")
+
+    def test_list_sales_orders_invalid_date_range_returns_bad_request(self) -> None:
+        response = self.client.get(
+            "/api/sales-inventory/sales-orders?from_date=2026-05-01&to_date=2026-04-01",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["code"], "INVALID_QUERY_PARAMETER")
+
+    def test_stock_ledger_supports_date_range_filters(self) -> None:
+        with patch.object(
+            ERPNextSalesInventoryAdapter,
+            "list_stock_ledger",
+            return_value=([], 0, 0),
+        ) as mocked_list:
+            response = self.client.get(
+                "/api/sales-inventory/items/ITEM-A/stock-ledger"
+                "?company=COMP-A&warehouse=WH-A&from_date=2026-04-01&to_date=2026-04-30",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        mocked_list.assert_called_once()
+        kwargs = mocked_list.call_args.kwargs
+        self.assertEqual(kwargs["company"], "COMP-A")
+        self.assertEqual(kwargs["warehouse"], "WH-A")
+        self.assertEqual(str(kwargs["from_date"]), "2026-04-01")
+        self.assertEqual(str(kwargs["to_date"]), "2026-04-30")
+
+    def test_stock_ledger_invalid_date_format_returns_bad_request(self) -> None:
+        response = self.client.get(
+            "/api/sales-inventory/items/ITEM-A/stock-ledger?from_date=2026/04/01",
+            headers=self._headers(),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["code"], "INVALID_QUERY_PARAMETER")
 
     def test_detail_denied_before_erpnext_read_to_hide_existence(self) -> None:
         with patch.object(ERPNextSalesInventoryAdapter, "get_sales_order") as mocked_detail:
@@ -247,6 +306,111 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
         self.assertEqual(payload["total"], 1)
         self.assertEqual(payload["dropped_count"], 1)
         self.assertEqual(payload["items"][0]["name"], "SLE-OK")
+
+    def test_warehouses_filter_by_allowed_warehouses(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextSalesInventoryAdapter,
+            "list_warehouses",
+            return_value=(
+                [
+                    {"name": "WH-A", "company": "COMP-A", "warehouse_name": "仓A", "disabled": 0},
+                    {"name": "WH-B", "company": "COMP-A", "warehouse_name": "仓B", "disabled": 0},
+                ],
+                2,
+            ),
+        ), patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-A"},
+                allowed_companies={"COMP-A"},
+                allowed_warehouses={"WH-A"},
+            ),
+        ):
+            response = self.client.get("/api/sales-inventory/warehouses?company=COMP-A", headers=self._headers())
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["data"]
+        self.assertEqual(payload["total"], 1)
+        self.assertEqual(payload["items"][0]["name"], "WH-A")
+
+    def test_aggregation_filter_by_allowed_warehouses(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextSalesInventoryAdapter,
+            "list_warehouses",
+            return_value=([{"name": "WH-A", "company": "COMP-A"}], 1),
+        ), patch.object(
+            ERPNextSalesInventoryAdapter,
+            "_list_resource",
+            return_value=[
+                {
+                    "item_code": "ITEM-A",
+                    "warehouse": "WH-A",
+                    "actual_qty": "5",
+                    "ordered_qty": "1",
+                    "indented_qty": "0",
+                    "safety_stock": "3",
+                    "reorder_level": "2",
+                },
+                {
+                    "item_code": "ITEM-A",
+                    "warehouse": "WH-B",
+                    "actual_qty": "8",
+                    "ordered_qty": "1",
+                    "indented_qty": "0",
+                    "safety_stock": "3",
+                    "reorder_level": "2",
+                },
+            ],
+        ), patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-A"},
+                allowed_companies={"COMP-A"},
+                allowed_warehouses={"WH-A"},
+            ),
+        ):
+            response = self.client.get(
+                "/api/sales-inventory/aggregation?company=COMP-A&item_code=ITEM-A",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        items = response.json()["data"]["items"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["warehouse"], "WH-A")
+
+    def test_fulfillment_denies_out_of_scope_warehouse_query(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-A"},
+                allowed_companies={"COMP-A"},
+                allowed_warehouses={"WH-A"},
+            ),
+        ), patch(
+            "app.routers.sales_inventory.SalesInventoryService.get_sales_order_fulfillment",
+            return_value=SalesOrderFulfillmentData(company="COMP-A", items=[]),
+        ) as mocked_fulfillment:
+            response = self.client.get(
+                "/api/sales-inventory/sales-order-fulfillment?company=COMP-A&warehouse=WH-B",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "RESOURCE_ACCESS_DENIED")
+        mocked_fulfillment.assert_not_called()
 
     def test_only_get_routes_are_exposed(self) -> None:
         methods_by_path = {

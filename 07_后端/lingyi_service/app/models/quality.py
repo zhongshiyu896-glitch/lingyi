@@ -77,6 +77,7 @@ class LyQualityInspection(Base):
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
     cancelled_by = Column(String(140), nullable=True)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancel_reason = Column(String(200), nullable=True)
 
     source_snapshot = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

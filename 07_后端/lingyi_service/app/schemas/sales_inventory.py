@@ -142,3 +142,45 @@ class DiagnosticData(BaseModel):
     source: str = "erpnext"
     status: str
     checked_at: datetime
+
+
+class InventoryAggregationItem(BaseModel):
+    """Inventory aggregation by item + warehouse."""
+
+    item_code: str
+    warehouse: str
+    actual_qty: Decimal
+    ordered_qty: Decimal
+    indented_qty: Decimal
+    safety_stock: Decimal
+    reorder_level: Decimal
+    is_below_safety: bool
+    is_below_reorder: bool
+
+
+class InventoryAggregationData(BaseModel):
+    """Inventory aggregation response."""
+
+    company: str | None = None
+    item_code: str | None = None
+    warehouse: str | None = None
+    items: list[InventoryAggregationItem]
+
+
+class SalesOrderFulfillmentItem(BaseModel):
+    """Sales order fulfillment row."""
+
+    company: str | None = None
+    sales_order: str
+    item_code: str
+    warehouse: str | None = None
+    ordered_qty: Decimal
+    actual_qty: Decimal
+    fulfillment_rate: Decimal
+
+
+class SalesOrderFulfillmentData(BaseModel):
+    """Sales order fulfillment response."""
+
+    company: str | None = None
+    items: list[SalesOrderFulfillmentItem]

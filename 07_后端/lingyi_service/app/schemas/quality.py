@@ -6,6 +6,7 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel
 from pydantic import Field
@@ -84,6 +85,12 @@ class QualityInspectionCancelRequest(BaseModel):
     """Cancel quality inspection request."""
 
     reason: str | None = Field(default=None, max_length=200)
+
+
+class QualityInspectionDefectCreateRequest(BaseModel):
+    """Add defects for a draft inspection request."""
+
+    defects: list[QualityDefectInput] = Field(default_factory=list, min_length=1)
 
 
 class QualityInspectionItemData(BaseModel):
@@ -166,6 +173,7 @@ class QualityInspectionDetailData(QualityInspectionListItem):
     confirmed_at: datetime | None = None
     cancelled_by: str | None = None
     cancelled_at: datetime | None = None
+    cancel_reason: str | None = None
     source_snapshot: dict[str, Any] | None = None
     items: list[QualityInspectionItemData] = Field(default_factory=list)
     defects: list[QualityDefectData] = Field(default_factory=list)
@@ -186,6 +194,11 @@ class QualityStatisticsData(BaseModel):
     """Quality statistics response payload."""
 
     total_count: int
+    total_inspected_qty: Decimal
+    total_accepted_qty: Decimal
+    total_rejected_qty: Decimal
+    total_defect_qty: Decimal
+    overall_defect_rate: Decimal
     inspected_qty: Decimal
     accepted_qty: Decimal
     rejected_qty: Decimal
@@ -193,6 +206,50 @@ class QualityStatisticsData(BaseModel):
     defect_rate: Decimal
     rejected_rate: Decimal
     by_result: dict[str, int]
+    by_supplier: list["QualityStatisticsAggregateData"] = Field(default_factory=list)
+    by_item_code: list["QualityStatisticsAggregateData"] = Field(default_factory=list)
+    by_warehouse: list["QualityStatisticsAggregateData"] = Field(default_factory=list)
+    by_source_type: list["QualityStatisticsAggregateData"] = Field(default_factory=list)
+    top_defective_suppliers: list["QualityStatisticsAggregateData"] = Field(default_factory=list)
+    top_defective_items: list["QualityStatisticsAggregateData"] = Field(default_factory=list)
+
+
+class QualityStatisticsAggregateData(BaseModel):
+    """Grouped quality statistics row."""
+
+    key: str
+    label: str
+    count: int
+    defect_rate: Decimal
+    total_count: int
+    total_inspected_qty: Decimal
+    total_accepted_qty: Decimal
+    total_rejected_qty: Decimal
+    total_defect_qty: Decimal
+    overall_defect_rate: Decimal
+
+
+class QualityStatisticsTrendPoint(BaseModel):
+    """Trend point for quality statistics."""
+
+    period_key: str
+    inspection_count: int
+    defect_rate: Decimal
+    rejected_rate: Decimal
+    period: str
+    total_count: int
+    total_inspected_qty: Decimal
+    total_accepted_qty: Decimal
+    total_rejected_qty: Decimal
+    total_defect_qty: Decimal
+    overall_defect_rate: Decimal
+
+
+class QualityStatisticsTrendData(BaseModel):
+    """Trend response payload."""
+
+    period: str
+    points: list[QualityStatisticsTrendPoint]
 
 
 class QualityDiagnosticData(BaseModel):
@@ -232,3 +289,10 @@ class QualityExportData(BaseModel):
 
     rows: list[QualityExportRow]
     total: int
+
+
+class QualityExportQuery(BaseModel):
+    """Quality export query parameters."""
+
+    format: Literal["csv", "xlsx", "pdf"] | None = None
+    inspection_id: int | None = Field(default=None, ge=1)

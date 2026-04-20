@@ -14,6 +14,7 @@ from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
@@ -22,11 +23,14 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.auth import is_internal_worker_api_enabled
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import ERPNEXT_RESOURCE_NOT_FOUND
+from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import PERMISSION_SOURCE_UNAVAILABLE
 from app.core.error_codes import QUALITY_DATABASE_WRITE_FAILED
 from app.core.error_codes import QUALITY_INTERNAL_ERROR
+from app.core.error_codes import QUALITY_INVALID_STATUS
 from app.core.error_codes import QUALITY_NOT_FOUND
 from app.core.error_codes import message_of
 from app.core.error_codes import status_of
@@ -41,14 +45,23 @@ from app.core.permissions import QUALITY_DIAGNOSTIC
 from app.core.permissions import QUALITY_EXPORT
 from app.core.permissions import QUALITY_READ
 from app.core.permissions import QUALITY_UPDATE
+from app.core.permissions import QUALITY_WORKER
 from app.core.request_id import get_request_id_from_request
 from app.models.quality import LyQualityInspection
 from app.schemas.quality import QualityInspectionCancelRequest
 from app.schemas.quality import QualityInspectionConfirmRequest
 from app.schemas.quality import QualityInspectionCreateRequest
+from app.schemas.quality import QualityInspectionDefectCreateRequest
 from app.schemas.quality import QualityInspectionUpdateRequest
+from app.schemas.quality import QualityStatisticsTrendData
+from app.schemas.quality_outbox import QualityOutboxStatusData
+from app.schemas.quality_outbox import QualityOutboxWorkerRunOnceData
+from app.schemas.quality_outbox import QualityOutboxWorkerRunOnceRequest
+from app.services.quality_export_service import QualityExportService
 from app.services.audit_service import AuditContext
 from app.services.audit_service import AuditService
+from app.services.erpnext_quality_outbox_adapter import ERPNextQualityOutboxAdapter
+from app.services.quality_outbox_worker import QualityOutboxWorker
 from app.services.quality_service import QualityService
 from app.services.quality_service import QualitySourceValidator
 from app.services.quality_service import _text as _scope_text
@@ -56,6 +69,8 @@ from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/quality", tags=["quality"])
 logger = logging.getLogger(__name__)
+QUALITY_WRITE_FROZEN_CODE = "QUALITY_WRITE_FROZEN"
+QUALITY_WRITE_FROZEN_MESSAGE = "质量写操作已冻结（Phase 1 只读基线）"
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -66,6 +81,10 @@ def get_db_session() -> Generator[Session, None, None]:
 
 def _ok(data: Any) -> dict[str, Any]:
     return {"code": "0", "message": "success", "data": data}
+
+
+def _created(data: Any) -> JSONResponse:
+    return JSONResponse(status_code=201, content=_ok(data))
 
 
 def _err(code: str, message: str | None = None, status_code: int | None = None) -> JSONResponse:
@@ -215,6 +234,13 @@ def _quality_service(session: Session, request: Request) -> QualityService:
     return QualityService(session=session, source_validator=QualitySourceValidator(request_obj=request))
 
 
+def _quality_outbox_worker(session: Session) -> QualityOutboxWorker:
+    return QualityOutboxWorker(
+        session=session,
+        adapter=ERPNextQualityOutboxAdapter(),
+    )
+
+
 def _handle_write_exception(
     *,
     session: Session,
@@ -289,6 +315,14 @@ def _hide_not_found() -> None:
     )
 
 
+def _write_frozen_response() -> JSONResponse:
+    return _err(
+        QUALITY_WRITE_FROZEN_CODE,
+        QUALITY_WRITE_FROZEN_MESSAGE,
+        status_code=409,
+    )
+
+
 @router.post("/inspections")
 def create_quality_inspection(
     request: Request,
@@ -331,7 +365,7 @@ def create_quality_inspection(
             resource_no=data.inspection_no,
             after_data={"inspection_id": data.id, "inspection_no": data.inspection_no, "status": data.status},
         )
-        return _ok(data.model_dump(mode="json"))
+        return _created(data.model_dump(mode="json"))
     except Exception as exc:  # noqa: BLE001 - mapped to unified envelope.
         return _handle_write_exception(
             session=session,
@@ -522,6 +556,25 @@ def cancel_quality_inspection(
     )
 
 
+@router.post("/inspections/{inspection_id}/defects")
+def add_quality_inspection_defects(
+    inspection_id: int,
+    request: Request,
+    payload: QualityInspectionDefectCreateRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    return _write_existing(
+        inspection_id=inspection_id,
+        request=request,
+        payload=payload,
+        current_user=current_user,
+        session=session,
+        action=QUALITY_UPDATE,
+        operation="add_defect",
+    )
+
+
 def _write_existing(
     *,
     inspection_id: int,
@@ -561,6 +614,12 @@ def _write_existing(
         )
         service = _quality_service(session, request)
         if operation == "update":
+            if row.status == "confirmed":
+                return _err(QUALITY_INVALID_STATUS, "已确认状态不可修改", status_code=403)
+            if row.status == "cancelled":
+                return _err(QUALITY_INVALID_STATUS, "已取消状态不可修改", status_code=409)
+            if row.status != "draft":
+                return _err(QUALITY_INVALID_STATUS, "当前状态不允许修改", status_code=409)
             data = service.update_inspection(
                 inspection_id=inspection_id,
                 payload=payload,
@@ -568,33 +627,83 @@ def _write_existing(
                 request_id=get_request_id_from_request(request),
             )
             after_data = {"inspection_id": data.id, "inspection_no": data.inspection_no, "status": data.status}
-        elif operation == "confirm":
-            data = service.confirm_inspection(
+            _record_success(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=inspection_id,
+                resource_no=resource_no,
+                after_data=after_data,
+            )
+            return _ok(data.model_dump(mode="json"))
+        if operation == "add_defect":
+            if row.status == "confirmed":
+                return _err(QUALITY_INVALID_STATUS, "已确认状态不可录入缺陷", status_code=403)
+            if row.status == "cancelled":
+                return _err(QUALITY_INVALID_STATUS, "已取消状态不可录入缺陷", status_code=409)
+            if row.status != "draft":
+                return _err(QUALITY_INVALID_STATUS, "当前状态不允许录入缺陷", status_code=409)
+            data = service.add_defects(
+                inspection_id=inspection_id,
+                payload=payload,
+                operator=current_user.username,
+                request_id=get_request_id_from_request(request),
+            )
+            after_data = {"inspection_id": data.id, "inspection_no": data.inspection_no, "status": data.status}
+            _record_success(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=inspection_id,
+                resource_no=resource_no,
+                after_data=after_data,
+            )
+            return _created(data.model_dump(mode="json"))
+        if operation == "confirm":
+            service.confirm_inspection(
                 inspection_id=inspection_id,
                 operator=current_user.username,
                 request_id=get_request_id_from_request(request),
-                remark=payload.remark,
+                remark=getattr(payload, "remark", None),
             )
-            after_data = data.model_dump(mode="json")
-        else:
-            data = service.cancel_inspection(
+            data = service.get_detail_data(inspection_id)
+            after_data = {"inspection_id": data.id, "inspection_no": data.inspection_no, "status": data.status}
+            _record_success(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=inspection_id,
+                resource_no=resource_no,
+                after_data=after_data,
+            )
+            return _ok(data.model_dump(mode="json"))
+        if operation == "cancel":
+            service.cancel_inspection(
                 inspection_id=inspection_id,
                 operator=current_user.username,
                 request_id=get_request_id_from_request(request),
-                reason=payload.reason,
+                reason=getattr(payload, "reason", None),
             )
-            after_data = data.model_dump(mode="json")
-        _record_success(
-            session=session,
-            audit=audit,
-            context=context,
-            action=action,
-            current_user=current_user,
-            resource_id=inspection_id,
-            resource_no=resource_no,
-            after_data=after_data,
-        )
-        return _ok(data.model_dump(mode="json"))
+            data = service.get_detail_data(inspection_id)
+            after_data = {"inspection_id": data.id, "inspection_no": data.inspection_no, "status": data.status}
+            _record_success(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=inspection_id,
+                resource_no=resource_no,
+                after_data=after_data,
+            )
+            return _ok(data.model_dump(mode="json"))
+        return _write_frozen_response()
     except Exception as exc:  # noqa: BLE001 - mapped to unified envelope.
         return _handle_write_exception(
             session=session,
@@ -606,7 +715,163 @@ def _write_existing(
             resource_no=resource_no,
             exc=exc,
             request=request,
+    )
+
+
+@router.post("/internal/outbox-sync/run-once")
+def run_quality_outbox_sync_once(
+    request: Request,
+    payload: QualityOutboxWorkerRunOnceRequest = Body(default=QualityOutboxWorkerRunOnceRequest()),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = QUALITY_WORKER
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+
+    if not is_internal_worker_api_enabled():
+        permission_service.record_security_denial(
+            request_obj=request,
+            current_user=current_user,
+            action=action,
+            resource_type="QualityOutboxWorker",
+            resource_no=None,
+            deny_reason="质量 outbox 内部接口未启用",
+            event_type=INTERNAL_API_DISABLED,
+            module="quality",
         )
+        return _err(
+            INTERNAL_API_DISABLED,
+            "内部接口未启用",
+            status_code=status_of(INTERNAL_API_DISABLED),
+        )
+
+    try:
+        permission_service.require_action_from_roles_only(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="quality",
+            resource_type="quality_outbox_worker",
+        )
+        permission_service.require_internal_worker_principal(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="quality",
+            resource_type="QUALITYOUTBOXWORKER",
+        )
+
+        result = _quality_outbox_worker(session=session).run_once(
+            batch_size=payload.batch_size,
+            worker_id=f"quality-worker:{current_user.username}",
+            dry_run=payload.dry_run,
+        )
+        data = QualityOutboxWorkerRunOnceData(
+            dry_run=result.dry_run,
+            processed_count=result.processed_count,
+            succeeded_count=result.succeeded_count,
+            failed_count=result.failed_count,
+            dead_count=result.dead_count,
+        )
+        audit.record_success(
+            module="quality",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="quality_outbox_worker",
+            resource_id=None,
+            resource_no="run-once",
+            before_data={"batch_size": payload.batch_size, "dry_run": payload.dry_run},
+            after_data=data.model_dump(),
+            context=context,
+        )
+        _commit_or_raise_write_error(session)
+        return _ok(data.model_dump(mode="json"))
+    except HTTPException as exc:
+        _rollback_safely(session)
+        return _map_permission_error(exc)
+    except AppException as exc:
+        _rollback_safely(session)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no="run-once",
+                error_code=exc.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(exc)
+    except Exception as exc:  # noqa: BLE001 - unified error envelope
+        _rollback_safely(session)
+        error = BusinessException(code=QUALITY_INTERNAL_ERROR)
+        log_safe_error(
+            logger_obj=logger,
+            message="quality_outbox_worker_internal_error",
+            exc=exc,
+            request_id=get_request_id_from_request(request),
+            extra={"module": "quality", "action": action, "error_code": QUALITY_INTERNAL_ERROR},
+        )
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no="run-once",
+                error_code=error.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(error)
+
+
+@router.get("/inspections/{inspection_id}/outbox-status")
+def get_quality_inspection_outbox_status(
+    inspection_id: int,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = QUALITY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="quality",
+        resource_type="quality_inspection",
+        resource_id=inspection_id,
+    )
+    row = session.query(LyQualityInspection).filter(LyQualityInspection.id == inspection_id).one_or_none()
+    if row is None:
+        return _err(QUALITY_NOT_FOUND, status_code=status_of(QUALITY_NOT_FOUND))
+    try:
+        _ensure_quality_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            row_or_scope=row,
+            resource_id=inspection_id,
+            resource_no=str(row.inspection_no),
+            enforce_action=False,
+        )
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, dict) else {}
+        if detail.get("code") == "RESOURCE_ACCESS_DENIED":
+            _hide_not_found()
+        raise
+    data: QualityOutboxStatusData = _quality_service(session, request).get_outbox_status(inspection_id)
+    return _ok(data.model_dump(mode="json"))
 
 
 @router.get("/statistics")
@@ -661,9 +926,65 @@ def get_quality_statistics(
     return _ok(data.model_dump(mode="json"))
 
 
+@router.get("/statistics/trend")
+def get_quality_statistics_trend(
+    request: Request,
+    period: str = Query(default="monthly", pattern="^(monthly|weekly)$"),
+    company: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    source_type: str | None = Query(default=None),
+    source_id: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = QUALITY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="quality",
+        resource_type="quality_statistics",
+    )
+    if company and item_code:
+        _ensure_quality_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            row_or_scope={
+                "company": company,
+                "item_code": item_code,
+                "supplier": supplier,
+                "warehouse": warehouse,
+                "source_type": source_type,
+                "source_id": source_id,
+            },
+            enforce_action=False,
+        )
+    data: QualityStatisticsTrendData = QualityService(session=session).statistics_trend(
+        period=period,
+        company=company,
+        item_code=item_code,
+        supplier=supplier,
+        warehouse=warehouse,
+        source_type=source_type,
+        source_id=source_id,
+        from_date=from_date,
+        to_date=to_date,
+    )
+    return _ok(data.model_dump(mode="json"))
+
+
 @router.get("/export")
 def export_quality_inspections(
     request: Request,
+    format: str | None = Query(default=None, pattern="^(csv|xlsx|pdf)$"),
+    inspection_id: int | None = Query(default=None, ge=1),
     company: str | None = Query(default=None),
     item_code: str | None = Query(default=None),
     supplier: str | None = Query(default=None),
@@ -704,7 +1025,59 @@ def export_quality_inspections(
                 },
                 enforce_action=False,
             )
-        data = QualityService(session=session).export_rows(
+        service = QualityService(session=session)
+        if format:
+            if inspection_id is not None:
+                row = session.query(LyQualityInspection).filter(LyQualityInspection.id == inspection_id).one_or_none()
+                if row is None:
+                    return _err(QUALITY_NOT_FOUND, status_code=status_of(QUALITY_NOT_FOUND))
+                _ensure_quality_scope(
+                    permission_service=permission_service,
+                    current_user=current_user,
+                    request=request,
+                    action=action,
+                    row_or_scope=row,
+                    resource_id=inspection_id,
+                    resource_no=str(row.inspection_no),
+                    enforce_action=False,
+                )
+            details = service.export_details(
+                company=company,
+                item_code=item_code,
+                supplier=supplier,
+                warehouse=warehouse,
+                source_type=source_type,
+                source_id=source_id,
+                status=status,
+                from_date=from_date,
+                to_date=to_date,
+                inspection_id=inspection_id,
+            )
+            if inspection_id is not None and not details:
+                return _err(QUALITY_NOT_FOUND, status_code=status_of(QUALITY_NOT_FOUND))
+            export_artifact = QualityExportService().build(
+                export_format=format,
+                details=details,
+                inspection_id=inspection_id,
+            )
+            _record_success(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=inspection_id,
+                resource_no=str(inspection_id) if inspection_id is not None else None,
+                after_data={"format": format, "inspection_id": inspection_id, "count": len(details)},
+            )
+            headers = {"Content-Disposition": f'attachment; filename=\"{export_artifact.filename}\"'}
+            return StreamingResponse(
+                iter([export_artifact.content]),
+                media_type=export_artifact.content_type,
+                headers=headers,
+            )
+
+        data = service.export_rows(
             company=company,
             item_code=item_code,
             supplier=supplier,

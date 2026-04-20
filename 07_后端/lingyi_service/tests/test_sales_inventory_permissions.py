@@ -125,3 +125,18 @@ class SalesInventoryPermissionTest(unittest.TestCase):
         self.assertFalse(
             ERPNextPermissionAdapter.is_customer_permitted(customer="CUST-A", user_permissions=permissions)
         )
+
+    def test_warehouse_permissions_strict_when_non_empty(self) -> None:
+        permissions = UserPermissionResult(
+            source_available=True,
+            unrestricted=False,
+            allowed_items={"ITEM-A"},
+            allowed_companies={"COMP-A"},
+            allowed_warehouses={"WH-A"},
+        )
+        self.assertTrue(
+            ERPNextPermissionAdapter.is_warehouse_permitted(warehouse="WH-A", user_permissions=permissions)
+        )
+        self.assertFalse(
+            ERPNextPermissionAdapter.is_warehouse_permitted(warehouse="WH-B", user_permissions=permissions)
+        )

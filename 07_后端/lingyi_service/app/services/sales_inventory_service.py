@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
 from app.schemas.sales_inventory import CustomerItem
+from app.schemas.sales_inventory import InventoryAggregationData
+from app.schemas.sales_inventory import InventoryAggregationItem
 from app.schemas.sales_inventory import SalesInventoryListData
 from app.schemas.sales_inventory import SalesOrderDetailData
+from app.schemas.sales_inventory import SalesOrderFulfillmentData
+from app.schemas.sales_inventory import SalesOrderFulfillmentItem
 from app.schemas.sales_inventory import SalesOrderLineItem
 from app.schemas.sales_inventory import SalesOrderListItem
 from app.schemas.sales_inventory import StockLedgerData
@@ -21,6 +26,16 @@ from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAd
 class SalesInventoryService:
     """Build API DTOs from ERPNext read-only adapter facts."""
 
+    BIN_FIELDS = [
+        "item_code",
+        "warehouse",
+        "actual_qty",
+        "ordered_qty",
+        "indented_qty",
+        "safety_stock",
+        "reorder_level",
+    ]
+
     def __init__(self, adapter: ERPNextSalesInventoryAdapter):
         self.adapter = adapter
 
@@ -30,6 +45,9 @@ class SalesInventoryService:
         company: str | None,
         customer: str | None,
         item_code: str | None,
+        item_name: str | None,
+        from_date: date | None,
+        to_date: date | None,
         page: int,
         page_size: int,
     ) -> SalesInventoryListData[SalesOrderListItem]:
@@ -37,6 +55,9 @@ class SalesInventoryService:
             company=company,
             customer=customer,
             item_code=item_code,
+            item_name=item_name,
+            from_date=from_date,
+            to_date=to_date,
             page=page,
             page_size=page_size,
         )
@@ -94,6 +115,8 @@ class SalesInventoryService:
         item_code: str,
         company: str | None,
         warehouse: str | None,
+        from_date: date | None,
+        to_date: date | None,
         page: int,
         page_size: int,
     ) -> StockLedgerData:
@@ -101,6 +124,8 @@ class SalesInventoryService:
             item_code=item_code,
             company=company,
             warehouse=warehouse,
+            from_date=from_date,
+            to_date=to_date,
             page=page,
             page_size=page_size,
         )
@@ -165,6 +190,97 @@ class SalesInventoryService:
             page_size=page_size,
         )
 
+    def get_inventory_aggregation(
+        self,
+        *,
+        company: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+    ) -> InventoryAggregationData:
+        allowed_warehouses = self._allowed_warehouses(company=company)
+        rows = self._list_bin_rows(item_code=item_code, warehouse=warehouse)
+        items: list[InventoryAggregationItem] = []
+        for row in rows:
+            row_item_code = self._text(row.get("item_code"))
+            row_warehouse = self._text(row.get("warehouse"))
+            if row_item_code is None or row_warehouse is None:
+                continue
+            if allowed_warehouses is not None and row_warehouse not in allowed_warehouses:
+                continue
+            actual_qty = self._decimal_or_zero(row.get("actual_qty"))
+            ordered_qty = self._decimal_or_zero(row.get("ordered_qty"))
+            indented_qty = self._decimal_or_zero(row.get("indented_qty"))
+            safety_stock = self._decimal_or_zero(row.get("safety_stock"))
+            reorder_level = self._decimal_or_zero(row.get("reorder_level"))
+            items.append(
+                InventoryAggregationItem(
+                    item_code=row_item_code,
+                    warehouse=row_warehouse,
+                    actual_qty=actual_qty,
+                    ordered_qty=ordered_qty,
+                    indented_qty=indented_qty,
+                    safety_stock=safety_stock,
+                    reorder_level=reorder_level,
+                    is_below_safety=safety_stock > Decimal("0") and actual_qty < safety_stock,
+                    is_below_reorder=reorder_level > Decimal("0") and actual_qty < reorder_level,
+                )
+            )
+        items.sort(key=lambda row: (row.item_code, row.warehouse))
+        return InventoryAggregationData(
+            company=company,
+            item_code=item_code,
+            warehouse=warehouse,
+            items=items,
+        )
+
+    def get_sales_order_fulfillment(
+        self,
+        *,
+        company: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        item_name: str | None,
+    ) -> SalesOrderFulfillmentData:
+        aggregation = self.get_inventory_aggregation(company=company, item_code=item_code, warehouse=warehouse)
+        actual_map = {
+            (item.item_code, item.warehouse): item.actual_qty
+            for item in aggregation.items
+        }
+        rows: list[SalesOrderFulfillmentItem] = []
+        for order in self._list_sales_orders_all(company=company):
+            sales_order = str(order.get("name") or "").strip()
+            if not sales_order:
+                continue
+            detail = self.adapter.get_sales_order(name=sales_order)
+            detail_company = self._text(detail.get("company"))
+            for line in self._list_or_empty(detail.get("items")):
+                line_item_code = self._text(line.get("item_code"))
+                if line_item_code is None:
+                    continue
+                if item_code and line_item_code != item_code:
+                    continue
+                line_warehouse = self._text(line.get("warehouse"))
+                if warehouse and line_warehouse != warehouse:
+                    continue
+                line_item_name = self._text(line.get("item_name"))
+                if item_name and not self._contains_like(line_item_name, item_name):
+                    continue
+                ordered_qty = self._decimal_or_zero(line.get("qty"))
+                actual_qty = actual_map.get((line_item_code, line_warehouse or ""), Decimal("0"))
+                rows.append(
+                    SalesOrderFulfillmentItem(
+                        company=detail_company,
+                        sales_order=sales_order,
+                        item_code=line_item_code,
+                        warehouse=line_warehouse,
+                        ordered_qty=ordered_qty,
+                        actual_qty=actual_qty,
+                        fulfillment_rate=self._fulfillment_rate(actual_qty=actual_qty, ordered_qty=ordered_qty),
+                    )
+                )
+        rows.sort(key=lambda row: (row.sales_order, row.item_code, row.warehouse or ""))
+        return SalesOrderFulfillmentData(company=company, items=rows)
+
     @classmethod
     def _sales_order_list_item(cls, row: dict[str, Any]) -> SalesOrderListItem:
         return SalesOrderListItem(
@@ -193,6 +309,81 @@ class SalesInventoryService:
             delivery_date=row.get("delivery_date"),
         )
 
+    def _allowed_warehouses(self, *, company: str | None) -> set[str] | None:
+        if not company:
+            return None
+        rows: list[dict[str, Any]] = []
+        page = 1
+        page_size = 200
+        while True:
+            chunk, _ = self.adapter.list_warehouses(company=company, page=page, page_size=page_size)
+            if not chunk:
+                break
+            rows.extend(chunk)
+            if len(chunk) < page_size:
+                break
+            page += 1
+            if page > 100:
+                break
+        return {
+            warehouse_name
+            for row in rows
+            if (warehouse_name := self._text(row.get("name"))) is not None
+        }
+
+    def _list_bin_rows(self, *, item_code: str | None, warehouse: str | None) -> list[dict[str, Any]]:
+        filters: list[list[Any]] = []
+        if item_code:
+            filters.append(["item_code", "=", item_code])
+        if warehouse:
+            filters.append(["warehouse", "=", warehouse])
+        rows: list[dict[str, Any]] = []
+        page = 1
+        page_size = 500
+        while True:
+            chunk = self.adapter._list_resource(  # noqa: SLF001 - read-only adapter pagination reuse.
+                doctype="Bin",
+                fields=self.BIN_FIELDS,
+                filters=filters,
+                page=page,
+                page_size=page_size,
+                order_by="item_code asc, warehouse asc",
+            )
+            if not chunk:
+                break
+            rows.extend(chunk)
+            if len(chunk) < page_size:
+                break
+            page += 1
+            if page > 100:
+                break
+        return rows
+
+    def _list_sales_orders_all(self, *, company: str | None) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        page = 1
+        page_size = 200
+        while True:
+            chunk, _ = self.adapter.list_sales_orders(
+                company=company,
+                customer=None,
+                item_code=None,
+                item_name=None,
+                from_date=None,
+                to_date=None,
+                page=page,
+                page_size=page_size,
+            )
+            if not chunk:
+                break
+            rows.extend(chunk)
+            if len(chunk) < page_size:
+                break
+            page += 1
+            if page > 100:
+                break
+        return rows
+
     @staticmethod
     def _list_or_empty(value: Any) -> list[dict[str, Any]]:
         if not isinstance(value, list):
@@ -211,6 +402,27 @@ class SalesInventoryService:
         if value is None or str(value).strip() == "":
             return None
         return Decimal(str(value))
+
+    @staticmethod
+    def _decimal_or_zero(value: Any) -> Decimal:
+        if value is None or str(value).strip() == "":
+            return Decimal("0")
+        return Decimal(str(value))
+
+    @staticmethod
+    def _fulfillment_rate(*, actual_qty: Decimal, ordered_qty: Decimal) -> Decimal:
+        if ordered_qty <= Decimal("0"):
+            return Decimal("0")
+        rate = actual_qty / ordered_qty
+        if rate < Decimal("0"):
+            return Decimal("0")
+        return rate if rate <= Decimal("1") else Decimal("1")
+
+    @staticmethod
+    def _contains_like(value: str | None, keyword: str) -> bool:
+        if value is None:
+            return False
+        return keyword.lower() in value.lower()
 
     @staticmethod
     def _bool_or_none(value: Any) -> bool | None:

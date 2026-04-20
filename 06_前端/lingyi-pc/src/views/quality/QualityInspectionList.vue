@@ -7,6 +7,8 @@
           <div class="header-actions">
             <el-button type="primary" :disabled="!canRead" @click="loadRows">查询</el-button>
             <el-button v-if="canExport" :disabled="!canRead" @click="submitExport">导出快照</el-button>
+            <el-button v-if="canExport" :disabled="!canRead" @click="submitExportFile('xlsx')">导出 Excel</el-button>
+            <el-button v-if="canExport" :disabled="!canRead" @click="submitExportFile('pdf')">导出 PDF</el-button>
             <el-button v-if="canCreate" type="success" @click="openCreateDialog">创建检验单</el-button>
           </div>
         </div>
@@ -46,65 +48,191 @@
       </el-form>
 
       <el-empty v-if="!canRead" description="无质量管理查看权限" />
-      <template v-else>
-        <el-alert
-          v-if="statistics"
-          class="summary-alert"
-          type="info"
-          :closable="false"
-          :title="`本页筛选统计：检验 ${statistics.total_count} 单，检验数量 ${formatAmount(statistics.inspected_qty)}，缺陷率 ${formatRate(statistics.defect_rate)}`"
-        />
-
-        <el-table :data="rows" border v-loading="loading">
-          <el-table-column prop="inspection_no" label="检验单号" min-width="180" />
-          <el-table-column prop="company" label="公司" min-width="120" />
-          <el-table-column prop="item_code" label="物料" min-width="140" />
-          <el-table-column prop="supplier" label="供应商" min-width="140" />
-          <el-table-column label="来源" min-width="170">
-            <template #default="scope">
-              {{ sourceTypeLabel(scope.row.source_type) }} / {{ scope.row.source_id || '-' }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="inspection_date" label="检验日期" width="120" />
-          <el-table-column label="检验数量" width="110">
-            <template #default="scope">{{ formatAmount(scope.row.inspected_qty) }}</template>
-          </el-table-column>
-          <el-table-column label="合格数量" width="110">
-            <template #default="scope">{{ formatAmount(scope.row.accepted_qty) }}</template>
-          </el-table-column>
-          <el-table-column label="不合格数量" width="120">
-            <template #default="scope">{{ formatAmount(scope.row.rejected_qty) }}</template>
-          </el-table-column>
-          <el-table-column label="结果" width="110">
-            <template #default="scope">
-              <el-tag :type="resultTag(scope.row.result)">{{ resultLabel(scope.row.result) }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="状态" width="110">
-            <template #default="scope">
-              <el-tag :type="statusTag(scope.row.status)">{{ statusLabel(scope.row.status) }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" fixed="right" width="100">
-            <template #default="scope">
-              <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <div class="pager">
-          <el-pagination
-            background
-            layout="prev, pager, next, total, sizes"
-            :current-page="query.page"
-            :page-size="query.page_size"
-            :total="total"
-            :page-sizes="[10, 20, 50, 100]"
-            @current-change="onPageChange"
-            @size-change="onSizeChange"
+      <el-tabs v-else v-model="activeTab">
+        <el-tab-pane label="检验列表" name="list">
+          <el-alert
+            v-if="statistics"
+            class="summary-alert"
+            type="info"
+            :closable="false"
+            :title="`本页筛选统计：检验 ${statistics.total_count} 单，检验数量 ${formatAmount(statistics.total_inspected_qty)}，缺陷率 ${formatRate(statistics.overall_defect_rate)}`"
           />
-        </div>
-      </template>
+
+          <el-table :data="rows" border v-loading="loading">
+            <el-table-column prop="inspection_no" label="检验单号" min-width="180" />
+            <el-table-column prop="company" label="公司" min-width="120" />
+            <el-table-column prop="item_code" label="物料" min-width="140" />
+            <el-table-column prop="supplier" label="供应商" min-width="140" />
+            <el-table-column label="来源" min-width="170">
+              <template #default="scope">
+                {{ sourceTypeLabel(scope.row.source_type) }} / {{ scope.row.source_id || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="inspection_date" label="检验日期" width="120" />
+            <el-table-column label="检验数量" width="110">
+              <template #default="scope">{{ formatAmount(scope.row.inspected_qty) }}</template>
+            </el-table-column>
+            <el-table-column label="合格数量" width="110">
+              <template #default="scope">{{ formatAmount(scope.row.accepted_qty) }}</template>
+            </el-table-column>
+            <el-table-column label="不合格数量" width="120">
+              <template #default="scope">{{ formatAmount(scope.row.rejected_qty) }}</template>
+            </el-table-column>
+            <el-table-column label="结果" width="110">
+              <template #default="scope">
+                <el-tag :type="resultTag(scope.row.result)">{{ resultLabel(scope.row.result) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="110">
+              <template #default="scope">
+                <el-tag :type="statusTag(scope.row.status)">{{ statusLabel(scope.row.status) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" width="230">
+              <template #default="scope">
+                <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
+                <el-button v-if="canExport" link type="success" @click="submitExportFile('xlsx', scope.row.id)">Excel</el-button>
+                <el-button v-if="canExport" link type="warning" @click="submitExportFile('pdf', scope.row.id)">PDF</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager">
+            <el-pagination
+              background
+              layout="prev, pager, next, total, sizes"
+              :current-page="query.page"
+              :page-size="query.page_size"
+              :total="total"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onPageChange"
+              @size-change="onSizeChange"
+            />
+          </div>
+        </el-tab-pane>
+
+        <el-tab-pane label="统计分析" name="statistics">
+          <el-empty v-if="!statistics" description="暂无统计数据" />
+          <template v-else>
+            <div class="stat-cards">
+              <el-card shadow="never">
+                <div class="stat-label">检验单总数</div>
+                <div class="stat-value">{{ statistics.total_count }}</div>
+              </el-card>
+              <el-card shadow="never">
+                <div class="stat-label">检验数量</div>
+                <div class="stat-value">{{ formatAmount(statistics.total_inspected_qty) }}</div>
+              </el-card>
+              <el-card shadow="never">
+                <div class="stat-label">不合格数量</div>
+                <div class="stat-value">{{ formatAmount(statistics.total_rejected_qty) }}</div>
+              </el-card>
+              <el-card shadow="never">
+                <div class="stat-label">总体缺陷率</div>
+                <div class="stat-value">{{ formatRate(statistics.overall_defect_rate) }}</div>
+              </el-card>
+            </div>
+
+            <div class="stats-section">
+              <h4>按供应商聚合</h4>
+              <el-table :data="statistics.by_supplier" border>
+                <el-table-column prop="label" label="供应商" min-width="180" />
+                <el-table-column prop="count" label="检验单数" width="100" />
+                <el-table-column label="检验数量" width="120">
+                  <template #default="scope">{{ formatAmount(scope.row.total_inspected_qty) }}</template>
+                </el-table-column>
+                <el-table-column label="不合格数量" width="120">
+                  <template #default="scope">{{ formatAmount(scope.row.total_rejected_qty) }}</template>
+                </el-table-column>
+                <el-table-column label="缺陷率" width="120">
+                  <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <div class="stats-section">
+              <h4>按物料聚合</h4>
+              <el-table :data="statistics.by_item_code" border>
+                <el-table-column prop="label" label="物料" min-width="180" />
+                <el-table-column prop="count" label="检验单数" width="100" />
+                <el-table-column label="检验数量" width="120">
+                  <template #default="scope">{{ formatAmount(scope.row.total_inspected_qty) }}</template>
+                </el-table-column>
+                <el-table-column label="不合格数量" width="120">
+                  <template #default="scope">{{ formatAmount(scope.row.total_rejected_qty) }}</template>
+                </el-table-column>
+                <el-table-column label="缺陷率" width="120">
+                  <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <div class="stats-section">
+              <h4>按仓库聚合</h4>
+              <el-table :data="statistics.by_warehouse" border>
+                <el-table-column prop="label" label="仓库" min-width="180" />
+                <el-table-column prop="count" label="检验单数" width="100" />
+                <el-table-column label="检验数量" width="120">
+                  <template #default="scope">{{ formatAmount(scope.row.total_inspected_qty) }}</template>
+                </el-table-column>
+                <el-table-column label="不合格数量" width="120">
+                  <template #default="scope">{{ formatAmount(scope.row.total_rejected_qty) }}</template>
+                </el-table-column>
+                <el-table-column label="缺陷率" width="120">
+                  <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
+                </el-table-column>
+              </el-table>
+            </div>
+
+            <div class="stats-grid">
+              <el-card shadow="never">
+                <template #header>Top 缺陷供应商</template>
+                <el-table :data="statistics.top_defective_suppliers" border>
+                  <el-table-column prop="label" label="供应商" min-width="140" />
+                  <el-table-column label="缺陷率" width="120">
+                    <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
+                  </el-table-column>
+                </el-table>
+              </el-card>
+              <el-card shadow="never">
+                <template #header>Top 缺陷物料</template>
+                <el-table :data="statistics.top_defective_items" border>
+                  <el-table-column prop="label" label="物料" min-width="140" />
+                  <el-table-column label="缺陷率" width="120">
+                    <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
+                  </el-table-column>
+                </el-table>
+              </el-card>
+            </div>
+
+            <div class="stats-section">
+              <div class="trend-header">
+                <h4>趋势统计</h4>
+                <el-radio-group v-model="trendPeriod" @change="loadTrend">
+                  <el-radio-button label="monthly">按月</el-radio-button>
+                  <el-radio-button label="weekly">按周</el-radio-button>
+                </el-radio-group>
+              </div>
+              <el-table :data="statisticsTrend?.points || []" border>
+                <el-table-column prop="period_key" label="周期" width="120" />
+                <el-table-column prop="inspection_count" label="检验单数" width="100" />
+                <el-table-column label="检验数量" width="120">
+                  <template #default="scope">{{ formatAmount(scope.row.total_inspected_qty) }}</template>
+                </el-table-column>
+                <el-table-column label="不合格数量" width="120">
+                  <template #default="scope">{{ formatAmount(scope.row.total_rejected_qty) }}</template>
+                </el-table-column>
+                <el-table-column label="缺陷率" width="120">
+                  <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
+                </el-table-column>
+                <el-table-column label="不合格率" width="120">
+                  <template #default="scope">{{ formatRate(scope.row.rejected_rate) }}</template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </template>
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
 
     <el-dialog v-model="createDialogVisible" title="创建质量检验单" width="640px" destroy-on-close>
@@ -174,11 +302,15 @@ import { ElMessage } from 'element-plus'
 import {
   createQualityInspection,
   exportQualityInspections,
+  exportQualityInspectionsFile,
   fetchQualityInspections,
   fetchQualityStatistics,
+  fetchQualityStatisticsTrend,
+  type QualityExportFormat,
   type QualityInspectionCreatePayload,
   type QualityInspectionListItem,
   type QualityStatisticsData,
+  type QualityStatisticsTrendData,
 } from '@/api/quality'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -188,9 +320,12 @@ const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
 const creating = ref<boolean>(false)
 const createDialogVisible = ref<boolean>(false)
+const activeTab = ref<'list' | 'statistics'>('list')
+const trendPeriod = ref<'monthly' | 'weekly'>('monthly')
 const rows = ref<QualityInspectionListItem[]>([])
 const total = ref<number>(0)
 const statistics = ref<QualityStatisticsData | null>(null)
+const statisticsTrend = ref<QualityStatisticsTrendData | null>(null)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_read)
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_create)
@@ -294,6 +429,16 @@ const resetRows = (): void => {
   rows.value = []
   total.value = 0
   statistics.value = null
+  statisticsTrend.value = null
+}
+
+const loadTrend = async (): Promise<void> => {
+  if (!canRead.value) {
+    statisticsTrend.value = null
+    return
+  }
+  const trend = await fetchQualityStatisticsTrend(trendPeriod.value, buildFilterQuery())
+  statisticsTrend.value = trend.data
 }
 
 const loadRows = async (): Promise<void> => {
@@ -310,6 +455,8 @@ const loadRows = async (): Promise<void> => {
     total.value = result.data.total
     const stats = await fetchQualityStatistics(filters)
     statistics.value = stats.data
+    const trend = await fetchQualityStatisticsTrend(trendPeriod.value, filters)
+    statisticsTrend.value = trend.data
   } catch (error) {
     ElMessage.error((error as Error).message)
   } finally {
@@ -377,6 +524,23 @@ const submitExport = async (): Promise<void> => {
   }
 }
 
+const submitExportFile = async (
+  format: QualityExportFormat,
+  inspectionId?: number,
+): Promise<void> => {
+  if (!canExport.value || !canRead.value) return
+  try {
+    await exportQualityInspectionsFile(format, buildFilterQuery(), inspectionId)
+    if (inspectionId) {
+      ElMessage.success(`已导出 ${format.toUpperCase()}（检验单 #${inspectionId}）`)
+    } else {
+      ElMessage.success(`已导出 ${format.toUpperCase()} 文件`)
+    }
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
+}
+
 onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
@@ -418,5 +582,41 @@ onMounted(async () => {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+}
+
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stat-label {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.stat-value {
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.stats-section {
+  margin-top: 16px;
+}
+
+.stats-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 </style>
