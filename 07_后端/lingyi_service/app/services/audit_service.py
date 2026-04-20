@@ -278,6 +278,78 @@ class AuditService:
             context=context,
         )
 
+    def record_success_and_commit(
+        self,
+        *,
+        module: str,
+        action: str,
+        operator: str,
+        operator_roles: list[str],
+        resource_type: str,
+        resource_id: int | None,
+        resource_no: str | None,
+        before_data: dict[str, Any] | None,
+        after_data: dict[str, Any] | None,
+        context: AuditContext,
+    ) -> None:
+        try:
+            self.record_success(
+                module=module,
+                action=action,
+                operator=operator,
+                operator_roles=operator_roles,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                before_data=before_data,
+                after_data=after_data,
+                context=context,
+            )
+            self.session.commit()
+        except AuditWriteFailed:
+            self._rollback_quietly()
+            raise
+        except Exception as exc:
+            self._rollback_quietly()
+            raise AuditWriteFailed() from exc
+
+    def record_failure_and_commit(
+        self,
+        *,
+        module: str,
+        action: str,
+        operator: str,
+        operator_roles: list[str],
+        resource_type: str,
+        resource_id: int | None,
+        resource_no: str | None,
+        before_data: dict[str, Any] | None,
+        after_data: dict[str, Any] | None,
+        error_code: str,
+        context: AuditContext,
+    ) -> None:
+        try:
+            self.record_failure(
+                module=module,
+                action=action,
+                operator=operator,
+                operator_roles=operator_roles,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_no=resource_no,
+                before_data=before_data,
+                after_data=after_data,
+                error_code=error_code,
+                context=context,
+            )
+            self.session.commit()
+        except AuditWriteFailed:
+            self._rollback_quietly()
+            raise
+        except Exception as exc:
+            self._rollback_quietly()
+            raise AuditWriteFailed() from exc
+
     def record_security_audit(
         self,
         *,
@@ -335,6 +407,12 @@ class AuditService:
             self.session.flush()
         except Exception as exc:
             raise AuditWriteFailed() from exc
+
+    def _rollback_quietly(self) -> None:
+        try:
+            self.session.rollback()
+        except Exception:  # pragma: no cover
+            pass
 
     def _insert_log(
         self,

@@ -78,6 +78,12 @@ const routes: RouteRecordRaw[] = [
     meta: { module: 'report' },
   },
   {
+    path: '/permissions/governance',
+    name: 'PermissionGovernance',
+    component: () => import('@/views/system/PermissionGovernance.vue'),
+    meta: { module: 'permission' },
+  },
+  {
     path: '/reports/style-profit',
     name: 'StyleProfitSnapshotList',
     component: () => import('@/views/style_profit/StyleProfitSnapshotList.vue'),

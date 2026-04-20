@@ -77,6 +77,10 @@ from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import WAREHOUSE_EXPORT
 from app.core.permissions import WAREHOUSE_DIAGNOSTIC
 from app.core.permissions import DASHBOARD_READ
+from app.core.permissions import PERMISSION_GOVERNANCE_AUDIT_READ
+from app.core.permissions import PERMISSION_GOVERNANCE_DIAGNOSTIC
+from app.core.permissions import PERMISSION_GOVERNANCE_EXPORT
+from app.core.permissions import PERMISSION_READ
 from app.core.permissions import REPORT_DIAGNOSTIC
 from app.core.permissions import REPORT_EXPORT
 from app.core.permissions import REPORT_READ
@@ -109,6 +113,8 @@ from app.routers.dashboard import get_db_session as dashboard_router_session_dep
 from app.routers.dashboard import router as dashboard_router
 from app.routers.report import get_db_session as report_router_session_dep
 from app.routers.report import router as report_router
+from app.routers.permission_governance import get_db_session as permission_governance_router_session_dep
+from app.routers.permission_governance import router as permission_governance_router
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -149,6 +155,7 @@ app.dependency_overrides[cross_module_view_router_session_dep] = get_db_session
 app.dependency_overrides[warehouse_router_session_dep] = get_db_session
 app.dependency_overrides[dashboard_router_session_dep] = get_db_session
 app.dependency_overrides[report_router_session_dep] = get_db_session
+app.dependency_overrides[permission_governance_router_session_dep] = get_db_session
 app.include_router(auth_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
@@ -162,6 +169,7 @@ app.include_router(cross_module_view_router)
 app.include_router(warehouse_router)
 app.include_router(dashboard_router)
 app.include_router(report_router)
+app.include_router(permission_governance_router)
 
 
 SECURITY_AUDIT_CODES = {
@@ -361,6 +369,20 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
     if path.startswith("/api/reports/catalog/"):
         report_key = path.removeprefix("/api/reports/catalog/").split("/", 1)[0]
         return "report", REPORT_READ, "ReportCatalog", report_key or None
+    if path in {"/api/permissions/actions/catalog", "/api/permissions/actions/catalog/"}:
+        return "permission", PERMISSION_READ, "PermissionActionCatalog", None
+    if path in {"/api/permissions/roles/matrix", "/api/permissions/roles/matrix/"}:
+        return "permission", PERMISSION_READ, "PermissionRolesMatrix", None
+    if path in {"/api/permissions/diagnostic", "/api/permissions/diagnostic/"}:
+        return "permission", PERMISSION_GOVERNANCE_DIAGNOSTIC, "PermissionDiagnostic", None
+    if path in {"/api/permissions/audit/security", "/api/permissions/audit/security/"}:
+        return "permission", PERMISSION_GOVERNANCE_AUDIT_READ, "PermissionSecurityAudit", None
+    if path in {"/api/permissions/audit/operations", "/api/permissions/audit/operations/"}:
+        return "permission", PERMISSION_GOVERNANCE_AUDIT_READ, "PermissionOperationAudit", None
+    if path in {"/api/permissions/audit/security/export", "/api/permissions/audit/security/export/"}:
+        return "permission", PERMISSION_GOVERNANCE_EXPORT, "PermissionSecurityAuditExport", None
+    if path in {"/api/permissions/audit/operations/export", "/api/permissions/audit/operations/export/"}:
+        return "permission", PERMISSION_GOVERNANCE_EXPORT, "PermissionOperationAuditExport", None
 
     if path.startswith("/api/factory-statements"):
         if path in {"/api/factory-statements", "/api/factory-statements/"}:

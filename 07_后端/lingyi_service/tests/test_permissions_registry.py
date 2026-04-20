@@ -17,6 +17,10 @@ from app.core.error_codes import RESOURCE_SCOPE_FIELD_UNKNOWN
 from app.core.exceptions import PermissionSourceUnavailable
 from app.core.permissions import BOM_READ
 from app.core.permissions import MODULE_ACTION_REGISTRY
+from app.core.permissions import PERMISSION_GOVERNANCE_AUDIT_READ
+from app.core.permissions import PERMISSION_GOVERNANCE_DIAGNOSTIC
+from app.core.permissions import PERMISSION_GOVERNANCE_EXPORT
+from app.core.permissions import PERMISSION_READ
 from app.core.permissions import PERMISSION_AUDIT_DIAGNOSTIC
 from app.core.permissions import PERMISSION_AUDIT_MANAGE
 from app.core.permissions import PERMISSION_AUDIT_READ
@@ -117,6 +121,10 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
             "report:read",
             "report:export",
             "report:diagnostic",
+            "permission:read",
+            "permission:audit_read",
+            "permission:export",
+            "permission:diagnostic",
             "warehouse:read",
             "warehouse:alert_read",
             "warehouse:export",
@@ -151,6 +159,14 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
         self.assertIn(REPORT_READ, actions or set())
         self.assertIn(REPORT_EXPORT, actions or set())
         self.assertIn(REPORT_DIAGNOSTIC, actions or set())
+
+    def test_permission_actions_registered(self) -> None:
+        actions = MODULE_ACTION_REGISTRY.get("permission")
+        self.assertIsNotNone(actions)
+        self.assertIn(PERMISSION_READ, actions or set())
+        self.assertIn(PERMISSION_GOVERNANCE_AUDIT_READ, actions or set())
+        self.assertIn(PERMISSION_GOVERNANCE_EXPORT, actions or set())
+        self.assertIn(PERMISSION_GOVERNANCE_DIAGNOSTIC, actions or set())
 
     def test_legacy_actions_not_lost(self) -> None:
         flattened = {action for actions in MODULE_ACTION_REGISTRY.values() for action in actions}
