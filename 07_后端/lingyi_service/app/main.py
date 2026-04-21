@@ -84,6 +84,9 @@ from app.core.permissions import PERMISSION_READ
 from app.core.permissions import REPORT_DIAGNOSTIC
 from app.core.permissions import REPORT_EXPORT
 from app.core.permissions import REPORT_READ
+from app.core.permissions import SYSTEM_CONFIG_READ
+from app.core.permissions import SYSTEM_DIAGNOSTIC
+from app.core.permissions import SYSTEM_DICTIONARY_READ
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import normalize_request_id
@@ -115,6 +118,8 @@ from app.routers.report import get_db_session as report_router_session_dep
 from app.routers.report import router as report_router
 from app.routers.permission_governance import get_db_session as permission_governance_router_session_dep
 from app.routers.permission_governance import router as permission_governance_router
+from app.routers.system_management import get_db_session as system_management_router_session_dep
+from app.routers.system_management import router as system_management_router
 from app.services.audit_service import AuditService
 
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
@@ -156,6 +161,7 @@ app.dependency_overrides[warehouse_router_session_dep] = get_db_session
 app.dependency_overrides[dashboard_router_session_dep] = get_db_session
 app.dependency_overrides[report_router_session_dep] = get_db_session
 app.dependency_overrides[permission_governance_router_session_dep] = get_db_session
+app.dependency_overrides[system_management_router_session_dep] = get_db_session
 app.include_router(auth_router)
 app.include_router(subcontract_router)
 app.include_router(production_router)
@@ -170,6 +176,7 @@ app.include_router(warehouse_router)
 app.include_router(dashboard_router)
 app.include_router(report_router)
 app.include_router(permission_governance_router)
+app.include_router(system_management_router)
 
 
 SECURITY_AUDIT_CODES = {
@@ -383,6 +390,12 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
         return "permission", PERMISSION_GOVERNANCE_EXPORT, "PermissionSecurityAuditExport", None
     if path in {"/api/permissions/audit/operations/export", "/api/permissions/audit/operations/export/"}:
         return "permission", PERMISSION_GOVERNANCE_EXPORT, "PermissionOperationAuditExport", None
+    if path in {"/api/system/configs/catalog", "/api/system/configs/catalog/"}:
+        return "system", SYSTEM_CONFIG_READ, "SystemConfigCatalog", None
+    if path in {"/api/system/dictionaries/catalog", "/api/system/dictionaries/catalog/"}:
+        return "system", SYSTEM_DICTIONARY_READ, "SystemDictionaryCatalog", None
+    if path in {"/api/system/health/summary", "/api/system/health/summary/"}:
+        return "system", SYSTEM_DIAGNOSTIC, "SystemHealthSummary", None
 
     if path.startswith("/api/factory-statements"):
         if path in {"/api/factory-statements", "/api/factory-statements/"}:

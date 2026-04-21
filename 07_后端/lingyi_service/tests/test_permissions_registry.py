@@ -30,6 +30,10 @@ from app.core.permissions import REPORT_DIAGNOSTIC
 from app.core.permissions import REPORT_EXPORT
 from app.core.permissions import REPORT_READ
 from app.core.permissions import SUBCONTRACT_READ
+from app.core.permissions import SYSTEM_CONFIG_READ
+from app.core.permissions import SYSTEM_DIAGNOSTIC
+from app.core.permissions import SYSTEM_DICTIONARY_READ
+from app.core.permissions import SYSTEM_READ
 from app.core.permissions import WAREHOUSE_ALERT_READ
 from app.core.permissions import WAREHOUSE_DIAGNOSTIC
 from app.core.permissions import WAREHOUSE_EXPORT
@@ -121,6 +125,10 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
             "report:read",
             "report:export",
             "report:diagnostic",
+            "system:read",
+            "system:config_read",
+            "system:dictionary_read",
+            "system:diagnostic",
             "permission:read",
             "permission:audit_read",
             "permission:export",
@@ -167,6 +175,38 @@ class PermissionRegistryBaselineTest(unittest.TestCase):
         self.assertIn(PERMISSION_GOVERNANCE_AUDIT_READ, actions or set())
         self.assertIn(PERMISSION_GOVERNANCE_EXPORT, actions or set())
         self.assertIn(PERMISSION_GOVERNANCE_DIAGNOSTIC, actions or set())
+
+    def test_system_actions_registered(self) -> None:
+        actions = MODULE_ACTION_REGISTRY.get("system")
+        self.assertIsNotNone(actions)
+        self.assertIn(SYSTEM_READ, actions or set())
+        self.assertIn(SYSTEM_CONFIG_READ, actions or set())
+        self.assertIn(SYSTEM_DICTIONARY_READ, actions or set())
+        self.assertIn(SYSTEM_DIAGNOSTIC, actions or set())
+
+    def test_system_manager_gets_system_read_actions_in_static_mode(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        actions = self._service().get_actions(
+            current_user=CurrentUser(
+                username="system.manager",
+                roles=["System Manager"],
+                is_service_account=False,
+                source="dev_header",
+            ),
+            request_obj=_build_request(),
+            module="system",
+        )
+        self.assertIn(SYSTEM_READ, actions.actions)
+        self.assertIn(SYSTEM_CONFIG_READ, actions.actions)
+        self.assertIn(SYSTEM_DICTIONARY_READ, actions.actions)
+        self.assertIn(SYSTEM_DIAGNOSTIC, actions.actions)
+
+    def test_viewer_does_not_get_system_read_actions(self) -> None:
+        actions = get_static_actions_for_roles(["Viewer"])
+        self.assertNotIn(SYSTEM_READ, actions)
+        self.assertNotIn(SYSTEM_CONFIG_READ, actions)
+        self.assertNotIn(SYSTEM_DICTIONARY_READ, actions)
+        self.assertNotIn(SYSTEM_DIAGNOSTIC, actions)
 
     def test_legacy_actions_not_lost(self) -> None:
         flattened = {action for actions in MODULE_ACTION_REGISTRY.values() for action in actions}

@@ -117,6 +117,10 @@ DASHBOARD_READ = "dashboard:read"
 REPORT_READ = "report:read"
 REPORT_EXPORT = "report:export"
 REPORT_DIAGNOSTIC = "report:diagnostic"
+SYSTEM_READ = "system:read"
+SYSTEM_CONFIG_READ = "system:config_read"
+SYSTEM_DICTIONARY_READ = "system:dictionary_read"
+SYSTEM_DIAGNOSTIC = "system:diagnostic"
 
 ALL_BOM_ACTIONS = {
     BOM_READ,
@@ -263,6 +267,13 @@ ALL_REPORT_ACTIONS = {
     REPORT_DIAGNOSTIC,
 }
 
+ALL_SYSTEM_ACTIONS = {
+    SYSTEM_READ,
+    SYSTEM_CONFIG_READ,
+    SYSTEM_DICTIONARY_READ,
+    SYSTEM_DIAGNOSTIC,
+}
+
 # 动作别名兼容：保留历史 publish/deactivate，同时支持 submit/cancel。
 ACTION_ALIAS_TO_CANONICAL = {
     BOM_SUBMIT: BOM_PUBLISH,
@@ -290,6 +301,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_QUALITY_ACTIONS
         | ALL_DASHBOARD_ACTIONS
         | ALL_REPORT_ACTIONS
+        | ALL_SYSTEM_ACTIONS
     ),
     "LY Integration Service": {
         WORKSHOP_READ,
@@ -406,6 +418,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "quality": set(ALL_QUALITY_ACTIONS),
     "dashboard": set(ALL_DASHBOARD_ACTIONS),
     "report": set(ALL_REPORT_ACTIONS),
+    "system": set(ALL_SYSTEM_ACTIONS),
 }
 
 
