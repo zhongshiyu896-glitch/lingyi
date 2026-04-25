@@ -26,6 +26,14 @@
         </el-form-item>
       </el-form>
 
+      <el-alert
+        v-if="!canRead"
+        type="warning"
+        :closable="false"
+        show-icon
+        title="无仓库查看权限，当前仅展示只读骨架"
+        class="scope-alert"
+      />
       <el-tabs v-model="activeTab">
         <el-tab-pane label="库存台账" name="ledger">
           <el-table :data="ledgerRows" border v-loading="loading">
@@ -253,6 +261,7 @@ const inboundMeta = reactive<WarehouseFinishedGoodsInboundCandidatesData>({
 const inboundCreatingSourceId = ref<string>('')
 const inboundDraft = ref<WarehouseStockEntryDraftData | null>(null)
 const inboundOutbox = ref<WarehouseStockEntryOutboxStatusData | null>(null)
+const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const canCreateInboundDraft = computed<boolean>(() => permissionStore.state.actions.includes('warehouse:stock_entry_draft'))
 const canCancelInboundDraft = computed<boolean>(() => permissionStore.state.actions.includes('warehouse:stock_entry_cancel'))
 
@@ -284,6 +293,13 @@ const normalizeQuery = () => ({
 })
 
 const loadAll = async (): Promise<void> => {
+  if (!canRead.value) {
+    ledgerRows.value = []
+    summaryRows.value = []
+    alertsRows.value = []
+    inboundCandidates.value = []
+    return
+  }
   loading.value = true
   try {
     const normalized = normalizeQuery()
@@ -310,6 +326,10 @@ const loadAll = async (): Promise<void> => {
 }
 
 const loadAlertsOnly = async (): Promise<void> => {
+  if (!canRead.value) {
+    alertsRows.value = []
+    return
+  }
   loading.value = true
   try {
     const normalized = normalizeQuery()
@@ -326,6 +346,10 @@ const loadAlertsOnly = async (): Promise<void> => {
 }
 
 const loadInboundCandidates = async (silent = false): Promise<void> => {
+  if (!canRead.value) {
+    inboundCandidates.value = []
+    return
+  }
   const company = query.company.trim()
   if (!company) {
     if (!silent) {
@@ -480,6 +504,10 @@ onMounted(async () => {
 }
 
 .alert-filter {
+  margin-bottom: 12px;
+}
+
+.scope-alert {
   margin-bottom: 12px;
 }
 

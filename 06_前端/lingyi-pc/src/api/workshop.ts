@@ -152,9 +152,7 @@ const handleAuthError = (code?: string): never => {
   if (code === 'AUTH_FORBIDDEN') {
     throw new Error('无权执行该操作')
   }
-  window.alert('登录已失效，请重新登录')
-  window.location.href = '/login'
-  throw new Error('未登录或会话无效')
+  throw new Error('登录已失效，请重新登录')
 }
 
 const request = async <T>(url: string, init?: RequestInit): Promise<ApiResponse<T>> => {

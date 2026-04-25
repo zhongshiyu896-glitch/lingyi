@@ -42,7 +42,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchCurrentUser } from '@/api/auth'
+import { usePermissionStore } from '@/stores/permission'
 
 interface EntryItem {
   title: string
@@ -56,6 +56,7 @@ interface EntryGroup {
 }
 
 const router = useRouter()
+const permissionStore = usePermissionStore()
 const currentUser = ref<string>('')
 const roles = ref<string[]>([])
 
@@ -113,9 +114,9 @@ const go = (path: string): void => {
 
 onMounted(async () => {
   try {
-    const result = await fetchCurrentUser()
-    currentUser.value = result.data.username
-    roles.value = result.data.roles
+    await permissionStore.loadCurrentUser()
+    currentUser.value = permissionStore.state.username || '访客会话'
+    roles.value = permissionStore.state.roles
   } catch {
     currentUser.value = '未获取到会话'
     roles.value = []

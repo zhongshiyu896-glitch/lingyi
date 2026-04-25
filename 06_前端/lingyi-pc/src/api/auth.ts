@@ -65,8 +65,6 @@ const request = async <T>(url: string, init?: RequestInit): Promise<ApiResponse<
   })
   const payload = (await response.json()) as ApiResponse<T>
   if (response.status === 401 || payload.code === 'AUTH_UNAUTHORIZED') {
-    window.alert('登录已失效，请重新登录')
-    window.location.href = '/login'
     throw new Error('未登录或会话无效')
   }
   if (response.status === 403 || payload.code === 'AUTH_FORBIDDEN') {

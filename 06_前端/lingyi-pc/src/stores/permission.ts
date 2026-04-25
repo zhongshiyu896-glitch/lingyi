@@ -135,6 +135,40 @@ const state = reactive<PermissionState>({
   buttonPermissions: emptyButtonPermissions(),
 })
 
+const AUTH_ME_GUEST_CACHE_KEY = 'lingyi.auth_me_guest_until'
+const AUTH_ME_GUEST_CACHE_TTL_MS = 15000
+
+const readGuestCacheUntil = (): number => {
+  if (typeof window === 'undefined') return 0
+  const raw = window.sessionStorage.getItem(AUTH_ME_GUEST_CACHE_KEY)
+  if (!raw) return 0
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const writeGuestCacheUntil = (untilMs: number): void => {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.setItem(AUTH_ME_GUEST_CACHE_KEY, String(untilMs))
+}
+
+const clearGuestCache = (): void => {
+  if (typeof window === 'undefined') return
+  window.sessionStorage.removeItem(AUTH_ME_GUEST_CACHE_KEY)
+}
+
+const applyGuestState = (): void => {
+  state.username = ''
+  state.roles = []
+  state.actions = []
+  state.status = 'guest'
+  state.buttonPermissions = emptyButtonPermissions()
+}
+
+let currentUserLoadPromise: Promise<void> | null = null
+
+const isUnauthorizedError = (error: unknown): boolean =>
+  error instanceof Error && (error.message.includes('未登录') || error.message.includes('登录已失效'))
+
 const applyActionPayload = (payload: {
   actions: string[]
   button_permissions: Partial<ButtonPermissions>
@@ -153,13 +187,59 @@ const applyActionPayload = (payload: {
 }
 
 export const usePermissionStore = () => {
-  const loadCurrentUser = async (): Promise<void> => {
-    const result = await fetchCurrentUser()
-    state.username = result.data.username
-    state.roles = result.data.roles
+  const loadCurrentUser = async (options?: { force?: boolean }): Promise<void> => {
+    const force = Boolean(options?.force)
+    if (!force && readGuestCacheUntil() > Date.now()) {
+      applyGuestState()
+      return
+    }
+    if (!force && currentUserLoadPromise) {
+      await currentUserLoadPromise
+      return
+    }
+
+    const run = async (): Promise<void> => {
+      try {
+        const result = await fetchCurrentUser()
+        state.username = result.data.username
+        state.roles = result.data.roles
+        state.status = ''
+        clearGuestCache()
+      } catch (error) {
+        if (isUnauthorizedError(error)) {
+          applyGuestState()
+          writeGuestCacheUntil(Date.now() + AUTH_ME_GUEST_CACHE_TTL_MS)
+          return
+        }
+        throw error
+      }
+    }
+
+    if (force) {
+      await run()
+      return
+    }
+
+    currentUserLoadPromise = run()
+    try {
+      await currentUserLoadPromise
+    } finally {
+      currentUserLoadPromise = null
+    }
+  }
+
+  const refreshCurrentUser = async (): Promise<void> => {
+    await loadCurrentUser({ force: true })
   }
 
   const loadModuleActions = async (module = 'bom'): Promise<void> => {
+    if (!state.username || state.status === 'guest') {
+      state.module = module
+      state.actions = []
+      state.status = 'guest'
+      state.buttonPermissions = emptyButtonPermissions()
+      return
+    }
     state.loading = true
     try {
       const result = await fetchModuleActions({ module })
@@ -170,6 +250,12 @@ export const usePermissionStore = () => {
   }
 
   const loadBomActions = async (bomId: number): Promise<void> => {
+    if (!state.username || state.status === 'guest') {
+      state.actions = []
+      state.status = 'guest'
+      state.buttonPermissions = emptyButtonPermissions()
+      return
+    }
     state.loading = true
     try {
       const result = await fetchBomActions(bomId)
@@ -182,6 +268,7 @@ export const usePermissionStore = () => {
   return {
     state,
     loadCurrentUser,
+    refreshCurrentUser,
     loadModuleActions,
     loadBomActions,
   }
