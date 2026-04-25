@@ -506,7 +506,6 @@ def material_check_plan(
         )
         service = _service(session=session, request=request)
         company, item = service.get_plan_resource(plan_id=plan_id)
-        before_data = {"plan_id": plan_id, "warehouse": payload.warehouse}
         permission_service.ensure_production_resource_permission(
             current_user=current_user,
             request_obj=request,
@@ -518,6 +517,8 @@ def material_check_plan(
             resource_no=str(plan_id),
             enforce_action=False,
         )
+        status = service.ensure_material_check_status_allowed(plan_id=plan_id)
+        before_data = {"plan_id": plan_id, "warehouse": payload.warehouse, "status": status}
         data = service.material_check(plan_id=plan_id, operator=current_user.username, payload=payload)
         audit.record_success(
             module="production",

@@ -88,6 +88,13 @@
 7. 禁止新增 ERPNext / Frappe `/api/resource` 直连。
 8. 禁止在普通请求路径中直接调用 ERPNext `create_work_order / submit_work_order` 或直接篡改 outbox 状态。
 9. 禁止设置 `build_release_allowed=yes`、禁止放行 B、禁止 push / remote / PR / 生产发布。
+10. 当前工作区继承 `TASK-021C` 已审计通过但尚未提交的历史基线脏改动共 6 个文件。其中 `production.py`、`schemas/production.py`、`test_production_plan.py` 虽位于 `TASK-021D` 的通用允许范围内，但本轮 `TASK-021D` 已完成的真实交付不再继续修改它们；这 6 个文件在 `TASK-021D` 当前审计轮次中必须全部保持以下 SHA-256 不变：
+    - `production.py`: `2ad6b2e2f58934a1fe2e28e75a7822ce7c707b159018da8cae551d9059814074`
+    - `schemas/production.py`: `585f4f80c980cfa9e8d3c3e828e3ec45c18ac1d4f0b3a960ce902422ce18bc0e`
+    - `test_production_plan.py`: `419a4f281bf9fbbd61939615781ac68e1b47a6e14be6687146cef89cf76e22eb`
+    - `production_service.py`: `000a510efe44958cebf2f48661aeb709ac35f9a5680a1a85cc1a174049e7a9cd`
+    - `production.ts`: `671f245744c6c8ed0d13651380a6b6c4db1d36241bc71162cc38dfb9fb8daebc`
+    - `ProductionPlanDetail.vue`: `53bd203cbbef29fd9d665311ed64319c8bfedc9dcc4ae2d522ef6aea16525f66`
 
 ## 5. 必须输出
 
@@ -106,6 +113,8 @@
 4. `claim_due`、租约恢复、防重复 claim、`mark_succeeded / mark_failed` 等闭环语义通过现有 worker / outbox service 受控完成，不得直接改写 row 状态。
 5. 不存在 ERPNext / Frappe `/api/resource` 直连，不存在普通请求路径直接调用 `create_work_order / submit_work_order`。
 6. C 对本任务单出具正式复核结论前，不得放行 B。
+7. 继承自 `TASK-021C` 的 6 个历史基线脏文件 SHA-256 必须保持不变，不得把历史已审计改动误计入 `TASK-021D` 本轮范围。
+8. `TASK-021D` 当前审计轮次的真实交付只允许新增命中 `production_work_order_worker.py`、`test_production_permissions.py`、`test_production_work_order_outbox.py` 与工程师会话日志；不得再把 `production.py`、`schemas/production.py`、`test_production_plan.py` 作为新增交付扩改。
 
 ## 7. 验证命令
 
@@ -126,19 +135,21 @@ pytest -q \
   '/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_plan.py' \
   '/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py'
 git diff --name-only -- \
-  '07_后端/lingyi_service/app/routers/production.py' \
   '07_后端/lingyi_service/app/services/production_work_order_worker.py' \
-  '07_后端/lingyi_service/app/services/production_work_order_outbox_service.py' \
-  '07_后端/lingyi_service/app/schemas/production.py' \
-  '07_后端/lingyi_service/app/core/permissions.py' \
-  '07_后端/lingyi_service/app/core/auth.py' \
-  '07_后端/lingyi_service/app/services/production_service.py' \
+  '07_后端/lingyi_service/tests/test_production_permissions.py' \
+  '07_后端/lingyi_service/tests/test_production_work_order_outbox.py'
+git diff --name-only -- \
   '07_后端/lingyi_service/app/services/outbox_state_machine.py' \
   '07_后端/lingyi_service/app/services/erpnext_production_adapter.py' \
   '07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py' \
-  '06_前端/lingyi-pc/src/api/production.ts' \
-  '06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue' \
   '.github' '02_源码'
+shasum -a 256 \
+  '/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/production.py' \
+  '/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/production.py' \
+  '/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_plan.py' \
+  '/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_service.py' \
+  '/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/production.ts' \
+  '/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue'
 ```
 
 ## 8. 完成回报

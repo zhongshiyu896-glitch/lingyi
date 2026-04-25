@@ -4,7 +4,7 @@
       <template #header>
         <div class="header-row">
           <span>生产计划列表</span>
-          <el-button v-if="canPlanCreate" type="primary" @click="openCreateDialog">新建生产计划</el-button>
+          <el-button type="primary" :disabled="!canPlanCreate" @click="openCreateDialog">新建生产计划</el-button>
         </div>
       </template>
 
@@ -111,7 +111,7 @@
       </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="createPlan">创建</el-button>
+        <el-button type="primary" :loading="creating" :disabled="!canCreateAction" @click="createPlan">创建</el-button>
       </template>
     </el-dialog>
   </div>
@@ -158,6 +158,33 @@ const createForm = reactive({
   planned_start_date: '',
   idempotency_key: '',
 })
+
+const normalizedCreateForm = computed(() => ({
+  sales_order: createForm.sales_order.trim(),
+  sales_order_item: createForm.sales_order_item.trim(),
+  item_code: createForm.item_code.trim(),
+  planned_qty: Number(createForm.planned_qty || 0),
+  planned_start_date: createForm.planned_start_date || undefined,
+  idempotency_key: createForm.idempotency_key.trim(),
+}))
+
+const createFormValidationError = computed<string | null>(() => {
+  if (!normalizedCreateForm.value.sales_order) {
+    return '销售单不能为空'
+  }
+  if (!normalizedCreateForm.value.item_code) {
+    return '款式编码不能为空'
+  }
+  if (!normalizedCreateForm.value.idempotency_key) {
+    return '幂等键不能为空'
+  }
+  if (!(normalizedCreateForm.value.planned_qty > 0)) {
+    return '计划数量必须大于 0'
+  }
+  return null
+})
+
+const canCreateAction = computed<boolean>(() => canPlanCreate.value && !createFormValidationError.value)
 
 const statusLabel = (value: string): string => {
   const labels: Record<string, string> = {
@@ -223,6 +250,10 @@ const loadPlans = async (): Promise<void> => {
 }
 
 const openCreateDialog = (): void => {
+  if (!canPlanCreate.value) {
+    ElMessage.error('无新建生产计划权限')
+    return
+  }
   createForm.sales_order = ''
   createForm.sales_order_item = ''
   createForm.item_code = ''
@@ -234,20 +265,25 @@ const openCreateDialog = (): void => {
 }
 
 const createPlan = async (): Promise<void> => {
-  const plannedQty = Number(createForm.planned_qty || 0)
-  if (!(plannedQty > 0)) {
-    ElMessage.error('计划数量必须大于 0')
+  if (!canPlanCreate.value) {
+    ElMessage.error('无新建生产计划权限')
+    return
+  }
+
+  const validationError = createFormValidationError.value
+  if (validationError) {
+    ElMessage.error(validationError)
     return
   }
 
   const payload: ProductionPlanCreatePayload = {
-    sales_order: createForm.sales_order.trim(),
-    sales_order_item: createForm.sales_order_item.trim() || undefined,
-    item_code: createForm.item_code.trim(),
+    sales_order: normalizedCreateForm.value.sales_order,
+    sales_order_item: normalizedCreateForm.value.sales_order_item || undefined,
+    item_code: normalizedCreateForm.value.item_code,
     bom_id: createForm.bom_id,
-    planned_qty: plannedQty,
-    planned_start_date: createForm.planned_start_date || undefined,
-    idempotency_key: createForm.idempotency_key.trim(),
+    planned_qty: normalizedCreateForm.value.planned_qty,
+    planned_start_date: normalizedCreateForm.value.planned_start_date,
+    idempotency_key: normalizedCreateForm.value.idempotency_key,
   }
 
   creating.value = true

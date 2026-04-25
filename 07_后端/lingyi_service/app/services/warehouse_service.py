@@ -25,6 +25,8 @@ from app.schemas.warehouse import WarehouseAlertsData
 from app.schemas.warehouse import WarehouseBatchDetailData
 from app.schemas.warehouse import WarehouseBatchItem
 from app.schemas.warehouse import WarehouseBatchListData
+from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidateItem
+from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidatesData
 from app.schemas.warehouse import WarehouseInventoryCountCreateRequest
 from app.schemas.warehouse import WarehouseInventoryCountData
 from app.schemas.warehouse import WarehouseInventoryCountItemCreateRequest
@@ -48,6 +50,7 @@ from app.schemas.warehouse import WarehouseStockSummaryItem
 from app.schemas.warehouse import WarehouseTraceabilityData
 from app.schemas.warehouse import WarehouseTraceabilityItem
 from app.services.erpnext_warehouse_adapter import ERPNextWarehouseAdapter
+from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 
 
 @dataclass(slots=True)
@@ -74,6 +77,11 @@ class WarehouseService:
 
     _PURPOSES = {"Material Issue", "Material Receipt", "Material Transfer"}
     _INVENTORY_ACTIVE_STATUSES = {"draft", "counted", "variance_review"}
+    _FINISHED_GOODS_SOURCE_TYPE = "finished_goods_inbound"
+    _FINISHED_GOODS_DISABLED_ENTRY_LABEL = "成品预约入仓 -> 创建成品入仓"
+    _FINISHED_GOODS_DISABLED_ENTRY_REASON = "当前入口存在受限状态，需按冻结口径提示，不得直接放开"
+    _ALLOCATION_CONTRACT = "strict_alloc -> zero_placeholder_fallback"
+    _STRICT_ALLOC_FAILURE_REASON = "找不到可分配的制单明细"
 
     def __init__(
         self,
@@ -308,6 +316,34 @@ class WarehouseService:
             items=[WarehouseTraceabilityItem(**row) for row in rows],
         )
 
+    def list_finished_goods_inbound_candidates(
+        self,
+        *,
+        company: str | None,
+    ) -> WarehouseFinishedGoodsInboundCandidatesData:
+        rows = self._require_adapter().list_finished_goods_inbound_candidates(company=company)
+        items = [
+            WarehouseFinishedGoodsInboundCandidateItem(
+                source_id=str(row["source_id"]),
+                source_label=str(row["source_label"]),
+                item_code=str(row["item_code"]),
+                qty=Decimal(str(row["qty"])),
+                uom=str(row["uom"]),
+                disabled=bool(row.get("disabled", False)),
+                disabled_reason=self._text(row.get("disabled_reason")),
+            )
+            for row in rows
+        ]
+        items.sort(key=lambda row: (row.disabled, row.source_label, row.item_code))
+        return WarehouseFinishedGoodsInboundCandidatesData(
+            company=company,
+            show_completed_forced=True,
+            disabled_entry_label=self._FINISHED_GOODS_DISABLED_ENTRY_LABEL,
+            disabled_entry_reason=self._FINISHED_GOODS_DISABLED_ENTRY_REASON,
+            allocation_contract=self._ALLOCATION_CONTRACT,
+            items=items,
+        )
+
     def create_stock_entry_draft(
         self,
         *,
@@ -317,21 +353,48 @@ class WarehouseService:
         session = self._require_session()
 
         company = self._require_text(payload.company, "company")
-        purpose = self._require_text(payload.purpose, "purpose")
-        if purpose not in self._PURPOSES:
-            raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PURPOSE", "purpose 非法")
-
-        source_type = self._require_text(payload.source_type, "source_type")
-        source_id = self._require_text(payload.source_id, "source_id")
+        finished_goods_source_id = self._text(payload.finished_goods_source_id)
         source_warehouse = self._text(payload.source_warehouse)
         target_warehouse = self._text(payload.target_warehouse)
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        allocation_mode: str | None = None
+        strict_failure_reason: str | None = None
+        show_completed_forced: bool | None = None
 
-        self._validate_purpose_warehouses(
-            purpose=purpose,
-            source_warehouse=source_warehouse,
-            target_warehouse=target_warehouse,
-        )
+        if finished_goods_source_id is not None:
+            purpose = "Material Receipt"
+            source_type = self._FINISHED_GOODS_SOURCE_TYPE
+            source_id = finished_goods_source_id
+            show_completed_forced = True
+            self._validate_purpose_warehouses(
+                purpose=purpose,
+                source_warehouse=source_warehouse,
+                target_warehouse=target_warehouse,
+            )
+            item_rows, allocation_mode, strict_failure_reason = self._resolve_finished_goods_item_rows(
+                company=company,
+                source_id=source_id,
+                source_warehouse=source_warehouse,
+                target_warehouse=target_warehouse,
+                items=payload.items,
+            )
+        else:
+            purpose = self._require_text(payload.purpose, "purpose")
+            if purpose not in self._PURPOSES:
+                raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PURPOSE", "purpose 非法")
+
+            source_type = self._require_text(payload.source_type, "source_type")
+            source_id = self._require_text(payload.source_id, "source_id")
+            self._validate_purpose_warehouses(
+                purpose=purpose,
+                source_warehouse=source_warehouse,
+                target_warehouse=target_warehouse,
+            )
+            item_rows = self._normalize_item_payloads(
+                items=payload.items,
+                fallback_source_warehouse=source_warehouse,
+                fallback_target_warehouse=target_warehouse,
+            )
 
         existing_by_idempotency = (
             session.query(LyWarehouseStockEntryDraft)
@@ -356,12 +419,6 @@ class WarehouseService:
         )
         if existing_by_source is not None:
             return self._build_draft_data(existing_by_source)
-
-        item_rows = self._normalize_item_payloads(
-            items=payload.items,
-            fallback_source_warehouse=source_warehouse,
-            fallback_target_warehouse=target_warehouse,
-        )
 
         now = datetime.now(timezone.utc)
         event_key = self._build_event_key(
@@ -423,6 +480,16 @@ class WarehouseService:
                 for row in item_rows
             ],
         }
+        if allocation_mode is not None:
+            outbox_payload["allocation_mode"] = allocation_mode
+        if strict_failure_reason is not None:
+            outbox_payload["strict_failure_reason"] = strict_failure_reason
+        if show_completed_forced is not None:
+            outbox_payload["show_completed_forced"] = show_completed_forced
+        if finished_goods_source_id is not None:
+            outbox_payload["finished_goods_source_id"] = finished_goods_source_id
+            outbox_payload["disabled_entry_label"] = self._FINISHED_GOODS_DISABLED_ENTRY_LABEL
+            outbox_payload["disabled_entry_reason"] = self._FINISHED_GOODS_DISABLED_ENTRY_REASON
         session.add(
             LyWarehouseStockEntryOutboxEvent(
                 draft_id=draft.id,
@@ -804,6 +871,18 @@ class WarehouseService:
             .all()
         )
         outbox = self._latest_outbox_for_draft(draft_id)
+        allocation_mode: str | None = None
+        strict_failure_reason: str | None = None
+        show_completed_forced: bool | None = None
+        if outbox is not None and isinstance(outbox.payload, dict):
+            payload = outbox.payload
+            candidate_mode = self._text(payload.get("allocation_mode"))
+            if candidate_mode in {"strict_alloc", "zero_placeholder_fallback"}:
+                allocation_mode = candidate_mode
+            strict_failure_reason = self._text(payload.get("strict_failure_reason"))
+            raw_show_completed = payload.get("show_completed_forced")
+            if isinstance(raw_show_completed, bool):
+                show_completed_forced = raw_show_completed
 
         return WarehouseStockEntryDraftData(
             id=draft_id,
@@ -821,6 +900,9 @@ class WarehouseService:
             cancel_reason=self._text(draft.cancel_reason),
             idempotency_key=str(draft.idempotency_key),
             event_key=str(draft.event_key),
+            allocation_mode=allocation_mode,
+            strict_failure_reason=strict_failure_reason,
+            show_completed_forced=show_completed_forced,
             items=[
                 WarehouseStockEntryDraftItemData(
                     id=int(item.id),
@@ -1048,6 +1130,73 @@ class WarehouseService:
 
         return normalized_rows
 
+    def _resolve_finished_goods_item_rows(
+        self,
+        *,
+        company: str,
+        source_id: str,
+        source_warehouse: str | None,
+        target_warehouse: str | None,
+        items: list[WarehouseStockEntryDraftItemCreateRequest],
+    ) -> tuple[list[dict[str, Any]], str, str | None]:
+        try:
+            candidate = self._require_adapter().get_finished_goods_inbound_candidate(
+                source_id=source_id,
+                company=company,
+            )
+        except ERPNextAdapterException as exc:
+            raise WarehouseServiceError(
+                int(exc.http_status or 503),
+                str(exc.error_code),
+                self._text(exc.safe_message) or "成品入仓候选查询失败",
+            ) from exc
+
+        if bool(candidate.get("disabled", False)):
+            raise WarehouseServiceError(
+                400,
+                "WAREHOUSE_FINISHED_GOODS_CANDIDATE_DISABLED",
+                self._text(candidate.get("disabled_reason")) or self._FINISHED_GOODS_DISABLED_ENTRY_REASON,
+            )
+
+        item_rows = self._normalize_item_payloads(
+            items=items,
+            fallback_source_warehouse=source_warehouse,
+            fallback_target_warehouse=target_warehouse,
+        )
+        if len(item_rows) != 1:
+            raise WarehouseServiceError(400, "WAREHOUSE_INVALID_PAYLOAD", "成品入仓草稿仅支持单条候选明细")
+
+        item_row = item_rows[0]
+        expected_item_code = self._require_text(candidate.get("item_code"), "candidate.item_code")
+        if item_row["item_code"] != expected_item_code:
+            raise WarehouseServiceError(
+                400,
+                "WAREHOUSE_INVALID_PAYLOAD",
+                "草稿明细物料与候选物料不一致",
+            )
+
+        candidate_qty = self._require_positive_decimal(candidate.get("qty"), field_name="candidate.qty")
+        requested_qty = self._require_positive_decimal(item_row.get("qty"), field_name="items[1].qty")
+        if requested_qty > candidate_qty:
+            raise WarehouseServiceError(
+                400,
+                "WAREHOUSE_INVALID_QTY",
+                "草稿数量超过候选可用数量",
+            )
+
+        strict_alloc_qty = self._to_optional_decimal(candidate.get("strict_alloc_qty")) or Decimal("0")
+        if strict_alloc_qty >= requested_qty:
+            return item_rows, "strict_alloc", None
+
+        strict_failure_reason = self._STRICT_ALLOC_FAILURE_REASON
+        if candidate_qty <= Decimal("0"):
+            raise WarehouseServiceError(
+                400,
+                "WAREHOUSE_STRICT_ALLOC_FAILED",
+                strict_failure_reason,
+            )
+        return item_rows, "zero_placeholder_fallback", strict_failure_reason
+
     def _validate_purpose_warehouses(
         self,
         *,
@@ -1235,6 +1384,16 @@ class WarehouseService:
             return Decimal(text)
         except Exception:
             return None
+
+    @staticmethod
+    def _require_positive_decimal(value: object, *, field_name: str) -> Decimal:
+        try:
+            number = Decimal(str(value))
+        except Exception as exc:
+            raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", f"{field_name} 非法") from exc
+        if number <= Decimal("0"):
+            raise WarehouseServiceError(400, "WAREHOUSE_INVALID_QTY", f"{field_name} 必须大于 0")
+        return number
 
     @staticmethod
     def _require_text(value: Any, field_name: str) -> str:

@@ -4,6 +4,7 @@
       <template #header>
         <div class="header-row">
           <span>加工厂对账单列表</span>
+          <el-button type="primary" :disabled="!canCreateAction" @click="openCreateDialog">创建对账单</el-button>
         </div>
       </template>
 
@@ -105,6 +106,43 @@
       </template>
     </el-card>
 
+    <el-dialog v-model="createVisible" title="创建加工厂对账单" width="680px">
+      <el-form :model="createForm" label-width="120px">
+        <el-form-item label="公司">
+          <el-input v-model="createForm.company" />
+        </el-form-item>
+        <el-form-item label="供应商">
+          <el-input v-model="createForm.supplier" />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="createForm.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="from_date"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="createForm.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="to_date"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="幂等键">
+          <el-input v-model="createForm.idempotency_key" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createVisible = false">取消</el-button>
+        <el-button type="primary" :loading="creating" :disabled="!canSubmitCreate" @click="submitCreateStatement">
+          创建
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -113,7 +151,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  createFactoryStatement,
   fetchFactoryStatements,
+  type FactoryStatementCreatePayload,
   type FactoryStatementListItem,
 } from '@/api/factory_statement'
 import { usePermissionStore } from '@/stores/permission'
@@ -122,10 +162,14 @@ const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
+const creating = ref<boolean>(false)
+const createVisible = ref<boolean>(false)
 const rows = ref<FactoryStatementListItem[]>([])
 const total = ref<number>(0)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
+const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_create)
+const canCreateAction = computed<boolean>(() => canCreate.value)
 
 const query = reactive({
   supplier: '',
@@ -135,6 +179,46 @@ const query = reactive({
   page: 1,
   page_size: 20,
 })
+
+const createForm = reactive({
+  company: '',
+  supplier: '',
+  from_date: '',
+  to_date: '',
+  idempotency_key: '',
+})
+
+const normalizedCreateForm = computed(() => ({
+  company: createForm.company.trim(),
+  supplier: createForm.supplier.trim(),
+  from_date: createForm.from_date || '',
+  to_date: createForm.to_date || '',
+  idempotency_key: createForm.idempotency_key.trim(),
+}))
+
+const createFormValidationError = computed<string | null>(() => {
+  if (!normalizedCreateForm.value.company) {
+    return '公司不能为空'
+  }
+  if (!normalizedCreateForm.value.supplier) {
+    return '供应商不能为空'
+  }
+  if (!normalizedCreateForm.value.from_date) {
+    return '开始日期不能为空'
+  }
+  if (!normalizedCreateForm.value.to_date) {
+    return '结束日期不能为空'
+  }
+  if (normalizedCreateForm.value.from_date > normalizedCreateForm.value.to_date) {
+    return '开始日期不能晚于结束日期'
+  }
+  if (!normalizedCreateForm.value.idempotency_key) {
+    return '幂等键不能为空'
+  }
+  return null
+})
+
+const canSubmitCreate = computed<boolean>(() => canCreate.value && !createFormValidationError.value)
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
@@ -190,6 +274,59 @@ const statusTag = (status: string | null | undefined): 'warning' | 'success' | '
     return 'danger'
   }
   return 'info'
+}
+
+const buildIdempotencyKey = (prefix: string): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+const openCreateDialog = (): void => {
+  if (!canCreate.value) {
+    ElMessage.error('无创建对账单权限')
+    return
+  }
+  createForm.company = ''
+  createForm.supplier = query.supplier.trim()
+  createForm.from_date = query.from_date || ''
+  createForm.to_date = query.to_date || ''
+  createForm.idempotency_key = buildIdempotencyKey('factory-statement-create')
+  createVisible.value = true
+}
+
+const submitCreateStatement = async (): Promise<void> => {
+  if (!canCreate.value) {
+    ElMessage.error('无创建对账单权限')
+    return
+  }
+  const validationError = createFormValidationError.value
+  if (validationError) {
+    ElMessage.error(validationError)
+    return
+  }
+
+  const payload: FactoryStatementCreatePayload = {
+    company: normalizedCreateForm.value.company,
+    supplier: normalizedCreateForm.value.supplier,
+    from_date: normalizedCreateForm.value.from_date,
+    to_date: normalizedCreateForm.value.to_date,
+    idempotency_key: normalizedCreateForm.value.idempotency_key,
+  }
+
+  creating.value = true
+  try {
+    const result = await createFactoryStatement(payload)
+    ElMessage.success(`创建成功：${result.data.statement_no}`)
+    createVisible.value = false
+    createForm.idempotency_key = buildIdempotencyKey('factory-statement-create')
+    await loadRows()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    creating.value = false
+  }
 }
 
 const resetRows = (): void => {

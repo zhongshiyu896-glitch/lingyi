@@ -11,7 +11,12 @@ export interface DownloadFileResult {
 }
 
 const buildAuthHeaders = (headers?: HeadersInit): Headers => {
-  return new Headers(headers)
+  const result = new Headers(headers)
+  const authorization = result.get('Authorization')
+  if (authorization) {
+    result.set('Authorization', authorization)
+  }
+  return result
 }
 
 const parsePayload = async <T>(response: Response): Promise<ApiResponse<T> | null> => {

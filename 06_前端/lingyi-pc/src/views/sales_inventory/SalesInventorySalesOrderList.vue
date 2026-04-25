@@ -17,6 +17,27 @@
         <el-form-item label="物料">
           <el-input v-model="query.item_code" clearable placeholder="item_code" />
         </el-form-item>
+        <el-form-item label="物料名称">
+          <el-input v-model="query.item_name" clearable placeholder="item_name" />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="query.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="from_date"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="query.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="to_date"
+            clearable
+          />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :disabled="!canRead" @click="loadRows">查询</el-button>
         </el-form-item>
@@ -82,6 +103,9 @@ const query = reactive({
   company: '',
   customer: '',
   item_code: '',
+  item_name: '',
+  from_date: '',
+  to_date: '',
   page: 1,
   page_size: 20,
 })
@@ -111,6 +135,9 @@ const loadRows = async (): Promise<void> => {
       company: query.company.trim() || undefined,
       customer: query.customer.trim() || undefined,
       item_code: query.item_code.trim() || undefined,
+      item_name: query.item_name.trim() || undefined,
+      from_date: query.from_date || undefined,
+      to_date: query.to_date || undefined,
       page: query.page,
       page_size: query.page_size,
     })

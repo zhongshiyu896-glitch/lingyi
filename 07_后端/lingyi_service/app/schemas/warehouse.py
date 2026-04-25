@@ -218,6 +218,29 @@ class WarehouseStockEntryDraftItemCreateRequest(BaseModel):
     target_warehouse: str | None = None
 
 
+class WarehouseFinishedGoodsInboundCandidateItem(BaseModel):
+    """Finished-goods inbound candidate row."""
+
+    source_id: str
+    source_label: str
+    item_code: str
+    qty: Decimal
+    uom: str
+    disabled: bool
+    disabled_reason: str | None = None
+
+
+class WarehouseFinishedGoodsInboundCandidatesData(BaseModel):
+    """Finished-goods inbound candidate response."""
+
+    company: str | None = None
+    show_completed_forced: bool = True
+    disabled_entry_label: str
+    disabled_entry_reason: str
+    allocation_contract: str
+    items: list[WarehouseFinishedGoodsInboundCandidateItem]
+
+
 class WarehouseStockEntryDraftCreateRequest(BaseModel):
     """Create warehouse stock-entry draft payload."""
 
@@ -225,6 +248,7 @@ class WarehouseStockEntryDraftCreateRequest(BaseModel):
     purpose: Literal["Material Issue", "Material Receipt", "Material Transfer"]
     source_type: str
     source_id: str
+    finished_goods_source_id: str | None = None
     source_warehouse: str | None = None
     target_warehouse: str | None = None
     items: list[WarehouseStockEntryDraftItemCreateRequest] = Field(min_length=1)
@@ -283,6 +307,9 @@ class WarehouseStockEntryDraftData(BaseModel):
     cancel_reason: str | None = None
     idempotency_key: str
     event_key: str
+    allocation_mode: Literal["strict_alloc", "zero_placeholder_fallback"] | None = None
+    strict_failure_reason: str | None = None
+    show_completed_forced: bool | None = None
     items: list[WarehouseStockEntryDraftItemData]
     outbox: WarehouseStockEntryOutboxStatusData | None = None
 

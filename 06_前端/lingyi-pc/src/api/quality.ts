@@ -1,5 +1,4 @@
-import { request } from '@/api/request'
-import type { ApiResponse } from '@/api/request'
+import { request, requestFile } from '@/api/request'
 
 export type NumericLike = string | number
 
@@ -277,12 +276,15 @@ export const createQualityInspection = (payload: QualityInspectionCreatePayload)
     body: JSON.stringify(payload),
   })
 
-export const updateDraftInspection = (inspectionId: number, payload: QualityInspectionUpdatePayload) =>
+export const updateQualityInspection = (inspectionId: number, payload: QualityInspectionUpdatePayload) =>
   request<QualityInspectionDetailData>(`/api/quality/inspections/${inspectionId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
+
+export const updateDraftInspection = (inspectionId: number, payload: QualityInspectionUpdatePayload) =>
+  updateQualityInspection(inspectionId, payload)
 
 export const addDefectRecord = (inspectionId: number, payload: QualityInspectionDefectCreatePayload) =>
   request<QualityInspectionDetailData>(`/api/quality/inspections/${inspectionId}/defects`, {
@@ -319,18 +321,29 @@ export const fetchQualityStatisticsTrend = (
 export const exportQualityInspections = (query: QualityInspectionFilterQuery = {}) =>
   request<QualityExportData>(`/api/quality/export${buildQuery(query)}`)
 
-const parseFilename = (disposition: string | null, fallback: string): string => {
-  if (!disposition) return fallback
-  const utf8Match = disposition.match(/filename\\*=UTF-8''([^;]+)/i)
-  if (utf8Match?.[1]) {
-    try {
-      return decodeURIComponent(utf8Match[1])
-    } catch {
-      return utf8Match[1]
+const blobToDataUrl = (blob: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('导出失败'))
+        return
+      }
+      resolve(reader.result)
     }
-  }
-  const simpleMatch = disposition.match(/filename=\"?([^\";]+)\"?/i)
-  return simpleMatch?.[1] || fallback
+    reader.onerror = () => reject(new Error('导出失败'))
+    reader.readAsDataURL(blob)
+  })
+
+const triggerDownload = async (blob: Blob, filename: string): Promise<void> => {
+  const dataUrl = await blobToDataUrl(blob)
+  const link = document.createElement('a')
+  link.href = dataUrl
+  link.download = filename
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 export const exportQualityInspectionsFile = async (
@@ -339,32 +352,11 @@ export const exportQualityInspectionsFile = async (
   inspectionId?: number,
 ): Promise<void> => {
   const suffix = format === 'xlsx' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv'
-  const response = await fetch(
-    `/api/quality/export${buildQuery({ ...query, format, inspection_id: inspectionId })}`,
-    {
-      method: 'GET',
-      credentials: 'include',
-    },
-  )
-
-  if (!response.ok) {
-    let message = '导出失败'
-    try {
-      const payload = (await response.json()) as ApiResponse<unknown>
-      message = payload?.message || message
-    } catch {}
-    throw new Error(message)
-  }
-
-  const blob = await response.blob()
   const fallback = inspectionId ? `quality_export_${inspectionId}.${suffix}` : `quality_export.${suffix}`
-  const filename = parseFilename(response.headers.get('content-disposition'), fallback)
-  const href = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = href
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(href)
+  const { blob, filename } = await requestFile(
+    `/api/quality/export${buildQuery({ ...query, format, inspection_id: inspectionId })}`,
+    { method: 'GET' },
+    fallback,
+  )
+  await triggerDownload(blob, filename)
 }

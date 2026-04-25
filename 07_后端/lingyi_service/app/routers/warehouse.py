@@ -37,6 +37,7 @@ from app.schemas.warehouse import ApiResponse
 from app.schemas.warehouse import WarehouseBatchDetailData
 from app.schemas.warehouse import WarehouseBatchListData
 from app.schemas.warehouse import WarehouseDiagnosticData
+from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidatesData
 from app.schemas.warehouse import WarehouseInventoryCountCancelRequest
 from app.schemas.warehouse import WarehouseInventoryCountCreateRequest
 from app.schemas.warehouse import WarehouseInventoryCountVarianceReviewRequest
@@ -110,8 +111,9 @@ def _read_service(request: Request) -> WarehouseService:
     return WarehouseService(adapter=ERPNextWarehouseAdapter(request_obj=request))
 
 
-def _write_service(session: Session) -> WarehouseService:
-    return WarehouseService(session=session)
+def _write_service(session: Session, request: Request | None = None) -> WarehouseService:
+    adapter = ERPNextWarehouseAdapter(request_obj=request) if request is not None else None
+    return WarehouseService(session=session, adapter=adapter)
 
 
 def _handle_erpnext_error(
@@ -729,6 +731,74 @@ def get_stock_summary(
         )
     ]
     data.items = filtered
+    return _ok(data)
+
+
+@router.get("/finished-goods-inbound-candidates")
+def list_finished_goods_inbound_candidates(
+    request: Request,
+    company: str = Query(...),
+    item_code: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_READ
+    permission_service = PermissionService(session=session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_finished_goods_inbound",
+    )
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+    try:
+        _ensure_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            company=company,
+            warehouse=None,
+            item_code=item_code,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+
+    normalized_company = _scope_text(company)
+    normalized_item_code = _scope_text(item_code)
+    try:
+        data: WarehouseFinishedGoodsInboundCandidatesData = _read_service(request).list_finished_goods_inbound_candidates(
+            company=normalized_company
+        )
+    except ERPNextAdapterException as exc:
+        _handle_erpnext_error(
+            exc=exc,
+            permission_service=permission_service,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="ProductInWarehouseOption",
+        )
+
+    data.items = [
+        row
+        for row in data.items
+        if (normalized_item_code is None or row.item_code == normalized_item_code)
+        and _scope_allowed(
+            company=normalized_company,
+            warehouse=None,
+            item_code=row.item_code,
+            permissions=permissions,
+        )
+    ]
     return _ok(data)
 
 
@@ -1362,7 +1432,7 @@ def create_stock_entry_draft(
         _raise_scope_denied_as_forbidden(exc)
 
     try:
-        data = _write_service(session).create_stock_entry_draft(
+        data = _write_service(session, request=request).create_stock_entry_draft(
             payload=payload,
             current_user=current_user.username,
         )

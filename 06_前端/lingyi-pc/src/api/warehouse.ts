@@ -101,6 +101,99 @@ export interface WarehouseAlertsData {
   items: WarehouseAlertItem[]
 }
 
+export interface WarehouseFinishedGoodsInboundCandidatesQuery {
+  company: string
+  item_code?: string
+}
+
+export interface WarehouseFinishedGoodsInboundCandidateItem {
+  source_id: string
+  source_label: string
+  item_code: string
+  qty: NumericLike
+  uom: string
+  disabled: boolean
+  disabled_reason?: string | null
+}
+
+export interface WarehouseFinishedGoodsInboundCandidatesData {
+  company?: string | null
+  show_completed_forced: boolean
+  disabled_entry_label: string
+  disabled_entry_reason: string
+  allocation_contract: string
+  items: WarehouseFinishedGoodsInboundCandidateItem[]
+}
+
+export interface WarehouseStockEntryDraftItemPayload {
+  item_code: string
+  qty: NumericLike
+  uom: string
+  batch_no?: string | null
+  serial_no?: string | null
+  source_warehouse?: string | null
+  target_warehouse?: string | null
+}
+
+export interface WarehouseStockEntryDraftCreatePayload {
+  company: string
+  purpose: 'Material Issue' | 'Material Receipt' | 'Material Transfer'
+  source_type: string
+  source_id: string
+  finished_goods_source_id?: string | null
+  source_warehouse?: string | null
+  target_warehouse?: string | null
+  items: WarehouseStockEntryDraftItemPayload[]
+  idempotency_key: string
+}
+
+export interface WarehouseStockEntryOutboxStatusData {
+  draft_id: number
+  event_id: number
+  event_type: string
+  status: 'in_pending' | 'processing' | 'succeeded' | 'failed' | 'dead' | 'cancelled'
+  retry_count: number
+  external_ref?: string | null
+  error_message?: string | null
+  created_at: string
+  processed_at?: string | null
+}
+
+export interface WarehouseStockEntryDraftItemData {
+  id: number
+  draft_id: number
+  item_code: string
+  qty: NumericLike
+  uom: string
+  batch_no?: string | null
+  serial_no?: string | null
+  source_warehouse?: string | null
+  target_warehouse?: string | null
+}
+
+export interface WarehouseStockEntryDraftData {
+  id: number
+  company: string
+  purpose: string
+  source_type: string
+  source_id: string
+  source_warehouse?: string | null
+  target_warehouse?: string | null
+  status: 'draft' | 'pending_outbox' | 'cancelled'
+  created_by: string
+  created_at: string
+  cancelled_by?: string | null
+  cancelled_at?: string | null
+  cancel_reason?: string | null
+  idempotency_key: string
+  event_key: string
+  allocation_mode?: 'strict_alloc' | 'zero_placeholder_fallback' | null
+  strict_failure_reason?: string | null
+  show_completed_forced?: boolean | null
+  items: WarehouseStockEntryDraftItemData[]
+  outbox?: WarehouseStockEntryOutboxStatusData | null
+}
+
 export const fetchWarehouseStockLedger = async (
   query: WarehouseStockLedgerQuery,
 ): Promise<ApiResponse<WarehouseStockLedgerData>> => {
@@ -137,4 +230,49 @@ export const fetchWarehouseAlerts = async (
     alert_type: query.alert_type,
   })
   return request<WarehouseAlertsData>(`/api/warehouse/alerts?${queryString}`)
+}
+
+export const fetchWarehouseFinishedGoodsInboundCandidates = async (
+  query: WarehouseFinishedGoodsInboundCandidatesQuery,
+): Promise<ApiResponse<WarehouseFinishedGoodsInboundCandidatesData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    item_code: query.item_code,
+  })
+  return request<WarehouseFinishedGoodsInboundCandidatesData>(
+    `/api/warehouse/finished-goods-inbound-candidates?${queryString}`,
+  )
+}
+
+export const createWarehouseStockEntryDraft = async (
+  payload: WarehouseStockEntryDraftCreatePayload,
+): Promise<ApiResponse<WarehouseStockEntryDraftData>> => {
+  return request<WarehouseStockEntryDraftData>('/api/warehouse/stock-entry-drafts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export const fetchWarehouseStockEntryDraft = async (
+  draftId: number,
+): Promise<ApiResponse<WarehouseStockEntryDraftData>> => {
+  return request<WarehouseStockEntryDraftData>(`/api/warehouse/stock-entry-drafts/${draftId}`)
+}
+
+export const cancelWarehouseStockEntryDraft = async (
+  draftId: number,
+  reason: string,
+): Promise<ApiResponse<WarehouseStockEntryDraftData>> => {
+  return request<WarehouseStockEntryDraftData>(`/api/warehouse/stock-entry-drafts/${draftId}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  })
+}
+
+export const fetchWarehouseStockEntryOutboxStatus = async (
+  draftId: number,
+): Promise<ApiResponse<WarehouseStockEntryOutboxStatusData>> => {
+  return request<WarehouseStockEntryOutboxStatusData>(`/api/warehouse/stock-entry-drafts/${draftId}/outbox-status`)
 }

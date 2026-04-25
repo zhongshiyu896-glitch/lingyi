@@ -42,14 +42,74 @@
       </el-descriptions>
     </el-card>
 
-    <el-card v-if="canMaterialCheckAction" shadow="never">
+    <el-card v-if="canRead" shadow="never">
       <template #header><span>物料检查</span></template>
+      <el-alert
+        v-if="materialCheckGuardReason"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="materialCheckGuardReason"
+        style="margin-bottom: 12px"
+      />
       <el-form :model="materialCheckForm" label-width="140px">
         <el-form-item label="仓库">
           <el-input v-model="materialCheckForm.warehouse" placeholder="WIP Warehouse - LY" />
         </el-form-item>
       </el-form>
-      <el-button type="primary" :loading="checkingMaterials" @click="runMaterialCheck">执行物料检查</el-button>
+      <el-button type="primary" :loading="checkingMaterials" :disabled="!canRunMaterialCheck" @click="runMaterialCheck">
+        执行物料检查
+      </el-button>
+    </el-card>
+
+    <el-card v-if="canRead" shadow="never">
+      <template #header><span>create-work-order 候选入口</span></template>
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="当前仅开放 create-work-order 候选入口；sync-job-cards 继续冻结，internal worker 路径保持不变。"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-if="createWorkOrderGuardReason"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="createWorkOrderGuardReason"
+        style="margin-bottom: 12px"
+      />
+      <el-form :model="createWorkOrderForm" label-width="140px">
+        <el-form-item label="FG Warehouse">
+          <el-input v-model="createWorkOrderForm.fg_warehouse" placeholder="FG Warehouse - LY" />
+        </el-form-item>
+        <el-form-item label="WIP Warehouse">
+          <el-input v-model="createWorkOrderForm.wip_warehouse" placeholder="WIP Warehouse - LY" />
+        </el-form-item>
+        <el-form-item label="计划开工日">
+          <el-date-picker
+            v-model="createWorkOrderForm.start_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            format="YYYY-MM-DD"
+            placeholder="选择开工日期"
+          />
+        </el-form-item>
+        <el-form-item label="幂等键">
+          <el-input v-model="createWorkOrderForm.idempotency_key" placeholder="idempotency key" />
+        </el-form-item>
+      </el-form>
+      <div style="display: flex; gap: 8px">
+        <el-button :disabled="creatingWorkOrder" @click="resetCreateWorkOrderForm">重置</el-button>
+        <el-button
+          type="primary"
+          :loading="creatingWorkOrder"
+          :disabled="!canCreateWorkOrderAction"
+          @click="submitCreateWorkOrder"
+        >
+          创建 Work Order（候选）
+        </el-button>
+      </div>
     </el-card>
 
     <el-card v-if="canRead" shadow="never">
@@ -108,7 +168,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   checkProductionMaterials,
+  createProductionWorkOrder,
   fetchProductionPlanDetail,
+  type ProductionCreateWorkOrderPayload,
   type ProductionPlanDetailData,
 } from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
@@ -120,13 +182,21 @@ const permissionStore = usePermissionStore()
 const detail = ref<ProductionPlanDetailData | null>(null)
 const loading = ref<boolean>(false)
 const checkingMaterials = ref<boolean>(false)
+const creatingWorkOrder = ref<boolean>(false)
 
 const materialCheckForm = reactive({
   warehouse: 'WIP Warehouse - LY',
 })
+const createWorkOrderForm = reactive({
+  fg_warehouse: 'FG Warehouse - LY',
+  wip_warehouse: 'WIP Warehouse - LY',
+  start_date: '',
+  idempotency_key: '',
+})
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const canMaterialCheck = computed<boolean>(() => permissionStore.state.buttonPermissions.material_check)
+const canWorkOrderCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.work_order_create)
 
 const planId = computed<number>(() => Number(route.query.id || '0'))
 const status = computed<string>(() => detail.value?.status || '')
@@ -139,12 +209,68 @@ const workOrderSyncStatusLabel = computed<string>(() =>
 const writeEntryFrozenMessage = computed<string>(
   () =>
     detail.value?.write_entry_frozen_reason ||
-    '当前阶段已冻结 create-work-order / sync-job-cards；仅保留本地生产计划草稿与只读工单工序投影。',
+    '当前仅冻结 sync-job-cards；create-work-order 走本地 outbox 候选入口，internal worker 路径保持不变。',
 )
+const normalizedCreateWorkOrderForm = computed(() => ({
+  fg_warehouse: createWorkOrderForm.fg_warehouse.trim(),
+  wip_warehouse: createWorkOrderForm.wip_warehouse.trim(),
+  start_date: createWorkOrderForm.start_date.trim(),
+  idempotency_key: createWorkOrderForm.idempotency_key.trim(),
+}))
+const createWorkOrderValidationError = computed<string | null>(() => {
+  if (!normalizedCreateWorkOrderForm.value.fg_warehouse) {
+    return 'fg_warehouse 不能为空'
+  }
+  if (!normalizedCreateWorkOrderForm.value.wip_warehouse) {
+    return 'wip_warehouse 不能为空'
+  }
+  if (!normalizedCreateWorkOrderForm.value.start_date) {
+    return 'start_date 不能为空'
+  }
+  if (!normalizedCreateWorkOrderForm.value.idempotency_key) {
+    return 'idempotency_key 不能为空'
+  }
+  return null
+})
+const canCreateWorkOrderAction = computed<boolean>(() => {
+  return canWorkOrderCreate.value && !!detail.value && !createWorkOrderValidationError.value
+})
+const createWorkOrderGuardReason = computed<string>(() => {
+  if (!canWorkOrderCreate.value) {
+    return '无创建工单权限'
+  }
+  if (!detail.value) {
+    return '生产计划详情不存在'
+  }
+  return createWorkOrderValidationError.value || ''
+})
+
+const MATERIAL_CHECK_ALLOWED_STATUSES = new Set<string>([
+  'planned',
+  'material_checked',
+  'work_order_pending',
+  'work_order_created',
+])
+
+const isMaterialCheckStatusAllowed = computed<boolean>(() => MATERIAL_CHECK_ALLOWED_STATUSES.has(status.value))
+const normalizedMaterialCheckWarehouse = computed<string>(() => materialCheckForm.warehouse.trim())
+const isMaterialCheckFormValid = computed<boolean>(() => normalizedMaterialCheckWarehouse.value.length > 0)
 
 const canMaterialCheckAction = computed<boolean>(() => {
-  const allowed = new Set(['planned', 'material_checked', 'work_order_pending', 'work_order_created'])
-  return canMaterialCheck.value && allowed.has(status.value)
+  return canMaterialCheck.value && isMaterialCheckStatusAllowed.value
+})
+const canRunMaterialCheck = computed<boolean>(() => canMaterialCheckAction.value && isMaterialCheckFormValid.value)
+const materialCheckGuardReason = computed<string>(() => {
+  if (!canMaterialCheck.value) {
+    return '无物料检查权限'
+  }
+  if (!isMaterialCheckStatusAllowed.value) {
+    return '当前状态不允许执行物料检查'
+  }
+  if (!isMaterialCheckFormValid.value) {
+    return '仓库不能为空'
+  }
+  return ''
 })
 
 const statusLabel = (value: string): string => {
@@ -179,6 +305,20 @@ const syncStatusLabel = (value?: string | null): string => {
   return labels[value] || value
 }
 
+const buildIdempotencyKey = (prefix: string): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+const resetCreateWorkOrderForm = (): void => {
+  createWorkOrderForm.fg_warehouse = 'FG Warehouse - LY'
+  createWorkOrderForm.wip_warehouse = 'WIP Warehouse - LY'
+  createWorkOrderForm.start_date = ''
+  createWorkOrderForm.idempotency_key = buildIdempotencyKey('production-create-work-order')
+}
+
 const ensurePlanId = (): number => {
   if (!planId.value || Number.isNaN(planId.value)) {
     throw new Error('无效的生产计划 ID')
@@ -203,10 +343,23 @@ const loadDetail = async (): Promise<void> => {
 }
 
 const runMaterialCheck = async (): Promise<void> => {
+  if (!canMaterialCheck.value) {
+    ElMessage.error('无物料检查权限')
+    return
+  }
+  if (!isMaterialCheckStatusAllowed.value) {
+    ElMessage.error('当前状态不允许执行物料检查')
+    return
+  }
+  if (!isMaterialCheckFormValid.value) {
+    ElMessage.error('仓库不能为空')
+    return
+  }
+
   checkingMaterials.value = true
   try {
     await checkProductionMaterials(ensurePlanId(), {
-      warehouse: materialCheckForm.warehouse,
+      warehouse: normalizedMaterialCheckWarehouse.value,
     })
     ElMessage.success('物料检查完成')
     await loadDetail()
@@ -214,6 +367,47 @@ const runMaterialCheck = async (): Promise<void> => {
     ElMessage.error((error as Error).message)
   } finally {
     checkingMaterials.value = false
+  }
+}
+
+const submitCreateWorkOrder = async (): Promise<void> => {
+  if (!canWorkOrderCreate.value) {
+    ElMessage.error('无创建工单权限')
+    return
+  }
+  if (!detail.value) {
+    ElMessage.error('生产计划详情不存在')
+    return
+  }
+  const validationError = createWorkOrderValidationError.value
+  if (validationError) {
+    ElMessage.error(validationError)
+    return
+  }
+
+  const payload: ProductionCreateWorkOrderPayload = {
+    fg_warehouse: normalizedCreateWorkOrderForm.value.fg_warehouse,
+    wip_warehouse: normalizedCreateWorkOrderForm.value.wip_warehouse,
+    start_date: normalizedCreateWorkOrderForm.value.start_date,
+    idempotency_key: normalizedCreateWorkOrderForm.value.idempotency_key,
+  }
+  if (!payload.idempotency_key) {
+    ElMessage.error('idempotency_key 不能为空')
+    return
+  }
+
+  creatingWorkOrder.value = true
+  try {
+    const result = await createProductionWorkOrder(ensurePlanId(), payload)
+    ElMessage.success(
+      `工单候选入口提交成功（outbox #${result.data.outbox_id}，状态 ${syncStatusLabel(result.data.sync_status)}）`,
+    )
+    createWorkOrderForm.idempotency_key = buildIdempotencyKey('production-create-work-order')
+    await loadDetail()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    creatingWorkOrder.value = false
   }
 }
 
@@ -235,6 +429,7 @@ onMounted(async () => {
   } catch (error) {
     ElMessage.error((error as Error).message)
   }
+  resetCreateWorkOrderForm()
   await loadDetail()
 })
 </script>

@@ -151,6 +151,13 @@ class ProductionPlanTest(unittest.TestCase):
             "idempotency_key": idempotency_key,
         }
 
+    def _set_plan_status(self, *, plan_id: int, status: str) -> None:
+        with self.SessionLocal() as session:
+            row = session.query(LyProductionPlan).filter(LyProductionPlan.id == int(plan_id)).first()
+            self.assertIsNotNone(row)
+            row.status = status
+            session.commit()
+
     def test_create_plan_success_and_idempotent_retry(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
             response_1 = self.client.post(
@@ -463,8 +470,10 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(data["sync_status"], "succeeded")
         self.assertIsNotNone(data["last_synced_at"])
         self.assertTrue(data["write_entry_frozen"])
-        self.assertIn("TASK-021C", data["write_entry_frozen_reason"])
-        self.assertIn("普通前端", data["write_entry_frozen_reason"])
+        self.assertIn("TASK-015E", data["write_entry_frozen_reason"])
+        self.assertIn("sync-job-cards", data["write_entry_frozen_reason"])
+        self.assertIn("create-work-order", data["write_entry_frozen_reason"])
+        self.assertNotIn("普通前端仍冻结 create-work-order / sync-job-cards", data["write_entry_frozen_reason"])
 
     def test_material_check_requires_warehouse(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
@@ -482,6 +491,53 @@ class ProductionPlanTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
+
+    def test_material_check_allows_frozen_status_whitelist(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-material-status-whitelist", planned_qty="12"),
+            )
+        self.assertEqual(create_response.status_code, 200)
+        plan_id = int(create_response.json()["data"]["plan_id"])
+
+        allowed_statuses = [
+            "planned",
+            "material_checked",
+            "work_order_pending",
+            "work_order_created",
+        ]
+        for status in allowed_statuses:
+            self._set_plan_status(plan_id=plan_id, status=status)
+            response = self.client.post(
+                f"/api/production/plans/{plan_id}/material-check",
+                headers=self._headers(),
+                json={"warehouse": "WIP Warehouse - LY"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["code"], "0")
+            self.assertEqual(response.json()["data"]["plan_id"], plan_id)
+
+    def test_material_check_rejects_status_outside_whitelist(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-material-status-invalid", planned_qty="12"),
+            )
+        self.assertEqual(create_response.status_code, 200)
+        plan_id = int(create_response.json()["data"]["plan_id"])
+
+        self._set_plan_status(plan_id=plan_id, status="cancelled")
+        response = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(),
+            json={"warehouse": "WIP Warehouse - LY"},
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "PRODUCTION_MATERIAL_CHECK_STATUS_INVALID")
+        self.assertEqual(response.json()["message"], "当前生产计划状态不允许执行物料检查")
 
     def test_create_work_order_candidate_returns_unified_envelope(self) -> None:
         with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
@@ -516,8 +572,10 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(detail_response.status_code, 200)
         detail = detail_response.json()["data"]
         self.assertTrue(detail["write_entry_frozen"])
-        self.assertIn("TASK-021C", detail["write_entry_frozen_reason"])
-        self.assertIn("普通前端", detail["write_entry_frozen_reason"])
+        self.assertIn("TASK-015E", detail["write_entry_frozen_reason"])
+        self.assertIn("sync-job-cards", detail["write_entry_frozen_reason"])
+        self.assertIn("create-work-order", detail["write_entry_frozen_reason"])
+        self.assertNotIn("普通前端仍冻结 create-work-order / sync-job-cards", detail["write_entry_frozen_reason"])
 
 
 if __name__ == "__main__":

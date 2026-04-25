@@ -6,6 +6,9 @@ export interface SalesInventoryListQuery {
   company?: string
   customer?: string
   item_code?: string
+  item_name?: string
+  from_date?: string
+  to_date?: string
   page?: number
   page_size?: number
 }
@@ -65,6 +68,8 @@ export interface StockSummaryData {
 export interface StockLedgerQuery {
   company?: string
   warehouse?: string
+  from_date?: string
+  to_date?: string
   page?: number
   page_size?: number
 }
@@ -176,6 +181,9 @@ export const fetchSalesInventorySalesOrders = async (
     company: query.company,
     customer: query.customer,
     item_code: query.item_code,
+    item_name: query.item_name,
+    from_date: query.from_date,
+    to_date: query.to_date,
     page: query.page ?? 1,
     page_size: query.page_size ?? 20,
   })
@@ -205,6 +213,8 @@ export const fetchSalesInventoryStockLedger = async (
   const queryString = toQuery({
     company: query.company,
     warehouse: query.warehouse,
+    from_date: query.from_date,
+    to_date: query.to_date,
     page: query.page ?? 1,
     page_size: query.page_size ?? 20,
   })
@@ -241,8 +251,12 @@ export const fetchSalesInventoryAggregation = async (
 }
 
 export const fetchSalesInventorySalesOrderFulfillment = async (
-  query: Pick<SalesInventoryAggregationQuery, 'company'>,
+  query: Pick<SalesInventoryAggregationQuery, 'company' | 'item_code' | 'warehouse'>,
 ): Promise<ApiResponse<SalesOrderFulfillmentData>> => {
-  const queryString = toQuery({ company: query.company })
+  const queryString = toQuery({
+    company: query.company,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+  })
   return request<SalesOrderFulfillmentData>(`/api/sales-inventory/sales-order-fulfillment?${queryString}`)
 }

@@ -3,7 +3,12 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/bom/list',
+    redirect: '/home',
+  },
+  {
+    path: '/home',
+    name: 'HomePage',
+    component: () => import('@/views/HomePage.vue'),
   },
   {
     path: '/bom/list',
@@ -172,6 +177,14 @@ const routes: RouteRecordRaw[] = [
     name: 'CrossModuleView',
     component: () => import('@/views/cross_module/CrossModuleView.vue'),
     meta: { module: 'sales_inventory' },
+  },
+  {
+    path: '/app/:pathMatch(.*)*',
+    redirect: '/home',
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/home',
   },
 ]
 

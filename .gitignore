@@ -12,5 +12,9 @@
 .env
 .env.*
 !.env.example
+# TASK-164B: local runtime sandbox artifacts
+.local_runtime/
 07_后端/lingyi_service/lingyi_service.db
+# TASK-164B: local backend sqlite (dev-only)
+07_后端/lingyi_service/lingyi_service.local.db
 07_后端/lingyi_service/.pytest-postgresql.xml

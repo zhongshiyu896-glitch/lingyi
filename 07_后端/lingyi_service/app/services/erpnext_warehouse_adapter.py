@@ -91,6 +91,7 @@ class ERPNextWarehouseAdapter:
         "batch_no",
         "serial_no",
     ]
+    FINISHED_GOODS_INBOUND_OPTION_PATH = "/api/app/product-in-warehouse/manufacture-line-item-option"
 
     def __init__(
         self,
@@ -234,6 +235,50 @@ class ERPNextWarehouseAdapter:
                 if self._serial_filter_match(row.get("serial_no"), normalized_serial)
             ]
         return normalized, len(normalized)
+
+    def list_finished_goods_inbound_candidates(
+        self,
+        *,
+        company: str | None,
+        source_id: str | None = None,
+        page_size: int = 200,
+    ) -> list[dict[str, Any]]:
+        payload = self._build_finished_goods_option_payload(source_id=source_id, page_size=page_size)
+        response = self._request_json(
+            self.FINISHED_GOODS_INBOUND_OPTION_PATH,
+            doctype="Product In Warehouse Option",
+            method="POST",
+            payload=payload,
+        )
+        data = response.get("data") if isinstance(response.get("data"), dict) else response
+        items = data.get("items") if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            self._raise_invalid(doctype="Product In Warehouse Option", detail="items payload required")
+        return [self._normalize_finished_goods_candidate_row(row, company=company) for row in items]
+
+    def get_finished_goods_inbound_candidate(
+        self,
+        *,
+        source_id: str,
+        company: str | None,
+    ) -> dict[str, Any]:
+        normalized_source = self._optional_text(source_id)
+        if normalized_source is None:
+            self._raise_invalid(doctype="Product In Warehouse Option", detail="source_id is required")
+        rows = self.list_finished_goods_inbound_candidates(
+            company=company,
+            source_id=normalized_source,
+            page_size=50,
+        )
+        for row in rows:
+            if row.get("source_id") == normalized_source:
+                return row
+        raise ERPNextAdapterException(
+            error_code=ERPNEXT_RESOURCE_NOT_FOUND,
+            doctype="Product In Warehouse Option",
+            safe_message=message_of(ERPNEXT_RESOURCE_NOT_FOUND),
+            retryable=False,
+        )
 
     def list_batches(
         self,
@@ -500,6 +545,8 @@ class ERPNextWarehouseAdapter:
         path: str,
         *,
         doctype: str | None = None,
+        method: str = "GET",
+        payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not self.base_url:
             raise ERPNextAdapterException(
@@ -516,7 +563,16 @@ class ERPNextWarehouseAdapter:
                 safe_message="ERPNext 只读查询缺少鉴权上下文",
                 retryable=True,
             )
-        req = urllib_request.Request(url=f"{self.base_url}{path}", method="GET", headers=headers)
+        request_body: bytes | None = None
+        if payload is not None:
+            headers["Content-Type"] = "application/json"
+            request_body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        req = urllib_request.Request(
+            url=f"{self.base_url}{path}",
+            method=method.upper(),
+            headers=headers,
+            data=request_body,
+        )
         try:
             with urllib_request.urlopen(req, timeout=5) as response:
                 body = response.read().decode("utf-8")
@@ -834,6 +890,107 @@ class ERPNextWarehouseAdapter:
             if field_name in row:
                 return row[field_name]
         self._raise_invalid(doctype=doctype, detail=f"missing field: {logical_field}")
+
+    @staticmethod
+    def _build_finished_goods_option_payload(*, source_id: str | None, page_size: int) -> dict[str, Any]:
+        source_ids: list[str] = []
+        if source_id is not None:
+            text = ERPNextWarehouseAdapter._optional_text(source_id)
+            if text is not None:
+                source_ids = [text]
+        return {
+            "manufactureLineItemIds": source_ids,
+            "factoryId": "",
+            "documentNo": "",
+            "product": "",
+            "categoryId": "",
+            "seasonId": "",
+            "barcode": "",
+            "expectedReturnStartDate": "",
+            "expectedReturnEndDate": "",
+            "showCompleted": True,
+            "approvalStatus": 2,
+            "pageNumber": 1,
+            "pageSize": max(1, min(int(page_size), 200)),
+        }
+
+    def _normalize_finished_goods_candidate_row(
+        self,
+        row: dict[str, Any],
+        *,
+        company: str | None,
+    ) -> dict[str, Any]:
+        source_id = self._required_text_from_candidates(
+            row=row,
+            doctype="Product In Warehouse Option",
+            candidates=("manufactureLineItemId", "id"),
+            logical_field="source_id",
+        )
+        item_code = self._required_text_from_candidates(
+            row=row,
+            doctype="Product In Warehouse Option",
+            candidates=("productNo", "productId", "item_code"),
+            logical_field="item_code",
+        )
+        qty = self._required_decimal_from_candidates(
+            row=row,
+            doctype="Product In Warehouse Option",
+            candidates=("quantity",),
+            logical_field="qty",
+        )
+        uom = self._optional_text_from_candidates(
+            row=row,
+            doctype="Product In Warehouse Option",
+            candidates=("productUnit",),
+            logical_field="uom",
+        ) or "Nos"
+        strict_alloc_qty = self._optional_decimal_from_candidates(
+            row=row,
+            doctype="Product In Warehouse Option",
+            candidates=("surplusQuantity",),
+            logical_field="strict_alloc_qty",
+        ) or Decimal("0")
+        manufacture_no = self._optional_text_from_candidates(
+            row=row,
+            doctype="Product In Warehouse Option",
+            candidates=("manufactureNo",),
+            logical_field="manufacture_no",
+        )
+        process_type = self._optional_text_from_candidates(
+            row=row,
+            doctype="Product In Warehouse Option",
+            candidates=("processType", "productionProcessTypeName"),
+            logical_field="process_type",
+        )
+        source_label_parts = [part for part in [manufacture_no, process_type, item_code] if part]
+        source_label = " / ".join(source_label_parts) if source_label_parts else source_id
+
+        disabled = qty <= Decimal("0")
+        disabled_reason = "候选数量不足，禁止创建草稿" if disabled else None
+        return {
+            "company": self._optional_text(company),
+            "source_id": source_id,
+            "source_label": source_label,
+            "item_code": item_code,
+            "qty": qty,
+            "uom": uom,
+            "strict_alloc_qty": strict_alloc_qty,
+            "disabled": disabled,
+            "disabled_reason": disabled_reason,
+        }
+
+    def _optional_decimal_from_candidates(
+        self,
+        *,
+        row: dict[str, Any],
+        doctype: str,
+        candidates: tuple[str, ...],
+        logical_field: str,
+    ) -> Decimal | None:
+        for field_name in candidates:
+            if field_name in row:
+                return self._optional_decimal(row.get(field_name))
+        return None
 
     @staticmethod
     def _optional_text(value: Any) -> str | None:

@@ -17,6 +17,24 @@
         <el-form-item label="仓库">
           <el-input v-model="query.warehouse" clearable placeholder="warehouse" />
         </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="query.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="from_date"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="query.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="to_date"
+            clearable
+          />
+        </el-form-item>
       </el-form>
 
       <el-empty v-if="!canRead" description="无销售库存查看权限" />
@@ -177,6 +195,8 @@ const query = reactive({
   item_code: '',
   company: '',
   warehouse: '',
+  from_date: '',
+  to_date: '',
   page: 1,
   page_size: 20,
 })
@@ -235,6 +255,8 @@ const loadRows = async (): Promise<void> => {
       fetchSalesInventoryStockLedger(itemCode, {
         company: query.company.trim() || undefined,
         warehouse: query.warehouse.trim() || undefined,
+        from_date: query.from_date || undefined,
+        to_date: query.to_date || undefined,
         page: query.page,
         page_size: query.page_size,
       }),
@@ -270,6 +292,8 @@ const loadAnalysis = async (): Promise<void> => {
       }),
       fetchSalesInventorySalesOrderFulfillment({
         company: query.company.trim() || undefined,
+        item_code: query.item_code.trim() || undefined,
+        warehouse: query.warehouse.trim() || undefined,
       }),
     ])
     aggregationRows.value = aggregationResult.data.items

@@ -17,6 +17,7 @@ from app.core.error_codes import PRODUCTION_BOM_NOT_ACTIVE
 from app.core.error_codes import PRODUCTION_BOM_NOT_FOUND
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_IDEMPOTENCY_KEY_REQUIRED
+from app.core.error_codes import PRODUCTION_MATERIAL_CHECK_STATUS_INVALID
 from app.core.error_codes import PRODUCTION_PLANNED_QTY_EXCEEDED
 from app.core.error_codes import PRODUCTION_SO_CLOSED_OR_CANCELLED
 from app.core.error_codes import PRODUCTION_SO_ITEM_AMBIGUOUS
@@ -55,7 +56,16 @@ from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 from app.services.production_work_order_outbox_service import ProductionWorkOrderOutboxService
 
 PRODUCTION_WRITE_ENTRY_FROZEN_REASON = (
-    "TASK-021C 阶段仅保留候选写入口（本地 outbox / 工序投影）；普通前端仍冻结 create-work-order / sync-job-cards。"
+    "TASK-015E 局部解冻后仍保留受控写门禁：create-work-order 仅允许本地 outbox 候选入口，"
+    "sync-job-cards 继续冻结在普通前端之外（internal worker 路径不变）。"
+)
+PRODUCTION_MATERIAL_CHECK_ALLOWED_STATUSES = frozenset(
+    {
+        "planned",
+        "material_checked",
+        "work_order_pending",
+        "work_order_created",
+    }
 )
 
 
@@ -324,6 +334,7 @@ class ProductionService:
         payload: ProductionMaterialCheckRequest,
     ) -> ProductionMaterialCheckData:
         plan = self._must_get_plan(plan_id=plan_id)
+        self._ensure_material_check_status_allowed(plan=plan)
         warehouse = self._require_non_blank(
             payload.warehouse,
             code=PRODUCTION_WAREHOUSE_REQUIRED,
@@ -398,6 +409,10 @@ class ProductionService:
             snapshot_count=len(snapshot_items),
             items=snapshot_items,
         )
+
+    def ensure_material_check_status_allowed(self, *, plan_id: int) -> str:
+        plan = self._must_get_plan(plan_id=plan_id)
+        return self._ensure_material_check_status_allowed(plan=plan)
 
     def create_work_order_outbox(
         self,
@@ -638,6 +653,16 @@ class ProductionService:
         if row is None:
             raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="生产计划不存在")
         return row
+
+    @staticmethod
+    def _ensure_material_check_status_allowed(*, plan: LyProductionPlan) -> str:
+        status = str(plan.status or "").strip()
+        if status not in PRODUCTION_MATERIAL_CHECK_ALLOWED_STATUSES:
+            raise BusinessException(
+                code=PRODUCTION_MATERIAL_CHECK_STATUS_INVALID,
+                message="当前生产计划状态不允许执行物料检查",
+            )
+        return status
 
     def _resolve_bom(self, *, item_code: str, bom_id: int | None) -> LyApparelBom:
         try:

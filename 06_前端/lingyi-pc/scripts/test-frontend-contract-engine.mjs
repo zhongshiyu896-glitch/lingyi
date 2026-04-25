@@ -3,6 +3,7 @@ import path from 'node:path'
 import { tmpdir } from 'node:os'
 import {
   FRONTEND_WRITE_GUARD_COMMON_RULES,
+  analyzeSynchronousArrayIterationCallbackSinks,
   runFrontendContractEngine,
   validateCsvFormulaGuardContent,
 } from './frontend-contract-engine.mjs'
@@ -406,6 +407,100 @@ const configFailureCases = [
   },
 ]
 
+const runIterationRecoveryCase = ({
+  name,
+  sourceText,
+  expectedArgumentMode,
+  expectedMethodName,
+  expectedSinkExpression,
+}) => {
+  const descriptors = analyzeSynchronousArrayIterationCallbackSinks(sourceText, { targetPath: `${name}.ts` })
+  assertTrue(descriptors.length > 0, `[${name}] 预期恢复同步数组迭代 callback，但未找到任何描述符`)
+  const matched = descriptors.find(
+    (item) =>
+      item.argumentMode === expectedArgumentMode &&
+      item.methodName === expectedMethodName &&
+      item.sinkExpressions.includes(expectedSinkExpression),
+  )
+  assertTrue(
+    Boolean(matched),
+    `[${name}] 未找到期望描述符，期望 ${expectedArgumentMode}/${expectedMethodName}/${expectedSinkExpression}\n实际: ${JSON.stringify(descriptors, null, 2)}`,
+  )
+  assertTrue(!matched.unresolvedCallback, `[${name}] callback 不应处于 unresolved 状态`)
+  console.log(`PASS: ${name}`)
+}
+
+const iterationRecoveryCases = [
+  {
+    name: 'direct array iteration callback sink recovery',
+    expectedArgumentMode: 'direct',
+    expectedMethodName: 'forEach',
+    expectedSinkExpression: 'forward(item)',
+    sourceText: `
+const rows = [1, 2, 3]
+const forward = (value) => value
+rows.forEach((item) => forward(item))
+`,
+  },
+  {
+    name: 'call equivalent array iteration callback sink recovery',
+    expectedArgumentMode: 'call',
+    expectedMethodName: 'forEach',
+    expectedSinkExpression: 'forward(item)',
+    sourceText: `
+const rows = [1, 2, 3]
+const forward = (value) => value
+const callback = (item) => forward(item)
+Array.prototype.forEach.call(rows, callback)
+`,
+  },
+  {
+    name: 'apply equivalent array iteration callback sink recovery',
+    expectedArgumentMode: 'apply',
+    expectedMethodName: 'forEach',
+    expectedSinkExpression: 'forward(item)',
+    sourceText: `
+const rows = [1, 2, 3]
+const forward = (value) => value
+Array.prototype.forEach.apply(rows, [(item) => forward(item)])
+`,
+  },
+  {
+    name: 'reflect apply equivalent array iteration callback sink recovery',
+    expectedArgumentMode: 'reflect_apply',
+    expectedMethodName: 'forEach',
+    expectedSinkExpression: 'forward(item)',
+    sourceText: `
+const rows = [1, 2, 3]
+const forward = (value) => value
+Reflect.apply(Array.prototype.forEach, rows, [(item) => forward(item)])
+`,
+  },
+  {
+    name: 'bind equivalent array iteration callback sink recovery',
+    expectedArgumentMode: 'bind',
+    expectedMethodName: 'forEach',
+    expectedSinkExpression: 'forward(item)',
+    sourceText: `
+const rows = [1, 2, 3]
+const forward = (value) => value
+const boundForEach = Array.prototype.forEach.bind(rows)
+boundForEach((item) => forward(item))
+`,
+  },
+  {
+    name: 'reduce current item callback sink recovery',
+    expectedArgumentMode: 'call',
+    expectedMethodName: 'reduce',
+    expectedSinkExpression: 'forward(item)',
+    sourceText: `
+const rows = [1, 2, 3]
+const forward = (value) => value
+Array.prototype.reduce.call(rows, (acc, item) => forward(item), 0)
+`,
+  },
+]
+
 let passedCount = 0
 runSuccessCase()
 passedCount += 1
@@ -427,6 +522,11 @@ for (const failureCase of configFailureCases) {
     failureCase.mutateConfig,
     failureCase.expectedKeyword,
   )
+  passedCount += 1
+}
+
+for (const iterationRecoveryCase of iterationRecoveryCases) {
+  runIterationRecoveryCase(iterationRecoveryCase)
   passedCount += 1
 }
 

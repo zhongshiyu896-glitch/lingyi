@@ -112,6 +112,73 @@ export interface FactoryStatementDetailData {
   payable_outboxes: FactoryStatementPayableOutboxItem[]
 }
 
+export interface FactoryStatementCreatePayload {
+  company: string
+  supplier: string
+  from_date: string
+  to_date: string
+  idempotency_key: string
+}
+
+export interface FactoryStatementCreateData {
+  statement_id: number
+  statement_no: string
+  statement_status: string
+  company: string
+  supplier: string
+  from_date: string
+  to_date: string
+  source_count: number
+  inspected_qty: NumericLike
+  rejected_qty: NumericLike
+  accepted_qty: NumericLike
+  gross_amount: NumericLike
+  deduction_amount: NumericLike
+  net_amount: NumericLike
+  rejected_rate: NumericLike
+  idempotency_key: string
+  request_hash: string
+  idempotent_replay: boolean
+}
+
+export interface FactoryStatementConfirmPayload {
+  idempotency_key: string
+  remark?: string
+}
+
+export interface FactoryStatementConfirmData {
+  id: number
+  statement_no: string
+  status: string
+  confirmed_by: string
+  confirmed_at: string
+  idempotent_replay: boolean
+}
+
+export interface FactoryStatementCancelPayload {
+  idempotency_key: string
+  reason?: string
+}
+
+export interface FactoryStatementCancelData {
+  id: number
+  statement_no: string
+  status: string
+  cancelled_by: string
+  cancelled_at: string
+  idempotent_replay: boolean
+}
+
+export interface FactoryStatementPayableDraftCreatePayload {
+  idempotency_key: string
+}
+
+export interface FactoryStatementPayableDraftCreateData {
+  outbox_id: number
+  status: string
+  idempotent_replay: boolean
+}
+
 const toQuery = (params: Record<string, unknown>): string => {
   const query = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
@@ -147,3 +214,42 @@ export const fetchFactoryStatementDetail = async (
 ): Promise<ApiResponse<FactoryStatementDetailData>> => {
   return request<FactoryStatementDetailData>(`/api/factory-statements/${statementId}`)
 }
+
+export const createFactoryStatement = async (
+  payload: FactoryStatementCreatePayload,
+): Promise<ApiResponse<FactoryStatementCreateData>> =>
+  request<FactoryStatementCreateData>('/api/factory-statements/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+export const confirmFactoryStatement = async (
+  statementId: number,
+  payload: FactoryStatementConfirmPayload,
+): Promise<ApiResponse<FactoryStatementConfirmData>> =>
+  request<FactoryStatementConfirmData>(`/api/factory-statements/${statementId}/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+export const cancelFactoryStatement = async (
+  statementId: number,
+  payload: FactoryStatementCancelPayload,
+): Promise<ApiResponse<FactoryStatementCancelData>> =>
+  request<FactoryStatementCancelData>(`/api/factory-statements/${statementId}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+export const createFactoryStatementPayableDraft = async (
+  statementId: number,
+  payload: FactoryStatementPayableDraftCreatePayload,
+): Promise<ApiResponse<FactoryStatementPayableDraftCreateData>> =>
+  request<FactoryStatementPayableDraftCreateData>(`/api/factory-statements/${statementId}/payable-draft`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })

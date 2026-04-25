@@ -1,67 +1,54 @@
 # TASK-018A 仓库管理增强边界设计
 
 - 任务编号：TASK-018A
-- 任务名称：仓库管理增强边界设计冻结
+- 任务名称：仓库增强边界设计冻结
 - 文档状态：待审计
-- 更新日期：2026-04-17
+- 更新日期：2026-04-23
 - 适用阶段：Sprint 3 设计冻结（不含实现）
 
 ## 1. 设计目标与冻结范围
 
-冻结 Stock Entry、库存盘点、批次/序列号、库存预警的系统责任、权限边界、ERPNext 集成策略、Outbox 使用边界与审计要求，作为后续仓库增强任务的唯一前置设计。
+本任务只做仓库增强边界设计冻结，目标是把仓库主链对象、权限、资源、集成边界和门禁条件收敛到可审计口径。
 
-本任务只做设计冻结，不做代码实现，不做环境联调，不做任何 ERPNext 写操作。
+明确非目标：
 
-## 2. 仓库增强总边界（5.1）
+1. 不做前后端实现。
+2. 不做测试实现。
+3. 不做环境联调。
+4. 不做任何 ERPNext 生产写入。
+5. 不放行任何仓库实现任务。
 
-本任务仅冻结仓库管理增强设计边界。
-禁止实现 Stock Entry / 库存盘点 / 库存预警代码。
-禁止连接生产 ERPNext。
-禁止直接写 ERPNext 库存接口。
-禁止绕过 TASK-008 Fail-Closed Adapter。
-禁止绕过 TASK-009 Outbox 状态机。
-TASK-014C 未完成前，不允许进入任何真实平台联调或生产发布。
+## 2. 仓库增强总边界
 
-补充冻结口径：
+本任务冻结对象与关系边界如下：
 
-1. 本文档不代表仓库功能可上线。
-2. 本文档不代表 Hosted Runner required checks 与 Branch Protection 已闭环。
-3. 库存写入能力必须后续单独任务、单独审计、单独放行。
+1. `Stock Entry`：候选写链对象，仅冻结流程边界与门禁，不放行实现。
+2. 库存盘点：仅冻结盘点事实、差异复核、审批边界，不放行实现。
+3. `Batch / Serial`：仅冻结主数据读取和一致性校验边界，不放行创建/写入。
+4. 库存预警：仅冻结预警规则与审计边界，不放行自动写入或自动执行。
+5. `Stock Ledger / Stock Reconciliation / Warehouse`：
+   - `Stock Ledger Entry` 是库存结果事实；
+   - `Stock Reconciliation` 是盘点差异承载对象之一；
+   - `Warehouse` 是库存归属与权限约束主键；
+   - 三者关系只冻结职责，不放行实现。
 
-## 3. Stock Entry 边界（5.2）
+## 3. Stock Entry 边界
 
-### 3.1 类型范围与 Sprint 3 纳入情况
+### 3.1 动作拆分
 
-| Stock Entry 类型 | 是否纳入 Sprint 3 | 本阶段定位 | 生产写入 |
-|---|---|---|---|
-| Material Issue | 是 | 设计冻结，后续沙箱验证 | 冻结 |
-| Material Receipt | 是 | 设计冻结，后续沙箱验证 | 冻结 |
-| Material Transfer | 是 | 设计冻结，后续沙箱验证 | 冻结 |
-| Manufacture | 是（受控） | 设计冻结，需与生产模块协同 | 冻结 |
-| Repack | 预留 | 仅边界定义，不进本轮实现 | 冻结 |
+1. `stock_entry_draft_create`
+2. `stock_entry_confirm`
+3. `stock_entry_cancel`
 
-说明：以上类型当前均不允许生产写入；仅允许后续独立任务在沙箱验证。
+三类动作必须拆分为独立受控入口，不允许合并为单一“库存写入入口”。
 
-### 3.2 发起/审批/取消职责
+### 3.2 处理原则
 
-1. 发起：`warehouse:stock_entry_draft`。
-2. 审批确认：`warehouse:stock_entry_confirm`。
-3. 取消：`warehouse:stock_entry_cancel`。
-4. 普通只读角色不得触发发起、审批、取消。
+1. 只允许定义候选写链，不允许同步直写 ERPNext。
+2. 写链必须先 Outbox enqueue，再 Worker 调用 Adapter。
+3. `idempotency_key` 用于请求幂等；`event_key` 用于业务事实去重，禁止混用。
 
-### 3.3 ERPNext 集成方式
-
-1. 只读查询走 Adapter（TASK-008）。
-2. 写入草稿走 Outbox（TASK-009）。
-3. 生产写入继续冻结。
-
-### 3.4 幂等策略
-
-1. `idempotency_key`：请求级重放与冲突判定。
-2. `event_key`：业务事实级去重。
-3. replay/conflict：同 key 同 hash replay；同 key 异 hash conflict；不同 key 同事实命中 event_key 防重。
-
-### 3.5 状态机（冻结）
+### 3.3 状态机建议（冻结）
 
 ```text
 draft -> pending_outbox -> processing -> succeeded
@@ -72,172 +59,134 @@ draft -> pending_outbox -> processing -> succeeded
                                -> cancelled
 ```
 
-状态集合：
+## 4. 库存盘点边界
 
-- `draft`
-- `pending_outbox`
-- `processing`
-- `succeeded`
-- `failed`
-- `dead`
-- `cancelled`
+1. 盘点单仅冻结流程：草稿 -> 差异复核 -> 审批确认/取消。
+2. 盘盈盘亏只冻结业务口径，不放行自动落账与自动写入。
+3. 是否生成 `Stock Entry`：当前仅冻结候选关系，未放行实现。
+4. 差异确认必须附带来源、责任、原因码，并可审计回放。
 
-### 3.6 操作审计要求
+## 5. Batch / Serial 边界
 
-1. create/update/confirm/cancel/retry/dead 必须写操作审计。
-2. 权限拒绝、资源越权、ERPNext unavailable 必须写安全审计。
-3. 审计日志必须脱敏，禁止 token/secret/password/DSN 泄露。
+1. `Batch` 与 `Serial` 当前仅允许读取、校验、追溯，不放行创建/修改。
+2. 必须与 `item_code`、`warehouse`、`company` 保持归属一致。
+3. 关键字段缺失、禁用、归属冲突时必须 fail-closed。
+4. 日志和审计输出遵循最小暴露，禁止泄露敏感原始值。
 
-## 4. 库存盘点边界（5.3）
+## 6. 库存预警边界
 
-1. 盘点单创建范围：仅冻结流程，不实现创建接口。
-2. 盘盈/盘亏处理路径：仅定义业务边界，不做自动落账与自动写入。
-3. 是否允许生成 Stock Entry：本阶段不执行；后续仅可在独立任务中受控放行。
-4. 盘点审批流程：草稿 -> 差异复核 -> 审批确认/取消，审批动作需权限与审计。
-5. 盘点差异确认规则：差异必须有来源、责任与原因码，确认动作必须可追溯。
-6. 资源校验：Item/Warehouse/Batch/Serial No 必须一致性校验并受资源权限约束。
-7. 与 ERPNext Stock Ledger 一致性校验：差异复核需以可信只读事实校验，不允许本地主观覆盖。
-8. ERPNext unavailable/malformed/timeout：必须 fail-closed，禁止伪成功。
-9. 禁止前端自行调整库存事实。
+1. 预警类型冻结：低库存、超储、呆滞、安全库存不足。
+2. 数据来源冻结：ERPNext 只读事实 + 本地受控阈值配置。
+3. 预警输出仅限诊断与建议，不允许自动写入 ERPNext。
+4. 预警不替代库存事实和财务事实。
 
-## 5. 批次与序列号边界（5.4）
+## 7. 权限动作矩阵（最小集合）
 
-1. Batch No 使用范围：批次管控物料的入库、出库、盘点与追溯。
-2. Serial No 使用范围：序列号管控物料的一物一码跟踪。
-3. 批次/序列号本地创建：本阶段不允许；仅定义读取与校验边界。
-4. 与 Item/Warehouse/Stock Ledger 的关系：
-   - Batch/Serial 必须绑定 Item；
-   - 变动必须可映射到 Warehouse；
-   - 结果事实以 Stock Ledger 为准。
-5. 资源权限与数据隔离：必须受 `company/item_code/warehouse/batch_no/serial_no` 限定。
-6. 缺失、禁用、归属不一致：一律 fail-closed。
-7. 敏感业务字段脱敏：序列号/批次号明细在日志和审计中按最小暴露原则处理。
+| 动作 | 层级 | 用途 | 当前放行 |
+|---|---|---|---|
+| `warehouse:read` | 只读 | 仓库与库存事实查询 | 是（只读） |
+| `warehouse:export` | 只读 | 只读导出 | 是（只读） |
+| `warehouse:stock_entry_draft` | 候选写 | Stock Entry 草稿动作 | 否（设计冻结） |
+| `warehouse:stock_entry_confirm` | 候选写 | Stock Entry 确认动作 | 否（设计冻结） |
+| `warehouse:stock_entry_cancel` | 候选写 | Stock Entry 取消动作 | 否（设计冻结） |
+| `warehouse:inventory_count` | 候选写 | 盘点候选动作 | 否（设计冻结） |
+| `warehouse:alert_read` | 只读 | 预警只读查看 | 是（只读） |
+| `warehouse:diagnostic` | internal-only | 诊断与内部运维动作 | 否（普通前端） |
 
-## 6. 库存预警边界（5.5）
+说明：未知动作默认拒绝（fail-closed）。
 
-### 6.1 预警类型
+## 8. 资源字段矩阵（最小集合）
 
-- 低库存
-- 超储
-- 呆滞库存
-- 安全库存不足
+| 资源字段 | 用途 | 约束 |
+|---|---|---|
+| `company` | 公司隔离主键 | 必填且必须匹配权限范围 |
+| `warehouse` | 仓库归属主键 | 必填且归属一致 |
+| `item_code` | 物料主键 | 必填且可追溯 |
+| `batch_no` | 批次约束 | 按物料策略必填 |
+| `serial_no` | 序列约束 | 按物料策略必填 |
+| `stock_entry` | 库存分录对象键 | 候选写动作必校验 |
+| `stock_reconciliation` | 盘点差异对象键 | 盘点链路必校验 |
+| `purchase_receipt` | 采购收货关联键 | 仅关系校验，不放行实现 |
+| `delivery_note` | 销售发货关联键 | 仅关系校验，不放行实现 |
+| `work_order` | 生产关联键 | 仅关系校验，不放行实现 |
+| `idempotency_key` | 请求幂等键 | 仅请求级幂等 |
+| `event_key` | 事实去重键 | 仅事实级防重 |
 
-### 6.2 预警数据来源
+说明：关键资源字段缺失或归属不匹配时一律 fail-closed。
 
-1. ERPNext 只读库存事实（如 Stock Ledger/Bin 等）。
-2. 本地策略阈值配置（只读配置源）。
+## 9. ERPNext DocType 与 Adapter / Outbox 边界
 
-### 6.3 预警触发方式
+### 9.1 DocType 边界
 
-1. 查询时计算（按需计算）。
-2. 定时任务（后续任务定义）。
-3. 事件驱动（后续任务定义）。
+| 对象 | ERPNext DocType | 当前口径 |
+|---|---|---|
+| Stock Entry | `Stock Entry` | 候选写冻结，不放行实现 |
+| 库存流水 | `Stock Ledger Entry` | 只读事实 |
+| 库存盘点 | `Stock Reconciliation` | 候选写冻结，不放行实现 |
+| 仓库主数据 | `Warehouse` | 只读 |
+| 批次 | `Batch` | 只读 |
+| 序列号 | `Serial No` | 只读 |
+| 库存聚合 | `Bin` | 只读 |
 
-### 6.4 通知与建议边界
+### 9.2 Adapter / Outbox 分工
 
-1. 是否允许发送通知：允许后续任务定义通知，但不默认开启。
-2. 是否允许自动生成采购建议/调拨建议：仅允许“建议”输出，不允许自动落地写入。
-3. 禁止自动写入 ERPNext。
+1. Adapter 只负责 ERPNext 外调归一和 fail-closed 判定。
+2. Outbox 负责入队、claim、lease、retry、dead、状态流转。
+3. Worker 调用 Adapter；Adapter 不直接改 Outbox 状态。
+4. 写链顺序必须是“先 Outbox，后 Adapter”。
+5. `internal-only` 路径不得前端化。
 
-### 6.5 审计与事实边界
+## 10. fail-closed 与审计要求
 
-1. 预警计算口径必须可审计（阈值、时间窗、来源、计算参数可追溯）。
-2. 预警不应替代财务或库存事实。
+以下条件必须 fail-closed，禁止 `200 + 空数据` 伪成功：
 
-## 7. ERPNext 集成策略（5.6）
+1. 401/403
+2. timeout
+3. 5xx
+4. malformed response
+5. 资源归属不匹配（company/warehouse/item/batch/serial）
+6. docstatus 缺失、非法或状态冲突
 
-| 仓库能力 | ERPNext DocType | 只读/写入 | Adapter | Outbox | 是否允许生产 |
-|---|---|---|---|---|---|
-| 库存分录 | Stock Entry | 生产只读；写入仅后续沙箱设计 | 必须（TASK-008） | 写入必须（TASK-009） | 否（当前冻结） |
-| 库存流水 | Stock Ledger Entry | 只读 | 必须（TASK-008） | 不适用（当前只读） | 否 |
-| 仓库主数据 | Warehouse | 只读 | 必须（TASK-008） | 不适用 | 否 |
-| 物料主数据 | Item | 只读 | 必须（TASK-008） | 不适用 | 否 |
-| 批次 | Batch | 只读 | 必须（TASK-008） | 不适用 | 否 |
-| 序列号 | Serial No | 只读 | 必须（TASK-008） | 不适用 | 否 |
-| 库存聚合 | Bin | 只读 | 必须（TASK-008） | 不适用 | 否 |
-| 采购收货关联 | Purchase Receipt | 只读（仓库侧） | 必须（TASK-008） | 写入如需放行必须（TASK-009） | 否（当前冻结） |
-| 销售发货关联 | Delivery Note | 只读（仓库侧） | 必须（TASK-008） | 写入如需放行必须（TASK-009） | 否（当前冻结） |
-| 生产工单关联 | Work Order | 只读（仓库侧） | 必须（TASK-008） | 写入如需放行必须（TASK-009） | 否（当前冻结） |
+审计要求：
 
-总原则：
+1. 操作审计最小集：create/update/confirm/cancel/retry/dead/diagnostic。
+2. 安全审计最小集：权限拒绝、资源越权、external unavailable、internal-only 误入。
+3. 日志脱敏：禁止 token/password/secret/DSN/Authorization/Cookie 泄露。
 
-1. ERPNext 访问统一经 Adapter。
-2. 写链路统一经 Outbox。
-3. 未明确放行即默认 fail-closed。
+## 11. 三层能力冻结统一矩阵
 
-## 8. 权限与审计要求（5.7）
+| 对象/动作 | 只读能力 | 候选写能力 | 生产写能力 |
+|---|---|---|---|
+| Stock Entry query | 是 | 否 | 否 |
+| Stock Entry draft/create | 否 | 是（冻结） | 否（冻结） |
+| Stock Entry confirm/cancel | 否 | 是（冻结） | 否（冻结） |
+| 库存盘点 query | 是 | 否 | 否 |
+| 库存盘点 create/confirm/cancel | 否 | 是（冻结） | 否（冻结） |
+| Batch / Serial query | 是 | 否 | 否 |
+| Batch / Serial create/update | 否 | 否 | 否（冻结） |
+| 库存预警 query | 是 | 否 | 否 |
+| 库存预警自动落库/自动执行 | 否 | 否 | 否（冻结） |
+| Stock Reconciliation query | 是 | 否 | 否 |
+| Stock Reconciliation write | 否 | 是（冻结） | 否（冻结） |
 
-### 8.1 动作权限（冻结）
+统一口径：
 
-- `warehouse:read`
-- `warehouse:export`
-- `warehouse:stock_entry_draft`
-- `warehouse:stock_entry_confirm`
-- `warehouse:stock_entry_cancel`
-- `warehouse:inventory_count`
-- `warehouse:alert_read`
-- `warehouse:diagnostic`
+1. 候选写能力不等于允许实现。
+2. 生产写能力当前全部冻结。
+3. 未经后续单独任务、单独审计、单独放行，不得进入实现。
 
-### 8.2 资源权限字段（冻结）
+## 12. 前端门禁
 
-- `company`
-- `item_code`
-- `warehouse`
-- `batch_no`
-- `serial_no`
-- `work_order`
-- `purchase_receipt`
-- `delivery_note`
-- `stock_entry`
+1. 不允许未审计写入口。
+2. 不允许前端直连 ERPNext `/api/resource`。
+3. 不允许前端绕过后端直接构造库存事实。
+4. `warehouse:diagnostic` 与其他 internal-only 动作不得普通前端化。
+5. 写入口必须遵循 `TASK-010` 门禁框架。
 
-规则：
+## 13. 结论边界与下一步门禁
 
-1. 列表先动作权限，再资源过滤。
-2. 详情与写动作先动作权限，再资源校验。
-3. 关键资源缺失默认拒绝（fail-closed）。
-
-### 8.3 审计事件（冻结）
-
-操作审计事件：
-
-- create
-- update
-- confirm
-- cancel
-- export
-- dry-run
-- diagnostic
-- stock variance approved
-
-安全审计事件：
-
-- ERPNext unavailable
-- resource access denied
-- 401/403/internal API 访问拒绝
-
-## 9. 前端门禁要求（5.8）
-
-1. 所有写入口默认禁止。
-2. `warehouse:diagnostic` 不得暴露给普通前端菜单。
-3. 前端禁止直连 ERPNext `/api/resource`。
-4. 前端禁止裸 `fetch/axios` 绕过 API client。
-5. 前端禁止自行计算库存事实并提交。
-6. CSV / Excel 导出必须防公式注入。
-7. 必须接入 TASK-010 前端写入口门禁公共框架。
-
-## 10. 生产发布前置条件（5.9）
-
-1. `TASK-014C` 完成。
-2. Hosted Runner required checks 平台闭环。
-3. Branch Protection 已配置。
-4. ERPNext 生产联调只读验证通过。
-5. 沙箱写入验证通过。
-6. Stock Entry / 盘点 / 预警写入必须单独设计、单独审计、单独放行。
-7. 生产写入必须由总调度书面批准。
-
-## 11. 结论边界
-
-1. 本文档仅冻结仓库管理增强边界，不包含仓库功能实现。
-2. 本文档不代表库存写入能力可用。
-3. 本文档不代表 ERPNext 生产联调完成。
-4. 本文档不代表生产发布完成。
+1. `TASK-018A` 通过仅代表仓库增强边界设计冻结成立。
+2. 不代表实现放行，不代表联调、提测、上线、生产写入放行。
+3. 当前采购、财务、库存既有职责边界保持不变，不得跨链偷渡实现。
+4. `TASK-018A` 通过后仅允许进入 `TASK-018B` 设计。
+5. 不允许直接进入任何仓库实现任务。

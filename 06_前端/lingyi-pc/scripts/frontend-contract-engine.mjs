@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
+import ts from 'typescript'
 import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -399,6 +400,442 @@ export const FRONTEND_WRITE_GUARD_COMMON_RULES = [
     message: '禁止 URL.createObjectURL 绕过动态加载门禁',
   },
 ]
+
+export const FRONTEND_SYNC_ARRAY_ITERATION_METHOD_DESCRIPTOR_MAP = new Map([
+  ['forEach', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['map', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['some', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['every', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['filter', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['find', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['findIndex', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['findLast', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['findLastIndex', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['flatMap', { callbackArgumentIndex: 0, currentItemParameterIndex: 0 }],
+  ['reduce', { callbackArgumentIndex: 0, currentItemParameterIndex: 1 }],
+  ['reduceRight', { callbackArgumentIndex: 0, currentItemParameterIndex: 1 }],
+])
+
+const getTsScriptKind = (targetPath) => {
+  const normalized = String(targetPath || '').toLowerCase()
+  if (normalized.endsWith('.tsx')) return ts.ScriptKind.TSX
+  if (normalized.endsWith('.jsx')) return ts.ScriptKind.JSX
+  if (normalized.endsWith('.js') || normalized.endsWith('.mjs') || normalized.endsWith('.cjs')) {
+    return ts.ScriptKind.JS
+  }
+  return ts.ScriptKind.TS
+}
+
+const createAnalysisSourceFile = (sourceText, targetPath) =>
+  ts.createSourceFile(targetPath, sourceText, ts.ScriptTarget.Latest, true, getTsScriptKind(targetPath))
+
+const unwrapTsExpression = (node) => {
+  let current = node
+  while (current) {
+    if (ts.isParenthesizedExpression(current)) {
+      current = current.expression
+      continue
+    }
+    if (ts.isAsExpression(current) || ts.isTypeAssertionExpression(current)) {
+      current = current.expression
+      continue
+    }
+    if (ts.isSatisfiesExpression(current)) {
+      current = current.expression
+      continue
+    }
+    if (ts.isNonNullExpression(current)) {
+      current = current.expression
+      continue
+    }
+    break
+  }
+  return current
+}
+
+const getStaticLiteralText = (node) => {
+  const target = unwrapTsExpression(node)
+  if (!target) return null
+  if (ts.isStringLiteral(target) || ts.isNoSubstitutionTemplateLiteral(target)) return target.text
+  if (ts.isNumericLiteral(target)) return target.text
+  return null
+}
+
+const getStaticMemberName = (node) => {
+  const target = unwrapTsExpression(node)
+  if (!target) return null
+  if (ts.isPropertyAccessExpression(target)) return target.name.text
+  if (ts.isElementAccessExpression(target)) return getStaticLiteralText(target.argumentExpression || null)
+  return null
+}
+
+const isStaticArrayNamespaceExpression = (expression, depth = 0) => {
+  if (!expression || depth > 8) return false
+  const target = unwrapTsExpression(expression)
+  if (!target) return false
+  if (ts.isIdentifier(target)) return target.text === 'Array'
+  if (ts.isConditionalExpression(target)) {
+    return (
+      isStaticArrayNamespaceExpression(target.whenTrue, depth + 1) &&
+      isStaticArrayNamespaceExpression(target.whenFalse, depth + 1)
+    )
+  }
+  return false
+}
+
+const isStaticArrayPrototypeExpression = (expression, depth = 0) => {
+  if (!expression || depth > 8) return false
+  const target = unwrapTsExpression(expression)
+  if (!target) return false
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const memberName = getStaticMemberName(target)
+    if (memberName !== 'prototype') return false
+    return isStaticArrayNamespaceExpression(target.expression, depth + 1)
+  }
+  if (ts.isConditionalExpression(target)) {
+    return (
+      isStaticArrayPrototypeExpression(target.whenTrue, depth + 1) &&
+      isStaticArrayPrototypeExpression(target.whenFalse, depth + 1)
+    )
+  }
+  return false
+}
+
+const resolveStaticArrayPrototypeIterationMethodName = (expression, depth = 0) => {
+  if (!expression || depth > 8) return null
+  const target = unwrapTsExpression(expression)
+  if (!target) return null
+  if (ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)) {
+    const memberName = getStaticMemberName(target)
+    if (!memberName || !FRONTEND_SYNC_ARRAY_ITERATION_METHOD_DESCRIPTOR_MAP.has(memberName)) return null
+    if (!isStaticArrayPrototypeExpression(target.expression, depth + 1)) return null
+    return memberName
+  }
+  if (ts.isConditionalExpression(target)) {
+    const whenTrue = resolveStaticArrayPrototypeIterationMethodName(target.whenTrue, depth + 1)
+    const whenFalse = resolveStaticArrayPrototypeIterationMethodName(target.whenFalse, depth + 1)
+    if (whenTrue && whenFalse && whenTrue === whenFalse) return whenTrue
+  }
+  return null
+}
+
+const resolveArrayLiteralElements = (expression, arrayLiteralAliasMap, depth = 0) => {
+  if (!expression || depth > 8) return null
+  const target = unwrapTsExpression(expression)
+  if (!target) return null
+  if (ts.isArrayLiteralExpression(target)) {
+    return target.elements.map((element) => unwrapTsExpression(element))
+  }
+  if (ts.isIdentifier(target)) {
+    const alias = arrayLiteralAliasMap.get(target.text) || null
+    if (!alias) return null
+    return resolveArrayLiteralElements(alias, arrayLiteralAliasMap, depth + 1)
+  }
+  if (ts.isConditionalExpression(target)) {
+    const whenTrue = resolveArrayLiteralElements(target.whenTrue, arrayLiteralAliasMap, depth + 1)
+    const whenFalse = resolveArrayLiteralElements(target.whenFalse, arrayLiteralAliasMap, depth + 1)
+    if (!whenTrue || !whenFalse || whenTrue.length !== whenFalse.length) return null
+    return whenTrue.every((item, index) => item?.getText() === whenFalse[index]?.getText()) ? whenTrue : null
+  }
+  return null
+}
+
+const buildIterationDescriptor = ({
+  callNode,
+  methodName,
+  argumentMode,
+  iterableExpression,
+  callbackExpression,
+  initialValueExpression = null,
+}) => {
+  const methodDescriptor = FRONTEND_SYNC_ARRAY_ITERATION_METHOD_DESCRIPTOR_MAP.get(methodName) || null
+  if (!methodDescriptor) return null
+  return {
+    methodName,
+    argumentMode,
+    iterableExpression: unwrapTsExpression(iterableExpression),
+    callbackExpression: unwrapTsExpression(callbackExpression),
+    initialValueExpression: unwrapTsExpression(initialValueExpression),
+    callbackArgumentIndex: methodDescriptor.callbackArgumentIndex,
+    currentItemParameterIndex: methodDescriptor.currentItemParameterIndex,
+    callExpressionText: callNode.getText(),
+  }
+}
+
+const resolveBindIterationDescriptor = (expression) => {
+  const target = unwrapTsExpression(expression)
+  if (!target || !ts.isCallExpression(target)) return null
+  const bindCallee = unwrapTsExpression(target.expression)
+  if (!(bindCallee && (ts.isPropertyAccessExpression(bindCallee) || ts.isElementAccessExpression(bindCallee)))) {
+    return null
+  }
+  if (getStaticMemberName(bindCallee) !== 'bind') return null
+  const methodName = resolveStaticArrayPrototypeIterationMethodName(bindCallee.expression)
+  if (!methodName) return null
+  const iterableExpression = unwrapTsExpression(target.arguments[0] || null)
+  const boundArgs = target.arguments.slice(1).map((item) => unwrapTsExpression(item))
+  return {
+    methodName,
+    iterableExpression,
+    boundArgs,
+  }
+}
+
+const resolveIterationCallDescriptor = (callNode, bindAliasMap, arrayLiteralAliasMap) => {
+  const calleeExpression = unwrapTsExpression(callNode.expression)
+  if (!calleeExpression) return null
+
+  if (ts.isIdentifier(calleeExpression)) {
+    const bindAlias = bindAliasMap.get(calleeExpression.text) || null
+    if (bindAlias) {
+      return buildIterationDescriptor({
+        callNode,
+        methodName: bindAlias.methodName,
+        argumentMode: 'bind',
+        iterableExpression: bindAlias.iterableExpression,
+        callbackExpression: bindAlias.boundArgs[0] || callNode.arguments[0] || null,
+        initialValueExpression: bindAlias.boundArgs[1] || callNode.arguments[1] || null,
+      })
+    }
+  }
+
+  if (ts.isCallExpression(calleeExpression)) {
+    const inlineBind = resolveBindIterationDescriptor(calleeExpression)
+    if (inlineBind) {
+      return buildIterationDescriptor({
+        callNode,
+        methodName: inlineBind.methodName,
+        argumentMode: 'bind',
+        iterableExpression: inlineBind.iterableExpression,
+        callbackExpression: inlineBind.boundArgs[0] || callNode.arguments[0] || null,
+        initialValueExpression: inlineBind.boundArgs[1] || callNode.arguments[1] || null,
+      })
+    }
+  }
+
+  if (ts.isPropertyAccessExpression(calleeExpression) || ts.isElementAccessExpression(calleeExpression)) {
+    const memberName = getStaticMemberName(calleeExpression)
+
+    if (memberName && FRONTEND_SYNC_ARRAY_ITERATION_METHOD_DESCRIPTOR_MAP.has(memberName)) {
+      return buildIterationDescriptor({
+        callNode,
+        methodName: memberName,
+        argumentMode: 'direct',
+        iterableExpression: calleeExpression.expression,
+        callbackExpression: callNode.arguments[0] || null,
+        initialValueExpression: callNode.arguments[1] || null,
+      })
+    }
+
+    if (memberName === 'call') {
+      const methodName = resolveStaticArrayPrototypeIterationMethodName(calleeExpression.expression)
+      if (methodName) {
+        return buildIterationDescriptor({
+          callNode,
+          methodName,
+          argumentMode: 'call',
+          iterableExpression: callNode.arguments[0] || null,
+          callbackExpression: callNode.arguments[1] || null,
+          initialValueExpression: callNode.arguments[2] || null,
+        })
+      }
+    }
+
+    if (memberName === 'apply') {
+      const methodName = resolveStaticArrayPrototypeIterationMethodName(calleeExpression.expression)
+      if (methodName) {
+        const applyArgs = resolveArrayLiteralElements(callNode.arguments[1] || null, arrayLiteralAliasMap)
+        if (!applyArgs) return null
+        return buildIterationDescriptor({
+          callNode,
+          methodName,
+          argumentMode: 'apply',
+          iterableExpression: callNode.arguments[0] || null,
+          callbackExpression: applyArgs[0] || null,
+          initialValueExpression: applyArgs[1] || null,
+        })
+      }
+    }
+  }
+
+  if (
+    (ts.isPropertyAccessExpression(calleeExpression) || ts.isElementAccessExpression(calleeExpression)) &&
+    getStaticMemberName(calleeExpression) === 'apply'
+  ) {
+    const reflectBase = unwrapTsExpression(calleeExpression.expression)
+    if (reflectBase && ts.isIdentifier(reflectBase) && reflectBase.text === 'Reflect') {
+      const methodName = resolveStaticArrayPrototypeIterationMethodName(callNode.arguments[0] || null)
+      const reflectArgs = resolveArrayLiteralElements(callNode.arguments[2] || null, arrayLiteralAliasMap)
+      if (methodName && reflectArgs) {
+        return buildIterationDescriptor({
+          callNode,
+          methodName,
+          argumentMode: 'reflect_apply',
+          iterableExpression: callNode.arguments[1] || null,
+          callbackExpression: reflectArgs[0] || null,
+          initialValueExpression: reflectArgs[1] || null,
+        })
+      }
+    }
+  }
+
+  return null
+}
+
+const collectFunctionLikeBindings = (sourceFile) => {
+  const functionBindingMap = new Map()
+  const arrayLiteralAliasMap = new Map()
+  const bindAliasMap = new Map()
+
+  const visit = (node) => {
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      functionBindingMap.set(node.name.text, node)
+    } else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const initializer = unwrapTsExpression(node.initializer)
+      if (initializer && (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer))) {
+        functionBindingMap.set(node.name.text, initializer)
+      } else if (initializer && ts.isArrayLiteralExpression(initializer)) {
+        arrayLiteralAliasMap.set(node.name.text, initializer)
+      } else {
+        const bindAlias = resolveBindIterationDescriptor(initializer)
+        if (bindAlias) {
+          bindAliasMap.set(node.name.text, bindAlias)
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return {
+    functionBindingMap,
+    arrayLiteralAliasMap,
+    bindAliasMap,
+  }
+}
+
+const resolveCallbackFunctionNode = (callbackExpression, functionBindingMap) => {
+  const target = unwrapTsExpression(callbackExpression)
+  if (!target) return null
+  if (ts.isArrowFunction(target) || ts.isFunctionExpression(target)) return target
+  if (ts.isIdentifier(target)) return functionBindingMap.get(target.text) || null
+  return null
+}
+
+const expressionContainsIdentifier = (expression, identifierName) => {
+  let found = false
+  const visit = (node) => {
+    if (found) return
+    if (
+      ts.isFunctionDeclaration(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isArrowFunction(node) ||
+      ts.isMethodDeclaration(node)
+    ) {
+      return
+    }
+    if (ts.isIdentifier(node) && node.text === identifierName) {
+      found = true
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(expression)
+  return found
+}
+
+const collectCallbackSinkExpressions = (callbackNode, currentItemParameterIndex, sourceFile) => {
+  const parameterNode = callbackNode.parameters[currentItemParameterIndex] || null
+  if (!(parameterNode && ts.isIdentifier(parameterNode.name))) {
+    return {
+      currentItemParameterName: null,
+      sinkExpressions: [],
+      unresolved: true,
+    }
+  }
+
+  const parameterName = parameterNode.name.text
+  const sinkExpressions = []
+  const seen = new Set()
+  const bodyNode = ts.isBlock(callbackNode.body)
+    ? callbackNode.body
+    : unwrapTsExpression(callbackNode.body)
+
+  const visit = (node) => {
+    if (
+      ts.isFunctionDeclaration(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isArrowFunction(node) ||
+      ts.isMethodDeclaration(node)
+    ) {
+      if (node === callbackNode) {
+        ts.forEachChild(node, visit)
+      }
+      return
+    }
+
+    if (ts.isCallExpression(node)) {
+      const hasSinkArg = node.arguments.some((argNode) => expressionContainsIdentifier(argNode, parameterName))
+      if (hasSinkArg) {
+        const sinkText = node.getText(sourceFile)
+        if (!seen.has(sinkText)) {
+          seen.add(sinkText)
+          sinkExpressions.push(sinkText)
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  if (bodyNode) {
+    visit(bodyNode)
+  }
+
+  return {
+    currentItemParameterName: parameterName,
+    sinkExpressions,
+    unresolved: false,
+  }
+}
+
+export const analyzeSynchronousArrayIterationCallbackSinks = (
+  sourceText,
+  { targetPath = 'inline.ts' } = {},
+) => {
+  const sourceFile = createAnalysisSourceFile(sourceText, targetPath)
+  const { functionBindingMap, arrayLiteralAliasMap, bindAliasMap } = collectFunctionLikeBindings(sourceFile)
+  const descriptors = []
+
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const descriptor = resolveIterationCallDescriptor(node, bindAliasMap, arrayLiteralAliasMap)
+      if (descriptor) {
+        const callbackNode = resolveCallbackFunctionNode(descriptor.callbackExpression, functionBindingMap)
+        const callbackSinkResult = callbackNode
+          ? collectCallbackSinkExpressions(callbackNode, descriptor.currentItemParameterIndex, sourceFile)
+          : {
+              currentItemParameterName: null,
+              sinkExpressions: [],
+              unresolved: true,
+            }
+        descriptors.push({
+          methodName: descriptor.methodName,
+          argumentMode: descriptor.argumentMode,
+          callExpressionText: descriptor.callExpressionText,
+          callbackExpressionText: descriptor.callbackExpression?.getText(sourceFile) || '',
+          currentItemParameterName: callbackSinkResult.currentItemParameterName,
+          sinkExpressions: callbackSinkResult.sinkExpressions,
+          unresolvedCallback: callbackSinkResult.unresolved,
+        })
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return descriptors
+}
 
 export const runContractCli = ({ argv = process.argv.slice(2), check, passMessage, failTitle }) => {
   const { projectRoot } = parseCliArgs(argv)

@@ -56,6 +56,12 @@
           />
 
           <div class="action-row">
+            <el-button type="primary" :loading="confirming" :disabled="!canConfirmAction" @click="openConfirmDialog">
+              确认
+            </el-button>
+            <el-button type="danger" plain :loading="cancelling" :disabled="!canCancelAction" @click="openCancelDialog">
+              取消
+            </el-button>
             <el-button type="info" plain :disabled="loading || !detail" @click="openPrintView">
               打印
             </el-button>
@@ -111,6 +117,33 @@
       </el-table>
     </el-card>
 
+    <el-dialog v-model="confirmVisible" title="确认对账单" width="560px">
+      <el-form :model="confirmForm" label-width="110px">
+        <el-form-item label="备注（可选）">
+          <el-input v-model="confirmForm.remark" type="textarea" :rows="3" maxlength="200" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="confirmVisible = false">关闭</el-button>
+        <el-button type="primary" :loading="confirming" :disabled="!canConfirmAction" @click="runConfirmStatement">
+          确认
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="cancelVisible" title="取消对账单" width="560px">
+      <el-form :model="cancelForm" label-width="110px">
+        <el-form-item label="原因（可选）">
+          <el-input v-model="cancelForm.reason" type="textarea" :rows="3" maxlength="200" show-word-limit />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="cancelVisible = false">关闭</el-button>
+        <el-button type="danger" :loading="cancelling" :disabled="!canCancelAction" @click="runCancelStatement">
+          取消对账单
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -119,7 +152,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  cancelFactoryStatement,
+  confirmFactoryStatement,
   fetchFactoryStatementDetail,
+  type FactoryStatementCancelPayload,
+  type FactoryStatementConfirmPayload,
   type FactoryStatementDetailData,
   type FactoryStatementDetailItem,
   type FactoryStatementLogItem,
@@ -134,14 +171,27 @@ const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
+const confirming = ref<boolean>(false)
+const cancelling = ref<boolean>(false)
+const confirmVisible = ref<boolean>(false)
+const cancelVisible = ref<boolean>(false)
 
 const detail = ref<FactoryStatementDetailData | null>(null)
 const items = ref<FactoryStatementDetailItem[]>([])
 const logs = ref<FactoryStatementLogItem[]>([])
+const confirmForm = ref<{ remark: string }>({ remark: '' })
+const cancelForm = ref<{ reason: string }>({ reason: '' })
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
+const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
+const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
 
 const statementId = computed<number>(() => Number(route.query.id || '0'))
+const isDraftStatus = computed<boolean>(() => detail.value?.statement_status === 'draft')
+const isCancelStatusAllowed = computed<boolean>(() => {
+  const status = detail.value?.statement_status
+  return status === 'draft' || status === 'confirmed'
+})
 
 const hasPayableSummary = computed<boolean>(
   () => detail.value?.payable_outbox_status !== undefined && detail.value?.purchase_invoice_name !== undefined,
@@ -161,6 +211,15 @@ const effectiveOutboxStatus = computed<string>(() => {
 
 const hasActivePayableOutbox = computed<boolean>(
   () => !hasPayableSummary.value || ACTIVE_PAYABLE_OUTBOX_STATUS.has(effectiveOutboxStatus.value),
+)
+const canConfirmAction = computed<boolean>(() => canConfirm.value && Boolean(detail.value) && isDraftStatus.value)
+const canCancelAction = computed<boolean>(
+  () =>
+    canCancel.value &&
+    Boolean(detail.value) &&
+    isCancelStatusAllowed.value &&
+    !hasActivePayableOutbox.value &&
+    !summaryMissing.value,
 )
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -230,8 +289,136 @@ const statusTag = (status: string | null | undefined): 'warning' | 'success' | '
   return 'info'
 }
 
+const buildIdempotencyKey = (prefix: string): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+const ensureStatementId = (): number => {
+  if (!Number.isInteger(statementId.value) || statementId.value <= 0) {
+    throw new Error('缺少有效 statement_id')
+  }
+  return statementId.value
+}
+
 const goBack = (): void => {
   router.push({ path: '/factory-statements/list' })
+}
+
+const openConfirmDialog = (): void => {
+  if (!canConfirm.value) {
+    ElMessage.error('无确认权限')
+    return
+  }
+  if (!detail.value) {
+    ElMessage.error('未找到对账单数据')
+    return
+  }
+  if (!isDraftStatus.value) {
+    ElMessage.error('当前状态不允许确认')
+    return
+  }
+  confirmForm.value.remark = ''
+  confirmVisible.value = true
+}
+
+const openCancelDialog = (): void => {
+  if (!canCancel.value) {
+    ElMessage.error('无取消权限')
+    return
+  }
+  if (!detail.value) {
+    ElMessage.error('未找到对账单数据')
+    return
+  }
+  if (!isCancelStatusAllowed.value) {
+    ElMessage.error('当前状态不允许取消')
+    return
+  }
+  if (hasActivePayableOutbox.value || summaryMissing.value) {
+    ElMessage.error('当前条件不允许取消')
+    return
+  }
+  cancelForm.value.reason = ''
+  cancelVisible.value = true
+}
+
+const runConfirmStatement = async (): Promise<void> => {
+  if (!canConfirm.value) {
+    ElMessage.error('无确认权限')
+    return
+  }
+  if (!detail.value) {
+    ElMessage.error('未找到对账单数据')
+    return
+  }
+  if (!isDraftStatus.value) {
+    ElMessage.error('当前状态不允许确认')
+    return
+  }
+
+  const payload: FactoryStatementConfirmPayload = {
+    idempotency_key: buildIdempotencyKey('factory-statement-confirm'),
+    remark: confirmForm.value.remark.trim() || undefined,
+  }
+  if (!payload.idempotency_key) {
+    ElMessage.error('幂等键不能为空')
+    return
+  }
+
+  confirming.value = true
+  try {
+    await confirmFactoryStatement(ensureStatementId(), payload)
+    ElMessage.success('对账单已确认')
+    confirmVisible.value = false
+    await loadDetail()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    confirming.value = false
+  }
+}
+
+const runCancelStatement = async (): Promise<void> => {
+  if (!canCancel.value) {
+    ElMessage.error('无取消权限')
+    return
+  }
+  if (!detail.value) {
+    ElMessage.error('未找到对账单数据')
+    return
+  }
+  if (!isCancelStatusAllowed.value) {
+    ElMessage.error('当前状态不允许取消')
+    return
+  }
+  if (hasActivePayableOutbox.value || summaryMissing.value) {
+    ElMessage.error('当前条件不允许取消')
+    return
+  }
+
+  const payload: FactoryStatementCancelPayload = {
+    idempotency_key: buildIdempotencyKey('factory-statement-cancel'),
+    reason: cancelForm.value.reason.trim() || undefined,
+  }
+  if (!payload.idempotency_key) {
+    ElMessage.error('幂等键不能为空')
+    return
+  }
+
+  cancelling.value = true
+  try {
+    await cancelFactoryStatement(ensureStatementId(), payload)
+    ElMessage.success('对账单已取消')
+    cancelVisible.value = false
+    await loadDetail()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    cancelling.value = false
+  }
 }
 
 const openPrintView = (): void => {
