@@ -9,7 +9,16 @@
             <el-button v-if="canExport" :disabled="!canRead" @click="submitExport">导出快照</el-button>
             <el-button v-if="canExport" :disabled="!canRead" @click="submitExportFile('xlsx')">导出 Excel</el-button>
             <el-button v-if="canExport" :disabled="!canRead" @click="submitExportFile('pdf')">导出 PDF</el-button>
-            <el-button v-if="canCreate" type="success" @click="openCreateDialog">创建检验单</el-button>
+            <el-button
+              v-if="canCreate"
+              type="success"
+              data-action-type="write"
+              data-write-guard="permission:quality_create(v-if)+handler"
+              data-guard-state="visible_when_allowed"
+              @click="openCreateDialog"
+            >
+              创建检验单
+            </el-button>
           </div>
         </div>
       </template>
@@ -47,7 +56,8 @@
         </el-form-item>
       </el-form>
 
-      <el-empty v-if="!canRead" description="无质量管理查看权限" />
+      <el-skeleton v-if="!permissionReady" :rows="4" animated />
+      <el-empty v-else-if="!canRead" description="无质量管理查看权限" />
       <el-tabs v-else v-model="activeTab">
         <el-tab-pane label="检验列表" name="list">
           <el-alert
@@ -289,7 +299,17 @@
       </el-form>
       <template #footer>
         <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" :disabled="!canCreate" @click="submitCreate">提交</el-button>
+        <el-button
+          type="primary"
+          :loading="creating"
+          :disabled="!canCreate"
+          data-action-type="write"
+          data-write-guard="permission:quality_create+handler"
+          :data-guard-state="canCreate ? 'enabled' : 'disabled'"
+          @click="submitCreate"
+        >
+          提交
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -320,6 +340,7 @@ const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
 const creating = ref<boolean>(false)
 const createDialogVisible = ref<boolean>(false)
+const permissionReady = ref<boolean>(false)
 const activeTab = ref<'list' | 'statistics'>('list')
 const trendPeriod = ref<'monthly' | 'weekly'>('monthly')
 const rows = ref<QualityInspectionListItem[]>([])
@@ -480,6 +501,10 @@ const onSizeChange = (size: number): void => {
 }
 
 const openCreateDialog = (): void => {
+  if (!canCreate.value) {
+    ElMessage.error('无创建检验单权限')
+    return
+  }
   createDialogVisible.value = true
 }
 
@@ -547,7 +572,8 @@ onMounted(async () => {
     await permissionStore.loadModuleActions('quality')
   } catch (error) {
     ElMessage.error((error as Error).message)
-    return
+  } finally {
+    permissionReady.value = true
   }
   if (canRead.value) {
     await loadRows()

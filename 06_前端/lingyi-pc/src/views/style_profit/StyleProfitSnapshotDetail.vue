@@ -8,9 +8,11 @@
         </div>
       </template>
 
-      <el-empty v-if="!canRead" description="无款式利润查看权限" />
+      <el-skeleton v-if="!permissionReady" :rows="4" animated />
+      <el-empty v-else-if="!canRead" description="无款式利润查看权限" />
       <template v-else>
-        <el-empty v-if="!snapshot" description="未找到利润快照数据" />
+        <el-empty v-if="missingSnapshotId" description="请从款式利润列表进入详情页" />
+        <el-empty v-else-if="!snapshot" description="未找到利润快照数据" />
         <template v-else>
           <el-alert
             v-if="snapshot.unresolved_count > 0"
@@ -53,7 +55,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card v-if="canRead && snapshot" shadow="never">
       <template #header><span>利润明细</span></template>
       <el-table :data="details" border>
         <el-table-column prop="line_no" label="行号" width="70" />
@@ -81,7 +83,7 @@
       </el-table>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card v-if="canRead && snapshot" shadow="never">
       <template #header><span>来源追溯</span></template>
       <el-table :data="sourceMaps" border>
         <el-table-column prop="id" label="ID" width="80" />
@@ -133,9 +135,12 @@ const snapshot = ref<StyleProfitSnapshotResult | null>(null)
 const details = ref<StyleProfitDetailItem[]>([])
 const sourceMaps = ref<StyleProfitSourceMapItem[]>([])
 const auditPanels = ref<string[]>([])
+const missingSnapshotId = ref<boolean>(false)
+const permissionReady = ref<boolean>(false)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const snapshotId = computed<number>(() => Number(route.query.id || '0'))
+const hasValidSnapshotId = computed<boolean>(() => Number.isInteger(snapshotId.value) && snapshotId.value > 0)
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
@@ -166,12 +171,17 @@ const loadDetail = async (): Promise<void> => {
     snapshot.value = null
     details.value = []
     sourceMaps.value = []
+    missingSnapshotId.value = false
     return
   }
-  if (!Number.isInteger(snapshotId.value) || snapshotId.value <= 0) {
-    ElMessage.warning('缺少有效 snapshot_id')
+  if (!hasValidSnapshotId.value) {
+    snapshot.value = null
+    details.value = []
+    sourceMaps.value = []
+    missingSnapshotId.value = true
     return
   }
+  missingSnapshotId.value = false
 
   loading.value = true
   try {
@@ -196,7 +206,8 @@ onMounted(async () => {
     await permissionStore.loadModuleActions('style_profit')
   } catch (error) {
     ElMessage.error((error as Error).message)
-    return
+  } finally {
+    permissionReady.value = true
   }
   await loadDetail()
 })

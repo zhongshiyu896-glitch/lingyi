@@ -26,7 +26,15 @@
       />
 
       <div class="actions">
-        <el-button type="primary" :disabled="!canBatch" :loading="submitting" @click="submitBatch">
+        <el-button
+          type="primary"
+          :disabled="!canBatch"
+          :loading="submitting"
+          data-action-type="write"
+          data-write-guard="permission:ticket_batch+handler"
+          :data-guard-state="canBatch ? 'enabled' : 'disabled'"
+          @click="submitBatch"
+        >
           开始导入
         </el-button>
       </div>
@@ -40,12 +48,12 @@
       <el-table v-if="result && result.failed_items.length > 0" :data="result.failed_items" border style="margin-top: 12px">
         <el-table-column prop="row_index" label="行号" width="90" />
         <el-table-column prop="ticket_key" label="ticket_key" min-width="150" />
-        <el-table-column label="错误码" min-width="180">
+        <el-table-column label="结果码" min-width="180">
           <template #default="scope">
             {{ scope.row.error_code || scope.row.code }}
           </template>
         </el-table-column>
-        <el-table-column prop="message" label="错误信息" min-width="220" />
+        <el-table-column prop="message" label="结果说明" min-width="220" />
       </el-table>
     </el-card>
   </div>
@@ -72,6 +80,10 @@ const result = ref<{
 const canBatch = computed<boolean>(() => permissionStore.state.buttonPermissions.ticket_batch)
 
 const submitBatch = async (): Promise<void> => {
+  if (!canBatch.value) {
+    ElMessage.warning('无工票批量导入权限')
+    return
+  }
   let rows: Array<Record<string, unknown>> = []
   try {
     const parsed = JSON.parse(rawJson.value || '[]')

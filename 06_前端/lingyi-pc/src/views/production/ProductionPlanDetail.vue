@@ -8,10 +8,12 @@
         </div>
       </template>
 
-      <el-empty v-if="!canRead" description="无生产计划查看权限" />
+      <el-skeleton v-if="!permissionReady" :rows="4" animated />
+      <el-empty v-else-if="!canRead" description="无生产计划查看权限" />
 
       <template v-else>
-        <el-descriptions v-if="detail" :column="3" border>
+        <el-empty v-if="missingPlanId" description="请从生产计划列表进入详情页" />
+        <el-descriptions v-else-if="detail" :column="3" border>
           <el-descriptions-item label="计划单号">{{ detail.plan_no }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag>{{ statusLabel(detail.status) }}</el-tag>
@@ -30,7 +32,7 @@
       </template>
     </el-card>
 
-    <el-card v-if="canRead" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>Work Order 映射</span></template>
       <el-descriptions :column="2" border>
         <el-descriptions-item label="Work Order">{{ currentWorkOrder || '-' }}</el-descriptions-item>
@@ -42,7 +44,7 @@
       </el-descriptions>
     </el-card>
 
-    <el-card v-if="canRead" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>物料检查</span></template>
       <el-alert
         v-if="materialCheckGuardReason"
@@ -62,7 +64,7 @@
       </el-button>
     </el-card>
 
-    <el-card v-if="canRead" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>create-work-order 候选入口</span></template>
       <el-alert
         type="info"
@@ -112,7 +114,7 @@
       </div>
     </el-card>
 
-    <el-card v-if="canRead" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>写入口状态</span></template>
       <el-alert
         type="warning"
@@ -122,7 +124,7 @@
       />
     </el-card>
 
-    <el-card v-if="canRead" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>物料检查快照</span></template>
       <el-alert
         type="info"
@@ -144,7 +146,7 @@
       </el-table>
     </el-card>
 
-    <el-card v-if="canRead" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>Job Card 映射</span></template>
       <el-table :data="detail?.job_cards || []" border>
         <el-table-column prop="job_card" label="Job Card" min-width="180" />
@@ -180,7 +182,9 @@ const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const detail = ref<ProductionPlanDetailData | null>(null)
+const missingPlanId = ref<boolean>(false)
 const loading = ref<boolean>(false)
+const permissionReady = ref<boolean>(false)
 const checkingMaterials = ref<boolean>(false)
 const creatingWorkOrder = ref<boolean>(false)
 
@@ -199,6 +203,7 @@ const canMaterialCheck = computed<boolean>(() => permissionStore.state.buttonPer
 const canWorkOrderCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.work_order_create)
 
 const planId = computed<number>(() => Number(route.query.id || '0'))
+const hasValidPlanId = computed<boolean>(() => Number.isInteger(planId.value) && planId.value > 0)
 const status = computed<string>(() => detail.value?.status || '')
 const currentWorkOrder = computed<string>(
   () => detail.value?.work_order || detail.value?.latest_work_order_outbox?.erpnext_work_order || '',
@@ -329,8 +334,15 @@ const ensurePlanId = (): number => {
 const loadDetail = async (): Promise<void> => {
   if (!canRead.value) {
     detail.value = null
+    missingPlanId.value = false
     return
   }
+  if (!hasValidPlanId.value) {
+    detail.value = null
+    missingPlanId.value = true
+    return
+  }
+  missingPlanId.value = false
   loading.value = true
   try {
     const result = await fetchProductionPlanDetail(ensurePlanId())
@@ -428,6 +440,8 @@ onMounted(async () => {
     await permissionStore.loadModuleActions('production')
   } catch (error) {
     ElMessage.error((error as Error).message)
+  } finally {
+    permissionReady.value = true
   }
   resetCreateWorkOrderForm()
   await loadDetail()

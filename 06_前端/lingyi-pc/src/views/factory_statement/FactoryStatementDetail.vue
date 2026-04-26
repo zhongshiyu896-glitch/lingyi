@@ -8,9 +8,11 @@
         </div>
       </template>
 
-      <el-empty v-if="!canRead" description="无加工厂对账单查看权限" />
+      <el-skeleton v-if="!permissionReady" :rows="4" animated />
+      <el-empty v-else-if="!canRead" description="无加工厂对账单查看权限" />
       <template v-else>
-        <el-empty v-if="!detail" description="未找到对账单数据" />
+        <el-empty v-if="missingStatementId" description="请从加工厂对账单列表进入详情页" />
+        <el-empty v-else-if="!detail" description="未找到对账单数据" />
         <template v-else>
           <el-descriptions :column="3" border>
             <el-descriptions-item label="对账单号">{{ detail.statement_no }}</el-descriptions-item>
@@ -73,7 +75,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header>
         <span>对账明细</span>
       </template>
@@ -103,7 +105,7 @@
       </el-table>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header>
         <span>操作日志</span>
       </template>
@@ -181,12 +183,15 @@ const items = ref<FactoryStatementDetailItem[]>([])
 const logs = ref<FactoryStatementLogItem[]>([])
 const confirmForm = ref<{ remark: string }>({ remark: '' })
 const cancelForm = ref<{ reason: string }>({ reason: '' })
+const missingStatementId = ref<boolean>(false)
+const permissionReady = ref<boolean>(false)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
 const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
 const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
 
 const statementId = computed<number>(() => Number(route.query.id || '0'))
+const hasValidStatementId = computed<boolean>(() => Number.isInteger(statementId.value) && statementId.value > 0)
 const isDraftStatus = computed<boolean>(() => detail.value?.statement_status === 'draft')
 const isCancelStatusAllowed = computed<boolean>(() => {
   const status = detail.value?.statement_status
@@ -443,12 +448,17 @@ const loadDetail = async (): Promise<void> => {
     detail.value = null
     items.value = []
     logs.value = []
+    missingStatementId.value = false
     return
   }
-  if (!Number.isInteger(statementId.value) || statementId.value <= 0) {
-    ElMessage.warning('缺少有效 statement_id')
+  if (!hasValidStatementId.value) {
+    detail.value = null
+    items.value = []
+    logs.value = []
+    missingStatementId.value = true
     return
   }
+  missingStatementId.value = false
 
   loading.value = true
   try {
@@ -469,7 +479,8 @@ onMounted(async () => {
     await permissionStore.loadModuleActions('factory_statement')
   } catch (error) {
     ElMessage.error((error as Error).message)
-    return
+  } finally {
+    permissionReady.value = true
   }
   await loadDetail()
 })

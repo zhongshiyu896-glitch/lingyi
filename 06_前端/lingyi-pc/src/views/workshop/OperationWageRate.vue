@@ -5,7 +5,14 @@
         <div class="header-row">
           <span>工价档案</span>
           <div class="header-actions">
-            <el-button @click="goList">返回工票列表</el-button>
+            <el-button
+              data-action-type="navigation"
+              data-readonly-action="true"
+              data-route-path="/workshop/tickets"
+              @click="goList"
+            >
+              返回工票列表
+            </el-button>
             <el-button type="primary" :disabled="!canManage" @click="createVisible = true">新增工价</el-button>
           </div>
         </div>

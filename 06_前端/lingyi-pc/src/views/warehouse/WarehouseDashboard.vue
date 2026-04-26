@@ -26,15 +26,17 @@
         </el-form-item>
       </el-form>
 
-      <el-alert
-        v-if="!canRead"
-        type="warning"
-        :closable="false"
-        show-icon
-        title="无仓库查看权限，当前仅展示只读骨架"
-        class="scope-alert"
-      />
-      <el-tabs v-model="activeTab">
+      <el-skeleton v-if="!permissionReady" :rows="4" animated />
+      <template v-else>
+        <el-alert
+          v-if="!canRead"
+          type="info"
+          :closable="false"
+          show-icon
+          title="无仓库查看权限，当前仅展示只读骨架"
+          class="scope-alert"
+        />
+        <el-tabs v-model="activeTab">
         <el-tab-pane label="库存台账" name="ledger">
           <el-table :data="ledgerRows" border v-loading="loading">
             <el-table-column prop="company" label="公司" min-width="120" />
@@ -123,14 +125,14 @@
             <el-tag type="info" effect="plain">
               强制参数：showCompleted={{ inboundMeta.show_completed_forced ? 'true' : 'false' }}
             </el-tag>
-            <el-tag type="warning" effect="plain">
+            <el-tag type="info" effect="plain">
               分配口径：{{ inboundMeta.allocation_contract || '-' }}
             </el-tag>
             <el-button type="primary" plain :loading="inboundLoading" @click="loadInboundCandidates">刷新候选</el-button>
           </div>
           <el-alert
             class="inbound-alert"
-            type="warning"
+            type="info"
             :closable="false"
             :title="`受限入口：${inboundMeta.disabled_entry_label || '成品预约入仓 -> 创建成品入仓'}`"
             :description="inboundMeta.disabled_entry_reason || '当前入口受限，禁止直接放开'"
@@ -215,7 +217,8 @@
             </el-descriptions>
           </div>
         </el-tab-pane>
-      </el-tabs>
+        </el-tabs>
+      </template>
     </el-card>
   </div>
 </template>
@@ -244,6 +247,7 @@ import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
+const permissionReady = ref<boolean>(false)
 const inboundLoading = ref<boolean>(false)
 const activeTab = ref<'ledger' | 'summary' | 'alerts' | 'finished_goods_inbound'>('ledger')
 const ledgerRows = ref<WarehouseStockLedgerItem[]>([])
@@ -485,6 +489,8 @@ onMounted(async () => {
   } catch (error) {
     permissionStore.state.actions = []
     ElMessage.warning((error as Error).message || '权限加载失败，写操作已关闭')
+  } finally {
+    permissionReady.value = true
   }
   await loadAll()
 })

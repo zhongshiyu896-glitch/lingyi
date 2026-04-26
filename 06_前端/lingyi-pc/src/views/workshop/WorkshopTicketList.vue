@@ -5,8 +5,25 @@
         <div class="header-row">
           <span>车间工票查询</span>
           <div class="header-actions">
-            <el-button v-if="canRegister" type="primary" @click="goRegister">工票登记</el-button>
-            <el-button v-if="canBatch" @click="goBatch">批量导入</el-button>
+            <el-button
+              v-if="canRegister"
+              type="primary"
+              data-action-type="write"
+              data-write-guard="permission:ticket_register(v-if)+handler"
+              data-guard-state="visible_when_allowed"
+              @click="goRegister"
+            >
+              工票登记
+            </el-button>
+            <el-button
+              v-if="canBatch"
+              data-action-type="write"
+              data-write-guard="permission:ticket_batch(v-if)+handler"
+              data-guard-state="visible_when_allowed"
+              @click="goBatch"
+            >
+              批量导入
+            </el-button>
             <el-button v-if="canWageRead" @click="goDailyWage">日薪统计</el-button>
             <el-button v-if="canWageRateRead" @click="goWageRate">工价档案</el-button>
           </div>
@@ -200,9 +217,17 @@ const onSizeChange = (size: number): void => {
 }
 
 const goRegister = (): void => {
+  if (!canRegister.value) {
+    ElMessage.warning('无工票登记权限')
+    return
+  }
   void router.push('/workshop/tickets/register')
 }
 const goBatch = (): void => {
+  if (!canBatch.value) {
+    ElMessage.warning('无工票批量导入权限')
+    return
+  }
   void router.push('/workshop/tickets/batch')
 }
 const goDailyWage = (): void => {

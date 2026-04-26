@@ -5,7 +5,9 @@
       <el-button type="primary" :disabled="!detail" @click="printNow">打印</el-button>
     </div>
 
-    <el-empty v-if="!canRead" description="无加工厂对账单查看权限" />
+    <el-skeleton v-if="!permissionReady" :rows="4" animated />
+    <el-empty v-else-if="!canRead" description="无加工厂对账单查看权限" />
+    <el-empty v-else-if="missingStatementId" description="请从加工厂对账单详情页进入打印页" />
     <el-empty v-else-if="!detail && !loading" description="未找到对账单数据" />
 
     <div v-else-if="detail" class="print-sheet">
@@ -118,10 +120,13 @@ const detail = ref<FactoryStatementDetailData | null>(null)
 const items = ref<FactoryStatementDetailItem[]>([])
 const logs = ref<FactoryStatementLogItem[]>([])
 const generatedAt = ref<string>('')
+const missingStatementId = ref<boolean>(false)
+const permissionReady = ref<boolean>(false)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
 const printUser = computed<string>(() => permissionStore.state.username || '-')
 const statementId = computed<number>(() => Number(route.query.id || '0'))
+const hasValidStatementId = computed<boolean>(() => Number.isInteger(statementId.value) && statementId.value > 0)
 
 const showText = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
@@ -170,12 +175,17 @@ const loadDetail = async (): Promise<void> => {
     detail.value = null
     items.value = []
     logs.value = []
+    missingStatementId.value = false
     return
   }
-  if (!Number.isInteger(statementId.value) || statementId.value <= 0) {
-    ElMessage.warning('缺少有效 statement_id')
+  if (!hasValidStatementId.value) {
+    detail.value = null
+    items.value = []
+    logs.value = []
+    missingStatementId.value = true
     return
   }
+  missingStatementId.value = false
 
   loading.value = true
   try {
@@ -213,7 +223,8 @@ onMounted(async () => {
     await permissionStore.loadModuleActions('factory_statement')
   } catch (error) {
     ElMessage.error((error as Error).message)
-    return
+  } finally {
+    permissionReady.value = true
   }
   await loadDetail()
 })

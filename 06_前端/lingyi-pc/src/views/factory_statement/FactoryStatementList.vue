@@ -4,7 +4,16 @@
       <template #header>
         <div class="header-row">
           <span>加工厂对账单列表</span>
-          <el-button type="primary" :disabled="!canCreateAction" @click="openCreateDialog">创建对账单</el-button>
+          <el-button
+            type="primary"
+            :disabled="!canCreateAction"
+            data-action-type="write"
+            data-write-guard="permission:factory_statement_create+handler"
+            :data-guard-state="canCreateAction ? 'enabled' : 'disabled'"
+            @click="openCreateDialog"
+          >
+            创建对账单
+          </el-button>
         </div>
       </template>
 

@@ -4,7 +4,14 @@
       <template #header>
         <div class="header-row">
           <span>员工日薪统计</span>
-          <el-button @click="goList">返回工票列表</el-button>
+          <el-button
+            data-action-type="navigation"
+            data-readonly-action="true"
+            data-route-path="/workshop/tickets"
+            @click="goList"
+          >
+            返回工票列表
+          </el-button>
         </div>
       </template>
 
@@ -29,7 +36,8 @@
         </el-form-item>
       </el-form>
 
-      <el-empty v-if="!canRead" description="无日薪查看权限" />
+      <el-skeleton v-if="!permissionReady" :rows="4" animated />
+      <el-empty v-else-if="!canRead" description="无日薪查看权限" />
       <template v-else>
         <el-alert
           style="margin-bottom: 12px"
@@ -77,6 +85,7 @@ import { usePermissionStore } from '@/stores/permission'
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
+const permissionReady = ref<boolean>(false)
 const rows = ref<WorkshopDailyWageRow[]>([])
 const total = ref<number>(0)
 const totalAmount = ref<string | number>('0')
@@ -133,7 +142,9 @@ onMounted(async () => {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('workshop')
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    ElMessage.warning((error as Error).message)
+  } finally {
+    permissionReady.value = true
   }
   await loadRows()
 })

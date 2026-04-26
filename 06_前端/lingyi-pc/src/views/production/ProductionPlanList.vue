@@ -4,7 +4,16 @@
       <template #header>
         <div class="header-row">
           <span>生产计划列表</span>
-          <el-button type="primary" :disabled="!canPlanCreate" @click="openCreateDialog">新建生产计划</el-button>
+          <el-button
+            type="primary"
+            :disabled="!canPlanCreate"
+            data-action-type="write"
+            data-write-guard="permission:plan_create+handler"
+            :data-guard-state="canPlanCreate ? 'enabled' : 'disabled'"
+            @click="openCreateDialog"
+          >
+            新建生产计划
+          </el-button>
         </div>
       </template>
 
@@ -111,7 +120,17 @@
       </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" :disabled="!canCreateAction" @click="createPlan">创建</el-button>
+        <el-button
+          type="primary"
+          :loading="creating"
+          :disabled="!canCreateAction"
+          data-action-type="write"
+          data-write-guard="permission:plan_create+form_valid+handler"
+          :data-guard-state="canCreateAction ? 'enabled' : 'disabled'"
+          @click="createPlan"
+        >
+          创建
+        </el-button>
       </template>
     </el-dialog>
   </div>

@@ -67,6 +67,9 @@
             type="primary"
             :disabled="mode === 'register' ? !canRegister : !canReversal"
             :loading="submitting"
+            data-action-type="write"
+            :data-write-guard="mode === 'register' ? 'permission:ticket_register+handler' : 'permission:ticket_reversal+handler'"
+            :data-guard-state="mode === 'register' ? (canRegister ? 'enabled' : 'disabled') : (canReversal ? 'enabled' : 'disabled')"
             @click="submit"
           >
             {{ mode === 'register' ? '提交登记' : '提交撤销' }}
@@ -121,6 +124,14 @@ const canRegister = computed<boolean>(() => permissionStore.state.buttonPermissi
 const canReversal = computed<boolean>(() => permissionStore.state.buttonPermissions.ticket_reversal)
 
 const submit = async (): Promise<void> => {
+  if (mode.value === 'register' && !canRegister.value) {
+    ElMessage.warning('无工票登记权限')
+    return
+  }
+  if (mode.value === 'reversal' && !canReversal.value) {
+    ElMessage.warning('无工票撤销权限')
+    return
+  }
   if (!form.ticket_key || !form.job_card || !form.employee || !form.process_name || !form.work_date) {
     ElMessage.warning('请完整填写关键字段')
     return

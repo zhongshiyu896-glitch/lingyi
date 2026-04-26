@@ -28,6 +28,9 @@
           v-if="isDraftEditable && ((isEditMode && canUpdate) || (!isEditMode && canCreate))"
           type="primary"
           :loading="saving"
+          data-action-type="write"
+          :data-write-guard="isEditMode ? 'permission:update(v-if)+handler' : 'permission:create(v-if)+handler'"
+          :data-guard-state="isDraftEditable ? 'enabled_or_loading' : 'disabled'"
           @click="saveDraft"
         >
           {{ isEditMode ? '保存草稿' : '创建 BOM' }}
@@ -65,7 +68,7 @@
       <template #header>
         <div class="card-header">
           <span>物料明细</span>
-          <el-button size="small" :disabled="!isDraftEditable" @click="addBomItem">新增物料</el-button>
+          <el-button size="small" :disabled="!isDraftEditable || !canDraftMutate" @click="addBomItem">新增物料</el-button>
         </div>
       </template>
       <el-table :data="bomItems" border>
@@ -106,7 +109,17 @@
         </el-table-column>
         <el-table-column label="操作" width="90">
           <template #default="scope">
-            <el-button link type="danger" :disabled="!isDraftEditable" @click="removeBomItem(scope.$index)">删除</el-button>
+            <el-button
+              link
+              type="danger"
+              data-action-type="write"
+              :data-write-guard="isEditMode ? 'permission:update+draft_editable' : 'permission:create+draft_editable'"
+              :data-guard-state="!isDraftEditable || !canDraftMutate ? 'disabled' : 'enabled'"
+              :disabled="!isDraftEditable || !canDraftMutate"
+              @click="removeBomItem(scope.$index)"
+            >
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -116,7 +129,7 @@
       <template #header>
         <div class="card-header">
           <span>工序明细</span>
-          <el-button size="small" :disabled="!isDraftEditable" @click="addOperation">新增工序</el-button>
+          <el-button size="small" :disabled="!isDraftEditable || !canDraftMutate" @click="addOperation">新增工序</el-button>
         </div>
       </template>
       <el-table :data="operations" border>
@@ -162,7 +175,14 @@
         </el-table-column>
         <el-table-column label="操作" width="90">
           <template #default="scope">
-            <el-button link type="danger" :disabled="!isDraftEditable" @click="removeOperation(scope.$index)">删除</el-button>
+            <el-button
+              link
+              type="danger"
+              :disabled="!isDraftEditable || !canDraftMutate"
+              @click="removeOperation(scope.$index)"
+            >
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -305,6 +325,7 @@ const canPublish = computed<boolean>(() => permissionStore.state.buttonPermissio
 const canDeactivate = computed<boolean>(() => permissionStore.state.buttonPermissions.deactivate)
 const canSetDefault = computed<boolean>(() => permissionStore.state.buttonPermissions.set_default)
 const isDraftEditable = computed<boolean>(() => !isEditMode.value || status.value === 'draft')
+const canDraftMutate = computed<boolean>(() => (isEditMode.value ? canUpdate.value : canCreate.value))
 const statusText = computed<string>(() => {
   if (status.value === 'active') return '已发布'
   if (status.value === 'inactive') return '已停用'
@@ -566,18 +587,18 @@ const explode = async (): Promise<void> => {
 }
 
 const addBomItem = (): void => {
-  if (!isDraftEditable.value) return
+  if (!isDraftEditable.value || !canDraftMutate.value) return
   bomItems.value.push(emptyBomItem())
 }
 
 const removeBomItem = (index: number): void => {
-  if (!isDraftEditable.value) return
+  if (!isDraftEditable.value || !canDraftMutate.value) return
   if (bomItems.value.length <= 1) return
   bomItems.value.splice(index, 1)
 }
 
 const addOperation = (): void => {
-  if (!isDraftEditable.value) return
+  if (!isDraftEditable.value || !canDraftMutate.value) return
   operations.value.push({
     ...emptyOperation(),
     sequence_no: operations.value.length + 1,
@@ -585,7 +606,7 @@ const addOperation = (): void => {
 }
 
 const removeOperation = (index: number): void => {
-  if (!isDraftEditable.value) return
+  if (!isDraftEditable.value || !canDraftMutate.value) return
   if (operations.value.length <= 1) return
   operations.value.splice(index, 1)
 }

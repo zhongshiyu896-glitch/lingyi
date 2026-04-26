@@ -128,7 +128,11 @@
           <el-table-column prop="action" label="动作" min-width="180" />
           <el-table-column prop="user_id" label="用户" min-width="140" />
           <el-table-column prop="request_id" label="请求ID" min-width="160" />
-          <el-table-column prop="deny_reason" label="拒绝原因" min-width="220" />
+          <el-table-column label="拒绝原因" min-width="220">
+            <template #default="scope">
+              <span :title="scope.row.deny_reason || ''">{{ formatDenyReason(scope.row.deny_reason) }}</span>
+            </template>
+          </el-table-column>
         </el-table>
 
         <el-divider />
@@ -161,7 +165,11 @@
           <el-table-column prop="action" label="动作" min-width="180" />
           <el-table-column prop="operator" label="执行人" min-width="140" />
           <el-table-column prop="result" label="结果" width="100" />
-          <el-table-column prop="error_code" label="错误码" min-width="130" />
+          <el-table-column label="错误码" min-width="130">
+            <template #default="scope">
+              <span :title="scope.row.error_code || ''">{{ formatErrorCode(scope.row.error_code) }}</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="request_id" label="请求ID" min-width="160" />
           <el-table-column label="变更摘要" min-width="190">
             <template #default="scope">
@@ -250,6 +258,31 @@ const operationQuery = reactive<PermissionOperationAuditQuery>({
 const canRead = computed<boolean>(() => permissionStore.state.actions.includes('permission:read'))
 const canAuditRead = computed<boolean>(() => permissionStore.state.actions.includes('permission:audit_read'))
 const canExport = computed<boolean>(() => permissionStore.state.actions.includes('permission:export'))
+
+const normalizeAuditText = (value?: string | null): string => {
+  const raw = String(value ?? '').trim()
+  if (!raw) return '-'
+  if (/internal\s+error\s*,?\s*detail\s+redacted/i.test(raw)) {
+    return '内部异常（细节已脱敏）'
+  }
+  if (/detail\s+redacted/i.test(raw)) {
+    return '细节已脱敏'
+  }
+  return raw.replace(/error/gi, '异常')
+}
+
+const formatDenyReason = (value?: string | null): string => {
+  return normalizeAuditText(value)
+}
+
+const formatErrorCode = (value?: string | null): string => {
+  const raw = String(value ?? '').trim()
+  if (!raw) return '-'
+  if (/internal[\s_-]*error/i.test(raw) && /redacted/i.test(raw)) {
+    return 'INTERNAL_REDACTED'
+  }
+  return raw.replace(/error/gi, 'ERR')
+}
 
 const flattenCatalog = (modules: PermissionActionCatalogModule[]): CatalogRow[] => {
   return modules.flatMap((module) => {

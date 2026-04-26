@@ -14,7 +14,15 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :disabled="!canRead" @click="loadList">查询</el-button>
-          <el-button v-if="canCreate" @click="goCreate">新建 BOM</el-button>
+          <el-button
+            v-if="canCreate"
+            data-action-type="write"
+            data-write-guard="permission:create(v-if)"
+            data-guard-state="visible_when_allowed"
+            @click="goCreate"
+          >
+            新建 BOM
+          </el-button>
         </el-form-item>
       </el-form>
 
@@ -113,6 +121,10 @@ const goDetail = (id: number): void => {
 }
 
 const goCreate = (): void => {
+  if (!canCreate.value) {
+    ElMessage.warning('无新建 BOM 权限')
+    return
+  }
   router.push('/bom/detail')
 }
 

@@ -7,9 +7,11 @@
           <el-button @click="goBack">返回</el-button>
         </div>
       </template>
-      <el-empty v-if="!canRead" description="无外发查看权限" />
+      <el-skeleton v-if="!permissionReady" :rows="4" animated />
+      <el-empty v-else-if="!canRead" description="无外发查看权限" />
       <template v-else>
-        <el-descriptions v-if="detail" :column="3" border>
+        <el-empty v-if="missingOrderId" description="请从外发单列表进入详情页" />
+        <el-descriptions v-else-if="detail" :column="3" border>
           <el-descriptions-item label="外发单号">{{ detail.subcontract_no }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag>{{ statusLabel(detail.status) }}</el-tag>
@@ -48,7 +50,7 @@
       />
     </el-card>
 
-    <el-card shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>回料批次</span></template>
       <el-table :data="detail?.receipts || []" border>
         <el-table-column prop="receipt_batch_no" label="回料批次" min-width="160" />
@@ -59,7 +61,7 @@
       </el-table>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>验货明细</span></template>
       <el-table :data="detail?.inspections || []" border>
         <el-table-column prop="inspection_no" label="验货单号" min-width="180" />
@@ -88,10 +90,13 @@ const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const detail = ref<SubcontractOrderDetailData | null>(null)
+const missingOrderId = ref<boolean>(false)
 const loading = ref<boolean>(false)
+const permissionReady = ref<boolean>(false)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const orderId = computed<number>(() => Number(route.query.id || '0'))
+const hasValidOrderId = computed<boolean>(() => Number.isInteger(orderId.value) && orderId.value > 0)
 const isScopeBlocked = computed<boolean>(() => detail.value?.resource_scope_status === 'blocked_scope')
 
 const stockSyncLabel = (value?: string | null): string => {
@@ -120,22 +125,21 @@ const statusLabel = (value: string): string => {
   return labels[value] || value
 }
 
-const ensureOrderId = (): number => {
-  if (!orderId.value || Number.isNaN(orderId.value)) {
-    throw new Error('无效的外发单 ID')
-  }
-  return orderId.value
-}
-
 const loadDetail = async (): Promise<void> => {
   if (!canRead.value) {
     detail.value = null
+    missingOrderId.value = false
     return
   }
+  if (!hasValidOrderId.value) {
+    detail.value = null
+    missingOrderId.value = true
+    return
+  }
+  missingOrderId.value = false
   loading.value = true
   try {
-    const id = ensureOrderId()
-    const result = await fetchSubcontractOrderDetail(id)
+    const result = await fetchSubcontractOrderDetail(orderId.value)
     detail.value = result.data
   } catch (error) {
     ElMessage.error((error as Error).message)
@@ -161,6 +165,8 @@ onMounted(async () => {
     await permissionStore.loadModuleActions('subcontract')
   } catch (error) {
     ElMessage.error((error as Error).message)
+  } finally {
+    permissionReady.value = true
   }
   await loadDetail()
 })

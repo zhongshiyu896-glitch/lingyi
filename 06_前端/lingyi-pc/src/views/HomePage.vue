@@ -19,6 +19,9 @@
         :key="item.path"
         class="quick-entry"
         type="button"
+        data-action-type="navigation"
+        data-readonly-action="true"
+        :data-route-path="item.path"
         @click="go(item.path)"
       >
         <span>{{ item.title }}</span>
@@ -30,7 +33,15 @@
       <div v-for="group in entryGroups" :key="group.title" class="module-band">
         <div class="band-title">{{ group.title }}</div>
         <div class="module-links">
-          <button v-for="item in group.items" :key="item.path" type="button" @click="go(item.path)">
+          <button
+            v-for="item in group.items"
+            :key="item.path"
+            type="button"
+            data-action-type="navigation"
+            data-readonly-action="true"
+            :data-route-path="item.path"
+            @click="go(item.path)"
+          >
             {{ item.title }}
           </button>
         </div>
