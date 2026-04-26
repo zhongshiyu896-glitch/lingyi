@@ -4,8 +4,21 @@
       <template #header>
         <div class="header-row">
           <span>跨模块只读视图</span>
+          <div class="header-actions">
+            <el-button size="small" text @click="toggleReadonlyGuide">
+              {{ showReadonlyGuide ? '隐藏只读说明' : '显示只读说明' }}
+            </el-button>
+            <el-button size="small" :loading="permissionLoading" @click="refreshReadonlyStatus">刷新只读状态</el-button>
+          </div>
         </div>
       </template>
+      <el-alert
+        v-if="showReadonlyGuide"
+        type="info"
+        :closable="false"
+        class="readonly-guide"
+        title="本页仅展示跨模块链路事实，交互仅限输入查询条件、切换标签与返回，不会触发写入。"
+      />
 
       <el-empty v-if="!canRead" description="无跨模块只读查看权限（需销售库存读取与质量读取）" />
       <template v-else>
@@ -139,6 +152,8 @@ const workOrderLoading = ref<boolean>(false)
 const salesOrderLoading = ref<boolean>(false)
 const workOrderTrail = ref<CrossModuleWorkOrderTrailData | null>(null)
 const salesOrderTrail = ref<CrossModuleSalesOrderTrailData | null>(null)
+const showReadonlyGuide = ref<boolean>(false)
+const permissionLoading = ref<boolean>(false)
 
 const workOrderQuery = reactive({
   work_order_id: '',
@@ -200,6 +215,26 @@ const loadSalesOrderTrail = async (): Promise<void> => {
   }
 }
 
+const toggleReadonlyGuide = (): void => {
+  showReadonlyGuide.value = !showReadonlyGuide.value
+}
+
+const refreshReadonlyStatus = async (): Promise<void> => {
+  permissionLoading.value = true
+  try {
+    await permissionStore.loadCurrentUser()
+    await Promise.all([permissionStore.loadModuleActions('sales_inventory'), permissionStore.loadModuleActions('quality')])
+    if (!canRead.value) {
+      workOrderTrail.value = null
+      salesOrderTrail.value = null
+    }
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    permissionLoading.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
@@ -221,6 +256,15 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.readonly-guide {
+  margin-bottom: 12px;
 }
 
 .summary-block {

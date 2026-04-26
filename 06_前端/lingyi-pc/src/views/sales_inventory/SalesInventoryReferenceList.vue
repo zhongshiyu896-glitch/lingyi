@@ -4,8 +4,21 @@
       <template #header>
         <div class="header-row">
           <span>销售库存基础资料只读</span>
+          <div class="header-actions">
+            <el-button size="small" text @click="toggleReadonlyGuide">
+              {{ showReadonlyGuide ? '隐藏只读说明' : '显示只读说明' }}
+            </el-button>
+            <el-button size="small" :loading="permissionLoading" @click="refreshReadonlyStatus">刷新只读状态</el-button>
+          </div>
         </div>
       </template>
+      <el-alert
+        v-if="showReadonlyGuide"
+        type="info"
+        :closable="false"
+        class="readonly-guide"
+        title="本页仅提供客户与仓库基础资料查看，所有交互均为只读查询或分页浏览，不触发写入。"
+      />
 
       <el-empty v-if="!canRead" description="无销售库存查看权限" />
       <template v-else>
@@ -92,6 +105,8 @@ const customerRows = ref<CustomerItem[]>([])
 const warehouseRows = ref<WarehouseItem[]>([])
 const customerTotal = ref<number>(0)
 const warehouseTotal = ref<number>(0)
+const showReadonlyGuide = ref<boolean>(false)
+const permissionLoading = ref<boolean>(false)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.sales_inventory_read)
 
@@ -171,6 +186,31 @@ const onWarehouseSizeChange = (size: number): void => {
   loadWarehouses()
 }
 
+const toggleReadonlyGuide = (): void => {
+  showReadonlyGuide.value = !showReadonlyGuide.value
+}
+
+const refreshReadonlyStatus = async (): Promise<void> => {
+  permissionLoading.value = true
+  try {
+    await permissionStore.loadCurrentUser()
+    await permissionStore.loadModuleActions('sales_inventory')
+    if (canRead.value) {
+      await loadCustomers()
+      await loadWarehouses()
+    } else {
+      customerRows.value = []
+      warehouseRows.value = []
+      customerTotal.value = 0
+      warehouseTotal.value = 0
+    }
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    permissionLoading.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
@@ -197,6 +237,15 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.readonly-guide {
+  margin-bottom: 12px;
 }
 
 .pager {
