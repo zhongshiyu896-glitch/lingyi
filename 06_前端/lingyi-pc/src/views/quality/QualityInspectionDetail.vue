@@ -58,7 +58,7 @@
       <template #header>
         <span>检验明细</span>
       </template>
-      <el-table :data="detail?.items || []" border>
+      <el-table :data="detail?.items || []" border empty-text="暂无检验明细">
         <el-table-column prop="line_no" label="行号" width="70" />
         <el-table-column prop="item_code" label="物料" min-width="140" />
         <el-table-column label="抽样数量" width="110">
@@ -84,7 +84,7 @@
       <template #header>
         <span>缺陷记录</span>
       </template>
-      <el-table :data="detail?.defects || []" border>
+      <el-table :data="detail?.defects || []" border empty-text="暂无缺陷记录">
         <el-table-column prop="defect_code" label="缺陷编码" min-width="120" />
         <el-table-column prop="defect_name" label="缺陷名称" min-width="160" />
         <el-table-column label="缺陷数量" width="110">
@@ -99,7 +99,7 @@
       <template #header>
         <span>操作日志</span>
       </template>
-      <el-table :data="detail?.logs || []" border>
+      <el-table :data="detail?.logs || []" border empty-text="暂无操作日志">
         <el-table-column prop="action" label="动作" min-width="120" />
         <el-table-column prop="from_status" label="原状态" min-width="120" />
         <el-table-column prop="to_status" label="新状态" min-width="120" />
@@ -112,16 +112,16 @@
     <el-dialog v-model="updateDialogVisible" title="编辑草稿" width="520px" destroy-on-close>
       <el-form :model="updateForm" label-width="120px">
         <el-form-item label="合格数量">
-          <el-input v-model="updateForm.accepted_qty" clearable />
+          <el-input v-model="updateForm.accepted_qty" clearable placeholder="请输入合格数量" />
         </el-form-item>
         <el-form-item label="不合格数量">
-          <el-input v-model="updateForm.rejected_qty" clearable />
+          <el-input v-model="updateForm.rejected_qty" clearable placeholder="请输入不合格数量" />
         </el-form-item>
         <el-form-item label="缺陷数量">
-          <el-input v-model="updateForm.defect_qty" clearable />
+          <el-input v-model="updateForm.defect_qty" clearable placeholder="请输入缺陷数量" />
         </el-form-item>
         <el-form-item label="结果">
-          <el-select v-model="updateForm.result" style="width: 100%">
+          <el-select v-model="updateForm.result" placeholder="请选择结果" style="width: 100%">
             <el-option label="待定" value="pending" />
             <el-option label="合格" value="pass" />
             <el-option label="不合格" value="fail" />
@@ -129,7 +129,14 @@
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="updateForm.remark" type="textarea" :rows="3" maxlength="255" show-word-limit />
+          <el-input
+            v-model="updateForm.remark"
+            type="textarea"
+            :rows="3"
+            maxlength="255"
+            show-word-limit
+            placeholder="请输入备注"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -141,16 +148,16 @@
     <el-dialog v-model="defectDialogVisible" title="录入缺陷" width="520px" destroy-on-close>
       <el-form :model="defectForm" label-width="120px">
         <el-form-item label="缺陷编码" required>
-          <el-input v-model="defectForm.defect_code" clearable />
+          <el-input v-model="defectForm.defect_code" clearable placeholder="请输入缺陷编码" />
         </el-form-item>
         <el-form-item label="缺陷名称" required>
-          <el-input v-model="defectForm.defect_name" clearable />
+          <el-input v-model="defectForm.defect_name" clearable placeholder="请输入缺陷名称" />
         </el-form-item>
         <el-form-item label="缺陷数量" required>
-          <el-input v-model="defectForm.defect_qty" clearable />
+          <el-input v-model="defectForm.defect_qty" clearable placeholder="请输入缺陷数量" />
         </el-form-item>
         <el-form-item label="严重度">
-          <el-select v-model="defectForm.severity" style="width: 100%">
+          <el-select v-model="defectForm.severity" placeholder="请选择严重度" style="width: 100%">
             <el-option label="轻微" value="minor" />
             <el-option label="一般" value="major" />
             <el-option label="严重" value="critical" />
@@ -160,7 +167,14 @@
           <el-input v-model="defectForm.item_line_no" clearable placeholder="可选，填 1/2/3 ..." />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="defectForm.remark" type="textarea" :rows="3" maxlength="255" show-word-limit />
+          <el-input
+            v-model="defectForm.remark"
+            type="textarea"
+            :rows="3"
+            maxlength="255"
+            show-word-limit
+            placeholder="请输入备注"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -172,7 +186,14 @@
     <el-dialog v-model="confirmDialogVisible" title="确认检验单" width="480px" destroy-on-close>
       <el-form label-width="120px">
         <el-form-item label="确认备注">
-          <el-input v-model="confirmRemark" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <el-input
+            v-model="confirmRemark"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入确认备注"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -184,7 +205,14 @@
     <el-dialog v-model="cancelDialogVisible" title="取消检验单" width="480px" destroy-on-close>
       <el-form label-width="120px">
         <el-form-item label="取消原因">
-          <el-input v-model="cancelReason" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <el-input
+            v-model="cancelReason"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入取消原因"
+          />
         </el-form-item>
       </el-form>
       <template #footer>

@@ -17,7 +17,7 @@
       />
 
       <template v-else>
-        <el-table :data="catalogRows" border>
+        <el-table :data="catalogRows" border empty-text="暂无动作目录数据">
           <el-table-column prop="module" label="模块" width="160" />
           <el-table-column prop="action" label="动作" min-width="220" />
           <el-table-column prop="category" label="分类" width="160" />
@@ -34,7 +34,7 @@
 
         <el-divider />
 
-        <el-table :data="roleRows" border>
+        <el-table :data="roleRows" border empty-text="暂无角色矩阵数据">
           <el-table-column prop="role" label="角色" min-width="180" />
           <el-table-column label="模块" min-width="220">
             <template #default="scope">
@@ -120,7 +120,7 @@
           </el-form-item>
         </el-form>
 
-        <el-table :data="securityAudit.items" border>
+        <el-table :data="securityAudit.items" border empty-text="暂无安全审计记录">
           <el-table-column prop="id" label="ID" width="90" />
           <el-table-column prop="created_at" label="时间" min-width="180" />
           <el-table-column prop="event_type" label="事件" min-width="150" />
@@ -158,7 +158,7 @@
           </el-form-item>
         </el-form>
 
-        <el-table :data="operationAudit.items" border>
+        <el-table :data="operationAudit.items" border empty-text="暂无操作审计记录">
           <el-table-column prop="id" label="ID" width="90" />
           <el-table-column prop="created_at" label="时间" min-width="180" />
           <el-table-column prop="module" label="模块" width="120" />

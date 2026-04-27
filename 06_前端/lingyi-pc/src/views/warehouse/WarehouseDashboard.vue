@@ -19,10 +19,10 @@
           <el-input v-model="query.item_code" clearable placeholder="item_code" />
         </el-form-item>
         <el-form-item label="开始日期">
-          <el-date-picker v-model="query.from_date" type="date" value-format="YYYY-MM-DD" clearable />
+          <el-date-picker v-model="query.from_date" type="date" value-format="YYYY-MM-DD" placeholder="开始日期" clearable />
         </el-form-item>
         <el-form-item label="结束日期">
-          <el-date-picker v-model="query.to_date" type="date" value-format="YYYY-MM-DD" clearable />
+          <el-date-picker v-model="query.to_date" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" clearable />
         </el-form-item>
       </el-form>
 
@@ -38,7 +38,7 @@
         />
         <el-tabs v-model="activeTab">
         <el-tab-pane label="库存台账" name="ledger">
-          <el-table :data="ledgerRows" border v-loading="loading">
+          <el-table :data="ledgerRows" border v-loading="loading" empty-text="暂无数据">
             <el-table-column prop="company" label="公司" min-width="120" />
             <el-table-column prop="warehouse" label="仓库" min-width="150" />
             <el-table-column prop="item_code" label="物料" min-width="150" />
@@ -58,7 +58,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="库存聚合" name="summary">
-          <el-table :data="summaryRows" border v-loading="loading" :row-class-name="summaryRowClassName">
+          <el-table :data="summaryRows" border v-loading="loading" :row-class-name="summaryRowClassName" empty-text="暂无数据">
             <el-table-column prop="company" label="公司" min-width="120" />
             <el-table-column prop="warehouse" label="仓库" min-width="150" />
             <el-table-column prop="item_code" label="物料" min-width="150" />
@@ -101,7 +101,7 @@
               <el-radio-button label="stale_stock">呆滞</el-radio-button>
             </el-radio-group>
           </div>
-          <el-table :data="alertsRows" border v-loading="loading" :row-class-name="alertRowClassName">
+          <el-table :data="alertsRows" border v-loading="loading" :row-class-name="alertRowClassName" empty-text="暂无数据">
             <el-table-column prop="company" label="公司" min-width="120" />
             <el-table-column prop="warehouse" label="仓库" min-width="150" />
             <el-table-column prop="item_code" label="物料" min-width="150" />
@@ -138,7 +138,7 @@
             :description="inboundMeta.disabled_entry_reason || '当前入口受限，禁止直接放开'"
           />
 
-          <el-table :data="inboundCandidates" border v-loading="inboundLoading">
+          <el-table :data="inboundCandidates" border v-loading="inboundLoading" empty-text="暂无候选">
             <el-table-column prop="source_id" label="来源ID" min-width="160" />
             <el-table-column prop="source_label" label="来源说明" min-width="220" />
             <el-table-column prop="item_code" label="物料" min-width="140" />
@@ -200,7 +200,7 @@
               <el-descriptions-item label="来源单号">{{ inboundDraft.source_id }}</el-descriptions-item>
             </el-descriptions>
 
-            <el-table :data="inboundDraft.items" border class="inbound-draft-items">
+            <el-table :data="inboundDraft.items" border class="inbound-draft-items" empty-text="暂无明细">
               <el-table-column prop="item_code" label="物料" min-width="140" />
               <el-table-column label="数量" width="120">
                 <template #default="scope">{{ formatAmount(scope.row.qty) }}</template>

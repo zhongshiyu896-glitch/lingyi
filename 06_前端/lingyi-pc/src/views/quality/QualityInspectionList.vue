@@ -34,7 +34,7 @@
           <el-input v-model="query.supplier" clearable placeholder="supplier" />
         </el-form-item>
         <el-form-item label="来源类型">
-          <el-select v-model="query.source_type" clearable style="width: 180px">
+          <el-select v-model="query.source_type" clearable placeholder="全部来源类型" style="width: 180px">
             <el-option label="来料检验" value="incoming_material" />
             <el-option label="外发收货检验" value="subcontract_receipt" />
             <el-option label="成品检验" value="finished_goods" />
@@ -42,17 +42,17 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable style="width: 140px">
+          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 140px">
             <el-option label="草稿" value="draft" />
             <el-option label="已确认" value="confirmed" />
             <el-option label="已取消" value="cancelled" />
           </el-select>
         </el-form-item>
         <el-form-item label="开始日期">
-          <el-date-picker v-model="query.from_date" type="date" value-format="YYYY-MM-DD" clearable />
+          <el-date-picker v-model="query.from_date" type="date" value-format="YYYY-MM-DD" placeholder="开始日期" clearable />
         </el-form-item>
         <el-form-item label="结束日期">
-          <el-date-picker v-model="query.to_date" type="date" value-format="YYYY-MM-DD" clearable />
+          <el-date-picker v-model="query.to_date" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" clearable />
         </el-form-item>
       </el-form>
 
@@ -68,7 +68,7 @@
             :title="`本页筛选统计：检验 ${statistics.total_count} 单，检验数量 ${formatAmount(statistics.total_inspected_qty)}，缺陷率 ${formatRate(statistics.overall_defect_rate)}`"
           />
 
-          <el-table :data="rows" border v-loading="loading">
+          <el-table :data="rows" border v-loading="loading" empty-text="暂无检验单数据">
             <el-table-column prop="inspection_no" label="检验单号" min-width="180" />
             <el-table-column prop="company" label="公司" min-width="120" />
             <el-table-column prop="item_code" label="物料" min-width="140" />
@@ -145,7 +145,7 @@
 
             <div class="stats-section">
               <h4>按供应商聚合</h4>
-              <el-table :data="statistics.by_supplier" border>
+              <el-table :data="statistics.by_supplier" border empty-text="暂无供应商统计">
                 <el-table-column prop="label" label="供应商" min-width="180" />
                 <el-table-column prop="count" label="检验单数" width="100" />
                 <el-table-column label="检验数量" width="120">
@@ -162,7 +162,7 @@
 
             <div class="stats-section">
               <h4>按物料聚合</h4>
-              <el-table :data="statistics.by_item_code" border>
+              <el-table :data="statistics.by_item_code" border empty-text="暂无物料统计">
                 <el-table-column prop="label" label="物料" min-width="180" />
                 <el-table-column prop="count" label="检验单数" width="100" />
                 <el-table-column label="检验数量" width="120">
@@ -179,7 +179,7 @@
 
             <div class="stats-section">
               <h4>按仓库聚合</h4>
-              <el-table :data="statistics.by_warehouse" border>
+              <el-table :data="statistics.by_warehouse" border empty-text="暂无仓库统计">
                 <el-table-column prop="label" label="仓库" min-width="180" />
                 <el-table-column prop="count" label="检验单数" width="100" />
                 <el-table-column label="检验数量" width="120">
@@ -197,7 +197,7 @@
             <div class="stats-grid">
               <el-card shadow="never">
                 <template #header>Top 缺陷供应商</template>
-                <el-table :data="statistics.top_defective_suppliers" border>
+                <el-table :data="statistics.top_defective_suppliers" border empty-text="暂无缺陷供应商数据">
                   <el-table-column prop="label" label="供应商" min-width="140" />
                   <el-table-column label="缺陷率" width="120">
                     <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
@@ -206,7 +206,7 @@
               </el-card>
               <el-card shadow="never">
                 <template #header>Top 缺陷物料</template>
-                <el-table :data="statistics.top_defective_items" border>
+                <el-table :data="statistics.top_defective_items" border empty-text="暂无缺陷物料数据">
                   <el-table-column prop="label" label="物料" min-width="140" />
                   <el-table-column label="缺陷率" width="120">
                     <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
@@ -223,7 +223,7 @@
                   <el-radio-button label="weekly">按周</el-radio-button>
                 </el-radio-group>
               </div>
-              <el-table :data="statisticsTrend?.points || []" border>
+              <el-table :data="statisticsTrend?.points || []" border empty-text="暂无趋势数据">
                 <el-table-column prop="period_key" label="周期" width="120" />
                 <el-table-column prop="inspection_count" label="检验单数" width="100" />
                 <el-table-column label="检验数量" width="120">
@@ -251,7 +251,7 @@
           <el-input v-model="createForm.company" clearable placeholder="company" />
         </el-form-item>
         <el-form-item label="来源类型" required>
-          <el-select v-model="createForm.source_type" style="width: 100%">
+          <el-select v-model="createForm.source_type" placeholder="请选择来源类型" style="width: 100%">
             <el-option label="来料检验" value="incoming_material" />
             <el-option label="外发收货检验" value="subcontract_receipt" />
             <el-option label="成品检验" value="finished_goods" />
@@ -271,7 +271,7 @@
           <el-input v-model="createForm.warehouse" clearable placeholder="warehouse" />
         </el-form-item>
         <el-form-item label="检验日期" required>
-          <el-date-picker v-model="createForm.inspection_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+          <el-date-picker v-model="createForm.inspection_date" type="date" value-format="YYYY-MM-DD" placeholder="请选择检验日期" style="width: 100%" />
         </el-form-item>
         <el-form-item label="检验数量" required>
           <el-input v-model="createForm.inspected_qty" clearable placeholder="inspected_qty" />
@@ -286,7 +286,7 @@
           <el-input v-model="createForm.defect_qty" clearable placeholder="defect_qty" />
         </el-form-item>
         <el-form-item label="结果">
-          <el-select v-model="createForm.result" style="width: 100%">
+          <el-select v-model="createForm.result" placeholder="请选择检验结果" style="width: 100%">
             <el-option label="待定" value="pending" />
             <el-option label="合格" value="pass" />
             <el-option label="不合格" value="fail" />
@@ -294,7 +294,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="createForm.remark" type="textarea" :rows="3" maxlength="255" show-word-limit />
+          <el-input v-model="createForm.remark" type="textarea" :rows="3" maxlength="255" placeholder="备注（可选）" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>

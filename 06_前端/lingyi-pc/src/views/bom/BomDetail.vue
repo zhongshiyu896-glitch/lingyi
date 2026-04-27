@@ -10,7 +10,7 @@
 
       <el-form label-width="110px">
         <el-form-item label="BOM编号">
-          <el-input :model-value="bomNo" disabled />
+          <el-input :model-value="bomNo" placeholder="BOM编号" disabled />
         </el-form-item>
         <el-form-item label="款式编码">
           <el-input v-model="form.item_code" :disabled="isEditMode" placeholder="Item Code" />
@@ -71,20 +71,20 @@
           <el-button size="small" :disabled="!isDraftEditable || !canDraftMutate" @click="addBomItem">新增物料</el-button>
         </div>
       </template>
-      <el-table :data="bomItems" border>
+      <el-table :data="bomItems" border empty-text="暂无物料明细">
         <el-table-column label="物料编码" min-width="180">
           <template #default="scope">
-            <el-input v-model="scope.row.material_item_code" :disabled="!isDraftEditable" />
+            <el-input v-model="scope.row.material_item_code" placeholder="物料编码" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="颜色" min-width="120">
           <template #default="scope">
-            <el-input v-model="scope.row.color" :disabled="!isDraftEditable" />
+            <el-input v-model="scope.row.color" placeholder="颜色" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="尺码" min-width="100">
           <template #default="scope">
-            <el-input v-model="scope.row.size" :disabled="!isDraftEditable" />
+            <el-input v-model="scope.row.size" placeholder="尺码" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="单件用量" min-width="120">
@@ -99,12 +99,12 @@
         </el-table-column>
         <el-table-column label="单位" min-width="100">
           <template #default="scope">
-            <el-input v-model="scope.row.uom" :disabled="!isDraftEditable" />
+            <el-input v-model="scope.row.uom" placeholder="单位" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="备注" min-width="160">
           <template #default="scope">
-            <el-input v-model="scope.row.remark" :disabled="!isDraftEditable" />
+            <el-input v-model="scope.row.remark" placeholder="备注" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="90">
@@ -132,10 +132,10 @@
           <el-button size="small" :disabled="!isDraftEditable || !canDraftMutate" @click="addOperation">新增工序</el-button>
         </div>
       </template>
-      <el-table :data="operations" border>
+      <el-table :data="operations" border empty-text="暂无工序明细">
         <el-table-column label="工序名称" min-width="180">
           <template #default="scope">
-            <el-input v-model="scope.row.process_name" :disabled="!isDraftEditable" />
+            <el-input v-model="scope.row.process_name" placeholder="工序名称" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="序号" width="100">
@@ -170,7 +170,7 @@
         </el-table-column>
         <el-table-column label="备注" min-width="160">
           <template #default="scope">
-            <el-input v-model="scope.row.remark" :disabled="!isDraftEditable" />
+            <el-input v-model="scope.row.remark" placeholder="备注" :disabled="!isDraftEditable" />
           </template>
         </el-table-column>
         <el-table-column label="操作" width="90">
@@ -194,7 +194,7 @@
         <el-form-item label="订单数量">
           <el-input-number v-model="explodeForm.order_qty" :min="0.000001" :step="1" />
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="操作">
           <el-button type="primary" :disabled="!isEditMode || !canRead" :loading="exploding" @click="explode">
             展开计算
           </el-button>
@@ -218,6 +218,7 @@
         v-if="explodeResult && explodeResult.material_requirements.length > 0"
         :data="explodeResult.material_requirements"
         border
+        empty-text="暂无展开结果"
         style="margin-top: 12px"
       >
         <el-table-column prop="material_item_code" label="物料编码" min-width="160" />

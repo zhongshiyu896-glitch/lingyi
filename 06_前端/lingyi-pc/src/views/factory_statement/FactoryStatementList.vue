@@ -19,10 +19,10 @@
 
       <el-form :inline="true" :model="query">
         <el-form-item label="供应商">
-          <el-input v-model="query.supplier" clearable placeholder="supplier" />
+          <el-input v-model="query.supplier" clearable placeholder="请输入供应商" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.statement_status" clearable style="width: 160px">
+          <el-select v-model="query.statement_status" clearable placeholder="请选择状态" style="width: 160px">
             <el-option label="草稿" value="draft" />
             <el-option label="已确认" value="confirmed" />
             <el-option label="已取消" value="cancelled" />
@@ -34,7 +34,7 @@
             v-model="query.from_date"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="from_date"
+            placeholder="请选择开始日期"
             clearable
           />
         </el-form-item>
@@ -43,18 +43,18 @@
             v-model="query.to_date"
             type="date"
             value-format="YYYY-MM-DD"
-            placeholder="to_date"
+            placeholder="请选择结束日期"
             clearable
           />
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="操作">
           <el-button type="primary" :disabled="!canRead" @click="loadRows">查询</el-button>
         </el-form-item>
       </el-form>
 
       <el-empty v-if="!canRead" description="无加工厂对账单查看权限" />
       <template v-else>
-        <el-table :data="rows" border v-loading="loading">
+        <el-table :data="rows" border v-loading="loading" empty-text="暂无加工厂对账单数据">
           <el-table-column prop="statement_no" label="对账单号" min-width="180" />
           <el-table-column prop="company" label="公司" min-width="140" />
           <el-table-column prop="supplier" label="供应商" min-width="140" />
@@ -116,35 +116,35 @@
     </el-card>
 
     <el-dialog v-model="createVisible" title="创建加工厂对账单" width="680px">
-      <el-form :model="createForm" label-width="120px">
-        <el-form-item label="公司">
-          <el-input v-model="createForm.company" />
-        </el-form-item>
-        <el-form-item label="供应商">
-          <el-input v-model="createForm.supplier" />
-        </el-form-item>
-        <el-form-item label="开始日期">
-          <el-date-picker
-            v-model="createForm.from_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="from_date"
-            style="width: 100%"
-          />
-        </el-form-item>
+        <el-form :model="createForm" label-width="120px">
+          <el-form-item label="公司">
+          <el-input v-model="createForm.company" placeholder="请输入公司名称" />
+          </el-form-item>
+          <el-form-item label="供应商">
+          <el-input v-model="createForm.supplier" placeholder="请输入供应商名称" />
+          </el-form-item>
+          <el-form-item label="开始日期">
+            <el-date-picker
+              v-model="createForm.from_date"
+              type="date"
+              value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+              style="width: 100%"
+            />
+          </el-form-item>
         <el-form-item label="结束日期">
           <el-date-picker
-            v-model="createForm.to_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="to_date"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="幂等键">
-          <el-input v-model="createForm.idempotency_key" />
-        </el-form-item>
-      </el-form>
+              v-model="createForm.to_date"
+              type="date"
+              value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="幂等键">
+          <el-input v-model="createForm.idempotency_key" placeholder="请输入幂等键" />
+          </el-form-item>
+        </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
         <el-button type="primary" :loading="creating" :disabled="!canSubmitCreate" @click="submitCreateStatement">

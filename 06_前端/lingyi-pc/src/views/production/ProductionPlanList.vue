@@ -25,7 +25,7 @@
           <el-input v-model="query.item_code" clearable placeholder="ITEM-001" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable style="width: 180px">
+          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 180px">
             <el-option label="草稿" value="draft" />
             <el-option label="已计划" value="planned" />
             <el-option label="已物料检查" value="material_checked" />
@@ -36,14 +36,14 @@
             <el-option label="失败" value="failed" />
           </el-select>
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="操作">
           <el-button type="primary" :disabled="!canRead" @click="loadPlans">查询</el-button>
         </el-form-item>
       </el-form>
 
       <el-empty v-if="!canRead" description="无生产计划查看权限" />
       <template v-else>
-        <el-table :data="rows" v-loading="loading" border>
+        <el-table :data="rows" v-loading="loading" border empty-text="暂无生产计划数据">
           <el-table-column prop="plan_no" label="计划单号" min-width="180" />
           <el-table-column prop="company" label="公司" min-width="140" />
           <el-table-column prop="sales_order" label="销售单" min-width="160" />
@@ -91,19 +91,19 @@
     <el-dialog v-model="createVisible" title="新建生产计划" width="640px">
       <el-form :model="createForm" label-width="130px">
         <el-form-item label="销售单">
-          <el-input v-model="createForm.sales_order" />
+          <el-input v-model="createForm.sales_order" placeholder="销售单号" />
         </el-form-item>
         <el-form-item label="销售单行（可选）">
-          <el-input v-model="createForm.sales_order_item" />
+          <el-input v-model="createForm.sales_order_item" placeholder="销售单行号（可选）" />
         </el-form-item>
         <el-form-item label="款式编码">
-          <el-input v-model="createForm.item_code" />
+          <el-input v-model="createForm.item_code" placeholder="款式编码" />
         </el-form-item>
         <el-form-item label="BOM ID（可选）">
-          <el-input-number v-model="createForm.bom_id" :min="1" />
+          <el-input-number v-model="createForm.bom_id" aria-label="BOM ID（可选）" :min="1" />
         </el-form-item>
         <el-form-item label="计划数量">
-          <el-input-number v-model="createForm.planned_qty" :min="0.000001" :step="1" />
+          <el-input-number v-model="createForm.planned_qty" aria-label="计划数量" :min="0.000001" :step="1" />
         </el-form-item>
         <el-form-item label="计划开工日（可选）">
           <el-date-picker
@@ -115,7 +115,7 @@
           />
         </el-form-item>
         <el-form-item label="幂等键">
-          <el-input v-model="createForm.idempotency_key" />
+          <el-input v-model="createForm.idempotency_key" placeholder="幂等键" />
         </el-form-item>
       </el-form>
       <template #footer>

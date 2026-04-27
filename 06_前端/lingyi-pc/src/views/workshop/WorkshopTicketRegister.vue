@@ -18,13 +18,13 @@
           <el-input v-model="form.ticket_key" placeholder="扫码值或业务唯一键" />
         </el-form-item>
         <el-form-item label="Job Card">
-          <el-input v-model="form.job_card" />
+          <el-input v-model="form.job_card" placeholder="请输入 Job Card" />
         </el-form-item>
         <el-form-item label="员工">
-          <el-input v-model="form.employee" />
+          <el-input v-model="form.employee" placeholder="请输入员工编码或姓名" />
         </el-form-item>
         <el-form-item label="工序">
-          <el-input v-model="form.process_name" />
+          <el-input v-model="form.process_name" placeholder="请输入工序名称" />
         </el-form-item>
         <el-form-item label="颜色/尺码">
           <div class="inline-fields">
@@ -33,15 +33,20 @@
           </div>
         </el-form-item>
         <el-form-item label="数量">
-          <el-input-number v-model="form.qty" :min="0.000001" :step="1" />
+          <el-input-number v-model="form.qty" :min="0.000001" :step="1" aria-label="工票数量" />
         </el-form-item>
         <el-form-item label="工作日期">
-          <el-date-picker v-model="form.work_date" value-format="YYYY-MM-DD" type="date" />
+          <el-date-picker
+            v-model="form.work_date"
+            value-format="YYYY-MM-DD"
+            type="date"
+            placeholder="请选择工作日期"
+          />
         </el-form-item>
 
         <template v-if="mode === 'register'">
           <el-form-item label="来源">
-            <el-select v-model="form.source" style="width: 160px">
+            <el-select v-model="form.source" placeholder="请选择来源" style="width: 160px">
               <el-option label="manual" value="manual" />
               <el-option label="pda" value="pda" />
               <el-option label="mes" value="mes" />
@@ -49,20 +54,20 @@
             </el-select>
           </el-form-item>
           <el-form-item label="来源单号">
-            <el-input v-model="form.source_ref" />
+            <el-input v-model="form.source_ref" placeholder="请输入来源单号（可选）" />
           </el-form-item>
         </template>
 
         <template v-else>
           <el-form-item label="原工票ID">
-            <el-input-number v-model="form.original_ticket_id" :min="1" />
+            <el-input-number v-model="form.original_ticket_id" :min="1" aria-label="原工票ID" />
           </el-form-item>
           <el-form-item label="撤销原因">
-            <el-input v-model="form.reason" />
+            <el-input v-model="form.reason" placeholder="请输入撤销原因" />
           </el-form-item>
         </template>
 
-        <el-form-item>
+        <el-form-item label="操作">
           <el-button
             type="primary"
             :disabled="mode === 'register' ? !canRegister : !canReversal"
