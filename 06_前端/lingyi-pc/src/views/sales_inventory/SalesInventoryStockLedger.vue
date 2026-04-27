@@ -54,7 +54,7 @@
             />
 
             <h3>库存汇总</h3>
-            <el-table :data="summaryRows" border v-loading="summaryLoading">
+            <el-table :data="summaryRows" border v-loading="summaryLoading" empty-text="暂无库存汇总数据">
               <el-table-column prop="company" label="公司" min-width="130" />
               <el-table-column prop="item_code" label="物料" min-width="150" />
               <el-table-column prop="warehouse" label="仓库" min-width="160" />
@@ -66,7 +66,7 @@
             </el-table>
 
             <h3 class="section-title">库存流水</h3>
-            <el-table :data="ledgerRows" border v-loading="ledgerLoading">
+            <el-table :data="ledgerRows" border v-loading="ledgerLoading" empty-text="暂无库存流水数据">
               <el-table-column prop="posting_date" label="日期" width="120" />
               <el-table-column prop="posting_time" label="时间" width="120" />
               <el-table-column prop="company" label="公司" min-width="130" />
@@ -107,6 +107,7 @@
               border
               v-loading="aggregationLoading"
               :row-class-name="aggregationRowClassName"
+              empty-text="暂无库存聚合数据"
             >
               <el-table-column prop="item_code" label="物料" min-width="150" />
               <el-table-column prop="warehouse" label="仓库" min-width="160" />
@@ -135,7 +136,7 @@
             </el-table>
 
             <h3 class="section-title">销售订单满足率</h3>
-            <el-table :data="fulfillmentRows" border v-loading="fulfillmentLoading">
+            <el-table :data="fulfillmentRows" border v-loading="fulfillmentLoading" empty-text="暂无满足率数据">
               <el-table-column prop="sales_order" label="销售订单" min-width="170" />
               <el-table-column prop="item_code" label="物料" min-width="150" />
               <el-table-column prop="warehouse" label="仓库" min-width="160" />

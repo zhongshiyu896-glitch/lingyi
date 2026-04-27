@@ -57,7 +57,7 @@
 
     <el-card v-if="canRead && snapshot" shadow="never">
       <template #header><span>利润明细</span></template>
-      <el-table :data="details" border>
+      <el-table :data="details" border empty-text="暂无利润明细数据">
         <el-table-column prop="line_no" label="行号" width="70" />
         <el-table-column prop="cost_type" label="成本类型" min-width="120" />
         <el-table-column prop="source_type" label="来源类型" min-width="120" />
@@ -85,7 +85,7 @@
 
     <el-card v-if="canRead && snapshot" shadow="never">
       <template #header><span>来源追溯</span></template>
-      <el-table :data="sourceMaps" border>
+      <el-table :data="sourceMaps" border empty-text="暂无来源追溯数据">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="source_system" label="来源系统" min-width="110" />
         <el-table-column prop="source_doctype" label="来源单据类型" min-width="140" />

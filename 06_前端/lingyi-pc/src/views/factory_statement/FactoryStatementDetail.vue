@@ -79,7 +79,7 @@
       <template #header>
         <span>对账明细</span>
       </template>
-      <el-table :data="items" border>
+      <el-table :data="items" border empty-text="暂无对账明细数据">
         <el-table-column prop="line_no" label="行号" width="70" />
         <el-table-column prop="inspection_no" label="验货单号" min-width="150" />
         <el-table-column prop="subcontract_no" label="外发单号" min-width="150" />
@@ -109,7 +109,7 @@
       <template #header>
         <span>操作日志</span>
       </template>
-      <el-table :data="logs" border>
+      <el-table :data="logs" border empty-text="暂无操作日志数据">
         <el-table-column prop="action" label="动作" min-width="120" />
         <el-table-column prop="from_status" label="原状态" min-width="120" />
         <el-table-column prop="to_status" label="新状态" min-width="120" />
@@ -122,7 +122,15 @@
     <el-dialog v-model="confirmVisible" title="确认对账单" width="560px">
       <el-form :model="confirmForm" label-width="110px">
         <el-form-item label="备注（可选）">
-          <el-input v-model="confirmForm.remark" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <el-input
+            v-model="confirmForm.remark"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入确认备注（可选）"
+            aria-label="确认备注"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -136,7 +144,15 @@
     <el-dialog v-model="cancelVisible" title="取消对账单" width="560px">
       <el-form :model="cancelForm" label-width="110px">
         <el-form-item label="原因（可选）">
-          <el-input v-model="cancelForm.reason" type="textarea" :rows="3" maxlength="200" show-word-limit />
+          <el-input
+            v-model="cancelForm.reason"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入取消原因（可选）"
+            aria-label="取消原因"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
