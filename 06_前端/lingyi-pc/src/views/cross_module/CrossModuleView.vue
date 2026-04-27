@@ -31,7 +31,7 @@
               <el-form-item label="公司">
                 <el-input v-model="workOrderQuery.company" clearable placeholder="company" />
               </el-form-item>
-              <el-form-item>
+              <el-form-item label="操作">
                 <el-button type="primary" @click="loadWorkOrderTrail">查询链路</el-button>
               </el-form-item>
             </el-form>
@@ -48,7 +48,7 @@
             </el-descriptions>
 
             <h3 class="section-title">库存流水事实</h3>
-            <el-table :data="workOrderTrail?.stock_entries || []" border v-loading="workOrderLoading">
+            <el-table :data="workOrderTrail?.stock_entries || []" border v-loading="workOrderLoading" empty-text="暂无库存流水事实">
               <el-table-column prop="voucher_no" label="凭证号" min-width="180" />
               <el-table-column prop="voucher_type" label="凭证类型" min-width="120" />
               <el-table-column prop="company" label="公司" min-width="120" />
@@ -62,7 +62,7 @@
             </el-table>
 
             <h3 class="section-title">质量检验事实</h3>
-            <el-table :data="workOrderTrail?.quality_inspections || []" border v-loading="workOrderLoading">
+            <el-table :data="workOrderTrail?.quality_inspections || []" border v-loading="workOrderLoading" empty-text="暂无质量检验事实">
               <el-table-column prop="inspection_no" label="检验单号" min-width="170" />
               <el-table-column prop="inspection_date" label="检验日期" width="120" />
               <el-table-column prop="item_code" label="物料" min-width="130" />
@@ -89,7 +89,7 @@
               <el-form-item label="公司">
                 <el-input v-model="salesOrderQuery.company" clearable placeholder="company" />
               </el-form-item>
-              <el-form-item>
+              <el-form-item label="操作">
                 <el-button type="primary" @click="loadSalesOrderTrail">查询链路</el-button>
               </el-form-item>
             </el-form>
@@ -104,7 +104,7 @@
             </el-descriptions>
 
             <h3 class="section-title">交付/出库事实</h3>
-            <el-table :data="salesOrderTrail?.delivery_notes || []" border v-loading="salesOrderLoading">
+            <el-table :data="salesOrderTrail?.delivery_notes || []" border v-loading="salesOrderLoading" empty-text="暂无交付出库事实">
               <el-table-column prop="delivery_note" label="交付单号" min-width="180" />
               <el-table-column prop="company" label="公司" min-width="120" />
               <el-table-column prop="item_code" label="物料" min-width="130" />
@@ -117,7 +117,7 @@
             </el-table>
 
             <h3 class="section-title">质量检验事实</h3>
-            <el-table :data="salesOrderTrail?.quality_inspections || []" border v-loading="salesOrderLoading">
+            <el-table :data="salesOrderTrail?.quality_inspections || []" border v-loading="salesOrderLoading" empty-text="暂无质量检验事实">
               <el-table-column prop="inspection_no" label="检验单号" min-width="170" />
               <el-table-column prop="inspection_date" label="检验日期" width="120" />
               <el-table-column prop="item_code" label="物料" min-width="130" />
