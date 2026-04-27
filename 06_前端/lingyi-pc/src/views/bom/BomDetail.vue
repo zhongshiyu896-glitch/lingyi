@@ -89,12 +89,24 @@
         </el-table-column>
         <el-table-column label="单件用量" min-width="120">
           <template #default="scope">
-            <el-input-number v-model="scope.row.qty_per_piece" :disabled="!isDraftEditable" :min="0.000001" :step="0.1" />
+            <el-input-number
+              v-model="scope.row.qty_per_piece"
+              :disabled="!isDraftEditable"
+              :min="0.000001"
+              :step="0.1"
+              aria-label="单件用量"
+            />
           </template>
         </el-table-column>
         <el-table-column label="损耗率" min-width="120">
           <template #default="scope">
-            <el-input-number v-model="scope.row.loss_rate" :disabled="!isDraftEditable" :min="0" :step="0.01" />
+            <el-input-number
+              v-model="scope.row.loss_rate"
+              :disabled="!isDraftEditable"
+              :min="0"
+              :step="0.01"
+              aria-label="损耗率"
+            />
           </template>
         </el-table-column>
         <el-table-column label="单位" min-width="100">
@@ -140,7 +152,13 @@
         </el-table-column>
         <el-table-column label="序号" width="100">
           <template #default="scope">
-            <el-input-number v-model="scope.row.sequence_no" :disabled="!isDraftEditable" :min="1" :step="1" />
+            <el-input-number
+              v-model="scope.row.sequence_no"
+              :disabled="!isDraftEditable"
+              :min="1"
+              :step="1"
+              aria-label="工序序号"
+            />
           </template>
         </el-table-column>
         <el-table-column label="外发" width="100">
@@ -155,6 +173,7 @@
               :disabled="!isDraftEditable || scope.row.is_subcontract"
               :min="0"
               :step="0.1"
+              aria-label="本厂工价"
             />
           </template>
         </el-table-column>
@@ -165,6 +184,7 @@
               :disabled="!isDraftEditable || !scope.row.is_subcontract"
               :min="0"
               :step="0.1"
+              aria-label="外发单价"
             />
           </template>
         </el-table-column>
@@ -192,7 +212,7 @@
       <template #header><span>BOM 展开预览</span></template>
       <el-form :inline="true">
         <el-form-item label="订单数量">
-          <el-input-number v-model="explodeForm.order_qty" :min="0.000001" :step="1" />
+          <el-input-number v-model="explodeForm.order_qty" :min="0.000001" :step="1" aria-label="订单数量" />
         </el-form-item>
         <el-form-item label="操作">
           <el-button type="primary" :disabled="!isEditMode || !canRead" :loading="exploding" @click="explode">
@@ -218,8 +238,8 @@
         v-if="explodeResult && explodeResult.material_requirements.length > 0"
         :data="explodeResult.material_requirements"
         border
-        empty-text="暂无展开结果"
         style="margin-top: 12px"
+        empty-text="暂无展开结果"
       >
         <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
         <el-table-column prop="color" label="颜色" min-width="100" />

@@ -41,12 +41,18 @@
             value-format="YYYY-MM-DD"
             type="date"
             placeholder="请选择工作日期"
+            aria-label="工作日期"
           />
         </el-form-item>
 
         <template v-if="mode === 'register'">
           <el-form-item label="来源">
-            <el-select v-model="form.source" placeholder="请选择来源" style="width: 160px">
+            <el-select
+              v-model="form.source"
+              placeholder="请选择来源"
+              style="width: 160px"
+              aria-label="工票来源"
+            >
               <el-option label="manual" value="manual" />
               <el-option label="pda" value="pda" />
               <el-option label="mes" value="mes" />

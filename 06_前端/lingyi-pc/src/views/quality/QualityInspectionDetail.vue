@@ -136,12 +136,21 @@
             maxlength="255"
             show-word-limit
             placeholder="请输入备注"
+            aria-label="检验更新备注"
           />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="updateDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="updating" :disabled="!canUpdate" @click="submitUpdate">保存</el-button>
+        <el-button
+          type="primary"
+          :loading="updating"
+          :disabled="!canUpdate"
+          aria-label="保存检验更新"
+          @click="submitUpdate"
+        >
+          保存
+        </el-button>
       </template>
     </el-dialog>
 
@@ -157,7 +166,12 @@
           <el-input v-model="defectForm.defect_qty" clearable placeholder="请输入缺陷数量" />
         </el-form-item>
         <el-form-item label="严重度">
-          <el-select v-model="defectForm.severity" placeholder="请选择严重度" style="width: 100%">
+          <el-select
+            v-model="defectForm.severity"
+            placeholder="请选择严重度"
+            style="width: 100%"
+            aria-label="缺陷严重度"
+          >
             <el-option label="轻微" value="minor" />
             <el-option label="一般" value="major" />
             <el-option label="严重" value="critical" />
