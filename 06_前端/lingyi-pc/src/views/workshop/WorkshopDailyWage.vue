@@ -26,12 +26,24 @@
           <el-input v-model="query.item_code" clearable placeholder="Item Code" />
         </el-form-item>
         <el-form-item label="日期从">
-          <el-date-picker v-model="query.from_date" type="date" value-format="YYYY-MM-DD" />
+          <el-date-picker
+            v-model="query.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="选择开始日期"
+            aria-label="日薪开始日期"
+          />
         </el-form-item>
         <el-form-item label="到">
-          <el-date-picker v-model="query.to_date" type="date" value-format="YYYY-MM-DD" />
+          <el-date-picker
+            v-model="query.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="选择结束日期"
+            aria-label="日薪结束日期"
+          />
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="操作">
           <el-button type="primary" :disabled="!canRead" @click="loadRows">查询</el-button>
         </el-form-item>
       </el-form>
@@ -47,7 +59,7 @@
           :title="`当前查询工资合计：${totalAmount}`"
         />
 
-        <el-table :data="rows" v-loading="loading" border>
+        <el-table :data="rows" v-loading="loading" border empty-text="暂无日薪统计记录">
           <el-table-column prop="employee" label="员工" min-width="120" />
           <el-table-column prop="work_date" label="日期" min-width="120" />
           <el-table-column prop="process_name" label="工序" min-width="120" />

@@ -6,13 +6,19 @@
           <el-input v-model="query.item_code" clearable placeholder="Item Code" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable style="width: 160px">
+          <el-select
+            v-model="query.status"
+            clearable
+            placeholder="请选择状态"
+            aria-label="BOM状态筛选"
+            style="width: 160px"
+          >
             <el-option label="草稿" value="draft" />
             <el-option label="已发布" value="active" />
             <el-option label="已停用" value="inactive" />
           </el-select>
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="操作">
           <el-button type="primary" :disabled="!canRead" @click="loadList">查询</el-button>
           <el-button
             v-if="canCreate"
@@ -28,7 +34,7 @@
 
       <el-empty v-if="!canRead" description="无 BOM 查看权限" />
       <template v-else>
-        <el-table :data="rows" v-loading="loading" border>
+        <el-table :data="rows" v-loading="loading" border empty-text="暂无BOM数据">
           <el-table-column prop="bom_no" label="BOM编号" min-width="280" />
           <el-table-column prop="item_code" label="款式编码" min-width="140" />
           <el-table-column prop="version_no" label="版本" min-width="100" />

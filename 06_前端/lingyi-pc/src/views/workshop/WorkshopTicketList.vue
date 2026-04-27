@@ -44,25 +44,43 @@
           <el-input v-model="query.process_name" clearable placeholder="Process" />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="query.operation_type" clearable style="width: 140px">
+          <el-select
+            v-model="query.operation_type"
+            clearable
+            style="width: 140px"
+            placeholder="选择工票类型"
+            aria-label="工票类型"
+          >
             <el-option label="登记" value="register" />
             <el-option label="撤销" value="reversal" />
           </el-select>
         </el-form-item>
         <el-form-item label="日期从">
-          <el-date-picker v-model="query.from_date" value-format="YYYY-MM-DD" type="date" />
+          <el-date-picker
+            v-model="query.from_date"
+            value-format="YYYY-MM-DD"
+            type="date"
+            placeholder="选择开始日期"
+            aria-label="工票开始日期"
+          />
         </el-form-item>
         <el-form-item label="到">
-          <el-date-picker v-model="query.to_date" value-format="YYYY-MM-DD" type="date" />
+          <el-date-picker
+            v-model="query.to_date"
+            value-format="YYYY-MM-DD"
+            type="date"
+            placeholder="选择结束日期"
+            aria-label="工票结束日期"
+          />
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="操作">
           <el-button type="primary" :disabled="!canRead" @click="loadTickets">查询</el-button>
         </el-form-item>
       </el-form>
 
       <el-empty v-if="!canRead" description="无工票查看权限" />
       <template v-else>
-        <el-table :data="rows" v-loading="loading" border>
+        <el-table :data="rows" v-loading="loading" border empty-text="暂无工票记录">
           <el-table-column prop="ticket_no" label="工票号" min-width="180" />
           <el-table-column prop="job_card" label="工序卡" min-width="120" />
           <el-table-column prop="employee" label="员工" min-width="120" />

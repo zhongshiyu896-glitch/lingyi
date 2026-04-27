@@ -26,7 +26,13 @@
           <el-input v-model="query.company" clearable placeholder="Company" />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="query.rate_scope" clearable style="width: 140px">
+          <el-select
+            v-model="query.rate_scope"
+            clearable
+            style="width: 140px"
+            placeholder="选择类型"
+            aria-label="工价类型"
+          >
             <el-option label="全部" value="" />
             <el-option label="款式专属" value="specific" />
             <el-option label="通用工价" value="global" />
@@ -36,19 +42,25 @@
           <el-input v-model="query.process_name" clearable placeholder="Process" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable style="width: 140px">
+          <el-select
+            v-model="query.status"
+            clearable
+            style="width: 140px"
+            placeholder="选择状态"
+            aria-label="工价状态"
+          >
             <el-option label="active" value="active" />
             <el-option label="inactive" value="inactive" />
           </el-select>
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="操作">
           <el-button type="primary" :disabled="!canRead" @click="loadRows">查询</el-button>
         </el-form-item>
       </el-form>
 
       <el-empty v-if="!canRead" description="无工价查看权限" />
       <template v-else>
-        <el-table :data="rows" v-loading="loading" border>
+        <el-table :data="rows" v-loading="loading" border empty-text="暂无工价记录">
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column label="类型" width="110">
             <template #default="scope">
@@ -106,16 +118,34 @@
           <el-input v-model="createForm.company" placeholder="建议填写，款式工价必填" />
         </el-form-item>
         <el-form-item label="工序">
-          <el-input v-model="createForm.process_name" />
+          <el-input v-model="createForm.process_name" placeholder="请输入工序名称" aria-label="工序名称" />
         </el-form-item>
         <el-form-item label="计件单价">
-          <el-input-number v-model="createForm.wage_rate" :min="0" :step="0.01" :precision="6" />
+          <el-input-number
+            v-model="createForm.wage_rate"
+            :min="0"
+            :step="0.01"
+            :precision="6"
+            aria-label="计件单价"
+          />
         </el-form-item>
         <el-form-item label="生效开始">
-          <el-date-picker v-model="createForm.effective_from" type="date" value-format="YYYY-MM-DD" />
+          <el-date-picker
+            v-model="createForm.effective_from"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="选择生效开始日期"
+            aria-label="生效开始日期"
+          />
         </el-form-item>
         <el-form-item label="生效结束">
-          <el-date-picker v-model="createForm.effective_to" type="date" value-format="YYYY-MM-DD" />
+          <el-date-picker
+            v-model="createForm.effective_to"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="选择生效结束日期"
+            aria-label="生效结束日期"
+          />
         </el-form-item>
       </el-form>
       <template #footer>

@@ -25,11 +25,11 @@
         <el-tabs v-model="activeTab">
           <el-tab-pane label="客户" name="customers">
             <el-form :inline="true" :model="customerQuery">
-              <el-form-item>
+              <el-form-item label="操作">
                 <el-button type="primary" @click="loadCustomers">查询客户</el-button>
               </el-form-item>
             </el-form>
-            <el-table :data="customerRows" border v-loading="customerLoading">
+            <el-table :data="customerRows" border v-loading="customerLoading" empty-text="暂无客户资料">
               <el-table-column prop="name" label="客户编号" min-width="160" />
               <el-table-column prop="customer_name" label="客户名称" min-width="180" />
               <el-table-column label="禁用" width="100">
@@ -55,11 +55,11 @@
               <el-form-item label="公司">
                 <el-input v-model="warehouseQuery.company" clearable placeholder="company" />
               </el-form-item>
-              <el-form-item>
+              <el-form-item label="操作">
                 <el-button type="primary" @click="loadWarehouses">查询仓库</el-button>
               </el-form-item>
             </el-form>
-            <el-table :data="warehouseRows" border v-loading="warehouseLoading">
+            <el-table :data="warehouseRows" border v-loading="warehouseLoading" empty-text="暂无仓库资料">
               <el-table-column prop="name" label="仓库编号" min-width="160" />
               <el-table-column prop="warehouse_name" label="仓库名称" min-width="180" />
               <el-table-column prop="company" label="公司" min-width="140" />
