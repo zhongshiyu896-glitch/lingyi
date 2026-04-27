@@ -68,7 +68,7 @@
             :title="`本页筛选统计：检验 ${statistics.total_count} 单，检验数量 ${formatAmount(statistics.total_inspected_qty)}，缺陷率 ${formatRate(statistics.overall_defect_rate)}`"
           />
 
-          <el-table :data="rows" border v-loading="loading" empty-text="暂无检验单数据">
+          <el-table :data="rows" border v-loading="loading" empty-text="暂无检验单数据，请调整筛选条件后重试">
             <el-table-column prop="inspection_no" label="检验单号" min-width="180" />
             <el-table-column prop="company" label="公司" min-width="120" />
             <el-table-column prop="item_code" label="物料" min-width="140" />
@@ -145,7 +145,7 @@
 
             <div class="stats-section">
               <h4>按供应商聚合</h4>
-              <el-table :data="statistics.by_supplier" border empty-text="暂无供应商统计">
+              <el-table :data="statistics.by_supplier" border empty-text="暂无供应商统计，请调整筛选条件后重试">
                 <el-table-column prop="label" label="供应商" min-width="180" />
                 <el-table-column prop="count" label="检验单数" width="100" />
                 <el-table-column label="检验数量" width="120">
@@ -162,7 +162,7 @@
 
             <div class="stats-section">
               <h4>按物料聚合</h4>
-              <el-table :data="statistics.by_item_code" border empty-text="暂无物料统计">
+              <el-table :data="statistics.by_item_code" border empty-text="暂无物料统计，请调整筛选条件后重试">
                 <el-table-column prop="label" label="物料" min-width="180" />
                 <el-table-column prop="count" label="检验单数" width="100" />
                 <el-table-column label="检验数量" width="120">
@@ -179,7 +179,7 @@
 
             <div class="stats-section">
               <h4>按仓库聚合</h4>
-              <el-table :data="statistics.by_warehouse" border empty-text="暂无仓库统计">
+              <el-table :data="statistics.by_warehouse" border empty-text="暂无仓库统计，请调整筛选条件后重试">
                 <el-table-column prop="label" label="仓库" min-width="180" />
                 <el-table-column prop="count" label="检验单数" width="100" />
                 <el-table-column label="检验数量" width="120">
@@ -197,7 +197,7 @@
             <div class="stats-grid">
               <el-card shadow="never">
                 <template #header>Top 缺陷供应商</template>
-                <el-table :data="statistics.top_defective_suppliers" border empty-text="暂无缺陷供应商数据">
+                <el-table :data="statistics.top_defective_suppliers" border empty-text="暂无缺陷供应商数据，请调整筛选条件后重试">
                   <el-table-column prop="label" label="供应商" min-width="140" />
                   <el-table-column label="缺陷率" width="120">
                     <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
@@ -206,7 +206,7 @@
               </el-card>
               <el-card shadow="never">
                 <template #header>Top 缺陷物料</template>
-                <el-table :data="statistics.top_defective_items" border empty-text="暂无缺陷物料数据">
+                <el-table :data="statistics.top_defective_items" border empty-text="暂无缺陷物料数据，请调整筛选条件后重试">
                   <el-table-column prop="label" label="物料" min-width="140" />
                   <el-table-column label="缺陷率" width="120">
                     <template #default="scope">{{ formatRate(scope.row.defect_rate) }}</template>
@@ -223,7 +223,7 @@
                   <el-radio-button label="weekly">按周</el-radio-button>
                 </el-radio-group>
               </div>
-              <el-table :data="statisticsTrend?.points || []" border empty-text="暂无趋势数据">
+              <el-table :data="statisticsTrend?.points || []" border empty-text="暂无趋势数据，请调整筛选条件后重试">
                 <el-table-column prop="period_key" label="周期" width="120" />
                 <el-table-column prop="inspection_count" label="检验单数" width="100" />
                 <el-table-column label="检验数量" width="120">
