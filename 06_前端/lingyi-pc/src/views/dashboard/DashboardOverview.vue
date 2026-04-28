@@ -19,10 +19,22 @@
           <el-input v-model="query.warehouse" clearable placeholder="warehouse" />
         </el-form-item>
         <el-form-item label="开始日期">
-          <el-date-picker v-model="query.from_date" type="date" value-format="YYYY-MM-DD" clearable />
+          <el-date-picker
+            v-model="query.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="from_date（可选）"
+            clearable
+          />
         </el-form-item>
         <el-form-item label="结束日期">
-          <el-date-picker v-model="query.to_date" type="date" value-format="YYYY-MM-DD" clearable />
+          <el-date-picker
+            v-model="query.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="to_date（可选）"
+            clearable
+          />
         </el-form-item>
       </el-form>
 
@@ -72,7 +84,7 @@
               <span>生成时间：{{ overview.generated_at }}</span>
             </div>
           </template>
-          <el-table :data="overview.source_status" border>
+          <el-table :data="overview.source_status" border empty-text="暂无来源状态数据">
             <el-table-column prop="module" label="模块" min-width="180" />
             <el-table-column prop="status" label="状态" width="120" />
           </el-table>

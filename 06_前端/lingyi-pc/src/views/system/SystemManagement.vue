@@ -51,7 +51,7 @@
           </el-form-item>
         </el-form>
 
-        <el-table :data="configItems" border>
+        <el-table :data="configItems" border empty-text="暂无配置目录数据">
           <el-table-column prop="module" label="模块" width="130" />
           <el-table-column prop="config_key" label="配置键" min-width="220" />
           <el-table-column prop="config_group" label="分组" width="140" />
@@ -113,7 +113,7 @@
           </el-form-item>
         </el-form>
 
-        <el-table :data="dictionaryItems" border>
+        <el-table :data="dictionaryItems" border empty-text="暂无字典目录数据">
           <el-table-column prop="dict_type" label="dict_type" min-width="180" />
           <el-table-column prop="dict_code" label="dict_code" min-width="180" />
           <el-table-column prop="dict_name" label="dict_name" min-width="180" />
@@ -150,7 +150,7 @@
       />
 
       <template v-else>
-        <el-table :data="healthItems" border>
+        <el-table :data="healthItems" border empty-text="暂无系统健康摘要数据">
           <el-table-column prop="module" label="模块" width="140" />
           <el-table-column label="状态" width="130">
             <template #default="scope">

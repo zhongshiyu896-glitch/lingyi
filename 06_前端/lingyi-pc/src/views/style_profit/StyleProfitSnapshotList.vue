@@ -36,7 +36,7 @@
           />
         </el-form-item>
         <el-form-item label="快照状态">
-          <el-select v-model="query.snapshot_status" clearable style="width: 140px">
+          <el-select v-model="query.snapshot_status" clearable placeholder="全部状态" style="width: 140px">
             <el-option label="complete" value="complete" />
             <el-option label="incomplete" value="incomplete" />
           </el-select>
@@ -48,7 +48,7 @@
 
       <el-empty v-if="!canRead" description="无款式利润查看权限" />
       <template v-else>
-        <el-table :data="rows" border v-loading="loading">
+        <el-table :data="rows" border v-loading="loading" empty-text="暂无款式利润快照数据">
           <el-table-column prop="snapshot_no" label="快照号" min-width="180" />
           <el-table-column prop="company" label="公司" min-width="130" />
           <el-table-column prop="item_code" label="款式" min-width="130" />

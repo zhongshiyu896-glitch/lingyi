@@ -132,7 +132,7 @@
         show-icon
         title="可用库存为后端快照；未接库存实时快照前仅作参考。"
       />
-      <el-table :data="detail?.material_snapshots || []" border style="margin-top: 12px">
+      <el-table :data="detail?.material_snapshots || []" border style="margin-top: 12px" empty-text="暂无物料检查快照">
         <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
         <el-table-column prop="qty_per_piece" label="单件用量" width="110" />
         <el-table-column prop="loss_rate" label="损耗率" width="100" />
@@ -148,7 +148,7 @@
 
     <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>Job Card 映射</span></template>
-      <el-table :data="detail?.job_cards || []" border>
+      <el-table :data="detail?.job_cards || []" border empty-text="暂无 Job Card 映射数据">
         <el-table-column prop="job_card" label="Job Card" min-width="180" />
         <el-table-column label="Work Order" min-width="180">
           <template #default>{{ currentWorkOrder || '-' }}</template>

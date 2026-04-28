@@ -52,7 +52,7 @@
 
     <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>回料批次</span></template>
-      <el-table :data="detail?.receipts || []" border>
+      <el-table :data="detail?.receipts || []" border empty-text="暂无回料批次数据">
         <el-table-column prop="receipt_batch_no" label="回料批次" min-width="160" />
         <el-table-column prop="receipt_warehouse" label="回料仓" min-width="120" />
         <el-table-column prop="received_qty" label="回料数量" width="120" />
@@ -63,7 +63,7 @@
 
     <el-card v-if="canRead && detail" shadow="never">
       <template #header><span>验货明细</span></template>
-      <el-table :data="detail?.inspections || []" border>
+      <el-table :data="detail?.inspections || []" border empty-text="暂无验货明细数据">
         <el-table-column prop="inspection_no" label="验货单号" min-width="180" />
         <el-table-column prop="receipt_batch_no" label="回料批次" min-width="160" />
         <el-table-column prop="inspected_qty" label="验货数量" width="110" />
