@@ -45,7 +45,7 @@
 
       <el-empty v-if="!canRead" description="无销售库存查看权限" />
       <template v-else>
-        <el-table :data="rows" border v-loading="loading">
+        <el-table :data="rows" border empty-text="暂无销售订单数据" v-loading="loading">
           <el-table-column prop="name" label="销售订单" min-width="180" />
           <el-table-column prop="company" label="公司" min-width="130" />
           <el-table-column prop="customer" label="客户" min-width="150" />

@@ -45,7 +45,13 @@
         <el-descriptions-item label="总计">{{ result.success_count + result.failed_count }}</el-descriptions-item>
       </el-descriptions>
 
-      <el-table v-if="result && result.failed_items.length > 0" :data="result.failed_items" border style="margin-top: 12px">
+      <el-table
+        v-if="result && result.failed_items.length > 0"
+        :data="result.failed_items"
+        border
+        empty-text="暂无失败明细"
+        style="margin-top: 12px"
+      >
         <el-table-column prop="row_index" label="行号" width="90" />
         <el-table-column prop="ticket_key" label="ticket_key" min-width="150" />
         <el-table-column label="结果码" min-width="180">

@@ -234,12 +234,11 @@
         <el-descriptions-item label="工序总成本">{{ explodeResult.total_operation_cost }}</el-descriptions-item>
       </el-descriptions>
 
-      <el-table
+      <el-table empty-text="暂无展开结果"
         v-if="explodeResult && explodeResult.material_requirements.length > 0"
         :data="explodeResult.material_requirements"
         border
         style="margin-top: 12px"
-        empty-text="暂无展开结果"
       >
         <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
         <el-table-column prop="color" label="颜色" min-width="100" />

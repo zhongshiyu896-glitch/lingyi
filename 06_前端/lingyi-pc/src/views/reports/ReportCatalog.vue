@@ -50,7 +50,7 @@
         style="margin-bottom: 12px"
       />
 
-      <el-table v-if="items.length > 0" :data="items" border @row-click="onRowClick">
+      <el-table v-if="items.length > 0" :data="items" border empty-text="暂无报表目录数据" @row-click="onRowClick">
         <el-table-column prop="report_key" label="report_key" min-width="180" />
         <el-table-column prop="name" label="报表名称" min-width="180" />
         <el-table-column label="来源模块" min-width="180">

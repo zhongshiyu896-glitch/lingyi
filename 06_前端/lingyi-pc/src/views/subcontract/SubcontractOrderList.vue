@@ -12,7 +12,13 @@
           <el-input v-model="query.supplier" clearable placeholder="Supplier" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable style="width: 150px">
+          <el-select
+            v-model="query.status"
+            clearable
+            placeholder="全部状态"
+            aria-label="外发单状态筛选"
+            style="width: 150px"
+          >
             <el-option label="草稿" value="draft" />
             <el-option label="已发料" value="issued" />
             <el-option label="加工中" value="processing" />
@@ -29,7 +35,7 @@
 
       <el-empty v-if="!canRead" description="无外发查看权限" />
       <template v-else>
-        <el-table :data="rows" v-loading="loading" border>
+        <el-table :data="rows" v-loading="loading" border empty-text="暂无外发单数据">
           <el-table-column prop="subcontract_no" label="外发单号" min-width="220" />
           <el-table-column prop="company" label="公司" min-width="150" />
           <el-table-column prop="supplier" label="加工厂" min-width="160" />

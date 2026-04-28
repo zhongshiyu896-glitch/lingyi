@@ -23,7 +23,13 @@
           <el-descriptions-item label="币种">{{ detail.currency || '-' }}</el-descriptions-item>
         </el-descriptions>
 
-        <el-table class="detail-table" :data="detail?.items || []" border v-loading="loading">
+        <el-table
+          class="detail-table"
+          :data="detail?.items || []"
+          border
+          empty-text="暂无销售订单明细"
+          v-loading="loading"
+        >
           <el-table-column prop="item_code" label="物料" min-width="150" />
           <el-table-column prop="item_name" label="物料名称" min-width="180" />
           <el-table-column label="数量" width="120">
