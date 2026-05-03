@@ -71,6 +71,83 @@ export interface SystemHealthSummaryData {
   generated_at: string
 }
 
+export interface SystemApprovalFlowQuery {
+  audit_type?: string
+  status?: '启用' | '草稿' | '停用'
+  keyword?: string
+  start_date?: string
+  end_date?: string
+}
+
+export interface SystemApprovalFlowAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemApprovalFlowNode {
+  node_key: string
+  node_name: string
+  approver_rule: string
+  status: string
+}
+
+export interface SystemApprovalFlowItem {
+  flow_key: string
+  title: string
+  audit_type: string
+  status: string
+  sender: string
+  created_by: string
+  created_at: string
+  sent_at: string
+  last_modified_by: string
+  last_modified_at: string
+  nodes: SystemApprovalFlowNode[]
+  actions: SystemApprovalFlowAction[]
+}
+
+export interface SystemApprovalFlowData {
+  items: SystemApprovalFlowItem[]
+  total: number
+  audit_type_options: string[]
+}
+
+export interface SystemUserCatalogQuery {
+  role?: string
+  status?: '启用' | '停用' | '锁定'
+  keyword?: string
+  start_date?: string
+  end_date?: string
+}
+
+export interface SystemUserCatalogAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemUserCatalogItem {
+  user_id: string
+  username: string
+  display_name: string
+  role: string
+  status: string
+  department: string
+  last_login_at: string
+  updated_at: string
+  actions: SystemUserCatalogAction[]
+}
+
+export interface SystemUserCatalogData {
+  items: SystemUserCatalogItem[]
+  total: number
+  role_options: string[]
+  status_options: string[]
+}
+
 export const fetchSystemConfigCatalog = async (
   query: SystemConfigCatalogQuery,
 ): Promise<ApiResponse<SystemConfigCatalogData>> => {
@@ -99,10 +176,40 @@ export const fetchSystemDictionaryCatalog = async (
 export const fetchSystemHealthSummary = async (): Promise<ApiResponse<SystemHealthSummaryData>> =>
   request<SystemHealthSummaryData>('/api/system/health/summary')
 
+export const fetchSystemApprovalFlows = async (
+  query: SystemApprovalFlowQuery,
+): Promise<ApiResponse<SystemApprovalFlowData>> => {
+  const queryString = toQuery({
+    audit_type: query.audit_type,
+    status: query.status,
+    keyword: query.keyword,
+    start_date: query.start_date,
+    end_date: query.end_date,
+  })
+  const url = queryString ? `/api/system/approval-flows?${queryString}` : '/api/system/approval-flows'
+  return request<SystemApprovalFlowData>(url)
+}
+
+export const fetchSystemUserCatalog = async (
+  query: SystemUserCatalogQuery,
+): Promise<ApiResponse<SystemUserCatalogData>> => {
+  const queryString = toQuery({
+    role: query.role,
+    status: query.status,
+    keyword: query.keyword,
+    start_date: query.start_date,
+    end_date: query.end_date,
+  })
+  const url = queryString ? `/api/system/users/catalog?${queryString}` : '/api/system/users/catalog'
+  return request<SystemUserCatalogData>(url)
+}
+
 const systemManagementApi = {
   fetchSystemConfigCatalog,
   fetchSystemDictionaryCatalog,
   fetchSystemHealthSummary,
+  fetchSystemApprovalFlows,
+  fetchSystemUserCatalog,
 }
 
 export default systemManagementApi

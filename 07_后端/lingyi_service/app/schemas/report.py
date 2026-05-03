@@ -31,6 +31,11 @@ class ReportCatalogItemData(BaseModel):
     metric_summary: list[str] = Field(default_factory=list)
     permission_action: str
     status: str
+    ui_placeholders: list[str] = Field(default_factory=list)
+    ui_buttons: list[str] = Field(default_factory=list)
+    ui_table_headers: list[str] = Field(default_factory=list)
+    status_tags: list[str] = Field(default_factory=list)
+    preview_rows: list[dict[str, str]] = Field(default_factory=list)
 
 
 class ReportCatalogRequestedScope(BaseModel):

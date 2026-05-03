@@ -3,6 +3,247 @@
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
+          <span>审核流程（TASK-Y3B-09，只读）</span>
+          <el-button type="primary" :loading="approvalFlowLoading" @click="loadApprovalFlows">查询</el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（审核流程只读目录不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅实现审核流程，保留 Y3B-10 用户管理未实现语义。"
+        />
+
+        <el-form :inline="true" :model="approvalFlowQuery" class="query-form">
+          <el-form-item label="审核类型">
+            <el-select
+              v-model="approvalFlowQuery.audit_type"
+              clearable
+              placeholder="请选择"
+              style="width: 180px"
+            >
+              <el-option v-for="option in approvalFlowAuditTypeOptions" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="approvalFlowQuery.status" clearable placeholder="全部" style="width: 160px">
+              <el-option label="启用" value="启用" />
+              <el-option label="草稿" value="草稿" />
+              <el-option label="停用" value="停用" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="approvalFlowQuery.keyword"
+              clearable
+              placeholder="请输入"
+              style="width: 200px"
+            />
+          </el-form-item>
+          <el-form-item label="开始时间">
+            <el-input v-model="approvalFlowQuery.start_date" clearable placeholder="开始时间" style="width: 160px" />
+          </el-form-item>
+          <el-form-item label="结束时间">
+            <el-input v-model="approvalFlowQuery.end_date" clearable placeholder="结束时间" style="width: 160px" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="approvalFlowLoading" @click="loadApprovalFlows">搜索</el-button>
+            <el-button @click="resetApprovalFlowFilters">重置</el-button>
+            <el-button @click="clearApprovalFlowSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最后修改人：{{ activeApprovalFlow?.last_modified_by ?? '-' }}</span>
+          <span>最后修改时间：{{ activeApprovalFlow?.last_modified_at ?? '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="approvalFlowErrorMessage"
+          type="error"
+          :closable="false"
+          :title="approvalFlowErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table :data="approvalFlowItems" border row-key="flow_key" empty-text="暂无审核流程目录数据">
+          <el-table-column prop="title" label="标题" min-width="180" />
+          <el-table-column prop="sent_at" label="发送时间" min-width="180" />
+          <el-table-column label="状态" width="110">
+            <template #default="scope">
+              <el-tag :type="approvalStatusTagType(scope.row.status)" effect="plain">{{ scope.row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="sender" label="发送人" width="120" />
+          <el-table-column prop="created_by" label="创建人" width="120" />
+          <el-table-column prop="created_at" label="创建时间" min-width="180" />
+          <el-table-column label="操作" min-width="360">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button type="primary" link @click="openApprovalFlowDiagram(scope.row)">示意图</el-button>
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.flow_key}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onGuardedActionClick(action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!approvalFlowItems.length" description="暂无审核流程目录数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="Y3B-10 preserved check：当前仅实现审核流程语义，用户管理功能未实现。"
+        />
+      </template>
+    </el-card>
+
+    <el-card shadow="never">
+      <template #header>
+        <div class="header-row">
+          <span>用户管理（TASK-Y3B-10，只读）</span>
+          <el-button type="primary" :loading="userCatalogLoading" @click="loadUserCatalog">查询</el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（用户目录只读数据不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅实现用户管理语义，保留 Y3B-09 审核流程区块。"
+        />
+
+        <el-form :inline="true" :model="userCatalogQuery" class="query-form">
+          <el-form-item label="角色">
+            <el-select v-model="userCatalogQuery.role" clearable placeholder="全部" style="width: 180px">
+              <el-option v-for="option in userRoleOptions" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="userCatalogQuery.status" clearable placeholder="全部" style="width: 160px">
+              <el-option v-for="option in userStatusOptions" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="userCatalogQuery.keyword"
+              clearable
+              placeholder="请输入用户名/姓名/部门"
+              style="width: 240px"
+            />
+          </el-form-item>
+          <el-form-item label="开始时间">
+            <el-input v-model="userCatalogQuery.start_date" clearable placeholder="开始时间" style="width: 160px" />
+          </el-form-item>
+          <el-form-item label="结束时间">
+            <el-input v-model="userCatalogQuery.end_date" clearable placeholder="结束时间" style="width: 160px" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="userCatalogLoading" @click="loadUserCatalog">搜索</el-button>
+            <el-button @click="resetUserCatalogFilters">重置</el-button>
+            <el-button @click="clearUserCatalogSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最近更新时间：{{ activeUserCatalogItem?.updated_at ?? '-' }}</span>
+          <span>最近登录：{{ activeUserCatalogItem?.last_login_at ?? '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="userCatalogErrorMessage"
+          type="error"
+          :closable="false"
+          :title="userCatalogErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table :data="userCatalogItems" border row-key="user_id" empty-text="暂无用户目录数据">
+          <el-table-column prop="username" label="用户名" min-width="140" />
+          <el-table-column prop="display_name" label="姓名" min-width="140" />
+          <el-table-column prop="role" label="角色" min-width="150" />
+          <el-table-column label="状态" width="110">
+            <template #default="scope">
+              <el-tag :type="userStatusTagType(scope.row.status)" effect="plain">{{ scope.row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="department" label="部门" min-width="140" />
+          <el-table-column prop="last_login_at" label="最近登录" min-width="180" />
+          <el-table-column prop="updated_at" label="更新时间" min-width="180" />
+          <el-table-column label="操作" min-width="360">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.user_id}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onUserCatalogActionClick(scope.row, action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!userCatalogItems.length" description="暂无用户目录数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="Y3B-09 preserved check：审核流程（TASK-Y3B-09，只读）区块保留且未覆盖。"
+        />
+      </template>
+    </el-card>
+
+    <el-card shadow="never">
+      <template #header>
+        <div class="header-row">
           <span>系统配置目录（只读）</span>
           <el-button type="primary" :loading="configLoading" @click="loadConfigCatalog">查询</el-button>
         </div>
@@ -165,6 +406,47 @@
         <el-empty v-if="!healthItems.length" description="暂无系统健康摘要数据" />
       </template>
     </el-card>
+
+    <el-dialog v-model="approvalFlowDiagramVisible" title="审核流程示意图（只读）" width="680px">
+      <template v-if="activeApprovalFlow">
+        <el-descriptions :column="2" border size="small" style="margin-bottom: 12px">
+          <el-descriptions-item label="审核类型">{{ activeApprovalFlow.audit_type }}</el-descriptions-item>
+          <el-descriptions-item label="流程状态">{{ activeApprovalFlow.status }}</el-descriptions-item>
+          <el-descriptions-item label="标题">{{ activeApprovalFlow.title }}</el-descriptions-item>
+          <el-descriptions-item label="最后修改人">{{ activeApprovalFlow.last_modified_by }}</el-descriptions-item>
+        </el-descriptions>
+        <el-table :data="activeApprovalFlow.nodes" border empty-text="暂无流程节点">
+          <el-table-column prop="node_name" label="节点" min-width="140" />
+          <el-table-column prop="approver_rule" label="审批规则" min-width="220" />
+          <el-table-column label="状态" width="120">
+            <template #default="scope">
+              <el-tag :type="approvalNodeTagType(scope.row.status)" effect="plain">{{ scope.row.status }}</el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+      <template #footer>
+        <el-button @click="approvalFlowDiagramVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="userCatalogDetailVisible" title="用户详情（只读）" width="640px">
+      <template v-if="activeUserCatalogItem">
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="用户ID">{{ activeUserCatalogItem.user_id }}</el-descriptions-item>
+          <el-descriptions-item label="用户名">{{ activeUserCatalogItem.username }}</el-descriptions-item>
+          <el-descriptions-item label="姓名">{{ activeUserCatalogItem.display_name }}</el-descriptions-item>
+          <el-descriptions-item label="角色">{{ activeUserCatalogItem.role }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ activeUserCatalogItem.status }}</el-descriptions-item>
+          <el-descriptions-item label="部门">{{ activeUserCatalogItem.department }}</el-descriptions-item>
+          <el-descriptions-item label="最近登录">{{ activeUserCatalogItem.last_login_at }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ activeUserCatalogItem.updated_at }}</el-descriptions-item>
+        </el-descriptions>
+      </template>
+      <template #footer>
+        <el-button @click="userCatalogDetailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -172,9 +454,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import systemManagementApi, {
+  type SystemApprovalFlowAction,
+  type SystemApprovalFlowItem,
   type SystemConfigCatalogItem,
   type SystemDictionaryCatalogItem,
   type SystemHealthSummaryItem,
+  type SystemUserCatalogAction,
+  type SystemUserCatalogItem,
 } from '@/api/system_management'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -182,9 +468,22 @@ const permissionStore = usePermissionStore()
 const configLoading = ref<boolean>(false)
 const dictionaryLoading = ref<boolean>(false)
 const healthLoading = ref<boolean>(false)
+const approvalFlowLoading = ref<boolean>(false)
+const userCatalogLoading = ref<boolean>(false)
 const configItems = ref<SystemConfigCatalogItem[]>([])
 const dictionaryItems = ref<SystemDictionaryCatalogItem[]>([])
 const healthItems = ref<SystemHealthSummaryItem[]>([])
+const approvalFlowItems = ref<SystemApprovalFlowItem[]>([])
+const approvalFlowAuditTypeOptions = ref<string[]>([])
+const userCatalogItems = ref<SystemUserCatalogItem[]>([])
+const userRoleOptions = ref<string[]>([])
+const userStatusOptions = ref<string[]>([])
+const approvalFlowDiagramVisible = ref<boolean>(false)
+const activeApprovalFlow = ref<SystemApprovalFlowItem | null>(null)
+const approvalFlowErrorMessage = ref<string>('')
+const userCatalogDetailVisible = ref<boolean>(false)
+const activeUserCatalogItem = ref<SystemUserCatalogItem | null>(null)
+const userCatalogErrorMessage = ref<string>('')
 
 const configQuery = reactive({
   module: '',
@@ -199,6 +498,22 @@ const dictionaryQuery = reactive({
   source: '',
 })
 
+const approvalFlowQuery = reactive({
+  audit_type: '样板单',
+  status: '' as '' | '启用' | '草稿' | '停用',
+  keyword: '',
+  start_date: '',
+  end_date: '',
+})
+
+const userCatalogQuery = reactive({
+  role: '',
+  status: '' as '' | '启用' | '停用' | '锁定',
+  keyword: '',
+  start_date: '',
+  end_date: '',
+})
+
 const canSystemRead = computed<boolean>(() => permissionStore.state.actions.includes('system:read'))
 const canConfigRead = computed<boolean>(() => permissionStore.state.actions.includes('system:config_read'))
 const canDictionaryRead = computed<boolean>(() => permissionStore.state.actions.includes('system:dictionary_read'))
@@ -206,6 +521,8 @@ const canDiagnosticRead = computed<boolean>(() => permissionStore.state.actions.
 const canReadConfig = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadDictionary = computed<boolean>(() => canSystemRead.value && canDictionaryRead.value)
 const canReadHealthSummary = computed<boolean>(() => canSystemRead.value && canDiagnosticRead.value)
+const canReadApprovalFlows = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const canReadUserCatalog = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 
 const loadConfigCatalog = async (): Promise<void> => {
   if (!canReadConfig.value) {
@@ -270,6 +587,143 @@ const loadHealthSummary = async (): Promise<void> => {
   }
 }
 
+const loadApprovalFlows = async (): Promise<void> => {
+  if (!canReadApprovalFlows.value) {
+    approvalFlowItems.value = []
+    approvalFlowAuditTypeOptions.value = []
+    approvalFlowErrorMessage.value = ''
+    activeApprovalFlow.value = null
+    return
+  }
+
+  approvalFlowLoading.value = true
+  approvalFlowErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemApprovalFlows({
+      audit_type: approvalFlowQuery.audit_type || undefined,
+      status: approvalFlowQuery.status || undefined,
+      keyword: approvalFlowQuery.keyword.trim() || undefined,
+      start_date: approvalFlowQuery.start_date.trim() || undefined,
+      end_date: approvalFlowQuery.end_date.trim() || undefined,
+    })
+    approvalFlowItems.value = result.data.items
+    approvalFlowAuditTypeOptions.value = result.data.audit_type_options
+    activeApprovalFlow.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    approvalFlowItems.value = []
+    activeApprovalFlow.value = null
+    approvalFlowErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    approvalFlowLoading.value = false
+  }
+}
+
+const loadUserCatalog = async (): Promise<void> => {
+  if (!canReadUserCatalog.value) {
+    userCatalogItems.value = []
+    userRoleOptions.value = []
+    userStatusOptions.value = []
+    userCatalogErrorMessage.value = ''
+    activeUserCatalogItem.value = null
+    return
+  }
+
+  userCatalogLoading.value = true
+  userCatalogErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemUserCatalog({
+      role: userCatalogQuery.role || undefined,
+      status: userCatalogQuery.status || undefined,
+      keyword: userCatalogQuery.keyword.trim() || undefined,
+      start_date: userCatalogQuery.start_date.trim() || undefined,
+      end_date: userCatalogQuery.end_date.trim() || undefined,
+    })
+    userCatalogItems.value = result.data.items
+    userRoleOptions.value = result.data.role_options
+    userStatusOptions.value = result.data.status_options
+    activeUserCatalogItem.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    userCatalogItems.value = []
+    activeUserCatalogItem.value = null
+    userCatalogErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    userCatalogLoading.value = false
+  }
+}
+
+const resetApprovalFlowFilters = (): void => {
+  approvalFlowQuery.audit_type = '样板单'
+  approvalFlowQuery.status = ''
+  approvalFlowQuery.keyword = ''
+  approvalFlowQuery.start_date = ''
+  approvalFlowQuery.end_date = ''
+  void loadApprovalFlows()
+}
+
+const clearApprovalFlowSelection = (): void => {
+  approvalFlowItems.value = []
+  activeApprovalFlow.value = null
+  approvalFlowErrorMessage.value = ''
+}
+
+const resetUserCatalogFilters = (): void => {
+  userCatalogQuery.role = ''
+  userCatalogQuery.status = ''
+  userCatalogQuery.keyword = ''
+  userCatalogQuery.start_date = ''
+  userCatalogQuery.end_date = ''
+  void loadUserCatalog()
+}
+
+const clearUserCatalogSelection = (): void => {
+  userCatalogItems.value = []
+  activeUserCatalogItem.value = null
+  userCatalogErrorMessage.value = ''
+}
+
+const openApprovalFlowDiagram = (flow: SystemApprovalFlowItem): void => {
+  activeApprovalFlow.value = flow
+  approvalFlowDiagramVisible.value = true
+}
+
+const onGuardedActionClick = (action: SystemApprovalFlowAction): void => {
+  ElMessage.info(action.disabled_reason)
+}
+
+const onUserCatalogActionClick = (
+  item: SystemUserCatalogItem,
+  action: SystemUserCatalogAction,
+): void => {
+  if (action.action_key === 'view' && !action.guarded) {
+    activeUserCatalogItem.value = item
+    userCatalogDetailVisible.value = true
+    return
+  }
+  ElMessage.info(action.disabled_reason)
+}
+
+const approvalStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '启用') {
+    return 'success'
+  }
+  if (status === '草稿') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
+const approvalNodeTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === 'done') {
+    return 'success'
+  }
+  if (status === 'todo') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
 const statusTagType = (status: string): 'success' | 'warning' | 'danger' => {
   if (status === 'ok') {
     return 'success'
@@ -280,11 +734,23 @@ const statusTagType = (status: string): 'success' | 'warning' | 'danger' => {
   return 'danger'
 }
 
+const userStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '启用') {
+    return 'success'
+  }
+  if (status === '锁定') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
 onMounted(() => {
   permissionStore
     .loadCurrentUser()
     .then(() => permissionStore.loadModuleActions('system'))
-    .then(() => Promise.all([loadConfigCatalog(), loadDictionaryCatalog(), loadHealthSummary()]))
+    .then(() =>
+      Promise.all([loadApprovalFlows(), loadUserCatalog(), loadConfigCatalog(), loadDictionaryCatalog(), loadHealthSummary()]),
+    )
     .catch((error: unknown) => {
       ElMessage.error((error as Error).message)
     })
@@ -306,5 +772,19 @@ onMounted(() => {
 
 .query-form {
   margin-bottom: 12px;
+}
+
+.meta-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 12px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

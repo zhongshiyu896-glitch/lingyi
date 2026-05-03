@@ -16,6 +16,11 @@ interface ReportCatalogItem {
   metric_summary: string[]
   permission_action: string
   status: string
+  ui_placeholders?: string[]
+  ui_buttons?: string[]
+  ui_table_headers?: string[]
+  status_tags?: string[]
+  preview_rows?: Array<Record<string, string>>
 }
 
 interface ReportCatalogScope {

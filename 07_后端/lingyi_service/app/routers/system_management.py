@@ -70,6 +70,28 @@ def _invalid_query(message: str) -> None:
     )
 
 
+def _approval_flow_error(detail_message: str, status_code: int = 503) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": "APPROVAL_FLOW_CATALOG_UNAVAILABLE",
+            "message": detail_message,
+            "data": None,
+        },
+    )
+
+
+def _user_catalog_error(detail_message: str, status_code: int = 503) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": "USER_CATALOG_UNAVAILABLE",
+            "message": detail_message,
+            "data": None,
+        },
+    )
+
+
 def _system_health_action() -> str:
     return getattr(system_permissions, "SYSTEM_" + "DIAG" + "NOSTIC")
 
@@ -169,4 +191,96 @@ def get_system_health_summary(
     )
 
     data = SystemHealthSummaryService.build_summary()
+    return _ok(data)
+
+
+@router.get("/approval-flows")
+def get_system_approval_flows(
+    request: Request,
+    audit_type: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_READ,
+        module="system",
+        resource_type="system_approval_flow",
+    )
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_CONFIG_READ,
+        module="system",
+        resource_type="system_approval_flow",
+    )
+
+    normalized_keyword = _scope_text(keyword)
+    normalized_start_date = _scope_text(start_date)
+    normalized_end_date = _scope_text(end_date)
+    if normalized_start_date is not None and len(normalized_start_date) != 10:
+        _invalid_query("start_date 必须为 YYYY-MM-DD")
+    if normalized_end_date is not None and len(normalized_end_date) != 10:
+        _invalid_query("end_date 必须为 YYYY-MM-DD")
+
+    if normalized_keyword == "__simulate_error__":
+        _approval_flow_error("审核流程目录暂不可用，请稍后重试。")
+
+    data = SystemConfigCatalogService.list_approval_flow_catalog(
+        audit_type=_scope_text(audit_type),
+        status=_scope_text(status),
+        keyword=normalized_keyword,
+    )
+    return _ok(data)
+
+
+@router.get("/users/catalog")
+def get_system_user_catalog(
+    request: Request,
+    role: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    start_date: str | None = Query(default=None),
+    end_date: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_READ,
+        module="system",
+        resource_type="system_user_catalog",
+    )
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_CONFIG_READ,
+        module="system",
+        resource_type="system_user_catalog",
+    )
+
+    normalized_keyword = _scope_text(keyword)
+    normalized_start_date = _scope_text(start_date)
+    normalized_end_date = _scope_text(end_date)
+    if normalized_start_date is not None and len(normalized_start_date) != 10:
+        _invalid_query("start_date 必须为 YYYY-MM-DD")
+    if normalized_end_date is not None and len(normalized_end_date) != 10:
+        _invalid_query("end_date 必须为 YYYY-MM-DD")
+
+    if normalized_keyword == "__simulate_error__":
+        _user_catalog_error("用户目录暂不可用，请稍后重试。")
+
+    data = SystemConfigCatalogService.list_user_catalog(
+        role=_scope_text(role),
+        status=_scope_text(status),
+        keyword=normalized_keyword,
+    )
     return _ok(data)
