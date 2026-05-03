@@ -3,6 +3,8 @@ import { request, type ApiResponse } from '@/api/request'
 type NumericLike = string | number
 
 export interface SalesInventoryListQuery {
+  order_no?: string
+  keyword?: string
   company?: string
   customer?: string
   item_code?: string
@@ -95,6 +97,50 @@ export interface StockLedgerData {
   dropped_count: number
 }
 
+export interface FinishedGoodsReportQuery {
+  no?: string
+  style?: string
+  warehouse?: string
+  from_date?: string
+  to_date?: string
+  keyword?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FinishedGoodsReportItem {
+  image_url?: string | null
+  processing_no?: string | null
+  production_order?: string | null
+  order_no: string
+  item_code: string
+  item_name?: string | null
+  warehouse?: string | null
+  season?: string | null
+  style_type?: string | null
+  qty: NumericLike
+  receipt_date?: string | null
+  week_day_0?: string | null
+  week_day_1?: string | null
+  week_day_2?: string | null
+  week_day_3?: string | null
+  week_day_4?: string | null
+  week_day_5?: string | null
+  week_day_6?: string | null
+  message_title?: string | null
+  sent_at?: string | null
+  message_status?: string | null
+  sender?: string | null
+}
+
+export interface FinishedGoodsReportData {
+  items: FinishedGoodsReportItem[]
+  total: number
+  page: number
+  page_size: number
+  dropped_count: number
+}
+
 export interface WarehouseListQuery {
   company?: string
   page?: number
@@ -178,6 +224,8 @@ export const fetchSalesInventorySalesOrders = async (
   query: SalesInventoryListQuery,
 ): Promise<ApiResponse<SalesInventoryListData<SalesOrderListItem>>> => {
   const queryString = toQuery({
+    order_no: query.order_no,
+    keyword: query.keyword,
     company: query.company,
     customer: query.customer,
     item_code: query.item_code,
@@ -219,6 +267,22 @@ export const fetchSalesInventoryStockLedger = async (
     page_size: query.page_size ?? 20,
   })
   return request<StockLedgerData>(`/api/sales-inventory/items/${encodeURIComponent(itemCode)}/stock-ledger?${queryString}`)
+}
+
+export const fetchSalesInventoryFinishedGoodsReport = async (
+  query: FinishedGoodsReportQuery,
+): Promise<ApiResponse<FinishedGoodsReportData>> => {
+  const queryString = toQuery({
+    no: query.no,
+    style: query.style,
+    warehouse: query.warehouse,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    keyword: query.keyword,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FinishedGoodsReportData>(`/api/sales-inventory/finished-goods-report?${queryString}`)
 }
 
 export const fetchSalesInventoryWarehouses = async (

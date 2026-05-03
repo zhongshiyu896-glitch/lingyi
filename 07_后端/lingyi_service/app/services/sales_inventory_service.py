@@ -7,6 +7,8 @@ from decimal import Decimal
 from typing import Any
 
 from app.schemas.sales_inventory import CustomerItem
+from app.schemas.sales_inventory import FinishedGoodsReportData
+from app.schemas.sales_inventory import FinishedGoodsReportItem
 from app.schemas.sales_inventory import InventoryAggregationData
 from app.schemas.sales_inventory import InventoryAggregationItem
 from app.schemas.sales_inventory import SalesInventoryListData
@@ -42,6 +44,8 @@ class SalesInventoryService:
     def list_sales_orders(
         self,
         *,
+        order_no: str | None,
+        keyword: str | None,
         company: str | None,
         customer: str | None,
         item_code: str | None,
@@ -51,19 +55,45 @@ class SalesInventoryService:
         page: int,
         page_size: int,
     ) -> SalesInventoryListData[SalesOrderListItem]:
+        normalized_keyword = self._text(keyword)
+        normalized_order_no = self._text(order_no)
+        normalized_item_name = self._text(item_name)
+        adapter_item_name = normalized_item_name or normalized_keyword
         rows, total = self.adapter.list_sales_orders(
             company=company,
             customer=customer,
             item_code=item_code,
-            item_name=item_name,
+            item_name=adapter_item_name,
             from_date=from_date,
             to_date=to_date,
             page=page,
             page_size=page_size,
         )
+        filtered_rows = rows
+        if normalized_order_no:
+            needle = normalized_order_no.lower()
+            filtered_rows = [
+                row
+                for row in filtered_rows
+                if needle in str(row.get("name") or "").lower()
+            ]
+        if normalized_keyword:
+            keyword_needle = normalized_keyword.lower()
+            filtered_rows = [
+                row
+                for row in filtered_rows
+                if keyword_needle in " ".join(
+                    (
+                        str(row.get("name") or ""),
+                        str(row.get("customer") or ""),
+                        str(row.get("company") or ""),
+                        str(row.get("status") or ""),
+                    )
+                ).lower()
+            ]
         return SalesInventoryListData[SalesOrderListItem](
-            items=[self._sales_order_list_item(row) for row in rows],
-            total=total,
+            items=[self._sales_order_list_item(row) for row in filtered_rows],
+            total=min(total, len(filtered_rows)),
             page=page,
             page_size=page_size,
         )
@@ -149,6 +179,108 @@ class SalesInventoryService:
             page=page,
             page_size=page_size,
             dropped_count=dropped_count,
+        )
+
+    def get_finished_goods_report(
+        self,
+        *,
+        no: str | None,
+        style: str | None,
+        warehouse: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+    ) -> FinishedGoodsReportData:
+        normalized_no = self._text(no)
+        normalized_style = self._text(style)
+        normalized_keyword = self._text(keyword)
+        rows, _ = self.adapter.list_sales_orders(
+            company=None,
+            customer=None,
+            item_code=None,
+            item_name=normalized_style or normalized_keyword,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+        )
+        report_rows: list[FinishedGoodsReportItem] = []
+        for order in rows:
+            order_no = str(order.get("name") or "").strip()
+            if not order_no:
+                continue
+            order_company = self._text(order.get("company"))
+            order_customer = self._text(order.get("customer"))
+            detail = self.adapter.get_sales_order(name=order_no)
+            for line in self._list_or_empty(detail.get("items")):
+                line_item_code = self._text(line.get("item_code")) or "-"
+                line_item_name = self._text(line.get("item_name"))
+                line_warehouse = self._text(line.get("warehouse"))
+                processing_no = self._text(line.get("name"))
+                style_type = self._text(line.get("custom_style_type")) or self._text(line.get("category"))
+                season = self._text(line.get("custom_season")) or self._text(order.get("custom_season"))
+                if normalized_no and not self._contains_like(order_no, normalized_no):
+                    continue
+                if normalized_style:
+                    in_style = self._contains_like(line_item_code, normalized_style) or self._contains_like(
+                        line_item_name, normalized_style
+                    )
+                    if not in_style:
+                        continue
+                if warehouse and line_warehouse != warehouse:
+                    continue
+                if normalized_keyword:
+                    keyword_text = " ".join(
+                        (
+                            order_no,
+                            line_item_code,
+                            line_item_name or "",
+                            order_customer or "",
+                        )
+                    )
+                    if not self._contains_like(keyword_text, normalized_keyword):
+                        continue
+                report_rows.append(
+                    FinishedGoodsReportItem(
+                        image_url=None,
+                        processing_no=processing_no,
+                        production_order=None,
+                        order_no=order_no,
+                        item_code=line_item_code,
+                        item_name=line_item_name,
+                        warehouse=line_warehouse,
+                        season=season,
+                        style_type=style_type,
+                        qty=self._decimal_or_zero(line.get("qty")),
+                        receipt_date=detail.get("transaction_date"),
+                        company=order_company,
+                        customer=order_customer,
+                        week_day_0="-",
+                        week_day_1="-",
+                        week_day_2="-",
+                        week_day_3="-",
+                        week_day_4="-",
+                        week_day_5="-",
+                        week_day_6="-",
+                        message_title="-",
+                        sent_at="-",
+                        message_status=self._text(order.get("status")) or "-",
+                        sender="-",
+                    )
+                )
+        report_rows.sort(key=lambda row: (row.order_no, row.item_code, row.processing_no or ""))
+        total = len(report_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_items = report_rows[start:end]
+        return FinishedGoodsReportData(
+            items=paged_items,
+            total=total,
+            page=page,
+            page_size=page_size,
+            dropped_count=0,
         )
 
     def list_warehouses(

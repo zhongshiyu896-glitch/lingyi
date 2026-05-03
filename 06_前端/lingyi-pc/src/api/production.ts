@@ -12,7 +12,11 @@ export interface ProductionPlanCreatePayload {
 
 export interface ProductionPlanListQuery {
   sales_order?: string
+  keyword?: string
+  turnover_no?: string
   item_code?: string
+  from_date?: string
+  to_date?: string
   status?: string
   page: number
   page_size: number
@@ -161,7 +165,11 @@ export const fetchProductionPlans = async (
 ): Promise<ApiResponse<ProductionPlanListData>> => {
   const query = toQuery({
     sales_order: params.sales_order,
+    keyword: params.keyword,
+    turnover_no: params.turnover_no,
     item_code: params.item_code,
+    from_date: params.from_date,
+    to_date: params.to_date,
     status: params.status,
     page: params.page,
     page_size: params.page_size,

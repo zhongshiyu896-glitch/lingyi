@@ -1,31 +1,43 @@
 <template>
-  <div class="production-plan-list-page">
+  <div class="production-followup-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
-          <span>生产计划列表</span>
-          <el-button
-            type="primary"
-            :disabled="!canPlanCreate"
-            data-action-type="write"
-            data-write-guard="permission:plan_create+handler"
-            :data-guard-state="canPlanCreate ? 'enabled' : 'disabled'"
-            @click="openCreateDialog"
-          >
-            新建生产计划
-          </el-button>
+          <div class="title-group">
+            <span class="title">大货跟进</span>
+            <span class="sub-title">大货管理 / 大货跟进</span>
+          </div>
+          <el-tag type="info" effect="plain">本地首版</el-tag>
         </div>
       </template>
 
-      <el-form :inline="true" :model="query">
-        <el-form-item label="销售单">
-          <el-input v-model="query.sales_order" clearable placeholder="SO-0001" />
+      <el-form :inline="true" :model="query" class="query-form">
+        <el-form-item label="订单">
+          <el-input
+            v-model="query.sales_order"
+            clearable
+            placeholder="订单"
+            @keyup.enter="onSearch"
+          />
         </el-form-item>
-        <el-form-item label="款式">
-          <el-input v-model="query.item_code" clearable placeholder="ITEM-001" />
+        <el-form-item label="款号/款名">
+          <el-input
+            v-model="query.keyword"
+            clearable
+            placeholder="请输入"
+            @keyup.enter="onSearch"
+          />
+        </el-form-item>
+        <el-form-item label="翻单号">
+          <el-input
+            v-model="query.turnover_no"
+            clearable
+            placeholder="翻单号"
+            @keyup.enter="onSearch"
+          />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 180px">
+          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 160px">
             <el-option label="草稿" value="draft" />
             <el-option label="已计划" value="planned" />
             <el-option label="已物料检查" value="material_checked" />
@@ -36,39 +48,99 @@
             <el-option label="失败" value="failed" />
           </el-select>
         </el-form-item>
-        <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="loadPlans">查询</el-button>
+        <el-form-item label="开始时间">
+          <el-date-picker
+            v-model="query.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="开始时间"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束时间">
+          <el-date-picker
+            v-model="query.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="结束时间"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :disabled="!canRead" @click="onSearch">搜索</el-button>
+          <el-button :disabled="!canRead" @click="onReset">重置</el-button>
         </el-form-item>
       </el-form>
 
-      <el-empty v-if="!canRead" description="无生产计划查看权限" />
+      <div class="toolbar-row">
+        <el-button :disabled="!canRead" @click="onSearch">筛选</el-button>
+        <el-button :disabled="!canRead" @click="onClearFilters">清空</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('确定', true)">确定</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('标志已读', true)">标志已读</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('删除消息', true)">删除消息</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('新增消息', true)">新增消息</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('保存', true)">保存</el-button>
+      </div>
+
+      <el-alert
+        v-if="lastError"
+        class="error-alert"
+        type="error"
+        :closable="false"
+        :title="`大货跟进数据加载失败：${lastError}`"
+      />
+
+      <el-empty v-if="!canRead" description="无大货跟进查看权限" />
       <template v-else>
-        <el-table :data="rows" v-loading="loading" border empty-text="暂无生产计划数据">
-          <el-table-column prop="plan_no" label="计划单号" min-width="180" />
-          <el-table-column prop="company" label="公司" min-width="140" />
-          <el-table-column prop="sales_order" label="销售单" min-width="160" />
-          <el-table-column prop="sales_order_item" label="销售单行" min-width="160" />
-          <el-table-column prop="item_code" label="款式" min-width="140" />
-          <el-table-column prop="bom_id" label="BOM ID" width="100" />
-          <el-table-column prop="planned_qty" label="计划数量" width="120" />
-          <el-table-column label="计划开工日" min-width="120">
-            <template #default="scope">{{ scope.row.planned_start_date || '-' }}</template>
-          </el-table-column>
-          <el-table-column label="状态" min-width="140">
+        <el-table
+          :data="rows"
+          border
+          v-loading="loading"
+          empty-text="暂无大货跟进数据，请调整筛选条件后重试"
+        >
+          <el-table-column label="订单信息" min-width="260">
             <template #default="scope">
-              <el-tag>{{ statusLabel(scope.row.status) }}</el-tag>
+              <div class="cell-stack">
+                <span class="primary-text">{{ scope.row.sales_order }}</span>
+                <span class="secondary-text">款号：{{ scope.row.item_code || '-' }}</span>
+                <span class="secondary-text">翻单号：{{ scope.row.sales_order_item || '-' }}</span>
+              </div>
             </template>
           </el-table-column>
-          <el-table-column label="Work Order" min-width="180">
-            <template #default="scope">{{ scope.row.latest_work_order_outbox?.erpnext_work_order || '-' }}</template>
-          </el-table-column>
-          <el-table-column label="库存同步状态" min-width="140">
-            <template #default="scope">{{ syncStatusLabel(scope.row.latest_work_order_outbox?.status) }}</template>
-          </el-table-column>
-          <el-table-column prop="created_at" label="创建时间" min-width="180" />
-          <el-table-column label="操作" width="100" fixed="right">
+          <el-table-column prop="plan_no" label="生产制单" min-width="160" />
+          <el-table-column label="客户信息" min-width="180">
             <template #default="scope">
-              <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
+              <div class="cell-stack">
+                <span class="primary-text">{{ scope.row.customer || '-' }}</span>
+                <span class="secondary-text">单位：{{ scope.row.company || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="预计出货" min-width="120">
+            <template #default="scope">{{ scope.row.planned_start_date || '-' }}</template>
+          </el-table-column>
+          <el-table-column label="面辅包进度" min-width="120">
+            <template #default="scope">{{ materialProgressLabel(scope.row.status) }}</template>
+          </el-table-column>
+          <el-table-column label="生产排期" min-width="180">
+            <template #default="scope">{{ scheduleText(scope.row) }}</template>
+          </el-table-column>
+          <el-table-column label="工厂进度" min-width="120">
+            <template #default="scope">
+              <el-tag :type="statusTagType(scope.row.status)" effect="plain">
+                {{ statusLabel(scope.row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="入库数" min-width="100">
+            <template #default>-</template>
+          </el-table-column>
+          <el-table-column label="出库数" min-width="100">
+            <template #default>-</template>
+          </el-table-column>
+          <el-table-column label="操作" fixed="right" min-width="110">
+            <template #default="scope">
+              <el-button link type="primary" @click="goDetail(scope.row.id)">跟进</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -87,52 +159,6 @@
         </div>
       </template>
     </el-card>
-
-    <el-dialog v-model="createVisible" title="新建生产计划" width="640px">
-      <el-form :model="createForm" label-width="130px">
-        <el-form-item label="销售单">
-          <el-input v-model="createForm.sales_order" placeholder="销售单号" />
-        </el-form-item>
-        <el-form-item label="销售单行（可选）">
-          <el-input v-model="createForm.sales_order_item" placeholder="销售单行号（可选）" />
-        </el-form-item>
-        <el-form-item label="款式编码">
-          <el-input v-model="createForm.item_code" placeholder="款式编码" />
-        </el-form-item>
-        <el-form-item label="BOM ID（可选）">
-          <el-input-number v-model="createForm.bom_id" aria-label="BOM ID（可选）" :min="1" />
-        </el-form-item>
-        <el-form-item label="计划数量">
-          <el-input-number v-model="createForm.planned_qty" aria-label="计划数量" :min="0.000001" :step="1" />
-        </el-form-item>
-        <el-form-item label="计划开工日（可选）">
-          <el-date-picker
-            v-model="createForm.planned_start_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="选择日期"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="幂等键">
-          <el-input v-model="createForm.idempotency_key" placeholder="幂等键" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="createVisible = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="creating"
-          :disabled="!canCreateAction"
-          data-action-type="write"
-          data-write-guard="permission:plan_create+form_valid+handler"
-          :data-guard-state="canCreateAction ? 'enabled' : 'disabled'"
-          @click="createPlan"
-        >
-          创建
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -140,70 +166,34 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import {
-  createProductionPlan,
-  fetchProductionPlans,
-  type ProductionPlanCreatePayload,
-  type ProductionPlanListItem,
-} from '@/api/production'
+import { fetchProductionPlans, type ProductionPlanListItem } from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
-const creating = ref<boolean>(false)
-const createVisible = ref<boolean>(false)
 const rows = ref<ProductionPlanListItem[]>([])
 const total = ref<number>(0)
+const lastError = ref<string>('')
 
-const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
-const canPlanCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.plan_create)
+const canRead = computed<boolean>(() => {
+  return permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('production:read')
+})
+const canWriteGuarded = computed<boolean>(() => {
+  return permissionStore.state.buttonPermissions.plan_create || permissionStore.state.actions.includes('production:plan_create')
+})
 
 const query = reactive({
   sales_order: '',
-  item_code: '',
+  keyword: '',
+  turnover_no: '',
+  from_date: '',
+  to_date: '',
   status: '',
   page: 1,
   page_size: 20,
 })
-
-const createForm = reactive({
-  sales_order: '',
-  sales_order_item: '',
-  item_code: '',
-  bom_id: undefined as number | undefined,
-  planned_qty: 1,
-  planned_start_date: '',
-  idempotency_key: '',
-})
-
-const normalizedCreateForm = computed(() => ({
-  sales_order: createForm.sales_order.trim(),
-  sales_order_item: createForm.sales_order_item.trim(),
-  item_code: createForm.item_code.trim(),
-  planned_qty: Number(createForm.planned_qty || 0),
-  planned_start_date: createForm.planned_start_date || undefined,
-  idempotency_key: createForm.idempotency_key.trim(),
-}))
-
-const createFormValidationError = computed<string | null>(() => {
-  if (!normalizedCreateForm.value.sales_order) {
-    return '销售单不能为空'
-  }
-  if (!normalizedCreateForm.value.item_code) {
-    return '款式编码不能为空'
-  }
-  if (!normalizedCreateForm.value.idempotency_key) {
-    return '幂等键不能为空'
-  }
-  if (!(normalizedCreateForm.value.planned_qty > 0)) {
-    return '计划数量必须大于 0'
-  }
-  return null
-})
-
-const canCreateAction = computed<boolean>(() => canPlanCreate.value && !createFormValidationError.value)
 
 const statusLabel = (value: string): string => {
   const labels: Record<string, string> = {
@@ -215,46 +205,58 @@ const statusLabel = (value: string): string => {
     job_cards_synced: '工序卡已同步',
     cancelled: '已取消',
     failed: '失败',
-    pending: '待同步',
-    processing: '同步中',
-    succeeded: '已同步',
-    dead: '死信',
-    blocked_scope: '范围阻断',
   }
-  return labels[value] || value
+  return labels[value] || value || '-'
 }
 
-const syncStatusLabel = (value?: string | null): string => {
-  if (!value) return '-'
-  const labels: Record<string, string> = {
-    pending: '待同步',
-    processing: '同步中',
-    succeeded: '已同步',
-    failed: '失败待重试',
-    dead: '死信',
-    blocked_scope: '范围阻断',
-  }
-  return labels[value] || value
+const statusTagType = (value: string): 'success' | 'warning' | 'danger' | 'info' => {
+  if (value === 'job_cards_synced' || value === 'work_order_created') return 'success'
+  if (value === 'failed' || value === 'cancelled') return 'danger'
+  if (value === 'material_checked' || value === 'work_order_pending') return 'warning'
+  return 'info'
 }
 
-const buildIdempotencyKey = (prefix: string): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${prefix}-${crypto.randomUUID()}`
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+const materialProgressLabel = (status: string): string => {
+  if (status === 'job_cards_synced' || status === 'work_order_created') return '已完成'
+  if (status === 'material_checked' || status === 'work_order_pending') return '已检查'
+  if (status === 'failed') return '异常待处理'
+  return '待检查'
 }
 
-const loadPlans = async (): Promise<void> => {
+const scheduleText = (row: ProductionPlanListItem): string => {
+  const qty = row.planned_qty ? String(row.planned_qty) : '-'
+  const date = row.planned_start_date || '-'
+  return `计划数 ${qty} / 开工 ${date}`
+}
+
+const resetRows = (): void => {
+  rows.value = []
+  total.value = 0
+}
+
+const validateDateRange = (): boolean => {
+  if (!query.from_date || !query.to_date) return true
+  if (query.from_date <= query.to_date) return true
+  ElMessage.error('开始时间不能晚于结束时间')
+  return false
+}
+
+const loadRows = async (): Promise<void> => {
   if (!canRead.value) {
-    rows.value = []
-    total.value = 0
+    resetRows()
+    lastError.value = ''
     return
   }
+
   loading.value = true
+  lastError.value = ''
   try {
     const result = await fetchProductionPlans({
-      sales_order: query.sales_order || undefined,
-      item_code: query.item_code || undefined,
+      sales_order: query.sales_order.trim() || undefined,
+      keyword: query.keyword.trim() || undefined,
+      turnover_no: query.turnover_no.trim() || undefined,
+      from_date: query.from_date || undefined,
+      to_date: query.to_date || undefined,
       status: query.status || undefined,
       page: query.page,
       page_size: query.page_size,
@@ -262,61 +264,52 @@ const loadPlans = async (): Promise<void> => {
     rows.value = result.data.items
     total.value = result.data.total
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message
+    lastError.value = message
+    resetRows()
+    ElMessage.error(message)
   } finally {
     loading.value = false
   }
 }
 
-const openCreateDialog = (): void => {
-  if (!canPlanCreate.value) {
-    ElMessage.error('无新建生产计划权限')
-    return
-  }
-  createForm.sales_order = ''
-  createForm.sales_order_item = ''
-  createForm.item_code = ''
-  createForm.bom_id = undefined
-  createForm.planned_qty = 1
-  createForm.planned_start_date = ''
-  createForm.idempotency_key = buildIdempotencyKey('plan')
-  createVisible.value = true
+const onSearch = (): void => {
+  if (!validateDateRange()) return
+  query.page = 1
+  void loadRows()
 }
 
-const createPlan = async (): Promise<void> => {
-  if (!canPlanCreate.value) {
-    ElMessage.error('无新建生产计划权限')
+const onReset = (): void => {
+  query.sales_order = ''
+  query.keyword = ''
+  query.turnover_no = ''
+  query.from_date = ''
+  query.to_date = ''
+  query.status = ''
+  query.page = 1
+  query.page_size = 20
+  void loadRows()
+}
+
+const onClearFilters = (): void => {
+  query.sales_order = ''
+  query.keyword = ''
+  query.turnover_no = ''
+  query.from_date = ''
+  query.to_date = ''
+  query.status = ''
+}
+
+const onGuardedAction = (actionName: string, isWrite: boolean): void => {
+  if (isWrite && !canWriteGuarded.value) {
+    ElMessage.warning(`无 ${actionName} 权限，当前保持禁用态`)
     return
   }
-
-  const validationError = createFormValidationError.value
-  if (validationError) {
-    ElMessage.error(validationError)
+  if (isWrite) {
+    ElMessage.warning(`${actionName}仅保留按钮对齐，当前本地首版未开放写入`)
     return
   }
-
-  const payload: ProductionPlanCreatePayload = {
-    sales_order: normalizedCreateForm.value.sales_order,
-    sales_order_item: normalizedCreateForm.value.sales_order_item || undefined,
-    item_code: normalizedCreateForm.value.item_code,
-    bom_id: createForm.bom_id,
-    planned_qty: normalizedCreateForm.value.planned_qty,
-    planned_start_date: normalizedCreateForm.value.planned_start_date,
-    idempotency_key: normalizedCreateForm.value.idempotency_key,
-  }
-
-  creating.value = true
-  try {
-    await createProductionPlan(payload)
-    ElMessage.success('生产计划创建成功')
-    createForm.idempotency_key = buildIdempotencyKey('plan')
-    createVisible.value = false
-    await loadPlans()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    creating.value = false
-  }
+  ElMessage.info(`${actionName}已保留入口，当前本地首版暂不执行`)
 }
 
 const goDetail = (planId: number): void => {
@@ -325,13 +318,13 @@ const goDetail = (planId: number): void => {
 
 const onPageChange = (page: number): void => {
   query.page = page
-  loadPlans()
+  void loadRows()
 }
 
 const onSizeChange = (size: number): void => {
   query.page_size = size
   query.page = 1
-  loadPlans()
+  void loadRows()
 }
 
 onMounted(async () => {
@@ -339,14 +332,19 @@ onMounted(async () => {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('production')
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message
+    lastError.value = message
+    ElMessage.error(message)
+    return
   }
-  await loadPlans()
+  if (canRead.value) {
+    await loadRows()
+  }
 })
 </script>
 
 <style scoped>
-.production-plan-list-page {
+.production-followup-page {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -356,6 +354,51 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.sub-title {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
+.query-form {
+  margin-bottom: 8px;
+}
+
+.toolbar-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.error-alert {
+  margin-bottom: 12px;
+}
+
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.4;
+}
+
+.primary-text {
+  font-weight: 500;
+}
+
+.secondary-text {
+  color: var(--el-text-color-secondary);
 }
 
 .pager {

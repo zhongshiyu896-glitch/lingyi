@@ -9,6 +9,7 @@ import json
 from typing import Any
 
 from sqlalchemy import func
+from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -178,10 +179,27 @@ class ProductionService:
             sql = self.session.query(LyProductionPlan)
             if query.sales_order:
                 sql = sql.filter(LyProductionPlan.sales_order == query.sales_order)
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                sql = sql.filter(
+                    or_(
+                        LyProductionPlan.sales_order.like(keyword),
+                        LyProductionPlan.sales_order_item.like(keyword),
+                        LyProductionPlan.item_code.like(keyword),
+                        LyProductionPlan.customer.like(keyword),
+                        LyProductionPlan.plan_no.like(keyword),
+                    )
+                )
+            if query.turnover_no:
+                sql = sql.filter(LyProductionPlan.sales_order_item.like(f"%{query.turnover_no.strip()}%"))
             if query.item_code:
                 sql = sql.filter(LyProductionPlan.item_code == query.item_code)
             if query.company:
                 sql = sql.filter(LyProductionPlan.company == query.company)
+            if query.from_date:
+                sql = sql.filter(LyProductionPlan.planned_start_date >= query.from_date)
+            if query.to_date:
+                sql = sql.filter(LyProductionPlan.planned_start_date <= query.to_date)
             if query.status:
                 sql = sql.filter(LyProductionPlan.status == query.status)
 

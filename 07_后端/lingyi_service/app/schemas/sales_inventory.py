@@ -119,6 +119,45 @@ class StockLedgerData(BaseModel):
     dropped_count: int = 0
 
 
+class FinishedGoodsReportItem(BaseModel):
+    """Read-only finished goods in/out report row."""
+
+    image_url: str | None = None
+    processing_no: str | None = None
+    production_order: str | None = None
+    order_no: str
+    item_code: str
+    item_name: str | None = None
+    warehouse: str | None = None
+    season: str | None = None
+    style_type: str | None = None
+    qty: Decimal
+    receipt_date: date | None = None
+    company: str | None = None
+    customer: str | None = None
+    week_day_0: str | None = None
+    week_day_1: str | None = None
+    week_day_2: str | None = None
+    week_day_3: str | None = None
+    week_day_4: str | None = None
+    week_day_5: str | None = None
+    week_day_6: str | None = None
+    message_title: str | None = None
+    sent_at: str | None = None
+    message_status: str | None = None
+    sender: str | None = None
+
+
+class FinishedGoodsReportData(BaseModel):
+    """Finished goods report response."""
+
+    items: list[FinishedGoodsReportItem]
+    total: int
+    page: int
+    page_size: int
+    dropped_count: int = 0
+
+
 class WarehouseItem(BaseModel):
     """Read-only Warehouse row."""
 

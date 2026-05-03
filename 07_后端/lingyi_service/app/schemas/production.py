@@ -50,8 +50,12 @@ class ProductionPlanQuery(BaseModel):
     """Production plan list query."""
 
     sales_order: Optional[str] = None
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    turnover_no: Optional[str] = Field(default=None, max_length=140)
     item_code: Optional[str] = None
     company: Optional[str] = None
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
     status: Optional[str] = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=200)

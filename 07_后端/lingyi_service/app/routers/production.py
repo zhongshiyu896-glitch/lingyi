@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from datetime import date
 import logging
 from typing import Any
 
@@ -390,8 +391,12 @@ def create_production_plan(
 def list_production_plans(
     request: Request,
     sales_order: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    turnover_no: str | None = Query(default=None),
     item_code: str | None = Query(default=None),
     company: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
     status: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=200),
@@ -419,8 +424,12 @@ def list_production_plans(
         )
         query = ProductionPlanQuery(
             sales_order=sales_order,
+            keyword=keyword,
+            turnover_no=turnover_no,
             item_code=item_code,
             company=company,
+            from_date=from_date,
+            to_date=to_date,
             status=status,
             page=page,
             page_size=page_size,
