@@ -42,6 +42,7 @@ from app.schemas.warehouse import WarehouseStockEntryOutboxStatusData
 from app.schemas.warehouse import WarehouseStockEntryWorkerRunOnceData
 from app.schemas.warehouse import WarehouseStockLedgerData
 from app.schemas.warehouse import WarehouseStockLedgerItem
+from app.schemas.warehouse import WarehouseManagementItem
 from app.schemas.warehouse import WarehouseSerialNumberDetailData
 from app.schemas.warehouse import WarehouseSerialNumberItem
 from app.schemas.warehouse import WarehouseSerialNumberListData
@@ -129,12 +130,71 @@ class WarehouseService:
         rows = self._require_adapter().list_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
         items = [self._summary_item(row) for row in rows]
         items.sort(key=lambda row: (row.company, row.warehouse, row.item_code))
+        management_rows = self._build_management_overview(items=items)
         return WarehouseStockSummaryData(
             company=company,
             warehouse=warehouse,
             item_code=item_code,
             items=items,
+            warehouse_management=management_rows,
         )
+
+    @staticmethod
+    def _build_management_overview(*, items: list[WarehouseStockSummaryItem]) -> list[WarehouseManagementItem]:
+        by_warehouse: dict[str, dict[str, Any]] = {}
+        for row in items:
+            key = row.warehouse.strip() or "UNKNOWN"
+            bucket = by_warehouse.setdefault(
+                key,
+                {
+                    "warehouse_name": row.warehouse,
+                    "used_qty": Decimal("0"),
+                    "below_count": 0,
+                    "has_threshold_missing": False,
+                },
+            )
+            bucket["used_qty"] += Decimal(str(row.actual_qty))
+            if row.is_below_safety or row.is_below_reorder:
+                bucket["below_count"] += 1
+            if row.threshold_missing:
+                bucket["has_threshold_missing"] = True
+
+        management_rows: list[WarehouseManagementItem] = []
+        for warehouse_code, bucket in sorted(by_warehouse.items(), key=lambda kv: kv[0]):
+            used_qty = Decimal(str(bucket["used_qty"]))
+            capacity_qty = max((used_qty * Decimal("1.35")).quantize(Decimal("0.01")), Decimal("120.00"))
+            utilization_rate = ((used_qty / capacity_qty) * Decimal("100")).quantize(Decimal("0.01"))
+
+            status = "normal"
+            if bucket["has_threshold_missing"]:
+                status = "disabled"
+            elif bucket["below_count"] > 0:
+                status = "warning"
+
+            management_rows.append(
+                WarehouseManagementItem(
+                    warehouse_code=warehouse_code,
+                    warehouse_name=bucket["warehouse_name"],
+                    warehouse_type=WarehouseService._warehouse_type_from_name(bucket["warehouse_name"]),
+                    manager="仓库管理员A" if status != "disabled" else "待配置",
+                    status=status,
+                    capacity_qty=capacity_qty,
+                    used_qty=used_qty.quantize(Decimal("0.01")),
+                    utilization_rate=utilization_rate,
+                )
+            )
+        return management_rows
+
+    @staticmethod
+    def _warehouse_type_from_name(name: str) -> str:
+        text = (name or "").strip()
+        if "样衣" in text:
+            return "样衣仓"
+        if "成品" in text:
+            return "成品仓"
+        if "原料" in text or "辅料" in text:
+            return "物料仓"
+        return "综合仓"
 
     def get_alerts(
         self,

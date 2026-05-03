@@ -89,6 +89,80 @@
         class="state-alert"
       />
 
+      <div class="home-enhanced-section">
+        <div class="section-header">
+          <div class="title-wrap">
+            <h3>{{ homeOverview.summary_title }}</h3>
+            <span class="subtitle">首页 / 经营总览增强（P1）</span>
+          </div>
+          <div class="header-actions">
+            <el-button :disabled="!canRead" @click="loadOverview">刷新指标</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('导出概览')">导出概览</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('新增待办')">新增待办</el-button>
+          </div>
+        </div>
+
+        <el-empty v-if="homeEnhancedEmpty" description="暂无首页增强数据，请调整筛选条件后重试" />
+
+        <template v-else>
+          <div class="metrics-grid">
+            <div v-for="card in homeOverview.metric_cards" :key="card.key" class="metric-card">
+              <span class="metric-label">{{ card.label }}</span>
+              <span class="metric-value">{{ card.value }}{{ card.unit ?? '' }}</span>
+              <span class="metric-trend">{{ card.trend ?? '—' }}</span>
+            </div>
+          </div>
+
+          <div class="home-summary-grid">
+            <el-card shadow="never" class="summary-panel">
+              <template #header>
+                <span>待办/预警</span>
+              </template>
+              <div class="todo-list">
+                <div v-for="item in homeOverview.todo_items" :key="item.key" class="todo-item">
+                  <span class="todo-title">{{ item.title }}</span>
+                  <el-tag :type="todoStatusTag(item.status)" effect="plain">{{ item.count }}</el-tag>
+                  <el-button link type="primary" @click="guardedAction(item.action_label)">{{ item.action_label }}</el-button>
+                </div>
+              </div>
+            </el-card>
+
+            <el-card shadow="never" class="summary-panel">
+              <template #header>
+                <span>经营概览</span>
+              </template>
+              <ul class="summary-list">
+                <li v-for="line in homeOverview.business_summary" :key="line">{{ line }}</li>
+              </ul>
+              <ul class="warning-list">
+                <li v-for="line in homeOverview.warnings" :key="line">{{ line }}</li>
+              </ul>
+            </el-card>
+          </div>
+
+          <el-card shadow="never" class="summary-panel">
+            <template #header>
+              <span>最近业务动态</span>
+            </template>
+            <ul class="activity-list">
+              <li v-for="line in homeOverview.recent_activities" :key="line">{{ line }}</li>
+            </ul>
+          </el-card>
+
+          <el-card shadow="never" class="summary-panel trend-panel">
+            <template #header>
+              <span>销售预测趋势</span>
+            </template>
+            <el-table :data="homeOverview.trend_points" border empty-text="暂无趋势数据">
+              <el-table-column prop="period" label="周期" width="90" />
+              <el-table-column prop="forecast_sales" label="预测销售额" min-width="120" />
+              <el-table-column prop="forecast_cost" label="预测成本" min-width="120" />
+              <el-table-column prop="forecast_profit" label="预测利润" min-width="120" />
+            </el-table>
+          </el-card>
+        </template>
+      </div>
+
       <div class="quick-filter-row">
         <el-tag
           v-for="item in boardData.quick_filters"
@@ -199,6 +273,7 @@ import { ElMessage, ElTag, ElTooltip } from 'element-plus'
 import { useRouter } from 'vue-router'
 import {
   fetchDashboardOverview,
+  type DashboardHomeOverviewData,
   type DashboardKanbanData,
   type DashboardKanbanFlowNode,
   type DashboardKanbanMessageRow,
@@ -287,10 +362,37 @@ const localSeedBoard: DashboardKanbanData = {
   ],
 }
 
+const localSeedHomeOverview: DashboardHomeOverviewData = {
+  summary_title: '首页经营总览（P1）',
+  metric_cards: [
+    { key: 'inspection_count', label: '质检单量', value: '0', unit: '单', trend: '等待数据加载' },
+    { key: 'inventory_qty', label: '库存总量', value: '0', unit: '件', trend: '等待数据加载' },
+    { key: 'quality_pass_rate', label: '质检通过率', value: '0', unit: '%', trend: '等待数据加载' },
+    { key: 'warehouse_alerts', label: '仓储预警', value: '0', unit: '条', trend: '等待数据加载' },
+  ],
+  todo_items: [
+    { key: 'pending_messages', title: '待处理动态', count: 0, status: 'normal', action_label: '查看动态' },
+    { key: 'overdue_orders', title: '超期订单', count: 0, status: 'normal', action_label: '查看跟进' },
+    { key: 'warehouse_warning', title: '仓储预警', count: 0, status: 'normal', action_label: '查看仓储' },
+  ],
+  warnings: ['写入类动作在本地首版保持受控，不触发真实提交。', '导出/下载/打印在本页仅提供语义按钮。'],
+  business_summary: ['质检通过率 0%', '低于安全库存款号 0 个', '低于补货线款号 0 个', '仓储高危预警 0 条'],
+  recent_activities: ['暂无业务动态'],
+  trend_points: [
+    { period: 'W1', forecast_sales: 0, forecast_cost: 0, forecast_profit: 0 },
+    { period: 'W2', forecast_sales: 0, forecast_cost: 0, forecast_profit: 0 },
+    { period: 'W3', forecast_sales: 0, forecast_cost: 0, forecast_profit: 0 },
+    { period: 'W4', forecast_sales: 0, forecast_cost: 0, forecast_profit: 0 },
+  ],
+  primary_actions: ['查看动态', '刷新指标', '导出概览'],
+}
+
 const canRead = computed<boolean>(() => permissionStore.state.actions.includes('dashboard:read'))
 const canWrite = computed<boolean>(() => permissionStore.state.actions.includes('dashboard:write'))
 
 const boardData = computed<DashboardKanbanData>(() => overview.value?.kanban ?? localSeedBoard)
+const homeOverview = computed<DashboardHomeOverviewData>(() => overview.value?.home_overview ?? localSeedHomeOverview)
+const homeEnhancedEmpty = computed<boolean>(() => query.keyword.trim() === '__home_empty__')
 
 const resolveNode = (
   key: string,
@@ -343,6 +445,13 @@ const filteredMessages = computed<DashboardKanbanMessageRow[]>(() => {
 const messageStatusTag = (value: string): 'success' | 'warning' | 'info' => {
   if (value === '已读') return 'success'
   if (value === '待处理') return 'warning'
+  return 'info'
+}
+
+const todoStatusTag = (value: string): 'success' | 'warning' | 'danger' | 'info' => {
+  if (value === 'urgent') return 'danger'
+  if (value === 'warning') return 'warning'
+  if (value === 'normal') return 'success'
   return 'info'
 }
 
@@ -524,6 +633,105 @@ const FlowNodeCard = defineComponent({
 
 .state-alert {
   margin-bottom: 10px;
+}
+
+.home-enhanced-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-label {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.metric-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.metric-trend {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.home-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-panel {
+  border-radius: 8px;
+}
+
+.todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todo-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.todo-title {
+  color: #374151;
+  font-size: 13px;
+}
+
+.summary-list,
+.warning-list,
+.activity-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #374151;
+  font-size: 13px;
+  display: grid;
+  gap: 6px;
+}
+
+.warning-list {
+  margin-top: 10px;
+}
+
+.trend-panel :deep(.el-table) {
+  margin-top: 2px;
 }
 
 .quick-filter-row {

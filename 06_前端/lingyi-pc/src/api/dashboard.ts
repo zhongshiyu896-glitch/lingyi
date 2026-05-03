@@ -52,6 +52,40 @@ export interface DashboardWarehouseOverview {
   warning_alert_count: number
 }
 
+export interface DashboardHomeMetricCard {
+  key: string
+  label: string
+  value: string
+  unit?: string | null
+  trend?: string | null
+}
+
+export interface DashboardHomeTodoItem {
+  key: string
+  title: string
+  count: number
+  status: 'normal' | 'warning' | 'urgent'
+  action_label: string
+}
+
+export interface DashboardHomeTrendPoint {
+  period: string
+  forecast_sales: NumericLike
+  forecast_cost: NumericLike
+  forecast_profit: NumericLike
+}
+
+export interface DashboardHomeOverviewData {
+  summary_title: string
+  metric_cards: DashboardHomeMetricCard[]
+  todo_items: DashboardHomeTodoItem[]
+  warnings: string[]
+  business_summary: string[]
+  recent_activities: string[]
+  trend_points: DashboardHomeTrendPoint[]
+  primary_actions: string[]
+}
+
 export interface DashboardOverviewData {
   company: string
   from_date?: string | null
@@ -62,6 +96,7 @@ export interface DashboardOverviewData {
   warehouse: DashboardWarehouseOverview
   source_status: DashboardSourceStatus[]
   kanban?: DashboardKanbanData | null
+  home_overview?: DashboardHomeOverviewData | null
 }
 
 export interface DashboardKanbanFlowNode {

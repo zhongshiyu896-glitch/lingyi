@@ -53,6 +53,83 @@ export interface ProductionPlanListData {
   page_size: number
 }
 
+export interface ProductionMaterialCostListQuery {
+  sales_order?: string
+  keyword?: string
+  turnover_no?: string
+  material_item_code?: string
+  supplier?: string
+  from_date?: string
+  to_date?: string
+  status?: string
+  page: number
+  page_size: number
+}
+
+export interface ProductionMaterialCostListItem {
+  plan_id: number
+  plan_no: string
+  company: string
+  sales_order: string
+  sales_order_item: string
+  item_code: string
+  material_item_code: string
+  supplier?: string | null
+  qty_per_piece: string
+  loss_rate: string
+  required_qty: string
+  estimated_unit_price: string
+  estimated_material_cost: string
+  currency: string
+  status: string
+  planned_start_date?: string | null
+  checked_at?: string | null
+}
+
+export interface ProductionMaterialCostListData {
+  items: ProductionMaterialCostListItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface ProductionSalesForecastListQuery {
+  sales_order?: string
+  keyword?: string
+  turnover_no?: string
+  item_code?: string
+  customer?: string
+  from_date?: string
+  to_date?: string
+  status?: string
+  page: number
+  page_size: number
+}
+
+export interface ProductionSalesForecastListItem {
+  plan_id: number
+  plan_no: string
+  company: string
+  sales_order: string
+  sales_order_item: string
+  customer?: string | null
+  item_code: string
+  forecast_qty: string
+  forecast_unit_price: string
+  forecast_amount: string
+  currency: string
+  delivery_date?: string | null
+  status: string
+  checked_at?: string | null
+}
+
+export interface ProductionSalesForecastListData {
+  items: ProductionSalesForecastListItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface ProductionPlanMaterialSnapshotItem {
   bom_item_id?: number | null
   material_item_code: string
@@ -175,6 +252,42 @@ export const fetchProductionPlans = async (
     page_size: params.page_size,
   })
   return request<ProductionPlanListData>(`/api/production/plans?${query}`)
+}
+
+export const fetchProductionMaterialCostDetails = async (
+  params: ProductionMaterialCostListQuery,
+): Promise<ApiResponse<ProductionMaterialCostListData>> => {
+  const query = toQuery({
+    sales_order: params.sales_order,
+    keyword: params.keyword,
+    turnover_no: params.turnover_no,
+    material_item_code: params.material_item_code,
+    supplier: params.supplier,
+    from_date: params.from_date,
+    to_date: params.to_date,
+    status: params.status,
+    page: params.page,
+    page_size: params.page_size,
+  })
+  return request<ProductionMaterialCostListData>(`/api/production/material-cost-details?${query}`)
+}
+
+export const fetchProductionSalesForecastDetails = async (
+  params: ProductionSalesForecastListQuery,
+): Promise<ApiResponse<ProductionSalesForecastListData>> => {
+  const query = toQuery({
+    sales_order: params.sales_order,
+    keyword: params.keyword,
+    turnover_no: params.turnover_no,
+    item_code: params.item_code,
+    customer: params.customer,
+    from_date: params.from_date,
+    to_date: params.to_date,
+    status: params.status,
+    page: params.page,
+    page_size: params.page_size,
+  })
+  return request<ProductionSalesForecastListData>(`/api/production/sales-forecast-details?${query}`)
 }
 
 export const fetchProductionPlanDetail = async (

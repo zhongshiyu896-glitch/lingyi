@@ -98,6 +98,95 @@ class ProductionPlanListData(BaseModel):
     page_size: int
 
 
+class ProductionMaterialCostQuery(BaseModel):
+    """Production material-cost list query."""
+
+    sales_order: Optional[str] = None
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    turnover_no: Optional[str] = Field(default=None, max_length=140)
+    material_item_code: Optional[str] = Field(default=None, max_length=140)
+    supplier: Optional[str] = Field(default=None, max_length=140)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class ProductionMaterialCostListItem(BaseModel):
+    """Production material-cost detail row."""
+
+    plan_id: int
+    plan_no: str
+    company: str
+    sales_order: str
+    sales_order_item: str
+    item_code: str
+    material_item_code: str
+    supplier: Optional[str] = None
+    qty_per_piece: Decimal
+    loss_rate: Decimal
+    required_qty: Decimal
+    estimated_unit_price: Decimal
+    estimated_material_cost: Decimal
+    currency: str = "CNY"
+    status: str
+    planned_start_date: Optional[date] = None
+    checked_at: Optional[datetime] = None
+
+
+class ProductionMaterialCostListData(BaseModel):
+    """Production material-cost detail list result."""
+
+    items: List[ProductionMaterialCostListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class ProductionSalesForecastQuery(BaseModel):
+    """Production sales-forecast list query."""
+
+    sales_order: Optional[str] = None
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    turnover_no: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    customer: Optional[str] = Field(default=None, max_length=140)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class ProductionSalesForecastListItem(BaseModel):
+    """Production sales-forecast detail row."""
+
+    plan_id: int
+    plan_no: str
+    company: str
+    sales_order: str
+    sales_order_item: str
+    customer: Optional[str] = None
+    item_code: str
+    forecast_qty: Decimal
+    forecast_unit_price: Decimal
+    forecast_amount: Decimal
+    currency: str = "CNY"
+    delivery_date: Optional[date] = None
+    status: str
+    checked_at: Optional[datetime] = None
+
+
+class ProductionSalesForecastListData(BaseModel):
+    """Production sales-forecast detail list result."""
+
+    items: List[ProductionSalesForecastListItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class ProductionPlanMaterialSnapshotItem(BaseModel):
     """Material check snapshot row."""
 

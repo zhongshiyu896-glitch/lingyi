@@ -3,7 +3,7 @@
     <el-card shadow="never" v-loading="loading">
       <template #header>
         <div class="header-row">
-          <span>财务管理 / 成品销售利润明细表</span>
+          <span>大货管理 / 订单款式利润预测明细表</span>
           <el-button @click="goBack">返回列表</el-button>
         </div>
       </template>
@@ -13,7 +13,7 @@
       <template v-else>
         <el-alert
           v-if="loadError"
-          :title="`利润快照详情加载失败：${loadError}`"
+          :title="`订单款式利润预测明细详情加载失败：${loadError}`"
           type="error"
           show-icon
           :closable="false"
@@ -42,11 +42,11 @@
             <el-descriptions-item label="款式">{{ snapshot.item_code }}</el-descriptions-item>
             <el-descriptions-item label="销售订单">{{ snapshot.sales_order || '-' }}</el-descriptions-item>
             <el-descriptions-item label="收入口径">{{ snapshot.revenue_status }}</el-descriptions-item>
-            <el-descriptions-item label="收入金额">{{ formatAmount(snapshot.revenue_amount) }}</el-descriptions-item>
-            <el-descriptions-item label="实际总成本">{{ formatAmount(snapshot.actual_total_cost) }}</el-descriptions-item>
-            <el-descriptions-item label="标准总成本">{{ formatAmount(snapshot.standard_total_cost) }}</el-descriptions-item>
-            <el-descriptions-item label="利润金额">{{ formatAmount(snapshot.profit_amount) }}</el-descriptions-item>
-            <el-descriptions-item label="利润率">{{ formatProfitRate(snapshot.profit_rate) }}</el-descriptions-item>
+            <el-descriptions-item label="销售预测金额">{{ formatAmount(snapshot.revenue_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="成本预测金额">{{ formatAmount(snapshot.actual_total_cost) }}</el-descriptions-item>
+            <el-descriptions-item label="标准成本基线">{{ formatAmount(snapshot.standard_total_cost) }}</el-descriptions-item>
+            <el-descriptions-item label="利润预测金额">{{ formatAmount(snapshot.profit_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="利润预测率">{{ formatProfitRate(snapshot.profit_rate) }}</el-descriptions-item>
             <el-descriptions-item label="未解析数量">{{ snapshot.unresolved_count }}</el-descriptions-item>
             <el-descriptions-item label="分摊状态">{{ snapshot.allocation_status }}</el-descriptions-item>
             <el-descriptions-item label="纳入暂估外发">
@@ -71,7 +71,7 @@
     </el-card>
 
     <el-card v-if="canRead && snapshot" shadow="never">
-      <template #header><span>利润明细</span></template>
+      <template #header><span>利润预测明细</span></template>
       <el-table :data="details" border empty-text="暂无利润明细数据">
         <el-table-column prop="line_no" label="行号" width="70" />
         <el-table-column prop="cost_type" label="成本类型" min-width="120" />

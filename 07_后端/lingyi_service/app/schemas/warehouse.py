@@ -63,6 +63,19 @@ class WarehouseStockSummaryItem(BaseModel):
     is_below_safety: bool = False
 
 
+class WarehouseManagementItem(BaseModel):
+    """Warehouse management overview row."""
+
+    warehouse_code: str
+    warehouse_name: str
+    warehouse_type: str
+    manager: str
+    status: Literal["normal", "warning", "disabled"]
+    capacity_qty: Decimal
+    used_qty: Decimal
+    utilization_rate: Decimal
+
+
 class WarehouseStockSummaryData(BaseModel):
     """Warehouse stock aggregation response."""
 
@@ -70,6 +83,7 @@ class WarehouseStockSummaryData(BaseModel):
     warehouse: str | None = None
     item_code: str | None = None
     items: list[WarehouseStockSummaryItem]
+    warehouse_management: list[WarehouseManagementItem] = Field(default_factory=list)
 
 
 class WarehouseAlertItem(BaseModel):

@@ -6,6 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 import hashlib
 import json
+import re
 from typing import Any
 
 from sqlalchemy import func
@@ -43,6 +44,9 @@ from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionJobCardLinkItem
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
+from app.schemas.production import ProductionMaterialCostListData
+from app.schemas.production import ProductionMaterialCostListItem
+from app.schemas.production import ProductionMaterialCostQuery
 from app.schemas.production import ProductionPlanCreateData
 from app.schemas.production import ProductionPlanCreateRequest
 from app.schemas.production import ProductionPlanDetailData
@@ -50,6 +54,9 @@ from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanListItem
 from app.schemas.production import ProductionPlanMaterialSnapshotItem
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionSalesForecastListData
+from app.schemas.production import ProductionSalesForecastListItem
+from app.schemas.production import ProductionSalesForecastQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionWorkOrderOutboxSummary
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
@@ -257,6 +264,307 @@ class ProductionService:
             )
 
         return ProductionPlanListData(items=items, total=int(total), page=query.page, page_size=query.page_size)
+
+    def list_material_cost_details(
+        self,
+        *,
+        query: ProductionMaterialCostQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionMaterialCostListData:
+        try:
+            plan_sql = self.session.query(LyProductionPlan)
+            if query.sales_order:
+                plan_sql = plan_sql.filter(LyProductionPlan.sales_order == query.sales_order)
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                plan_sql = plan_sql.filter(
+                    or_(
+                        LyProductionPlan.sales_order.like(keyword),
+                        LyProductionPlan.sales_order_item.like(keyword),
+                        LyProductionPlan.item_code.like(keyword),
+                        LyProductionPlan.customer.like(keyword),
+                        LyProductionPlan.plan_no.like(keyword),
+                    )
+                )
+            if query.turnover_no:
+                plan_sql = plan_sql.filter(LyProductionPlan.sales_order_item.like(f"%{query.turnover_no.strip()}%"))
+            if query.from_date:
+                plan_sql = plan_sql.filter(LyProductionPlan.planned_start_date >= query.from_date)
+            if query.to_date:
+                plan_sql = plan_sql.filter(LyProductionPlan.planned_start_date <= query.to_date)
+            if query.status:
+                plan_sql = plan_sql.filter(LyProductionPlan.status == query.status)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionMaterialCostListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionMaterialCostListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+
+            plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        plan_ids = [int(row.id) for row in plans]
+        bom_ids = {int(row.bom_id) for row in plans}
+        try:
+            snapshots = []
+            if plan_ids:
+                snapshots = (
+                    self.session.query(LyProductionPlanMaterial)
+                    .filter(LyProductionPlanMaterial.plan_id.in_(plan_ids))
+                    .order_by(LyProductionPlanMaterial.plan_id.desc(), LyProductionPlanMaterial.id.asc())
+                    .all()
+                )
+            bom_rows = []
+            if bom_ids:
+                bom_rows = (
+                    self.session.query(LyApparelBomItem)
+                    .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .all()
+                )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        snapshot_map: dict[int, list[LyProductionPlanMaterial]] = {}
+        for row in snapshots:
+            snapshot_map.setdefault(int(row.plan_id), []).append(row)
+
+        bom_map: dict[int, list[LyApparelBomItem]] = {}
+        bom_item_by_id: dict[int, LyApparelBomItem] = {}
+        for row in bom_rows:
+            bom_id = int(row.bom_id)
+            bom_map.setdefault(bom_id, []).append(row)
+            bom_item_by_id[int(row.id)] = row
+
+        normalized_supplier = (query.supplier or "").strip().lower()
+        normalized_material_code = (query.material_item_code or "").strip().lower()
+
+        rows: list[ProductionMaterialCostListItem] = []
+        for plan in plans:
+            plan_id = int(plan.id)
+            items = snapshot_map.get(plan_id) or []
+            if items:
+                for snapshot in items:
+                    bom_item = bom_item_by_id.get(int(snapshot.bom_item_id)) if snapshot.bom_item_id is not None else None
+                    supplier = self._extract_supplier_from_remark(bom_item.remark if bom_item is not None else None)
+                    unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+                    material_code = str(snapshot.material_item_code or "").strip()
+                    if normalized_material_code and normalized_material_code not in material_code.lower():
+                        continue
+                    if normalized_supplier and normalized_supplier not in (supplier or "").lower():
+                        continue
+                    required_qty = Decimal(str(snapshot.required_qty or 0))
+                    rows.append(
+                        ProductionMaterialCostListItem(
+                            plan_id=plan_id,
+                            plan_no=str(plan.plan_no),
+                            company=str(plan.company),
+                            sales_order=str(plan.sales_order),
+                            sales_order_item=str(plan.sales_order_item),
+                            item_code=str(plan.item_code),
+                            material_item_code=material_code,
+                            supplier=supplier,
+                            qty_per_piece=Decimal(str(snapshot.qty_per_piece or 0)),
+                            loss_rate=Decimal(str(snapshot.loss_rate or 0)),
+                            required_qty=required_qty,
+                            estimated_unit_price=unit_price,
+                            estimated_material_cost=(required_qty * unit_price),
+                            status=str(plan.status),
+                            planned_start_date=plan.planned_start_date,
+                            checked_at=getattr(snapshot, "checked_at", None),
+                        )
+                    )
+                continue
+
+            planned_qty = Decimal(str(plan.planned_qty or 0))
+            for bom_item in bom_map.get(int(plan.bom_id), []):
+                supplier = self._extract_supplier_from_remark(bom_item.remark)
+                unit_price = self._extract_unit_price_from_remark(bom_item.remark)
+                material_code = str(bom_item.material_item_code or "").strip()
+                if normalized_material_code and normalized_material_code not in material_code.lower():
+                    continue
+                if normalized_supplier and normalized_supplier not in (supplier or "").lower():
+                    continue
+                qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+                loss_rate = Decimal(str(bom_item.loss_rate or 0))
+                required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                rows.append(
+                    ProductionMaterialCostListItem(
+                        plan_id=plan_id,
+                        plan_no=str(plan.plan_no),
+                        company=str(plan.company),
+                        sales_order=str(plan.sales_order),
+                        sales_order_item=str(plan.sales_order_item),
+                        item_code=str(plan.item_code),
+                        material_item_code=material_code,
+                        supplier=supplier,
+                        qty_per_piece=qty_per_piece,
+                        loss_rate=loss_rate,
+                        required_qty=required_qty,
+                        estimated_unit_price=unit_price,
+                        estimated_material_cost=(required_qty * unit_price),
+                        status=str(plan.status),
+                        planned_start_date=plan.planned_start_date,
+                        checked_at=None,
+                    )
+                )
+
+        total = len(rows)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        paged_items = rows[start:end]
+        return ProductionMaterialCostListData(
+            items=paged_items,
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_sales_forecast_details(
+        self,
+        *,
+        query: ProductionSalesForecastQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionSalesForecastListData:
+        try:
+            plan_sql = self.session.query(LyProductionPlan)
+            if query.sales_order:
+                plan_sql = plan_sql.filter(LyProductionPlan.sales_order == query.sales_order)
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                plan_sql = plan_sql.filter(
+                    or_(
+                        LyProductionPlan.sales_order.like(keyword),
+                        LyProductionPlan.sales_order_item.like(keyword),
+                        LyProductionPlan.item_code.like(keyword),
+                        LyProductionPlan.customer.like(keyword),
+                        LyProductionPlan.plan_no.like(keyword),
+                    )
+                )
+            if query.turnover_no:
+                plan_sql = plan_sql.filter(LyProductionPlan.sales_order_item.like(f"%{query.turnover_no.strip()}%"))
+            if query.item_code:
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code == query.item_code)
+            if query.customer:
+                plan_sql = plan_sql.filter(LyProductionPlan.customer.like(f"%{query.customer.strip()}%"))
+            if query.from_date:
+                plan_sql = plan_sql.filter(LyProductionPlan.planned_start_date >= query.from_date)
+            if query.to_date:
+                plan_sql = plan_sql.filter(LyProductionPlan.planned_start_date <= query.to_date)
+            if query.status:
+                plan_sql = plan_sql.filter(LyProductionPlan.status == query.status)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionSalesForecastListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionSalesForecastListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+
+            plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        plan_ids = [int(row.id) for row in plans]
+        bom_ids = {int(row.bom_id) for row in plans}
+        try:
+            snapshots = []
+            if plan_ids:
+                snapshots = (
+                    self.session.query(LyProductionPlanMaterial)
+                    .filter(LyProductionPlanMaterial.plan_id.in_(plan_ids))
+                    .order_by(LyProductionPlanMaterial.plan_id.desc(), LyProductionPlanMaterial.id.asc())
+                    .all()
+                )
+            bom_rows = []
+            if bom_ids:
+                bom_rows = (
+                    self.session.query(LyApparelBomItem)
+                    .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .all()
+                )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        snapshot_map: dict[int, list[LyProductionPlanMaterial]] = {}
+        for row in snapshots:
+            snapshot_map.setdefault(int(row.plan_id), []).append(row)
+
+        bom_map: dict[int, list[LyApparelBomItem]] = {}
+        bom_item_by_id: dict[int, LyApparelBomItem] = {}
+        for row in bom_rows:
+            bom_id = int(row.bom_id)
+            bom_map.setdefault(bom_id, []).append(row)
+            bom_item_by_id[int(row.id)] = row
+
+        rows: list[ProductionSalesForecastListItem] = []
+        for plan in plans:
+            planned_qty = Decimal(str(plan.planned_qty or 0))
+            if planned_qty < 0:
+                planned_qty = Decimal("0")
+
+            plan_material_cost = Decimal("0")
+            checked_at = None
+            snapshot_items = snapshot_map.get(int(plan.id)) or []
+            if snapshot_items:
+                for snapshot in snapshot_items:
+                    bom_item = bom_item_by_id.get(int(snapshot.bom_item_id)) if snapshot.bom_item_id is not None else None
+                    unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+                    required_qty = Decimal(str(snapshot.required_qty or 0))
+                    plan_material_cost += required_qty * unit_price
+                    if getattr(snapshot, "checked_at", None) is not None:
+                        if checked_at is None or snapshot.checked_at > checked_at:
+                            checked_at = snapshot.checked_at
+            else:
+                for bom_item in bom_map.get(int(plan.bom_id), []):
+                    qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+                    loss_rate = Decimal(str(bom_item.loss_rate or 0))
+                    unit_price = self._extract_unit_price_from_remark(bom_item.remark)
+                    required_qty = (planned_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                    plan_material_cost += required_qty * unit_price
+
+            if planned_qty > 0:
+                forecast_unit_price = (plan_material_cost / planned_qty).quantize(Decimal("0.000001"))
+            else:
+                forecast_unit_price = Decimal("0")
+            forecast_amount = (forecast_unit_price * planned_qty).quantize(Decimal("0.000001"))
+
+            rows.append(
+                ProductionSalesForecastListItem(
+                    plan_id=int(plan.id),
+                    plan_no=str(plan.plan_no),
+                    company=str(plan.company),
+                    sales_order=str(plan.sales_order),
+                    sales_order_item=str(plan.sales_order_item),
+                    customer=(str(plan.customer) if plan.customer else None),
+                    item_code=str(plan.item_code),
+                    forecast_qty=planned_qty,
+                    forecast_unit_price=forecast_unit_price,
+                    forecast_amount=forecast_amount,
+                    delivery_date=plan.planned_start_date,
+                    status=str(plan.status),
+                    checked_at=checked_at,
+                )
+            )
+
+        total = len(rows)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        paged_items = rows[start:end]
+        return ProductionSalesForecastListData(
+            items=paged_items,
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
 
     def get_plan_detail(self, *, plan_id: int) -> ProductionPlanDetailData:
         plan = self._must_get_plan(plan_id=plan_id)
@@ -828,3 +1136,24 @@ class ProductionService:
     def _next_plan_no() -> str:
         ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         return f"PP-{ts}"
+
+    @staticmethod
+    def _extract_supplier_from_remark(remark: str | None) -> str | None:
+        text = (remark or "").strip()
+        if not text:
+            return None
+        matcher = re.search(r"(?:供应商|supplier)\s*[:：=]\s*([^\s,;，；]+)", text, re.IGNORECASE)
+        if matcher is None:
+            return None
+        value = matcher.group(1).strip()
+        return value or None
+
+    @staticmethod
+    def _extract_unit_price_from_remark(remark: str | None) -> Decimal:
+        text = (remark or "").strip()
+        if not text:
+            return Decimal("0")
+        matcher = re.search(r"(?:单价|unit_price)\s*[:：=]\s*([0-9]+(?:\.[0-9]+)?)", text, re.IGNORECASE)
+        if matcher is None:
+            return Decimal("0")
+        return Decimal(matcher.group(1))

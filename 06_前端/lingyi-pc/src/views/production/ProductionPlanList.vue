@@ -157,6 +157,306 @@
             @size-change="onSizeChange"
           />
         </div>
+
+        <el-divider />
+
+        <div class="material-cost-section">
+          <div class="title-group">
+            <span class="title">大货成本物料明细表</span>
+            <span class="sub-title">大货管理 / 大货成本物料明细（P1）</span>
+          </div>
+
+          <el-form :inline="true" :model="materialQuery" class="query-form">
+            <el-form-item label="订单">
+              <el-input
+                v-model="materialQuery.sales_order"
+                clearable
+                placeholder="订单"
+                @keyup.enter="onMaterialSearch"
+              />
+            </el-form-item>
+            <el-form-item label="物料编码">
+              <el-input
+                v-model="materialQuery.material_item_code"
+                clearable
+                placeholder="物料编码"
+                @keyup.enter="onMaterialSearch"
+              />
+            </el-form-item>
+            <el-form-item label="供应商">
+              <el-input
+                v-model="materialQuery.supplier"
+                clearable
+                placeholder="供应商"
+                @keyup.enter="onMaterialSearch"
+              />
+            </el-form-item>
+            <el-form-item label="关键字">
+              <el-input
+                v-model="materialQuery.keyword"
+                clearable
+                placeholder="款号/客户/制单号"
+                @keyup.enter="onMaterialSearch"
+              />
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select v-model="materialQuery.status" clearable placeholder="全部状态" style="width: 160px">
+                <el-option label="草稿" value="draft" />
+                <el-option label="已计划" value="planned" />
+                <el-option label="已物料检查" value="material_checked" />
+                <el-option label="工单待同步" value="work_order_pending" />
+                <el-option label="已创建工单" value="work_order_created" />
+                <el-option label="工序卡已同步" value="job_cards_synced" />
+                <el-option label="已取消" value="cancelled" />
+                <el-option label="失败" value="failed" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="开始时间">
+              <el-date-picker
+                v-model="materialQuery.from_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="开始时间"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="结束时间">
+              <el-date-picker
+                v-model="materialQuery.to_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="结束时间"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :disabled="!canRead" @click="onMaterialSearch">搜索</el-button>
+              <el-button :disabled="!canRead" @click="onMaterialReset">重置</el-button>
+              <el-button :disabled="!canRead" @click="onMaterialRefresh">刷新</el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="toolbar-row">
+            <el-button :disabled="!canRead" @click="onMaterialSearch">筛选</el-button>
+            <el-button :disabled="!canRead" @click="onMaterialClearFilters">清空</el-button>
+            <el-button :disabled="!canRead" @click="onGuardedAction('导出明细', false)">导出</el-button>
+            <el-button :disabled="!canRead" @click="onGuardedAction('列设置', false)">列设置</el-button>
+          </div>
+
+          <el-alert
+            v-if="materialError"
+            class="error-alert"
+            type="error"
+            :closable="false"
+            :title="`成本物料明细加载失败：${materialError}`"
+          />
+
+          <el-table
+            :data="materialRows"
+            border
+            v-loading="materialLoading"
+            empty-text="暂无成本物料明细数据，请先完成物料检查或调整筛选条件"
+          >
+            <el-table-column prop="plan_no" label="生产制单" min-width="160" />
+            <el-table-column label="订单信息" min-width="220">
+              <template #default="scope">
+                <div class="cell-stack">
+                  <span class="primary-text">{{ scope.row.sales_order }}</span>
+                  <span class="secondary-text">翻单号：{{ scope.row.sales_order_item || '-' }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="item_code" label="款号" min-width="140" />
+            <el-table-column prop="material_item_code" label="物料编码" min-width="180" />
+            <el-table-column label="供应商" min-width="140">
+              <template #default="scope">{{ scope.row.supplier || '-' }}</template>
+            </el-table-column>
+            <el-table-column prop="qty_per_piece" label="单件用量" min-width="100" />
+            <el-table-column prop="loss_rate" label="损耗率" min-width="90" />
+            <el-table-column prop="required_qty" label="需求数量" min-width="100" />
+            <el-table-column prop="estimated_unit_price" label="估算单价(元)" min-width="120" />
+            <el-table-column prop="estimated_material_cost" label="估算成本(元)" min-width="120" />
+            <el-table-column label="状态" min-width="120">
+              <template #default="scope">
+                <el-tag :type="statusTagType(scope.row.status)" effect="plain">
+                  {{ statusLabel(scope.row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="检查时间" min-width="180">
+              <template #default="scope">{{ scope.row.checked_at || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" min-width="170">
+              <template #default="scope">
+                <el-button link type="primary" @click="goDetail(scope.row.plan_id)">查看</el-button>
+                <el-button link @click="onGuardedAction('导出明细', false)">导出</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager">
+            <el-pagination
+              background
+              layout="prev, pager, next, total, sizes"
+              :current-page="materialQuery.page"
+              :page-size="materialQuery.page_size"
+              :total="materialTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onMaterialPageChange"
+              @size-change="onMaterialSizeChange"
+            />
+          </div>
+        </div>
+
+        <el-divider />
+
+        <div class="sales-forecast-section">
+          <div class="title-group">
+            <span class="title">大货销售预测明细表</span>
+            <span class="sub-title">大货管理 / 大货销售预测明细（P1）</span>
+          </div>
+
+          <el-form :inline="true" :model="salesForecastQuery" class="query-form">
+            <el-form-item label="订单">
+              <el-input
+                v-model="salesForecastQuery.sales_order"
+                clearable
+                placeholder="订单"
+                @keyup.enter="onSalesForecastSearch"
+              />
+            </el-form-item>
+            <el-form-item label="款号">
+              <el-input
+                v-model="salesForecastQuery.item_code"
+                clearable
+                placeholder="款号"
+                @keyup.enter="onSalesForecastSearch"
+              />
+            </el-form-item>
+            <el-form-item label="客户">
+              <el-input
+                v-model="salesForecastQuery.customer"
+                clearable
+                placeholder="客户"
+                @keyup.enter="onSalesForecastSearch"
+              />
+            </el-form-item>
+            <el-form-item label="关键字">
+              <el-input
+                v-model="salesForecastQuery.keyword"
+                clearable
+                placeholder="制单号/翻单号/款号"
+                @keyup.enter="onSalesForecastSearch"
+              />
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select v-model="salesForecastQuery.status" clearable placeholder="全部状态" style="width: 160px">
+                <el-option label="草稿" value="draft" />
+                <el-option label="已计划" value="planned" />
+                <el-option label="已物料检查" value="material_checked" />
+                <el-option label="工单待同步" value="work_order_pending" />
+                <el-option label="已创建工单" value="work_order_created" />
+                <el-option label="工序卡已同步" value="job_cards_synced" />
+                <el-option label="已取消" value="cancelled" />
+                <el-option label="失败" value="failed" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="开始时间">
+              <el-date-picker
+                v-model="salesForecastQuery.from_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="开始时间"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="结束时间">
+              <el-date-picker
+                v-model="salesForecastQuery.to_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="结束时间"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :disabled="!canRead" @click="onSalesForecastSearch">搜索</el-button>
+              <el-button :disabled="!canRead" @click="onSalesForecastReset">重置</el-button>
+              <el-button :disabled="!canRead" @click="onSalesForecastRefresh">刷新</el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="toolbar-row">
+            <el-button :disabled="!canRead" @click="onSalesForecastSearch">筛选</el-button>
+            <el-button :disabled="!canRead" @click="onSalesForecastClearFilters">清空</el-button>
+            <el-button :disabled="!canRead" @click="onGuardedAction('导出销售预测', false)">导出</el-button>
+            <el-button :disabled="!canRead" @click="onGuardedAction('销售预测列设置', false)">列设置</el-button>
+          </div>
+
+          <el-alert
+            v-if="salesForecastError"
+            class="error-alert"
+            type="error"
+            :closable="false"
+            :title="`销售预测明细加载失败：${salesForecastError}`"
+          />
+
+          <el-table
+            :data="salesForecastRows"
+            border
+            v-loading="salesForecastLoading"
+            empty-text="暂无销售预测明细数据，请调整筛选条件后重试"
+          >
+            <el-table-column prop="plan_no" label="生产制单" min-width="160" />
+            <el-table-column label="订单信息" min-width="220">
+              <template #default="scope">
+                <div class="cell-stack">
+                  <span class="primary-text">{{ scope.row.sales_order }}</span>
+                  <span class="secondary-text">翻单号：{{ scope.row.sales_order_item || '-' }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="item_code" label="款号" min-width="140" />
+            <el-table-column label="客户" min-width="160">
+              <template #default="scope">{{ scope.row.customer || '-' }}</template>
+            </el-table-column>
+            <el-table-column prop="forecast_qty" label="预测数量" min-width="110" />
+            <el-table-column prop="forecast_unit_price" label="预测单价(元)" min-width="120" />
+            <el-table-column prop="forecast_amount" label="预测金额(元)" min-width="130" />
+            <el-table-column label="交期" min-width="120">
+              <template #default="scope">{{ scope.row.delivery_date || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="状态" min-width="120">
+              <template #default="scope">
+                <el-tag :type="statusTagType(scope.row.status)" effect="plain">
+                  {{ statusLabel(scope.row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="检查时间" min-width="180">
+              <template #default="scope">{{ scope.row.checked_at || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" min-width="170">
+              <template #default="scope">
+                <el-button link type="primary" @click="goDetail(scope.row.plan_id)">查看</el-button>
+                <el-button link @click="onGuardedAction('导出销售预测', false)">导出</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager">
+            <el-pagination
+              background
+              layout="prev, pager, next, total, sizes"
+              :current-page="salesForecastQuery.page"
+              :page-size="salesForecastQuery.page_size"
+              :total="salesForecastTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onSalesForecastPageChange"
+              @size-change="onSalesForecastSizeChange"
+            />
+          </div>
+        </div>
       </template>
     </el-card>
   </div>
@@ -166,7 +466,14 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { fetchProductionPlans, type ProductionPlanListItem } from '@/api/production'
+import {
+  fetchProductionMaterialCostDetails,
+  fetchProductionPlans,
+  type ProductionMaterialCostListItem,
+  type ProductionPlanListItem,
+  fetchProductionSalesForecastDetails,
+  type ProductionSalesForecastListItem,
+} from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
@@ -176,6 +483,14 @@ const loading = ref<boolean>(false)
 const rows = ref<ProductionPlanListItem[]>([])
 const total = ref<number>(0)
 const lastError = ref<string>('')
+const materialLoading = ref<boolean>(false)
+const materialRows = ref<ProductionMaterialCostListItem[]>([])
+const materialTotal = ref<number>(0)
+const materialError = ref<string>('')
+const salesForecastLoading = ref<boolean>(false)
+const salesForecastRows = ref<ProductionSalesForecastListItem[]>([])
+const salesForecastTotal = ref<number>(0)
+const salesForecastError = ref<string>('')
 
 const canRead = computed<boolean>(() => {
   return permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('production:read')
@@ -188,6 +503,32 @@ const query = reactive({
   sales_order: '',
   keyword: '',
   turnover_no: '',
+  from_date: '',
+  to_date: '',
+  status: '',
+  page: 1,
+  page_size: 20,
+})
+
+const materialQuery = reactive({
+  sales_order: '',
+  keyword: '',
+  turnover_no: '',
+  material_item_code: '',
+  supplier: '',
+  from_date: '',
+  to_date: '',
+  status: '',
+  page: 1,
+  page_size: 20,
+})
+
+const salesForecastQuery = reactive({
+  sales_order: '',
+  keyword: '',
+  turnover_no: '',
+  item_code: '',
+  customer: '',
   from_date: '',
   to_date: '',
   status: '',
@@ -241,6 +582,20 @@ const validateDateRange = (): boolean => {
   return false
 }
 
+const validateMaterialDateRange = (): boolean => {
+  if (!materialQuery.from_date || !materialQuery.to_date) return true
+  if (materialQuery.from_date <= materialQuery.to_date) return true
+  ElMessage.error('开始时间不能晚于结束时间')
+  return false
+}
+
+const validateSalesForecastDateRange = (): boolean => {
+  if (!salesForecastQuery.from_date || !salesForecastQuery.to_date) return true
+  if (salesForecastQuery.from_date <= salesForecastQuery.to_date) return true
+  ElMessage.error('开始时间不能晚于结束时间')
+  return false
+}
+
 const loadRows = async (): Promise<void> => {
   if (!canRead.value) {
     resetRows()
@@ -273,6 +628,84 @@ const loadRows = async (): Promise<void> => {
   }
 }
 
+const resetMaterialRows = (): void => {
+  materialRows.value = []
+  materialTotal.value = 0
+}
+
+const resetSalesForecastRows = (): void => {
+  salesForecastRows.value = []
+  salesForecastTotal.value = 0
+}
+
+const loadMaterialRows = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetMaterialRows()
+    materialError.value = ''
+    return
+  }
+
+  materialLoading.value = true
+  materialError.value = ''
+  try {
+    const result = await fetchProductionMaterialCostDetails({
+      sales_order: materialQuery.sales_order.trim() || undefined,
+      keyword: materialQuery.keyword.trim() || undefined,
+      turnover_no: materialQuery.turnover_no.trim() || undefined,
+      material_item_code: materialQuery.material_item_code.trim() || undefined,
+      supplier: materialQuery.supplier.trim() || undefined,
+      from_date: materialQuery.from_date || undefined,
+      to_date: materialQuery.to_date || undefined,
+      status: materialQuery.status || undefined,
+      page: materialQuery.page,
+      page_size: materialQuery.page_size,
+    })
+    materialRows.value = result.data.items
+    materialTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    materialError.value = message
+    resetMaterialRows()
+    ElMessage.error(message)
+  } finally {
+    materialLoading.value = false
+  }
+}
+
+const loadSalesForecastRows = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetSalesForecastRows()
+    salesForecastError.value = ''
+    return
+  }
+
+  salesForecastLoading.value = true
+  salesForecastError.value = ''
+  try {
+    const result = await fetchProductionSalesForecastDetails({
+      sales_order: salesForecastQuery.sales_order.trim() || undefined,
+      keyword: salesForecastQuery.keyword.trim() || undefined,
+      turnover_no: salesForecastQuery.turnover_no.trim() || undefined,
+      item_code: salesForecastQuery.item_code.trim() || undefined,
+      customer: salesForecastQuery.customer.trim() || undefined,
+      from_date: salesForecastQuery.from_date || undefined,
+      to_date: salesForecastQuery.to_date || undefined,
+      status: salesForecastQuery.status || undefined,
+      page: salesForecastQuery.page,
+      page_size: salesForecastQuery.page_size,
+    })
+    salesForecastRows.value = result.data.items
+    salesForecastTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    salesForecastError.value = message
+    resetSalesForecastRows()
+    ElMessage.error(message)
+  } finally {
+    salesForecastLoading.value = false
+  }
+}
+
 const onSearch = (): void => {
   if (!validateDateRange()) return
   query.page = 1
@@ -298,6 +731,76 @@ const onClearFilters = (): void => {
   query.from_date = ''
   query.to_date = ''
   query.status = ''
+}
+
+const onMaterialSearch = (): void => {
+  if (!validateMaterialDateRange()) return
+  materialQuery.page = 1
+  void loadMaterialRows()
+}
+
+const onMaterialReset = (): void => {
+  materialQuery.sales_order = ''
+  materialQuery.keyword = ''
+  materialQuery.turnover_no = ''
+  materialQuery.material_item_code = ''
+  materialQuery.supplier = ''
+  materialQuery.from_date = ''
+  materialQuery.to_date = ''
+  materialQuery.status = ''
+  materialQuery.page = 1
+  materialQuery.page_size = 20
+  void loadMaterialRows()
+}
+
+const onMaterialRefresh = (): void => {
+  void loadMaterialRows()
+}
+
+const onMaterialClearFilters = (): void => {
+  materialQuery.sales_order = ''
+  materialQuery.keyword = ''
+  materialQuery.turnover_no = ''
+  materialQuery.material_item_code = ''
+  materialQuery.supplier = ''
+  materialQuery.from_date = ''
+  materialQuery.to_date = ''
+  materialQuery.status = ''
+}
+
+const onSalesForecastSearch = (): void => {
+  if (!validateSalesForecastDateRange()) return
+  salesForecastQuery.page = 1
+  void loadSalesForecastRows()
+}
+
+const onSalesForecastReset = (): void => {
+  salesForecastQuery.sales_order = ''
+  salesForecastQuery.keyword = ''
+  salesForecastQuery.turnover_no = ''
+  salesForecastQuery.item_code = ''
+  salesForecastQuery.customer = ''
+  salesForecastQuery.from_date = ''
+  salesForecastQuery.to_date = ''
+  salesForecastQuery.status = ''
+  salesForecastQuery.page = 1
+  salesForecastQuery.page_size = 20
+  void loadSalesForecastRows()
+}
+
+const onSalesForecastRefresh = (): void => {
+  void loadSalesForecastRows()
+}
+
+const onSalesForecastClearFilters = (): void => {
+  salesForecastQuery.sales_order = ''
+  salesForecastQuery.keyword = ''
+  salesForecastQuery.turnover_no = ''
+  salesForecastQuery.item_code = ''
+  salesForecastQuery.customer = ''
+  salesForecastQuery.from_date = ''
+  salesForecastQuery.to_date = ''
+  salesForecastQuery.status = ''
 }
 
 const onGuardedAction = (actionName: string, isWrite: boolean): void => {
@@ -327,6 +830,28 @@ const onSizeChange = (size: number): void => {
   void loadRows()
 }
 
+const onMaterialPageChange = (page: number): void => {
+  materialQuery.page = page
+  void loadMaterialRows()
+}
+
+const onMaterialSizeChange = (size: number): void => {
+  materialQuery.page_size = size
+  materialQuery.page = 1
+  void loadMaterialRows()
+}
+
+const onSalesForecastPageChange = (page: number): void => {
+  salesForecastQuery.page = page
+  void loadSalesForecastRows()
+}
+
+const onSalesForecastSizeChange = (size: number): void => {
+  salesForecastQuery.page_size = size
+  salesForecastQuery.page = 1
+  void loadSalesForecastRows()
+}
+
 onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
@@ -339,6 +864,8 @@ onMounted(async () => {
   }
   if (canRead.value) {
     await loadRows()
+    await loadMaterialRows()
+    await loadSalesForecastRows()
   }
 })
 </script>
@@ -405,5 +932,17 @@ onMounted(async () => {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+}
+
+.material-cost-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sales-forecast-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>

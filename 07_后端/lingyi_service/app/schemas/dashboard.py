@@ -104,6 +104,48 @@ class DashboardKanbanData(BaseModel):
     messages: list[DashboardKanbanMessageRowData]
 
 
+class DashboardHomeMetricCardData(BaseModel):
+    """Homepage metric card row for P1 dashboard enhancement."""
+
+    key: str
+    label: str
+    value: str
+    unit: str | None = None
+    trend: str | None = None
+
+
+class DashboardHomeTodoItemData(BaseModel):
+    """Homepage todo/warning summary card."""
+
+    key: str
+    title: str
+    count: int
+    status: str
+    action_label: str
+
+
+class DashboardHomeTrendPointData(BaseModel):
+    """Trend point for homepage forecast chart/table."""
+
+    period: str
+    forecast_sales: Decimal
+    forecast_cost: Decimal
+    forecast_profit: Decimal
+
+
+class DashboardHomeOverviewData(BaseModel):
+    """Homepage enhancement block payload."""
+
+    summary_title: str
+    metric_cards: list[DashboardHomeMetricCardData]
+    todo_items: list[DashboardHomeTodoItemData]
+    warnings: list[str]
+    business_summary: list[str]
+    recent_activities: list[str]
+    trend_points: list[DashboardHomeTrendPointData]
+    primary_actions: list[str]
+
+
 class DashboardOverviewData(BaseModel):
     """Dashboard overview response payload."""
 
@@ -116,3 +158,4 @@ class DashboardOverviewData(BaseModel):
     warehouse: DashboardWarehouseOverviewData
     source_status: list[DashboardSourceStatusData]
     kanban: DashboardKanbanData | None = None
+    home_overview: DashboardHomeOverviewData | None = None

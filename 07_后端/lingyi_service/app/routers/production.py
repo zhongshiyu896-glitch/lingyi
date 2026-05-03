@@ -45,11 +45,15 @@ from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
+from app.schemas.production import ProductionMaterialCostListData
+from app.schemas.production import ProductionMaterialCostQuery
 from app.schemas.production import ProductionPlanCreateData
 from app.schemas.production import ProductionPlanCreateRequest
 from app.schemas.production import ProductionPlanDetailData
 from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionSalesForecastListData
+from app.schemas.production import ProductionSalesForecastQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionWorkerRunOnceData
 from app.schemas.production import ProductionWorkerRunOnceRequest
@@ -435,6 +439,128 @@ def list_production_plans(
             page_size=page_size,
         )
         data = _service(session=session, request=request).list_plans(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/material-cost-details", response_model=ApiResponse[ProductionMaterialCostListData])
+def list_production_material_cost_details(
+    request: Request,
+    sales_order: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    turnover_no: str | None = Query(default=None),
+    material_item_code: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_plan",
+            resource_id=None,
+        )
+
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionMaterialCostQuery(
+            sales_order=sales_order,
+            keyword=keyword,
+            turnover_no=turnover_no,
+            material_item_code=material_item_code,
+            supplier=supplier,
+            from_date=from_date,
+            to_date=to_date,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_material_cost_details(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/sales-forecast-details", response_model=ApiResponse[ProductionSalesForecastListData])
+def list_production_sales_forecast_details(
+    request: Request,
+    sales_order: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    turnover_no: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_plan",
+            resource_id=None,
+        )
+
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionSalesForecastQuery(
+            sales_order=sales_order,
+            keyword=keyword,
+            turnover_no=turnover_no,
+            item_code=item_code,
+            customer=customer,
+            from_date=from_date,
+            to_date=to_date,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_sales_forecast_details(
             query=query,
             readable_companies=readable_companies,
             readable_item_codes=readable_items,

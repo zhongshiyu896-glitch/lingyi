@@ -67,11 +67,23 @@ export interface WarehouseStockSummaryItem {
   is_below_safety: boolean
 }
 
+export interface WarehouseManagementItem {
+  warehouse_code: string
+  warehouse_name: string
+  warehouse_type: string
+  manager: string
+  status: 'normal' | 'warning' | 'disabled'
+  capacity_qty: NumericLike
+  used_qty: NumericLike
+  utilization_rate: NumericLike
+}
+
 export interface WarehouseStockSummaryData {
   company?: string | null
   warehouse?: string | null
   item_code?: string | null
   items: WarehouseStockSummaryItem[]
+  warehouse_management?: WarehouseManagementItem[]
 }
 
 export interface WarehouseAlertsQuery {

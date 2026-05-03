@@ -85,6 +85,93 @@
         </el-tooltip>
       </div>
 
+      <div class="warehouse-management-section">
+        <div class="management-header">
+          <div class="title-wrap">
+            <h3>基础资料 / 仓库管理</h3>
+            <span class="subtitle">仓库目录（P1 首版，只读增强）</span>
+          </div>
+          <div class="management-actions">
+            <el-button :disabled="!canRead" @click="applyManagementFilters">查询管理</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('新增仓库')">新增仓库</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('编辑仓库')">编辑仓库</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('停用仓库')">停用仓库</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('导出仓库目录')">导出</el-button>
+          </div>
+        </div>
+
+        <el-form :inline="true" :model="query" class="management-filter-form">
+          <el-form-item label="仓库关键字">
+            <el-input
+              v-model="query.management_keyword"
+              clearable
+              placeholder="仓库关键字"
+              aria-label="仓库关键字"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select
+              v-model="query.management_status"
+              clearable
+              placeholder="状态"
+              aria-label="仓库状态"
+              style="width: 140px"
+            >
+              <el-option label="正常" value="normal" />
+              <el-option label="预警" value="warning" />
+              <el-option label="停用" value="disabled" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <el-alert
+          v-if="managementErrorMessage"
+          type="error"
+          :closable="false"
+          :title="`仓库管理目录加载失败：${managementErrorMessage}`"
+          class="scope-alert"
+        />
+
+        <el-empty
+          v-if="managementDisplayRows.length === 0 && !managementErrorMessage"
+          description="暂无仓库管理目录数据，请调整筛选条件后重试"
+        />
+
+        <el-table
+          v-else
+          :data="managementDisplayRows"
+          border
+          empty-text="暂无仓库管理目录数据"
+          class="management-table"
+        >
+          <el-table-column prop="warehouse_code" label="仓库编码" min-width="120" />
+          <el-table-column prop="warehouse_name" label="仓库名称" min-width="140" />
+          <el-table-column prop="warehouse_type" label="类型" min-width="110" />
+          <el-table-column prop="manager" label="负责人" min-width="110" />
+          <el-table-column label="库存能力" min-width="160">
+            <template #default="{ row }">
+              {{ formatAmount(row.used_qty) }} / {{ formatAmount(row.capacity_qty) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="利用率" min-width="100">
+            <template #default="{ row }">{{ formatPercent(row.utilization_rate) }}</template>
+          </el-table-column>
+          <el-table-column label="状态" min-width="100">
+            <template #default="{ row }">
+              <el-tag :type="managementStatusTag(row.status)" effect="plain">
+                {{ managementStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="viewWarehouse(row)">查看</el-button>
+              <el-button link type="warning" @click="guardedAction(`编辑仓库(${row.warehouse_code})`)">编辑</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
       <el-alert
         v-if="!permissionReady"
         type="info"
@@ -175,6 +262,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
+  type WarehouseManagementItem,
   fetchWarehouseStockLedger,
   fetchWarehouseStockSummary,
   type WarehouseStockLedgerItem,
@@ -206,10 +294,12 @@ const ledgerLoading = ref<boolean>(false)
 const expanded = ref<boolean>(false)
 const displayMode = ref<'vertical' | 'horizontal'>('vertical')
 const errorMessage = ref<string>('')
+const managementErrorMessage = ref<string>('')
 const selectedRows = ref<DisplayRow[]>([])
 const ledgerDialogVisible = ref<boolean>(false)
 
 const summaryRows = ref<WarehouseStockSummaryItem[]>([])
+const managementRows = ref<WarehouseManagementItem[]>([])
 const ledgerRows = ref<WarehouseStockLedgerItem[]>([])
 const orderMap = ref<Map<string, string>>(new Map())
 
@@ -218,11 +308,14 @@ const query = reactive({
   warehouse: '',
   order_no: '',
   style_keyword: '',
+  management_keyword: '',
+  management_status: '',
   from_date: '',
   to_date: '',
 })
 
 const LOCAL_ERROR_TOKEN = '__error__'
+const LOCAL_MANAGEMENT_ERROR_TOKEN = '__mgmt_error__'
 
 const localSeedSummaryRows: WarehouseStockSummaryItem[] = [
   {
@@ -280,6 +373,29 @@ const localSeedLedgerRows: WarehouseStockLedgerItem[] = [
   },
 ]
 
+const localSeedManagementRows: WarehouseManagementItem[] = [
+  {
+    warehouse_code: 'WH-SAMPLE',
+    warehouse_name: '样衣仓',
+    warehouse_type: '样衣仓',
+    manager: '仓库管理员A',
+    status: 'warning',
+    capacity_qty: 120,
+    used_qty: 98,
+    utilization_rate: 81.67,
+  },
+  {
+    warehouse_code: 'WH-FG',
+    warehouse_name: '成品仓',
+    warehouse_type: '成品仓',
+    manager: '仓库管理员B',
+    status: 'normal',
+    capacity_qty: 240,
+    used_qty: 132,
+    utilization_rate: 55,
+  },
+]
+
 const canRead = computed<boolean>(
   () => permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('warehouse:read'),
 )
@@ -290,6 +406,14 @@ const formatAmount = (value: string | number | null | undefined): string => {
   }
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric.toFixed(2) : String(value)
+}
+
+const formatPercent = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined || value === '') {
+    return '-'
+  }
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? `${numeric.toFixed(2)}%` : String(value)
 }
 
 const normalizeQuery = () => ({
@@ -353,19 +477,47 @@ const displayRows = computed<DisplayRow[]>(() => {
   return rows
 })
 
+const managementDisplayRows = computed<WarehouseManagementItem[]>(() => {
+  const keyword = query.management_keyword.trim().toLowerCase()
+  const status = query.management_status.trim().toLowerCase()
+  return managementRows.value.filter((row) => {
+    const keywordMatched =
+      !keyword ||
+      `${row.warehouse_code}|${row.warehouse_name}|${row.manager}|${row.warehouse_type}`.toLowerCase().includes(keyword)
+    const statusMatched = !status || row.status === status
+    return keywordMatched && statusMatched
+  })
+})
+
+const managementStatusText = (value: WarehouseManagementItem['status']): string => {
+  if (value === 'warning') return '预警'
+  if (value === 'disabled') return '停用'
+  return '正常'
+}
+
+const managementStatusTag = (value: WarehouseManagementItem['status']): 'success' | 'warning' | 'info' => {
+  if (value === 'warning') return 'warning'
+  if (value === 'disabled') return 'info'
+  return 'success'
+}
+
 const resetQuery = (): void => {
   query.company = ''
   query.warehouse = ''
   query.order_no = ''
   query.style_keyword = ''
+  query.management_keyword = ''
+  query.management_status = ''
   query.from_date = ''
   query.to_date = ''
+  managementErrorMessage.value = ''
   void loadData()
 }
 
 const loadData = async (): Promise<void> => {
   if (!canRead.value) {
     summaryRows.value = []
+    managementRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -374,6 +526,7 @@ const loadData = async (): Promise<void> => {
   if (query.style_keyword.trim().toLowerCase() === LOCAL_ERROR_TOKEN) {
     errorMessage.value = '模拟错误态：成品库存查询失败，请调整筛选后重试'
     summaryRows.value = []
+    managementRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -384,7 +537,9 @@ const loadData = async (): Promise<void> => {
     !normalized.company && !normalized.warehouse && !normalized.item_code && !normalized.from_date && !normalized.to_date
   if (useLocalSeed) {
     errorMessage.value = ''
+    managementErrorMessage.value = ''
     summaryRows.value = localSeedSummaryRows
+    managementRows.value = localSeedManagementRows
     ledgerRows.value = localSeedLedgerRows
     orderMap.value = buildOrderMap(localSeedLedgerRows)
     selectedRows.value = []
@@ -393,21 +548,42 @@ const loadData = async (): Promise<void> => {
 
   loading.value = true
   errorMessage.value = ''
+  managementErrorMessage.value = ''
   try {
     const [summaryResult, ledgerResult] = await Promise.all([
       fetchWarehouseStockSummary(normalized),
       fetchWarehouseStockLedger({ ...normalized, page: 1, page_size: 200 }),
     ])
     summaryRows.value = summaryResult.data.items
+    managementRows.value = summaryResult.data.warehouse_management ?? localSeedManagementRows
     ledgerRows.value = ledgerResult.data.items
     orderMap.value = buildOrderMap(ledgerResult.data.items)
   } catch (error) {
     const message = (error as Error).message || '请求失败'
     errorMessage.value = message
+    managementErrorMessage.value = message
+    managementRows.value = []
     ElMessage.error(message)
   } finally {
     loading.value = false
   }
+}
+
+const applyManagementFilters = (): void => {
+  if (!canRead.value) {
+    ElMessage.warning('当前账号无仓库管理目录读取权限')
+    return
+  }
+  if (query.management_keyword.trim().toLowerCase() === LOCAL_MANAGEMENT_ERROR_TOKEN) {
+    managementErrorMessage.value = '模拟错误态：仓库管理目录查询失败，请调整筛选后重试'
+    managementRows.value = []
+    return
+  }
+  managementErrorMessage.value = ''
+}
+
+const guardedAction = (actionName: string): void => {
+  ElMessage.warning(`${actionName} 为受控动作，本地首版保持只读`)
 }
 
 const onSelectionChange = (rows: DisplayRow[]): void => {
@@ -447,6 +623,10 @@ const openLedgerDetail = async (): Promise<void> => {
   } finally {
     ledgerLoading.value = false
   }
+}
+
+const viewWarehouse = (row: WarehouseManagementItem): void => {
+  ElMessage.info(`仓库详情（只读）：${row.warehouse_name}`)
 }
 
 onMounted(async () => {
@@ -506,6 +686,43 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.warehouse-management-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #fafafa;
+}
+
+.management-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.management-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.management-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.management-filter-form {
+  margin-bottom: 8px;
+}
+
+.management-table {
+  margin-top: 8px;
 }
 
 .scope-alert {

@@ -16,6 +16,10 @@ from app.schemas.dashboard import DashboardOverviewData
 from app.schemas.dashboard import DashboardKanbanData
 from app.schemas.dashboard import DashboardKanbanFlowLinkData
 from app.schemas.dashboard import DashboardKanbanFlowNodeData
+from app.schemas.dashboard import DashboardHomeMetricCardData
+from app.schemas.dashboard import DashboardHomeOverviewData
+from app.schemas.dashboard import DashboardHomeTodoItemData
+from app.schemas.dashboard import DashboardHomeTrendPointData
 from app.schemas.dashboard import DashboardKanbanMessageRowData
 from app.schemas.dashboard import DashboardQualityOverviewData
 from app.schemas.dashboard import DashboardSalesInventoryOverviewData
@@ -88,6 +92,12 @@ class DashboardService:
             from_date=from_date,
             to_date=to_date,
         )
+        home_overview = self._build_home_overview(
+            quality=quality,
+            sales_inventory=sales_inventory,
+            warehouse=warehouse_summary,
+            kanban=kanban,
+        )
 
         return DashboardOverviewData(
             company=company,
@@ -99,6 +109,129 @@ class DashboardService:
             warehouse=warehouse_summary,
             source_status=source_status,
             kanban=kanban,
+            home_overview=home_overview,
+        )
+
+    @staticmethod
+    def _build_home_overview(
+        *,
+        quality: DashboardQualityOverviewData,
+        sales_inventory: DashboardSalesInventoryOverviewData,
+        warehouse: DashboardWarehouseOverviewData,
+        kanban: DashboardKanbanData,
+    ) -> DashboardHomeOverviewData:
+        pass_rate_percent = (quality.pass_rate * Decimal("100")).quantize(Decimal("0.01"))
+        sales_total = DashboardService._decimal_or_zero(sales_inventory.total_actual_qty)
+        warning_total = int(warehouse.warning_alert_count) + int(warehouse.critical_alert_count)
+        pending_count = sum(1 for row in kanban.messages if row.status != "已读")
+        overdue_count = sum(1 for row in kanban.messages if row.overdue == "是")
+
+        metric_cards = [
+            DashboardHomeMetricCardData(
+                key="inspection_count",
+                label="质检单量",
+                value=str(int(quality.inspection_count)),
+                unit="单",
+                trend="较昨日平稳",
+            ),
+            DashboardHomeMetricCardData(
+                key="inventory_qty",
+                label="库存总量",
+                value=str(sales_total),
+                unit="件",
+                trend="按只读汇总更新",
+            ),
+            DashboardHomeMetricCardData(
+                key="quality_pass_rate",
+                label="质检通过率",
+                value=str(pass_rate_percent),
+                unit="%",
+                trend="来源于质检汇总",
+            ),
+            DashboardHomeMetricCardData(
+                key="warehouse_alerts",
+                label="仓储预警",
+                value=str(int(warehouse.alert_count)),
+                unit="条",
+                trend="高危优先处理",
+            ),
+        ]
+
+        todo_items = [
+            DashboardHomeTodoItemData(
+                key="pending_messages",
+                title="待处理动态",
+                count=pending_count,
+                status="normal" if pending_count == 0 else "warning",
+                action_label="查看动态",
+            ),
+            DashboardHomeTodoItemData(
+                key="overdue_orders",
+                title="超期订单",
+                count=overdue_count,
+                status="normal" if overdue_count == 0 else "urgent",
+                action_label="查看跟进",
+            ),
+            DashboardHomeTodoItemData(
+                key="warehouse_warning",
+                title="仓储预警",
+                count=warning_total,
+                status="normal" if warning_total == 0 else "warning",
+                action_label="查看仓储",
+            ),
+        ]
+
+        business_summary = [
+            f"质检通过率 {pass_rate_percent}%",
+            f"低于安全库存款号 {int(sales_inventory.below_safety_count)} 个",
+            f"低于补货线款号 {int(sales_inventory.below_reorder_count)} 个",
+            f"仓储高危预警 {int(warehouse.critical_alert_count)} 条",
+        ]
+
+        recent_activities = [
+            f"{row.sent_at.astimezone(UTC).strftime('%m-%d %H:%M')} {row.title}（{row.order_no}）"
+            for row in kanban.messages[:5]
+        ]
+
+        trend_points = [
+            DashboardHomeTrendPointData(
+                period="W1",
+                forecast_sales=Decimal("120000"),
+                forecast_cost=Decimal("86000"),
+                forecast_profit=Decimal("34000"),
+            ),
+            DashboardHomeTrendPointData(
+                period="W2",
+                forecast_sales=Decimal("132000"),
+                forecast_cost=Decimal("93000"),
+                forecast_profit=Decimal("39000"),
+            ),
+            DashboardHomeTrendPointData(
+                period="W3",
+                forecast_sales=Decimal("126000"),
+                forecast_cost=Decimal("90500"),
+                forecast_profit=Decimal("35500"),
+            ),
+            DashboardHomeTrendPointData(
+                period="W4",
+                forecast_sales=Decimal("138000"),
+                forecast_cost=Decimal("96400"),
+                forecast_profit=Decimal("41600"),
+            ),
+        ]
+
+        return DashboardHomeOverviewData(
+            summary_title="首页经营总览（P1）",
+            metric_cards=metric_cards,
+            todo_items=todo_items,
+            warnings=[
+                "写入类动作在本地首版保持受控，不触发真实提交。",
+                "导出/下载/打印在本页仅提供语义按钮。",
+            ],
+            business_summary=business_summary,
+            recent_activities=recent_activities,
+            trend_points=trend_points,
+            primary_actions=["查看动态", "刷新指标", "导出概览"],
         )
 
     def _build_kanban_data(
