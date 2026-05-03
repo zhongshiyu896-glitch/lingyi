@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "precheck:dev-runtime": "node scripts/precheck-dev-runtime-gate.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "build": "vue-tsc --noEmit -p tsconfig.json && vite build",
     "check:production-contracts": "node scripts/check-production-contracts.mjs",

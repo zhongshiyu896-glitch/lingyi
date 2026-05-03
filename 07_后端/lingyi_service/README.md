@@ -65,6 +65,45 @@ bash scripts/run_postgresql_ci_gate.sh
 
 旧单文件 `.pytest-postgresql.xml` 已废弃，不再作为 PostgreSQL hard gate 证据。
 
+## Local Dev Runtime / Dev-Auth Gate (TASK-263A)
+
+仅用于本地开发联调，禁止用于生产环境。
+
+### 启动顺序（本地）
+
+1. 启动后端本地 dev runtime（127.0.0.1:8000）：
+
+```bash
+cd "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service"
+bash scripts/run_local_dev_runtime.sh
+```
+
+- 脚本仅允许 `127.0.0.1:8000`，且仅在当前进程导出 `LINGYI_ALLOW_DEV_AUTH=true`。
+- 若 8000 已被 pre-existing 进程占用，脚本只提示并退出，不会执行 kill。
+
+2. 启动前端 dev server（127.0.0.1:5174）：
+
+```bash
+cd "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc"
+npm run dev -- --host 127.0.0.1 --port 5174
+```
+
+3. 执行只读门禁预检（仅 GET，本地地址）：
+
+```bash
+cd "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc"
+npm run precheck:dev-runtime
+```
+
+预检脚本会对以下端点注入 dev headers 并输出 JSON 摘要：
+
+- `http://127.0.0.1:8000/api/auth/me`
+- `http://127.0.0.1:8000/api/reports/catalog`
+- `http://127.0.0.1:5174/api/auth/me`
+- `http://127.0.0.1:5174/api/reports/catalog`
+
+若任一端点非 200，脚本会以非 0 退出码返回门禁失败。
+
 ### Maintenance note (expected test count)
 
 `scripts/run_postgresql_ci_gate.sh` 当前会分别生成并断言两份 JUnit：
