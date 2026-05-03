@@ -124,6 +124,8 @@ def _to_snapshot_result(snapshot: LyStyleProfitSnapshot, *, idempotent_replay: b
         allocation_status=str(snapshot.allocation_status),
         include_provisional_subcontract=bool(snapshot.include_provisional_subcontract),
         unresolved_count=int(snapshot.unresolved_count or 0),
+        created_by=str(snapshot.created_by) if snapshot.created_by else None,
+        created_at=snapshot.created_at if isinstance(snapshot.created_at, datetime) else datetime.utcnow(),
         idempotency_key=str(snapshot.idempotency_key),
         request_hash=str(snapshot.request_hash),
         idempotent_replay=idempotent_replay,
@@ -135,6 +137,7 @@ def _to_list_item(row: LyStyleProfitSnapshot) -> StyleProfitSnapshotListItem:
         id=int(row.id),
         snapshot_no=str(row.snapshot_no),
         company=str(row.company),
+        company_full_name=str(row.company),
         item_code=str(row.item_code),
         sales_order=str(row.sales_order) if row.sales_order else None,
         from_date=row.from_date,
@@ -150,6 +153,7 @@ def _to_list_item(row: LyStyleProfitSnapshot) -> StyleProfitSnapshotListItem:
         include_provisional_subcontract=bool(row.include_provisional_subcontract),
         formula_version=str(row.formula_version),
         unresolved_count=int(row.unresolved_count or 0),
+        created_by=str(row.created_by) if row.created_by else None,
         created_at=row.created_at if isinstance(row.created_at, datetime) else datetime.utcnow(),
     )
 

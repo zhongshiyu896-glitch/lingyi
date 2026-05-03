@@ -140,6 +140,8 @@ class StyleProfitSnapshotResult(BaseModel):
     allocation_status: str
     include_provisional_subcontract: bool
     unresolved_count: int
+    created_by: str | None = None
+    created_at: datetime
     idempotency_key: str
     request_hash: str
     idempotent_replay: bool = False
@@ -166,6 +168,7 @@ class StyleProfitSnapshotListItem(BaseModel):
     id: int
     snapshot_no: str
     company: str
+    company_full_name: str | None = None
     item_code: str
     sales_order: str | None = None
     from_date: date | None = None
@@ -181,6 +184,7 @@ class StyleProfitSnapshotListItem(BaseModel):
     include_provisional_subcontract: bool
     formula_version: str
     unresolved_count: int
+    created_by: str | None = None
     created_at: datetime
 
 

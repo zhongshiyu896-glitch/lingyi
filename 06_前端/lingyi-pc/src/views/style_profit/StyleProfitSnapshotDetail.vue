@@ -3,7 +3,7 @@
     <el-card shadow="never" v-loading="loading">
       <template #header>
         <div class="header-row">
-          <span>款式利润快照详情</span>
+          <span>财务管理 / 成品销售利润明细表</span>
           <el-button @click="goBack">返回列表</el-button>
         </div>
       </template>
@@ -11,6 +11,14 @@
       <el-skeleton v-if="!permissionReady" :rows="4" animated />
       <el-empty v-else-if="!canRead" description="无款式利润查看权限" />
       <template v-else>
+        <el-alert
+          v-if="loadError"
+          :title="`利润快照详情加载失败：${loadError}`"
+          type="error"
+          show-icon
+          :closable="false"
+          class="warn-alert"
+        />
         <el-empty v-if="missingSnapshotId" description="请从款式利润列表进入详情页" />
         <el-empty v-else-if="!snapshot" description="未找到利润快照数据" />
         <template v-else>
@@ -25,7 +33,11 @@
           <el-descriptions :column="3" border>
             <el-descriptions-item label="快照号">{{ snapshot.snapshot_no }}</el-descriptions-item>
             <el-descriptions-item label="快照 ID">{{ snapshot.snapshot_id }}</el-descriptions-item>
-            <el-descriptions-item label="状态">{{ snapshot.snapshot_status }}</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="statusTagType(snapshot.snapshot_status)">
+                {{ statusText(snapshot.snapshot_status) }}
+              </el-tag>
+            </el-descriptions-item>
             <el-descriptions-item label="公司">{{ snapshot.company }}</el-descriptions-item>
             <el-descriptions-item label="款式">{{ snapshot.item_code }}</el-descriptions-item>
             <el-descriptions-item label="销售订单">{{ snapshot.sales_order || '-' }}</el-descriptions-item>
@@ -40,6 +52,9 @@
             <el-descriptions-item label="纳入暂估外发">
               {{ snapshot.include_provisional_subcontract ? '是' : '否' }}
             </el-descriptions-item>
+            <el-descriptions-item label="标题">{{ snapshot.snapshot_no }}</el-descriptions-item>
+            <el-descriptions-item label="发送时间">{{ snapshot.created_at || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="发送人">{{ snapshot.created_by || '-' }}</el-descriptions-item>
           </el-descriptions>
           <el-collapse v-model="auditPanels" class="audit-collapse">
             <el-collapse-item title="审计信息（仅供审计复核）" name="audit">
@@ -137,6 +152,7 @@ const sourceMaps = ref<StyleProfitSourceMapItem[]>([])
 const auditPanels = ref<string[]>([])
 const missingSnapshotId = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
+const loadError = ref<string>('')
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const snapshotId = computed<number>(() => Number(route.query.id || '0'))
@@ -166,7 +182,20 @@ const formatProfitRate = (value: string | number | null | undefined): string => 
   return Number.isFinite(numeric) ? `${(numeric * 100).toFixed(2)}%` : String(value)
 }
 
+const statusText = (status: string | null | undefined): string => {
+  if (status === 'complete') return '已完成'
+  if (status === 'incomplete') return '待复核'
+  return status || '-'
+}
+
+const statusTagType = (status: string | null | undefined): 'success' | 'warning' | 'info' => {
+  if (status === 'complete') return 'success'
+  if (status === 'incomplete') return 'warning'
+  return 'info'
+}
+
 const loadDetail = async (): Promise<void> => {
+  loadError.value = ''
   if (!canRead.value) {
     snapshot.value = null
     details.value = []
@@ -190,7 +219,12 @@ const loadDetail = async (): Promise<void> => {
     details.value = result.data.details
     sourceMaps.value = result.data.source_maps
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message || '未知错误'
+    loadError.value = message
+    snapshot.value = null
+    details.value = []
+    sourceMaps.value = []
+    ElMessage.error(message)
   } finally {
     loading.value = false
   }

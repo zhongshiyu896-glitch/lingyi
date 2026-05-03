@@ -6,6 +6,7 @@ from collections.abc import Generator
 from datetime import UTC
 from datetime import date
 from datetime import datetime
+import os
 from typing import Any
 
 from fastapi import APIRouter
@@ -69,6 +70,18 @@ def _handle_erpnext_error(
         reason_code=exc.error_code,
     )
     raise HTTPException(status_code=int(exc.http_status or 503), detail=exc.to_http_detail()) from exc
+
+
+def _local_read_fallback_enabled(exc: ERPNextAdapterException) -> bool:
+    """Allow dev-only readonly fallback when ERPNext base URL is intentionally absent."""
+    env = os.getenv("APP_ENV", "").strip().lower()
+    allow_dev_auth = os.getenv("LINGYI_ALLOW_DEV_AUTH", "").strip().lower()
+    return (
+        exc.error_code == EXTERNAL_SERVICE_UNAVAILABLE
+        and env in {"development", "dev", "local"}
+        and allow_dev_auth == "true"
+        and get_permission_source() == "static"
+    )
 
 
 def _raise_hidden_sales_order_not_found() -> None:
@@ -224,6 +237,8 @@ def list_sales_orders(
             page_size=page_size,
         )
     except ERPNextAdapterException as exc:
+        if _local_read_fallback_enabled(exc):
+            return _ok({"items": [], "total": 0, "page": page, "page_size": page_size})
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,
@@ -672,6 +687,8 @@ def get_finished_goods_report(
             page_size=page_size,
         )
     except ERPNextAdapterException as exc:
+        if _local_read_fallback_enabled(exc):
+            return _ok({"items": [], "total": 0, "page": page, "page_size": page_size, "dropped_count": 0})
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,

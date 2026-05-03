@@ -6,6 +6,7 @@ export interface StyleProfitSnapshotListItem {
   id: number
   snapshot_no: string
   company: string
+  company_full_name?: string | null
   item_code: string
   sales_order?: string | null
   from_date?: string | null
@@ -21,6 +22,7 @@ export interface StyleProfitSnapshotListItem {
   include_provisional_subcontract: boolean
   formula_version: string
   unresolved_count: number
+  created_by?: string | null
   created_at: string
 }
 
@@ -47,6 +49,8 @@ export interface StyleProfitSnapshotResult {
   allocation_status: string
   include_provisional_subcontract: boolean
   unresolved_count: number
+  created_by?: string | null
+  created_at: string
   request_hash: string
   idempotent_replay: boolean
 }

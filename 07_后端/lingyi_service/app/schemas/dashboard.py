@@ -55,6 +55,55 @@ class DashboardSourceStatusData(BaseModel):
     status: str
 
 
+class DashboardKanbanFlowNodeData(BaseModel):
+    """Flow node shown in bulk-management kanban."""
+
+    key: str
+    label: str
+    status: str
+    route: str | None = None
+
+
+class DashboardKanbanFlowLinkData(BaseModel):
+    """Flow edge between two kanban nodes."""
+
+    from_key: str
+    to_key: str
+
+
+class DashboardKanbanMessageRowData(BaseModel):
+    """Read-only kanban message row mapped from evidence table headers."""
+
+    image: str | None = None
+    order_no: str
+    customer: str
+    style_no: str
+    style_name: str
+    ordered_qty: Decimal
+    overdue: str
+    sun: str
+    mon: str
+    tue: str
+    wed: str
+    thu: str
+    fri: str
+    sat: str
+    title: str
+    sent_at: datetime
+    status: str
+    sender: str
+
+
+class DashboardKanbanData(BaseModel):
+    """Read-only bulk-management kanban payload."""
+
+    board_name: str
+    quick_filters: list[str]
+    flow_nodes: list[DashboardKanbanFlowNodeData]
+    flow_links: list[DashboardKanbanFlowLinkData]
+    messages: list[DashboardKanbanMessageRowData]
+
+
 class DashboardOverviewData(BaseModel):
     """Dashboard overview response payload."""
 
@@ -66,3 +115,4 @@ class DashboardOverviewData(BaseModel):
     sales_inventory: DashboardSalesInventoryOverviewData
     warehouse: DashboardWarehouseOverviewData
     source_status: list[DashboardSourceStatusData]
+    kanban: DashboardKanbanData | None = None

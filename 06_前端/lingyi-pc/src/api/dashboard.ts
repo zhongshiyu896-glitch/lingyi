@@ -18,11 +18,12 @@ const toQuery = (params: Record<string, unknown>): string => {
 }
 
 export interface DashboardOverviewQuery {
-  company: string
+  company?: string
   from_date?: string
   to_date?: string
   item_code?: string
   warehouse?: string
+  keyword?: string
 }
 
 export interface DashboardSourceStatus {
@@ -60,6 +61,48 @@ export interface DashboardOverviewData {
   sales_inventory: DashboardSalesInventoryOverview
   warehouse: DashboardWarehouseOverview
   source_status: DashboardSourceStatus[]
+  kanban?: DashboardKanbanData | null
+}
+
+export interface DashboardKanbanFlowNode {
+  key: string
+  label: string
+  status: 'normal' | 'active' | 'completed'
+  route?: string | null
+}
+
+export interface DashboardKanbanFlowLink {
+  from_key: string
+  to_key: string
+}
+
+export interface DashboardKanbanMessageRow {
+  image?: string | null
+  order_no: string
+  customer: string
+  style_no: string
+  style_name: string
+  ordered_qty: NumericLike
+  overdue: string
+  sun: string
+  mon: string
+  tue: string
+  wed: string
+  thu: string
+  fri: string
+  sat: string
+  title: string
+  sent_at: string
+  status: string
+  sender: string
+}
+
+export interface DashboardKanbanData {
+  board_name: string
+  quick_filters: string[]
+  flow_nodes: DashboardKanbanFlowNode[]
+  flow_links: DashboardKanbanFlowLink[]
+  messages: DashboardKanbanMessageRow[]
 }
 
 export const fetchDashboardOverview = async (
@@ -71,6 +114,7 @@ export const fetchDashboardOverview = async (
     to_date: query.to_date,
     item_code: query.item_code,
     warehouse: query.warehouse,
+    keyword: query.keyword,
   })
   return request<DashboardOverviewData>(`/api/dashboard/overview?${queryString}`)
 }

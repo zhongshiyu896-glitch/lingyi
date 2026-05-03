@@ -13,6 +13,10 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from app.schemas.dashboard import DashboardOverviewData
+from app.schemas.dashboard import DashboardKanbanData
+from app.schemas.dashboard import DashboardKanbanFlowLinkData
+from app.schemas.dashboard import DashboardKanbanFlowNodeData
+from app.schemas.dashboard import DashboardKanbanMessageRowData
 from app.schemas.dashboard import DashboardQualityOverviewData
 from app.schemas.dashboard import DashboardSalesInventoryOverviewData
 from app.schemas.dashboard import DashboardSourceStatusData
@@ -52,6 +56,7 @@ class DashboardService:
         to_date: date | None,
         item_code: str | None,
         warehouse: str | None,
+        keyword: str | None = None,
     ) -> DashboardOverviewData:
         source_status: list[DashboardSourceStatusData] = []
 
@@ -78,6 +83,12 @@ class DashboardService:
         )
         source_status.append(DashboardSourceStatusData(module="warehouse", status="ok"))
 
+        kanban = self._build_kanban_data(
+            keyword=keyword,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
         return DashboardOverviewData(
             company=company,
             from_date=from_date,
@@ -87,6 +98,152 @@ class DashboardService:
             sales_inventory=sales_inventory,
             warehouse=warehouse_summary,
             source_status=source_status,
+            kanban=kanban,
+        )
+
+    def _build_kanban_data(
+        self,
+        *,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+    ) -> DashboardKanbanData:
+        messages = [
+            DashboardKanbanMessageRowData(
+                image=None,
+                order_no="SO-240601-001",
+                customer="华东客户A",
+                style_no="L-1001",
+                style_name="春夏T恤",
+                ordered_qty=Decimal("1200"),
+                overdue="否",
+                sun="",
+                mon="",
+                tue="",
+                wed="",
+                thu="",
+                fri="",
+                sat="",
+                title="订单已下发",
+                sent_at=datetime(2026, 5, 3, 9, 30, tzinfo=UTC),
+                status="已读",
+                sender="跟单员A",
+            ),
+            DashboardKanbanMessageRowData(
+                image=None,
+                order_no="SO-240601-002",
+                customer="华南客户B",
+                style_no="D-2030",
+                style_name="连衣裙",
+                ordered_qty=Decimal("860"),
+                overdue="是",
+                sun="",
+                mon="",
+                tue="",
+                wed="",
+                thu="",
+                fri="",
+                sat="",
+                title="请确认面料到仓",
+                sent_at=datetime(2026, 5, 3, 10, 15, tzinfo=UTC),
+                status="待处理",
+                sender="跟单员B",
+            ),
+        ]
+
+        if from_date is not None:
+            messages = [row for row in messages if row.sent_at.date() >= from_date]
+        if to_date is not None:
+            messages = [row for row in messages if row.sent_at.date() <= to_date]
+
+        normalized_keyword = (keyword or "").strip().lower()
+        if normalized_keyword:
+            messages = [
+                row
+                for row in messages
+                if normalized_keyword in (
+                    f"{row.order_no}|{row.customer}|{row.style_no}|{row.style_name}|{row.title}".lower()
+                )
+            ]
+
+        return DashboardKanbanData(
+            board_name="大货看板",
+            quick_filters=[
+                "物料类型",
+                "物料单位",
+                "客户画像",
+                "加工厂画像",
+                "供应商画像",
+                "样板单",
+                "设计打样",
+                "跟进模板",
+                "大货看板",
+            ],
+            flow_nodes=[
+                DashboardKanbanFlowNodeData(
+                    key="quote",
+                    label="报价单",
+                    status="completed",
+                    route="/sales-inventory/sales-orders",
+                ),
+                DashboardKanbanFlowNodeData(
+                    key="order",
+                    label="订单",
+                    status="active",
+                    route="/sales-inventory/sales-orders",
+                ),
+                DashboardKanbanFlowNodeData(
+                    key="production_order",
+                    label="生产制单",
+                    status="active",
+                    route="/production/plans",
+                ),
+                DashboardKanbanFlowNodeData(
+                    key="material",
+                    label="面料",
+                    status="normal",
+                    route="/production/plans",
+                ),
+                DashboardKanbanFlowNodeData(
+                    key="bulk_followup",
+                    label="大货跟进",
+                    status="active",
+                    route="/production/plans",
+                ),
+                DashboardKanbanFlowNodeData(
+                    key="factory_contract",
+                    label="工厂合同",
+                    status="normal",
+                    route="/subcontract/list",
+                ),
+                DashboardKanbanFlowNodeData(
+                    key="qc",
+                    label="工厂合同质检",
+                    status="normal",
+                    route="/quality/inspections",
+                ),
+                DashboardKanbanFlowNodeData(
+                    key="accessory",
+                    label="辅料/包材",
+                    status="normal",
+                    route="/production/plans",
+                ),
+                DashboardKanbanFlowNodeData(
+                    key="cost",
+                    label="大货成本核算",
+                    status="normal",
+                    route="/reports/style-profit",
+                ),
+            ],
+            flow_links=[
+                DashboardKanbanFlowLinkData(from_key="quote", to_key="order"),
+                DashboardKanbanFlowLinkData(from_key="order", to_key="production_order"),
+                DashboardKanbanFlowLinkData(from_key="production_order", to_key="factory_contract"),
+                DashboardKanbanFlowLinkData(from_key="factory_contract", to_key="qc"),
+                DashboardKanbanFlowLinkData(from_key="material", to_key="bulk_followup"),
+                DashboardKanbanFlowLinkData(from_key="accessory", to_key="cost"),
+            ],
+            messages=messages,
         )
 
     def _build_quality_summary(

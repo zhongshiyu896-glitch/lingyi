@@ -1697,6 +1697,8 @@ class StyleProfitService:
             allocation_status=str(snapshot.allocation_status),
             include_provisional_subcontract=bool(snapshot.include_provisional_subcontract),
             unresolved_count=int(snapshot.unresolved_count or 0),
+            created_by=str(snapshot.created_by) if snapshot.created_by else None,
+            created_at=snapshot.created_at if isinstance(snapshot.created_at, datetime) else datetime.now(timezone.utc),
             idempotency_key=str(snapshot.idempotency_key),
             request_hash=str(snapshot.request_hash),
             idempotent_replay=idempotent_replay,

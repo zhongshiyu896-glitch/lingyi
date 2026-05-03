@@ -92,6 +92,7 @@ def get_dashboard_overview(
     to_date: str | None = Query(default=None),
     item_code: str | None = Query(default=None),
     warehouse: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -135,6 +136,7 @@ def get_dashboard_overview(
             to_date=parsed_to_date,
             item_code=normalized_item_code,
             warehouse=normalized_warehouse,
+            keyword=_scope_text(keyword),
         )
     except DashboardSourceUnavailableError as exc:
         raise HTTPException(
