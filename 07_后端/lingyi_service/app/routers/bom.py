@@ -37,17 +37,27 @@ from app.core.permissions import BOM_READ
 from app.core.permissions import BOM_SET_DEFAULT
 from app.core.permissions import BOM_UPDATE
 from app.schemas.bom import BomActivateData
+from app.schemas.bom import BomAccessoriesPackagingData
+from app.schemas.bom import BomAccessoriesPackagingQuery
 from app.schemas.bom import BomCreateRequest
 from app.schemas.bom import BomDeactivateData
 from app.schemas.bom import BomDeactivateRequest
 from app.schemas.bom import BomDetailData
 from app.schemas.bom import BomExplodeData
 from app.schemas.bom import BomExplodeRequest
+from app.schemas.bom import BomFabricData
+from app.schemas.bom import BomFabricQuery
 from app.schemas.bom import BomListData
 from app.schemas.bom import BomMaterialGalleryData
 from app.schemas.bom import BomMaterialGalleryQuery
+from app.schemas.bom import BomMaterialTypeData
+from app.schemas.bom import BomMaterialTypeQuery
+from app.schemas.bom import BomMaterialUnitData
+from app.schemas.bom import BomMaterialUnitQuery
 from app.schemas.bom import BomPurchaseOrderData
 from app.schemas.bom import BomPurchaseOrderQuery
+from app.schemas.bom import BomProcessingTypeData
+from app.schemas.bom import BomProcessingTypeQuery
 from app.schemas.bom import BomListQuery
 from app.schemas.bom import BomSetDefaultData
 from app.schemas.bom import BomUpdateData
@@ -420,6 +430,111 @@ def list_bom_material_gallery(
         return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
 
 
+@router.get("/fabrics")
+def list_bom_fabrics(
+    request: Request,
+    item_code: str | None = None,
+    material_item_code: str | None = None,
+    fabric_name: str | None = None,
+    color: str | None = None,
+    specification: str | None = None,
+    supplier_name: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 面料（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomFabricQuery(
+        item_code=item_code,
+        material_item_code=material_item_code,
+        fabric_name=fabric_name,
+        color=color,
+        specification=specification,
+        supplier_name=supplier_name,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomFabricData = service.list_fabrics(query=query, allowed_item_codes=allowed_item_codes)
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/accessories-packaging")
+def list_bom_accessories_packaging(
+    request: Request,
+    item_code: str | None = None,
+    material_item_code: str | None = None,
+    material_name: str | None = None,
+    category: str | None = None,
+    supplier_name: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 辅料/包材（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomAccessoriesPackagingQuery(
+        item_code=item_code,
+        material_item_code=material_item_code,
+        material_name=material_name,
+        category=category,
+        supplier_name=supplier_name,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomAccessoriesPackagingData = service.list_accessories_packaging(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
 @router.get("/purchase-orders")
 def list_bom_purchase_orders(
     request: Request,
@@ -471,6 +586,161 @@ def list_bom_purchase_orders(
     service = BomService(session=session)
     try:
         data: BomPurchaseOrderData = service.list_purchase_orders(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/processing-types")
+def list_bom_processing_types(
+    request: Request,
+    item_code: str | None = None,
+    process_type_name: str | None = None,
+    process_name: str | None = None,
+    subcontract_mode: str | None = None,
+    pricing_mode: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料加工类型（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomProcessingTypeQuery(
+        item_code=item_code,
+        process_type_name=process_type_name,
+        process_name=process_name,
+        subcontract_mode=subcontract_mode,
+        pricing_mode=pricing_mode,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomProcessingTypeData = service.list_processing_types(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/material-types")
+def list_bom_material_types(
+    request: Request,
+    item_code: str | None = None,
+    material_item_code: str | None = None,
+    material_type_name: str | None = None,
+    material_group: str | None = None,
+    applicable_scene: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料类型（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomMaterialTypeQuery(
+        item_code=item_code,
+        material_item_code=material_item_code,
+        material_type_name=material_type_name,
+        material_group=material_group,
+        applicable_scene=applicable_scene,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomMaterialTypeData = service.list_material_types(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/material-units")
+def list_bom_material_units(
+    request: Request,
+    item_code: str | None = None,
+    material_item_code: str | None = None,
+    unit_name: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料单位（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomMaterialUnitQuery(
+        item_code=item_code,
+        material_item_code=material_item_code,
+        unit_name=unit_name,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomMaterialUnitData = service.list_material_units(
             query=query,
             allowed_item_codes=allowed_item_codes,
         )

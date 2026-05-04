@@ -36,18 +36,33 @@ from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.bom import LyBomOperation
 from app.schemas.bom import BomActivateData
+from app.schemas.bom import BomAccessoriesPackagingData
+from app.schemas.bom import BomAccessoriesPackagingItem
+from app.schemas.bom import BomAccessoriesPackagingQuery
 from app.schemas.bom import BomCreateRequest
 from app.schemas.bom import BomDeactivateData
 from app.schemas.bom import BomDetailData
 from app.schemas.bom import BomExplodeData
 from app.schemas.bom import BomExplodeRequest
+from app.schemas.bom import BomFabricData
+from app.schemas.bom import BomFabricItem
+from app.schemas.bom import BomFabricQuery
 from app.schemas.bom import BomHeader
 from app.schemas.bom import BomMaterialGalleryData
 from app.schemas.bom import BomMaterialGalleryItem
 from app.schemas.bom import BomMaterialGalleryQuery
+from app.schemas.bom import BomMaterialTypeData
+from app.schemas.bom import BomMaterialTypeItem
+from app.schemas.bom import BomMaterialTypeQuery
+from app.schemas.bom import BomMaterialUnitData
+from app.schemas.bom import BomMaterialUnitItem
+from app.schemas.bom import BomMaterialUnitQuery
 from app.schemas.bom import BomPurchaseOrderData
 from app.schemas.bom import BomPurchaseOrderItem
 from app.schemas.bom import BomPurchaseOrderQuery
+from app.schemas.bom import BomProcessingTypeData
+from app.schemas.bom import BomProcessingTypeItem
+from app.schemas.bom import BomProcessingTypeQuery
 from app.schemas.bom import BomItemPayload
 from app.schemas.bom import BomItemView
 from app.schemas.bom import BomListData
@@ -196,6 +211,56 @@ class BomService:
         return f"/api/bom/material-gallery/thumb/{material_item_code}"
 
     @staticmethod
+    def _is_fabric_material(material_item_code: str, remark: str | None) -> bool:
+        remark_text = (remark or "").strip()
+        if "面料" in remark_text:
+            return True
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        return token in {"FAB", "CLOTH", "FABRIC"}
+
+    @staticmethod
+    def _derive_fabric_name(material_item_code: str, remark: str | None) -> str:
+        remark_text = (remark or "").strip()
+        if remark_text:
+            return remark_text[:64]
+        return f"面料-{material_item_code}"
+
+    @staticmethod
+    def _derive_fabric_status(bom_status: str) -> str:
+        if bom_status == "active":
+            return "可用"
+        if bom_status == "inactive":
+            return "停用"
+        return "草稿"
+
+    @staticmethod
+    def _is_accessories_packaging_material(material_item_code: str, remark: str | None) -> bool:
+        remark_text = (remark or "").strip()
+        if "辅料" in remark_text or "包材" in remark_text or "包装" in remark_text:
+            return True
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        return token in {"ACC", "TRIM", "PKG", "PACK"}
+
+    @staticmethod
+    def _derive_accessories_packaging_category(material_item_code: str, remark: str | None) -> str:
+        remark_text = (remark or "").strip()
+        if "包材" in remark_text or "包装" in remark_text:
+            return "包材"
+        if "辅料" in remark_text:
+            return "辅料"
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        if token in {"PKG", "PACK"}:
+            return "包材"
+        return "辅料"
+
+    @staticmethod
+    def _derive_accessories_packaging_name(material_item_code: str, remark: str | None) -> str:
+        remark_text = (remark or "").strip()
+        if remark_text:
+            return remark_text[:64]
+        return f"辅料/包材-{material_item_code}"
+
+    @staticmethod
     def _derive_purchase_supplier(material_item_code: str) -> str:
         token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
         if token in {"FAB", "CLOTH"}:
@@ -216,6 +281,112 @@ class BomService:
     def _build_purchase_no(bom_no: str, item_row_id: int) -> str:
         suffix = f"{item_row_id % 10000:04d}"
         return f"PO-{bom_no}-{suffix}"
+
+    @staticmethod
+    def _derive_processing_type_name(process_name: str, remark: str | None) -> str:
+        hint = f"{process_name} {(remark or '')}".strip()
+        if any(token in hint for token in ("印花", "绣花", "压褶", "压胶", "烫钻")):
+            return "特种工艺加工"
+        if any(token in hint for token in ("裁", "缝", "车", "拼接")):
+            return "车缝加工"
+        if any(token in hint for token in ("洗", "染", "定型", "后整")):
+            return "后整加工"
+        return "常规加工"
+
+    @staticmethod
+    def _derive_subcontract_mode(is_subcontract: bool) -> str:
+        return "委外" if is_subcontract else "自产"
+
+    @staticmethod
+    def _derive_pricing_mode(operation: LyBomOperation) -> str:
+        if operation.is_subcontract:
+            if operation.subcontract_cost_per_piece is not None:
+                return "按件外协"
+            return "外协待定"
+        if operation.wage_rate is not None:
+            return "按工价"
+        return "标准工序"
+
+    @staticmethod
+    def _derive_processing_type_code(operation_id: int, sequence_no: int) -> str:
+        return f"PT-{sequence_no:02d}-{operation_id:04d}"
+
+    @staticmethod
+    def _derive_material_type_code(material_item_code: str) -> str:
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        if token in {"FAB", "CLOTH", "FABRIC"}:
+            return "MT-FABRIC"
+        if token in {"ACC", "TRIM", "ZIP", "BTN"}:
+            return "MT-ACCESSORY"
+        if token in {"PKG", "PACK", "BOX", "BAG"}:
+            return "MT-PACKAGING"
+        if token in {"CHEM", "DYE"}:
+            return "MT-CHEMICAL"
+        return "MT-GENERAL"
+
+    @staticmethod
+    def _derive_material_type_name(material_item_code: str, remark: str | None) -> str:
+        remark_text = (remark or "").strip()
+        if "面料" in remark_text:
+            return "面料"
+        if "辅料" in remark_text:
+            return "辅料"
+        if "包材" in remark_text or "包装" in remark_text:
+            return "包材"
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        if token in {"FAB", "CLOTH", "FABRIC"}:
+            return "面料"
+        if token in {"ACC", "TRIM", "ZIP", "BTN"}:
+            return "辅料"
+        if token in {"PKG", "PACK", "BOX", "BAG"}:
+            return "包材"
+        if token in {"CHEM", "DYE"}:
+            return "染整材料"
+        return "通用物料"
+
+    @staticmethod
+    def _derive_material_group(material_type_name: str) -> str:
+        if material_type_name in {"面料", "辅料"}:
+            return "服装主材"
+        if material_type_name == "包材":
+            return "包装物料"
+        if material_type_name == "染整材料":
+            return "工艺物料"
+        return "通用物料"
+
+    @staticmethod
+    def _derive_applicable_scene(material_type_name: str) -> str:
+        if material_type_name == "面料":
+            return "裁片与主面生产"
+        if material_type_name == "辅料":
+            return "车缝与后道组装"
+        if material_type_name == "包材":
+            return "包装与出库"
+        if material_type_name == "染整材料":
+            return "染整与后整"
+        return "通用生产环节"
+
+    @staticmethod
+    def _derive_material_unit_code(unit_name: str) -> str:
+        normalized = (
+            str(unit_name or "")
+            .strip()
+            .upper()
+            .replace(" ", "-")
+            .replace("/", "-")
+            .replace("_", "-")
+        )
+        normalized = normalized or "UNKNOWN"
+        return f"UOM-{normalized}"
+
+    @staticmethod
+    def _derive_material_unit_precision(unit_name: str) -> int:
+        normalized = str(unit_name or "").strip().upper()
+        if normalized in {"M", "KG", "L", "YD"}:
+            return 3
+        if normalized in {"CM", "MM", "G", "ML"}:
+            return 2
+        return 0
 
     def list_material_gallery(
         self,
@@ -282,6 +453,179 @@ class BomService:
         start = (query.page - 1) * query.page_size
         end = start + query.page_size
         return BomMaterialGalleryData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_fabrics(
+        self,
+        query: BomFabricQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomFabricData:
+        """List readonly fabric rows derived from BOM items."""
+        try:
+            sql = (
+                self.session.query(LyApparelBomItem, LyApparelBom)
+                .join(LyApparelBom, LyApparelBomItem.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomFabricData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.desc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        material_code_keyword = (query.material_item_code or "").strip().lower()
+        fabric_name_keyword = (query.fabric_name or "").strip().lower()
+        color_keyword = (query.color or "").strip().lower()
+        specification_keyword = (query.specification or "").strip().lower()
+        supplier_keyword = (query.supplier_name or "").strip().lower()
+        status_keyword = (query.status or "").strip()
+
+        items: list[BomFabricItem] = []
+        for item_row, bom_row in rows:
+            material_item_code = str(item_row.material_item_code)
+            if not self._is_fabric_material(material_item_code=material_item_code, remark=item_row.remark):
+                continue
+
+            fabric_name = self._derive_fabric_name(material_item_code=material_item_code, remark=item_row.remark)
+            supplier_name = self._derive_purchase_supplier(material_item_code=material_item_code)
+            fabric_status = self._derive_fabric_status(str(bom_row.status))
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if material_code_keyword and material_code_keyword not in material_item_code.lower():
+                continue
+            if fabric_name_keyword and fabric_name_keyword not in fabric_name.lower():
+                continue
+            if color_keyword and color_keyword not in (str(item_row.color or "").lower()):
+                continue
+            if specification_keyword and specification_keyword not in (str(item_row.size or "").lower()):
+                continue
+            if supplier_keyword and supplier_keyword not in supplier_name.lower():
+                continue
+            if status_keyword and status_keyword != fabric_status:
+                continue
+
+            items.append(
+                BomFabricItem(
+                    id=int(item_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    material_item_code=material_item_code,
+                    fabric_name=fabric_name,
+                    color=item_row.color,
+                    specification=item_row.size,
+                    supplier_name=supplier_name,
+                    uom=str(item_row.uom),
+                    qty_per_piece=Decimal(item_row.qty_per_piece),
+                    loss_rate=Decimal(item_row.loss_rate),
+                    status=fabric_status,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomFabricData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_accessories_packaging(
+        self,
+        query: BomAccessoriesPackagingQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomAccessoriesPackagingData:
+        """List readonly accessories/packaging rows derived from BOM items."""
+        try:
+            sql = (
+                self.session.query(LyApparelBomItem, LyApparelBom)
+                .join(LyApparelBom, LyApparelBomItem.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomAccessoriesPackagingData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.desc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        material_code_keyword = (query.material_item_code or "").strip().lower()
+        material_name_keyword = (query.material_name or "").strip().lower()
+        category_keyword = (query.category or "").strip()
+        supplier_keyword = (query.supplier_name or "").strip().lower()
+        status_keyword = (query.status or "").strip()
+
+        items: list[BomAccessoriesPackagingItem] = []
+        for item_row, bom_row in rows:
+            material_item_code = str(item_row.material_item_code)
+            if not self._is_accessories_packaging_material(material_item_code=material_item_code, remark=item_row.remark):
+                continue
+
+            material_name = self._derive_accessories_packaging_name(
+                material_item_code=material_item_code,
+                remark=item_row.remark,
+            )
+            category = self._derive_accessories_packaging_category(
+                material_item_code=material_item_code,
+                remark=item_row.remark,
+            )
+            supplier_name = self._derive_purchase_supplier(material_item_code=material_item_code)
+            row_status = self._derive_fabric_status(str(bom_row.status))
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if material_code_keyword and material_code_keyword not in material_item_code.lower():
+                continue
+            if material_name_keyword and material_name_keyword not in material_name.lower():
+                continue
+            if category_keyword and category_keyword != category:
+                continue
+            if supplier_keyword and supplier_keyword not in supplier_name.lower():
+                continue
+            if status_keyword and status_keyword != row_status:
+                continue
+
+            items.append(
+                BomAccessoriesPackagingItem(
+                    id=int(item_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    material_item_code=material_item_code,
+                    material_name=material_name,
+                    category=category,
+                    color=item_row.color,
+                    specification=item_row.size,
+                    supplier_name=supplier_name,
+                    uom=str(item_row.uom),
+                    qty_per_piece=Decimal(item_row.qty_per_piece),
+                    loss_rate=Decimal(item_row.loss_rate),
+                    status=row_status,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomAccessoriesPackagingData(
             items=items[start:end],
             total=total,
             page=query.page,
@@ -376,6 +720,257 @@ class BomService:
         start = (query.page - 1) * query.page_size
         end = start + query.page_size
         return BomPurchaseOrderData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_processing_types(
+        self,
+        query: BomProcessingTypeQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomProcessingTypeData:
+        """List readonly processing-type rows derived from BOM operations."""
+        try:
+            sql = (
+                self.session.query(LyBomOperation, LyApparelBom)
+                .join(LyApparelBom, LyBomOperation.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomProcessingTypeData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            rows: list[tuple[LyBomOperation, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        process_type_keyword = (query.process_type_name or "").strip().lower()
+        process_name_keyword = (query.process_name or "").strip().lower()
+        subcontract_mode_keyword = (query.subcontract_mode or "").strip()
+        pricing_mode_keyword = (query.pricing_mode or "").strip()
+        status_keyword = (query.status or "").strip()
+
+        items: list[BomProcessingTypeItem] = []
+        for operation_row, bom_row in rows:
+            process_name = str(operation_row.process_name)
+            process_type_name = self._derive_processing_type_name(process_name=process_name, remark=operation_row.remark)
+            subcontract_mode = self._derive_subcontract_mode(is_subcontract=bool(operation_row.is_subcontract))
+            pricing_mode = self._derive_pricing_mode(operation=operation_row)
+            status = self._derive_fabric_status(str(bom_row.status))
+            unit_rate = (
+                Decimal(operation_row.subcontract_cost_per_piece)
+                if operation_row.subcontract_cost_per_piece is not None
+                else Decimal(operation_row.wage_rate)
+                if operation_row.wage_rate is not None
+                else Decimal("0")
+            )
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if process_type_keyword and process_type_keyword not in process_type_name.lower():
+                continue
+            if process_name_keyword and process_name_keyword not in process_name.lower():
+                continue
+            if subcontract_mode_keyword and subcontract_mode_keyword != subcontract_mode:
+                continue
+            if pricing_mode_keyword and pricing_mode_keyword != pricing_mode:
+                continue
+            if status_keyword and status_keyword != status:
+                continue
+
+            items.append(
+                BomProcessingTypeItem(
+                    id=int(operation_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    process_type_code=self._derive_processing_type_code(
+                        operation_id=int(operation_row.id),
+                        sequence_no=int(operation_row.sequence_no),
+                    ),
+                    process_type_name=process_type_name,
+                    process_name=process_name,
+                    sequence_no=int(operation_row.sequence_no),
+                    subcontract_mode=subcontract_mode,
+                    pricing_mode=pricing_mode,
+                    unit_rate=self._round(unit_rate),
+                    status=status,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomProcessingTypeData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_material_types(
+        self,
+        query: BomMaterialTypeQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomMaterialTypeData:
+        """List readonly material-type rows derived from BOM items."""
+        try:
+            sql = (
+                self.session.query(LyApparelBomItem, LyApparelBom)
+                .join(LyApparelBom, LyApparelBomItem.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomMaterialTypeData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        material_code_keyword = (query.material_item_code or "").strip().lower()
+        type_name_keyword = (query.material_type_name or "").strip().lower()
+        group_keyword = (query.material_group or "").strip()
+        scene_keyword = (query.applicable_scene or "").strip()
+        status_keyword = (query.status or "").strip()
+
+        items: list[BomMaterialTypeItem] = []
+        seen_keys: set[tuple[str, str, str]] = set()
+        for item_row, bom_row in rows:
+            material_item_code = str(item_row.material_item_code)
+            material_type_name = self._derive_material_type_name(
+                material_item_code=material_item_code,
+                remark=item_row.remark,
+            )
+            material_group = self._derive_material_group(material_type_name=material_type_name)
+            applicable_scene = self._derive_applicable_scene(material_type_name=material_type_name)
+            status = self._derive_fabric_status(str(bom_row.status))
+            supplier_name = self._derive_purchase_supplier(material_item_code=material_item_code)
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if material_code_keyword and material_code_keyword not in material_item_code.lower():
+                continue
+            if type_name_keyword and type_name_keyword not in material_type_name.lower():
+                continue
+            if group_keyword and group_keyword != material_group:
+                continue
+            if scene_keyword and scene_keyword != applicable_scene:
+                continue
+            if status_keyword and status_keyword != status:
+                continue
+
+            dedupe_key = (str(bom_row.item_code), material_type_name, material_group)
+            if dedupe_key in seen_keys:
+                continue
+            seen_keys.add(dedupe_key)
+
+            items.append(
+                BomMaterialTypeItem(
+                    id=int(item_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    material_item_code=material_item_code,
+                    material_type_code=self._derive_material_type_code(material_item_code=material_item_code),
+                    material_type_name=material_type_name,
+                    material_group=material_group,
+                    applicable_scene=applicable_scene,
+                    supplier_name=supplier_name,
+                    status=status,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomMaterialTypeData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_material_units(
+        self,
+        query: BomMaterialUnitQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomMaterialUnitData:
+        """List readonly material-unit rows derived from BOM items."""
+        try:
+            sql = (
+                self.session.query(LyApparelBomItem, LyApparelBom)
+                .join(LyApparelBom, LyApparelBomItem.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomMaterialUnitData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        material_code_keyword = (query.material_item_code or "").strip().lower()
+        unit_name_keyword = (query.unit_name or "").strip().lower()
+        status_keyword = (query.status or "").strip()
+
+        items: list[BomMaterialUnitItem] = []
+        seen_keys: set[tuple[str, str, str]] = set()
+        for item_row, bom_row in rows:
+            material_item_code = str(item_row.material_item_code)
+            unit_name = str(item_row.uom).strip()
+            status = self._derive_fabric_status(str(bom_row.status))
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if material_code_keyword and material_code_keyword not in material_item_code.lower():
+                continue
+            if unit_name_keyword and unit_name_keyword not in unit_name.lower():
+                continue
+            if status_keyword and status_keyword != status:
+                continue
+
+            dedupe_key = (str(bom_row.item_code), material_item_code, unit_name.upper())
+            if dedupe_key in seen_keys:
+                continue
+            seen_keys.add(dedupe_key)
+
+            base_unit = unit_name
+            items.append(
+                BomMaterialUnitItem(
+                    id=int(item_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    material_item_code=material_item_code,
+                    unit_code=self._derive_material_unit_code(unit_name=unit_name),
+                    unit_name=unit_name,
+                    base_unit=base_unit,
+                    conversion_text=f"1 {unit_name} = 1 {base_unit}",
+                    precision=self._derive_material_unit_precision(unit_name=unit_name),
+                    status=status,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomMaterialUnitData(
             items=items[start:end],
             total=total,
             page=query.page,

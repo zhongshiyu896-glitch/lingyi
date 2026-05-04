@@ -73,6 +73,122 @@ export interface BomMaterialGalleryData {
   page_size: number
 }
 
+export interface BomFabricItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  material_item_code: string
+  fabric_name: string
+  color?: string | null
+  specification?: string | null
+  supplier_name: string
+  uom: string
+  qty_per_piece: string
+  loss_rate: string
+  status: string
+  is_default: boolean
+}
+
+export interface BomFabricData {
+  items: BomFabricItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface BomAccessoriesPackagingItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  material_item_code: string
+  material_name: string
+  category: string
+  color?: string | null
+  specification?: string | null
+  supplier_name: string
+  uom: string
+  qty_per_piece: string
+  loss_rate: string
+  status: string
+  is_default: boolean
+}
+
+export interface BomAccessoriesPackagingData {
+  items: BomAccessoriesPackagingItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface BomProcessingTypeItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  process_type_code: string
+  process_type_name: string
+  process_name: string
+  sequence_no: number
+  subcontract_mode: string
+  pricing_mode: string
+  unit_rate: string
+  status: string
+  is_default: boolean
+}
+
+export interface BomProcessingTypeData {
+  items: BomProcessingTypeItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface BomMaterialTypeItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  material_item_code: string
+  material_type_code: string
+  material_type_name: string
+  material_group: string
+  applicable_scene: string
+  supplier_name: string
+  status: string
+  is_default: boolean
+}
+
+export interface BomMaterialTypeData {
+  items: BomMaterialTypeItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface BomMaterialUnitItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  material_item_code: string
+  unit_code: string
+  unit_name: string
+  base_unit: string
+  conversion_text: string
+  precision: number
+  status: string
+  is_default: boolean
+}
+
+export interface BomMaterialUnitData {
+  items: BomMaterialUnitItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface BomPurchaseOrderItem {
   id: number
   bom_id: number
@@ -181,6 +297,64 @@ export const fetchBomMaterialGallery = (params: {
   page_size: number
 }): Promise<ApiResponse<BomMaterialGalleryData>> =>
   request(`/api/bom/material-gallery?${toQuery(params)}`)
+
+export const fetchBomFabrics = (params: {
+  item_code?: string
+  material_item_code?: string
+  fabric_name?: string
+  color?: string
+  specification?: string
+  supplier_name?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomFabricData>> => request(`/api/bom/fabrics?${toQuery(params)}`)
+
+export const fetchBomAccessoriesPackaging = (params: {
+  item_code?: string
+  material_item_code?: string
+  material_name?: string
+  category?: string
+  supplier_name?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomAccessoriesPackagingData>> =>
+  request(`/api/bom/accessories-packaging?${toQuery(params)}`)
+
+export const fetchBomProcessingTypes = (params: {
+  item_code?: string
+  process_type_name?: string
+  process_name?: string
+  subcontract_mode?: string
+  pricing_mode?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomProcessingTypeData>> =>
+  request(`/api/bom/processing-types?${toQuery(params)}`)
+
+export const fetchBomMaterialTypes = (params: {
+  item_code?: string
+  material_item_code?: string
+  material_type_name?: string
+  material_group?: string
+  applicable_scene?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomMaterialTypeData>> =>
+  request(`/api/bom/material-types?${toQuery(params)}`)
+
+export const fetchBomMaterialUnits = (params: {
+  item_code?: string
+  material_item_code?: string
+  unit_name?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomMaterialUnitData>> =>
+  request(`/api/bom/material-units?${toQuery(params)}`)
 
 export const fetchBomPurchaseOrders = (params: {
   purchase_no?: string

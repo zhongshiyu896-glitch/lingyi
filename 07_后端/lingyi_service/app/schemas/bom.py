@@ -92,6 +92,33 @@ class BomMaterialGalleryQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
+class BomFabricQuery(BaseModel):
+    """BOM fabric query params."""
+
+    item_code: Optional[str] = None
+    material_item_code: Optional[str] = None
+    fabric_name: Optional[str] = None
+    color: Optional[str] = None
+    specification: Optional[str] = None
+    supplier_name: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class BomAccessoriesPackagingQuery(BaseModel):
+    """BOM accessories/packaging query params."""
+
+    item_code: Optional[str] = None
+    material_item_code: Optional[str] = None
+    material_name: Optional[str] = None
+    category: Optional[str] = None
+    supplier_name: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
 class BomPurchaseOrderQuery(BaseModel):
     """BOM purchase order query params."""
 
@@ -105,6 +132,43 @@ class BomPurchaseOrderQuery(BaseModel):
     max_qty: Optional[Decimal] = Field(default=None, ge=0)
     min_amount: Optional[Decimal] = Field(default=None, ge=0)
     max_amount: Optional[Decimal] = Field(default=None, ge=0)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class BomProcessingTypeQuery(BaseModel):
+    """BOM processing-type query params."""
+
+    item_code: Optional[str] = None
+    process_type_name: Optional[str] = None
+    process_name: Optional[str] = None
+    subcontract_mode: Optional[str] = None
+    pricing_mode: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class BomMaterialTypeQuery(BaseModel):
+    """BOM material-type query params."""
+
+    item_code: Optional[str] = None
+    material_item_code: Optional[str] = None
+    material_type_name: Optional[str] = None
+    material_group: Optional[str] = None
+    applicable_scene: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class BomMaterialUnitQuery(BaseModel):
+    """BOM material-unit query params."""
+
+    item_code: Optional[str] = None
+    material_item_code: Optional[str] = None
+    unit_name: Optional[str] = None
+    status: Optional[str] = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=200)
 
@@ -202,6 +266,63 @@ class BomMaterialGalleryData(BaseModel):
     page_size: int
 
 
+class BomFabricItem(BaseModel):
+    """Fabric list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    material_item_code: str
+    fabric_name: str
+    color: Optional[str]
+    specification: Optional[str]
+    supplier_name: str
+    uom: str
+    qty_per_piece: Decimal
+    loss_rate: Decimal
+    status: str
+    is_default: bool
+
+
+class BomFabricData(BaseModel):
+    """Fabric response data."""
+
+    items: List[BomFabricItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomAccessoriesPackagingItem(BaseModel):
+    """Accessories/packaging list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    material_item_code: str
+    material_name: str
+    category: str
+    color: Optional[str]
+    specification: Optional[str]
+    supplier_name: str
+    uom: str
+    qty_per_piece: Decimal
+    loss_rate: Decimal
+    status: str
+    is_default: bool
+
+
+class BomAccessoriesPackagingData(BaseModel):
+    """Accessories/packaging response data."""
+
+    items: List[BomAccessoriesPackagingItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class BomPurchaseOrderItem(BaseModel):
     """Purchase order list row payload."""
 
@@ -225,6 +346,85 @@ class BomPurchaseOrderData(BaseModel):
     """Purchase order response data."""
 
     items: List[BomPurchaseOrderItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomProcessingTypeItem(BaseModel):
+    """Processing-type list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    process_type_code: str
+    process_type_name: str
+    process_name: str
+    sequence_no: int
+    subcontract_mode: str
+    pricing_mode: str
+    unit_rate: Decimal
+    status: str
+    is_default: bool
+
+
+class BomProcessingTypeData(BaseModel):
+    """Processing-type response data."""
+
+    items: List[BomProcessingTypeItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomMaterialTypeItem(BaseModel):
+    """Material-type list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    material_item_code: str
+    material_type_code: str
+    material_type_name: str
+    material_group: str
+    applicable_scene: str
+    supplier_name: str
+    status: str
+    is_default: bool
+
+
+class BomMaterialTypeData(BaseModel):
+    """Material-type response data."""
+
+    items: List[BomMaterialTypeItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomMaterialUnitItem(BaseModel):
+    """Material-unit list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    material_item_code: str
+    unit_code: str
+    unit_name: str
+    base_unit: str
+    conversion_text: str
+    precision: int
+    status: str
+    is_default: bool
+
+
+class BomMaterialUnitData(BaseModel):
+    """Material-unit response data."""
+
+    items: List[BomMaterialUnitItem]
     total: int
     page: int
     page_size: int
