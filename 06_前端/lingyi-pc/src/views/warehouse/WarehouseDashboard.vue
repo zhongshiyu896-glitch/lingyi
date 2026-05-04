@@ -287,6 +287,232 @@
         </el-table>
       </div>
 
+      <div class="other-inbound-section">
+        <div class="other-inbound-header">
+          <div class="title-wrap">
+            <h3>物料进销存 / 其他入仓（TASK-Y39B-P1-02）</h3>
+            <span class="subtitle">共享路由首版（只读语义）</span>
+          </div>
+          <div class="other-inbound-actions">
+            <el-button :disabled="!canRead" @click="applyOtherInboundFilters">查询入仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('确认入仓')">确认入仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('撤销入仓')">撤销入仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('导出其他入仓')">导出</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('打印其他入仓')">打印</el-button>
+          </div>
+        </div>
+
+        <el-form :inline="true" :model="query" class="other-inbound-filter-form">
+          <el-form-item label="入仓单号">
+            <el-input
+              v-model="query.other_inbound_no"
+              clearable
+              placeholder="入仓单号"
+              aria-label="入仓单号"
+            />
+          </el-form-item>
+          <el-form-item label="供应商">
+            <el-input
+              v-model="query.other_inbound_supplier"
+              clearable
+              placeholder="供应商"
+              aria-label="供应商"
+            />
+          </el-form-item>
+          <el-form-item label="物料">
+            <el-input
+              v-model="query.other_inbound_material"
+              clearable
+              placeholder="物料编码/名称"
+              aria-label="物料"
+            />
+          </el-form-item>
+          <el-form-item label="仓库">
+            <el-input
+              v-model="query.other_inbound_warehouse"
+              clearable
+              placeholder="仓库"
+              aria-label="其他入仓仓库"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select
+              v-model="query.other_inbound_status"
+              clearable
+              placeholder="状态"
+              aria-label="其他入仓状态"
+              style="width: 130px"
+            >
+              <el-option label="待入仓" value="pending" />
+              <el-option label="已入仓" value="received" />
+              <el-option label="已关闭" value="closed" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <el-alert
+          v-if="otherInboundErrorMessage"
+          type="error"
+          :closable="false"
+          :title="`其他入仓加载失败：${otherInboundErrorMessage}`"
+          class="scope-alert"
+        />
+
+        <el-empty
+          v-if="otherInboundDisplayRows.length === 0 && !otherInboundErrorMessage"
+          description="暂无其他入仓数据，请调整筛选条件后重试"
+        />
+
+        <el-table
+          v-else
+          :data="otherInboundDisplayRows"
+          border
+          empty-text="暂无其他入仓数据"
+          class="other-inbound-table"
+        >
+          <el-table-column prop="inbound_no" label="入仓单号" min-width="150" />
+          <el-table-column prop="supplier" label="供应商" min-width="130" />
+          <el-table-column prop="material_code" label="物料编码" min-width="140" />
+          <el-table-column prop="material_name" label="物料名称" min-width="150" />
+          <el-table-column prop="warehouse" label="入仓仓库" min-width="120" />
+          <el-table-column prop="location" label="库位" min-width="100" />
+          <el-table-column label="入仓数量" min-width="110" align="right">
+            <template #default="{ row }">{{ formatAmount(row.qty) }}</template>
+          </el-table-column>
+          <el-table-column label="入仓金额" min-width="120" align="right">
+            <template #default="{ row }">{{ formatAmount(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="inbound_date" label="入仓日期" min-width="120" />
+          <el-table-column prop="source_doc_no" label="来源单号" min-width="150" />
+          <el-table-column label="状态" min-width="100">
+            <template #default="{ row }">
+              <el-tag :type="otherInboundStatusTag(row.status)" effect="plain">
+                {{ otherInboundStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="viewOtherInbound(row)">查看</el-button>
+              <el-button link type="warning" @click="guardedAction(`确认入仓(${row.inbound_no})`)">确认</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div class="purchase-return-outbound-section">
+        <div class="purchase-return-outbound-header">
+          <div class="title-wrap">
+            <h3>物料进销存 / 采购退料出仓（TASK-Y39B-P1-04）</h3>
+            <span class="subtitle">共享路由首版（只读语义）</span>
+          </div>
+          <div class="purchase-return-outbound-actions">
+            <el-button :disabled="!canRead" @click="applyPurchaseReturnFilters">查询出仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('确认出仓')">确认出仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('撤销出仓')">撤销出仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('导出采购退料出仓')">导出</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('打印采购退料出仓')">打印</el-button>
+          </div>
+        </div>
+
+        <el-form :inline="true" :model="query" class="purchase-return-outbound-filter-form">
+          <el-form-item label="出仓单号">
+            <el-input
+              v-model="query.purchase_return_outbound_no"
+              clearable
+              placeholder="出仓单号"
+              aria-label="采购退料出仓单号"
+            />
+          </el-form-item>
+          <el-form-item label="供应商">
+            <el-input
+              v-model="query.purchase_return_outbound_supplier"
+              clearable
+              placeholder="供应商"
+              aria-label="采购退料出仓供应商"
+            />
+          </el-form-item>
+          <el-form-item label="物料">
+            <el-input
+              v-model="query.purchase_return_outbound_material"
+              clearable
+              placeholder="物料编码/名称"
+              aria-label="采购退料出仓物料"
+            />
+          </el-form-item>
+          <el-form-item label="仓库">
+            <el-input
+              v-model="query.purchase_return_outbound_warehouse"
+              clearable
+              placeholder="仓库"
+              aria-label="采购退料出仓仓库"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select
+              v-model="query.purchase_return_outbound_status"
+              clearable
+              placeholder="状态"
+              aria-label="采购退料出仓状态"
+              style="width: 130px"
+            >
+              <el-option label="待出仓" value="pending" />
+              <el-option label="已出仓" value="returned" />
+              <el-option label="已关闭" value="closed" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <el-alert
+          v-if="purchaseReturnOutboundErrorMessage"
+          type="error"
+          :closable="false"
+          :title="`采购退料出仓加载失败：${purchaseReturnOutboundErrorMessage}`"
+          class="scope-alert"
+        />
+
+        <el-empty
+          v-if="purchaseReturnOutboundDisplayRows.length === 0 && !purchaseReturnOutboundErrorMessage"
+          description="暂无采购退料出仓数据，请调整筛选条件后重试"
+        />
+
+        <el-table
+          v-else
+          :data="purchaseReturnOutboundDisplayRows"
+          border
+          empty-text="暂无采购退料出仓数据"
+          class="purchase-return-outbound-table"
+        >
+          <el-table-column prop="outbound_no" label="出仓单号" min-width="160" />
+          <el-table-column prop="supplier" label="供应商" min-width="130" />
+          <el-table-column prop="material_code" label="物料编码" min-width="140" />
+          <el-table-column prop="material_name" label="物料名称" min-width="150" />
+          <el-table-column prop="warehouse" label="出仓仓库" min-width="120" />
+          <el-table-column prop="location" label="库位" min-width="100" />
+          <el-table-column label="出仓数量" min-width="110" align="right">
+            <template #default="{ row }">{{ formatAmount(row.qty) }}</template>
+          </el-table-column>
+          <el-table-column label="出仓金额" min-width="120" align="right">
+            <template #default="{ row }">{{ formatAmount(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="outbound_date" label="出仓日期" min-width="120" />
+          <el-table-column prop="source_doc_no" label="来源单号" min-width="150" />
+          <el-table-column label="状态" min-width="100">
+            <template #default="{ row }">
+              <el-tag :type="purchaseReturnOutboundStatusTag(row.status)" effect="plain">
+                {{ purchaseReturnOutboundStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="viewPurchaseReturnOutbound(row)">查看</el-button>
+              <el-button link type="warning" @click="guardedAction(`确认出仓(${row.outbound_no})`)">确认</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
       <el-alert
         v-if="!permissionReady"
         type="info"
@@ -379,6 +605,10 @@ import { ElMessage } from 'element-plus'
 import {
   type WarehouseMaterialInventoryItem,
   type WarehouseManagementItem,
+  type WarehouseOtherInboundItem,
+  type WarehousePurchaseReturnOutboundItem,
+  fetchWarehouseOtherInbound,
+  fetchWarehousePurchaseReturnOutbound,
   fetchWarehouseStockLedger,
   fetchWarehouseStockSummary,
   type WarehouseStockLedgerItem,
@@ -412,12 +642,16 @@ const displayMode = ref<'vertical' | 'horizontal'>('vertical')
 const errorMessage = ref<string>('')
 const managementErrorMessage = ref<string>('')
 const materialErrorMessage = ref<string>('')
+const otherInboundErrorMessage = ref<string>('')
+const purchaseReturnOutboundErrorMessage = ref<string>('')
 const selectedRows = ref<DisplayRow[]>([])
 const ledgerDialogVisible = ref<boolean>(false)
 
 const summaryRows = ref<WarehouseStockSummaryItem[]>([])
 const managementRows = ref<WarehouseManagementItem[]>([])
 const materialRows = ref<WarehouseMaterialInventoryItem[]>([])
+const otherInboundRows = ref<WarehouseOtherInboundItem[]>([])
+const purchaseReturnOutboundRows = ref<WarehousePurchaseReturnOutboundItem[]>([])
 const ledgerRows = ref<WarehouseStockLedgerItem[]>([])
 const orderMap = ref<Map<string, string>>(new Map())
 
@@ -433,6 +667,16 @@ const query = reactive({
   material_warehouse: '',
   material_location: '',
   material_status: '',
+  other_inbound_no: '',
+  other_inbound_supplier: '',
+  other_inbound_material: '',
+  other_inbound_warehouse: '',
+  other_inbound_status: '',
+  purchase_return_outbound_no: '',
+  purchase_return_outbound_supplier: '',
+  purchase_return_outbound_material: '',
+  purchase_return_outbound_warehouse: '',
+  purchase_return_outbound_status: '',
   from_date: '',
   to_date: '',
 })
@@ -440,6 +684,8 @@ const query = reactive({
 const LOCAL_ERROR_TOKEN = '__error__'
 const LOCAL_MANAGEMENT_ERROR_TOKEN = '__mgmt_error__'
 const LOCAL_MATERIAL_ERROR_TOKEN = '__material_error__'
+const LOCAL_OTHER_INBOUND_ERROR_TOKEN = '__other_inbound_error__'
+const LOCAL_PURCHASE_RETURN_OUTBOUND_ERROR_TOKEN = '__purchase_return_outbound_error__'
 
 const localSeedSummaryRows: WarehouseStockSummaryItem[] = [
   {
@@ -540,6 +786,96 @@ const localSeedMaterialRows: WarehouseMaterialInventoryItem[] = [
     qty: 35.2,
     amount: 112.64,
     status: 'warning',
+  },
+]
+
+const localSeedOtherInboundRows: WarehouseOtherInboundItem[] = [
+  {
+    inbound_no: 'OIN-202605-0001',
+    supplier: '华纺供应商',
+    material_code: 'FAB-2408-COTTON',
+    material_name: '精梳棉面料',
+    warehouse: '原料仓',
+    location: 'M-01',
+    qty: 120.6,
+    amount: 1037.16,
+    inbound_date: '2026-05-01',
+    source_doc_no: 'SRC-FAB-001',
+    operator: '系统只读映射',
+    status: 'received',
+  },
+  {
+    inbound_no: 'OIN-202605-0002',
+    supplier: '永盛辅料',
+    material_code: 'ACC-2408-BTN01',
+    material_name: '树脂纽扣',
+    warehouse: '辅料仓',
+    location: 'M-08',
+    qty: 32,
+    amount: 102.4,
+    inbound_date: '2026-05-02',
+    source_doc_no: 'SRC-ACC-002',
+    operator: '系统只读映射',
+    status: 'pending',
+  },
+  {
+    inbound_no: 'OIN-202605-0003',
+    supplier: '恒彩包材',
+    material_code: 'PKG-2408-BAG01',
+    material_name: '防潮包装袋',
+    warehouse: '包材仓',
+    location: 'M-13',
+    qty: 0,
+    amount: 0,
+    inbound_date: '2026-05-03',
+    source_doc_no: 'SRC-PKG-003',
+    operator: '系统只读映射',
+    status: 'closed',
+  },
+]
+
+const localSeedPurchaseReturnOutboundRows: WarehousePurchaseReturnOutboundItem[] = [
+  {
+    outbound_no: 'PRO-202605-0001',
+    supplier: '华纺供应商',
+    material_code: 'FAB-2408-COTTON',
+    material_name: '精梳棉面料',
+    warehouse: '原料仓',
+    location: 'M-01',
+    qty: 16.2,
+    amount: 139.32,
+    outbound_date: '2026-05-02',
+    source_doc_no: 'PRR-FAB-001',
+    operator: '系统只读映射',
+    status: 'returned',
+  },
+  {
+    outbound_no: 'PRO-202605-0002',
+    supplier: '永盛辅料',
+    material_code: 'ACC-2408-BTN01',
+    material_name: '树脂纽扣',
+    warehouse: '辅料仓',
+    location: 'M-08',
+    qty: 12,
+    amount: 38.4,
+    outbound_date: '2026-05-03',
+    source_doc_no: 'PRR-ACC-002',
+    operator: '系统只读映射',
+    status: 'pending',
+  },
+  {
+    outbound_no: 'PRO-202605-0003',
+    supplier: '恒彩包材',
+    material_code: 'PKG-2408-BAG01',
+    material_name: '防潮包装袋',
+    warehouse: '包材仓',
+    location: 'M-13',
+    qty: 0,
+    amount: 0,
+    outbound_date: '2026-05-03',
+    source_doc_no: 'PRR-PKG-003',
+    operator: '系统只读映射',
+    status: 'closed',
   },
 ]
 
@@ -708,6 +1044,42 @@ const materialDisplayRows = computed<WarehouseMaterialInventoryItem[]>(() => {
   })
 })
 
+const otherInboundDisplayRows = computed<WarehouseOtherInboundItem[]>(() => {
+  const inboundNo = query.other_inbound_no.trim().toLowerCase()
+  const supplier = query.other_inbound_supplier.trim().toLowerCase()
+  const material = query.other_inbound_material.trim().toLowerCase()
+  const warehouse = query.other_inbound_warehouse.trim().toLowerCase()
+  const status = query.other_inbound_status.trim().toLowerCase()
+
+  return otherInboundRows.value.filter((row) => {
+    const inboundNoMatched = !inboundNo || row.inbound_no.toLowerCase().includes(inboundNo)
+    const supplierMatched = !supplier || row.supplier.toLowerCase().includes(supplier)
+    const materialMatched =
+      !material || `${row.material_code}|${row.material_name}`.toLowerCase().includes(material)
+    const warehouseMatched = !warehouse || row.warehouse.toLowerCase().includes(warehouse)
+    const statusMatched = !status || row.status === status
+    return inboundNoMatched && supplierMatched && materialMatched && warehouseMatched && statusMatched
+  })
+})
+
+const purchaseReturnOutboundDisplayRows = computed<WarehousePurchaseReturnOutboundItem[]>(() => {
+  const outboundNo = query.purchase_return_outbound_no.trim().toLowerCase()
+  const supplier = query.purchase_return_outbound_supplier.trim().toLowerCase()
+  const material = query.purchase_return_outbound_material.trim().toLowerCase()
+  const warehouse = query.purchase_return_outbound_warehouse.trim().toLowerCase()
+  const status = query.purchase_return_outbound_status.trim().toLowerCase()
+
+  return purchaseReturnOutboundRows.value.filter((row) => {
+    const outboundNoMatched = !outboundNo || row.outbound_no.toLowerCase().includes(outboundNo)
+    const supplierMatched = !supplier || row.supplier.toLowerCase().includes(supplier)
+    const materialMatched =
+      !material || `${row.material_code}|${row.material_name}`.toLowerCase().includes(material)
+    const warehouseMatched = !warehouse || row.warehouse.toLowerCase().includes(warehouse)
+    const statusMatched = !status || row.status === status
+    return outboundNoMatched && supplierMatched && materialMatched && warehouseMatched && statusMatched
+  })
+})
+
 const managementStatusText = (value: WarehouseManagementItem['status']): string => {
   if (value === 'warning') return '预警'
   if (value === 'disabled') return '停用'
@@ -734,6 +1106,34 @@ const materialStatusTag = (
   return 'success'
 }
 
+const otherInboundStatusText = (value: WarehouseOtherInboundItem['status']): string => {
+  if (value === 'pending') return '待入仓'
+  if (value === 'closed') return '已关闭'
+  return '已入仓'
+}
+
+const otherInboundStatusTag = (
+  value: WarehouseOtherInboundItem['status'],
+): 'success' | 'warning' | 'info' => {
+  if (value === 'pending') return 'warning'
+  if (value === 'closed') return 'info'
+  return 'success'
+}
+
+const purchaseReturnOutboundStatusText = (value: WarehousePurchaseReturnOutboundItem['status']): string => {
+  if (value === 'pending') return '待出仓'
+  if (value === 'closed') return '已关闭'
+  return '已出仓'
+}
+
+const purchaseReturnOutboundStatusTag = (
+  value: WarehousePurchaseReturnOutboundItem['status'],
+): 'success' | 'warning' | 'info' => {
+  if (value === 'pending') return 'warning'
+  if (value === 'closed') return 'info'
+  return 'success'
+}
+
 const resetQuery = (): void => {
   query.company = ''
   query.warehouse = ''
@@ -746,10 +1146,22 @@ const resetQuery = (): void => {
   query.material_warehouse = ''
   query.material_location = ''
   query.material_status = ''
+  query.other_inbound_no = ''
+  query.other_inbound_supplier = ''
+  query.other_inbound_material = ''
+  query.other_inbound_warehouse = ''
+  query.other_inbound_status = ''
+  query.purchase_return_outbound_no = ''
+  query.purchase_return_outbound_supplier = ''
+  query.purchase_return_outbound_material = ''
+  query.purchase_return_outbound_warehouse = ''
+  query.purchase_return_outbound_status = ''
   query.from_date = ''
   query.to_date = ''
   managementErrorMessage.value = ''
   materialErrorMessage.value = ''
+  otherInboundErrorMessage.value = ''
+  purchaseReturnOutboundErrorMessage.value = ''
   void loadData()
 }
 
@@ -758,6 +1170,8 @@ const loadData = async (): Promise<void> => {
     summaryRows.value = []
     managementRows.value = []
     materialRows.value = []
+    otherInboundRows.value = []
+    purchaseReturnOutboundRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -768,6 +1182,8 @@ const loadData = async (): Promise<void> => {
     summaryRows.value = []
     managementRows.value = []
     materialRows.value = []
+    otherInboundRows.value = []
+    purchaseReturnOutboundRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -780,9 +1196,13 @@ const loadData = async (): Promise<void> => {
     errorMessage.value = ''
     managementErrorMessage.value = ''
     materialErrorMessage.value = ''
+    otherInboundErrorMessage.value = ''
+    purchaseReturnOutboundErrorMessage.value = ''
     summaryRows.value = localSeedSummaryRows
     managementRows.value = localSeedManagementRows
     materialRows.value = localSeedMaterialRows
+    otherInboundRows.value = localSeedOtherInboundRows
+    purchaseReturnOutboundRows.value = localSeedPurchaseReturnOutboundRows
     ledgerRows.value = localSeedLedgerRows
     orderMap.value = buildOrderMap(localSeedLedgerRows)
     selectedRows.value = []
@@ -793,10 +1213,30 @@ const loadData = async (): Promise<void> => {
   errorMessage.value = ''
   managementErrorMessage.value = ''
   materialErrorMessage.value = ''
+  otherInboundErrorMessage.value = ''
+  purchaseReturnOutboundErrorMessage.value = ''
   try {
-    const [summaryResult, ledgerResult] = await Promise.all([
+    const otherInboundItemCode = query.other_inbound_material.trim() || normalized.item_code
+    const otherInboundWarehouse = query.other_inbound_warehouse.trim() || normalized.warehouse
+    const otherInboundStatus = query.other_inbound_status.trim().toLowerCase()
+    const purchaseReturnOutboundItemCode = query.purchase_return_outbound_material.trim() || normalized.item_code
+    const purchaseReturnOutboundWarehouse = query.purchase_return_outbound_warehouse.trim() || normalized.warehouse
+    const purchaseReturnOutboundStatus = query.purchase_return_outbound_status.trim().toLowerCase()
+    const [summaryResult, ledgerResult, otherInboundResult, purchaseReturnOutboundResult] = await Promise.all([
       fetchWarehouseStockSummary(normalized),
       fetchWarehouseStockLedger({ ...normalized, page: 1, page_size: 200 }),
+      fetchWarehouseOtherInbound({
+        company: normalized.company,
+        warehouse: otherInboundWarehouse,
+        item_code: otherInboundItemCode,
+        status: otherInboundStatus as 'pending' | 'received' | 'closed' | '',
+      }),
+      fetchWarehousePurchaseReturnOutbound({
+        company: normalized.company,
+        warehouse: purchaseReturnOutboundWarehouse,
+        item_code: purchaseReturnOutboundItemCode,
+        status: purchaseReturnOutboundStatus as 'pending' | 'returned' | 'closed' | '',
+      }),
     ])
     summaryRows.value = summaryResult.data.items
     managementRows.value = summaryResult.data.warehouse_management ?? localSeedManagementRows
@@ -804,6 +1244,8 @@ const loadData = async (): Promise<void> => {
       summaryResult.data.material_inventory && summaryResult.data.material_inventory.length > 0
         ? summaryResult.data.material_inventory
         : buildMaterialRowsFromSummary(summaryResult.data.items)
+    otherInboundRows.value = otherInboundResult.data.items
+    purchaseReturnOutboundRows.value = purchaseReturnOutboundResult.data.items
     ledgerRows.value = ledgerResult.data.items
     orderMap.value = buildOrderMap(ledgerResult.data.items)
   } catch (error) {
@@ -811,8 +1253,12 @@ const loadData = async (): Promise<void> => {
     errorMessage.value = message
     managementErrorMessage.value = message
     materialErrorMessage.value = message
+    otherInboundErrorMessage.value = message
+    purchaseReturnOutboundErrorMessage.value = message
     managementRows.value = []
     materialRows.value = []
+    otherInboundRows.value = []
+    purchaseReturnOutboundRows.value = []
     ElMessage.error(message)
   } finally {
     loading.value = false
@@ -843,6 +1289,32 @@ const applyMaterialFilters = (): void => {
     return
   }
   materialErrorMessage.value = ''
+}
+
+const applyOtherInboundFilters = (): void => {
+  if (!canRead.value) {
+    ElMessage.warning('当前账号无其他入仓读取权限')
+    return
+  }
+  if (query.other_inbound_no.trim().toLowerCase() === LOCAL_OTHER_INBOUND_ERROR_TOKEN) {
+    otherInboundErrorMessage.value = '模拟错误态：其他入仓查询失败，请调整筛选后重试'
+    otherInboundRows.value = []
+    return
+  }
+  otherInboundErrorMessage.value = ''
+}
+
+const applyPurchaseReturnFilters = (): void => {
+  if (!canRead.value) {
+    ElMessage.warning('当前账号无采购退料出仓读取权限')
+    return
+  }
+  if (query.purchase_return_outbound_no.trim().toLowerCase() === LOCAL_PURCHASE_RETURN_OUTBOUND_ERROR_TOKEN) {
+    purchaseReturnOutboundErrorMessage.value = '模拟错误态：采购退料出仓查询失败，请调整筛选后重试'
+    purchaseReturnOutboundRows.value = []
+    return
+  }
+  purchaseReturnOutboundErrorMessage.value = ''
 }
 
 const guardedAction = (actionName: string): void => {
@@ -894,6 +1366,14 @@ const viewWarehouse = (row: WarehouseManagementItem): void => {
 
 const viewMaterial = (row: WarehouseMaterialInventoryItem): void => {
   ElMessage.info(`物料详情（只读）：${row.material_name}`)
+}
+
+const viewOtherInbound = (row: WarehouseOtherInboundItem): void => {
+  ElMessage.info(`其他入仓详情（只读）：${row.inbound_no}`)
+}
+
+const viewPurchaseReturnOutbound = (row: WarehousePurchaseReturnOutboundItem): void => {
+  ElMessage.info(`采购退料出仓详情（只读）：${row.outbound_no}`)
 }
 
 onMounted(async () => {
@@ -1026,6 +1506,80 @@ onMounted(async () => {
 }
 
 .material-table {
+  margin-top: 8px;
+}
+
+.other-inbound-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #fffaf1;
+}
+
+.other-inbound-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.other-inbound-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.other-inbound-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.other-inbound-filter-form {
+  margin-bottom: 8px;
+}
+
+.other-inbound-table {
+  margin-top: 8px;
+}
+
+.purchase-return-outbound-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f8f8ff;
+}
+
+.purchase-return-outbound-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.purchase-return-outbound-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.purchase-return-outbound-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.purchase-return-outbound-filter-form {
+  margin-bottom: 8px;
+}
+
+.purchase-return-outbound-table {
   margin-top: 8px;
 }
 

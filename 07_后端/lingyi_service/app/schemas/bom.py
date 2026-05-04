@@ -162,6 +162,46 @@ class BomMaterialProcessingQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
+class BomMaterialProcessingInboundQuery(BaseModel):
+    """BOM material-processing inbound query params."""
+
+    item_code: Optional[str] = None
+    inbound_no: Optional[str] = None
+    material_item_code: Optional[str] = None
+    processing_supplier: Optional[str] = None
+    warehouse_name: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class BomMaterialDeductionQuery(BaseModel):
+    """BOM material-deduction query params."""
+
+    item_code: Optional[str] = None
+    deduction_no: Optional[str] = None
+    material_item_code: Optional[str] = None
+    warehouse_name: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class BomMaterialSalesOutboundQuery(BaseModel):
+    """BOM material-sales-outbound query params."""
+
+    item_code: Optional[str] = None
+    outbound_no: Optional[str] = None
+    sales_order_no: Optional[str] = None
+    customer_name: Optional[str] = None
+    warehouse_name: Optional[str] = None
+    material_item_code: Optional[str] = None
+    status: Optional[str] = None
+    audit_status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
 class BomMaterialTypeQuery(BaseModel):
     """BOM material-type query params."""
 
@@ -416,6 +456,99 @@ class BomMaterialProcessingData(BaseModel):
     """Material-processing response data."""
 
     items: List[BomMaterialProcessingItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomMaterialProcessingInboundItem(BaseModel):
+    """Material-processing inbound list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    inbound_no: str
+    process_no: str
+    material_item_code: str
+    processing_supplier: str
+    warehouse_name: str
+    inbound_qty: Decimal
+    inspected_qty: Decimal
+    pending_inspection_qty: Decimal
+    inbound_date: Optional[date]
+    status: str
+    is_default: bool
+
+
+class BomMaterialProcessingInboundData(BaseModel):
+    """Material-processing inbound response data."""
+
+    items: List[BomMaterialProcessingInboundItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomMaterialDeductionItem(BaseModel):
+    """Material-deduction list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    deduction_no: str
+    process_no: str
+    material_item_code: str
+    warehouse_name: str
+    deduction_qty: Decimal
+    deducted_qty: Decimal
+    pending_deduction_qty: Decimal
+    deduction_date: Optional[date]
+    status: str
+    is_default: bool
+
+
+class BomMaterialDeductionData(BaseModel):
+    """Material-deduction response data."""
+
+    items: List[BomMaterialDeductionItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomMaterialSalesOutboundItem(BaseModel):
+    """Material-sales-outbound list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    outbound_no: str
+    sales_order_no: str
+    customer_name: str
+    warehouse_name: str
+    material_item_code: str
+    material_name: str
+    color: Optional[str] = None
+    size: Optional[str] = None
+    batch_no: str
+    planned_outbound_qty: Decimal
+    outbound_qty: Decimal
+    pending_outbound_qty: Decimal
+    outbound_date: Optional[date]
+    status: str
+    audit_status: str
+    applicant_name: str
+    updated_at: Optional[str] = None
+    is_default: bool
+
+
+class BomMaterialSalesOutboundData(BaseModel):
+    """Material-sales-outbound response data."""
+
+    items: List[BomMaterialSalesOutboundItem]
     total: int
     page: int
     page_size: int

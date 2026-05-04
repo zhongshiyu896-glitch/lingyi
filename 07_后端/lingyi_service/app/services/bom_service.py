@@ -52,6 +52,15 @@ from app.schemas.bom import BomMaterialGalleryData
 from app.schemas.bom import BomMaterialGalleryItem
 from app.schemas.bom import BomMaterialGalleryQuery
 from app.schemas.bom import BomMaterialProcessingData
+from app.schemas.bom import BomMaterialProcessingInboundData
+from app.schemas.bom import BomMaterialDeductionData
+from app.schemas.bom import BomMaterialDeductionItem
+from app.schemas.bom import BomMaterialDeductionQuery
+from app.schemas.bom import BomMaterialSalesOutboundData
+from app.schemas.bom import BomMaterialSalesOutboundItem
+from app.schemas.bom import BomMaterialSalesOutboundQuery
+from app.schemas.bom import BomMaterialProcessingInboundItem
+from app.schemas.bom import BomMaterialProcessingInboundQuery
 from app.schemas.bom import BomMaterialProcessingItem
 from app.schemas.bom import BomMaterialProcessingQuery
 from app.schemas.bom import BomMaterialTypeData
@@ -319,6 +328,10 @@ class BomService:
         return f"MP-{sequence_no:02d}-{operation_id:04d}"
 
     @staticmethod
+    def _derive_processing_inbound_no(operation_id: int, sequence_no: int) -> str:
+        return f"IN-{sequence_no:02d}-{operation_id:04d}"
+
+    @staticmethod
     def _derive_processing_mode(operation: LyBomOperation) -> str:
         if operation.is_subcontract:
             return "委外加工"
@@ -341,6 +354,88 @@ class BomService:
         if any(token in process_name for token in ("裁", "缝", "车", "拼接")):
             return "本厂车缝工段"
         return "本厂工艺工段"
+
+    @staticmethod
+    def _derive_processing_inbound_warehouse(operation: LyBomOperation) -> str:
+        if operation.is_subcontract:
+            return "委外中转仓"
+        return "主料成品仓"
+
+    @staticmethod
+    def _derive_processing_inbound_status(bom_status: str) -> str:
+        if bom_status == "active":
+            return "已入仓"
+        if bom_status == "inactive":
+            return "已关闭"
+        return "待入仓"
+
+    @staticmethod
+    def _derive_material_deduction_no(operation_id: int, sequence_no: int) -> str:
+        return f"DC-{sequence_no:02d}-{operation_id:04d}"
+
+    @staticmethod
+    def _derive_material_deduction_warehouse(operation: LyBomOperation) -> str:
+        if operation.is_subcontract:
+            return "委外中转仓"
+        return "主料成品仓"
+
+    @staticmethod
+    def _derive_material_deduction_status(bom_status: str) -> str:
+        if bom_status == "active":
+            return "已扣仓"
+        if bom_status == "inactive":
+            return "已关闭"
+        return "待扣仓"
+
+    @staticmethod
+    def _derive_material_sales_outbound_no(item_id: int, bom_id: int) -> str:
+        return f"SO-{bom_id:04d}-{item_id:04d}"
+
+    @staticmethod
+    def _derive_material_sales_order_no(item_code: str, item_id: int) -> str:
+        normalized = item_code.replace("_", "-").upper()
+        return f"XS-{normalized}-{item_id:03d}"
+
+    @staticmethod
+    def _derive_material_sales_customer(item_code: str) -> str:
+        token = item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        if token in {"MEN", "MENS", "M"}:
+            return "华东男装渠道"
+        if token in {"WOMEN", "WOMENS", "W"}:
+            return "华南女装渠道"
+        if token in {"KID", "KIDS", "CHILD"}:
+            return "童装直营渠道"
+        return "综合电商渠道"
+
+    @staticmethod
+    def _derive_material_sales_outbound_warehouse(material_item_code: str) -> str:
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        if token in {"PKG", "PACK", "BOX", "BAG"}:
+            return "包材出货仓"
+        if token in {"ACC", "TRIM", "ZIP", "BTN"}:
+            return "辅料中转仓"
+        return "主料成品仓"
+
+    @staticmethod
+    def _derive_material_sales_status(bom_status: str) -> str:
+        if bom_status == "active":
+            return "已出仓"
+        if bom_status == "inactive":
+            return "已关闭"
+        return "待出仓"
+
+    @staticmethod
+    def _derive_material_sales_audit_status(bom_status: str) -> str:
+        if bom_status == "active":
+            return "已审核"
+        if bom_status == "inactive":
+            return "已驳回"
+        return "待审核"
+
+    @staticmethod
+    def _derive_material_sales_batch_no(material_item_code: str, item_id: int) -> str:
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        return f"LOT-{token or 'MAT'}-{item_id:04d}"
 
     @staticmethod
     def _derive_material_type_code(material_item_code: str) -> str:
@@ -938,6 +1033,355 @@ class BomService:
         start = (query.page - 1) * query.page_size
         end = start + query.page_size
         return BomMaterialProcessingData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_material_processing_inbound(
+        self,
+        query: BomMaterialProcessingInboundQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomMaterialProcessingInboundData:
+        """List readonly material-processing inbound rows derived from BOM operations."""
+        try:
+            sql = (
+                self.session.query(LyBomOperation, LyApparelBom)
+                .join(LyApparelBom, LyBomOperation.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomMaterialProcessingInboundData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            operation_rows: list[tuple[LyBomOperation, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        bom_ids = {int(bom_row.id) for _, bom_row in operation_rows}
+        first_material_map: dict[int, str] = {}
+        if bom_ids:
+            try:
+                item_rows = (
+                    self.session.query(LyApparelBomItem)
+                    .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .all()
+                )
+            except SQLAlchemyError as exc:
+                raise DatabaseReadFailed() from exc
+            for item_row in item_rows:
+                key = int(item_row.bom_id)
+                if key not in first_material_map:
+                    first_material_map[key] = str(item_row.material_item_code)
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        inbound_no_keyword = (query.inbound_no or "").strip().lower()
+        material_code_keyword = (query.material_item_code or "").strip().lower()
+        supplier_keyword = (query.processing_supplier or "").strip().lower()
+        warehouse_keyword = (query.warehouse_name or "").strip()
+        status_keyword = (query.status or "").strip()
+
+        items: list[BomMaterialProcessingInboundItem] = []
+        for operation_row, bom_row in operation_rows:
+            process_no = self._derive_processing_no(
+                operation_id=int(operation_row.id),
+                sequence_no=int(operation_row.sequence_no),
+            )
+            inbound_no = self._derive_processing_inbound_no(
+                operation_id=int(operation_row.id),
+                sequence_no=int(operation_row.sequence_no),
+            )
+            processing_supplier = self._derive_processing_supplier(operation_row)
+            warehouse_name = self._derive_processing_inbound_warehouse(operation_row)
+            status = self._derive_processing_inbound_status(str(bom_row.status))
+
+            inbound_qty = self._round(Decimal("60") + (Decimal(int(operation_row.sequence_no)) * Decimal("15.0")))
+            if status == "已入仓":
+                inspected_qty = self._round(inbound_qty * Decimal("0.92"))
+            elif status == "已关闭":
+                inspected_qty = self._round(inbound_qty * Decimal("0.63"))
+            else:
+                inspected_qty = self._round(inbound_qty * Decimal("0.45"))
+            pending_inspection_qty = self._round(max(inbound_qty - inspected_qty, Decimal("0")))
+            inbound_date = (
+                bom_row.effective_date + timedelta(days=int(operation_row.sequence_no) + 1)
+                if bom_row.effective_date is not None
+                else None
+            )
+            material_item_code = first_material_map.get(int(bom_row.id), f"{str(bom_row.item_code)}-MAT")
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if inbound_no_keyword and inbound_no_keyword not in inbound_no.lower():
+                continue
+            if material_code_keyword and material_code_keyword not in material_item_code.lower():
+                continue
+            if supplier_keyword and supplier_keyword not in processing_supplier.lower():
+                continue
+            if warehouse_keyword and warehouse_keyword != warehouse_name:
+                continue
+            if status_keyword and status_keyword != status:
+                continue
+
+            items.append(
+                BomMaterialProcessingInboundItem(
+                    id=int(operation_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    inbound_no=inbound_no,
+                    process_no=process_no,
+                    material_item_code=material_item_code,
+                    processing_supplier=processing_supplier,
+                    warehouse_name=warehouse_name,
+                    inbound_qty=inbound_qty,
+                    inspected_qty=inspected_qty,
+                    pending_inspection_qty=pending_inspection_qty,
+                    inbound_date=inbound_date,
+                    status=status,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomMaterialProcessingInboundData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_material_deduction(
+        self,
+        query: BomMaterialDeductionQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomMaterialDeductionData:
+        """List readonly material-deduction rows derived from BOM operations."""
+        try:
+            sql = (
+                self.session.query(LyBomOperation, LyApparelBom)
+                .join(LyApparelBom, LyBomOperation.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomMaterialDeductionData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            operation_rows: list[tuple[LyBomOperation, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        bom_ids = {int(bom_row.id) for _, bom_row in operation_rows}
+        first_material_map: dict[int, str] = {}
+        if bom_ids:
+            try:
+                item_rows = (
+                    self.session.query(LyApparelBomItem)
+                    .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .all()
+                )
+            except SQLAlchemyError as exc:
+                raise DatabaseReadFailed() from exc
+            for item_row in item_rows:
+                key = int(item_row.bom_id)
+                if key not in first_material_map:
+                    first_material_map[key] = str(item_row.material_item_code)
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        deduction_no_keyword = (query.deduction_no or "").strip().lower()
+        material_code_keyword = (query.material_item_code or "").strip().lower()
+        warehouse_keyword = (query.warehouse_name or "").strip()
+        status_keyword = (query.status or "").strip()
+
+        items: list[BomMaterialDeductionItem] = []
+        for operation_row, bom_row in operation_rows:
+            process_no = self._derive_processing_no(
+                operation_id=int(operation_row.id),
+                sequence_no=int(operation_row.sequence_no),
+            )
+            deduction_no = self._derive_material_deduction_no(
+                operation_id=int(operation_row.id),
+                sequence_no=int(operation_row.sequence_no),
+            )
+            warehouse_name = self._derive_material_deduction_warehouse(operation_row)
+            status = self._derive_material_deduction_status(str(bom_row.status))
+            material_item_code = first_material_map.get(int(bom_row.id), f"{str(bom_row.item_code)}-MAT")
+
+            deduction_qty = self._round(Decimal("35") + (Decimal(int(operation_row.sequence_no)) * Decimal("9.5")))
+            if status == "已扣仓":
+                deducted_qty = self._round(deduction_qty * Decimal("0.94"))
+            elif status == "已关闭":
+                deducted_qty = self._round(deduction_qty * Decimal("0.66"))
+            else:
+                deducted_qty = self._round(deduction_qty * Decimal("0.41"))
+            pending_deduction_qty = self._round(max(deduction_qty - deducted_qty, Decimal("0")))
+            deduction_date = (
+                bom_row.effective_date + timedelta(days=int(operation_row.sequence_no) + 2)
+                if bom_row.effective_date is not None
+                else None
+            )
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if deduction_no_keyword and deduction_no_keyword not in deduction_no.lower():
+                continue
+            if material_code_keyword and material_code_keyword not in material_item_code.lower():
+                continue
+            if warehouse_keyword and warehouse_keyword != warehouse_name:
+                continue
+            if status_keyword and status_keyword != status:
+                continue
+
+            items.append(
+                BomMaterialDeductionItem(
+                    id=int(operation_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    deduction_no=deduction_no,
+                    process_no=process_no,
+                    material_item_code=material_item_code,
+                    warehouse_name=warehouse_name,
+                    deduction_qty=deduction_qty,
+                    deducted_qty=deducted_qty,
+                    pending_deduction_qty=pending_deduction_qty,
+                    deduction_date=deduction_date,
+                    status=status,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomMaterialDeductionData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_material_sales_outbound(
+        self,
+        query: BomMaterialSalesOutboundQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomMaterialSalesOutboundData:
+        """List readonly material-sales-outbound rows derived from BOM items."""
+        try:
+            sql = (
+                self.session.query(LyApparelBomItem, LyApparelBom)
+                .join(LyApparelBom, LyApparelBomItem.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomMaterialSalesOutboundData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        outbound_no_keyword = (query.outbound_no or "").strip().lower()
+        sales_order_keyword = (query.sales_order_no or "").strip().lower()
+        customer_keyword = (query.customer_name or "").strip().lower()
+        warehouse_keyword = (query.warehouse_name or "").strip()
+        material_code_keyword = (query.material_item_code or "").strip().lower()
+        status_keyword = (query.status or "").strip()
+        audit_status_keyword = (query.audit_status or "").strip()
+
+        items: list[BomMaterialSalesOutboundItem] = []
+        for item_row, bom_row in rows:
+            material_item_code = str(item_row.material_item_code)
+            material_name = str(item_row.remark or material_item_code)
+            outbound_no = self._derive_material_sales_outbound_no(
+                item_id=int(item_row.id),
+                bom_id=int(bom_row.id),
+            )
+            sales_order_no = self._derive_material_sales_order_no(
+                item_code=str(bom_row.item_code),
+                item_id=int(item_row.id),
+            )
+            customer_name = self._derive_material_sales_customer(str(bom_row.item_code))
+            warehouse_name = self._derive_material_sales_outbound_warehouse(material_item_code)
+            status = self._derive_material_sales_status(str(bom_row.status))
+            audit_status = self._derive_material_sales_audit_status(str(bom_row.status))
+            batch_no = self._derive_material_sales_batch_no(
+                material_item_code=material_item_code,
+                item_id=int(item_row.id),
+            )
+
+            planned_outbound_qty = self._round(Decimal(item_row.qty_per_piece) * Decimal("120"))
+            if status == "已出仓":
+                outbound_qty = self._round(planned_outbound_qty * Decimal("0.94"))
+            elif status == "已关闭":
+                outbound_qty = self._round(planned_outbound_qty * Decimal("0.68"))
+            else:
+                outbound_qty = self._round(planned_outbound_qty * Decimal("0.42"))
+            pending_outbound_qty = self._round(max(planned_outbound_qty - outbound_qty, Decimal("0")))
+            outbound_date = bom_row.effective_date + timedelta(days=3) if bom_row.effective_date else None
+            applicant_name = str(bom_row.created_by or "system")
+            updated_at = bom_row.updated_at.isoformat() if bom_row.updated_at is not None else None
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if outbound_no_keyword and outbound_no_keyword not in outbound_no.lower():
+                continue
+            if sales_order_keyword and sales_order_keyword not in sales_order_no.lower():
+                continue
+            if customer_keyword and customer_keyword not in customer_name.lower():
+                continue
+            if warehouse_keyword and warehouse_keyword != warehouse_name:
+                continue
+            if material_code_keyword and material_code_keyword not in material_item_code.lower():
+                continue
+            if status_keyword and status_keyword != status:
+                continue
+            if audit_status_keyword and audit_status_keyword != audit_status:
+                continue
+
+            items.append(
+                BomMaterialSalesOutboundItem(
+                    id=int(item_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    outbound_no=outbound_no,
+                    sales_order_no=sales_order_no,
+                    customer_name=customer_name,
+                    warehouse_name=warehouse_name,
+                    material_item_code=material_item_code,
+                    material_name=material_name,
+                    color=item_row.color,
+                    size=item_row.size,
+                    batch_no=batch_no,
+                    planned_outbound_qty=planned_outbound_qty,
+                    outbound_qty=outbound_qty,
+                    pending_outbound_qty=pending_outbound_qty,
+                    outbound_date=outbound_date,
+                    status=status,
+                    audit_status=audit_status,
+                    applicant_name=applicant_name,
+                    updated_at=updated_at,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomMaterialSalesOutboundData(
             items=items[start:end],
             total=total,
             page=query.page,

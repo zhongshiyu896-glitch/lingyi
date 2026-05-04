@@ -100,6 +100,60 @@ class WarehouseStockSummaryData(BaseModel):
     material_inventory: list[WarehouseMaterialInventoryItem] = Field(default_factory=list)
 
 
+class WarehouseOtherInboundItem(BaseModel):
+    """Other inbound read-only projection row."""
+
+    inbound_no: str
+    supplier: str
+    material_code: str
+    material_name: str
+    warehouse: str
+    location: str
+    qty: Decimal
+    amount: Decimal
+    inbound_date: date
+    source_doc_no: str
+    operator: str
+    status: Literal["pending", "received", "closed"]
+
+
+class WarehouseOtherInboundData(BaseModel):
+    """Other inbound read-only response."""
+
+    company: str | None = None
+    warehouse: str | None = None
+    item_code: str | None = None
+    status: str | None = None
+    items: list[WarehouseOtherInboundItem]
+
+
+class WarehousePurchaseReturnOutboundItem(BaseModel):
+    """Purchase return outbound read-only projection row."""
+
+    outbound_no: str
+    supplier: str
+    material_code: str
+    material_name: str
+    warehouse: str
+    location: str
+    qty: Decimal
+    amount: Decimal
+    outbound_date: date
+    source_doc_no: str
+    operator: str
+    status: Literal["pending", "returned", "closed"]
+
+
+class WarehousePurchaseReturnOutboundData(BaseModel):
+    """Purchase return outbound read-only response."""
+
+    company: str | None = None
+    warehouse: str | None = None
+    item_code: str | None = None
+    status: str | None = None
+    items: list[WarehousePurchaseReturnOutboundItem]
+
+
 class WarehouseAlertItem(BaseModel):
     """Warehouse stock alert row."""
 

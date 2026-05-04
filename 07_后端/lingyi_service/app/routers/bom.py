@@ -51,6 +51,12 @@ from app.schemas.bom import BomListData
 from app.schemas.bom import BomMaterialGalleryData
 from app.schemas.bom import BomMaterialGalleryQuery
 from app.schemas.bom import BomMaterialProcessingData
+from app.schemas.bom import BomMaterialDeductionData
+from app.schemas.bom import BomMaterialDeductionQuery
+from app.schemas.bom import BomMaterialSalesOutboundData
+from app.schemas.bom import BomMaterialSalesOutboundQuery
+from app.schemas.bom import BomMaterialProcessingInboundData
+from app.schemas.bom import BomMaterialProcessingInboundQuery
 from app.schemas.bom import BomMaterialProcessingQuery
 from app.schemas.bom import BomMaterialTypeData
 from app.schemas.bom import BomMaterialTypeQuery
@@ -694,6 +700,167 @@ def list_bom_material_processing(
     service = BomService(session=session)
     try:
         data: BomMaterialProcessingData = service.list_material_processing(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/material-processing-inbound")
+def list_bom_material_processing_inbound(
+    request: Request,
+    item_code: str | None = None,
+    inbound_no: str | None = None,
+    material_item_code: str | None = None,
+    processing_supplier: str | None = None,
+    warehouse_name: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料加工入仓（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomMaterialProcessingInboundQuery(
+        item_code=item_code,
+        inbound_no=inbound_no,
+        material_item_code=material_item_code,
+        processing_supplier=processing_supplier,
+        warehouse_name=warehouse_name,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomMaterialProcessingInboundData = service.list_material_processing_inbound(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/material-deduction")
+def list_bom_material_deduction(
+    request: Request,
+    item_code: str | None = None,
+    deduction_no: str | None = None,
+    material_item_code: str | None = None,
+    warehouse_name: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料扣仓（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomMaterialDeductionQuery(
+        item_code=item_code,
+        deduction_no=deduction_no,
+        material_item_code=material_item_code,
+        warehouse_name=warehouse_name,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomMaterialDeductionData = service.list_material_deduction(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/material-sales-outbound")
+def list_bom_material_sales_outbound(
+    request: Request,
+    item_code: str | None = None,
+    outbound_no: str | None = None,
+    sales_order_no: str | None = None,
+    customer_name: str | None = None,
+    warehouse_name: str | None = None,
+    material_item_code: str | None = None,
+    status: str | None = None,
+    audit_status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料销售出仓（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomMaterialSalesOutboundQuery(
+        item_code=item_code,
+        outbound_no=outbound_no,
+        sales_order_no=sales_order_no,
+        customer_name=customer_name,
+        warehouse_name=warehouse_name,
+        material_item_code=material_item_code,
+        status=status,
+        audit_status=audit_status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomMaterialSalesOutboundData = service.list_material_sales_outbound(
             query=query,
             allowed_item_codes=allowed_item_codes,
         )

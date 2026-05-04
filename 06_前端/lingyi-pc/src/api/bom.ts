@@ -171,6 +171,87 @@ export interface BomMaterialProcessingData {
   page_size: number
 }
 
+export interface BomMaterialProcessingInboundItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  inbound_no: string
+  process_no: string
+  material_item_code: string
+  processing_supplier: string
+  warehouse_name: string
+  inbound_qty: string
+  inspected_qty: string
+  pending_inspection_qty: string
+  inbound_date?: string | null
+  status: string
+  is_default: boolean
+}
+
+export interface BomMaterialProcessingInboundData {
+  items: BomMaterialProcessingInboundItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface BomMaterialDeductionItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  deduction_no: string
+  process_no: string
+  material_item_code: string
+  warehouse_name: string
+  deduction_qty: string
+  deducted_qty: string
+  pending_deduction_qty: string
+  deduction_date?: string | null
+  status: string
+  is_default: boolean
+}
+
+export interface BomMaterialDeductionData {
+  items: BomMaterialDeductionItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface BomMaterialSalesOutboundItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  outbound_no: string
+  sales_order_no: string
+  customer_name: string
+  warehouse_name: string
+  material_item_code: string
+  material_name: string
+  color?: string | null
+  size?: string | null
+  batch_no: string
+  planned_outbound_qty: string
+  outbound_qty: string
+  pending_outbound_qty: string
+  outbound_date?: string | null
+  status: string
+  audit_status: string
+  applicant_name: string
+  updated_at?: string | null
+  is_default: boolean
+}
+
+export interface BomMaterialSalesOutboundData {
+  items: BomMaterialSalesOutboundItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface BomMaterialTypeItem {
   id: number
   bom_id: number
@@ -371,6 +452,43 @@ export const fetchBomMaterialProcessing = (params: {
   page_size: number
 }): Promise<ApiResponse<BomMaterialProcessingData>> =>
   request(`/api/bom/material-processing?${toQuery(params)}`)
+
+export const fetchBomMaterialProcessingInbound = (params: {
+  item_code?: string
+  inbound_no?: string
+  material_item_code?: string
+  processing_supplier?: string
+  warehouse_name?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomMaterialProcessingInboundData>> =>
+  request(`/api/bom/material-processing-inbound?${toQuery(params)}`)
+
+export const fetchBomMaterialDeduction = (params: {
+  item_code?: string
+  deduction_no?: string
+  material_item_code?: string
+  warehouse_name?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomMaterialDeductionData>> =>
+  request(`/api/bom/material-deduction?${toQuery(params)}`)
+
+export const fetchBomMaterialSalesOutbound = (params: {
+  item_code?: string
+  outbound_no?: string
+  sales_order_no?: string
+  customer_name?: string
+  warehouse_name?: string
+  material_item_code?: string
+  status?: string
+  audit_status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomMaterialSalesOutboundData>> =>
+  request(`/api/bom/material-sales-outbound?${toQuery(params)}`)
 
 export const fetchBomMaterialTypes = (params: {
   item_code?: string

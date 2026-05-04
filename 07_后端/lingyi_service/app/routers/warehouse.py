@@ -41,6 +41,8 @@ from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidatesData
 from app.schemas.warehouse import WarehouseInventoryCountCancelRequest
 from app.schemas.warehouse import WarehouseInventoryCountCreateRequest
 from app.schemas.warehouse import WarehouseInventoryCountVarianceReviewRequest
+from app.schemas.warehouse import WarehouseOtherInboundData
+from app.schemas.warehouse import WarehousePurchaseReturnOutboundData
 from app.schemas.warehouse import WarehouseSerialNumberDetailData
 from app.schemas.warehouse import WarehouseSerialNumberListData
 from app.schemas.warehouse import WarehouseStockEntryDraftCancelRequest
@@ -731,6 +733,162 @@ def get_stock_summary(
         )
     ]
     data.items = filtered
+    return _ok(data)
+
+
+@router.get("/other-inbound")
+def list_other_inbound(
+    request: Request,
+    company: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_READ
+    permission_service = PermissionService(session=session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_other_inbound",
+    )
+
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+    try:
+        _ensure_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+
+    normalized_status = _scope_text(status)
+    if normalized_status is not None and normalized_status not in {"pending", "received", "closed"}:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_QUERY_PARAMETER", "message": "status 参数非法", "data": None},
+        )
+
+    try:
+        data: WarehouseOtherInboundData = _read_service(request).list_other_inbound(
+            company=_scope_text(company),
+            warehouse=_scope_text(warehouse),
+            item_code=_scope_text(item_code),
+            status=normalized_status,
+        )
+    except ERPNextAdapterException as exc:
+        _handle_erpnext_error(
+            exc=exc,
+            permission_service=permission_service,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="WarehouseOtherInbound",
+        )
+
+    data.items = [
+        row
+        for row in data.items
+        if _scope_allowed(
+            company=data.company,
+            warehouse=row.warehouse,
+            item_code=row.material_code,
+            permissions=permissions,
+        )
+    ]
+    return _ok(data)
+
+
+@router.get("/purchase-return-outbound")
+def list_purchase_return_outbound(
+    request: Request,
+    company: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = WAREHOUSE_READ
+    permission_service = PermissionService(session=session)
+    _require_warehouse_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse_purchase_return_outbound",
+    )
+
+    permissions = _get_user_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        action=action,
+        resource_type="warehouse",
+    )
+    try:
+        _ensure_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            user_permissions=permissions,
+        )
+    except HTTPException as exc:
+        _raise_scope_denied_as_forbidden(exc)
+
+    normalized_status = _scope_text(status)
+    if normalized_status is not None and normalized_status not in {"pending", "returned", "closed"}:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_QUERY_PARAMETER", "message": "status 参数非法", "data": None},
+        )
+
+    try:
+        data: WarehousePurchaseReturnOutboundData = _read_service(request).list_purchase_return_outbound(
+            company=_scope_text(company),
+            warehouse=_scope_text(warehouse),
+            item_code=_scope_text(item_code),
+            status=normalized_status,
+        )
+    except ERPNextAdapterException as exc:
+        _handle_erpnext_error(
+            exc=exc,
+            permission_service=permission_service,
+            request=request,
+            current_user=current_user,
+            action=action,
+            resource_type="WarehousePurchaseReturnOutbound",
+        )
+
+    data.items = [
+        row
+        for row in data.items
+        if _scope_allowed(
+            company=data.company,
+            warehouse=row.warehouse,
+            item_code=row.material_code,
+            permissions=permissions,
+        )
+    ]
     return _ok(data)
 
 

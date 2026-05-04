@@ -9,6 +9,7 @@ from datetime import timezone
 from decimal import Decimal
 import hashlib
 from typing import Any
+from typing import Literal
 
 from sqlalchemy.orm import Session
 
@@ -44,6 +45,10 @@ from app.schemas.warehouse import WarehouseStockLedgerData
 from app.schemas.warehouse import WarehouseStockLedgerItem
 from app.schemas.warehouse import WarehouseManagementItem
 from app.schemas.warehouse import WarehouseMaterialInventoryItem
+from app.schemas.warehouse import WarehouseOtherInboundData
+from app.schemas.warehouse import WarehouseOtherInboundItem
+from app.schemas.warehouse import WarehousePurchaseReturnOutboundData
+from app.schemas.warehouse import WarehousePurchaseReturnOutboundItem
 from app.schemas.warehouse import WarehouseSerialNumberDetailData
 from app.schemas.warehouse import WarehouseSerialNumberItem
 from app.schemas.warehouse import WarehouseSerialNumberListData
@@ -142,6 +147,96 @@ class WarehouseService:
             material_inventory=material_rows,
         )
 
+    def list_other_inbound(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+    ) -> WarehouseOtherInboundData:
+        summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        status_filter = (status or "").strip().lower() or None
+        rows: list[WarehouseOtherInboundItem] = []
+        for index, row in enumerate(summary.items, start=1):
+            material_name = self._material_name_from_code(row.item_code)
+            material_category = self._material_category_from_code(row.item_code)
+            qty = Decimal(str(row.actual_qty)).quantize(Decimal("0.01"))
+            amount = (qty * self._material_unit_price(item_code=row.item_code)).quantize(Decimal("0.01"))
+            inbound_status = self._other_inbound_status(row=row)
+            if status_filter is not None and inbound_status != status_filter:
+                continue
+
+            rows.append(
+                WarehouseOtherInboundItem(
+                    inbound_no=f"OIN-{datetime.now(timezone.utc).strftime('%Y%m')}-{index:04d}",
+                    supplier=self._supplier_from_material(material_category=material_category),
+                    material_code=row.item_code,
+                    material_name=material_name,
+                    warehouse=row.warehouse,
+                    location=self._material_location(warehouse=row.warehouse, index=index),
+                    qty=qty,
+                    amount=amount,
+                    inbound_date=date.today(),
+                    source_doc_no=f"SRC-{row.item_code}-{index:03d}",
+                    operator="系统只读映射",
+                    status=inbound_status,
+                )
+            )
+        rows.sort(key=lambda item: (item.status, item.inbound_no, item.material_code))
+        return WarehouseOtherInboundData(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status_filter,
+            items=rows,
+        )
+
+    def list_purchase_return_outbound(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+    ) -> WarehousePurchaseReturnOutboundData:
+        summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        status_filter = (status or "").strip().lower() or None
+        rows: list[WarehousePurchaseReturnOutboundItem] = []
+        for index, row in enumerate(summary.items, start=1):
+            material_name = self._material_name_from_code(row.item_code)
+            material_category = self._material_category_from_code(row.item_code)
+            qty = Decimal(str(row.actual_qty)).quantize(Decimal("0.01"))
+            amount = (qty * self._material_unit_price(item_code=row.item_code)).quantize(Decimal("0.01"))
+            outbound_status = self._purchase_return_outbound_status(row=row)
+            if status_filter is not None and outbound_status != status_filter:
+                continue
+
+            rows.append(
+                WarehousePurchaseReturnOutboundItem(
+                    outbound_no=f"PRO-{datetime.now(timezone.utc).strftime('%Y%m')}-{index:04d}",
+                    supplier=self._supplier_from_material(material_category=material_category),
+                    material_code=row.item_code,
+                    material_name=material_name,
+                    warehouse=row.warehouse,
+                    location=self._material_location(warehouse=row.warehouse, index=index),
+                    qty=qty,
+                    amount=amount,
+                    outbound_date=date.today(),
+                    source_doc_no=f"PRR-{row.item_code}-{index:03d}",
+                    operator="系统只读映射",
+                    status=outbound_status,
+                )
+            )
+        rows.sort(key=lambda item: (item.status, item.outbound_no, item.material_code))
+        return WarehousePurchaseReturnOutboundData(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status_filter,
+            items=rows,
+        )
+
     @staticmethod
     def _build_management_overview(*, items: list[WarehouseStockSummaryItem]) -> list[WarehouseManagementItem]:
         by_warehouse: dict[str, dict[str, Any]] = {}
@@ -227,6 +322,32 @@ class WarehouseService:
                 )
             )
         return rows
+
+    @staticmethod
+    def _supplier_from_material(*, material_category: str) -> str:
+        if material_category == "面料":
+            return "华纺供应商"
+        if material_category == "辅料":
+            return "永盛辅料"
+        if material_category == "包材":
+            return "恒彩包材"
+        return "综合供应商"
+
+    @staticmethod
+    def _other_inbound_status(*, row: WarehouseStockSummaryItem) -> Literal["pending", "received", "closed"]:
+        if row.threshold_missing:
+            return "closed"
+        if row.is_below_safety or row.is_below_reorder:
+            return "pending"
+        return "received"
+
+    @staticmethod
+    def _purchase_return_outbound_status(*, row: WarehouseStockSummaryItem) -> Literal["pending", "returned", "closed"]:
+        if row.threshold_missing:
+            return "closed"
+        if row.is_below_safety or row.is_below_reorder:
+            return "pending"
+        return "returned"
 
     @staticmethod
     def _material_name_from_code(item_code: str) -> str:

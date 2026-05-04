@@ -98,6 +98,66 @@ export interface WarehouseStockSummaryData {
   material_inventory?: WarehouseMaterialInventoryItem[]
 }
 
+export interface WarehouseOtherInboundQuery {
+  company?: string
+  warehouse?: string
+  item_code?: string
+  status?: 'pending' | 'received' | 'closed' | ''
+}
+
+export interface WarehouseOtherInboundItem {
+  inbound_no: string
+  supplier: string
+  material_code: string
+  material_name: string
+  warehouse: string
+  location: string
+  qty: NumericLike
+  amount: NumericLike
+  inbound_date: string
+  source_doc_no: string
+  operator: string
+  status: 'pending' | 'received' | 'closed'
+}
+
+export interface WarehouseOtherInboundData {
+  company?: string | null
+  warehouse?: string | null
+  item_code?: string | null
+  status?: string | null
+  items: WarehouseOtherInboundItem[]
+}
+
+export interface WarehousePurchaseReturnOutboundQuery {
+  company?: string
+  warehouse?: string
+  item_code?: string
+  status?: 'pending' | 'returned' | 'closed' | ''
+}
+
+export interface WarehousePurchaseReturnOutboundItem {
+  outbound_no: string
+  supplier: string
+  material_code: string
+  material_name: string
+  warehouse: string
+  location: string
+  qty: NumericLike
+  amount: NumericLike
+  outbound_date: string
+  source_doc_no: string
+  operator: string
+  status: 'pending' | 'returned' | 'closed'
+}
+
+export interface WarehousePurchaseReturnOutboundData {
+  company?: string | null
+  warehouse?: string | null
+  item_code?: string | null
+  status?: string | null
+  items: WarehousePurchaseReturnOutboundItem[]
+}
+
 export interface WarehouseAlertsQuery {
   company?: string
   warehouse?: string
@@ -254,6 +314,30 @@ export const fetchWarehouseAlerts = async (
     alert_type: query.alert_type,
   })
   return request<WarehouseAlertsData>(`/api/warehouse/alerts?${queryString}`)
+}
+
+export const fetchWarehouseOtherInbound = async (
+  query: WarehouseOtherInboundQuery,
+): Promise<ApiResponse<WarehouseOtherInboundData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    warehouse: query.warehouse,
+    item_code: query.item_code,
+    status: query.status,
+  })
+  return request<WarehouseOtherInboundData>(`/api/warehouse/other-inbound?${queryString}`)
+}
+
+export const fetchWarehousePurchaseReturnOutbound = async (
+  query: WarehousePurchaseReturnOutboundQuery,
+): Promise<ApiResponse<WarehousePurchaseReturnOutboundData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    warehouse: query.warehouse,
+    item_code: query.item_code,
+    status: query.status,
+  })
+  return request<WarehousePurchaseReturnOutboundData>(`/api/warehouse/purchase-return-outbound?${queryString}`)
 }
 
 export const fetchWarehouseFinishedGoodsInboundCandidates = async (

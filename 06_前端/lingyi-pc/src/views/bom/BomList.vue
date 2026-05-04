@@ -582,6 +582,462 @@
           </div>
         </section>
 
+        <el-divider content-position="left">物料加工入仓（TASK-Y39B-P1-01）</el-divider>
+
+        <section class="material-processing-inbound-section">
+          <el-form :inline="true" :model="materialProcessingInboundQuery">
+            <el-form-item label="款号">
+              <el-input v-model="materialProcessingInboundQuery.item_code" clearable placeholder="请输入款号" />
+            </el-form-item>
+            <el-form-item label="入仓单号">
+              <el-input v-model="materialProcessingInboundQuery.inbound_no" clearable placeholder="请输入入仓单号" />
+            </el-form-item>
+            <el-form-item label="物料编码">
+              <el-input
+                v-model="materialProcessingInboundQuery.material_item_code"
+                clearable
+                placeholder="请输入物料编码"
+              />
+            </el-form-item>
+            <el-form-item label="加工供应商">
+              <el-input
+                v-model="materialProcessingInboundQuery.processing_supplier"
+                clearable
+                placeholder="请输入加工供应商"
+              />
+            </el-form-item>
+            <el-form-item label="入仓仓库">
+              <el-select
+                v-model="materialProcessingInboundQuery.warehouse_name"
+                clearable
+                placeholder="请选择入仓仓库"
+                style="width: 170px"
+                aria-label="物料加工入仓仓库筛选"
+              >
+                <el-option label="主料成品仓" value="主料成品仓" />
+                <el-option label="委外中转仓" value="委外中转仓" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select
+                v-model="materialProcessingInboundQuery.status"
+                clearable
+                placeholder="请选择状态"
+                style="width: 150px"
+                aria-label="物料加工入仓状态筛选"
+              >
+                <el-option label="待入仓" value="待入仓" />
+                <el-option label="已入仓" value="已入仓" />
+                <el-option label="已关闭" value="已关闭" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="操作">
+              <el-button type="primary" :disabled="!canRead" @click="loadMaterialProcessingInbound">查询</el-button>
+              <el-button :disabled="!canRead" @click="resetMaterialProcessingInboundQuery">重置</el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-inbound-confirm"
+                @click="guardedReadonlyAction('入仓确认')"
+              >
+                入仓确认
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-inbound-inspect"
+                @click="guardedReadonlyAction('质检')"
+              >
+                质检
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-inbound-sync"
+                @click="guardedReadonlyAction('同步')"
+              >
+                同步
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-inbound-export"
+                @click="guardedReadonlyAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-inbound-print"
+                @click="guardedReadonlyAction('打印')"
+              >
+                打印
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <el-alert
+            v-if="materialProcessingInboundError"
+            class="material-processing-inbound-error-alert"
+            title="物料加工入仓加载失败"
+            :description="materialProcessingInboundError"
+            type="error"
+            show-icon
+            :closable="false"
+          />
+
+          <el-table
+            class="material-processing-inbound-table"
+            :data="materialProcessingInboundRows"
+            v-loading="materialProcessingInboundLoading"
+            border
+            empty-text="暂无物料加工入仓数据"
+          >
+            <el-table-column prop="inbound_no" label="入仓单号" min-width="170" />
+            <el-table-column prop="process_no" label="工序编号" min-width="150" />
+            <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
+            <el-table-column prop="processing_supplier" label="加工供应商" min-width="160" />
+            <el-table-column prop="warehouse_name" label="入仓仓库" min-width="130" />
+            <el-table-column prop="inbound_qty" label="入仓数量" min-width="110" />
+            <el-table-column prop="inspected_qty" label="已质检数量" min-width="120" />
+            <el-table-column prop="pending_inspection_qty" label="待质检数量" min-width="120" />
+            <el-table-column prop="inbound_date" label="入仓日期" min-width="120" />
+            <el-table-column prop="item_code" label="款号" min-width="120" />
+            <el-table-column prop="bom_no" label="来源BOM" min-width="170" />
+            <el-table-column label="状态" width="110">
+              <template #default="scope">
+                <el-tag :type="materialProcessingInboundStatusTagType(scope.row.status)">{{ scope.row.status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="300" fixed="right">
+              <template #default="scope">
+                <el-button link type="primary" @click="openMaterialProcessingInboundDetail(scope.row)">查看</el-button>
+                <el-button link type="success" @click="guardedReadonlyAction('入仓确认')">入仓确认</el-button>
+                <el-button link type="warning" @click="guardedReadonlyAction('质检')">质检</el-button>
+                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager material-processing-inbound-pager">
+            <el-pagination
+              background
+              layout="prev, pager, next, total, sizes"
+              :current-page="materialProcessingInboundQuery.page"
+              :page-size="materialProcessingInboundQuery.page_size"
+              :total="materialProcessingInboundTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onMaterialProcessingInboundPageChange"
+              @size-change="onMaterialProcessingInboundSizeChange"
+            />
+          </div>
+        </section>
+
+        <el-divider content-position="left">物料扣仓（TASK-Y39B-P1-03）</el-divider>
+
+        <section class="material-deduction-section">
+          <el-form :inline="true" :model="materialDeductionQuery">
+            <el-form-item label="款号">
+              <el-input v-model="materialDeductionQuery.item_code" clearable placeholder="请输入款号" />
+            </el-form-item>
+            <el-form-item label="扣仓单号">
+              <el-input v-model="materialDeductionQuery.deduction_no" clearable placeholder="请输入扣仓单号" />
+            </el-form-item>
+            <el-form-item label="物料编码">
+              <el-input v-model="materialDeductionQuery.material_item_code" clearable placeholder="请输入物料编码" />
+            </el-form-item>
+            <el-form-item label="扣仓仓库">
+              <el-select
+                v-model="materialDeductionQuery.warehouse_name"
+                clearable
+                placeholder="请选择扣仓仓库"
+                style="width: 170px"
+                aria-label="物料扣仓仓库筛选"
+              >
+                <el-option label="主料成品仓" value="主料成品仓" />
+                <el-option label="委外中转仓" value="委外中转仓" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select
+                v-model="materialDeductionQuery.status"
+                clearable
+                placeholder="请选择状态"
+                style="width: 150px"
+                aria-label="物料扣仓状态筛选"
+              >
+                <el-option label="待扣仓" value="待扣仓" />
+                <el-option label="已扣仓" value="已扣仓" />
+                <el-option label="已关闭" value="已关闭" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="操作">
+              <el-button type="primary" :disabled="!canRead" @click="loadMaterialDeduction">查询</el-button>
+              <el-button :disabled="!canRead" @click="resetMaterialDeductionQuery">重置</el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-deduction-confirm"
+                @click="guardedReadonlyAction('扣仓确认')"
+              >
+                扣仓确认
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-deduction-reverse"
+                @click="guardedReadonlyAction('扣仓冲销')"
+              >
+                扣仓冲销
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-deduction-sync"
+                @click="guardedReadonlyAction('同步')"
+              >
+                同步
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-deduction-export"
+                @click="guardedReadonlyAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-deduction-print"
+                @click="guardedReadonlyAction('打印')"
+              >
+                打印
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <el-alert
+            v-if="materialDeductionError"
+            class="material-deduction-error-alert"
+            title="物料扣仓加载失败"
+            :description="materialDeductionError"
+            type="error"
+            show-icon
+            :closable="false"
+          />
+
+          <el-table
+            class="material-deduction-table"
+            :data="materialDeductionRows"
+            v-loading="materialDeductionLoading"
+            border
+            empty-text="暂无物料扣仓数据"
+          >
+            <el-table-column prop="deduction_no" label="扣仓单号" min-width="170" />
+            <el-table-column prop="process_no" label="工序编号" min-width="150" />
+            <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
+            <el-table-column prop="warehouse_name" label="扣仓仓库" min-width="130" />
+            <el-table-column prop="deduction_qty" label="应扣数量" min-width="110" />
+            <el-table-column prop="deducted_qty" label="已扣数量" min-width="110" />
+            <el-table-column prop="pending_deduction_qty" label="待扣数量" min-width="110" />
+            <el-table-column prop="deduction_date" label="扣仓日期" min-width="120" />
+            <el-table-column prop="item_code" label="款号" min-width="120" />
+            <el-table-column prop="bom_no" label="来源BOM" min-width="170" />
+            <el-table-column label="状态" width="110">
+              <template #default="scope">
+                <el-tag :type="materialDeductionStatusTagType(scope.row.status)">{{ scope.row.status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="300" fixed="right">
+              <template #default="scope">
+                <el-button link type="primary" @click="openMaterialDeductionDetail(scope.row)">查看</el-button>
+                <el-button link type="success" @click="guardedReadonlyAction('扣仓确认')">扣仓确认</el-button>
+                <el-button link type="warning" @click="guardedReadonlyAction('扣仓冲销')">扣仓冲销</el-button>
+                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager material-deduction-pager">
+            <el-pagination
+              background
+              layout="prev, pager, next, total, sizes"
+              :current-page="materialDeductionQuery.page"
+              :page-size="materialDeductionQuery.page_size"
+              :total="materialDeductionTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onMaterialDeductionPageChange"
+              @size-change="onMaterialDeductionSizeChange"
+            />
+          </div>
+        </section>
+
+        <el-divider content-position="left">物料销售出仓（TASK-Y39B-P1-05）</el-divider>
+
+        <section class="material-sales-outbound-section">
+          <el-form :inline="true" :model="materialSalesOutboundQuery">
+            <el-form-item label="款号">
+              <el-input v-model="materialSalesOutboundQuery.item_code" clearable placeholder="请输入款号" />
+            </el-form-item>
+            <el-form-item label="出仓单号">
+              <el-input v-model="materialSalesOutboundQuery.outbound_no" clearable placeholder="请输入出仓单号" />
+            </el-form-item>
+            <el-form-item label="关联销售单">
+              <el-input v-model="materialSalesOutboundQuery.sales_order_no" clearable placeholder="请输入关联销售单" />
+            </el-form-item>
+            <el-form-item label="客户">
+              <el-input v-model="materialSalesOutboundQuery.customer_name" clearable placeholder="请输入客户名称" />
+            </el-form-item>
+            <el-form-item label="出仓仓库">
+              <el-select
+                v-model="materialSalesOutboundQuery.warehouse_name"
+                clearable
+                placeholder="请选择出仓仓库"
+                style="width: 170px"
+                aria-label="物料销售出仓仓库筛选"
+              >
+                <el-option label="主料成品仓" value="主料成品仓" />
+                <el-option label="辅料中转仓" value="辅料中转仓" />
+                <el-option label="包材出货仓" value="包材出货仓" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="物料编码">
+              <el-input
+                v-model="materialSalesOutboundQuery.material_item_code"
+                clearable
+                placeholder="请输入物料编码"
+              />
+            </el-form-item>
+            <el-form-item label="出仓状态">
+              <el-select
+                v-model="materialSalesOutboundQuery.status"
+                clearable
+                placeholder="请选择出仓状态"
+                style="width: 150px"
+                aria-label="物料销售出仓状态筛选"
+              >
+                <el-option label="待出仓" value="待出仓" />
+                <el-option label="已出仓" value="已出仓" />
+                <el-option label="已关闭" value="已关闭" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="审核状态">
+              <el-select
+                v-model="materialSalesOutboundQuery.audit_status"
+                clearable
+                placeholder="请选择审核状态"
+                style="width: 150px"
+                aria-label="物料销售出仓审核状态筛选"
+              >
+                <el-option label="待审核" value="待审核" />
+                <el-option label="已审核" value="已审核" />
+                <el-option label="已驳回" value="已驳回" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="操作">
+              <el-button type="primary" :disabled="!canRead" @click="loadMaterialSalesOutbound">查询</el-button>
+              <el-button :disabled="!canRead" @click="resetMaterialSalesOutboundQuery">重置</el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-sales-outbound-confirm"
+                @click="guardedReadonlyAction('出仓确认')"
+              >
+                出仓确认
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-sales-outbound-audit"
+                @click="guardedReadonlyAction('审核通过')"
+              >
+                审核通过
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-sales-outbound-sync"
+                @click="guardedReadonlyAction('同步')"
+              >
+                同步
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-sales-outbound-export"
+                @click="guardedReadonlyAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-sales-outbound-print"
+                @click="guardedReadonlyAction('打印')"
+              >
+                打印
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <el-alert
+            v-if="materialSalesOutboundError"
+            class="material-sales-outbound-error-alert"
+            title="物料销售出仓加载失败"
+            :description="materialSalesOutboundError"
+            type="error"
+            show-icon
+            :closable="false"
+          />
+
+          <el-table
+            class="material-sales-outbound-table"
+            :data="materialSalesOutboundRows"
+            v-loading="materialSalesOutboundLoading"
+            border
+            empty-text="暂无物料销售出仓数据"
+          >
+            <el-table-column prop="outbound_no" label="出仓单号" min-width="170" />
+            <el-table-column prop="sales_order_no" label="关联销售单" min-width="180" />
+            <el-table-column prop="customer_name" label="客户" min-width="150" />
+            <el-table-column prop="warehouse_name" label="出仓仓库" min-width="130" />
+            <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
+            <el-table-column prop="material_name" label="物料名称" min-width="150" />
+            <el-table-column prop="color" label="颜色" min-width="90" />
+            <el-table-column prop="size" label="尺寸" min-width="90" />
+            <el-table-column prop="batch_no" label="批次" min-width="140" />
+            <el-table-column prop="planned_outbound_qty" label="应出数量" min-width="110" />
+            <el-table-column prop="outbound_qty" label="已出数量" min-width="110" />
+            <el-table-column prop="pending_outbound_qty" label="待出数量" min-width="110" />
+            <el-table-column prop="outbound_date" label="出仓日期" min-width="120" />
+            <el-table-column label="出仓状态" width="110">
+              <template #default="scope">
+                <el-tag :type="materialSalesOutboundStatusTagType(scope.row.status)">{{ scope.row.status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="审核状态" width="110">
+              <template #default="scope">
+                <el-tag :type="materialSalesOutboundAuditTagType(scope.row.audit_status)">{{ scope.row.audit_status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="applicant_name" label="申请人" min-width="120" />
+            <el-table-column prop="updated_at" label="最近更新时间" min-width="170" />
+            <el-table-column prop="item_code" label="款号" min-width="120" />
+            <el-table-column prop="bom_no" label="来源BOM" min-width="170" />
+            <el-table-column label="操作" width="320" fixed="right">
+              <template #default="scope">
+                <el-button link type="primary" @click="openMaterialSalesOutboundDetail(scope.row)">查看</el-button>
+                <el-button link type="success" @click="guardedReadonlyAction('出仓确认')">出仓确认</el-button>
+                <el-button link type="warning" @click="guardedReadonlyAction('审核通过')">审核通过</el-button>
+                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager material-sales-outbound-pager">
+            <el-pagination
+              background
+              layout="prev, pager, next, total, sizes"
+              :current-page="materialSalesOutboundQuery.page"
+              :page-size="materialSalesOutboundQuery.page_size"
+              :total="materialSalesOutboundTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onMaterialSalesOutboundPageChange"
+              @size-change="onMaterialSalesOutboundSizeChange"
+            />
+          </div>
+        </section>
+
         <el-divider content-position="left">物料类型（TASK-Y27B-P1-04）</el-divider>
 
         <section class="material-type-section">
@@ -1134,8 +1590,11 @@ import {
   fetchBomAccessoriesPackaging,
   fetchBomFabrics,
   fetchBomList,
+  fetchBomMaterialDeduction,
   fetchBomMaterialGallery,
   fetchBomMaterialProcessing,
+  fetchBomMaterialProcessingInbound,
+  fetchBomMaterialSalesOutbound,
   fetchBomMaterialTypes,
   fetchBomMaterialUnits,
   fetchBomProcessingTypes,
@@ -1144,7 +1603,10 @@ import {
   type BomFabricItem,
   type BomListItem,
   type BomMaterialGalleryItem,
+  type BomMaterialDeductionItem,
   type BomMaterialProcessingItem,
+  type BomMaterialProcessingInboundItem,
+  type BomMaterialSalesOutboundItem,
   type BomMaterialTypeItem,
   type BomMaterialUnitItem,
   type BomProcessingTypeItem,
@@ -1172,6 +1634,18 @@ const materialProcessingLoading = ref<boolean>(false)
 const materialProcessingRows = ref<BomMaterialProcessingItem[]>([])
 const materialProcessingTotal = ref<number>(0)
 const materialProcessingError = ref<string>('')
+const materialProcessingInboundLoading = ref<boolean>(false)
+const materialProcessingInboundRows = ref<BomMaterialProcessingInboundItem[]>([])
+const materialProcessingInboundTotal = ref<number>(0)
+const materialProcessingInboundError = ref<string>('')
+const materialDeductionLoading = ref<boolean>(false)
+const materialDeductionRows = ref<BomMaterialDeductionItem[]>([])
+const materialDeductionTotal = ref<number>(0)
+const materialDeductionError = ref<string>('')
+const materialSalesOutboundLoading = ref<boolean>(false)
+const materialSalesOutboundRows = ref<BomMaterialSalesOutboundItem[]>([])
+const materialSalesOutboundTotal = ref<number>(0)
+const materialSalesOutboundError = ref<string>('')
 const materialTypeLoading = ref<boolean>(false)
 const materialTypeRows = ref<BomMaterialTypeItem[]>([])
 const materialTypeTotal = ref<number>(0)
@@ -1243,6 +1717,40 @@ const materialProcessingQuery = reactive({
   processing_supplier: '',
   processing_mode: '',
   status: '',
+  page: 1,
+  page_size: 20,
+})
+
+const materialProcessingInboundQuery = reactive({
+  item_code: '',
+  inbound_no: '',
+  material_item_code: '',
+  processing_supplier: '',
+  warehouse_name: '',
+  status: '',
+  page: 1,
+  page_size: 20,
+})
+
+const materialDeductionQuery = reactive({
+  item_code: '',
+  deduction_no: '',
+  material_item_code: '',
+  warehouse_name: '',
+  status: '',
+  page: 1,
+  page_size: 20,
+})
+
+const materialSalesOutboundQuery = reactive({
+  item_code: '',
+  outbound_no: '',
+  sales_order_no: '',
+  customer_name: '',
+  warehouse_name: '',
+  material_item_code: '',
+  status: '',
+  audit_status: '',
   page: 1,
   page_size: 20,
 })
@@ -1512,6 +2020,169 @@ const onMaterialProcessingSizeChange = (size: number): void => {
   loadMaterialProcessing()
 }
 
+const loadMaterialProcessingInbound = async (): Promise<void> => {
+  if (!canRead.value) {
+    materialProcessingInboundRows.value = []
+    materialProcessingInboundTotal.value = 0
+    materialProcessingInboundError.value = ''
+    return
+  }
+  materialProcessingInboundLoading.value = true
+  materialProcessingInboundError.value = ''
+  try {
+    const result = await fetchBomMaterialProcessingInbound(materialProcessingInboundQuery)
+    materialProcessingInboundRows.value = result.data.items
+    materialProcessingInboundTotal.value = result.data.total
+  } catch (error) {
+    materialProcessingInboundRows.value = []
+    materialProcessingInboundTotal.value = 0
+    materialProcessingInboundError.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    materialProcessingInboundLoading.value = false
+  }
+}
+
+const resetMaterialProcessingInboundQuery = (): void => {
+  materialProcessingInboundQuery.item_code = ''
+  materialProcessingInboundQuery.inbound_no = ''
+  materialProcessingInboundQuery.material_item_code = ''
+  materialProcessingInboundQuery.processing_supplier = ''
+  materialProcessingInboundQuery.warehouse_name = ''
+  materialProcessingInboundQuery.status = ''
+  materialProcessingInboundQuery.page = 1
+  materialProcessingInboundQuery.page_size = 20
+  loadMaterialProcessingInbound()
+}
+
+const onMaterialProcessingInboundPageChange = (page: number): void => {
+  materialProcessingInboundQuery.page = page
+  loadMaterialProcessingInbound()
+}
+
+const onMaterialProcessingInboundSizeChange = (size: number): void => {
+  materialProcessingInboundQuery.page_size = size
+  materialProcessingInboundQuery.page = 1
+  loadMaterialProcessingInbound()
+}
+
+const materialProcessingInboundStatusTagType = (status: string): 'success' | 'warning' | 'info' => {
+  if (status === '已入仓') return 'success'
+  if (status === '已关闭') return 'warning'
+  return 'info'
+}
+
+const loadMaterialDeduction = async (): Promise<void> => {
+  if (!canRead.value) {
+    materialDeductionRows.value = []
+    materialDeductionTotal.value = 0
+    materialDeductionError.value = ''
+    return
+  }
+  materialDeductionLoading.value = true
+  materialDeductionError.value = ''
+  try {
+    const result = await fetchBomMaterialDeduction(materialDeductionQuery)
+    materialDeductionRows.value = result.data.items
+    materialDeductionTotal.value = result.data.total
+  } catch (error) {
+    materialDeductionRows.value = []
+    materialDeductionTotal.value = 0
+    materialDeductionError.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    materialDeductionLoading.value = false
+  }
+}
+
+const resetMaterialDeductionQuery = (): void => {
+  materialDeductionQuery.item_code = ''
+  materialDeductionQuery.deduction_no = ''
+  materialDeductionQuery.material_item_code = ''
+  materialDeductionQuery.warehouse_name = ''
+  materialDeductionQuery.status = ''
+  materialDeductionQuery.page = 1
+  materialDeductionQuery.page_size = 20
+  loadMaterialDeduction()
+}
+
+const onMaterialDeductionPageChange = (page: number): void => {
+  materialDeductionQuery.page = page
+  loadMaterialDeduction()
+}
+
+const onMaterialDeductionSizeChange = (size: number): void => {
+  materialDeductionQuery.page_size = size
+  materialDeductionQuery.page = 1
+  loadMaterialDeduction()
+}
+
+const materialDeductionStatusTagType = (status: string): 'success' | 'warning' | 'info' => {
+  if (status === '已扣仓') return 'success'
+  if (status === '已关闭') return 'warning'
+  return 'info'
+}
+
+const loadMaterialSalesOutbound = async (): Promise<void> => {
+  if (!canRead.value) {
+    materialSalesOutboundRows.value = []
+    materialSalesOutboundTotal.value = 0
+    materialSalesOutboundError.value = ''
+    return
+  }
+  materialSalesOutboundLoading.value = true
+  materialSalesOutboundError.value = ''
+  try {
+    const result = await fetchBomMaterialSalesOutbound(materialSalesOutboundQuery)
+    materialSalesOutboundRows.value = result.data.items
+    materialSalesOutboundTotal.value = result.data.total
+  } catch (error) {
+    materialSalesOutboundRows.value = []
+    materialSalesOutboundTotal.value = 0
+    materialSalesOutboundError.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    materialSalesOutboundLoading.value = false
+  }
+}
+
+const resetMaterialSalesOutboundQuery = (): void => {
+  materialSalesOutboundQuery.item_code = ''
+  materialSalesOutboundQuery.outbound_no = ''
+  materialSalesOutboundQuery.sales_order_no = ''
+  materialSalesOutboundQuery.customer_name = ''
+  materialSalesOutboundQuery.warehouse_name = ''
+  materialSalesOutboundQuery.material_item_code = ''
+  materialSalesOutboundQuery.status = ''
+  materialSalesOutboundQuery.audit_status = ''
+  materialSalesOutboundQuery.page = 1
+  materialSalesOutboundQuery.page_size = 20
+  loadMaterialSalesOutbound()
+}
+
+const onMaterialSalesOutboundPageChange = (page: number): void => {
+  materialSalesOutboundQuery.page = page
+  loadMaterialSalesOutbound()
+}
+
+const onMaterialSalesOutboundSizeChange = (size: number): void => {
+  materialSalesOutboundQuery.page_size = size
+  materialSalesOutboundQuery.page = 1
+  loadMaterialSalesOutbound()
+}
+
+const materialSalesOutboundStatusTagType = (status: string): 'success' | 'warning' | 'info' => {
+  if (status === '已出仓') return 'success'
+  if (status === '已关闭') return 'warning'
+  return 'info'
+}
+
+const materialSalesOutboundAuditTagType = (status: string): 'success' | 'warning' | 'info' => {
+  if (status === '已审核') return 'success'
+  if (status === '已驳回') return 'warning'
+  return 'info'
+}
+
 const loadMaterialTypes = async (): Promise<void> => {
   if (!canRead.value) {
     materialTypeRows.value = []
@@ -1768,6 +2439,18 @@ const openMaterialProcessingDetail = (row: BomMaterialProcessingItem): void => {
   goDetail(row.bom_id)
 }
 
+const openMaterialProcessingInboundDetail = (row: BomMaterialProcessingInboundItem): void => {
+  goDetail(row.bom_id)
+}
+
+const openMaterialDeductionDetail = (row: BomMaterialDeductionItem): void => {
+  goDetail(row.bom_id)
+}
+
+const openMaterialSalesOutboundDetail = (row: BomMaterialSalesOutboundItem): void => {
+  goDetail(row.bom_id)
+}
+
 const openMaterialTypeDetail = (row: BomMaterialTypeItem): void => {
   goDetail(row.bom_id)
 }
@@ -1792,6 +2475,9 @@ onMounted(async () => {
   await loadAccessoriesPackaging()
   await loadProcessingTypes()
   await loadMaterialProcessing()
+  await loadMaterialProcessingInbound()
+  await loadMaterialDeduction()
+  await loadMaterialSalesOutbound()
   await loadMaterialTypes()
   await loadMaterialUnits()
   await loadGallery()
@@ -1828,6 +2514,18 @@ onMounted(async () => {
   margin-top: 8px;
 }
 
+.material-processing-inbound-section {
+  margin-top: 8px;
+}
+
+.material-deduction-section {
+  margin-top: 8px;
+}
+
+.material-sales-outbound-section {
+  margin-top: 8px;
+}
+
 .material-type-section {
   margin-top: 8px;
 }
@@ -1861,6 +2559,18 @@ onMounted(async () => {
 }
 
 .material-processing-pager {
+  margin-top: 10px;
+}
+
+.material-processing-inbound-pager {
+  margin-top: 10px;
+}
+
+.material-deduction-pager {
+  margin-top: 10px;
+}
+
+.material-sales-outbound-pager {
   margin-top: 10px;
 }
 
@@ -1911,6 +2621,18 @@ onMounted(async () => {
 }
 
 .material-processing-error-alert {
+  margin-bottom: 12px;
+}
+
+.material-processing-inbound-error-alert {
+  margin-bottom: 12px;
+}
+
+.material-deduction-error-alert {
+  margin-bottom: 12px;
+}
+
+.material-sales-outbound-error-alert {
   margin-bottom: 12px;
 }
 
