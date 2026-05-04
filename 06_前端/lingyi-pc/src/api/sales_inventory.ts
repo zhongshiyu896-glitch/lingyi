@@ -205,6 +205,13 @@ export interface SalesOrderFulfillmentData {
   items: SalesOrderFulfillmentItem[]
 }
 
+export interface SalesOrderFulfillmentQuery {
+  company?: string
+  item_code?: string
+  warehouse?: string
+  item_name?: string
+}
+
 const toQuery = (params: Record<string, unknown>): string => {
   const query = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
@@ -315,12 +322,13 @@ export const fetchSalesInventoryAggregation = async (
 }
 
 export const fetchSalesInventorySalesOrderFulfillment = async (
-  query: Pick<SalesInventoryAggregationQuery, 'company' | 'item_code' | 'warehouse'>,
+  query: SalesOrderFulfillmentQuery,
 ): Promise<ApiResponse<SalesOrderFulfillmentData>> => {
   const queryString = toQuery({
     company: query.company,
     item_code: query.item_code,
     warehouse: query.warehouse,
+    item_name: query.item_name,
   })
   return request<SalesOrderFulfillmentData>(`/api/sales-inventory/sales-order-fulfillment?${queryString}`)
 }

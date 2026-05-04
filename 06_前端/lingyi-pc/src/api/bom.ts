@@ -49,6 +49,54 @@ export interface BomListData {
   page_size: number
 }
 
+export interface BomMaterialGalleryItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  material_item_code: string
+  category: string
+  color?: string | null
+  size?: string | null
+  uom: string
+  qty_per_piece: string
+  loss_rate: string
+  status: string
+  is_default: boolean
+  thumbnail_url?: string | null
+}
+
+export interface BomMaterialGalleryData {
+  items: BomMaterialGalleryItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface BomPurchaseOrderItem {
+  id: number
+  bom_id: number
+  purchase_no: string
+  supplier_name: string
+  item_code: string
+  material_item_code: string
+  material_name: string
+  qty: string
+  uom: string
+  unit_price: string
+  total_amount: string
+  expected_delivery_date?: string | null
+  status: string
+  bom_no: string
+}
+
+export interface BomPurchaseOrderData {
+  items: BomPurchaseOrderItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface BomDetailData {
   bom: {
     id: number
@@ -121,6 +169,34 @@ export const fetchBomList = (params: {
   page: number
   page_size: number
 }): Promise<ApiResponse<BomListData>> => request(`/api/bom/?${toQuery(params)}`)
+
+export const fetchBomMaterialGallery = (params: {
+  item_code?: string
+  material_item_code?: string
+  color?: string
+  size?: string
+  category?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomMaterialGalleryData>> =>
+  request(`/api/bom/material-gallery?${toQuery(params)}`)
+
+export const fetchBomPurchaseOrders = (params: {
+  purchase_no?: string
+  supplier_name?: string
+  material_keyword?: string
+  status?: string
+  delivery_date_from?: string
+  delivery_date_to?: string
+  min_qty?: number
+  max_qty?: number
+  min_amount?: number
+  max_amount?: number
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomPurchaseOrderData>> =>
+  request(`/api/bom/purchase-orders?${toQuery(params)}`)
 
 export const fetchBomDetail = (bomId: number): Promise<ApiResponse<BomDetailData>> =>
   request(`/api/bom/${bomId}`)

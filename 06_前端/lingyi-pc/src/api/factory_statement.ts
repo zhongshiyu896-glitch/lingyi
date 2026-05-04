@@ -1,6 +1,11 @@
 import { request, type ApiResponse } from '@/api/request'
 
 type NumericLike = string | number
+const FACTORY_STATEMENT_READONLY_GUARD = true
+
+const throwReadonlyWriteError = (actionLabel: string): never => {
+  throw new Error(`当前为只读对账视图，已禁用${actionLabel}写操作`)
+}
 
 export interface FactoryStatementListQuery {
   company?: string
@@ -218,6 +223,9 @@ export const fetchFactoryStatementDetail = async (
 export const createFactoryStatement = async (
   payload: FactoryStatementCreatePayload,
 ): Promise<ApiResponse<FactoryStatementCreateData>> =>
+  FACTORY_STATEMENT_READONLY_GUARD
+    ? Promise.reject(throwReadonlyWriteError('创建对账单'))
+    :
   request<FactoryStatementCreateData>('/api/factory-statements/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -228,6 +236,9 @@ export const confirmFactoryStatement = async (
   statementId: number,
   payload: FactoryStatementConfirmPayload,
 ): Promise<ApiResponse<FactoryStatementConfirmData>> =>
+  FACTORY_STATEMENT_READONLY_GUARD
+    ? Promise.reject(throwReadonlyWriteError('确认对账单'))
+    :
   request<FactoryStatementConfirmData>(`/api/factory-statements/${statementId}/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -238,6 +249,9 @@ export const cancelFactoryStatement = async (
   statementId: number,
   payload: FactoryStatementCancelPayload,
 ): Promise<ApiResponse<FactoryStatementCancelData>> =>
+  FACTORY_STATEMENT_READONLY_GUARD
+    ? Promise.reject(throwReadonlyWriteError('取消对账单'))
+    :
   request<FactoryStatementCancelData>(`/api/factory-statements/${statementId}/cancel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -248,6 +262,9 @@ export const createFactoryStatementPayableDraft = async (
   statementId: number,
   payload: FactoryStatementPayableDraftCreatePayload,
 ): Promise<ApiResponse<FactoryStatementPayableDraftCreateData>> =>
+  FACTORY_STATEMENT_READONLY_GUARD
+    ? Promise.reject(throwReadonlyWriteError('生成应付草稿'))
+    :
   request<FactoryStatementPayableDraftCreateData>(`/api/factory-statements/${statementId}/payable-draft`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

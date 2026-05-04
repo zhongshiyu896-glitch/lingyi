@@ -172,6 +172,121 @@
         </el-table>
       </div>
 
+      <div class="material-inventory-section">
+        <div class="material-header">
+          <div class="title-wrap">
+            <h3>物料进销存 / 物料库存（TASK-Y22B-P1-05）</h3>
+            <span class="subtitle">共享路由首版（只读语义）</span>
+          </div>
+          <div class="material-actions">
+            <el-button :disabled="!canRead" @click="applyMaterialFilters">查询物料</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('库存调拨')">调拨</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('库存盘点')">盘点</el-button>
+            <el-button :disabled="!canRead" @click="guardedAction('导出物料库存')">导出</el-button>
+          </div>
+        </div>
+
+        <el-form :inline="true" :model="query" class="material-filter-form">
+          <el-form-item label="物料关键字">
+            <el-input
+              v-model="query.material_keyword"
+              clearable
+              placeholder="物料编码/名称"
+              aria-label="物料关键字"
+            />
+          </el-form-item>
+          <el-form-item label="分类">
+            <el-select
+              v-model="query.material_category"
+              clearable
+              placeholder="分类"
+              aria-label="物料分类"
+              style="width: 130px"
+            >
+              <el-option label="面料" value="面料" />
+              <el-option label="辅料" value="辅料" />
+              <el-option label="包材" value="包材" />
+              <el-option label="综合物料" value="综合物料" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="仓库">
+            <el-input
+              v-model="query.material_warehouse"
+              clearable
+              placeholder="仓库"
+              aria-label="物料仓库"
+            />
+          </el-form-item>
+          <el-form-item label="库位">
+            <el-input
+              v-model="query.material_location"
+              clearable
+              placeholder="库位"
+              aria-label="物料库位"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select
+              v-model="query.material_status"
+              clearable
+              placeholder="状态"
+              aria-label="物料库存状态"
+              style="width: 120px"
+            >
+              <el-option label="正常" value="normal" />
+              <el-option label="预警" value="warning" />
+              <el-option label="停用" value="disabled" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <el-alert
+          v-if="materialErrorMessage"
+          type="error"
+          :closable="false"
+          :title="`物料库存加载失败：${materialErrorMessage}`"
+          class="scope-alert"
+        />
+
+        <el-empty
+          v-if="materialDisplayRows.length === 0 && !materialErrorMessage"
+          description="暂无物料库存数据，请调整筛选条件后重试"
+        />
+
+        <el-table
+          v-else
+          :data="materialDisplayRows"
+          border
+          empty-text="暂无物料库存数据"
+          class="material-table"
+        >
+          <el-table-column prop="material_code" label="物料编码" min-width="130" />
+          <el-table-column prop="material_name" label="物料名称" min-width="150" />
+          <el-table-column prop="material_category" label="分类" min-width="110" />
+          <el-table-column prop="warehouse" label="仓库" min-width="120" />
+          <el-table-column prop="location" label="库位" min-width="100" />
+          <el-table-column label="库存数量" min-width="110" align="right">
+            <template #default="{ row }">{{ formatAmount(row.qty) }}</template>
+          </el-table-column>
+          <el-table-column label="库存金额" min-width="130" align="right">
+            <template #default="{ row }">{{ formatAmount(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column label="状态" min-width="100">
+            <template #default="{ row }">
+              <el-tag :type="materialStatusTag(row.status)" effect="plain">
+                {{ materialStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="viewMaterial(row)">查看</el-button>
+              <el-button link type="warning" @click="guardedAction(`调拨物料(${row.material_code})`)">调拨</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
       <el-alert
         v-if="!permissionReady"
         type="info"
@@ -262,6 +377,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
+  type WarehouseMaterialInventoryItem,
   type WarehouseManagementItem,
   fetchWarehouseStockLedger,
   fetchWarehouseStockSummary,
@@ -295,11 +411,13 @@ const expanded = ref<boolean>(false)
 const displayMode = ref<'vertical' | 'horizontal'>('vertical')
 const errorMessage = ref<string>('')
 const managementErrorMessage = ref<string>('')
+const materialErrorMessage = ref<string>('')
 const selectedRows = ref<DisplayRow[]>([])
 const ledgerDialogVisible = ref<boolean>(false)
 
 const summaryRows = ref<WarehouseStockSummaryItem[]>([])
 const managementRows = ref<WarehouseManagementItem[]>([])
+const materialRows = ref<WarehouseMaterialInventoryItem[]>([])
 const ledgerRows = ref<WarehouseStockLedgerItem[]>([])
 const orderMap = ref<Map<string, string>>(new Map())
 
@@ -310,12 +428,18 @@ const query = reactive({
   style_keyword: '',
   management_keyword: '',
   management_status: '',
+  material_keyword: '',
+  material_category: '',
+  material_warehouse: '',
+  material_location: '',
+  material_status: '',
   from_date: '',
   to_date: '',
 })
 
 const LOCAL_ERROR_TOKEN = '__error__'
 const LOCAL_MANAGEMENT_ERROR_TOKEN = '__mgmt_error__'
+const LOCAL_MATERIAL_ERROR_TOKEN = '__material_error__'
 
 const localSeedSummaryRows: WarehouseStockSummaryItem[] = [
   {
@@ -396,6 +520,29 @@ const localSeedManagementRows: WarehouseManagementItem[] = [
   },
 ]
 
+const localSeedMaterialRows: WarehouseMaterialInventoryItem[] = [
+  {
+    material_code: 'FAB-2408-COTTON',
+    material_name: '精梳棉面料',
+    material_category: '面料',
+    warehouse: '原料仓',
+    location: 'M-01',
+    qty: 280.5,
+    amount: 2412.3,
+    status: 'normal',
+  },
+  {
+    material_code: 'ACC-2408-BTN01',
+    material_name: '树脂纽扣',
+    material_category: '辅料',
+    warehouse: '辅料仓',
+    location: 'M-08',
+    qty: 35.2,
+    amount: 112.64,
+    status: 'warning',
+  },
+]
+
 const canRead = computed<boolean>(
   () => permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('warehouse:read'),
 )
@@ -448,6 +595,59 @@ const splitStyle = (itemCode: string): { color: string; size: string } => {
   return { color: '-', size: '-' }
 }
 
+const inferMaterialCategory = (materialCode: string): string => {
+  const code = materialCode.trim().toUpperCase()
+  if (code.startsWith('FAB') || code.startsWith('M-') || code.includes('FABRIC')) {
+    return '面料'
+  }
+  if (code.startsWith('ACC') || code.startsWith('TRIM') || code.startsWith('PKG')) {
+    return '辅料'
+  }
+  if (code.startsWith('LBL') || code.startsWith('TAG')) {
+    return '包材'
+  }
+  return '综合物料'
+}
+
+const inferMaterialLocation = (warehouse: string, index: number): string => {
+  const text = warehouse.trim()
+  let prefix = 'A'
+  if (text.includes('样衣')) prefix = 'Y'
+  else if (text.includes('成品')) prefix = 'F'
+  else if (text.includes('原料') || text.includes('辅料')) prefix = 'M'
+  const slot = (index % 24) + 1
+  return `${prefix}-${String(slot).padStart(2, '0')}`
+}
+
+const buildMaterialRowsFromSummary = (
+  rows: WarehouseStockSummaryItem[],
+): WarehouseMaterialInventoryItem[] => (
+  rows.map((row, index) => {
+    const category = inferMaterialCategory(row.item_code)
+    const qty = Number(row.actual_qty)
+    const unitPrice =
+      category === '面料'
+        ? 8.6
+        : category === '辅料'
+          ? 3.2
+          : category === '包材'
+            ? 1.5
+            : 5.0
+    const status: WarehouseMaterialInventoryItem['status'] =
+      row.threshold_missing ? 'disabled' : (row.is_below_safety || row.is_below_reorder ? 'warning' : 'normal')
+    return {
+      material_code: row.item_code,
+      material_name: `物料-${row.item_code}`,
+      material_category: category,
+      warehouse: row.warehouse,
+      location: inferMaterialLocation(row.warehouse, index),
+      qty,
+      amount: Number((qty * unitPrice).toFixed(2)),
+      status,
+    }
+  })
+)
+
 const displayRows = computed<DisplayRow[]>(() => {
   let rows = summaryRows.value.map((item) => {
     const key = rowKey(item.warehouse, item.item_code)
@@ -489,6 +689,25 @@ const managementDisplayRows = computed<WarehouseManagementItem[]>(() => {
   })
 })
 
+const materialDisplayRows = computed<WarehouseMaterialInventoryItem[]>(() => {
+  const keyword = query.material_keyword.trim().toLowerCase()
+  const category = query.material_category.trim()
+  const warehouse = query.material_warehouse.trim().toLowerCase()
+  const location = query.material_location.trim().toLowerCase()
+  const status = query.material_status.trim().toLowerCase()
+
+  return materialRows.value.filter((row) => {
+    const keywordMatched =
+      !keyword ||
+      `${row.material_code}|${row.material_name}`.toLowerCase().includes(keyword)
+    const categoryMatched = !category || row.material_category === category
+    const warehouseMatched = !warehouse || row.warehouse.toLowerCase().includes(warehouse)
+    const locationMatched = !location || row.location.toLowerCase().includes(location)
+    const statusMatched = !status || row.status === status
+    return keywordMatched && categoryMatched && warehouseMatched && locationMatched && statusMatched
+  })
+})
+
 const managementStatusText = (value: WarehouseManagementItem['status']): string => {
   if (value === 'warning') return '预警'
   if (value === 'disabled') return '停用'
@@ -501,6 +720,20 @@ const managementStatusTag = (value: WarehouseManagementItem['status']): 'success
   return 'success'
 }
 
+const materialStatusText = (value: WarehouseMaterialInventoryItem['status']): string => {
+  if (value === 'warning') return '预警'
+  if (value === 'disabled') return '停用'
+  return '正常'
+}
+
+const materialStatusTag = (
+  value: WarehouseMaterialInventoryItem['status'],
+): 'success' | 'warning' | 'info' => {
+  if (value === 'warning') return 'warning'
+  if (value === 'disabled') return 'info'
+  return 'success'
+}
+
 const resetQuery = (): void => {
   query.company = ''
   query.warehouse = ''
@@ -508,9 +741,15 @@ const resetQuery = (): void => {
   query.style_keyword = ''
   query.management_keyword = ''
   query.management_status = ''
+  query.material_keyword = ''
+  query.material_category = ''
+  query.material_warehouse = ''
+  query.material_location = ''
+  query.material_status = ''
   query.from_date = ''
   query.to_date = ''
   managementErrorMessage.value = ''
+  materialErrorMessage.value = ''
   void loadData()
 }
 
@@ -518,6 +757,7 @@ const loadData = async (): Promise<void> => {
   if (!canRead.value) {
     summaryRows.value = []
     managementRows.value = []
+    materialRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -527,6 +767,7 @@ const loadData = async (): Promise<void> => {
     errorMessage.value = '模拟错误态：成品库存查询失败，请调整筛选后重试'
     summaryRows.value = []
     managementRows.value = []
+    materialRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -538,8 +779,10 @@ const loadData = async (): Promise<void> => {
   if (useLocalSeed) {
     errorMessage.value = ''
     managementErrorMessage.value = ''
+    materialErrorMessage.value = ''
     summaryRows.value = localSeedSummaryRows
     managementRows.value = localSeedManagementRows
+    materialRows.value = localSeedMaterialRows
     ledgerRows.value = localSeedLedgerRows
     orderMap.value = buildOrderMap(localSeedLedgerRows)
     selectedRows.value = []
@@ -549,6 +792,7 @@ const loadData = async (): Promise<void> => {
   loading.value = true
   errorMessage.value = ''
   managementErrorMessage.value = ''
+  materialErrorMessage.value = ''
   try {
     const [summaryResult, ledgerResult] = await Promise.all([
       fetchWarehouseStockSummary(normalized),
@@ -556,13 +800,19 @@ const loadData = async (): Promise<void> => {
     ])
     summaryRows.value = summaryResult.data.items
     managementRows.value = summaryResult.data.warehouse_management ?? localSeedManagementRows
+    materialRows.value =
+      summaryResult.data.material_inventory && summaryResult.data.material_inventory.length > 0
+        ? summaryResult.data.material_inventory
+        : buildMaterialRowsFromSummary(summaryResult.data.items)
     ledgerRows.value = ledgerResult.data.items
     orderMap.value = buildOrderMap(ledgerResult.data.items)
   } catch (error) {
     const message = (error as Error).message || '请求失败'
     errorMessage.value = message
     managementErrorMessage.value = message
+    materialErrorMessage.value = message
     managementRows.value = []
+    materialRows.value = []
     ElMessage.error(message)
   } finally {
     loading.value = false
@@ -580,6 +830,19 @@ const applyManagementFilters = (): void => {
     return
   }
   managementErrorMessage.value = ''
+}
+
+const applyMaterialFilters = (): void => {
+  if (!canRead.value) {
+    ElMessage.warning('当前账号无物料库存读取权限')
+    return
+  }
+  if (query.material_keyword.trim().toLowerCase() === LOCAL_MATERIAL_ERROR_TOKEN) {
+    materialErrorMessage.value = '模拟错误态：物料库存查询失败，请调整筛选后重试'
+    materialRows.value = []
+    return
+  }
+  materialErrorMessage.value = ''
 }
 
 const guardedAction = (actionName: string): void => {
@@ -627,6 +890,10 @@ const openLedgerDetail = async (): Promise<void> => {
 
 const viewWarehouse = (row: WarehouseManagementItem): void => {
   ElMessage.info(`仓库详情（只读）：${row.warehouse_name}`)
+}
+
+const viewMaterial = (row: WarehouseMaterialInventoryItem): void => {
+  ElMessage.info(`物料详情（只读）：${row.material_name}`)
 }
 
 onMounted(async () => {
@@ -722,6 +989,43 @@ onMounted(async () => {
 }
 
 .management-table {
+  margin-top: 8px;
+}
+
+.material-inventory-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f7fbff;
+}
+
+.material-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.material-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.material-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.material-filter-form {
+  margin-bottom: 8px;
+}
+
+.material-table {
   margin-top: 8px;
 }
 

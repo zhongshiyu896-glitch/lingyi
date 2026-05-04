@@ -76,6 +76,19 @@ class WarehouseManagementItem(BaseModel):
     utilization_rate: Decimal
 
 
+class WarehouseMaterialInventoryItem(BaseModel):
+    """Material inventory overview row."""
+
+    material_code: str
+    material_name: str
+    material_category: str
+    warehouse: str
+    location: str
+    qty: Decimal
+    amount: Decimal
+    status: Literal["normal", "warning", "disabled"]
+
+
 class WarehouseStockSummaryData(BaseModel):
     """Warehouse stock aggregation response."""
 
@@ -84,6 +97,7 @@ class WarehouseStockSummaryData(BaseModel):
     item_code: str | None = None
     items: list[WarehouseStockSummaryItem]
     warehouse_management: list[WarehouseManagementItem] = Field(default_factory=list)
+    material_inventory: list[WarehouseMaterialInventoryItem] = Field(default_factory=list)
 
 
 class WarehouseAlertItem(BaseModel):

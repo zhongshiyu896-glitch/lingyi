@@ -109,6 +109,97 @@
             @size-change="onSizeChange"
           />
         </div>
+
+        <el-divider />
+
+        <section class="p1-03-section">
+          <div class="section-header">
+            <div class="title-group">
+              <span class="title">订单生产加工数量对照表</span>
+              <span class="sub-title">P1 / TASK-Y22B-P1-03</span>
+            </div>
+            <el-tag type="warning" effect="plain">只读对照</el-tag>
+          </div>
+
+          <el-form :inline="true" :model="fulfillmentQuery" class="query-form">
+            <el-form-item label="款号">
+              <el-input
+                v-model="fulfillmentQuery.item_code"
+                clearable
+                placeholder="款号"
+                @keyup.enter="onFulfillmentSearch"
+              />
+            </el-form-item>
+            <el-form-item label="款名关键词">
+              <el-input
+                v-model="fulfillmentQuery.item_name"
+                clearable
+                placeholder="款名关键词"
+                @keyup.enter="onFulfillmentSearch"
+              />
+            </el-form-item>
+            <el-form-item label="仓库">
+              <el-input
+                v-model="fulfillmentQuery.warehouse"
+                clearable
+                placeholder="仓库"
+                @keyup.enter="onFulfillmentSearch"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :disabled="!canRead" @click="onFulfillmentSearch">查询</el-button>
+              <el-button :disabled="!canRead" @click="onFulfillmentReset">重置</el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="toolbar-row">
+            <el-button :disabled="!canExport" @click="onUnavailableAction('对照导出')">导出</el-button>
+            <el-button :disabled="!canRead" @click="onUnavailableAction('对照列设置')">列设置</el-button>
+          </div>
+
+          <el-alert
+            v-if="fulfillmentError"
+            class="error-alert"
+            type="error"
+            :closable="false"
+            :title="`对照表加载失败：${fulfillmentError}`"
+          />
+
+          <el-table
+            :data="fulfillmentRows"
+            border
+            class="comparison-table"
+            empty-text="暂无订单生产加工数量对照数据"
+            v-loading="fulfillmentLoading"
+          >
+            <el-table-column prop="sales_order" label="订单号" min-width="170" />
+            <el-table-column prop="item_code" label="款号" min-width="140" />
+            <el-table-column prop="warehouse" label="仓库" min-width="140" />
+            <el-table-column label="订单数量" min-width="120">
+              <template #default="scope">{{ formatAmount(scope.row.ordered_qty) }}</template>
+            </el-table-column>
+            <el-table-column label="加工数量" min-width="120">
+              <template #default="scope">{{ formatAmount(scope.row.actual_qty) }}</template>
+            </el-table-column>
+            <el-table-column label="完成率" min-width="120">
+              <template #default="scope">{{ formatPercent(scope.row.fulfillment_rate) }}</template>
+            </el-table-column>
+            <el-table-column label="状态" min-width="130">
+              <template #default="scope">
+                <el-tag :type="resolveFulfillmentStatus(scope.row.fulfillment_rate).type" effect="plain">
+                  {{ resolveFulfillmentStatus(scope.row.fulfillment_rate).label }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" fixed="right" min-width="220">
+              <template #default="scope">
+                <el-button link type="primary" @click="goDetail(scope.row.sales_order)">查看</el-button>
+                <el-button link type="primary" @click="onUnavailableAction('对照导出')">导出</el-button>
+                <el-button link type="primary" @click="onUnavailableAction('对照更多')">更多</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </section>
       </template>
     </el-card>
   </div>
@@ -119,7 +210,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  fetchSalesInventorySalesOrderFulfillment,
   fetchSalesInventorySalesOrders,
+  type SalesOrderFulfillmentItem,
   type SalesOrderListItem,
 } from '@/api/sales_inventory'
 import { usePermissionStore } from '@/stores/permission'
@@ -130,6 +223,9 @@ const loading = ref<boolean>(false)
 const rows = ref<SalesOrderListItem[]>([])
 const total = ref<number>(0)
 const lastError = ref<string>('')
+const fulfillmentLoading = ref<boolean>(false)
+const fulfillmentRows = ref<SalesOrderFulfillmentItem[]>([])
+const fulfillmentError = ref<string>('')
 
 const canRead = computed<boolean>(() => {
   return (
@@ -154,6 +250,12 @@ const query = reactive({
   page_size: 20,
 })
 
+const fulfillmentQuery = reactive({
+  item_code: '',
+  item_name: '',
+  warehouse: '',
+})
+
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
     return '-'
@@ -162,9 +264,38 @@ const formatAmount = (value: string | number | null | undefined): string => {
   return Number.isFinite(numeric) ? numeric.toFixed(2) : String(value)
 }
 
+const formatPercent = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined || value === '') {
+    return '-'
+  }
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    return String(value)
+  }
+  return `${(numeric * 100).toFixed(1)}%`
+}
+
+const resolveFulfillmentStatus = (value: string | number | null | undefined): { label: string; type: 'success' | 'warning' | 'danger' | 'info' } => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return { label: '待加工', type: 'danger' }
+  }
+  if (numeric >= 1) {
+    return { label: '已达成', type: 'success' }
+  }
+  if (numeric >= 0.6) {
+    return { label: '加工中', type: 'warning' }
+  }
+  return { label: '偏低', type: 'info' }
+}
+
 const resetRows = (): void => {
   rows.value = []
   total.value = 0
+}
+
+const resetFulfillmentRows = (): void => {
+  fulfillmentRows.value = []
 }
 
 const applyLocalOrderFilter = (items: SalesOrderListItem[]): SalesOrderListItem[] => {
@@ -206,9 +337,36 @@ const loadRows = async (): Promise<void> => {
   }
 }
 
+const loadFulfillmentRows = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetFulfillmentRows()
+    fulfillmentError.value = ''
+    return
+  }
+
+  fulfillmentLoading.value = true
+  fulfillmentError.value = ''
+  try {
+    const result = await fetchSalesInventorySalesOrderFulfillment({
+      item_code: fulfillmentQuery.item_code.trim() || undefined,
+      item_name: fulfillmentQuery.item_name.trim() || undefined,
+      warehouse: fulfillmentQuery.warehouse.trim() || undefined,
+    })
+    fulfillmentRows.value = result.data.items
+  } catch (error) {
+    const message = (error as Error).message
+    fulfillmentError.value = message
+    resetFulfillmentRows()
+    ElMessage.error(message)
+  } finally {
+    fulfillmentLoading.value = false
+  }
+}
+
 const onSearch = (): void => {
   query.page = 1
   void loadRows()
+  void loadFulfillmentRows()
 }
 
 const onReset = (): void => {
@@ -218,7 +376,22 @@ const onReset = (): void => {
   query.to_date = ''
   query.page = 1
   query.page_size = 20
+  fulfillmentQuery.item_code = ''
+  fulfillmentQuery.item_name = ''
+  fulfillmentQuery.warehouse = ''
   void loadRows()
+  void loadFulfillmentRows()
+}
+
+const onFulfillmentSearch = (): void => {
+  void loadFulfillmentRows()
+}
+
+const onFulfillmentReset = (): void => {
+  fulfillmentQuery.item_code = ''
+  fulfillmentQuery.item_name = ''
+  fulfillmentQuery.warehouse = ''
+  void loadFulfillmentRows()
 }
 
 const onUnavailableAction = (actionName: string): void => {
@@ -250,6 +423,7 @@ onMounted(async () => {
   }
   if (canRead.value) {
     await loadRows()
+    await loadFulfillmentRows()
   }
 })
 </script>
@@ -302,5 +476,16 @@ onMounted(async () => {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+}
+
+.p1-03-section {
+  margin-top: 8px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
 }
 </style>

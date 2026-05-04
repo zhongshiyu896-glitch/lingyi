@@ -17,6 +17,15 @@
         </div>
       </template>
 
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="款式打板下单对账表（TASK-Y22B-P1-02）"
+        description="本页补齐只读语义映射；创建/确认/取消/应付草稿/导出等写动作仅保留 guarded 语义，不触发真实写请求。"
+        class="reconciliation-alert"
+      />
+
       <el-form :inline="true" :model="query">
         <el-form-item label="供应商">
           <el-input v-model="query.supplier" clearable placeholder="请输入供应商" />
@@ -52,9 +61,68 @@
         </el-form-item>
       </el-form>
 
+      <el-form :inline="true" :model="sampleQuery" class="sample-filter-form">
+        <el-form-item label="打板单号">
+          <el-input v-model="sampleQuery.sample_order_no" clearable placeholder="请输入打板单号" />
+        </el-form-item>
+        <el-form-item label="款号">
+          <el-input v-model="sampleQuery.style_code" clearable placeholder="请输入款号" />
+        </el-form-item>
+        <el-form-item label="工厂">
+          <el-input v-model="sampleQuery.factory_name" clearable placeholder="请输入工厂" />
+        </el-form-item>
+        <el-form-item label="下单时间">
+          <el-date-picker
+            v-model="sampleQuery.ordered_date_range"
+            type="daterange"
+            value-format="YYYY-MM-DD"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="金额区间">
+          <el-input-number
+            v-model="sampleQuery.min_amount"
+            :precision="2"
+            :controls="false"
+            placeholder="最小金额"
+            style="width: 130px"
+          />
+          <span class="range-sep">~</span>
+          <el-input-number
+            v-model="sampleQuery.max_amount"
+            :precision="2"
+            :controls="false"
+            placeholder="最大金额"
+            style="width: 130px"
+          />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="sampleQuery.status" clearable placeholder="请选择状态" style="width: 160px">
+            <el-option label="草稿" value="draft" />
+            <el-option label="已确认" value="confirmed" />
+            <el-option label="已取消" value="cancelled" />
+            <el-option label="应付草稿已生成" value="payable_draft_created" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="applySampleFilters">筛选</el-button>
+          <el-button :disabled="!canRead" @click="resetSampleFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert v-if="readError" type="error" :closable="false" show-icon :title="readError" class="error-alert" />
       <el-empty v-if="!canRead" description="无加工厂对账单查看权限" />
       <template v-else>
-        <el-table :data="rows" border v-loading="loading" empty-text="暂无加工厂对账单数据">
+        <el-table :data="displayRows" border v-loading="loading" empty-text="暂无款式打板下单对账数据">
+          <el-table-column prop="sample_order_no" label="打板单号" min-width="180" />
+          <el-table-column prop="style_code" label="款号" min-width="140" />
+          <el-table-column prop="factory_name" label="工厂" min-width="140" />
+          <el-table-column prop="ordered_at" label="下单时间" min-width="180" />
+          <el-table-column label="下单金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.order_amount) }}</template>
+          </el-table-column>
           <el-table-column prop="statement_no" label="对账单号" min-width="180" />
           <el-table-column prop="company" label="公司" min-width="140" />
           <el-table-column prop="supplier" label="供应商" min-width="140" />
@@ -93,9 +161,50 @@
             </template>
           </el-table-column>
           <el-table-column prop="created_at" label="创建时间" min-width="180" />
-          <el-table-column label="操作" fixed="right" width="100">
+          <el-table-column label="操作" fixed="right" width="340">
             <template #default="scope">
-              <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
+              <el-button link type="primary" @click="goDetail(scope.row.id)">查看</el-button>
+              <el-button link type="primary" @click="goPrint(scope.row.id)">打印</el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:payable-draft"
+                data-guard-state="disabled"
+                @click="showGuardedAction('生成应付')"
+              >
+                生成应付
+              </el-button>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('确认')"
+              >
+                确认
+              </el-button>
+              <el-button
+                link
+                type="danger"
+                data-action-type="write"
+                data-write-guard="readonly:cancel"
+                data-guard-state="disabled"
+                @click="showGuardedAction('取消')"
+              >
+                取消
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -173,12 +282,24 @@ const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
 const creating = ref<boolean>(false)
 const createVisible = ref<boolean>(false)
+const readError = ref<string>('')
 const rows = ref<FactoryStatementListItem[]>([])
 const total = ref<number>(0)
 
+const P1_READONLY_MODE = true
+const readonlyWriteHint = '当前为只读对账视图，已禁用写动作'
+
+interface SampleOrderReconciliationRow extends FactoryStatementListItem {
+  sample_order_no: string
+  style_code: string
+  factory_name: string
+  ordered_at: string
+  order_amount: number | null
+}
+
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_create)
-const canCreateAction = computed<boolean>(() => canCreate.value)
+const canCreateAction = computed<boolean>(() => canCreate.value && !P1_READONLY_MODE)
 
 const query = reactive({
   supplier: '',
@@ -187,6 +308,16 @@ const query = reactive({
   to_date: '',
   page: 1,
   page_size: 20,
+})
+
+const sampleQuery = reactive({
+  sample_order_no: '',
+  style_code: '',
+  factory_name: '',
+  ordered_date_range: [] as string[],
+  min_amount: undefined as number | undefined,
+  max_amount: undefined as number | undefined,
+  status: '',
 })
 
 const createForm = reactive({
@@ -228,6 +359,94 @@ const createFormValidationError = computed<string | null>(() => {
 })
 
 const canSubmitCreate = computed<boolean>(() => canCreate.value && !createFormValidationError.value)
+
+const normalizeText = (value: string | null | undefined): string => (value || '').trim().toLowerCase()
+
+const normalizeDate = (value: string | null | undefined): string => {
+  if (!value) {
+    return ''
+  }
+  const raw = String(value)
+  if (raw.includes('T')) {
+    return raw.slice(0, 10)
+  }
+  if (raw.includes(' ')) {
+    return raw.slice(0, 10)
+  }
+  return raw.slice(0, 10)
+}
+
+const toNumeric = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+const toSampleRow = (row: FactoryStatementListItem): SampleOrderReconciliationRow => ({
+  ...row,
+  sample_order_no: row.statement_no || '-',
+  style_code: row.purchase_invoice_name || '-',
+  factory_name: row.supplier || '-',
+  ordered_at: normalizeDate(row.created_at) || '-',
+  order_amount: toNumeric(row.net_amount),
+})
+
+const withinRange = (value: string, from: string, to: string): boolean => {
+  if (!value) {
+    return false
+  }
+  if (from && value < from) {
+    return false
+  }
+  if (to && value > to) {
+    return false
+  }
+  return true
+}
+
+const displayRows = computed<SampleOrderReconciliationRow[]>(() => {
+  const sampleOrderNeedle = normalizeText(sampleQuery.sample_order_no)
+  const styleNeedle = normalizeText(sampleQuery.style_code)
+  const factoryNeedle = normalizeText(sampleQuery.factory_name)
+  const statusNeedle = normalizeText(sampleQuery.status)
+  const from = sampleQuery.ordered_date_range[0] || ''
+  const to = sampleQuery.ordered_date_range[1] || ''
+
+  return rows.value
+    .map((row) => toSampleRow(row))
+    .filter((row) => {
+      if (sampleOrderNeedle && !normalizeText(row.sample_order_no).includes(sampleOrderNeedle)) {
+        return false
+      }
+      if (styleNeedle && !normalizeText(row.style_code).includes(styleNeedle)) {
+        return false
+      }
+      if (factoryNeedle && !normalizeText(row.factory_name).includes(factoryNeedle)) {
+        return false
+      }
+      if (statusNeedle && normalizeText(row.statement_status) !== statusNeedle) {
+        return false
+      }
+      if ((from || to) && !withinRange(normalizeDate(row.ordered_at), from, to)) {
+        return false
+      }
+
+      const amount = row.order_amount
+      if (sampleQuery.min_amount !== undefined && sampleQuery.min_amount !== null) {
+        if (amount === null || amount < sampleQuery.min_amount) {
+          return false
+        }
+      }
+      if (sampleQuery.max_amount !== undefined && sampleQuery.max_amount !== null) {
+        if (amount === null || amount > sampleQuery.max_amount) {
+          return false
+        }
+      }
+      return true
+    })
+})
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
@@ -293,6 +512,10 @@ const buildIdempotencyKey = (prefix: string): string => {
 }
 
 const openCreateDialog = (): void => {
+  if (P1_READONLY_MODE) {
+    ElMessage.warning(readonlyWriteHint)
+    return
+  }
   if (!canCreate.value) {
     ElMessage.error('无创建对账单权限')
     return
@@ -306,6 +529,10 @@ const openCreateDialog = (): void => {
 }
 
 const submitCreateStatement = async (): Promise<void> => {
+  if (P1_READONLY_MODE) {
+    ElMessage.warning(readonlyWriteHint)
+    return
+  }
   if (!canCreate.value) {
     ElMessage.error('无创建对账单权限')
     return
@@ -341,6 +568,23 @@ const submitCreateStatement = async (): Promise<void> => {
 const resetRows = (): void => {
   rows.value = []
   total.value = 0
+  readError.value = ''
+}
+
+const applySampleFilters = (): void => {
+  if (!canRead.value) {
+    return
+  }
+}
+
+const resetSampleFilters = (): void => {
+  sampleQuery.sample_order_no = ''
+  sampleQuery.style_code = ''
+  sampleQuery.factory_name = ''
+  sampleQuery.ordered_date_range = []
+  sampleQuery.min_amount = undefined
+  sampleQuery.max_amount = undefined
+  sampleQuery.status = ''
 }
 
 const loadRows = async (): Promise<void> => {
@@ -350,6 +594,7 @@ const loadRows = async (): Promise<void> => {
   }
 
   loading.value = true
+  readError.value = ''
   try {
     const result = await fetchFactoryStatements({
       supplier: query.supplier.trim() || undefined,
@@ -362,7 +607,9 @@ const loadRows = async (): Promise<void> => {
     rows.value = result.data.items
     total.value = result.data.total
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message
+    readError.value = message
+    ElMessage.error(message)
   } finally {
     loading.value = false
   }
@@ -370,6 +617,14 @@ const loadRows = async (): Promise<void> => {
 
 const goDetail = (statementId: number): void => {
   router.push({ path: '/factory-statements/detail', query: { id: String(statementId) } })
+}
+
+const goPrint = (statementId: number): void => {
+  router.push({ path: '/factory-statements/print', query: { id: String(statementId) } })
+}
+
+const showGuardedAction = (actionLabel: string): void => {
+  ElMessage.warning(`${actionLabel}已禁用：${readonlyWriteHint}`)
 }
 
 const onPageChange = (page: number): void => {
@@ -408,6 +663,23 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.reconciliation-alert {
+  margin-bottom: 12px;
+}
+
+.sample-filter-form {
+  margin-top: 8px;
+}
+
+.range-sep {
+  margin: 0 8px;
+  color: #6b7280;
+}
+
+.error-alert {
+  margin-bottom: 12px;
 }
 
 .pager {

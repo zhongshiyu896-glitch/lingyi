@@ -79,6 +79,36 @@ class BomListQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
+class BomMaterialGalleryQuery(BaseModel):
+    """BOM material gallery query params."""
+
+    item_code: Optional[str] = None
+    material_item_code: Optional[str] = None
+    color: Optional[str] = None
+    size: Optional[str] = None
+    category: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class BomPurchaseOrderQuery(BaseModel):
+    """BOM purchase order query params."""
+
+    purchase_no: Optional[str] = None
+    supplier_name: Optional[str] = None
+    material_keyword: Optional[str] = None
+    status: Optional[str] = None
+    delivery_date_from: Optional[date] = None
+    delivery_date_to: Optional[date] = None
+    min_qty: Optional[Decimal] = Field(default=None, ge=0)
+    max_qty: Optional[Decimal] = Field(default=None, ge=0)
+    min_amount: Optional[Decimal] = Field(default=None, ge=0)
+    max_amount: Optional[Decimal] = Field(default=None, ge=0)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
 class BomExplodeRequest(BaseModel):
     """BOM explode request payload."""
 
@@ -139,6 +169,62 @@ class BomListData(BaseModel):
     """BOM list response data."""
 
     items: List[BomListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomMaterialGalleryItem(BaseModel):
+    """Material gallery list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    material_item_code: str
+    category: str
+    color: Optional[str]
+    size: Optional[str]
+    uom: str
+    qty_per_piece: Decimal
+    loss_rate: Decimal
+    status: str
+    is_default: bool
+    thumbnail_url: Optional[str]
+
+
+class BomMaterialGalleryData(BaseModel):
+    """Material gallery response data."""
+
+    items: List[BomMaterialGalleryItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomPurchaseOrderItem(BaseModel):
+    """Purchase order list row payload."""
+
+    id: int
+    bom_id: int
+    purchase_no: str
+    supplier_name: str
+    item_code: str
+    material_item_code: str
+    material_name: str
+    qty: Decimal
+    uom: str
+    unit_price: Decimal
+    total_amount: Decimal
+    expected_delivery_date: Optional[date]
+    status: str
+    bom_no: str
+
+
+class BomPurchaseOrderData(BaseModel):
+    """Purchase order response data."""
+
+    items: List[BomPurchaseOrderItem]
     total: int
     page: int
     page_size: int

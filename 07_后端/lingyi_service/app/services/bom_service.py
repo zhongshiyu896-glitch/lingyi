@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 from decimal import ROUND_HALF_UP
 from typing import Dict
@@ -41,6 +42,12 @@ from app.schemas.bom import BomDetailData
 from app.schemas.bom import BomExplodeData
 from app.schemas.bom import BomExplodeRequest
 from app.schemas.bom import BomHeader
+from app.schemas.bom import BomMaterialGalleryData
+from app.schemas.bom import BomMaterialGalleryItem
+from app.schemas.bom import BomMaterialGalleryQuery
+from app.schemas.bom import BomPurchaseOrderData
+from app.schemas.bom import BomPurchaseOrderItem
+from app.schemas.bom import BomPurchaseOrderQuery
 from app.schemas.bom import BomItemPayload
 from app.schemas.bom import BomItemView
 from app.schemas.bom import BomListData
@@ -168,6 +175,209 @@ class BomService:
                 for row in rows
             ],
             total=int(total),
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    @staticmethod
+    def _derive_material_category(material_item_code: str, remark: str | None) -> str:
+        """Derive a display category for material gallery rows."""
+        if remark:
+            trimmed = remark.strip()
+            if trimmed:
+                return trimmed[:24]
+
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        return token or "未分类"
+
+    @staticmethod
+    def _build_thumbnail_url(material_item_code: str) -> str:
+        # Placeholder thumbnail for readonly gallery semantics.
+        return f"/api/bom/material-gallery/thumb/{material_item_code}"
+
+    @staticmethod
+    def _derive_purchase_supplier(material_item_code: str) -> str:
+        token = material_item_code.replace("_", "-").split("-", 1)[0].strip().upper()
+        if token in {"FAB", "CLOTH"}:
+            return "华东面料供应商"
+        if token in {"ACC", "TRIM", "ZIP"}:
+            return "辅料联合供应商"
+        return "通用物料供应商"
+
+    @staticmethod
+    def _derive_purchase_status(bom_status: str) -> str:
+        if bom_status == "active":
+            return "待确认"
+        if bom_status == "inactive":
+            return "已取消"
+        return "草稿"
+
+    @staticmethod
+    def _build_purchase_no(bom_no: str, item_row_id: int) -> str:
+        suffix = f"{item_row_id % 10000:04d}"
+        return f"PO-{bom_no}-{suffix}"
+
+    def list_material_gallery(
+        self,
+        query: BomMaterialGalleryQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomMaterialGalleryData:
+        """List material gallery rows from BOM items."""
+        try:
+            sql = (
+                self.session.query(LyApparelBomItem, LyApparelBom)
+                .join(LyApparelBom, LyApparelBomItem.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomMaterialGalleryData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            if query.item_code:
+                sql = sql.filter(LyApparelBom.item_code == query.item_code)
+            if query.material_item_code:
+                sql = sql.filter(LyApparelBomItem.material_item_code.contains(query.material_item_code))
+            if query.color:
+                sql = sql.filter(LyApparelBomItem.color.contains(query.color))
+            if query.size:
+                sql = sql.filter(LyApparelBomItem.size.contains(query.size))
+            if query.status:
+                sql = sql.filter(LyApparelBom.status == query.status)
+
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.desc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        items: list[BomMaterialGalleryItem] = []
+        normalized_category = (query.category or "").strip().lower()
+        for item_row, bom_row in rows:
+            category = self._derive_material_category(
+                material_item_code=str(item_row.material_item_code),
+                remark=item_row.remark,
+            )
+            if normalized_category and category.lower() != normalized_category:
+                continue
+            items.append(
+                BomMaterialGalleryItem(
+                    id=int(item_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    material_item_code=str(item_row.material_item_code),
+                    category=category,
+                    color=item_row.color,
+                    size=item_row.size,
+                    uom=str(item_row.uom),
+                    qty_per_piece=Decimal(item_row.qty_per_piece),
+                    loss_rate=Decimal(item_row.loss_rate),
+                    status=str(bom_row.status),
+                    is_default=bool(bom_row.is_default),
+                    thumbnail_url=self._build_thumbnail_url(str(item_row.material_item_code)),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomMaterialGalleryData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_purchase_orders(
+        self,
+        query: BomPurchaseOrderQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomPurchaseOrderData:
+        """List readonly purchase-order semantics derived from BOM items."""
+        try:
+            sql = (
+                self.session.query(LyApparelBomItem, LyApparelBom)
+                .join(LyApparelBom, LyApparelBomItem.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomPurchaseOrderData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            rows: list[tuple[LyApparelBomItem, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyApparelBomItem.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        items: list[BomPurchaseOrderItem] = []
+        material_keyword = (query.material_keyword or "").strip().lower()
+        purchase_no_keyword = (query.purchase_no or "").strip().lower()
+        supplier_keyword = (query.supplier_name or "").strip().lower()
+        status_keyword = (query.status or "").strip()
+
+        for item_row, bom_row in rows:
+            purchase_no = self._build_purchase_no(str(bom_row.bom_no), int(item_row.id))
+            supplier_name = self._derive_purchase_supplier(str(item_row.material_item_code))
+            status = self._derive_purchase_status(str(bom_row.status))
+            qty = self._round(Decimal(item_row.qty_per_piece) * Decimal("100"))
+            unit_price = self._round(Decimal("5") + (Decimal(int(item_row.id) % 7) * Decimal("1.8")))
+            total_amount = self._round(qty * unit_price)
+            expected_delivery_date = (
+                bom_row.effective_date + timedelta(days=7)
+                if bom_row.effective_date
+                else None
+            )
+            material_name = str(item_row.remark or item_row.material_item_code)
+
+            if purchase_no_keyword and purchase_no_keyword not in purchase_no.lower():
+                continue
+            if supplier_keyword and supplier_keyword not in supplier_name.lower():
+                continue
+            if status_keyword and status_keyword != status:
+                continue
+            if material_keyword:
+                haystack = f"{item_row.material_item_code} {material_name} {bom_row.item_code}".lower()
+                if material_keyword not in haystack:
+                    continue
+            if query.delivery_date_from and (not expected_delivery_date or expected_delivery_date < query.delivery_date_from):
+                continue
+            if query.delivery_date_to and (not expected_delivery_date or expected_delivery_date > query.delivery_date_to):
+                continue
+            if query.min_qty is not None and qty < query.min_qty:
+                continue
+            if query.max_qty is not None and qty > query.max_qty:
+                continue
+            if query.min_amount is not None and total_amount < query.min_amount:
+                continue
+            if query.max_amount is not None and total_amount > query.max_amount:
+                continue
+
+            items.append(
+                BomPurchaseOrderItem(
+                    id=int(item_row.id),
+                    bom_id=int(bom_row.id),
+                    purchase_no=purchase_no,
+                    supplier_name=supplier_name,
+                    item_code=str(bom_row.item_code),
+                    material_item_code=str(item_row.material_item_code),
+                    material_name=material_name,
+                    qty=qty,
+                    uom=str(item_row.uom),
+                    unit_price=unit_price,
+                    total_amount=total_amount,
+                    expected_delivery_date=expected_delivery_date,
+                    status=status,
+                    bom_no=str(bom_row.bom_no),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomPurchaseOrderData(
+            items=items[start:end],
+            total=total,
             page=query.page,
             page_size=query.page_size,
         )

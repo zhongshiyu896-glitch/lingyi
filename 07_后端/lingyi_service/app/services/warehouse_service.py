@@ -43,6 +43,7 @@ from app.schemas.warehouse import WarehouseStockEntryWorkerRunOnceData
 from app.schemas.warehouse import WarehouseStockLedgerData
 from app.schemas.warehouse import WarehouseStockLedgerItem
 from app.schemas.warehouse import WarehouseManagementItem
+from app.schemas.warehouse import WarehouseMaterialInventoryItem
 from app.schemas.warehouse import WarehouseSerialNumberDetailData
 from app.schemas.warehouse import WarehouseSerialNumberItem
 from app.schemas.warehouse import WarehouseSerialNumberListData
@@ -131,12 +132,14 @@ class WarehouseService:
         items = [self._summary_item(row) for row in rows]
         items.sort(key=lambda row: (row.company, row.warehouse, row.item_code))
         management_rows = self._build_management_overview(items=items)
+        material_rows = self._build_material_inventory(items=items)
         return WarehouseStockSummaryData(
             company=company,
             warehouse=warehouse,
             item_code=item_code,
             items=items,
             warehouse_management=management_rows,
+            material_inventory=material_rows,
         )
 
     @staticmethod
@@ -195,6 +198,77 @@ class WarehouseService:
         if "原料" in text or "辅料" in text:
             return "物料仓"
         return "综合仓"
+
+    @staticmethod
+    def _build_material_inventory(*, items: list[WarehouseStockSummaryItem]) -> list[WarehouseMaterialInventoryItem]:
+        rows: list[WarehouseMaterialInventoryItem] = []
+        sorted_items = sorted(items, key=lambda row: (row.warehouse, row.item_code))
+        for index, row in enumerate(sorted_items, start=1):
+            qty = Decimal(str(row.actual_qty)).quantize(Decimal("0.01"))
+            unit_price = WarehouseService._material_unit_price(item_code=row.item_code)
+            amount = (qty * unit_price).quantize(Decimal("0.01"))
+
+            status = "normal"
+            if row.threshold_missing:
+                status = "disabled"
+            elif row.is_below_safety or row.is_below_reorder:
+                status = "warning"
+
+            rows.append(
+                WarehouseMaterialInventoryItem(
+                    material_code=row.item_code,
+                    material_name=WarehouseService._material_name_from_code(row.item_code),
+                    material_category=WarehouseService._material_category_from_code(row.item_code),
+                    warehouse=row.warehouse,
+                    location=WarehouseService._material_location(warehouse=row.warehouse, index=index),
+                    qty=qty,
+                    amount=amount,
+                    status=status,
+                )
+            )
+        return rows
+
+    @staticmethod
+    def _material_name_from_code(item_code: str) -> str:
+        code = (item_code or "").strip()
+        if not code:
+            return "未命名物料"
+        return f"物料-{code}"
+
+    @staticmethod
+    def _material_category_from_code(item_code: str) -> str:
+        code = (item_code or "").upper()
+        if code.startswith("FAB") or code.startswith("M-") or "FABRIC" in code:
+            return "面料"
+        if code.startswith("ACC") or code.startswith("TRIM") or code.startswith("PKG"):
+            return "辅料"
+        if code.startswith("LBL") or code.startswith("TAG"):
+            return "包材"
+        return "综合物料"
+
+    @staticmethod
+    def _material_unit_price(*, item_code: str) -> Decimal:
+        category = WarehouseService._material_category_from_code(item_code)
+        if category == "面料":
+            return Decimal("8.60")
+        if category == "辅料":
+            return Decimal("3.20")
+        if category == "包材":
+            return Decimal("1.50")
+        return Decimal("5.00")
+
+    @staticmethod
+    def _material_location(*, warehouse: str, index: int) -> str:
+        zone_prefix = "A"
+        text = (warehouse or "").strip()
+        if "样衣" in text:
+            zone_prefix = "Y"
+        elif "成品" in text:
+            zone_prefix = "F"
+        elif "原料" in text or "辅料" in text:
+            zone_prefix = "M"
+        slot = ((index - 1) % 24) + 1
+        return f"{zone_prefix}-{slot:02d}"
 
     def get_alerts(
         self,

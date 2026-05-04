@@ -44,6 +44,10 @@ from app.schemas.bom import BomDetailData
 from app.schemas.bom import BomExplodeData
 from app.schemas.bom import BomExplodeRequest
 from app.schemas.bom import BomListData
+from app.schemas.bom import BomMaterialGalleryData
+from app.schemas.bom import BomMaterialGalleryQuery
+from app.schemas.bom import BomPurchaseOrderData
+from app.schemas.bom import BomPurchaseOrderQuery
 from app.schemas.bom import BomListQuery
 from app.schemas.bom import BomSetDefaultData
 from app.schemas.bom import BomUpdateData
@@ -356,6 +360,120 @@ def list_bom(
     query = BomListQuery(item_code=item_code, status=status, page=page, page_size=page_size)
     try:
         data: BomListData = service.list_bom(query=query, allowed_item_codes=allowed_item_codes)
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/material-gallery")
+def list_bom_material_gallery(
+    request: Request,
+    item_code: str | None = None,
+    material_item_code: str | None = None,
+    color: str | None = None,
+    size: str | None = None,
+    category: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料图库（只读）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomMaterialGalleryQuery(
+        item_code=item_code,
+        material_item_code=material_item_code,
+        color=color,
+        size=size,
+        category=category,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomMaterialGalleryData = service.list_material_gallery(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/purchase-orders")
+def list_bom_purchase_orders(
+    request: Request,
+    purchase_no: str | None = None,
+    supplier_name: str | None = None,
+    material_keyword: str | None = None,
+    status: str | None = None,
+    delivery_date_from: str | None = None,
+    delivery_date_to: str | None = None,
+    min_qty: float | None = None,
+    max_qty: float | None = None,
+    min_amount: float | None = None,
+    max_amount: float | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料采购单（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomPurchaseOrderQuery(
+        purchase_no=purchase_no,
+        supplier_name=supplier_name,
+        material_keyword=material_keyword,
+        status=status,
+        delivery_date_from=delivery_date_from,
+        delivery_date_to=delivery_date_to,
+        min_qty=min_qty,
+        max_qty=max_qty,
+        min_amount=min_amount,
+        max_amount=max_amount,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomPurchaseOrderData = service.list_purchase_orders(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
         return _ok(data.model_dump())
     except AppException as exc:
         return _app_err(exc)

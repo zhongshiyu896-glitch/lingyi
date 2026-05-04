@@ -78,12 +78,24 @@ export interface WarehouseManagementItem {
   utilization_rate: NumericLike
 }
 
+export interface WarehouseMaterialInventoryItem {
+  material_code: string
+  material_name: string
+  material_category: string
+  warehouse: string
+  location: string
+  qty: NumericLike
+  amount: NumericLike
+  status: 'normal' | 'warning' | 'disabled'
+}
+
 export interface WarehouseStockSummaryData {
   company?: string | null
   warehouse?: string | null
   item_code?: string | null
   items: WarehouseStockSummaryItem[]
   warehouse_management?: WarehouseManagementItem[]
+  material_inventory?: WarehouseMaterialInventoryItem[]
 }
 
 export interface WarehouseAlertsQuery {
