@@ -426,6 +426,162 @@
           </div>
         </section>
 
+        <el-divider content-position="left">物料加工（TASK-Y33B-P1-05）</el-divider>
+
+        <section class="material-processing-section">
+          <el-form :inline="true" :model="materialProcessingQuery">
+            <el-form-item label="款号">
+              <el-input v-model="materialProcessingQuery.item_code" clearable placeholder="请输入款号" />
+            </el-form-item>
+            <el-form-item label="工序编号">
+              <el-input v-model="materialProcessingQuery.process_no" clearable placeholder="请输入工序编号" />
+            </el-form-item>
+            <el-form-item label="工序名称">
+              <el-input v-model="materialProcessingQuery.process_name" clearable placeholder="请输入工序名称" />
+            </el-form-item>
+            <el-form-item label="加工供应商">
+              <el-input v-model="materialProcessingQuery.processing_supplier" clearable placeholder="请输入加工供应商" />
+            </el-form-item>
+            <el-form-item label="加工方式">
+              <el-select
+                v-model="materialProcessingQuery.processing_mode"
+                clearable
+                placeholder="请选择加工方式"
+                style="width: 160px"
+                aria-label="物料加工方式筛选"
+              >
+                <el-option label="自产加工" value="自产加工" />
+                <el-option label="协同加工" value="协同加工" />
+                <el-option label="委外加工" value="委外加工" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select
+                v-model="materialProcessingQuery.status"
+                clearable
+                placeholder="请选择状态"
+                style="width: 150px"
+                aria-label="物料加工状态筛选"
+              >
+                <el-option label="草稿" value="草稿" />
+                <el-option label="可用" value="可用" />
+                <el-option label="停用" value="停用" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="操作">
+              <el-button type="primary" :disabled="!canRead" @click="loadMaterialProcessing">查询</el-button>
+              <el-button :disabled="!canRead" @click="resetMaterialProcessingQuery">重置</el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-create"
+                @click="guardedReadonlyAction('新增加工')"
+              >
+                新增加工
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-edit"
+                @click="guardedReadonlyAction('编辑')"
+              >
+                编辑
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-delete"
+                @click="guardedReadonlyAction('删除')"
+              >
+                删除
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-submit"
+                @click="guardedReadonlyAction('提交审核')"
+              >
+                提交审核
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-sync"
+                @click="guardedReadonlyAction('同步')"
+              >
+                同步
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-export"
+                @click="guardedReadonlyAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                data-action-type="write"
+                data-write-guard="readonly-material-processing-print"
+                @click="guardedReadonlyAction('打印')"
+              >
+                打印
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <el-alert
+            v-if="materialProcessingError"
+            class="material-processing-error-alert"
+            title="物料加工加载失败"
+            :description="materialProcessingError"
+            type="error"
+            show-icon
+            :closable="false"
+          />
+
+          <el-table
+            class="material-processing-table"
+            :data="materialProcessingRows"
+            v-loading="materialProcessingLoading"
+            border
+            empty-text="暂无物料加工数据"
+          >
+            <el-table-column prop="process_no" label="工序编号" min-width="150" />
+            <el-table-column prop="process_name" label="工序名称" min-width="150" />
+            <el-table-column prop="processing_supplier" label="加工供应商" min-width="160" />
+            <el-table-column prop="processing_mode" label="加工方式" min-width="120" />
+            <el-table-column prop="planned_qty" label="计划数量" min-width="110" />
+            <el-table-column prop="completed_qty" label="完成数量" min-width="110" />
+            <el-table-column prop="pending_qty" label="待完成数量" min-width="120" />
+            <el-table-column prop="scrap_qty" label="损耗数量" min-width="110" />
+            <el-table-column prop="uom" label="单位" width="80" />
+            <el-table-column prop="due_date" label="计划完成日" min-width="120" />
+            <el-table-column prop="item_code" label="款号" min-width="120" />
+            <el-table-column prop="bom_no" label="来源BOM" min-width="170" />
+            <el-table-column label="状态" width="110">
+              <template #default="scope">
+                <el-tag :type="fabricStatusTagType(scope.row.status)">{{ scope.row.status }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="280" fixed="right">
+              <template #default="scope">
+                <el-button link type="primary" @click="openMaterialProcessingDetail(scope.row)">查看</el-button>
+                <el-button link type="warning" @click="guardedReadonlyAction('编辑')">编辑</el-button>
+                <el-button link type="danger" @click="guardedReadonlyAction('删除')">删除</el-button>
+                <el-button link type="success" @click="guardedReadonlyAction('提交审核')">提交审核</el-button>
+                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager material-processing-pager">
+            <el-pagination
+              background
+              layout="prev, pager, next, total, sizes"
+              :current-page="materialProcessingQuery.page"
+              :page-size="materialProcessingQuery.page_size"
+              :total="materialProcessingTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onMaterialProcessingPageChange"
+              @size-change="onMaterialProcessingSizeChange"
+            />
+          </div>
+        </section>
+
         <el-divider content-position="left">物料类型（TASK-Y27B-P1-04）</el-divider>
 
         <section class="material-type-section">
@@ -979,6 +1135,7 @@ import {
   fetchBomFabrics,
   fetchBomList,
   fetchBomMaterialGallery,
+  fetchBomMaterialProcessing,
   fetchBomMaterialTypes,
   fetchBomMaterialUnits,
   fetchBomProcessingTypes,
@@ -987,6 +1144,7 @@ import {
   type BomFabricItem,
   type BomListItem,
   type BomMaterialGalleryItem,
+  type BomMaterialProcessingItem,
   type BomMaterialTypeItem,
   type BomMaterialUnitItem,
   type BomProcessingTypeItem,
@@ -1010,6 +1168,10 @@ const processingTypeLoading = ref<boolean>(false)
 const processingTypeRows = ref<BomProcessingTypeItem[]>([])
 const processingTypeTotal = ref<number>(0)
 const processingTypeError = ref<string>('')
+const materialProcessingLoading = ref<boolean>(false)
+const materialProcessingRows = ref<BomMaterialProcessingItem[]>([])
+const materialProcessingTotal = ref<number>(0)
+const materialProcessingError = ref<string>('')
 const materialTypeLoading = ref<boolean>(false)
 const materialTypeRows = ref<BomMaterialTypeItem[]>([])
 const materialTypeTotal = ref<number>(0)
@@ -1069,6 +1231,17 @@ const processingTypeQuery = reactive({
   process_name: '',
   subcontract_mode: '',
   pricing_mode: '',
+  status: '',
+  page: 1,
+  page_size: 20,
+})
+
+const materialProcessingQuery = reactive({
+  item_code: '',
+  process_no: '',
+  process_name: '',
+  processing_supplier: '',
+  processing_mode: '',
   status: '',
   page: 1,
   page_size: 20,
@@ -1291,6 +1464,52 @@ const onProcessingTypeSizeChange = (size: number): void => {
   processingTypeQuery.page_size = size
   processingTypeQuery.page = 1
   loadProcessingTypes()
+}
+
+const loadMaterialProcessing = async (): Promise<void> => {
+  if (!canRead.value) {
+    materialProcessingRows.value = []
+    materialProcessingTotal.value = 0
+    materialProcessingError.value = ''
+    return
+  }
+  materialProcessingLoading.value = true
+  materialProcessingError.value = ''
+  try {
+    const result = await fetchBomMaterialProcessing(materialProcessingQuery)
+    materialProcessingRows.value = result.data.items
+    materialProcessingTotal.value = result.data.total
+  } catch (error) {
+    materialProcessingRows.value = []
+    materialProcessingTotal.value = 0
+    materialProcessingError.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    materialProcessingLoading.value = false
+  }
+}
+
+const resetMaterialProcessingQuery = (): void => {
+  materialProcessingQuery.item_code = ''
+  materialProcessingQuery.process_no = ''
+  materialProcessingQuery.process_name = ''
+  materialProcessingQuery.processing_supplier = ''
+  materialProcessingQuery.processing_mode = ''
+  materialProcessingQuery.status = ''
+  materialProcessingQuery.page = 1
+  materialProcessingQuery.page_size = 20
+  loadMaterialProcessing()
+}
+
+const onMaterialProcessingPageChange = (page: number): void => {
+  materialProcessingQuery.page = page
+  loadMaterialProcessing()
+}
+
+const onMaterialProcessingSizeChange = (size: number): void => {
+  materialProcessingQuery.page_size = size
+  materialProcessingQuery.page = 1
+  loadMaterialProcessing()
 }
 
 const loadMaterialTypes = async (): Promise<void> => {
@@ -1545,6 +1764,10 @@ const openProcessingTypeDetail = (row: BomProcessingTypeItem): void => {
   goDetail(row.bom_id)
 }
 
+const openMaterialProcessingDetail = (row: BomMaterialProcessingItem): void => {
+  goDetail(row.bom_id)
+}
+
 const openMaterialTypeDetail = (row: BomMaterialTypeItem): void => {
   goDetail(row.bom_id)
 }
@@ -1568,6 +1791,7 @@ onMounted(async () => {
   await loadFabrics()
   await loadAccessoriesPackaging()
   await loadProcessingTypes()
+  await loadMaterialProcessing()
   await loadMaterialTypes()
   await loadMaterialUnits()
   await loadGallery()
@@ -1600,6 +1824,10 @@ onMounted(async () => {
   margin-top: 8px;
 }
 
+.material-processing-section {
+  margin-top: 8px;
+}
+
 .material-type-section {
   margin-top: 8px;
 }
@@ -1629,6 +1857,10 @@ onMounted(async () => {
 }
 
 .processing-type-pager {
+  margin-top: 10px;
+}
+
+.material-processing-pager {
   margin-top: 10px;
 }
 
@@ -1675,6 +1907,10 @@ onMounted(async () => {
 }
 
 .processing-type-error-alert {
+  margin-bottom: 12px;
+}
+
+.material-processing-error-alert {
   margin-bottom: 12px;
 }
 

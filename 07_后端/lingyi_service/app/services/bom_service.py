@@ -51,6 +51,9 @@ from app.schemas.bom import BomHeader
 from app.schemas.bom import BomMaterialGalleryData
 from app.schemas.bom import BomMaterialGalleryItem
 from app.schemas.bom import BomMaterialGalleryQuery
+from app.schemas.bom import BomMaterialProcessingData
+from app.schemas.bom import BomMaterialProcessingItem
+from app.schemas.bom import BomMaterialProcessingQuery
 from app.schemas.bom import BomMaterialTypeData
 from app.schemas.bom import BomMaterialTypeItem
 from app.schemas.bom import BomMaterialTypeQuery
@@ -310,6 +313,34 @@ class BomService:
     @staticmethod
     def _derive_processing_type_code(operation_id: int, sequence_no: int) -> str:
         return f"PT-{sequence_no:02d}-{operation_id:04d}"
+
+    @staticmethod
+    def _derive_processing_no(operation_id: int, sequence_no: int) -> str:
+        return f"MP-{sequence_no:02d}-{operation_id:04d}"
+
+    @staticmethod
+    def _derive_processing_mode(operation: LyBomOperation) -> str:
+        if operation.is_subcontract:
+            return "委外加工"
+        process_name = str(operation.process_name or "")
+        if any(token in process_name for token in ("印花", "绣花", "洗", "后整", "定型")):
+            return "协同加工"
+        return "自产加工"
+
+    @staticmethod
+    def _derive_processing_supplier(operation: LyBomOperation) -> str:
+        process_name = str(operation.process_name or "")
+        if operation.is_subcontract:
+            if "印花" in process_name:
+                return "华南印花协作厂"
+            if "绣花" in process_name:
+                return "苏州绣花协作厂"
+            if any(token in process_name for token in ("洗", "后整", "定型")):
+                return "后整联合加工中心"
+            return "通用委外加工商"
+        if any(token in process_name for token in ("裁", "缝", "车", "拼接")):
+            return "本厂车缝工段"
+        return "本厂工艺工段"
 
     @staticmethod
     def _derive_material_type_code(material_item_code: str) -> str:
@@ -808,6 +839,105 @@ class BomService:
         start = (query.page - 1) * query.page_size
         end = start + query.page_size
         return BomProcessingTypeData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_material_processing(
+        self,
+        query: BomMaterialProcessingQuery,
+        allowed_item_codes: set[str] | None = None,
+    ) -> BomMaterialProcessingData:
+        """List readonly material-processing rows derived from BOM operations."""
+        try:
+            sql = (
+                self.session.query(LyBomOperation, LyApparelBom)
+                .join(LyApparelBom, LyBomOperation.bom_id == LyApparelBom.id)
+            )
+            if allowed_item_codes is not None:
+                if not allowed_item_codes:
+                    return BomMaterialProcessingData(items=[], total=0, page=query.page, page_size=query.page_size)
+                sql = sql.filter(LyApparelBom.item_code.in_(sorted(allowed_item_codes)))
+
+            rows: list[tuple[LyBomOperation, LyApparelBom]] = (
+                sql.order_by(LyApparelBom.id.desc(), LyBomOperation.sequence_no.asc(), LyBomOperation.id.asc()).all()
+            )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        item_code_keyword = (query.item_code or "").strip().lower()
+        process_no_keyword = (query.process_no or "").strip().lower()
+        process_name_keyword = (query.process_name or "").strip().lower()
+        supplier_keyword = (query.processing_supplier or "").strip().lower()
+        mode_keyword = (query.processing_mode or "").strip()
+        status_keyword = (query.status or "").strip()
+
+        items: list[BomMaterialProcessingItem] = []
+        for operation_row, bom_row in rows:
+            process_no = self._derive_processing_no(
+                operation_id=int(operation_row.id),
+                sequence_no=int(operation_row.sequence_no),
+            )
+            process_name = str(operation_row.process_name)
+            processing_mode = self._derive_processing_mode(operation_row)
+            processing_supplier = self._derive_processing_supplier(operation_row)
+            status = self._derive_fabric_status(str(bom_row.status))
+
+            planned_qty = self._round(Decimal("80") + (Decimal(int(operation_row.sequence_no)) * Decimal("12.5")))
+            if status == "可用":
+                completed_qty = self._round(planned_qty * Decimal("0.78"))
+            elif status == "停用":
+                completed_qty = self._round(planned_qty * Decimal("0.52"))
+            else:
+                completed_qty = self._round(planned_qty * Decimal("0.35"))
+            scrap_qty = self._round(planned_qty * Decimal("0.02"))
+            pending_qty = self._round(max(planned_qty - completed_qty - scrap_qty, Decimal("0")))
+            due_date = (
+                bom_row.effective_date + timedelta(days=int(operation_row.sequence_no))
+                if bom_row.effective_date is not None
+                else None
+            )
+
+            if item_code_keyword and item_code_keyword not in str(bom_row.item_code).lower():
+                continue
+            if process_no_keyword and process_no_keyword not in process_no.lower():
+                continue
+            if process_name_keyword and process_name_keyword not in process_name.lower():
+                continue
+            if supplier_keyword and supplier_keyword not in processing_supplier.lower():
+                continue
+            if mode_keyword and mode_keyword != processing_mode:
+                continue
+            if status_keyword and status_keyword != status:
+                continue
+
+            items.append(
+                BomMaterialProcessingItem(
+                    id=int(operation_row.id),
+                    bom_id=int(bom_row.id),
+                    bom_no=str(bom_row.bom_no),
+                    item_code=str(bom_row.item_code),
+                    process_no=process_no,
+                    process_name=process_name,
+                    processing_supplier=processing_supplier,
+                    processing_mode=processing_mode,
+                    planned_qty=planned_qty,
+                    completed_qty=completed_qty,
+                    pending_qty=pending_qty,
+                    scrap_qty=scrap_qty,
+                    uom="件",
+                    due_date=due_date,
+                    status=status,
+                    is_default=bool(bom_row.is_default),
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return BomMaterialProcessingData(
             items=items[start:end],
             total=total,
             page=query.page,

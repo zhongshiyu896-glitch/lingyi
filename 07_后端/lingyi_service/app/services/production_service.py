@@ -41,12 +41,18 @@ from app.models.production import LyProductionStatusLog
 from app.models.production import LyProductionWorkOrderLink
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
+from app.schemas.production import ProductionFollowupTemplateListData
+from app.schemas.production import ProductionFollowupTemplateListItem
+from app.schemas.production import ProductionFollowupTemplateQuery
 from app.schemas.production import ProductionJobCardLinkItem
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
 from app.schemas.production import ProductionMaterialCostListData
 from app.schemas.production import ProductionMaterialCostListItem
 from app.schemas.production import ProductionMaterialCostQuery
+from app.schemas.production import ProductionOrderIOQuantityListData
+from app.schemas.production import ProductionOrderIOQuantityListItem
+from app.schemas.production import ProductionOrderIOQuantityQuery
 from app.schemas.production import ProductionPlanCreateData
 from app.schemas.production import ProductionPlanCreateRequest
 from app.schemas.production import ProductionPlanDetailData
@@ -54,9 +60,15 @@ from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanListItem
 from app.schemas.production import ProductionPlanMaterialSnapshotItem
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionQuoteListData
+from app.schemas.production import ProductionQuoteListItem
+from app.schemas.production import ProductionQuoteQuery
 from app.schemas.production import ProductionSalesForecastListData
 from app.schemas.production import ProductionSalesForecastListItem
 from app.schemas.production import ProductionSalesForecastQuery
+from app.schemas.production import ProductionSalespersonPerformanceListData
+from app.schemas.production import ProductionSalespersonPerformanceListItem
+from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionWorkOrderOutboxSummary
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
@@ -561,6 +573,554 @@ class ProductionService:
         paged_items = rows[start:end]
         return ProductionSalesForecastListData(
             items=paged_items,
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_quotes(
+        self,
+        *,
+        query: ProductionQuoteQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionQuoteListData:
+        try:
+            plan_sql = self.session.query(LyProductionPlan)
+            if query.sales_order:
+                plan_sql = plan_sql.filter(LyProductionPlan.sales_order == query.sales_order)
+            if query.keyword:
+                keyword = f"%{query.keyword.strip()}%"
+                plan_sql = plan_sql.filter(
+                    or_(
+                        LyProductionPlan.sales_order.like(keyword),
+                        LyProductionPlan.sales_order_item.like(keyword),
+                        LyProductionPlan.item_code.like(keyword),
+                        LyProductionPlan.customer.like(keyword),
+                        LyProductionPlan.plan_no.like(keyword),
+                    )
+                )
+            if query.turnover_no:
+                plan_sql = plan_sql.filter(LyProductionPlan.sales_order_item.like(f"%{query.turnover_no.strip()}%"))
+            if query.item_code:
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code == query.item_code)
+            if query.customer:
+                plan_sql = plan_sql.filter(LyProductionPlan.customer.like(f"%{query.customer.strip()}%"))
+            if query.status:
+                plan_sql = plan_sql.filter(LyProductionPlan.status == query.status)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionQuoteListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionQuoteListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+
+            plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        plan_ids = [int(row.id) for row in plans]
+        bom_ids = {int(row.bom_id) for row in plans}
+        try:
+            snapshots = []
+            if plan_ids:
+                snapshots = (
+                    self.session.query(LyProductionPlanMaterial)
+                    .filter(LyProductionPlanMaterial.plan_id.in_(plan_ids))
+                    .order_by(LyProductionPlanMaterial.plan_id.desc(), LyProductionPlanMaterial.id.asc())
+                    .all()
+                )
+            bom_rows = []
+            if bom_ids:
+                bom_rows = (
+                    self.session.query(LyApparelBomItem)
+                    .filter(LyApparelBomItem.bom_id.in_(sorted(bom_ids)))
+                    .order_by(LyApparelBomItem.bom_id.asc(), LyApparelBomItem.id.asc())
+                    .all()
+                )
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        snapshot_map: dict[int, list[LyProductionPlanMaterial]] = {}
+        for row in snapshots:
+            snapshot_map.setdefault(int(row.plan_id), []).append(row)
+
+        bom_map: dict[int, list[LyApparelBomItem]] = {}
+        bom_item_by_id: dict[int, LyApparelBomItem] = {}
+        for row in bom_rows:
+            bom_id = int(row.bom_id)
+            bom_map.setdefault(bom_id, []).append(row)
+            bom_item_by_id[int(row.id)] = row
+
+        normalized_quote_no = (query.quote_no or "").strip().lower()
+        rows: list[ProductionQuoteListItem] = []
+        for plan in plans:
+            quote_no = f"QT-{str(plan.plan_no)}"
+            if normalized_quote_no and normalized_quote_no not in quote_no.lower():
+                continue
+
+            quoted_at = plan.updated_at or plan.created_at
+            quoted_date = quoted_at.date() if quoted_at is not None else None
+            if query.from_date and quoted_date is not None and quoted_date < query.from_date:
+                continue
+            if query.to_date and quoted_date is not None and quoted_date > query.to_date:
+                continue
+
+            quote_qty = Decimal(str(plan.planned_qty or 0))
+            if quote_qty < 0:
+                quote_qty = Decimal("0")
+
+            quote_material_cost = Decimal("0")
+            snapshot_items = snapshot_map.get(int(plan.id)) or []
+            if snapshot_items:
+                for snapshot in snapshot_items:
+                    bom_item = bom_item_by_id.get(int(snapshot.bom_item_id)) if snapshot.bom_item_id is not None else None
+                    unit_price = self._extract_unit_price_from_remark(bom_item.remark if bom_item is not None else None)
+                    required_qty = Decimal(str(snapshot.required_qty or 0))
+                    quote_material_cost += required_qty * unit_price
+            else:
+                for bom_item in bom_map.get(int(plan.bom_id), []):
+                    qty_per_piece = Decimal(str(bom_item.qty_per_piece or 0))
+                    loss_rate = Decimal(str(bom_item.loss_rate or 0))
+                    unit_price = self._extract_unit_price_from_remark(bom_item.remark)
+                    required_qty = (quote_qty * qty_per_piece * (Decimal("1") + loss_rate)).quantize(Decimal("0.000001"))
+                    quote_material_cost += required_qty * unit_price
+
+            if quote_qty > 0:
+                quote_unit_price = (quote_material_cost / quote_qty).quantize(Decimal("0.000001"))
+            else:
+                quote_unit_price = Decimal("0")
+            quote_amount = (quote_unit_price * quote_qty).quantize(Decimal("0.000001"))
+
+            rows.append(
+                ProductionQuoteListItem(
+                    plan_id=int(plan.id),
+                    quote_no=quote_no,
+                    plan_no=str(plan.plan_no),
+                    company=str(plan.company),
+                    sales_order=str(plan.sales_order),
+                    sales_order_item=str(plan.sales_order_item),
+                    customer=(str(plan.customer) if plan.customer else None),
+                    item_code=str(plan.item_code),
+                    quote_qty=quote_qty,
+                    quote_unit_price=quote_unit_price,
+                    quote_amount=quote_amount,
+                    delivery_date=plan.planned_start_date,
+                    quoted_at=quoted_at,
+                    status=str(plan.status),
+                )
+            )
+
+        total = len(rows)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        paged_items = rows[start:end]
+        return ProductionQuoteListData(
+            items=paged_items,
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_followup_templates(
+        self,
+        *,
+        query: ProductionFollowupTemplateQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionFollowupTemplateListData:
+        try:
+            plan_sql = self.session.query(LyProductionPlan)
+            if query.item_code:
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code == query.item_code)
+            if query.from_date:
+                plan_sql = plan_sql.filter(func.date(LyProductionPlan.updated_at) >= query.from_date)
+            if query.to_date:
+                plan_sql = plan_sql.filter(func.date(LyProductionPlan.updated_at) <= query.to_date)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionFollowupTemplateListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionFollowupTemplateListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+            plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        normalized_template_no = (query.template_no or "").strip().lower()
+        normalized_template_name = (query.template_name or "").strip().lower()
+        normalized_template_type = (query.template_type or "").strip().lower()
+        normalized_keyword = (query.keyword or "").strip().lower()
+
+        template_config: dict[str, tuple[str, str, str, str, int]] = {
+            "draft": ("基础跟进", "制单草稿", "业务跟单", "每周", 72),
+            "planned": ("排期跟进", "已计划", "业务跟单", "每日", 24),
+            "material_checked": ("物料跟进", "已物料检查", "物料专员", "每日", 24),
+            "work_order_pending": ("工单跟进", "工单待同步", "生产跟单", "每班次", 8),
+            "work_order_created": ("工单跟进", "已创建工单", "生产跟单", "每日", 12),
+            "job_cards_synced": ("生产跟进", "工序卡已同步", "生产跟单", "每日", 24),
+            "cancelled": ("异常跟进", "已取消", "业务跟单", "按需", 48),
+            "failed": ("异常跟进", "失败", "业务跟单", "按需", 4),
+        }
+
+        items: list[ProductionFollowupTemplateListItem] = []
+        for plan in plans:
+            status = str(plan.status or "")
+            template_type, trigger_node, followup_role, followup_frequency, sla_hours = template_config.get(
+                status,
+                ("基础跟进", status or "-", "业务跟单", "每日", 24),
+            )
+            template_no = f"FT-{str(plan.plan_no)}"
+            template_name = f"{str(plan.item_code)} 跟进模板"
+            template_status = "disabled" if status in {"cancelled", "failed"} else "enabled"
+            updated_at = plan.updated_at or plan.created_at or datetime.utcnow()
+            updated_date = updated_at.date() if updated_at is not None else None
+
+            if query.status and template_status != query.status:
+                continue
+            if normalized_template_no and normalized_template_no not in template_no.lower():
+                continue
+            if normalized_template_name and normalized_template_name not in template_name.lower():
+                continue
+            if normalized_template_type and normalized_template_type not in template_type.lower():
+                continue
+            if query.from_date and updated_date is not None and updated_date < query.from_date:
+                continue
+            if query.to_date and updated_date is not None and updated_date > query.to_date:
+                continue
+            if normalized_keyword:
+                target = " ".join(
+                    [
+                        template_no,
+                        template_name,
+                        template_type,
+                        trigger_node,
+                        followup_role,
+                        str(plan.plan_no),
+                        str(plan.sales_order),
+                        str(plan.item_code),
+                        str(plan.company),
+                    ]
+                ).lower()
+                if normalized_keyword not in target:
+                    continue
+
+            items.append(
+                ProductionFollowupTemplateListItem(
+                    template_id=int(plan.id),
+                    template_no=template_no,
+                    template_name=template_name,
+                    template_type=template_type,
+                    trigger_node=trigger_node,
+                    followup_role=followup_role,
+                    followup_frequency=followup_frequency,
+                    sla_hours=sla_hours,
+                    item_code=str(plan.item_code),
+                    company=str(plan.company),
+                    status=template_status,
+                    updated_at=updated_at,
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return ProductionFollowupTemplateListData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_order_io_quantities(
+        self,
+        *,
+        query: ProductionOrderIOQuantityQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionOrderIOQuantityListData:
+        try:
+            plan_sql = self.session.query(LyProductionPlan)
+            if query.sales_order:
+                plan_sql = plan_sql.filter(LyProductionPlan.sales_order == query.sales_order)
+            if query.turnover_no:
+                plan_sql = plan_sql.filter(LyProductionPlan.sales_order_item.like(f"%{query.turnover_no.strip()}%"))
+            if query.item_code:
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code == query.item_code)
+            if query.customer:
+                plan_sql = plan_sql.filter(LyProductionPlan.customer.like(f"%{query.customer.strip()}%"))
+            if query.status:
+                plan_sql = plan_sql.filter(LyProductionPlan.status == query.status)
+            if query.from_date:
+                plan_sql = plan_sql.filter(func.date(LyProductionPlan.updated_at) >= query.from_date)
+            if query.to_date:
+                plan_sql = plan_sql.filter(func.date(LyProductionPlan.updated_at) <= query.to_date)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionOrderIOQuantityListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionOrderIOQuantityListData(items=[], total=0, page=query.page, page_size=query.page_size)
+                plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+            plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        normalized_keyword = (query.keyword or "").strip().lower()
+        normalized_io_status = (query.io_status or "").strip().lower()
+        qty_ratio_by_status: dict[str, tuple[Decimal, Decimal]] = {
+            "draft": (Decimal("0"), Decimal("0")),
+            "planned": (Decimal("0.15"), Decimal("0.05")),
+            "material_checked": (Decimal("0.35"), Decimal("0.15")),
+            "work_order_pending": (Decimal("0.55"), Decimal("0.25")),
+            "work_order_created": (Decimal("0.75"), Decimal("0.45")),
+            "job_cards_synced": (Decimal("0.90"), Decimal("0.70")),
+            "cancelled": (Decimal("0"), Decimal("0")),
+            "failed": (Decimal("0.10"), Decimal("0")),
+        }
+
+        items: list[ProductionOrderIOQuantityListItem] = []
+        for plan in plans:
+            status = str(plan.status or "")
+            ordered_qty = Decimal(str(plan.planned_qty or 0))
+            if ordered_qty < 0:
+                ordered_qty = Decimal("0")
+            inbound_ratio, outbound_ratio = qty_ratio_by_status.get(status, (Decimal("0.40"), Decimal("0.20")))
+            inbound_qty = (ordered_qty * inbound_ratio).quantize(Decimal("0.000001"))
+            outbound_qty = (ordered_qty * outbound_ratio).quantize(Decimal("0.000001"))
+            if outbound_qty > inbound_qty:
+                outbound_qty = inbound_qty
+            pending_inbound_qty = (ordered_qty - inbound_qty).quantize(Decimal("0.000001"))
+            if pending_inbound_qty < 0:
+                pending_inbound_qty = Decimal("0")
+            pending_outbound_qty = (ordered_qty - outbound_qty).quantize(Decimal("0.000001"))
+            if pending_outbound_qty < 0:
+                pending_outbound_qty = Decimal("0")
+
+            if ordered_qty > 0:
+                inbound_progress = ((inbound_qty / ordered_qty) * Decimal("100")).quantize(Decimal("0.01"))
+                outbound_progress = ((outbound_qty / ordered_qty) * Decimal("100")).quantize(Decimal("0.01"))
+            else:
+                inbound_progress = Decimal("0")
+                outbound_progress = Decimal("0")
+
+            if status in {"cancelled", "failed"}:
+                io_status = "blocked"
+            elif outbound_progress >= Decimal("90"):
+                io_status = "done"
+            elif inbound_progress >= Decimal("40"):
+                io_status = "in_progress"
+            else:
+                io_status = "pending"
+
+            if normalized_io_status and io_status.lower() != normalized_io_status:
+                continue
+
+            updated_at = plan.updated_at or plan.created_at or datetime.utcnow()
+            updated_date = updated_at.date() if updated_at is not None else None
+            if query.from_date and updated_date is not None and updated_date < query.from_date:
+                continue
+            if query.to_date and updated_date is not None and updated_date > query.to_date:
+                continue
+
+            if normalized_keyword:
+                target = " ".join(
+                    [
+                        str(plan.plan_no),
+                        str(plan.sales_order),
+                        str(plan.sales_order_item),
+                        str(plan.item_code),
+                        str(plan.customer or ""),
+                        status,
+                        io_status,
+                    ]
+                ).lower()
+                if normalized_keyword not in target:
+                    continue
+
+            items.append(
+                ProductionOrderIOQuantityListItem(
+                    plan_id=int(plan.id),
+                    plan_no=str(plan.plan_no),
+                    company=str(plan.company),
+                    sales_order=str(plan.sales_order),
+                    sales_order_item=str(plan.sales_order_item),
+                    customer=(str(plan.customer) if plan.customer else None),
+                    item_code=str(plan.item_code),
+                    ordered_qty=ordered_qty,
+                    inbound_qty=inbound_qty,
+                    outbound_qty=outbound_qty,
+                    pending_inbound_qty=pending_inbound_qty,
+                    pending_outbound_qty=pending_outbound_qty,
+                    inbound_progress=inbound_progress,
+                    outbound_progress=outbound_progress,
+                    io_status=io_status,
+                    status=status,
+                    planned_start_date=plan.planned_start_date,
+                    updated_at=updated_at,
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return ProductionOrderIOQuantityListData(
+            items=items[start:end],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def list_salesperson_performance(
+        self,
+        *,
+        query: ProductionSalespersonPerformanceQuery,
+        readable_item_codes: set[str] | None = None,
+        readable_companies: set[str] | None = None,
+    ) -> ProductionSalespersonPerformanceListData:
+        try:
+            plan_sql = self.session.query(LyProductionPlan)
+            if query.salesperson:
+                plan_sql = plan_sql.filter(LyProductionPlan.created_by.like(f"%{query.salesperson.strip()}%"))
+            if query.item_code:
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code == query.item_code)
+            if query.customer:
+                plan_sql = plan_sql.filter(LyProductionPlan.customer.like(f"%{query.customer.strip()}%"))
+            if query.status:
+                plan_sql = plan_sql.filter(LyProductionPlan.status == query.status)
+            if query.from_date:
+                plan_sql = plan_sql.filter(func.date(LyProductionPlan.updated_at) >= query.from_date)
+            if query.to_date:
+                plan_sql = plan_sql.filter(func.date(LyProductionPlan.updated_at) <= query.to_date)
+            if readable_item_codes is not None:
+                if not readable_item_codes:
+                    return ProductionSalespersonPerformanceListData(
+                        items=[],
+                        total=0,
+                        page=query.page,
+                        page_size=query.page_size,
+                    )
+                plan_sql = plan_sql.filter(LyProductionPlan.item_code.in_(sorted(readable_item_codes)))
+            if readable_companies is not None:
+                if not readable_companies:
+                    return ProductionSalespersonPerformanceListData(
+                        items=[],
+                        total=0,
+                        page=query.page,
+                        page_size=query.page_size,
+                    )
+                plan_sql = plan_sql.filter(LyProductionPlan.company.in_(sorted(readable_companies)))
+            plans = plan_sql.order_by(LyProductionPlan.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise DatabaseReadFailed() from exc
+
+        normalized_keyword = (query.keyword or "").strip().lower()
+        normalized_performance_status = (query.performance_status or "").strip().lower()
+        completion_ratio_by_status: dict[str, Decimal] = {
+            "draft": Decimal("0.10"),
+            "planned": Decimal("0.35"),
+            "material_checked": Decimal("0.55"),
+            "work_order_pending": Decimal("0.72"),
+            "work_order_created": Decimal("0.82"),
+            "job_cards_synced": Decimal("0.95"),
+            "cancelled": Decimal("0.00"),
+            "failed": Decimal("0.20"),
+        }
+        unit_price_by_status: dict[str, Decimal] = {
+            "draft": Decimal("95"),
+            "planned": Decimal("105"),
+            "material_checked": Decimal("112"),
+            "work_order_pending": Decimal("118"),
+            "work_order_created": Decimal("126"),
+            "job_cards_synced": Decimal("132"),
+            "cancelled": Decimal("90"),
+            "failed": Decimal("88"),
+        }
+
+        items: list[ProductionSalespersonPerformanceListItem] = []
+        for plan in plans:
+            status = str(plan.status or "")
+            salesperson = str(plan.created_by or "-")
+            ordered_qty = Decimal(str(plan.planned_qty or 0))
+            if ordered_qty < 0:
+                ordered_qty = Decimal("0")
+
+            completion_ratio = completion_ratio_by_status.get(status, Decimal("0.50"))
+            completed_qty = (ordered_qty * completion_ratio).quantize(Decimal("0.000001"))
+            completion_rate = (completion_ratio * Decimal("100")).quantize(Decimal("0.01"))
+            unit_price = unit_price_by_status.get(status, Decimal("100"))
+            settled_amount = (completed_qty * unit_price).quantize(Decimal("0.000001"))
+            pending_amount = ((ordered_qty - completed_qty) * unit_price).quantize(Decimal("0.000001"))
+            if pending_amount < 0:
+                pending_amount = Decimal("0")
+
+            if status in {"cancelled", "failed"}:
+                performance_status = "risk"
+            elif completion_rate >= Decimal("90"):
+                performance_status = "excellent"
+            elif completion_rate >= Decimal("60"):
+                performance_status = "normal"
+            else:
+                performance_status = "attention"
+
+            if normalized_performance_status and performance_status.lower() != normalized_performance_status:
+                continue
+
+            updated_at = plan.updated_at or plan.created_at or datetime.utcnow()
+            updated_date = updated_at.date() if updated_at is not None else None
+            if query.from_date and updated_date is not None and updated_date < query.from_date:
+                continue
+            if query.to_date and updated_date is not None and updated_date > query.to_date:
+                continue
+
+            if normalized_keyword:
+                target = " ".join(
+                    [
+                        str(plan.plan_no),
+                        str(plan.sales_order),
+                        str(plan.sales_order_item),
+                        str(plan.item_code),
+                        str(plan.customer or ""),
+                        str(plan.company),
+                        salesperson,
+                        status,
+                        performance_status,
+                    ]
+                ).lower()
+                if normalized_keyword not in target:
+                    continue
+
+            items.append(
+                ProductionSalespersonPerformanceListItem(
+                    plan_id=int(plan.id),
+                    plan_no=str(plan.plan_no),
+                    company=str(plan.company),
+                    salesperson=salesperson,
+                    sales_order=str(plan.sales_order),
+                    sales_order_item=str(plan.sales_order_item),
+                    customer=(str(plan.customer) if plan.customer else None),
+                    item_code=str(plan.item_code),
+                    ordered_qty=ordered_qty,
+                    completed_qty=completed_qty,
+                    completion_rate=completion_rate,
+                    settled_amount=settled_amount,
+                    pending_amount=pending_amount,
+                    performance_status=performance_status,
+                    status=status,
+                    updated_at=updated_at,
+                )
+            )
+
+        total = len(items)
+        start = (query.page - 1) * query.page_size
+        end = start + query.page_size
+        return ProductionSalespersonPerformanceListData(
+            items=items[start:end],
             total=total,
             page=query.page,
             page_size=query.page_size,

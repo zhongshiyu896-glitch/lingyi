@@ -145,6 +145,32 @@ export interface BomProcessingTypeData {
   page_size: number
 }
 
+export interface BomMaterialProcessingItem {
+  id: number
+  bom_id: number
+  bom_no: string
+  item_code: string
+  process_no: string
+  process_name: string
+  processing_supplier: string
+  processing_mode: string
+  planned_qty: string
+  completed_qty: string
+  pending_qty: string
+  scrap_qty: string
+  uom: string
+  due_date?: string | null
+  status: string
+  is_default: boolean
+}
+
+export interface BomMaterialProcessingData {
+  items: BomMaterialProcessingItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface BomMaterialTypeItem {
   id: number
   bom_id: number
@@ -333,6 +359,18 @@ export const fetchBomProcessingTypes = (params: {
   page_size: number
 }): Promise<ApiResponse<BomProcessingTypeData>> =>
   request(`/api/bom/processing-types?${toQuery(params)}`)
+
+export const fetchBomMaterialProcessing = (params: {
+  item_code?: string
+  process_no?: string
+  process_name?: string
+  processing_supplier?: string
+  processing_mode?: string
+  status?: string
+  page: number
+  page_size: number
+}): Promise<ApiResponse<BomMaterialProcessingData>> =>
+  request(`/api/bom/material-processing?${toQuery(params)}`)
 
 export const fetchBomMaterialTypes = (params: {
   item_code?: string

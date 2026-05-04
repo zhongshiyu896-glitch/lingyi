@@ -130,6 +130,162 @@ export interface ProductionSalesForecastListData {
   page_size: number
 }
 
+export interface ProductionQuoteListQuery {
+  quote_no?: string
+  sales_order?: string
+  keyword?: string
+  turnover_no?: string
+  item_code?: string
+  customer?: string
+  from_date?: string
+  to_date?: string
+  status?: string
+  page: number
+  page_size: number
+}
+
+export interface ProductionQuoteListItem {
+  plan_id: number
+  quote_no: string
+  plan_no: string
+  company: string
+  sales_order: string
+  sales_order_item: string
+  customer?: string | null
+  item_code: string
+  quote_qty: string
+  quote_unit_price: string
+  quote_amount: string
+  currency: string
+  quoted_at?: string | null
+  delivery_date?: string | null
+  status: string
+}
+
+export interface ProductionQuoteListData {
+  items: ProductionQuoteListItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface ProductionFollowupTemplateListQuery {
+  template_no?: string
+  template_name?: string
+  template_type?: string
+  item_code?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  status?: string
+  page: number
+  page_size: number
+}
+
+export interface ProductionFollowupTemplateListItem {
+  template_id: number
+  template_no: string
+  template_name: string
+  template_type: string
+  trigger_node: string
+  followup_role: string
+  followup_frequency: string
+  sla_hours: number
+  item_code: string
+  company: string
+  status: string
+  updated_at: string
+}
+
+export interface ProductionFollowupTemplateListData {
+  items: ProductionFollowupTemplateListItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface ProductionOrderIOQuantityListQuery {
+  sales_order?: string
+  keyword?: string
+  turnover_no?: string
+  item_code?: string
+  customer?: string
+  from_date?: string
+  to_date?: string
+  status?: string
+  io_status?: string
+  page: number
+  page_size: number
+}
+
+export interface ProductionOrderIOQuantityListItem {
+  plan_id: number
+  plan_no: string
+  company: string
+  sales_order: string
+  sales_order_item: string
+  customer?: string | null
+  item_code: string
+  ordered_qty: string
+  inbound_qty: string
+  outbound_qty: string
+  pending_inbound_qty: string
+  pending_outbound_qty: string
+  inbound_progress: string
+  outbound_progress: string
+  io_status: string
+  status: string
+  planned_start_date?: string | null
+  updated_at?: string | null
+}
+
+export interface ProductionOrderIOQuantityListData {
+  items: ProductionOrderIOQuantityListItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface ProductionSalespersonPerformanceListQuery {
+  salesperson?: string
+  keyword?: string
+  item_code?: string
+  customer?: string
+  status?: string
+  performance_status?: string
+  from_date?: string
+  to_date?: string
+  page: number
+  page_size: number
+}
+
+export interface ProductionSalespersonPerformanceListItem {
+  plan_id: number
+  plan_no: string
+  company: string
+  salesperson: string
+  sales_order: string
+  sales_order_item: string
+  customer?: string | null
+  item_code: string
+  ordered_qty: string
+  completed_qty: string
+  completion_rate: string
+  settled_amount: string
+  pending_amount: string
+  currency: string
+  performance_status: string
+  status: string
+  updated_at?: string | null
+}
+
+export interface ProductionSalespersonPerformanceListData {
+  items: ProductionSalespersonPerformanceListItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface ProductionPlanMaterialSnapshotItem {
   bom_item_id?: number | null
   material_item_code: string
@@ -288,6 +444,80 @@ export const fetchProductionSalesForecastDetails = async (
     page_size: params.page_size,
   })
   return request<ProductionSalesForecastListData>(`/api/production/sales-forecast-details?${query}`)
+}
+
+export const fetchProductionQuotes = async (
+  params: ProductionQuoteListQuery,
+): Promise<ApiResponse<ProductionQuoteListData>> => {
+  const query = toQuery({
+    quote_no: params.quote_no,
+    sales_order: params.sales_order,
+    keyword: params.keyword,
+    turnover_no: params.turnover_no,
+    item_code: params.item_code,
+    customer: params.customer,
+    from_date: params.from_date,
+    to_date: params.to_date,
+    status: params.status,
+    page: params.page,
+    page_size: params.page_size,
+  })
+  return request<ProductionQuoteListData>(`/api/production/quotes?${query}`)
+}
+
+export const fetchProductionFollowupTemplates = async (
+  params: ProductionFollowupTemplateListQuery,
+): Promise<ApiResponse<ProductionFollowupTemplateListData>> => {
+  const query = toQuery({
+    template_no: params.template_no,
+    template_name: params.template_name,
+    template_type: params.template_type,
+    item_code: params.item_code,
+    keyword: params.keyword,
+    from_date: params.from_date,
+    to_date: params.to_date,
+    status: params.status,
+    page: params.page,
+    page_size: params.page_size,
+  })
+  return request<ProductionFollowupTemplateListData>(`/api/production/followup-templates?${query}`)
+}
+
+export const fetchProductionOrderIOQuantities = async (
+  params: ProductionOrderIOQuantityListQuery,
+): Promise<ApiResponse<ProductionOrderIOQuantityListData>> => {
+  const query = toQuery({
+    sales_order: params.sales_order,
+    keyword: params.keyword,
+    turnover_no: params.turnover_no,
+    item_code: params.item_code,
+    customer: params.customer,
+    from_date: params.from_date,
+    to_date: params.to_date,
+    status: params.status,
+    io_status: params.io_status,
+    page: params.page,
+    page_size: params.page_size,
+  })
+  return request<ProductionOrderIOQuantityListData>(`/api/production/order-io-quantities?${query}`)
+}
+
+export const fetchProductionSalespersonPerformance = async (
+  params: ProductionSalespersonPerformanceListQuery,
+): Promise<ApiResponse<ProductionSalespersonPerformanceListData>> => {
+  const query = toQuery({
+    salesperson: params.salesperson,
+    keyword: params.keyword,
+    item_code: params.item_code,
+    customer: params.customer,
+    status: params.status,
+    performance_status: params.performance_status,
+    from_date: params.from_date,
+    to_date: params.to_date,
+    page: params.page,
+    page_size: params.page_size,
+  })
+  return request<ProductionSalespersonPerformanceListData>(`/api/production/salesperson-performance?${query}`)
 }
 
 export const fetchProductionPlanDetail = async (

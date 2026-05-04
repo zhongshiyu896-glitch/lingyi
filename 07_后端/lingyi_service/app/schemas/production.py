@@ -187,6 +187,186 @@ class ProductionSalesForecastListData(BaseModel):
     page_size: int
 
 
+class ProductionQuoteQuery(BaseModel):
+    """Production quote list query."""
+
+    quote_no: Optional[str] = Field(default=None, max_length=140)
+    sales_order: Optional[str] = None
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    turnover_no: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    customer: Optional[str] = Field(default=None, max_length=140)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class ProductionQuoteListItem(BaseModel):
+    """Production quote list row."""
+
+    plan_id: int
+    quote_no: str
+    plan_no: str
+    company: str
+    sales_order: str
+    sales_order_item: str
+    customer: Optional[str] = None
+    item_code: str
+    quote_qty: Decimal
+    quote_unit_price: Decimal
+    quote_amount: Decimal
+    currency: str = "CNY"
+    quoted_at: Optional[datetime] = None
+    delivery_date: Optional[date] = None
+    status: str
+
+
+class ProductionQuoteListData(BaseModel):
+    """Production quote list result."""
+
+    items: List[ProductionQuoteListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class ProductionFollowupTemplateQuery(BaseModel):
+    """Production follow-up template list query."""
+
+    template_no: Optional[str] = Field(default=None, max_length=140)
+    template_name: Optional[str] = Field(default=None, max_length=140)
+    template_type: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    status: Optional[str] = Field(default=None, max_length=40)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class ProductionFollowupTemplateListItem(BaseModel):
+    """Production follow-up template row."""
+
+    template_id: int
+    template_no: str
+    template_name: str
+    template_type: str
+    trigger_node: str
+    followup_role: str
+    followup_frequency: str
+    sla_hours: int
+    item_code: str
+    company: str
+    status: str
+    updated_at: datetime
+
+
+class ProductionFollowupTemplateListData(BaseModel):
+    """Production follow-up template list result."""
+
+    items: List[ProductionFollowupTemplateListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class ProductionOrderIOQuantityQuery(BaseModel):
+    """Production order in/out quantity list query."""
+
+    sales_order: Optional[str] = None
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    turnover_no: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    customer: Optional[str] = Field(default=None, max_length=140)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    status: Optional[str] = None
+    io_status: Optional[str] = Field(default=None, max_length=40)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class ProductionOrderIOQuantityListItem(BaseModel):
+    """Production order in/out quantity row."""
+
+    plan_id: int
+    plan_no: str
+    company: str
+    sales_order: str
+    sales_order_item: str
+    customer: Optional[str] = None
+    item_code: str
+    ordered_qty: Decimal
+    inbound_qty: Decimal
+    outbound_qty: Decimal
+    pending_inbound_qty: Decimal
+    pending_outbound_qty: Decimal
+    inbound_progress: Decimal
+    outbound_progress: Decimal
+    io_status: str
+    status: str
+    planned_start_date: Optional[date] = None
+    updated_at: Optional[datetime] = None
+
+
+class ProductionOrderIOQuantityListData(BaseModel):
+    """Production order in/out quantity list result."""
+
+    items: List[ProductionOrderIOQuantityListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class ProductionSalespersonPerformanceQuery(BaseModel):
+    """Production salesperson performance list query."""
+
+    salesperson: Optional[str] = Field(default=None, max_length=140)
+    keyword: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    customer: Optional[str] = Field(default=None, max_length=140)
+    status: Optional[str] = Field(default=None, max_length=40)
+    performance_status: Optional[str] = Field(default=None, max_length=40)
+    from_date: Optional[date] = None
+    to_date: Optional[date] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
+class ProductionSalespersonPerformanceListItem(BaseModel):
+    """Production salesperson performance row."""
+
+    plan_id: int
+    plan_no: str
+    company: str
+    salesperson: str
+    sales_order: str
+    sales_order_item: str
+    customer: Optional[str] = None
+    item_code: str
+    ordered_qty: Decimal
+    completed_qty: Decimal
+    completion_rate: Decimal
+    settled_amount: Decimal
+    pending_amount: Decimal
+    currency: str = "CNY"
+    performance_status: str
+    status: str
+    updated_at: Optional[datetime] = None
+
+
+class ProductionSalespersonPerformanceListData(BaseModel):
+    """Production salesperson performance list result."""
+
+    items: List[ProductionSalespersonPerformanceListItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class ProductionPlanMaterialSnapshotItem(BaseModel):
     """Material check snapshot row."""
 

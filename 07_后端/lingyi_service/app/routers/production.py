@@ -43,17 +43,25 @@ from app.core.request_id import get_request_id_from_request
 from app.schemas.production import ApiResponse
 from app.schemas.production import ProductionCreateWorkOrderData
 from app.schemas.production import ProductionCreateWorkOrderRequest
+from app.schemas.production import ProductionFollowupTemplateListData
+from app.schemas.production import ProductionFollowupTemplateQuery
 from app.schemas.production import ProductionMaterialCheckData
 from app.schemas.production import ProductionMaterialCheckRequest
 from app.schemas.production import ProductionMaterialCostListData
 from app.schemas.production import ProductionMaterialCostQuery
+from app.schemas.production import ProductionOrderIOQuantityListData
+from app.schemas.production import ProductionOrderIOQuantityQuery
 from app.schemas.production import ProductionPlanCreateData
 from app.schemas.production import ProductionPlanCreateRequest
 from app.schemas.production import ProductionPlanDetailData
 from app.schemas.production import ProductionPlanListData
 from app.schemas.production import ProductionPlanQuery
+from app.schemas.production import ProductionQuoteListData
+from app.schemas.production import ProductionQuoteQuery
 from app.schemas.production import ProductionSalesForecastListData
 from app.schemas.production import ProductionSalesForecastQuery
+from app.schemas.production import ProductionSalespersonPerformanceListData
+from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionWorkerRunOnceData
 from app.schemas.production import ProductionWorkerRunOnceRequest
@@ -561,6 +569,254 @@ def list_production_sales_forecast_details(
             page_size=page_size,
         )
         data = _service(session=session, request=request).list_sales_forecast_details(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/quotes", response_model=ApiResponse[ProductionQuoteListData])
+def list_production_quotes(
+    request: Request,
+    quote_no: str | None = Query(default=None),
+    sales_order: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    turnover_no: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_plan",
+            resource_id=None,
+        )
+
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionQuoteQuery(
+            quote_no=quote_no,
+            sales_order=sales_order,
+            keyword=keyword,
+            turnover_no=turnover_no,
+            item_code=item_code,
+            customer=customer,
+            from_date=from_date,
+            to_date=to_date,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_quotes(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/followup-templates", response_model=ApiResponse[ProductionFollowupTemplateListData])
+def list_production_followup_templates(
+    request: Request,
+    template_no: str | None = Query(default=None),
+    template_name: str | None = Query(default=None),
+    template_type: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_plan",
+            resource_id=None,
+        )
+
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionFollowupTemplateQuery(
+            template_no=template_no,
+            template_name=template_name,
+            template_type=template_type,
+            item_code=item_code,
+            keyword=keyword,
+            from_date=from_date,
+            to_date=to_date,
+            status=status,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_followup_templates(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/order-io-quantities", response_model=ApiResponse[ProductionOrderIOQuantityListData])
+def list_production_order_io_quantities(
+    request: Request,
+    sales_order: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    turnover_no: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    status: str | None = Query(default=None),
+    io_status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_plan",
+            resource_id=None,
+        )
+
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionOrderIOQuantityQuery(
+            sales_order=sales_order,
+            keyword=keyword,
+            turnover_no=turnover_no,
+            item_code=item_code,
+            customer=customer,
+            from_date=from_date,
+            to_date=to_date,
+            status=status,
+            io_status=io_status,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_order_io_quantities(
+            query=query,
+            readable_companies=readable_companies,
+            readable_item_codes=readable_items,
+        )
+        return _ok(data)
+    except HTTPException as exc:
+        return _http_exc_err(exc)
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request=request, action=action, exc=exc))
+
+
+@router.get("/salesperson-performance", response_model=ApiResponse[ProductionSalespersonPerformanceListData])
+def list_production_salesperson_performance(
+    request: Request,
+    salesperson: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    customer: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    performance_status: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = PRODUCTION_READ
+    permission_service = PermissionService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="production",
+            resource_type="production_plan",
+            resource_id=None,
+        )
+
+        readable_companies, readable_items = _resolve_read_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+            action=action,
+        )
+        query = ProductionSalespersonPerformanceQuery(
+            salesperson=salesperson,
+            keyword=keyword,
+            item_code=item_code,
+            customer=customer,
+            status=status,
+            performance_status=performance_status,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+        )
+        data = _service(session=session, request=request).list_salesperson_performance(
             query=query,
             readable_companies=readable_companies,
             readable_item_codes=readable_items,

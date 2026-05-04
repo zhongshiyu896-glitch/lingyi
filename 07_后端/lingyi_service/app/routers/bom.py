@@ -50,6 +50,8 @@ from app.schemas.bom import BomFabricQuery
 from app.schemas.bom import BomListData
 from app.schemas.bom import BomMaterialGalleryData
 from app.schemas.bom import BomMaterialGalleryQuery
+from app.schemas.bom import BomMaterialProcessingData
+from app.schemas.bom import BomMaterialProcessingQuery
 from app.schemas.bom import BomMaterialTypeData
 from app.schemas.bom import BomMaterialTypeQuery
 from app.schemas.bom import BomMaterialUnitData
@@ -639,6 +641,59 @@ def list_bom_processing_types(
     service = BomService(session=session)
     try:
         data: BomProcessingTypeData = service.list_processing_types(
+            query=query,
+            allowed_item_codes=allowed_item_codes,
+        )
+        return _ok(data.model_dump())
+    except AppException as exc:
+        return _app_err(exc)
+    except Exception as exc:
+        return _app_err(_unknown_to_internal_error(request, BOM_READ, exc))
+
+
+@router.get("/material-processing")
+def list_bom_material_processing(
+    request: Request,
+    item_code: str | None = None,
+    process_no: str | None = None,
+    process_name: str | None = None,
+    processing_supplier: str | None = None,
+    processing_mode: str | None = None,
+    status: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    """查询 BOM 物料加工（只读语义）。"""
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=BOM_READ,
+        module="bom",
+    )
+    allowed_item_codes = permission_service.get_readable_item_codes(
+        current_user=current_user,
+        request_obj=request,
+        module="bom",
+        action_context=BOM_READ,
+        resource_type="bom",
+    )
+
+    query = BomMaterialProcessingQuery(
+        item_code=item_code,
+        process_no=process_no,
+        process_name=process_name,
+        processing_supplier=processing_supplier,
+        processing_mode=processing_mode,
+        status=status,
+        page=page,
+        page_size=page_size,
+    )
+    service = BomService(session=session)
+    try:
+        data: BomMaterialProcessingData = service.list_material_processing(
             query=query,
             allowed_item_codes=allowed_item_codes,
         )

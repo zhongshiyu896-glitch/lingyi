@@ -149,6 +149,19 @@ class BomProcessingTypeQuery(BaseModel):
     page_size: int = Field(default=20, ge=1, le=200)
 
 
+class BomMaterialProcessingQuery(BaseModel):
+    """BOM material-processing query params."""
+
+    item_code: Optional[str] = None
+    process_no: Optional[str] = None
+    process_name: Optional[str] = None
+    processing_supplier: Optional[str] = None
+    processing_mode: Optional[str] = None
+    status: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=200)
+
+
 class BomMaterialTypeQuery(BaseModel):
     """BOM material-type query params."""
 
@@ -373,6 +386,36 @@ class BomProcessingTypeData(BaseModel):
     """Processing-type response data."""
 
     items: List[BomProcessingTypeItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class BomMaterialProcessingItem(BaseModel):
+    """Material-processing list row payload."""
+
+    id: int
+    bom_id: int
+    bom_no: str
+    item_code: str
+    process_no: str
+    process_name: str
+    processing_supplier: str
+    processing_mode: str
+    planned_qty: Decimal
+    completed_qty: Decimal
+    pending_qty: Decimal
+    scrap_qty: Decimal
+    uom: str
+    due_date: Optional[date]
+    status: str
+    is_default: bool
+
+
+class BomMaterialProcessingData(BaseModel):
+    """Material-processing response data."""
+
+    items: List[BomMaterialProcessingItem]
     total: int
     page: int
     page_size: int
