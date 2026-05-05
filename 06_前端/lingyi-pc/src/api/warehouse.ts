@@ -189,6 +189,36 @@ export interface WarehouseFactoryReturnMaterialReportData {
   items: WarehouseFactoryReturnMaterialReportItem[]
 }
 
+export interface WarehouseSemiFinishedOutboundQuery {
+  company?: string
+  warehouse?: string
+  item_code?: string
+  status?: 'pending' | 'confirmed' | 'closed' | ''
+}
+
+export interface WarehouseSemiFinishedOutboundItem {
+  outbound_no: string
+  source_doc_no: string
+  semi_finished_code: string
+  semi_finished_name: string
+  warehouse: string
+  location: string
+  qty: NumericLike
+  amount: NumericLike
+  outbound_date: string
+  destination: string
+  operator: string
+  status: 'pending' | 'confirmed' | 'closed'
+}
+
+export interface WarehouseSemiFinishedOutboundData {
+  company?: string | null
+  warehouse?: string | null
+  item_code?: string | null
+  status?: string | null
+  items: WarehouseSemiFinishedOutboundItem[]
+}
+
 export interface WarehouseAlertsQuery {
   company?: string
   warehouse?: string
@@ -383,6 +413,18 @@ export const fetchWarehouseFactoryReturnMaterialReport = async (
   return request<WarehouseFactoryReturnMaterialReportData>(
     `/api/warehouse/factory-return-material-report?${queryString}`,
   )
+}
+
+export const fetchWarehouseSemiFinishedOutbound = async (
+  query: WarehouseSemiFinishedOutboundQuery,
+): Promise<ApiResponse<WarehouseSemiFinishedOutboundData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    warehouse: query.warehouse,
+    item_code: query.item_code,
+    status: query.status,
+  })
+  return request<WarehouseSemiFinishedOutboundData>(`/api/warehouse/semi-finished-outbound?${queryString}`)
 }
 
 export const fetchWarehouseFinishedGoodsInboundCandidates = async (

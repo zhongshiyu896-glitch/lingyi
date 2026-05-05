@@ -898,6 +898,862 @@
             </div>
           </template>
         </section>
+
+        <el-divider />
+
+        <section class="semi-finished-inventory-section" data-testid="semi-finished-inventory-section">
+          <div class="section-header">
+            <div class="title-group">
+              <span class="title">半成品库存</span>
+              <span class="sub-title">TASK-Y49B-P1-01 / 只读语义</span>
+            </div>
+            <el-tag type="danger" effect="plain">共享路由高风险增量区块</el-tag>
+          </div>
+
+          <el-form :inline="true" :model="semiFinishedInventoryQuery" class="query-form">
+            <el-form-item label="记录单号">
+              <el-input
+                v-model="semiFinishedInventoryQuery.record_no"
+                clearable
+                placeholder="记录单号"
+                @keyup.enter="onSemiFinishedInventorySearch"
+              />
+            </el-form-item>
+            <el-form-item label="物料编码">
+              <el-input
+                v-model="semiFinishedInventoryQuery.item_code"
+                clearable
+                placeholder="物料编码"
+                @keyup.enter="onSemiFinishedInventorySearch"
+              />
+            </el-form-item>
+            <el-form-item label="仓库">
+              <el-input
+                v-model="semiFinishedInventoryQuery.warehouse"
+                clearable
+                placeholder="仓库"
+                @keyup.enter="onSemiFinishedInventorySearch"
+              />
+            </el-form-item>
+            <el-form-item label="工序阶段">
+              <el-select
+                v-model="semiFinishedInventoryQuery.process_stage"
+                clearable
+                placeholder="全部阶段"
+                style="width: 150px"
+              >
+                <el-option label="车缝完成" value="车缝完成" />
+                <el-option label="锁边完成" value="锁边完成" />
+                <el-option label="整烫待检" value="整烫待检" />
+                <el-option label="返修处理中" value="返修处理中" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="库存状态">
+              <el-select
+                v-model="semiFinishedInventoryQuery.status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="在库" value="在库" />
+                <el-option label="待质检" value="待质检" />
+                <el-option label="返修中" value="返修中" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="关键词">
+              <el-input
+                v-model="semiFinishedInventoryQuery.keyword"
+                clearable
+                placeholder="单号/物料/工序/经办人"
+                @keyup.enter="onSemiFinishedInventorySearch"
+              />
+            </el-form-item>
+            <el-form-item label="开始日期">
+              <el-date-picker
+                v-model="semiFinishedInventoryQuery.from_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="开始日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="结束日期">
+              <el-date-picker
+                v-model="semiFinishedInventoryQuery.to_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="结束日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button :disabled="!canRead" @click="onSemiFinishedInventoryReset">重置</el-button>
+              <el-button type="primary" :disabled="!canRead" @click="onSemiFinishedInventorySearch">查询</el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="toolbar-row">
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('半成品锁定提示')"
+            >
+              锁定提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('半成品复核提示')"
+            >
+              复核提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('半成品校验')"
+            >
+              校验
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canExport"
+              @click="onGuardedAction('导出半成品库存')"
+            >
+              导出
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canExport"
+              @click="onGuardedAction('打印半成品库存')"
+            >
+              打印
+            </el-button>
+          </div>
+
+          <el-alert
+            v-if="semiFinishedInventoryError"
+            class="error-alert"
+            type="error"
+            :closable="false"
+            :title="`半成品库存加载失败：${semiFinishedInventoryError}`"
+          />
+
+          <el-empty v-if="!canRead" description="无半成品库存查看权限" />
+          <template v-else>
+            <div class="summary-row">
+              <el-tag type="info" effect="plain">半成品记录：{{ semiFinishedInventoryTotal }}</el-tag>
+              <el-tag type="success" effect="plain">入库总量：{{ semiFinishedInventoryInTotal }}</el-tag>
+              <el-tag type="warning" effect="plain">出库总量：{{ semiFinishedInventoryOutTotal }}</el-tag>
+              <el-tag type="danger" effect="plain">结余总量：{{ semiFinishedInventoryClosingTotal }}</el-tag>
+            </div>
+
+            <el-table
+              :data="semiFinishedInventoryRows"
+              border
+              v-loading="semiFinishedInventoryLoading"
+              empty-text="暂无半成品库存数据，请调整筛选条件后重试"
+            >
+              <el-table-column prop="record_no" label="记录单号" min-width="150" />
+              <el-table-column prop="material_code" label="物料编码" min-width="130" />
+              <el-table-column prop="material_name" label="物料名称" min-width="140" />
+              <el-table-column prop="warehouse" label="仓库" min-width="120" />
+              <el-table-column prop="process_stage" label="工序阶段" min-width="120" />
+              <el-table-column label="期初数量" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.opening_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="入库数量" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.in_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="出库数量" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.out_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="结余数量" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.closing_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="状态" min-width="100">
+                <template #default="scope">
+                  <el-tag :type="semiFinishedInventoryStatusType(scope.row.status)" effect="light">
+                    {{ scope.row.status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="biz_date" label="统计日期" min-width="120" />
+              <el-table-column prop="owner" label="经办人" min-width="100" />
+              <el-table-column prop="ref_no" label="关联单据" min-width="140" />
+              <el-table-column label="操作" min-width="110" fixed="right">
+                <template #default>
+                  <el-button
+                    data-write-guard="true"
+                    link
+                    type="primary"
+                    @click="onGuardedAction('查看半成品库存')"
+                  >
+                    查看
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pager">
+              <el-pagination
+                background
+                layout="prev, pager, next, total, sizes"
+                :current-page="semiFinishedInventoryQuery.page"
+                :page-size="semiFinishedInventoryQuery.page_size"
+                :total="semiFinishedInventoryTotal"
+                :page-sizes="[10, 20, 50, 100]"
+                @current-change="onSemiFinishedInventoryPageChange"
+                @size-change="onSemiFinishedInventorySizeChange"
+              />
+            </div>
+          </template>
+        </section>
+
+        <el-divider />
+
+        <section
+          class="finished-goods-reserved-inbound-section"
+          data-testid="finished-goods-reserved-inbound-section"
+        >
+          <div class="section-header">
+            <div class="title-group">
+              <span class="title">成品预约入仓</span>
+              <span class="sub-title">TASK-Y49B-P1-03 / 只读语义</span>
+            </div>
+            <el-tag type="danger" effect="plain">共享路由高风险增量区块</el-tag>
+          </div>
+
+          <el-form :inline="true" :model="finishedGoodsReservedInboundQuery" class="query-form">
+            <el-form-item label="预约单号">
+              <el-input
+                v-model="finishedGoodsReservedInboundQuery.reservation_no"
+                clearable
+                placeholder="预约单号"
+                @keyup.enter="onFinishedGoodsReservedInboundSearch"
+              />
+            </el-form-item>
+            <el-form-item label="成品编码">
+              <el-input
+                v-model="finishedGoodsReservedInboundQuery.item_code"
+                clearable
+                placeholder="成品编码"
+                @keyup.enter="onFinishedGoodsReservedInboundSearch"
+              />
+            </el-form-item>
+            <el-form-item label="预约仓库">
+              <el-input
+                v-model="finishedGoodsReservedInboundQuery.warehouse"
+                clearable
+                placeholder="预约仓库"
+                @keyup.enter="onFinishedGoodsReservedInboundSearch"
+              />
+            </el-form-item>
+            <el-form-item label="预约状态">
+              <el-select
+                v-model="finishedGoodsReservedInboundQuery.reserve_status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="待确认" value="待确认" />
+                <el-option label="已预约" value="已预约" />
+                <el-option label="部分入仓" value="部分入仓" />
+                <el-option label="已入仓" value="已入仓" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="入仓状态">
+              <el-select
+                v-model="finishedGoodsReservedInboundQuery.inbound_status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="未开始" value="未开始" />
+                <el-option label="待入仓" value="待入仓" />
+                <el-option label="入仓中" value="入仓中" />
+                <el-option label="已完成" value="已完成" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="关键词">
+              <el-input
+                v-model="finishedGoodsReservedInboundQuery.keyword"
+                clearable
+                placeholder="预约单号/成品/仓库/经办人"
+                @keyup.enter="onFinishedGoodsReservedInboundSearch"
+              />
+            </el-form-item>
+            <el-form-item label="开始日期">
+              <el-date-picker
+                v-model="finishedGoodsReservedInboundQuery.from_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="开始日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="结束日期">
+              <el-date-picker
+                v-model="finishedGoodsReservedInboundQuery.to_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="结束日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button :disabled="!canRead" @click="onFinishedGoodsReservedInboundReset">重置</el-button>
+              <el-button type="primary" :disabled="!canRead" @click="onFinishedGoodsReservedInboundSearch">
+                查询
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="toolbar-row">
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('预约确认提示')"
+            >
+              预约确认提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('预约排程提示')"
+            >
+              预约排程提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('成品预约入仓校验')"
+            >
+              校验
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canExport"
+              @click="onGuardedAction('导出成品预约入仓')"
+            >
+              导出
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canExport"
+              @click="onGuardedAction('打印成品预约入仓')"
+            >
+              打印
+            </el-button>
+          </div>
+
+          <el-alert
+            v-if="finishedGoodsReservedInboundError"
+            class="error-alert"
+            type="error"
+            :closable="false"
+            :title="`成品预约入仓加载失败：${finishedGoodsReservedInboundError}`"
+          />
+
+          <el-empty v-if="!canRead" description="无成品预约入仓查看权限" />
+          <template v-else>
+            <div class="summary-row">
+              <el-tag type="info" effect="plain">预约记录：{{ finishedGoodsReservedInboundTotal }}</el-tag>
+              <el-tag type="success" effect="plain">预约总量：{{ finishedGoodsReservedInboundReserveTotal }}</el-tag>
+              <el-tag type="warning" effect="plain">已入总量：{{ finishedGoodsReservedInboundInTotal }}</el-tag>
+              <el-tag type="danger" effect="plain">待入总量：{{ finishedGoodsReservedInboundPendingTotal }}</el-tag>
+            </div>
+
+            <el-table
+              :data="finishedGoodsReservedInboundRows"
+              border
+              v-loading="finishedGoodsReservedInboundLoading"
+              empty-text="暂无成品预约入仓数据，请调整筛选条件后重试"
+            >
+              <el-table-column prop="reservation_no" label="预约单号" min-width="150" />
+              <el-table-column prop="item_code" label="成品编码" min-width="130" />
+              <el-table-column prop="item_name" label="成品名称" min-width="150" />
+              <el-table-column prop="warehouse" label="预约仓库" min-width="120" />
+              <el-table-column label="预约数量" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.reserve_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="已入数量" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.inbound_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="待入数量" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.pending_inbound_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="预约状态" min-width="100">
+                <template #default="scope">
+                  <el-tag :type="finishedGoodsReservedInboundReserveStatusType(scope.row.reserve_status)" effect="light">
+                    {{ scope.row.reserve_status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="入仓状态" min-width="100">
+                <template #default="scope">
+                  <el-tag :type="finishedGoodsReservedInboundInboundStatusType(scope.row.inbound_status)" effect="light">
+                    {{ scope.row.inbound_status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="reserved_date" label="预约日期" min-width="120" />
+              <el-table-column prop="expected_inbound_date" label="预计入仓日期" min-width="130" />
+              <el-table-column prop="owner" label="经办人" min-width="100" />
+              <el-table-column prop="ref_no" label="关联单据" min-width="140" />
+              <el-table-column label="操作" min-width="110" fixed="right">
+                <template #default>
+                  <el-button
+                    data-write-guard="true"
+                    link
+                    type="primary"
+                    @click="onGuardedAction('查看成品预约入仓')"
+                  >
+                    查看
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pager">
+              <el-pagination
+                background
+                layout="prev, pager, next, total, sizes"
+                :current-page="finishedGoodsReservedInboundQuery.page"
+                :page-size="finishedGoodsReservedInboundQuery.page_size"
+                :total="finishedGoodsReservedInboundTotal"
+                :page-sizes="[10, 20, 50, 100]"
+                @current-change="onFinishedGoodsReservedInboundPageChange"
+                @size-change="onFinishedGoodsReservedInboundSizeChange"
+              />
+            </div>
+          </template>
+        </section>
+
+        <el-divider />
+
+        <section
+          class="finished-goods-shipping-notice-section"
+          data-testid="finished-goods-shipping-notice-section"
+        >
+          <div class="section-header">
+            <div class="title-group">
+              <span class="title">成品发货通知单</span>
+              <span class="sub-title">TASK-Y49B-P1-04 / 只读语义</span>
+            </div>
+            <el-tag type="danger" effect="plain">共享路由高风险增量区块</el-tag>
+          </div>
+
+          <el-form :inline="true" :model="finishedGoodsShippingNoticeQuery" class="query-form">
+            <el-form-item label="通知单号">
+              <el-input
+                v-model="finishedGoodsShippingNoticeQuery.notice_no"
+                clearable
+                placeholder="通知单号"
+                @keyup.enter="onFinishedGoodsShippingNoticeSearch"
+              />
+            </el-form-item>
+            <el-form-item label="成品编码">
+              <el-input
+                v-model="finishedGoodsShippingNoticeQuery.item_code"
+                clearable
+                placeholder="成品编码"
+                @keyup.enter="onFinishedGoodsShippingNoticeSearch"
+              />
+            </el-form-item>
+            <el-form-item label="发货仓库">
+              <el-input
+                v-model="finishedGoodsShippingNoticeQuery.warehouse"
+                clearable
+                placeholder="发货仓库"
+                @keyup.enter="onFinishedGoodsShippingNoticeSearch"
+              />
+            </el-form-item>
+            <el-form-item label="通知状态">
+              <el-select
+                v-model="finishedGoodsShippingNoticeQuery.notice_status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="待确认" value="待确认" />
+                <el-option label="已下发" value="已下发" />
+                <el-option label="部分发货" value="部分发货" />
+                <el-option label="已完成" value="已完成" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="物流状态">
+              <el-select
+                v-model="finishedGoodsShippingNoticeQuery.logistics_status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="未开始" value="未开始" />
+                <el-option label="待揽收" value="待揽收" />
+                <el-option label="运输中" value="运输中" />
+                <el-option label="已签收" value="已签收" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="关键词">
+              <el-input
+                v-model="finishedGoodsShippingNoticeQuery.keyword"
+                clearable
+                placeholder="通知单号/成品/仓库/经办人"
+                @keyup.enter="onFinishedGoodsShippingNoticeSearch"
+              />
+            </el-form-item>
+            <el-form-item label="开始日期">
+              <el-date-picker
+                v-model="finishedGoodsShippingNoticeQuery.from_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="开始日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="结束日期">
+              <el-date-picker
+                v-model="finishedGoodsShippingNoticeQuery.to_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="结束日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button :disabled="!canRead" @click="onFinishedGoodsShippingNoticeReset">重置</el-button>
+              <el-button type="primary" :disabled="!canRead" @click="onFinishedGoodsShippingNoticeSearch">
+                查询
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="toolbar-row">
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('发货下发提示')"
+            >
+              发货下发提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('发货复核提示')"
+            >
+              发货复核提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('发货校验')"
+            >
+              校验
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canExport"
+              @click="onGuardedAction('导出成品发货通知单')"
+            >
+              导出
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canExport"
+              @click="onGuardedAction('打印成品发货通知单')"
+            >
+              打印
+            </el-button>
+          </div>
+
+          <el-alert
+            v-if="finishedGoodsShippingNoticeError"
+            class="error-alert"
+            type="error"
+            :closable="false"
+            :title="`成品发货通知单加载失败：${finishedGoodsShippingNoticeError}`"
+          />
+
+          <el-empty v-if="!canRead" description="无成品发货通知单查看权限" />
+          <template v-else>
+            <div class="summary-row">
+              <el-tag type="info" effect="plain">通知记录：{{ finishedGoodsShippingNoticeTotal }}</el-tag>
+              <el-tag type="success" effect="plain">计划发货总量：{{ finishedGoodsShippingNoticePlannedTotal }}</el-tag>
+              <el-tag type="warning" effect="plain">已发货总量：{{ finishedGoodsShippingNoticeShippedTotal }}</el-tag>
+              <el-tag type="danger" effect="plain">待发货总量：{{ finishedGoodsShippingNoticePendingTotal }}</el-tag>
+            </div>
+
+            <el-table
+              :data="finishedGoodsShippingNoticeRows"
+              border
+              v-loading="finishedGoodsShippingNoticeLoading"
+              empty-text="暂无成品发货通知单数据，请调整筛选条件后重试"
+            >
+              <el-table-column prop="notice_no" label="通知单号" min-width="150" />
+              <el-table-column prop="item_code" label="成品编码" min-width="130" />
+              <el-table-column prop="item_name" label="成品名称" min-width="150" />
+              <el-table-column prop="warehouse" label="发货仓库" min-width="120" />
+              <el-table-column label="计划发货" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.planned_ship_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="已发货" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.shipped_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="待发货" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.pending_ship_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="通知状态" min-width="100">
+                <template #default="scope">
+                  <el-tag :type="finishedGoodsShippingNoticeStatusType(scope.row.notice_status)" effect="light">
+                    {{ scope.row.notice_status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="物流状态" min-width="100">
+                <template #default="scope">
+                  <el-tag
+                    :type="finishedGoodsShippingNoticeLogisticsStatusType(scope.row.logistics_status)"
+                    effect="light"
+                  >
+                    {{ scope.row.logistics_status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="notice_date" label="通知日期" min-width="120" />
+              <el-table-column prop="expected_delivery_date" label="预计送达日期" min-width="130" />
+              <el-table-column prop="owner" label="经办人" min-width="100" />
+              <el-table-column prop="ref_no" label="关联单据" min-width="140" />
+              <el-table-column label="操作" min-width="110" fixed="right">
+                <template #default>
+                  <el-button
+                    data-write-guard="true"
+                    link
+                    type="primary"
+                    @click="onGuardedAction('查看成品发货通知单')"
+                  >
+                    查看
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pager">
+              <el-pagination
+                background
+                layout="prev, pager, next, total, sizes"
+                :current-page="finishedGoodsShippingNoticeQuery.page"
+                :page-size="finishedGoodsShippingNoticeQuery.page_size"
+                :total="finishedGoodsShippingNoticeTotal"
+                :page-sizes="[10, 20, 50, 100]"
+                @current-change="onFinishedGoodsShippingNoticePageChange"
+                @size-change="onFinishedGoodsShippingNoticeSizeChange"
+              />
+            </div>
+          </template>
+        </section>
+
+        <el-divider />
+
+        <section class="finished-goods-other-inbound-section" data-testid="finished-goods-other-inbound-section">
+          <div class="section-header">
+            <div class="title-group">
+              <span class="title">成品其他入仓</span>
+              <span class="sub-title">TASK-Y49B-P1-05 / 只读语义</span>
+            </div>
+            <el-tag type="danger" effect="plain">共享路由高风险增量区块</el-tag>
+          </div>
+
+          <el-form :inline="true" :model="finishedGoodsOtherInboundQuery" class="query-form">
+            <el-form-item label="入仓单号">
+              <el-input
+                v-model="finishedGoodsOtherInboundQuery.inbound_no"
+                clearable
+                placeholder="入仓单号"
+                @keyup.enter="onFinishedGoodsOtherInboundSearch"
+              />
+            </el-form-item>
+            <el-form-item label="成品编码">
+              <el-input
+                v-model="finishedGoodsOtherInboundQuery.item_code"
+                clearable
+                placeholder="成品编码"
+                @keyup.enter="onFinishedGoodsOtherInboundSearch"
+              />
+            </el-form-item>
+            <el-form-item label="入仓仓库">
+              <el-input
+                v-model="finishedGoodsOtherInboundQuery.warehouse"
+                clearable
+                placeholder="入仓仓库"
+                @keyup.enter="onFinishedGoodsOtherInboundSearch"
+              />
+            </el-form-item>
+            <el-form-item label="入仓状态">
+              <el-select
+                v-model="finishedGoodsOtherInboundQuery.inbound_status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="待确认" value="待确认" />
+                <el-option label="入仓中" value="入仓中" />
+                <el-option label="部分入仓" value="部分入仓" />
+                <el-option label="已完成" value="已完成" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="核销状态">
+              <el-select
+                v-model="finishedGoodsOtherInboundQuery.settlement_status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="未开始" value="未开始" />
+                <el-option label="待核销" value="待核销" />
+                <el-option label="核销中" value="核销中" />
+                <el-option label="已核销" value="已核销" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="关键词">
+              <el-input
+                v-model="finishedGoodsOtherInboundQuery.keyword"
+                clearable
+                placeholder="入仓单号/成品/仓库/来源单号"
+                @keyup.enter="onFinishedGoodsOtherInboundSearch"
+              />
+            </el-form-item>
+            <el-form-item label="开始日期">
+              <el-date-picker
+                v-model="finishedGoodsOtherInboundQuery.from_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="开始日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="结束日期">
+              <el-date-picker
+                v-model="finishedGoodsOtherInboundQuery.to_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="结束日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button :disabled="!canRead" @click="onFinishedGoodsOtherInboundReset">重置</el-button>
+              <el-button type="primary" :disabled="!canRead" @click="onFinishedGoodsOtherInboundSearch">查询</el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="toolbar-row">
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('其他入仓确认提示')"
+            >
+              其他入仓确认提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('其他入仓核销提示')"
+            >
+              其他入仓核销提示
+            </el-button>
+            <el-button data-write-guard="true" :disabled="!canRead" @click="onGuardedAction('成品其他入仓校验')">
+              校验
+            </el-button>
+            <el-button data-write-guard="true" :disabled="!canExport" @click="onGuardedAction('导出成品其他入仓')">
+              导出
+            </el-button>
+            <el-button data-write-guard="true" :disabled="!canExport" @click="onGuardedAction('打印成品其他入仓')">
+              打印
+            </el-button>
+          </div>
+
+          <el-alert
+            v-if="finishedGoodsOtherInboundError"
+            class="error-alert"
+            type="error"
+            :closable="false"
+            :title="`成品其他入仓加载失败：${finishedGoodsOtherInboundError}`"
+          />
+
+          <el-empty v-if="!canRead" description="无成品其他入仓查看权限" />
+          <template v-else>
+            <div class="summary-row">
+              <el-tag type="info" effect="plain">入仓记录：{{ finishedGoodsOtherInboundTotal }}</el-tag>
+              <el-tag type="success" effect="plain">计划入仓总量：{{ finishedGoodsOtherInboundPlannedTotal }}</el-tag>
+              <el-tag type="warning" effect="plain">已入仓总量：{{ finishedGoodsOtherInboundActualTotal }}</el-tag>
+              <el-tag type="danger" effect="plain">待入仓总量：{{ finishedGoodsOtherInboundPendingTotal }}</el-tag>
+            </div>
+
+            <el-table
+              :data="finishedGoodsOtherInboundRows"
+              border
+              v-loading="finishedGoodsOtherInboundLoading"
+              empty-text="暂无成品其他入仓数据，请调整筛选条件后重试"
+            >
+              <el-table-column prop="inbound_no" label="入仓单号" min-width="150" />
+              <el-table-column prop="item_code" label="成品编码" min-width="130" />
+              <el-table-column prop="item_name" label="成品名称" min-width="150" />
+              <el-table-column prop="warehouse" label="入仓仓库" min-width="120" />
+              <el-table-column label="计划入仓" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.planned_inbound_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="实际入仓" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.actual_inbound_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="待入仓" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.pending_inbound_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="入仓状态" min-width="100">
+                <template #default="scope">
+                  <el-tag :type="finishedGoodsOtherInboundStatusType(scope.row.inbound_status)" effect="light">
+                    {{ scope.row.inbound_status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="核销状态" min-width="100">
+                <template #default="scope">
+                  <el-tag :type="finishedGoodsOtherInboundSettlementStatusType(scope.row.settlement_status)" effect="light">
+                    {{ scope.row.settlement_status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="inbound_date" label="入仓日期" min-width="120" />
+              <el-table-column prop="source_doc_no" label="来源单号" min-width="140" />
+              <el-table-column prop="owner" label="经办人" min-width="100" />
+              <el-table-column prop="ref_no" label="关联单据" min-width="140" />
+              <el-table-column label="操作" min-width="110" fixed="right">
+                <template #default>
+                  <el-button
+                    data-write-guard="true"
+                    link
+                    type="primary"
+                    @click="onGuardedAction('查看成品其他入仓')"
+                  >
+                    查看
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pager">
+              <el-pagination
+                background
+                layout="prev, pager, next, total, sizes"
+                :current-page="finishedGoodsOtherInboundQuery.page"
+                :page-size="finishedGoodsOtherInboundQuery.page_size"
+                :total="finishedGoodsOtherInboundTotal"
+                :page-sizes="[10, 20, 50, 100]"
+                @current-change="onFinishedGoodsOtherInboundPageChange"
+                @size-change="onFinishedGoodsOtherInboundSizeChange"
+              />
+            </div>
+          </template>
+        </section>
       </template>
     </el-card>
   </div>
@@ -907,16 +1763,24 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
+  fetchSalesInventoryFinishedGoodsOtherInbound,
+  fetchSalesInventoryFinishedGoodsReservedInbound,
+  fetchSalesInventoryFinishedGoodsShippingNotices,
   fetchSalesInventoryFinishedGoodsReport,
   fetchSalesInventoryInventoryMaterialRetentionReport,
   fetchSalesInventoryMaterialCounts,
   fetchSalesInventoryMaterialInventoryReport,
   fetchSalesInventoryMaterialTransfers,
+  fetchSalesInventorySemiFinishedInventory,
+  type FinishedGoodsOtherInboundItem,
+  type FinishedGoodsReservedInboundItem,
+  type FinishedGoodsShippingNoticeItem,
   type FinishedGoodsReportItem,
   type InventoryMaterialRetentionReportItem,
   type MaterialCountItem,
   type MaterialInventoryReportItem,
   type MaterialTransferItem,
+  type SemiFinishedInventoryItem,
 } from '@/api/sales_inventory'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -941,6 +1805,22 @@ const inventoryMaterialRetentionReportLoading = ref<boolean>(false)
 const inventoryMaterialRetentionReportRows = ref<InventoryMaterialRetentionReportItem[]>([])
 const inventoryMaterialRetentionReportTotal = ref<number>(0)
 const inventoryMaterialRetentionReportError = ref<string>('')
+const semiFinishedInventoryLoading = ref<boolean>(false)
+const semiFinishedInventoryRows = ref<SemiFinishedInventoryItem[]>([])
+const semiFinishedInventoryTotal = ref<number>(0)
+const semiFinishedInventoryError = ref<string>('')
+const finishedGoodsReservedInboundLoading = ref<boolean>(false)
+const finishedGoodsReservedInboundRows = ref<FinishedGoodsReservedInboundItem[]>([])
+const finishedGoodsReservedInboundTotal = ref<number>(0)
+const finishedGoodsReservedInboundError = ref<string>('')
+const finishedGoodsShippingNoticeLoading = ref<boolean>(false)
+const finishedGoodsShippingNoticeRows = ref<FinishedGoodsShippingNoticeItem[]>([])
+const finishedGoodsShippingNoticeTotal = ref<number>(0)
+const finishedGoodsShippingNoticeError = ref<string>('')
+const finishedGoodsOtherInboundLoading = ref<boolean>(false)
+const finishedGoodsOtherInboundRows = ref<FinishedGoodsOtherInboundItem[]>([])
+const finishedGoodsOtherInboundTotal = ref<number>(0)
+const finishedGoodsOtherInboundError = ref<string>('')
 
 const canRead = computed<boolean>(() => {
   return (
@@ -1039,6 +1919,102 @@ const inventoryMaterialRetentionDaysAverage = computed<string>(() => {
   return (totalDays / inventoryMaterialRetentionReportRows.value.length).toFixed(2)
 })
 
+const semiFinishedInventoryInTotal = computed<string>(() => {
+  const qty = semiFinishedInventoryRows.value.reduce((sum, row) => {
+    const current = Number(row.in_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const semiFinishedInventoryOutTotal = computed<string>(() => {
+  const qty = semiFinishedInventoryRows.value.reduce((sum, row) => {
+    const current = Number(row.out_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const semiFinishedInventoryClosingTotal = computed<string>(() => {
+  const qty = semiFinishedInventoryRows.value.reduce((sum, row) => {
+    const current = Number(row.closing_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsReservedInboundReserveTotal = computed<string>(() => {
+  const qty = finishedGoodsReservedInboundRows.value.reduce((sum, row) => {
+    const current = Number(row.reserve_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsReservedInboundInTotal = computed<string>(() => {
+  const qty = finishedGoodsReservedInboundRows.value.reduce((sum, row) => {
+    const current = Number(row.inbound_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsReservedInboundPendingTotal = computed<string>(() => {
+  const qty = finishedGoodsReservedInboundRows.value.reduce((sum, row) => {
+    const current = Number(row.pending_inbound_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsShippingNoticePlannedTotal = computed<string>(() => {
+  const qty = finishedGoodsShippingNoticeRows.value.reduce((sum, row) => {
+    const current = Number(row.planned_ship_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsShippingNoticeShippedTotal = computed<string>(() => {
+  const qty = finishedGoodsShippingNoticeRows.value.reduce((sum, row) => {
+    const current = Number(row.shipped_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsShippingNoticePendingTotal = computed<string>(() => {
+  const qty = finishedGoodsShippingNoticeRows.value.reduce((sum, row) => {
+    const current = Number(row.pending_ship_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsOtherInboundPlannedTotal = computed<string>(() => {
+  const qty = finishedGoodsOtherInboundRows.value.reduce((sum, row) => {
+    const current = Number(row.planned_inbound_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsOtherInboundActualTotal = computed<string>(() => {
+  const qty = finishedGoodsOtherInboundRows.value.reduce((sum, row) => {
+    const current = Number(row.actual_inbound_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsOtherInboundPendingTotal = computed<string>(() => {
+  const qty = finishedGoodsOtherInboundRows.value.reduce((sum, row) => {
+    const current = Number(row.pending_inbound_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
 const query = reactive({
   no: '',
   style: '',
@@ -1100,6 +2076,58 @@ const inventoryMaterialRetentionReportQuery = reactive({
   page_size: 20,
 })
 
+const semiFinishedInventoryQuery = reactive({
+  record_no: '',
+  item_code: '',
+  warehouse: '',
+  process_stage: '',
+  status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const finishedGoodsReservedInboundQuery = reactive({
+  reservation_no: '',
+  item_code: '',
+  warehouse: '',
+  reserve_status: '',
+  inbound_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const finishedGoodsShippingNoticeQuery = reactive({
+  notice_no: '',
+  item_code: '',
+  warehouse: '',
+  notice_status: '',
+  logistics_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const finishedGoodsOtherInboundQuery = reactive({
+  inbound_no: '',
+  item_code: '',
+  warehouse: '',
+  inbound_status: '',
+  settlement_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
     return '-'
@@ -1131,6 +2159,26 @@ const resetMaterialInventoryReportRows = (): void => {
 const resetInventoryMaterialRetentionReportRows = (): void => {
   inventoryMaterialRetentionReportRows.value = []
   inventoryMaterialRetentionReportTotal.value = 0
+}
+
+const resetSemiFinishedInventoryRows = (): void => {
+  semiFinishedInventoryRows.value = []
+  semiFinishedInventoryTotal.value = 0
+}
+
+const resetFinishedGoodsReservedInboundRows = (): void => {
+  finishedGoodsReservedInboundRows.value = []
+  finishedGoodsReservedInboundTotal.value = 0
+}
+
+const resetFinishedGoodsShippingNoticeRows = (): void => {
+  finishedGoodsShippingNoticeRows.value = []
+  finishedGoodsShippingNoticeTotal.value = 0
+}
+
+const resetFinishedGoodsOtherInboundRows = (): void => {
+  finishedGoodsOtherInboundRows.value = []
+  finishedGoodsOtherInboundTotal.value = 0
 }
 
 const loadRows = async (): Promise<void> => {
@@ -1306,6 +2354,150 @@ const loadInventoryMaterialRetentionReport = async (): Promise<void> => {
   }
 }
 
+const loadSemiFinishedInventory = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetSemiFinishedInventoryRows()
+    semiFinishedInventoryError.value = ''
+    return
+  }
+  semiFinishedInventoryLoading.value = true
+  semiFinishedInventoryError.value = ''
+  try {
+    if (semiFinishedInventoryQuery.keyword.trim().toUpperCase() === '__ERROR__') {
+      throw new Error('半成品库存区块本地模拟错误态')
+    }
+    const result = await fetchSalesInventorySemiFinishedInventory({
+      record_no: semiFinishedInventoryQuery.record_no.trim() || undefined,
+      item_code: semiFinishedInventoryQuery.item_code.trim() || undefined,
+      warehouse: semiFinishedInventoryQuery.warehouse.trim() || undefined,
+      process_stage: semiFinishedInventoryQuery.process_stage || undefined,
+      status: semiFinishedInventoryQuery.status || undefined,
+      keyword: semiFinishedInventoryQuery.keyword.trim() || undefined,
+      from_date: semiFinishedInventoryQuery.from_date || undefined,
+      to_date: semiFinishedInventoryQuery.to_date || undefined,
+      page: semiFinishedInventoryQuery.page,
+      page_size: semiFinishedInventoryQuery.page_size,
+    })
+    semiFinishedInventoryRows.value = result.data.items
+    semiFinishedInventoryTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    semiFinishedInventoryError.value = message
+    resetSemiFinishedInventoryRows()
+    ElMessage.error(message)
+  } finally {
+    semiFinishedInventoryLoading.value = false
+  }
+}
+
+const loadFinishedGoodsReservedInbound = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetFinishedGoodsReservedInboundRows()
+    finishedGoodsReservedInboundError.value = ''
+    return
+  }
+  finishedGoodsReservedInboundLoading.value = true
+  finishedGoodsReservedInboundError.value = ''
+  try {
+    if (finishedGoodsReservedInboundQuery.keyword.trim().toUpperCase() === '__ERROR__') {
+      throw new Error('成品预约入仓区块本地模拟错误态')
+    }
+    const result = await fetchSalesInventoryFinishedGoodsReservedInbound({
+      reservation_no: finishedGoodsReservedInboundQuery.reservation_no.trim() || undefined,
+      item_code: finishedGoodsReservedInboundQuery.item_code.trim() || undefined,
+      warehouse: finishedGoodsReservedInboundQuery.warehouse.trim() || undefined,
+      reserve_status: finishedGoodsReservedInboundQuery.reserve_status || undefined,
+      inbound_status: finishedGoodsReservedInboundQuery.inbound_status || undefined,
+      keyword: finishedGoodsReservedInboundQuery.keyword.trim() || undefined,
+      from_date: finishedGoodsReservedInboundQuery.from_date || undefined,
+      to_date: finishedGoodsReservedInboundQuery.to_date || undefined,
+      page: finishedGoodsReservedInboundQuery.page,
+      page_size: finishedGoodsReservedInboundQuery.page_size,
+    })
+    finishedGoodsReservedInboundRows.value = result.data.items
+    finishedGoodsReservedInboundTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    finishedGoodsReservedInboundError.value = message
+    resetFinishedGoodsReservedInboundRows()
+    ElMessage.error(message)
+  } finally {
+    finishedGoodsReservedInboundLoading.value = false
+  }
+}
+
+const loadFinishedGoodsShippingNotices = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetFinishedGoodsShippingNoticeRows()
+    finishedGoodsShippingNoticeError.value = ''
+    return
+  }
+  finishedGoodsShippingNoticeLoading.value = true
+  finishedGoodsShippingNoticeError.value = ''
+  try {
+    if (finishedGoodsShippingNoticeQuery.keyword.trim().toUpperCase() === '__ERROR__') {
+      throw new Error('成品发货通知单区块本地模拟错误态')
+    }
+    const result = await fetchSalesInventoryFinishedGoodsShippingNotices({
+      notice_no: finishedGoodsShippingNoticeQuery.notice_no.trim() || undefined,
+      item_code: finishedGoodsShippingNoticeQuery.item_code.trim() || undefined,
+      warehouse: finishedGoodsShippingNoticeQuery.warehouse.trim() || undefined,
+      notice_status: finishedGoodsShippingNoticeQuery.notice_status || undefined,
+      logistics_status: finishedGoodsShippingNoticeQuery.logistics_status || undefined,
+      keyword: finishedGoodsShippingNoticeQuery.keyword.trim() || undefined,
+      from_date: finishedGoodsShippingNoticeQuery.from_date || undefined,
+      to_date: finishedGoodsShippingNoticeQuery.to_date || undefined,
+      page: finishedGoodsShippingNoticeQuery.page,
+      page_size: finishedGoodsShippingNoticeQuery.page_size,
+    })
+    finishedGoodsShippingNoticeRows.value = result.data.items
+    finishedGoodsShippingNoticeTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    finishedGoodsShippingNoticeError.value = message
+    resetFinishedGoodsShippingNoticeRows()
+    ElMessage.error(message)
+  } finally {
+    finishedGoodsShippingNoticeLoading.value = false
+  }
+}
+
+const loadFinishedGoodsOtherInbound = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetFinishedGoodsOtherInboundRows()
+    finishedGoodsOtherInboundError.value = ''
+    return
+  }
+  finishedGoodsOtherInboundLoading.value = true
+  finishedGoodsOtherInboundError.value = ''
+  try {
+    if (finishedGoodsOtherInboundQuery.keyword.trim().toUpperCase() === '__ERROR__') {
+      throw new Error('成品其他入仓区块本地模拟错误态')
+    }
+    const result = await fetchSalesInventoryFinishedGoodsOtherInbound({
+      inbound_no: finishedGoodsOtherInboundQuery.inbound_no.trim() || undefined,
+      item_code: finishedGoodsOtherInboundQuery.item_code.trim() || undefined,
+      warehouse: finishedGoodsOtherInboundQuery.warehouse.trim() || undefined,
+      inbound_status: finishedGoodsOtherInboundQuery.inbound_status || undefined,
+      settlement_status: finishedGoodsOtherInboundQuery.settlement_status || undefined,
+      keyword: finishedGoodsOtherInboundQuery.keyword.trim() || undefined,
+      from_date: finishedGoodsOtherInboundQuery.from_date || undefined,
+      to_date: finishedGoodsOtherInboundQuery.to_date || undefined,
+      page: finishedGoodsOtherInboundQuery.page,
+      page_size: finishedGoodsOtherInboundQuery.page_size,
+    })
+    finishedGoodsOtherInboundRows.value = result.data.items
+    finishedGoodsOtherInboundTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    finishedGoodsOtherInboundError.value = message
+    resetFinishedGoodsOtherInboundRows()
+    ElMessage.error(message)
+  } finally {
+    finishedGoodsOtherInboundLoading.value = false
+  }
+}
+
 const onSearch = (): void => {
   query.page = 1
   void loadRows()
@@ -1377,6 +2569,91 @@ const inventoryMaterialRetentionStatusType = (status: string | null | undefined)
     return 'success'
   }
   if (normalized === '跟进中') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const semiFinishedInventoryStatusType = (status: string | null | undefined): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '在库') {
+    return 'success'
+  }
+  if (normalized === '返修中') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const finishedGoodsReservedInboundReserveStatusType = (
+  status: string | null | undefined,
+): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '已入仓' || normalized === '已预约') {
+    return 'success'
+  }
+  if (normalized === '待确认' || normalized === '部分入仓') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const finishedGoodsReservedInboundInboundStatusType = (
+  status: string | null | undefined,
+): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '已完成') {
+    return 'success'
+  }
+  if (normalized === '待入仓' || normalized === '入仓中') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const finishedGoodsShippingNoticeStatusType = (status: string | null | undefined): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '已完成' || normalized === '已下发') {
+    return 'success'
+  }
+  if (normalized === '待确认' || normalized === '部分发货') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const finishedGoodsShippingNoticeLogisticsStatusType = (
+  status: string | null | undefined,
+): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '已签收') {
+    return 'success'
+  }
+  if (normalized === '待揽收' || normalized === '运输中') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const finishedGoodsOtherInboundStatusType = (status: string | null | undefined): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '已完成') {
+    return 'success'
+  }
+  if (normalized === '待确认' || normalized === '入仓中' || normalized === '部分入仓') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const finishedGoodsOtherInboundSettlementStatusType = (
+  status: string | null | undefined,
+): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '已核销') {
+    return 'success'
+  }
+  if (normalized === '待核销' || normalized === '核销中') {
     return 'warning'
   }
   return 'info'
@@ -1500,6 +2777,126 @@ const onInventoryMaterialRetentionReportSizeChange = (size: number): void => {
   void loadInventoryMaterialRetentionReport()
 }
 
+const onSemiFinishedInventorySearch = (): void => {
+  semiFinishedInventoryQuery.page = 1
+  void loadSemiFinishedInventory()
+}
+
+const onSemiFinishedInventoryReset = (): void => {
+  semiFinishedInventoryQuery.record_no = ''
+  semiFinishedInventoryQuery.item_code = ''
+  semiFinishedInventoryQuery.warehouse = ''
+  semiFinishedInventoryQuery.process_stage = ''
+  semiFinishedInventoryQuery.status = ''
+  semiFinishedInventoryQuery.keyword = ''
+  semiFinishedInventoryQuery.from_date = ''
+  semiFinishedInventoryQuery.to_date = ''
+  semiFinishedInventoryQuery.page = 1
+  semiFinishedInventoryQuery.page_size = 20
+  void loadSemiFinishedInventory()
+}
+
+const onSemiFinishedInventoryPageChange = (page: number): void => {
+  semiFinishedInventoryQuery.page = page
+  void loadSemiFinishedInventory()
+}
+
+const onSemiFinishedInventorySizeChange = (size: number): void => {
+  semiFinishedInventoryQuery.page_size = size
+  semiFinishedInventoryQuery.page = 1
+  void loadSemiFinishedInventory()
+}
+
+const onFinishedGoodsReservedInboundSearch = (): void => {
+  finishedGoodsReservedInboundQuery.page = 1
+  void loadFinishedGoodsReservedInbound()
+}
+
+const onFinishedGoodsReservedInboundReset = (): void => {
+  finishedGoodsReservedInboundQuery.reservation_no = ''
+  finishedGoodsReservedInboundQuery.item_code = ''
+  finishedGoodsReservedInboundQuery.warehouse = ''
+  finishedGoodsReservedInboundQuery.reserve_status = ''
+  finishedGoodsReservedInboundQuery.inbound_status = ''
+  finishedGoodsReservedInboundQuery.keyword = ''
+  finishedGoodsReservedInboundQuery.from_date = ''
+  finishedGoodsReservedInboundQuery.to_date = ''
+  finishedGoodsReservedInboundQuery.page = 1
+  finishedGoodsReservedInboundQuery.page_size = 20
+  void loadFinishedGoodsReservedInbound()
+}
+
+const onFinishedGoodsReservedInboundPageChange = (page: number): void => {
+  finishedGoodsReservedInboundQuery.page = page
+  void loadFinishedGoodsReservedInbound()
+}
+
+const onFinishedGoodsReservedInboundSizeChange = (size: number): void => {
+  finishedGoodsReservedInboundQuery.page_size = size
+  finishedGoodsReservedInboundQuery.page = 1
+  void loadFinishedGoodsReservedInbound()
+}
+
+const onFinishedGoodsShippingNoticeSearch = (): void => {
+  finishedGoodsShippingNoticeQuery.page = 1
+  void loadFinishedGoodsShippingNotices()
+}
+
+const onFinishedGoodsShippingNoticeReset = (): void => {
+  finishedGoodsShippingNoticeQuery.notice_no = ''
+  finishedGoodsShippingNoticeQuery.item_code = ''
+  finishedGoodsShippingNoticeQuery.warehouse = ''
+  finishedGoodsShippingNoticeQuery.notice_status = ''
+  finishedGoodsShippingNoticeQuery.logistics_status = ''
+  finishedGoodsShippingNoticeQuery.keyword = ''
+  finishedGoodsShippingNoticeQuery.from_date = ''
+  finishedGoodsShippingNoticeQuery.to_date = ''
+  finishedGoodsShippingNoticeQuery.page = 1
+  finishedGoodsShippingNoticeQuery.page_size = 20
+  void loadFinishedGoodsShippingNotices()
+}
+
+const onFinishedGoodsShippingNoticePageChange = (page: number): void => {
+  finishedGoodsShippingNoticeQuery.page = page
+  void loadFinishedGoodsShippingNotices()
+}
+
+const onFinishedGoodsShippingNoticeSizeChange = (size: number): void => {
+  finishedGoodsShippingNoticeQuery.page_size = size
+  finishedGoodsShippingNoticeQuery.page = 1
+  void loadFinishedGoodsShippingNotices()
+}
+
+const onFinishedGoodsOtherInboundSearch = (): void => {
+  finishedGoodsOtherInboundQuery.page = 1
+  void loadFinishedGoodsOtherInbound()
+}
+
+const onFinishedGoodsOtherInboundReset = (): void => {
+  finishedGoodsOtherInboundQuery.inbound_no = ''
+  finishedGoodsOtherInboundQuery.item_code = ''
+  finishedGoodsOtherInboundQuery.warehouse = ''
+  finishedGoodsOtherInboundQuery.inbound_status = ''
+  finishedGoodsOtherInboundQuery.settlement_status = ''
+  finishedGoodsOtherInboundQuery.keyword = ''
+  finishedGoodsOtherInboundQuery.from_date = ''
+  finishedGoodsOtherInboundQuery.to_date = ''
+  finishedGoodsOtherInboundQuery.page = 1
+  finishedGoodsOtherInboundQuery.page_size = 20
+  void loadFinishedGoodsOtherInbound()
+}
+
+const onFinishedGoodsOtherInboundPageChange = (page: number): void => {
+  finishedGoodsOtherInboundQuery.page = page
+  void loadFinishedGoodsOtherInbound()
+}
+
+const onFinishedGoodsOtherInboundSizeChange = (size: number): void => {
+  finishedGoodsOtherInboundQuery.page_size = size
+  finishedGoodsOtherInboundQuery.page = 1
+  void loadFinishedGoodsOtherInbound()
+}
+
 const onPageChange = (page: number): void => {
   query.page = page
   void loadRows()
@@ -1525,6 +2922,10 @@ onMounted(async () => {
     await loadMaterialCounts()
     await loadMaterialInventoryReport()
     await loadInventoryMaterialRetentionReport()
+    await loadSemiFinishedInventory()
+    await loadFinishedGoodsReservedInbound()
+    await loadFinishedGoodsShippingNotices()
+    await loadFinishedGoodsOtherInbound()
   }
 })
 </script>

@@ -182,6 +182,33 @@ class WarehouseFactoryReturnMaterialReportData(BaseModel):
     items: list[WarehouseFactoryReturnMaterialReportItem]
 
 
+class WarehouseSemiFinishedOutboundItem(BaseModel):
+    """Semi-finished outbound read-only projection row."""
+
+    outbound_no: str
+    source_doc_no: str
+    semi_finished_code: str
+    semi_finished_name: str
+    warehouse: str
+    location: str
+    qty: Decimal
+    amount: Decimal
+    outbound_date: date
+    destination: str
+    operator: str
+    status: Literal["pending", "confirmed", "closed"]
+
+
+class WarehouseSemiFinishedOutboundData(BaseModel):
+    """Semi-finished outbound read-only response."""
+
+    company: str | None = None
+    warehouse: str | None = None
+    item_code: str | None = None
+    status: str | None = None
+    items: list[WarehouseSemiFinishedOutboundItem]
+
+
 class WarehouseAlertItem(BaseModel):
     """Warehouse stock alert row."""
 

@@ -51,6 +51,8 @@ from app.schemas.warehouse import WarehouseOtherInboundData
 from app.schemas.warehouse import WarehouseOtherInboundItem
 from app.schemas.warehouse import WarehousePurchaseReturnOutboundData
 from app.schemas.warehouse import WarehousePurchaseReturnOutboundItem
+from app.schemas.warehouse import WarehouseSemiFinishedOutboundData
+from app.schemas.warehouse import WarehouseSemiFinishedOutboundItem
 from app.schemas.warehouse import WarehouseSerialNumberDetailData
 from app.schemas.warehouse import WarehouseSerialNumberItem
 from app.schemas.warehouse import WarehouseSerialNumberListData
@@ -294,6 +296,51 @@ class WarehouseService:
             items=rows,
         )
 
+    def list_semi_finished_outbound(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+    ) -> WarehouseSemiFinishedOutboundData:
+        summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        status_filter = (status or "").strip().lower() or None
+        rows: list[WarehouseSemiFinishedOutboundItem] = []
+        for index, row in enumerate(summary.items, start=1):
+            status_value = self._semi_finished_outbound_status(row=row)
+            if status_filter is not None and status_value != status_filter:
+                continue
+
+            qty = (Decimal(str(abs(row.actual_qty))) * Decimal("0.25")).quantize(Decimal("0.01"))
+            amount = (qty * self._material_unit_price(item_code=row.item_code) * Decimal("1.15")).quantize(
+                Decimal("0.01")
+            )
+            rows.append(
+                WarehouseSemiFinishedOutboundItem(
+                    outbound_no=f"SFO-{datetime.now(timezone.utc).strftime('%Y%m')}-{index:04d}",
+                    source_doc_no=f"SFO-SRC-{row.item_code}-{index:03d}",
+                    semi_finished_code=row.item_code,
+                    semi_finished_name=f"半成品-{row.item_code}",
+                    warehouse=row.warehouse,
+                    location=self._material_location(warehouse=row.warehouse, index=index),
+                    qty=qty,
+                    amount=amount,
+                    outbound_date=date.today(),
+                    destination=self._semi_finished_destination(warehouse=row.warehouse, index=index),
+                    operator="系统只读映射",
+                    status=status_value,
+                )
+            )
+        rows.sort(key=lambda item: (item.status, item.outbound_no, item.semi_finished_code))
+        return WarehouseSemiFinishedOutboundData(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status_filter,
+            items=rows,
+        )
+
     @staticmethod
     def _build_management_overview(*, items: list[WarehouseStockSummaryItem]) -> list[WarehouseManagementItem]:
         by_warehouse: dict[str, dict[str, Any]] = {}
@@ -426,6 +473,27 @@ class WarehouseService:
         if material_category == "包材":
             return "丰润加工厂"
         return "综合加工厂"
+
+    @staticmethod
+    def _semi_finished_outbound_status(
+        *,
+        row: WarehouseStockSummaryItem,
+    ) -> Literal["pending", "confirmed", "closed"]:
+        if row.threshold_missing:
+            return "closed"
+        if row.is_below_safety or row.is_below_reorder:
+            return "pending"
+        return "confirmed"
+
+    @staticmethod
+    def _semi_finished_destination(*, warehouse: str, index: int) -> str:
+        text = (warehouse or "").strip()
+        if "样衣" in text:
+            return "样衣后整工段"
+        if "成品" in text:
+            return "成品复检工段"
+        suffix = ((index - 1) % 6) + 1
+        return f"半成品周转区-{suffix}"
 
     @staticmethod
     def _material_name_from_code(item_code: str) -> str:

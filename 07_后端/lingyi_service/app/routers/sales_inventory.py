@@ -574,6 +574,278 @@ def get_inventory_material_retention_report(
     return _ok(data)
 
 
+@router.get("/semi-finished-inventory")
+def get_semi_finished_inventory(
+    request: Request,
+    record_no: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    process_stage: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="stock_ledger_entry",
+        resource_item_code=item_code,
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="stock_ledger_entry",
+        resource_no=item_code,
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "item_code": item_code,
+            "warehouse": warehouse,
+        },
+        required_fields=(),
+        resource_type="stock_ledger_entry",
+        resource_no=item_code,
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    parsed_from_date = _parse_optional_date(from_date, "from_date")
+    parsed_to_date = _parse_optional_date(to_date, "to_date")
+    _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
+    data = _service(request).get_semi_finished_inventory(
+        record_no=_scope_text(record_no),
+        item_code=_scope_text(item_code),
+        warehouse=_scope_text(warehouse),
+        process_stage=_scope_text(process_stage),
+        status=_scope_text(status),
+        keyword=_scope_text(keyword),
+        from_date=parsed_from_date,
+        to_date=parsed_to_date,
+        page=page,
+        page_size=page_size,
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
+@router.get("/finished-goods-reserved-inbound")
+def get_finished_goods_reserved_inbound(
+    request: Request,
+    reservation_no: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    reserve_status: str | None = Query(default=None),
+    inbound_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="stock_ledger_entry",
+        resource_item_code=item_code,
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="stock_ledger_entry",
+        resource_no=item_code,
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "item_code": item_code,
+            "warehouse": warehouse,
+        },
+        required_fields=(),
+        resource_type="stock_ledger_entry",
+        resource_no=item_code,
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    parsed_from_date = _parse_optional_date(from_date, "from_date")
+    parsed_to_date = _parse_optional_date(to_date, "to_date")
+    _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
+    data = _service(request).get_finished_goods_reserved_inbound(
+        reservation_no=_scope_text(reservation_no),
+        item_code=_scope_text(item_code),
+        warehouse=_scope_text(warehouse),
+        reserve_status=_scope_text(reserve_status),
+        inbound_status=_scope_text(inbound_status),
+        keyword=_scope_text(keyword),
+        from_date=parsed_from_date,
+        to_date=parsed_to_date,
+        page=page,
+        page_size=page_size,
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
+@router.get("/finished-goods-shipping-notices")
+def get_finished_goods_shipping_notices(
+    request: Request,
+    notice_no: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    notice_status: str | None = Query(default=None),
+    logistics_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="stock_ledger_entry",
+        resource_item_code=item_code,
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="stock_ledger_entry",
+        resource_no=item_code,
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "item_code": item_code,
+            "warehouse": warehouse,
+        },
+        required_fields=(),
+        resource_type="stock_ledger_entry",
+        resource_no=item_code,
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    parsed_from_date = _parse_optional_date(from_date, "from_date")
+    parsed_to_date = _parse_optional_date(to_date, "to_date")
+    _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
+    data = _service(request).get_finished_goods_shipping_notices(
+        notice_no=_scope_text(notice_no),
+        item_code=_scope_text(item_code),
+        warehouse=_scope_text(warehouse),
+        notice_status=_scope_text(notice_status),
+        logistics_status=_scope_text(logistics_status),
+        keyword=_scope_text(keyword),
+        from_date=parsed_from_date,
+        to_date=parsed_to_date,
+        page=page,
+        page_size=page_size,
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
+@router.get("/finished-goods-other-inbound")
+def get_finished_goods_other_inbound(
+    request: Request,
+    inbound_no: str | None = Query(default=None),
+    item_code: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    inbound_status: str | None = Query(default=None),
+    settlement_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="stock_ledger_entry",
+        resource_item_code=item_code,
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="stock_ledger_entry",
+        resource_no=item_code,
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={
+            "item_code": item_code,
+            "warehouse": warehouse,
+        },
+        required_fields=(),
+        resource_type="stock_ledger_entry",
+        resource_no=item_code,
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    parsed_from_date = _parse_optional_date(from_date, "from_date")
+    parsed_to_date = _parse_optional_date(to_date, "to_date")
+    _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
+    data = _service(request).get_finished_goods_other_inbound(
+        inbound_no=_scope_text(inbound_no),
+        item_code=_scope_text(item_code),
+        warehouse=_scope_text(warehouse),
+        inbound_status=_scope_text(inbound_status),
+        settlement_status=_scope_text(settlement_status),
+        keyword=_scope_text(keyword),
+        from_date=parsed_from_date,
+        to_date=parsed_to_date,
+        page=page,
+        page_size=page_size,
+    )
+    data.items = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.total = len(data.items)
+    return _ok(data)
+
+
 @router.get("/items/{item_code}/stock-summary")
 def get_stock_summary(
     item_code: str,

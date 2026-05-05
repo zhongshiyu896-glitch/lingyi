@@ -227,6 +227,118 @@ class InventoryMaterialRetentionReportData(BaseModel):
     page_size: int
 
 
+class SemiFinishedInventoryItem(BaseModel):
+    """Read-only semi-finished inventory row."""
+
+    record_no: str
+    material_code: str
+    material_name: str
+    warehouse: str
+    process_stage: str
+    opening_qty: Decimal
+    in_qty: Decimal
+    out_qty: Decimal
+    closing_qty: Decimal
+    status: str
+    biz_date: date
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class SemiFinishedInventoryData(BaseModel):
+    """Read-only semi-finished inventory response."""
+
+    items: list[SemiFinishedInventoryItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FinishedGoodsReservedInboundItem(BaseModel):
+    """Read-only finished goods reserved inbound row."""
+
+    reservation_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    reserve_qty: Decimal
+    inbound_qty: Decimal
+    pending_inbound_qty: Decimal
+    reserve_status: str
+    inbound_status: str
+    reserved_date: date
+    expected_inbound_date: date
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class FinishedGoodsReservedInboundData(BaseModel):
+    """Read-only finished goods reserved inbound response."""
+
+    items: list[FinishedGoodsReservedInboundItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FinishedGoodsShippingNoticeItem(BaseModel):
+    """Read-only finished goods shipping notice row."""
+
+    notice_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    planned_ship_qty: Decimal
+    shipped_qty: Decimal
+    pending_ship_qty: Decimal
+    notice_status: str
+    logistics_status: str
+    notice_date: date
+    expected_delivery_date: date
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class FinishedGoodsShippingNoticeData(BaseModel):
+    """Read-only finished goods shipping notice response."""
+
+    items: list[FinishedGoodsShippingNoticeItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FinishedGoodsOtherInboundItem(BaseModel):
+    """Read-only finished goods other inbound row."""
+
+    inbound_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    planned_inbound_qty: Decimal
+    actual_inbound_qty: Decimal
+    pending_inbound_qty: Decimal
+    inbound_status: str
+    settlement_status: str
+    inbound_date: date
+    source_doc_no: str
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class FinishedGoodsOtherInboundData(BaseModel):
+    """Read-only finished goods other inbound response."""
+
+    items: list[FinishedGoodsOtherInboundItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class FinishedGoodsReportItem(BaseModel):
     """Read-only finished goods in/out report row."""
 

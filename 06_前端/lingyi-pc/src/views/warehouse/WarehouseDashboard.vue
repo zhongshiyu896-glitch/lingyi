@@ -629,6 +629,127 @@
         </el-table>
       </div>
 
+      <div class="semi-finished-outbound-section">
+        <div class="semi-finished-outbound-header">
+          <div class="title-wrap">
+            <h3>物料进销存 / 半成品出仓（TASK-Y49B-P1-02）</h3>
+            <span class="subtitle">共享路由首版（只读语义）</span>
+          </div>
+          <div class="semi-finished-outbound-actions">
+            <el-button :disabled="!canRead" @click="applySemiFinishedOutboundFilters">查询出仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('确认半成品出仓')">确认出仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('撤销半成品出仓')">撤销出仓</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('导出半成品出仓')">导出</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('打印半成品出仓')">打印</el-button>
+          </div>
+        </div>
+
+        <el-form :inline="true" :model="query" class="semi-finished-outbound-filter-form">
+          <el-form-item label="出仓单号">
+            <el-input
+              v-model="query.semi_finished_outbound_no"
+              clearable
+              placeholder="出仓单号"
+              aria-label="半成品出仓单号"
+            />
+          </el-form-item>
+          <el-form-item label="来源单号">
+            <el-input
+              v-model="query.semi_finished_outbound_source_doc_no"
+              clearable
+              placeholder="来源单号"
+              aria-label="半成品出仓来源单号"
+            />
+          </el-form-item>
+          <el-form-item label="半成品">
+            <el-input
+              v-model="query.semi_finished_outbound_material"
+              clearable
+              placeholder="半成品编码/名称"
+              aria-label="半成品出仓物料"
+            />
+          </el-form-item>
+          <el-form-item label="仓库">
+            <el-input
+              v-model="query.semi_finished_outbound_warehouse"
+              clearable
+              placeholder="仓库"
+              aria-label="半成品出仓仓库"
+            />
+          </el-form-item>
+          <el-form-item label="去向">
+            <el-input
+              v-model="query.semi_finished_outbound_destination"
+              clearable
+              placeholder="去向"
+              aria-label="半成品出仓去向"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select
+              v-model="query.semi_finished_outbound_status"
+              clearable
+              placeholder="状态"
+              aria-label="半成品出仓状态"
+              style="width: 130px"
+            >
+              <el-option label="待出仓" value="pending" />
+              <el-option label="已确认" value="confirmed" />
+              <el-option label="已关闭" value="closed" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <el-alert
+          v-if="semiFinishedOutboundErrorMessage"
+          type="error"
+          :closable="false"
+          :title="`半成品出仓加载失败：${semiFinishedOutboundErrorMessage}`"
+          class="scope-alert"
+        />
+
+        <el-empty
+          v-if="semiFinishedOutboundDisplayRows.length === 0 && !semiFinishedOutboundErrorMessage"
+          description="暂无半成品出仓数据，请调整筛选条件后重试"
+        />
+
+        <el-table
+          v-else
+          :data="semiFinishedOutboundDisplayRows"
+          border
+          empty-text="暂无半成品出仓数据"
+          class="semi-finished-outbound-table"
+        >
+          <el-table-column prop="outbound_no" label="出仓单号" min-width="160" />
+          <el-table-column prop="source_doc_no" label="来源单号" min-width="150" />
+          <el-table-column prop="semi_finished_code" label="半成品编码" min-width="140" />
+          <el-table-column prop="semi_finished_name" label="半成品名称" min-width="150" />
+          <el-table-column prop="warehouse" label="出仓仓库" min-width="120" />
+          <el-table-column prop="location" label="库位" min-width="100" />
+          <el-table-column label="出仓数量" min-width="110" align="right">
+            <template #default="{ row }">{{ formatAmount(row.qty) }}</template>
+          </el-table-column>
+          <el-table-column label="出仓金额" min-width="120" align="right">
+            <template #default="{ row }">{{ formatAmount(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="outbound_date" label="出仓日期" min-width="120" />
+          <el-table-column prop="destination" label="去向" min-width="130" />
+          <el-table-column label="状态" min-width="100">
+            <template #default="{ row }">
+              <el-tag :type="semiFinishedOutboundStatusTag(row.status)" effect="plain">
+                {{ semiFinishedOutboundStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="viewSemiFinishedOutbound(row)">查看</el-button>
+              <el-button link type="warning" @click="guardedAction(`确认半成品出仓(${row.outbound_no})`)">确认</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
       <el-alert
         v-if="!permissionReady"
         type="info"
@@ -724,9 +845,11 @@ import {
   type WarehouseManagementItem,
   type WarehouseOtherInboundItem,
   type WarehousePurchaseReturnOutboundItem,
+  type WarehouseSemiFinishedOutboundItem,
   fetchWarehouseFactoryReturnMaterialReport,
   fetchWarehouseOtherInbound,
   fetchWarehousePurchaseReturnOutbound,
+  fetchWarehouseSemiFinishedOutbound,
   fetchWarehouseStockLedger,
   fetchWarehouseStockSummary,
   type WarehouseStockLedgerItem,
@@ -763,6 +886,7 @@ const materialErrorMessage = ref<string>('')
 const otherInboundErrorMessage = ref<string>('')
 const purchaseReturnOutboundErrorMessage = ref<string>('')
 const factoryReturnMaterialReportErrorMessage = ref<string>('')
+const semiFinishedOutboundErrorMessage = ref<string>('')
 const selectedRows = ref<DisplayRow[]>([])
 const ledgerDialogVisible = ref<boolean>(false)
 
@@ -772,6 +896,7 @@ const materialRows = ref<WarehouseMaterialInventoryItem[]>([])
 const otherInboundRows = ref<WarehouseOtherInboundItem[]>([])
 const purchaseReturnOutboundRows = ref<WarehousePurchaseReturnOutboundItem[]>([])
 const factoryReturnMaterialReportRows = ref<WarehouseFactoryReturnMaterialReportItem[]>([])
+const semiFinishedOutboundRows = ref<WarehouseSemiFinishedOutboundItem[]>([])
 const ledgerRows = ref<WarehouseStockLedgerItem[]>([])
 const orderMap = ref<Map<string, string>>(new Map())
 
@@ -802,6 +927,12 @@ const query = reactive({
   factory_return_material_report_material: '',
   factory_return_material_report_warehouse: '',
   factory_return_material_report_status: '',
+  semi_finished_outbound_no: '',
+  semi_finished_outbound_source_doc_no: '',
+  semi_finished_outbound_material: '',
+  semi_finished_outbound_warehouse: '',
+  semi_finished_outbound_destination: '',
+  semi_finished_outbound_status: '',
   from_date: '',
   to_date: '',
 })
@@ -812,6 +943,7 @@ const LOCAL_MATERIAL_ERROR_TOKEN = '__material_error__'
 const LOCAL_OTHER_INBOUND_ERROR_TOKEN = '__other_inbound_error__'
 const LOCAL_PURCHASE_RETURN_OUTBOUND_ERROR_TOKEN = '__purchase_return_outbound_error__'
 const LOCAL_FACTORY_RETURN_MATERIAL_REPORT_ERROR_TOKEN = '__factory_return_material_report_error__'
+const LOCAL_SEMI_FINISHED_OUTBOUND_ERROR_TOKEN = '__semi_finished_outbound_error__'
 
 const localSeedSummaryRows: WarehouseStockSummaryItem[] = [
   {
@@ -1053,6 +1185,51 @@ const localSeedFactoryReturnMaterialReportRows: WarehouseFactoryReturnMaterialRe
   },
 ]
 
+const localSeedSemiFinishedOutboundRows: WarehouseSemiFinishedOutboundItem[] = [
+  {
+    outbound_no: 'SFO-202605-0001',
+    source_doc_no: 'SFO-SRC-FAB-001',
+    semi_finished_code: 'FAB-2408-COTTON',
+    semi_finished_name: '半成品-精梳棉裁片',
+    warehouse: '原料仓',
+    location: 'M-01',
+    qty: 18.5,
+    amount: 182.41,
+    outbound_date: '2026-05-04',
+    destination: '样衣后整工段',
+    operator: '系统只读映射',
+    status: 'confirmed',
+  },
+  {
+    outbound_no: 'SFO-202605-0002',
+    source_doc_no: 'SFO-SRC-ACC-002',
+    semi_finished_code: 'ACC-2408-BTN01',
+    semi_finished_name: '半成品-辅料分装包',
+    warehouse: '辅料仓',
+    location: 'M-08',
+    qty: 9.2,
+    amount: 29.44,
+    outbound_date: '2026-05-04',
+    destination: '半成品周转区-2',
+    operator: '系统只读映射',
+    status: 'pending',
+  },
+  {
+    outbound_no: 'SFO-202605-0003',
+    source_doc_no: 'SFO-SRC-PKG-003',
+    semi_finished_code: 'PKG-2408-BAG01',
+    semi_finished_name: '半成品-包材组合件',
+    warehouse: '包材仓',
+    location: 'M-13',
+    qty: 0,
+    amount: 0,
+    outbound_date: '2026-05-04',
+    destination: '半成品周转区-3',
+    operator: '系统只读映射',
+    status: 'closed',
+  },
+]
+
 const canRead = computed<boolean>(
   () => permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('warehouse:read'),
 )
@@ -1272,6 +1449,26 @@ const factoryReturnMaterialReportDisplayRows = computed<WarehouseFactoryReturnMa
   })
 })
 
+const semiFinishedOutboundDisplayRows = computed<WarehouseSemiFinishedOutboundItem[]>(() => {
+  const outboundNo = query.semi_finished_outbound_no.trim().toLowerCase()
+  const sourceDocNo = query.semi_finished_outbound_source_doc_no.trim().toLowerCase()
+  const material = query.semi_finished_outbound_material.trim().toLowerCase()
+  const warehouse = query.semi_finished_outbound_warehouse.trim().toLowerCase()
+  const destination = query.semi_finished_outbound_destination.trim().toLowerCase()
+  const status = query.semi_finished_outbound_status.trim().toLowerCase()
+
+  return semiFinishedOutboundRows.value.filter((row) => {
+    const outboundNoMatched = !outboundNo || row.outbound_no.toLowerCase().includes(outboundNo)
+    const sourceDocNoMatched = !sourceDocNo || row.source_doc_no.toLowerCase().includes(sourceDocNo)
+    const materialMatched =
+      !material || `${row.semi_finished_code}|${row.semi_finished_name}`.toLowerCase().includes(material)
+    const warehouseMatched = !warehouse || row.warehouse.toLowerCase().includes(warehouse)
+    const destinationMatched = !destination || row.destination.toLowerCase().includes(destination)
+    const statusMatched = !status || row.status === status
+    return outboundNoMatched && sourceDocNoMatched && materialMatched && warehouseMatched && destinationMatched && statusMatched
+  })
+})
+
 const managementStatusText = (value: WarehouseManagementItem['status']): string => {
   if (value === 'warning') return '预警'
   if (value === 'disabled') return '停用'
@@ -1342,6 +1539,20 @@ const factoryReturnMaterialReportStatusTag = (
   return 'success'
 }
 
+const semiFinishedOutboundStatusText = (value: WarehouseSemiFinishedOutboundItem['status']): string => {
+  if (value === 'pending') return '待出仓'
+  if (value === 'closed') return '已关闭'
+  return '已确认'
+}
+
+const semiFinishedOutboundStatusTag = (
+  value: WarehouseSemiFinishedOutboundItem['status'],
+): 'success' | 'warning' | 'info' => {
+  if (value === 'pending') return 'warning'
+  if (value === 'closed') return 'info'
+  return 'success'
+}
+
 const resetQuery = (): void => {
   query.company = ''
   query.warehouse = ''
@@ -1369,6 +1580,12 @@ const resetQuery = (): void => {
   query.factory_return_material_report_material = ''
   query.factory_return_material_report_warehouse = ''
   query.factory_return_material_report_status = ''
+  query.semi_finished_outbound_no = ''
+  query.semi_finished_outbound_source_doc_no = ''
+  query.semi_finished_outbound_material = ''
+  query.semi_finished_outbound_warehouse = ''
+  query.semi_finished_outbound_destination = ''
+  query.semi_finished_outbound_status = ''
   query.from_date = ''
   query.to_date = ''
   managementErrorMessage.value = ''
@@ -1376,6 +1593,7 @@ const resetQuery = (): void => {
   otherInboundErrorMessage.value = ''
   purchaseReturnOutboundErrorMessage.value = ''
   factoryReturnMaterialReportErrorMessage.value = ''
+  semiFinishedOutboundErrorMessage.value = ''
   void loadData()
 }
 
@@ -1387,6 +1605,7 @@ const loadData = async (): Promise<void> => {
     otherInboundRows.value = []
     purchaseReturnOutboundRows.value = []
     factoryReturnMaterialReportRows.value = []
+    semiFinishedOutboundRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -1400,6 +1619,7 @@ const loadData = async (): Promise<void> => {
     otherInboundRows.value = []
     purchaseReturnOutboundRows.value = []
     factoryReturnMaterialReportRows.value = []
+    semiFinishedOutboundRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -1415,12 +1635,14 @@ const loadData = async (): Promise<void> => {
     otherInboundErrorMessage.value = ''
     purchaseReturnOutboundErrorMessage.value = ''
     factoryReturnMaterialReportErrorMessage.value = ''
+    semiFinishedOutboundErrorMessage.value = ''
     summaryRows.value = localSeedSummaryRows
     managementRows.value = localSeedManagementRows
     materialRows.value = localSeedMaterialRows
     otherInboundRows.value = localSeedOtherInboundRows
     purchaseReturnOutboundRows.value = localSeedPurchaseReturnOutboundRows
     factoryReturnMaterialReportRows.value = localSeedFactoryReturnMaterialReportRows
+    semiFinishedOutboundRows.value = localSeedSemiFinishedOutboundRows
     ledgerRows.value = localSeedLedgerRows
     orderMap.value = buildOrderMap(localSeedLedgerRows)
     selectedRows.value = []
@@ -1434,6 +1656,7 @@ const loadData = async (): Promise<void> => {
   otherInboundErrorMessage.value = ''
   purchaseReturnOutboundErrorMessage.value = ''
   factoryReturnMaterialReportErrorMessage.value = ''
+  semiFinishedOutboundErrorMessage.value = ''
   try {
     const otherInboundItemCode = query.other_inbound_material.trim() || normalized.item_code
     const otherInboundWarehouse = query.other_inbound_warehouse.trim() || normalized.warehouse
@@ -1446,12 +1669,16 @@ const loadData = async (): Promise<void> => {
     const factoryReturnMaterialReportWarehouse =
       query.factory_return_material_report_warehouse.trim() || normalized.warehouse
     const factoryReturnMaterialReportStatus = query.factory_return_material_report_status.trim().toLowerCase()
+    const semiFinishedOutboundItemCode = query.semi_finished_outbound_material.trim() || normalized.item_code
+    const semiFinishedOutboundWarehouse = query.semi_finished_outbound_warehouse.trim() || normalized.warehouse
+    const semiFinishedOutboundStatus = query.semi_finished_outbound_status.trim().toLowerCase()
     const [
       summaryResult,
       ledgerResult,
       otherInboundResult,
       purchaseReturnOutboundResult,
       factoryReturnMaterialReportResult,
+      semiFinishedOutboundResult,
     ] = await Promise.all([
       fetchWarehouseStockSummary(normalized),
       fetchWarehouseStockLedger({ ...normalized, page: 1, page_size: 200 }),
@@ -1473,6 +1700,12 @@ const loadData = async (): Promise<void> => {
         item_code: factoryReturnMaterialReportItemCode,
         status: factoryReturnMaterialReportStatus as 'pending' | 'confirmed' | 'closed' | '',
       }),
+      fetchWarehouseSemiFinishedOutbound({
+        company: normalized.company,
+        warehouse: semiFinishedOutboundWarehouse,
+        item_code: semiFinishedOutboundItemCode,
+        status: semiFinishedOutboundStatus as 'pending' | 'confirmed' | 'closed' | '',
+      }),
     ])
     summaryRows.value = summaryResult.data.items
     managementRows.value = summaryResult.data.warehouse_management ?? localSeedManagementRows
@@ -1483,6 +1716,7 @@ const loadData = async (): Promise<void> => {
     otherInboundRows.value = otherInboundResult.data.items
     purchaseReturnOutboundRows.value = purchaseReturnOutboundResult.data.items
     factoryReturnMaterialReportRows.value = factoryReturnMaterialReportResult.data.items
+    semiFinishedOutboundRows.value = semiFinishedOutboundResult.data.items
     ledgerRows.value = ledgerResult.data.items
     orderMap.value = buildOrderMap(ledgerResult.data.items)
   } catch (error) {
@@ -1493,11 +1727,13 @@ const loadData = async (): Promise<void> => {
     otherInboundErrorMessage.value = message
     purchaseReturnOutboundErrorMessage.value = message
     factoryReturnMaterialReportErrorMessage.value = message
+    semiFinishedOutboundErrorMessage.value = message
     managementRows.value = []
     materialRows.value = []
     otherInboundRows.value = []
     purchaseReturnOutboundRows.value = []
     factoryReturnMaterialReportRows.value = []
+    semiFinishedOutboundRows.value = []
     ElMessage.error(message)
   } finally {
     loading.value = false
@@ -1572,6 +1808,19 @@ const applyFactoryReturnMaterialReportFilters = (): void => {
   factoryReturnMaterialReportErrorMessage.value = ''
 }
 
+const applySemiFinishedOutboundFilters = (): void => {
+  if (!canRead.value) {
+    ElMessage.warning('当前账号无半成品出仓读取权限')
+    return
+  }
+  if (query.semi_finished_outbound_no.trim().toLowerCase() === LOCAL_SEMI_FINISHED_OUTBOUND_ERROR_TOKEN) {
+    semiFinishedOutboundErrorMessage.value = '模拟错误态：半成品出仓查询失败，请调整筛选后重试'
+    semiFinishedOutboundRows.value = []
+    return
+  }
+  semiFinishedOutboundErrorMessage.value = ''
+}
+
 const guardedAction = (actionName: string): void => {
   ElMessage.warning(`${actionName} 为受控动作，本地首版保持只读`)
 }
@@ -1633,6 +1882,10 @@ const viewPurchaseReturnOutbound = (row: WarehousePurchaseReturnOutboundItem): v
 
 const viewFactoryReturnMaterialReport = (row: WarehouseFactoryReturnMaterialReportItem): void => {
   ElMessage.info(`加工厂应退料报表详情（只读）：${row.report_no}`)
+}
+
+const viewSemiFinishedOutbound = (row: WarehouseSemiFinishedOutboundItem): void => {
+  ElMessage.info(`半成品出仓详情（只读）：${row.outbound_no}`)
 }
 
 onMounted(async () => {
@@ -1876,6 +2129,43 @@ onMounted(async () => {
 }
 
 .factory-return-material-report-table {
+  margin-top: 8px;
+}
+
+.semi-finished-outbound-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f5fff7;
+}
+
+.semi-finished-outbound-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.semi-finished-outbound-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.semi-finished-outbound-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.semi-finished-outbound-filter-form {
+  margin-bottom: 8px;
+}
+
+.semi-finished-outbound-table {
   margin-top: 8px;
 }
 

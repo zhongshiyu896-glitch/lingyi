@@ -239,6 +239,154 @@ export interface InventoryMaterialRetentionReportData {
   page_size: number
 }
 
+export interface SemiFinishedInventoryQuery {
+  record_no?: string
+  item_code?: string
+  warehouse?: string
+  process_stage?: string
+  status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface SemiFinishedInventoryItem {
+  record_no: string
+  material_code: string
+  material_name: string
+  warehouse: string
+  process_stage: string
+  opening_qty: NumericLike
+  in_qty: NumericLike
+  out_qty: NumericLike
+  closing_qty: NumericLike
+  status: string
+  biz_date: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface SemiFinishedInventoryData {
+  items: SemiFinishedInventoryItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FinishedGoodsReservedInboundQuery {
+  reservation_no?: string
+  item_code?: string
+  warehouse?: string
+  reserve_status?: string
+  inbound_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FinishedGoodsReservedInboundItem {
+  reservation_no: string
+  item_code: string
+  item_name: string
+  warehouse: string
+  reserve_qty: NumericLike
+  inbound_qty: NumericLike
+  pending_inbound_qty: NumericLike
+  reserve_status: string
+  inbound_status: string
+  reserved_date: string
+  expected_inbound_date: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface FinishedGoodsReservedInboundData {
+  items: FinishedGoodsReservedInboundItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FinishedGoodsShippingNoticeQuery {
+  notice_no?: string
+  item_code?: string
+  warehouse?: string
+  notice_status?: string
+  logistics_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FinishedGoodsShippingNoticeItem {
+  notice_no: string
+  item_code: string
+  item_name: string
+  warehouse: string
+  planned_ship_qty: NumericLike
+  shipped_qty: NumericLike
+  pending_ship_qty: NumericLike
+  notice_status: string
+  logistics_status: string
+  notice_date: string
+  expected_delivery_date: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface FinishedGoodsShippingNoticeData {
+  items: FinishedGoodsShippingNoticeItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FinishedGoodsOtherInboundQuery {
+  inbound_no?: string
+  item_code?: string
+  warehouse?: string
+  inbound_status?: string
+  settlement_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FinishedGoodsOtherInboundItem {
+  inbound_no: string
+  item_code: string
+  item_name: string
+  warehouse: string
+  planned_inbound_qty: NumericLike
+  actual_inbound_qty: NumericLike
+  pending_inbound_qty: NumericLike
+  inbound_status: string
+  settlement_status: string
+  inbound_date: string
+  source_doc_no: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface FinishedGoodsOtherInboundData {
+  items: FinishedGoodsOtherInboundItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface FinishedGoodsReportQuery {
   no?: string
   style?: string
@@ -487,6 +635,84 @@ export const fetchSalesInventoryInventoryMaterialRetentionReport = async (
   })
   return request<InventoryMaterialRetentionReportData>(
     `/api/sales-inventory/inventory-material-retention-report?${queryString}`,
+  )
+}
+
+export const fetchSalesInventorySemiFinishedInventory = async (
+  query: SemiFinishedInventoryQuery,
+): Promise<ApiResponse<SemiFinishedInventoryData>> => {
+  const queryString = toQuery({
+    record_no: query.record_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    process_stage: query.process_stage,
+    status: query.status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<SemiFinishedInventoryData>(`/api/sales-inventory/semi-finished-inventory?${queryString}`)
+}
+
+export const fetchSalesInventoryFinishedGoodsReservedInbound = async (
+  query: FinishedGoodsReservedInboundQuery,
+): Promise<ApiResponse<FinishedGoodsReservedInboundData>> => {
+  const queryString = toQuery({
+    reservation_no: query.reservation_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    reserve_status: query.reserve_status,
+    inbound_status: query.inbound_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FinishedGoodsReservedInboundData>(
+    `/api/sales-inventory/finished-goods-reserved-inbound?${queryString}`,
+  )
+}
+
+export const fetchSalesInventoryFinishedGoodsShippingNotices = async (
+  query: FinishedGoodsShippingNoticeQuery,
+): Promise<ApiResponse<FinishedGoodsShippingNoticeData>> => {
+  const queryString = toQuery({
+    notice_no: query.notice_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    notice_status: query.notice_status,
+    logistics_status: query.logistics_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FinishedGoodsShippingNoticeData>(
+    `/api/sales-inventory/finished-goods-shipping-notices?${queryString}`,
+  )
+}
+
+export const fetchSalesInventoryFinishedGoodsOtherInbound = async (
+  query: FinishedGoodsOtherInboundQuery,
+): Promise<ApiResponse<FinishedGoodsOtherInboundData>> => {
+  const queryString = toQuery({
+    inbound_no: query.inbound_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    inbound_status: query.inbound_status,
+    settlement_status: query.settlement_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FinishedGoodsOtherInboundData>(
+    `/api/sales-inventory/finished-goods-other-inbound?${queryString}`,
   )
 }
 
