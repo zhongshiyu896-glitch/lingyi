@@ -154,6 +154,34 @@ class WarehousePurchaseReturnOutboundData(BaseModel):
     items: list[WarehousePurchaseReturnOutboundItem]
 
 
+class WarehouseFactoryReturnMaterialReportItem(BaseModel):
+    """Factory return material report read-only projection row."""
+
+    report_no: str
+    factory_name: str
+    material_code: str
+    material_name: str
+    warehouse: str
+    location: str
+    planned_return_qty: Decimal
+    returned_qty: Decimal
+    pending_qty: Decimal
+    report_date: date
+    source_doc_no: str
+    operator: str
+    status: Literal["pending", "confirmed", "closed"]
+
+
+class WarehouseFactoryReturnMaterialReportData(BaseModel):
+    """Factory return material report read-only response."""
+
+    company: str | None = None
+    warehouse: str | None = None
+    item_code: str | None = None
+    status: str | None = None
+    items: list[WarehouseFactoryReturnMaterialReportItem]
+
+
 class WarehouseAlertItem(BaseModel):
     """Warehouse stock alert row."""
 

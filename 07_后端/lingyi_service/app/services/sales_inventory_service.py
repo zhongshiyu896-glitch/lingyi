@@ -9,8 +9,16 @@ from typing import Any
 from app.schemas.sales_inventory import CustomerItem
 from app.schemas.sales_inventory import FinishedGoodsReportData
 from app.schemas.sales_inventory import FinishedGoodsReportItem
+from app.schemas.sales_inventory import InventoryMaterialRetentionReportData
+from app.schemas.sales_inventory import InventoryMaterialRetentionReportItem
 from app.schemas.sales_inventory import InventoryAggregationData
 from app.schemas.sales_inventory import InventoryAggregationItem
+from app.schemas.sales_inventory import MaterialCountData
+from app.schemas.sales_inventory import MaterialCountItem
+from app.schemas.sales_inventory import MaterialInventoryReportData
+from app.schemas.sales_inventory import MaterialInventoryReportItem
+from app.schemas.sales_inventory import MaterialTransferData
+from app.schemas.sales_inventory import MaterialTransferItem
 from app.schemas.sales_inventory import SalesInventoryListData
 from app.schemas.sales_inventory import SalesOrderDetailData
 from app.schemas.sales_inventory import SalesOrderFulfillmentData
@@ -179,6 +187,536 @@ class SalesInventoryService:
             page=page,
             page_size=page_size,
             dropped_count=dropped_count,
+        )
+
+    def get_material_transfers(
+        self,
+        *,
+        item_code: str | None,
+        keyword: str | None,
+        source_warehouse: str | None,
+        target_warehouse: str | None,
+        status: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> MaterialTransferData:
+        normalized_item_code = self._text(item_code)
+        normalized_keyword = self._text(keyword)
+        normalized_source_warehouse = self._text(source_warehouse)
+        normalized_target_warehouse = self._text(target_warehouse)
+        normalized_status = self._text(status)
+
+        seed_rows = [
+            {
+                "transfer_no": "MT-2026-0501",
+                "material_code": "MAT-COT-001",
+                "material_name": "精梳棉布",
+                "source_warehouse": "面料主仓",
+                "target_warehouse": "成品前置仓",
+                "transfer_qty": Decimal("360"),
+                "inbound_qty": Decimal("360"),
+                "diff_qty": Decimal("0"),
+                "operator": "陈晓敏",
+                "status": "已完成",
+                "transfer_date": date(2026, 5, 1),
+                "company": "凌云服饰",
+            },
+            {
+                "transfer_no": "MT-2026-0502",
+                "material_code": "MAT-ACC-014",
+                "material_name": "隐形拉链",
+                "source_warehouse": "辅料主仓",
+                "target_warehouse": "车缝线边仓",
+                "transfer_qty": Decimal("820"),
+                "inbound_qty": Decimal("780"),
+                "diff_qty": Decimal("40"),
+                "operator": "刘俊伟",
+                "status": "调拨中",
+                "transfer_date": date(2026, 5, 2),
+                "company": "凌云服饰",
+            },
+            {
+                "transfer_no": "MT-2026-0503",
+                "material_code": "MAT-PKG-031",
+                "material_name": "吊牌纸卡",
+                "source_warehouse": "包材仓",
+                "target_warehouse": "发货备料仓",
+                "transfer_qty": Decimal("1200"),
+                "inbound_qty": Decimal("0"),
+                "diff_qty": Decimal("1200"),
+                "operator": "张瑞",
+                "status": "待确认",
+                "transfer_date": date(2026, 5, 3),
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_item_code and row["material_code"] != normalized_item_code:
+                continue
+            if normalized_source_warehouse and row["source_warehouse"] != normalized_source_warehouse:
+                continue
+            if normalized_target_warehouse and row["target_warehouse"] != normalized_target_warehouse:
+                continue
+            if normalized_status and row["status"] != normalized_status:
+                continue
+            if from_date and row["transfer_date"] < from_date:
+                continue
+            if to_date and row["transfer_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["transfer_no"],
+                        row["material_code"],
+                        row["material_name"],
+                        row["source_warehouse"],
+                        row["target_warehouse"],
+                        row["operator"],
+                        row["status"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["transfer_date"], entry["transfer_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return MaterialTransferData(
+            items=[
+                MaterialTransferItem(
+                    transfer_no=row["transfer_no"],
+                    material_code=row["material_code"],
+                    material_name=row["material_name"],
+                    source_warehouse=row["source_warehouse"],
+                    target_warehouse=row["target_warehouse"],
+                    transfer_qty=row["transfer_qty"],
+                    inbound_qty=row["inbound_qty"],
+                    diff_qty=row["diff_qty"],
+                    operator=row["operator"],
+                    status=row["status"],
+                    transfer_date=row["transfer_date"],
+                    warehouse=row["source_warehouse"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_material_counts(
+        self,
+        *,
+        item_code: str | None,
+        keyword: str | None,
+        warehouse: str | None,
+        count_status: str | None,
+        review_status: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> MaterialCountData:
+        normalized_item_code = self._text(item_code)
+        normalized_keyword = self._text(keyword)
+        normalized_warehouse = self._text(warehouse)
+        normalized_count_status = self._text(count_status)
+        normalized_review_status = self._text(review_status)
+
+        seed_rows = [
+            {
+                "count_no": "MC-2026-0501",
+                "material_code": "MAT-COT-001",
+                "material_name": "精梳棉布",
+                "warehouse": "面料主仓",
+                "book_qty": Decimal("1280"),
+                "counted_qty": Decimal("1280"),
+                "diff_qty": Decimal("0"),
+                "count_status": "已完成",
+                "review_status": "已复核",
+                "count_date": date(2026, 5, 1),
+                "owner": "陈晓敏",
+                "company": "凌云服饰",
+            },
+            {
+                "count_no": "MC-2026-0502",
+                "material_code": "MAT-ACC-014",
+                "material_name": "隐形拉链",
+                "warehouse": "辅料主仓",
+                "book_qty": Decimal("2400"),
+                "counted_qty": Decimal("2386"),
+                "diff_qty": Decimal("-14"),
+                "count_status": "盘点中",
+                "review_status": "待复核",
+                "count_date": date(2026, 5, 2),
+                "owner": "刘俊伟",
+                "company": "凌云服饰",
+            },
+            {
+                "count_no": "MC-2026-0503",
+                "material_code": "MAT-PKG-031",
+                "material_name": "吊牌纸卡",
+                "warehouse": "包材仓",
+                "book_qty": Decimal("5300"),
+                "counted_qty": Decimal("0"),
+                "diff_qty": Decimal("-5300"),
+                "count_status": "待盘点",
+                "review_status": "待送审",
+                "count_date": date(2026, 5, 3),
+                "owner": "张瑞",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_item_code and row["material_code"] != normalized_item_code:
+                continue
+            if normalized_warehouse and row["warehouse"] != normalized_warehouse:
+                continue
+            if normalized_count_status and row["count_status"] != normalized_count_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+            if from_date and row["count_date"] < from_date:
+                continue
+            if to_date and row["count_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["count_no"],
+                        row["material_code"],
+                        row["material_name"],
+                        row["warehouse"],
+                        row["owner"],
+                        row["count_status"],
+                        row["review_status"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["count_date"], entry["count_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return MaterialCountData(
+            items=[
+                MaterialCountItem(
+                    count_no=row["count_no"],
+                    material_code=row["material_code"],
+                    material_name=row["material_name"],
+                    warehouse=row["warehouse"],
+                    book_qty=row["book_qty"],
+                    counted_qty=row["counted_qty"],
+                    diff_qty=row["diff_qty"],
+                    count_status=row["count_status"],
+                    review_status=row["review_status"],
+                    count_date=row["count_date"],
+                    owner=row["owner"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_material_inventory_report(
+        self,
+        *,
+        report_no: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        business_type: str | None,
+        status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> MaterialInventoryReportData:
+        normalized_report_no = self._text(report_no)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_business_type = self._text(business_type)
+        normalized_status = self._text(status)
+        normalized_keyword = self._text(keyword)
+
+        seed_rows = [
+            {
+                "report_no": "MIR-2026-0501",
+                "material_code": "MAT-COT-001",
+                "material_name": "精梳棉布",
+                "warehouse": "面料主仓",
+                "business_type": "采购入仓",
+                "in_qty": Decimal("820"),
+                "out_qty": Decimal("120"),
+                "balance_qty": Decimal("700"),
+                "status": "已完成",
+                "biz_date": date(2026, 5, 1),
+                "owner": "陈晓敏",
+                "ref_no": "PR-2026-0501",
+                "company": "凌云服饰",
+            },
+            {
+                "report_no": "MIR-2026-0502",
+                "material_code": "MAT-ACC-014",
+                "material_name": "隐形拉链",
+                "warehouse": "辅料主仓",
+                "business_type": "销售出仓",
+                "in_qty": Decimal("0"),
+                "out_qty": Decimal("460"),
+                "balance_qty": Decimal("1940"),
+                "status": "执行中",
+                "biz_date": date(2026, 5, 2),
+                "owner": "刘俊伟",
+                "ref_no": "SO-2026-0418",
+                "company": "凌云服饰",
+            },
+            {
+                "report_no": "MIR-2026-0503",
+                "material_code": "MAT-PKG-031",
+                "material_name": "吊牌纸卡",
+                "warehouse": "包材仓",
+                "business_type": "盘点调整",
+                "in_qty": Decimal("110"),
+                "out_qty": Decimal("0"),
+                "balance_qty": Decimal("5410"),
+                "status": "待复核",
+                "biz_date": date(2026, 5, 3),
+                "owner": "张瑞",
+                "ref_no": "MC-2026-0503",
+                "company": "凌云服饰",
+            },
+            {
+                "report_no": "MIR-2026-0504",
+                "material_code": "MAT-PRO-088",
+                "material_name": "压胶衬条",
+                "warehouse": "加工备料仓",
+                "business_type": "调仓入仓",
+                "in_qty": Decimal("300"),
+                "out_qty": Decimal("40"),
+                "balance_qty": Decimal("260"),
+                "status": "已完成",
+                "biz_date": date(2026, 5, 4),
+                "owner": "邓雅琪",
+                "ref_no": "MT-2026-0504",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_report_no and row["report_no"] != normalized_report_no:
+                continue
+            if normalized_item_code and row["material_code"] != normalized_item_code:
+                continue
+            if normalized_warehouse and row["warehouse"] != normalized_warehouse:
+                continue
+            if normalized_business_type and row["business_type"] != normalized_business_type:
+                continue
+            if normalized_status and row["status"] != normalized_status:
+                continue
+            if from_date and row["biz_date"] < from_date:
+                continue
+            if to_date and row["biz_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["report_no"],
+                        row["material_code"],
+                        row["material_name"],
+                        row["warehouse"],
+                        row["business_type"],
+                        row["status"],
+                        row["owner"],
+                        row["ref_no"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["biz_date"], entry["report_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return MaterialInventoryReportData(
+            items=[
+                MaterialInventoryReportItem(
+                    report_no=row["report_no"],
+                    material_code=row["material_code"],
+                    material_name=row["material_name"],
+                    warehouse=row["warehouse"],
+                    business_type=row["business_type"],
+                    in_qty=row["in_qty"],
+                    out_qty=row["out_qty"],
+                    balance_qty=row["balance_qty"],
+                    status=row["status"],
+                    biz_date=row["biz_date"],
+                    owner=row["owner"],
+                    ref_no=row["ref_no"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_inventory_material_retention_report(
+        self,
+        *,
+        report_no: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        retention_level: str | None,
+        status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> InventoryMaterialRetentionReportData:
+        normalized_report_no = self._text(report_no)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_retention_level = self._text(retention_level)
+        normalized_status = self._text(status)
+        normalized_keyword = self._text(keyword)
+
+        seed_rows = [
+            {
+                "report_no": "IMR-2026-0501",
+                "material_code": "MAT-COT-001",
+                "material_name": "精梳棉布",
+                "warehouse": "面料主仓",
+                "retention_level": "高滞留",
+                "retention_days": Decimal("95"),
+                "current_qty": Decimal("1260"),
+                "stagnant_qty": Decimal("420"),
+                "turnover_days": Decimal("58"),
+                "status": "待处理",
+                "biz_date": date(2026, 5, 1),
+                "owner": "陈晓敏",
+                "ref_no": "STL-2026-0501",
+                "company": "凌云服饰",
+            },
+            {
+                "report_no": "IMR-2026-0502",
+                "material_code": "MAT-ACC-014",
+                "material_name": "隐形拉链",
+                "warehouse": "辅料主仓",
+                "retention_level": "中滞留",
+                "retention_days": Decimal("61"),
+                "current_qty": Decimal("2386"),
+                "stagnant_qty": Decimal("310"),
+                "turnover_days": Decimal("37"),
+                "status": "跟进中",
+                "biz_date": date(2026, 5, 2),
+                "owner": "刘俊伟",
+                "ref_no": "STL-2026-0502",
+                "company": "凌云服饰",
+            },
+            {
+                "report_no": "IMR-2026-0503",
+                "material_code": "MAT-PKG-031",
+                "material_name": "吊牌纸卡",
+                "warehouse": "包材仓",
+                "retention_level": "低滞留",
+                "retention_days": Decimal("32"),
+                "current_qty": Decimal("5410"),
+                "stagnant_qty": Decimal("160"),
+                "turnover_days": Decimal("22"),
+                "status": "已完成",
+                "biz_date": date(2026, 5, 3),
+                "owner": "张瑞",
+                "ref_no": "STL-2026-0503",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_report_no and row["report_no"] != normalized_report_no:
+                continue
+            if normalized_item_code and row["material_code"] != normalized_item_code:
+                continue
+            if normalized_warehouse and row["warehouse"] != normalized_warehouse:
+                continue
+            if normalized_retention_level and row["retention_level"] != normalized_retention_level:
+                continue
+            if normalized_status and row["status"] != normalized_status:
+                continue
+            if from_date and row["biz_date"] < from_date:
+                continue
+            if to_date and row["biz_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["report_no"],
+                        row["material_code"],
+                        row["material_name"],
+                        row["warehouse"],
+                        row["retention_level"],
+                        row["status"],
+                        row["owner"],
+                        row["ref_no"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["biz_date"], entry["report_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return InventoryMaterialRetentionReportData(
+            items=[
+                InventoryMaterialRetentionReportItem(
+                    report_no=row["report_no"],
+                    material_code=row["material_code"],
+                    material_name=row["material_name"],
+                    warehouse=row["warehouse"],
+                    retention_level=row["retention_level"],
+                    retention_days=row["retention_days"],
+                    current_qty=row["current_qty"],
+                    stagnant_qty=row["stagnant_qty"],
+                    turnover_days=row["turnover_days"],
+                    status=row["status"],
+                    biz_date=row["biz_date"],
+                    owner=row["owner"],
+                    ref_no=row["ref_no"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
         )
 
     def get_finished_goods_report(

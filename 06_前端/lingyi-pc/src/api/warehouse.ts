@@ -158,6 +158,37 @@ export interface WarehousePurchaseReturnOutboundData {
   items: WarehousePurchaseReturnOutboundItem[]
 }
 
+export interface WarehouseFactoryReturnMaterialReportQuery {
+  company?: string
+  warehouse?: string
+  item_code?: string
+  status?: 'pending' | 'confirmed' | 'closed' | ''
+}
+
+export interface WarehouseFactoryReturnMaterialReportItem {
+  report_no: string
+  factory_name: string
+  material_code: string
+  material_name: string
+  warehouse: string
+  location: string
+  planned_return_qty: NumericLike
+  returned_qty: NumericLike
+  pending_qty: NumericLike
+  report_date: string
+  source_doc_no: string
+  operator: string
+  status: 'pending' | 'confirmed' | 'closed'
+}
+
+export interface WarehouseFactoryReturnMaterialReportData {
+  company?: string | null
+  warehouse?: string | null
+  item_code?: string | null
+  status?: string | null
+  items: WarehouseFactoryReturnMaterialReportItem[]
+}
+
 export interface WarehouseAlertsQuery {
   company?: string
   warehouse?: string
@@ -338,6 +369,20 @@ export const fetchWarehousePurchaseReturnOutbound = async (
     status: query.status,
   })
   return request<WarehousePurchaseReturnOutboundData>(`/api/warehouse/purchase-return-outbound?${queryString}`)
+}
+
+export const fetchWarehouseFactoryReturnMaterialReport = async (
+  query: WarehouseFactoryReturnMaterialReportQuery,
+): Promise<ApiResponse<WarehouseFactoryReturnMaterialReportData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    warehouse: query.warehouse,
+    item_code: query.item_code,
+    status: query.status,
+  })
+  return request<WarehouseFactoryReturnMaterialReportData>(
+    `/api/warehouse/factory-return-material-report?${queryString}`,
+  )
 }
 
 export const fetchWarehouseFinishedGoodsInboundCandidates = async (

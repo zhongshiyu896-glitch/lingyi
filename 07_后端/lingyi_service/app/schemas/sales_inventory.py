@@ -119,6 +119,114 @@ class StockLedgerData(BaseModel):
     dropped_count: int = 0
 
 
+class MaterialTransferItem(BaseModel):
+    """Read-only material transfer row."""
+
+    transfer_no: str
+    material_code: str
+    material_name: str
+    source_warehouse: str
+    target_warehouse: str
+    transfer_qty: Decimal
+    inbound_qty: Decimal
+    diff_qty: Decimal
+    operator: str
+    status: str
+    transfer_date: date
+    warehouse: str | None = None
+    company: str | None = None
+
+
+class MaterialTransferData(BaseModel):
+    """Read-only material transfer response."""
+
+    items: list[MaterialTransferItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class MaterialCountItem(BaseModel):
+    """Read-only material count row."""
+
+    count_no: str
+    material_code: str
+    material_name: str
+    warehouse: str
+    book_qty: Decimal
+    counted_qty: Decimal
+    diff_qty: Decimal
+    count_status: str
+    review_status: str
+    count_date: date
+    owner: str
+    company: str | None = None
+
+
+class MaterialCountData(BaseModel):
+    """Read-only material count response."""
+
+    items: list[MaterialCountItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class MaterialInventoryReportItem(BaseModel):
+    """Read-only material inventory report row."""
+
+    report_no: str
+    material_code: str
+    material_name: str
+    warehouse: str
+    business_type: str
+    in_qty: Decimal
+    out_qty: Decimal
+    balance_qty: Decimal
+    status: str
+    biz_date: date
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class MaterialInventoryReportData(BaseModel):
+    """Read-only material inventory report response."""
+
+    items: list[MaterialInventoryReportItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class InventoryMaterialRetentionReportItem(BaseModel):
+    """Read-only inventory material retention report row."""
+
+    report_no: str
+    material_code: str
+    material_name: str
+    warehouse: str
+    retention_level: str
+    retention_days: Decimal
+    current_qty: Decimal
+    stagnant_qty: Decimal
+    turnover_days: Decimal
+    status: str
+    biz_date: date
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class InventoryMaterialRetentionReportData(BaseModel):
+    """Read-only inventory material retention report response."""
+
+    items: list[InventoryMaterialRetentionReportItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class FinishedGoodsReportItem(BaseModel):
     """Read-only finished goods in/out report row."""
 

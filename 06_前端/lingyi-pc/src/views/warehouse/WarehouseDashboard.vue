@@ -513,6 +513,122 @@
         </el-table>
       </div>
 
+      <div class="factory-return-material-report-section">
+        <div class="factory-return-material-report-header">
+          <div class="title-wrap">
+            <h3>物料进销存 / 加工厂应退料报表（TASK-Y44B-P1-04）</h3>
+            <span class="subtitle">共享路由首版（只读语义）</span>
+          </div>
+          <div class="factory-return-material-report-actions">
+            <el-button :disabled="!canRead" @click="applyFactoryReturnMaterialReportFilters">查询报表</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('确认退料')">确认退料</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('撤销退料')">撤销退料</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('导出加工厂应退料报表')">导出</el-button>
+            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('打印加工厂应退料报表')">打印</el-button>
+          </div>
+        </div>
+
+        <el-form :inline="true" :model="query" class="factory-return-material-report-filter-form">
+          <el-form-item label="报表单号">
+            <el-input
+              v-model="query.factory_return_material_report_no"
+              clearable
+              placeholder="报表单号"
+              aria-label="加工厂应退料报表单号"
+            />
+          </el-form-item>
+          <el-form-item label="加工厂">
+            <el-input
+              v-model="query.factory_return_material_report_factory"
+              clearable
+              placeholder="加工厂"
+              aria-label="加工厂应退料报表加工厂"
+            />
+          </el-form-item>
+          <el-form-item label="物料">
+            <el-input
+              v-model="query.factory_return_material_report_material"
+              clearable
+              placeholder="物料编码/名称"
+              aria-label="加工厂应退料报表物料"
+            />
+          </el-form-item>
+          <el-form-item label="仓库">
+            <el-input
+              v-model="query.factory_return_material_report_warehouse"
+              clearable
+              placeholder="仓库"
+              aria-label="加工厂应退料报表仓库"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select
+              v-model="query.factory_return_material_report_status"
+              clearable
+              placeholder="状态"
+              aria-label="加工厂应退料报表状态"
+              style="width: 130px"
+            >
+              <el-option label="待退料" value="pending" />
+              <el-option label="已确认" value="confirmed" />
+              <el-option label="已关闭" value="closed" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <el-alert
+          v-if="factoryReturnMaterialReportErrorMessage"
+          type="error"
+          :closable="false"
+          :title="`加工厂应退料报表加载失败：${factoryReturnMaterialReportErrorMessage}`"
+          class="scope-alert"
+        />
+
+        <el-empty
+          v-if="factoryReturnMaterialReportDisplayRows.length === 0 && !factoryReturnMaterialReportErrorMessage"
+          description="暂无加工厂应退料报表数据，请调整筛选条件后重试"
+        />
+
+        <el-table
+          v-else
+          :data="factoryReturnMaterialReportDisplayRows"
+          border
+          empty-text="暂无加工厂应退料报表数据"
+          class="factory-return-material-report-table"
+        >
+          <el-table-column prop="report_no" label="报表单号" min-width="160" />
+          <el-table-column prop="factory_name" label="加工厂" min-width="130" />
+          <el-table-column prop="material_code" label="物料编码" min-width="140" />
+          <el-table-column prop="material_name" label="物料名称" min-width="150" />
+          <el-table-column prop="warehouse" label="归属仓库" min-width="120" />
+          <el-table-column prop="location" label="库位" min-width="100" />
+          <el-table-column label="应退数量" min-width="110" align="right">
+            <template #default="{ row }">{{ formatAmount(row.planned_return_qty) }}</template>
+          </el-table-column>
+          <el-table-column label="已退数量" min-width="110" align="right">
+            <template #default="{ row }">{{ formatAmount(row.returned_qty) }}</template>
+          </el-table-column>
+          <el-table-column label="待退数量" min-width="110" align="right">
+            <template #default="{ row }">{{ formatAmount(row.pending_qty) }}</template>
+          </el-table-column>
+          <el-table-column prop="report_date" label="报表日期" min-width="120" />
+          <el-table-column prop="source_doc_no" label="来源单号" min-width="150" />
+          <el-table-column label="状态" min-width="100">
+            <template #default="{ row }">
+              <el-tag :type="factoryReturnMaterialReportStatusTag(row.status)" effect="plain">
+                {{ factoryReturnMaterialReportStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="180" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="viewFactoryReturnMaterialReport(row)">查看</el-button>
+              <el-button link type="warning" @click="guardedAction(`确认退料(${row.report_no})`)">确认</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
       <el-alert
         v-if="!permissionReady"
         type="info"
@@ -603,10 +719,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
+  type WarehouseFactoryReturnMaterialReportItem,
   type WarehouseMaterialInventoryItem,
   type WarehouseManagementItem,
   type WarehouseOtherInboundItem,
   type WarehousePurchaseReturnOutboundItem,
+  fetchWarehouseFactoryReturnMaterialReport,
   fetchWarehouseOtherInbound,
   fetchWarehousePurchaseReturnOutbound,
   fetchWarehouseStockLedger,
@@ -644,6 +762,7 @@ const managementErrorMessage = ref<string>('')
 const materialErrorMessage = ref<string>('')
 const otherInboundErrorMessage = ref<string>('')
 const purchaseReturnOutboundErrorMessage = ref<string>('')
+const factoryReturnMaterialReportErrorMessage = ref<string>('')
 const selectedRows = ref<DisplayRow[]>([])
 const ledgerDialogVisible = ref<boolean>(false)
 
@@ -652,6 +771,7 @@ const managementRows = ref<WarehouseManagementItem[]>([])
 const materialRows = ref<WarehouseMaterialInventoryItem[]>([])
 const otherInboundRows = ref<WarehouseOtherInboundItem[]>([])
 const purchaseReturnOutboundRows = ref<WarehousePurchaseReturnOutboundItem[]>([])
+const factoryReturnMaterialReportRows = ref<WarehouseFactoryReturnMaterialReportItem[]>([])
 const ledgerRows = ref<WarehouseStockLedgerItem[]>([])
 const orderMap = ref<Map<string, string>>(new Map())
 
@@ -677,6 +797,11 @@ const query = reactive({
   purchase_return_outbound_material: '',
   purchase_return_outbound_warehouse: '',
   purchase_return_outbound_status: '',
+  factory_return_material_report_no: '',
+  factory_return_material_report_factory: '',
+  factory_return_material_report_material: '',
+  factory_return_material_report_warehouse: '',
+  factory_return_material_report_status: '',
   from_date: '',
   to_date: '',
 })
@@ -686,6 +811,7 @@ const LOCAL_MANAGEMENT_ERROR_TOKEN = '__mgmt_error__'
 const LOCAL_MATERIAL_ERROR_TOKEN = '__material_error__'
 const LOCAL_OTHER_INBOUND_ERROR_TOKEN = '__other_inbound_error__'
 const LOCAL_PURCHASE_RETURN_OUTBOUND_ERROR_TOKEN = '__purchase_return_outbound_error__'
+const LOCAL_FACTORY_RETURN_MATERIAL_REPORT_ERROR_TOKEN = '__factory_return_material_report_error__'
 
 const localSeedSummaryRows: WarehouseStockSummaryItem[] = [
   {
@@ -874,6 +1000,54 @@ const localSeedPurchaseReturnOutboundRows: WarehousePurchaseReturnOutboundItem[]
     amount: 0,
     outbound_date: '2026-05-03',
     source_doc_no: 'PRR-PKG-003',
+    operator: '系统只读映射',
+    status: 'closed',
+  },
+]
+
+const localSeedFactoryReturnMaterialReportRows: WarehouseFactoryReturnMaterialReportItem[] = [
+  {
+    report_no: 'FRR-202605-0001',
+    factory_name: '恒达加工厂',
+    material_code: 'FAB-2408-COTTON',
+    material_name: '精梳棉面料',
+    warehouse: '原料仓',
+    location: 'M-01',
+    planned_return_qty: 42.2,
+    returned_qty: 35.6,
+    pending_qty: 6.6,
+    report_date: '2026-05-03',
+    source_doc_no: 'FRT-FAB-001',
+    operator: '系统只读映射',
+    status: 'confirmed',
+  },
+  {
+    report_no: 'FRR-202605-0002',
+    factory_name: '嘉成加工厂',
+    material_code: 'ACC-2408-BTN01',
+    material_name: '树脂纽扣',
+    warehouse: '辅料仓',
+    location: 'M-08',
+    planned_return_qty: 16,
+    returned_qty: 4.8,
+    pending_qty: 11.2,
+    report_date: '2026-05-04',
+    source_doc_no: 'FRT-ACC-002',
+    operator: '系统只读映射',
+    status: 'pending',
+  },
+  {
+    report_no: 'FRR-202605-0003',
+    factory_name: '丰润加工厂',
+    material_code: 'PKG-2408-BAG01',
+    material_name: '防潮包装袋',
+    warehouse: '包材仓',
+    location: 'M-13',
+    planned_return_qty: 10,
+    returned_qty: 10,
+    pending_qty: 0,
+    report_date: '2026-05-04',
+    source_doc_no: 'FRT-PKG-003',
     operator: '系统只读映射',
     status: 'closed',
   },
@@ -1080,6 +1254,24 @@ const purchaseReturnOutboundDisplayRows = computed<WarehousePurchaseReturnOutbou
   })
 })
 
+const factoryReturnMaterialReportDisplayRows = computed<WarehouseFactoryReturnMaterialReportItem[]>(() => {
+  const reportNo = query.factory_return_material_report_no.trim().toLowerCase()
+  const factory = query.factory_return_material_report_factory.trim().toLowerCase()
+  const material = query.factory_return_material_report_material.trim().toLowerCase()
+  const warehouse = query.factory_return_material_report_warehouse.trim().toLowerCase()
+  const status = query.factory_return_material_report_status.trim().toLowerCase()
+
+  return factoryReturnMaterialReportRows.value.filter((row) => {
+    const reportNoMatched = !reportNo || row.report_no.toLowerCase().includes(reportNo)
+    const factoryMatched = !factory || row.factory_name.toLowerCase().includes(factory)
+    const materialMatched =
+      !material || `${row.material_code}|${row.material_name}`.toLowerCase().includes(material)
+    const warehouseMatched = !warehouse || row.warehouse.toLowerCase().includes(warehouse)
+    const statusMatched = !status || row.status === status
+    return reportNoMatched && factoryMatched && materialMatched && warehouseMatched && statusMatched
+  })
+})
+
 const managementStatusText = (value: WarehouseManagementItem['status']): string => {
   if (value === 'warning') return '预警'
   if (value === 'disabled') return '停用'
@@ -1134,6 +1326,22 @@ const purchaseReturnOutboundStatusTag = (
   return 'success'
 }
 
+const factoryReturnMaterialReportStatusText = (
+  value: WarehouseFactoryReturnMaterialReportItem['status'],
+): string => {
+  if (value === 'pending') return '待退料'
+  if (value === 'closed') return '已关闭'
+  return '已确认'
+}
+
+const factoryReturnMaterialReportStatusTag = (
+  value: WarehouseFactoryReturnMaterialReportItem['status'],
+): 'success' | 'warning' | 'info' => {
+  if (value === 'pending') return 'warning'
+  if (value === 'closed') return 'info'
+  return 'success'
+}
+
 const resetQuery = (): void => {
   query.company = ''
   query.warehouse = ''
@@ -1156,12 +1364,18 @@ const resetQuery = (): void => {
   query.purchase_return_outbound_material = ''
   query.purchase_return_outbound_warehouse = ''
   query.purchase_return_outbound_status = ''
+  query.factory_return_material_report_no = ''
+  query.factory_return_material_report_factory = ''
+  query.factory_return_material_report_material = ''
+  query.factory_return_material_report_warehouse = ''
+  query.factory_return_material_report_status = ''
   query.from_date = ''
   query.to_date = ''
   managementErrorMessage.value = ''
   materialErrorMessage.value = ''
   otherInboundErrorMessage.value = ''
   purchaseReturnOutboundErrorMessage.value = ''
+  factoryReturnMaterialReportErrorMessage.value = ''
   void loadData()
 }
 
@@ -1172,6 +1386,7 @@ const loadData = async (): Promise<void> => {
     materialRows.value = []
     otherInboundRows.value = []
     purchaseReturnOutboundRows.value = []
+    factoryReturnMaterialReportRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -1184,6 +1399,7 @@ const loadData = async (): Promise<void> => {
     materialRows.value = []
     otherInboundRows.value = []
     purchaseReturnOutboundRows.value = []
+    factoryReturnMaterialReportRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     return
@@ -1198,11 +1414,13 @@ const loadData = async (): Promise<void> => {
     materialErrorMessage.value = ''
     otherInboundErrorMessage.value = ''
     purchaseReturnOutboundErrorMessage.value = ''
+    factoryReturnMaterialReportErrorMessage.value = ''
     summaryRows.value = localSeedSummaryRows
     managementRows.value = localSeedManagementRows
     materialRows.value = localSeedMaterialRows
     otherInboundRows.value = localSeedOtherInboundRows
     purchaseReturnOutboundRows.value = localSeedPurchaseReturnOutboundRows
+    factoryReturnMaterialReportRows.value = localSeedFactoryReturnMaterialReportRows
     ledgerRows.value = localSeedLedgerRows
     orderMap.value = buildOrderMap(localSeedLedgerRows)
     selectedRows.value = []
@@ -1215,6 +1433,7 @@ const loadData = async (): Promise<void> => {
   materialErrorMessage.value = ''
   otherInboundErrorMessage.value = ''
   purchaseReturnOutboundErrorMessage.value = ''
+  factoryReturnMaterialReportErrorMessage.value = ''
   try {
     const otherInboundItemCode = query.other_inbound_material.trim() || normalized.item_code
     const otherInboundWarehouse = query.other_inbound_warehouse.trim() || normalized.warehouse
@@ -1222,7 +1441,18 @@ const loadData = async (): Promise<void> => {
     const purchaseReturnOutboundItemCode = query.purchase_return_outbound_material.trim() || normalized.item_code
     const purchaseReturnOutboundWarehouse = query.purchase_return_outbound_warehouse.trim() || normalized.warehouse
     const purchaseReturnOutboundStatus = query.purchase_return_outbound_status.trim().toLowerCase()
-    const [summaryResult, ledgerResult, otherInboundResult, purchaseReturnOutboundResult] = await Promise.all([
+    const factoryReturnMaterialReportItemCode =
+      query.factory_return_material_report_material.trim() || normalized.item_code
+    const factoryReturnMaterialReportWarehouse =
+      query.factory_return_material_report_warehouse.trim() || normalized.warehouse
+    const factoryReturnMaterialReportStatus = query.factory_return_material_report_status.trim().toLowerCase()
+    const [
+      summaryResult,
+      ledgerResult,
+      otherInboundResult,
+      purchaseReturnOutboundResult,
+      factoryReturnMaterialReportResult,
+    ] = await Promise.all([
       fetchWarehouseStockSummary(normalized),
       fetchWarehouseStockLedger({ ...normalized, page: 1, page_size: 200 }),
       fetchWarehouseOtherInbound({
@@ -1237,6 +1467,12 @@ const loadData = async (): Promise<void> => {
         item_code: purchaseReturnOutboundItemCode,
         status: purchaseReturnOutboundStatus as 'pending' | 'returned' | 'closed' | '',
       }),
+      fetchWarehouseFactoryReturnMaterialReport({
+        company: normalized.company,
+        warehouse: factoryReturnMaterialReportWarehouse,
+        item_code: factoryReturnMaterialReportItemCode,
+        status: factoryReturnMaterialReportStatus as 'pending' | 'confirmed' | 'closed' | '',
+      }),
     ])
     summaryRows.value = summaryResult.data.items
     managementRows.value = summaryResult.data.warehouse_management ?? localSeedManagementRows
@@ -1246,6 +1482,7 @@ const loadData = async (): Promise<void> => {
         : buildMaterialRowsFromSummary(summaryResult.data.items)
     otherInboundRows.value = otherInboundResult.data.items
     purchaseReturnOutboundRows.value = purchaseReturnOutboundResult.data.items
+    factoryReturnMaterialReportRows.value = factoryReturnMaterialReportResult.data.items
     ledgerRows.value = ledgerResult.data.items
     orderMap.value = buildOrderMap(ledgerResult.data.items)
   } catch (error) {
@@ -1255,10 +1492,12 @@ const loadData = async (): Promise<void> => {
     materialErrorMessage.value = message
     otherInboundErrorMessage.value = message
     purchaseReturnOutboundErrorMessage.value = message
+    factoryReturnMaterialReportErrorMessage.value = message
     managementRows.value = []
     materialRows.value = []
     otherInboundRows.value = []
     purchaseReturnOutboundRows.value = []
+    factoryReturnMaterialReportRows.value = []
     ElMessage.error(message)
   } finally {
     loading.value = false
@@ -1315,6 +1554,22 @@ const applyPurchaseReturnFilters = (): void => {
     return
   }
   purchaseReturnOutboundErrorMessage.value = ''
+}
+
+const applyFactoryReturnMaterialReportFilters = (): void => {
+  if (!canRead.value) {
+    ElMessage.warning('当前账号无加工厂应退料报表读取权限')
+    return
+  }
+  if (
+    query.factory_return_material_report_no.trim().toLowerCase() ===
+    LOCAL_FACTORY_RETURN_MATERIAL_REPORT_ERROR_TOKEN
+  ) {
+    factoryReturnMaterialReportErrorMessage.value = '模拟错误态：加工厂应退料报表查询失败，请调整筛选后重试'
+    factoryReturnMaterialReportRows.value = []
+    return
+  }
+  factoryReturnMaterialReportErrorMessage.value = ''
 }
 
 const guardedAction = (actionName: string): void => {
@@ -1374,6 +1629,10 @@ const viewOtherInbound = (row: WarehouseOtherInboundItem): void => {
 
 const viewPurchaseReturnOutbound = (row: WarehousePurchaseReturnOutboundItem): void => {
   ElMessage.info(`采购退料出仓详情（只读）：${row.outbound_no}`)
+}
+
+const viewFactoryReturnMaterialReport = (row: WarehouseFactoryReturnMaterialReportItem): void => {
+  ElMessage.info(`加工厂应退料报表详情（只读）：${row.report_no}`)
 }
 
 onMounted(async () => {
@@ -1580,6 +1839,43 @@ onMounted(async () => {
 }
 
 .purchase-return-outbound-table {
+  margin-top: 8px;
+}
+
+.factory-return-material-report-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #f5fbff;
+}
+
+.factory-return-material-report-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.factory-return-material-report-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.factory-return-material-report-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.factory-return-material-report-filter-form {
+  margin-bottom: 8px;
+}
+
+.factory-return-material-report-table {
   margin-top: 8px;
 }
 

@@ -26,6 +26,8 @@ from app.schemas.warehouse import WarehouseAlertsData
 from app.schemas.warehouse import WarehouseBatchDetailData
 from app.schemas.warehouse import WarehouseBatchItem
 from app.schemas.warehouse import WarehouseBatchListData
+from app.schemas.warehouse import WarehouseFactoryReturnMaterialReportData
+from app.schemas.warehouse import WarehouseFactoryReturnMaterialReportItem
 from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidateItem
 from app.schemas.warehouse import WarehouseFinishedGoodsInboundCandidatesData
 from app.schemas.warehouse import WarehouseInventoryCountCreateRequest
@@ -237,6 +239,61 @@ class WarehouseService:
             items=rows,
         )
 
+    def list_factory_return_material_report(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+    ) -> WarehouseFactoryReturnMaterialReportData:
+        summary = self.get_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+        status_filter = (status or "").strip().lower() or None
+        rows: list[WarehouseFactoryReturnMaterialReportItem] = []
+        for index, row in enumerate(summary.items, start=1):
+            material_name = self._material_name_from_code(row.item_code)
+            material_category = self._material_category_from_code(row.item_code)
+            status_value = self._factory_return_material_report_status(row=row)
+            if status_filter is not None and status_value != status_filter:
+                continue
+
+            base_qty = Decimal(str(abs(row.actual_qty))).quantize(Decimal("0.01"))
+            planned_return_qty = (base_qty * Decimal("0.35")).quantize(Decimal("0.01"))
+            if status_value == "closed":
+                returned_qty = planned_return_qty
+            elif status_value == "confirmed":
+                returned_qty = (planned_return_qty * Decimal("0.85")).quantize(Decimal("0.01"))
+            else:
+                returned_qty = (planned_return_qty * Decimal("0.30")).quantize(Decimal("0.01"))
+            pending_qty = max((planned_return_qty - returned_qty).quantize(Decimal("0.01")), Decimal("0.00"))
+
+            rows.append(
+                WarehouseFactoryReturnMaterialReportItem(
+                    report_no=f"FRR-{datetime.now(timezone.utc).strftime('%Y%m')}-{index:04d}",
+                    factory_name=self._factory_name_from_material(material_category=material_category),
+                    material_code=row.item_code,
+                    material_name=material_name,
+                    warehouse=row.warehouse,
+                    location=self._material_location(warehouse=row.warehouse, index=index),
+                    planned_return_qty=planned_return_qty,
+                    returned_qty=returned_qty,
+                    pending_qty=pending_qty,
+                    report_date=date.today(),
+                    source_doc_no=f"FRT-{row.item_code}-{index:03d}",
+                    operator="系统只读映射",
+                    status=status_value,
+                )
+            )
+
+        rows.sort(key=lambda item: (item.status, item.report_no, item.material_code))
+        return WarehouseFactoryReturnMaterialReportData(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status_filter,
+            items=rows,
+        )
+
     @staticmethod
     def _build_management_overview(*, items: list[WarehouseStockSummaryItem]) -> list[WarehouseManagementItem]:
         by_warehouse: dict[str, dict[str, Any]] = {}
@@ -348,6 +405,27 @@ class WarehouseService:
         if row.is_below_safety or row.is_below_reorder:
             return "pending"
         return "returned"
+
+    @staticmethod
+    def _factory_return_material_report_status(
+        *,
+        row: WarehouseStockSummaryItem,
+    ) -> Literal["pending", "confirmed", "closed"]:
+        if row.threshold_missing:
+            return "closed"
+        if row.is_below_safety or row.is_below_reorder:
+            return "pending"
+        return "confirmed"
+
+    @staticmethod
+    def _factory_name_from_material(*, material_category: str) -> str:
+        if material_category == "面料":
+            return "恒达加工厂"
+        if material_category == "辅料":
+            return "嘉成加工厂"
+        if material_category == "包材":
+            return "丰润加工厂"
+        return "综合加工厂"
 
     @staticmethod
     def _material_name_from_code(item_code: str) -> str:

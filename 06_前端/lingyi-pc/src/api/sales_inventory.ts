@@ -97,6 +97,148 @@ export interface StockLedgerData {
   dropped_count: number
 }
 
+export interface MaterialTransferQuery {
+  item_code?: string
+  keyword?: string
+  source_warehouse?: string
+  target_warehouse?: string
+  status?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface MaterialTransferItem {
+  transfer_no: string
+  material_code: string
+  material_name: string
+  source_warehouse: string
+  target_warehouse: string
+  transfer_qty: NumericLike
+  inbound_qty: NumericLike
+  diff_qty: NumericLike
+  operator: string
+  status: string
+  transfer_date: string
+  warehouse?: string | null
+  company?: string | null
+}
+
+export interface MaterialTransferData {
+  items: MaterialTransferItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface MaterialCountQuery {
+  item_code?: string
+  keyword?: string
+  warehouse?: string
+  count_status?: string
+  review_status?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface MaterialCountItem {
+  count_no: string
+  material_code: string
+  material_name: string
+  warehouse: string
+  book_qty: NumericLike
+  counted_qty: NumericLike
+  diff_qty: NumericLike
+  count_status: string
+  review_status: string
+  count_date: string
+  owner: string
+  company?: string | null
+}
+
+export interface MaterialCountData {
+  items: MaterialCountItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface MaterialInventoryReportQuery {
+  report_no?: string
+  item_code?: string
+  warehouse?: string
+  business_type?: string
+  status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface MaterialInventoryReportItem {
+  report_no: string
+  material_code: string
+  material_name: string
+  warehouse: string
+  business_type: string
+  in_qty: NumericLike
+  out_qty: NumericLike
+  balance_qty: NumericLike
+  status: string
+  biz_date: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface MaterialInventoryReportData {
+  items: MaterialInventoryReportItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface InventoryMaterialRetentionReportQuery {
+  report_no?: string
+  item_code?: string
+  warehouse?: string
+  retention_level?: string
+  status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface InventoryMaterialRetentionReportItem {
+  report_no: string
+  material_code: string
+  material_name: string
+  warehouse: string
+  retention_level: string
+  retention_days: NumericLike
+  current_qty: NumericLike
+  stagnant_qty: NumericLike
+  turnover_days: NumericLike
+  status: string
+  biz_date: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface InventoryMaterialRetentionReportData {
+  items: InventoryMaterialRetentionReportItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface FinishedGoodsReportQuery {
   no?: string
   style?: string
@@ -274,6 +416,78 @@ export const fetchSalesInventoryStockLedger = async (
     page_size: query.page_size ?? 20,
   })
   return request<StockLedgerData>(`/api/sales-inventory/items/${encodeURIComponent(itemCode)}/stock-ledger?${queryString}`)
+}
+
+export const fetchSalesInventoryMaterialTransfers = async (
+  query: MaterialTransferQuery,
+): Promise<ApiResponse<MaterialTransferData>> => {
+  const queryString = toQuery({
+    item_code: query.item_code,
+    keyword: query.keyword,
+    source_warehouse: query.source_warehouse,
+    target_warehouse: query.target_warehouse,
+    status: query.status,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<MaterialTransferData>(`/api/sales-inventory/material-transfers?${queryString}`)
+}
+
+export const fetchSalesInventoryMaterialCounts = async (
+  query: MaterialCountQuery,
+): Promise<ApiResponse<MaterialCountData>> => {
+  const queryString = toQuery({
+    item_code: query.item_code,
+    keyword: query.keyword,
+    warehouse: query.warehouse,
+    count_status: query.count_status,
+    review_status: query.review_status,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<MaterialCountData>(`/api/sales-inventory/material-counts?${queryString}`)
+}
+
+export const fetchSalesInventoryMaterialInventoryReport = async (
+  query: MaterialInventoryReportQuery,
+): Promise<ApiResponse<MaterialInventoryReportData>> => {
+  const queryString = toQuery({
+    report_no: query.report_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    business_type: query.business_type,
+    status: query.status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<MaterialInventoryReportData>(`/api/sales-inventory/material-inventory-report?${queryString}`)
+}
+
+export const fetchSalesInventoryInventoryMaterialRetentionReport = async (
+  query: InventoryMaterialRetentionReportQuery,
+): Promise<ApiResponse<InventoryMaterialRetentionReportData>> => {
+  const queryString = toQuery({
+    report_no: query.report_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    retention_level: query.retention_level,
+    status: query.status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<InventoryMaterialRetentionReportData>(
+    `/api/sales-inventory/inventory-material-retention-report?${queryString}`,
+  )
 }
 
 export const fetchSalesInventoryFinishedGoodsReport = async (
