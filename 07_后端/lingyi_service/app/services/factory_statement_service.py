@@ -46,11 +46,19 @@ from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
 from app.schemas.factory_statement import FactoryStatementCancelData
 from app.schemas.factory_statement import FactoryStatementCancelRequest
+from app.schemas.factory_statement import FactoryStatementBankDepositData
+from app.schemas.factory_statement import FactoryStatementBankDepositItem
+from app.schemas.factory_statement import FactoryStatementBankWithdrawalData
+from app.schemas.factory_statement import FactoryStatementBankWithdrawalItem
 from app.schemas.factory_statement import FactoryStatementConfirmData
 from app.schemas.factory_statement import FactoryStatementConfirmRequest
 from app.schemas.factory_statement import FactoryStatementCreateData
 from app.schemas.factory_statement import FactoryStatementCreateRequest
+from app.schemas.factory_statement import FactoryStatementCustomerEvaluationData
+from app.schemas.factory_statement import FactoryStatementCustomerEvaluationItem
 from app.schemas.factory_statement import FactoryStatementDetailData
+from app.schemas.factory_statement import FactoryStatementExpenseReimbursementPaymentData
+from app.schemas.factory_statement import FactoryStatementExpenseReimbursementPaymentItem
 from app.schemas.factory_statement import FactoryStatementItemData
 from app.schemas.factory_statement import FactoryStatementListData
 from app.schemas.factory_statement import FactoryStatementListItem
@@ -543,6 +551,757 @@ class FactoryStatementService:
                 )
                 for row in payable_outboxes
             ],
+        )
+
+    def get_expense_reimbursement_payments(
+        self,
+        *,
+        payment_no: str | None,
+        reimbursement_no: str | None,
+        statement_no: str | None,
+        supplier: str | None,
+        payment_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementExpenseReimbursementPaymentData:
+        """Read-only expense reimbursement payment rows for `/factory-statements/list`."""
+        normalized_payment_no = self._normalize_text(payment_no)
+        normalized_reimbursement_no = self._normalize_text(reimbursement_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_supplier = self._normalize_text(supplier)
+        normalized_payment_status = self._normalize_text(payment_status)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "payment_no": "ERP-REPAY-2026-0501",
+                "reimbursement_no": "RB-2026-0501",
+                "statement_no": "FS-202605010915-8A31C2",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "expense_type": "加工费报销",
+                "payable_amount": Decimal("12540.00"),
+                "paid_amount": Decimal("8000.00"),
+                "pending_amount": Decimal("4540.00"),
+                "payment_status": "部分支付",
+                "review_status": "待复核",
+                "payment_date": date(2026, 5, 1),
+                "payable_account": "2202-应付账款-加工厂",
+                "cost_center": "CC-FACTORY-01",
+                "owner": "李佳琳",
+                "ref_no": "PAY-REQ-2026-0501",
+            },
+            {
+                "payment_no": "ERP-REPAY-2026-0502",
+                "reimbursement_no": "RB-2026-0502",
+                "statement_no": "FS-202605021030-4B29D1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "expense_type": "辅料报销",
+                "payable_amount": Decimal("8960.00"),
+                "paid_amount": Decimal("8960.00"),
+                "pending_amount": Decimal("0.00"),
+                "payment_status": "已支付",
+                "review_status": "已通过",
+                "payment_date": date(2026, 5, 2),
+                "payable_account": "2202-应付账款-辅料",
+                "cost_center": "CC-MATERIAL-02",
+                "owner": "周晨",
+                "ref_no": "PAY-REQ-2026-0502",
+            },
+            {
+                "payment_no": "ERP-REPAY-2026-0503",
+                "reimbursement_no": "RB-2026-0503",
+                "statement_no": "FS-202605031405-7E11F9",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "expense_type": "返修报销",
+                "payable_amount": Decimal("6420.00"),
+                "paid_amount": Decimal("0.00"),
+                "pending_amount": Decimal("6420.00"),
+                "payment_status": "待支付",
+                "review_status": "未开始",
+                "payment_date": date(2026, 5, 3),
+                "payable_account": "2202-应付账款-返修",
+                "cost_center": "CC-REWORK-01",
+                "owner": "吴静怡",
+                "ref_no": "PAY-REQ-2026-0503",
+            },
+            {
+                "payment_no": "ERP-REPAY-2026-0504",
+                "reimbursement_no": "RB-2026-0504",
+                "statement_no": "FS-202605041220-3F88A6",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "expense_type": "样衣报销",
+                "payable_amount": Decimal("7340.00"),
+                "paid_amount": Decimal("3200.00"),
+                "pending_amount": Decimal("4140.00"),
+                "payment_status": "审批中",
+                "review_status": "复核中",
+                "payment_date": date(2026, 5, 4),
+                "payable_account": "2202-应付账款-样衣",
+                "cost_center": "CC-SAMPLE-01",
+                "owner": "邵伟",
+                "ref_no": "PAY-REQ-2026-0504",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_payment_no and row["payment_no"] != normalized_payment_no:
+                continue
+            if normalized_reimbursement_no and row["reimbursement_no"] != normalized_reimbursement_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_supplier and row["supplier"] != normalized_supplier:
+                continue
+            if normalized_payment_status and row["payment_status"] != normalized_payment_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["payment_date"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["payment_no"]),
+                        str(row["reimbursement_no"]),
+                        str(row["statement_no"]),
+                        row_company,
+                        row_supplier,
+                        str(row["expense_type"]),
+                        str(row["owner"]),
+                        str(row["ref_no"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["payment_date"], entry["payment_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementExpenseReimbursementPaymentData(
+            items=[
+                FactoryStatementExpenseReimbursementPaymentItem(
+                    payment_no=str(row["payment_no"]),
+                    reimbursement_no=str(row["reimbursement_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    supplier=str(row["supplier"]),
+                    expense_type=str(row["expense_type"]),
+                    payable_amount=self._to_decimal(row["payable_amount"]),  # type: ignore[arg-type]
+                    paid_amount=self._to_decimal(row["paid_amount"]),  # type: ignore[arg-type]
+                    pending_amount=self._to_decimal(row["pending_amount"]),  # type: ignore[arg-type]
+                    payment_status=str(row["payment_status"]),
+                    review_status=str(row["review_status"]),
+                    payment_date=row["payment_date"],  # type: ignore[arg-type]
+                    payable_account=str(row["payable_account"]),
+                    cost_center=str(row["cost_center"]),
+                    owner=str(row["owner"]),
+                    ref_no=str(row["ref_no"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_bank_deposits(
+        self,
+        *,
+        deposit_no: str | None,
+        statement_no: str | None,
+        bank_name: str | None,
+        account_name: str | None,
+        deposit_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementBankDepositData:
+        """Read-only bank deposit rows for `/factory-statements/list`."""
+        normalized_deposit_no = self._normalize_text(deposit_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_bank_name = self._normalize_text(bank_name)
+        normalized_account_name = self._normalize_text(account_name)
+        normalized_deposit_status = self._normalize_text(deposit_status)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "deposit_no": "BD-2026-0501",
+                "statement_no": "FS-202605011140-9C12A8",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "bank_name": "招商银行东莞分行",
+                "account_name": "凌云服饰有限公司",
+                "account_no": "62148301****2031",
+                "currency": "CNY",
+                "deposit_amount": Decimal("15200.00"),
+                "confirmed_amount": Decimal("15200.00"),
+                "pending_amount": Decimal("0.00"),
+                "deposit_status": "已入账",
+                "review_status": "已通过",
+                "deposit_date": date(2026, 5, 1),
+                "voucher_no": "VCH-260501-001",
+                "owner": "李佳琳",
+                "remark": "客户货款存款",
+            },
+            {
+                "deposit_no": "BD-2026-0502",
+                "statement_no": "FS-202605021255-6D77B1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "bank_name": "中国银行广州分行",
+                "account_name": "凌云服饰有限公司",
+                "account_no": "62166101****8842",
+                "currency": "CNY",
+                "deposit_amount": Decimal("9800.00"),
+                "confirmed_amount": Decimal("6000.00"),
+                "pending_amount": Decimal("3800.00"),
+                "deposit_status": "待入账",
+                "review_status": "待复核",
+                "deposit_date": date(2026, 5, 2),
+                "voucher_no": "VCH-260502-003",
+                "owner": "周晨",
+                "remark": "分批到账",
+            },
+            {
+                "deposit_no": "BD-2026-0503",
+                "statement_no": "FS-202605031420-1F39E6",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "bank_name": "工商银行深圳分行",
+                "account_name": "凌云服饰有限公司",
+                "account_no": "62220001****5517",
+                "currency": "CNY",
+                "deposit_amount": Decimal("12450.00"),
+                "confirmed_amount": Decimal("0.00"),
+                "pending_amount": Decimal("12450.00"),
+                "deposit_status": "处理中",
+                "review_status": "复核中",
+                "deposit_date": date(2026, 5, 3),
+                "voucher_no": "VCH-260503-002",
+                "owner": "吴静怡",
+                "remark": "银行回单待核验",
+            },
+            {
+                "deposit_no": "BD-2026-0504",
+                "statement_no": "FS-202605041605-8B65C4",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "bank_name": "建设银行杭州分行",
+                "account_name": "凌云服饰有限公司",
+                "account_no": "62170001****1120",
+                "currency": "CNY",
+                "deposit_amount": Decimal("7600.00"),
+                "confirmed_amount": Decimal("0.00"),
+                "pending_amount": Decimal("7600.00"),
+                "deposit_status": "已作废",
+                "review_status": "未开始",
+                "deposit_date": date(2026, 5, 4),
+                "voucher_no": "VCH-260504-005",
+                "owner": "邵伟",
+                "remark": "重复提交作废",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_deposit_no and row["deposit_no"] != normalized_deposit_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_bank_name and row["bank_name"] != normalized_bank_name:
+                continue
+            if normalized_account_name and row["account_name"] != normalized_account_name:
+                continue
+            if normalized_deposit_status and row["deposit_status"] != normalized_deposit_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["deposit_date"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["deposit_no"]),
+                        str(row["statement_no"]),
+                        str(row["bank_name"]),
+                        str(row["account_name"]),
+                        str(row["owner"]),
+                        str(row["voucher_no"]),
+                        str(row["remark"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["deposit_date"], entry["deposit_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementBankDepositData(
+            items=[
+                FactoryStatementBankDepositItem(
+                    deposit_no=str(row["deposit_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    bank_name=str(row["bank_name"]),
+                    account_name=str(row["account_name"]),
+                    account_no=str(row["account_no"]),
+                    currency=str(row["currency"]),
+                    deposit_amount=self._to_decimal(row["deposit_amount"]),  # type: ignore[arg-type]
+                    confirmed_amount=self._to_decimal(row["confirmed_amount"]),  # type: ignore[arg-type]
+                    pending_amount=self._to_decimal(row["pending_amount"]),  # type: ignore[arg-type]
+                    deposit_status=str(row["deposit_status"]),
+                    review_status=str(row["review_status"]),
+                    deposit_date=row["deposit_date"],  # type: ignore[arg-type]
+                    voucher_no=str(row["voucher_no"]),
+                    owner=str(row["owner"]),
+                    remark=str(row["remark"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_bank_withdrawals(
+        self,
+        *,
+        withdrawal_no: str | None,
+        statement_no: str | None,
+        bank_name: str | None,
+        account_name: str | None,
+        withdrawal_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementBankWithdrawalData:
+        """Read-only bank withdrawal rows for `/factory-statements/list`."""
+        normalized_withdrawal_no = self._normalize_text(withdrawal_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_bank_name = self._normalize_text(bank_name)
+        normalized_account_name = self._normalize_text(account_name)
+        normalized_withdrawal_status = self._normalize_text(withdrawal_status)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "withdrawal_no": "BW-2026-0501",
+                "statement_no": "FS-202605011140-9C12A8",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "bank_name": "招商银行东莞分行",
+                "account_name": "凌云服饰有限公司",
+                "account_no": "62148301****2031",
+                "currency": "CNY",
+                "withdrawal_amount": Decimal("11800.00"),
+                "transferred_amount": Decimal("11800.00"),
+                "pending_amount": Decimal("0.00"),
+                "withdrawal_status": "已出账",
+                "review_status": "已通过",
+                "withdrawal_date": date(2026, 5, 1),
+                "voucher_no": "VCH-260501-011",
+                "owner": "李佳琳",
+                "remark": "加工费批次结算出账",
+            },
+            {
+                "withdrawal_no": "BW-2026-0502",
+                "statement_no": "FS-202605021255-6D77B1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "bank_name": "中国银行广州分行",
+                "account_name": "凌云服饰有限公司",
+                "account_no": "62166101****8842",
+                "currency": "CNY",
+                "withdrawal_amount": Decimal("9200.00"),
+                "transferred_amount": Decimal("5400.00"),
+                "pending_amount": Decimal("3800.00"),
+                "withdrawal_status": "待出账",
+                "review_status": "待复核",
+                "withdrawal_date": date(2026, 5, 2),
+                "voucher_no": "VCH-260502-017",
+                "owner": "周晨",
+                "remark": "供应商预付款分批处理",
+            },
+            {
+                "withdrawal_no": "BW-2026-0503",
+                "statement_no": "FS-202605031420-1F39E6",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "bank_name": "工商银行深圳分行",
+                "account_name": "凌云服饰有限公司",
+                "account_no": "62220001****5517",
+                "currency": "CNY",
+                "withdrawal_amount": Decimal("13450.00"),
+                "transferred_amount": Decimal("0.00"),
+                "pending_amount": Decimal("13450.00"),
+                "withdrawal_status": "处理中",
+                "review_status": "复核中",
+                "withdrawal_date": date(2026, 5, 3),
+                "voucher_no": "VCH-260503-009",
+                "owner": "吴静怡",
+                "remark": "银行出账回执待确认",
+            },
+            {
+                "withdrawal_no": "BW-2026-0504",
+                "statement_no": "FS-202605041605-8B65C4",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "bank_name": "建设银行杭州分行",
+                "account_name": "凌云服饰有限公司",
+                "account_no": "62170001****1120",
+                "currency": "CNY",
+                "withdrawal_amount": Decimal("7600.00"),
+                "transferred_amount": Decimal("0.00"),
+                "pending_amount": Decimal("7600.00"),
+                "withdrawal_status": "已作废",
+                "review_status": "未开始",
+                "withdrawal_date": date(2026, 5, 4),
+                "voucher_no": "VCH-260504-013",
+                "owner": "邵伟",
+                "remark": "重复申请撤销",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_withdrawal_no and row["withdrawal_no"] != normalized_withdrawal_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_bank_name and row["bank_name"] != normalized_bank_name:
+                continue
+            if normalized_account_name and row["account_name"] != normalized_account_name:
+                continue
+            if normalized_withdrawal_status and row["withdrawal_status"] != normalized_withdrawal_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["withdrawal_date"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["withdrawal_no"]),
+                        str(row["statement_no"]),
+                        str(row["bank_name"]),
+                        str(row["account_name"]),
+                        str(row["owner"]),
+                        str(row["voucher_no"]),
+                        str(row["remark"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["withdrawal_date"], entry["withdrawal_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementBankWithdrawalData(
+            items=[
+                FactoryStatementBankWithdrawalItem(
+                    withdrawal_no=str(row["withdrawal_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    bank_name=str(row["bank_name"]),
+                    account_name=str(row["account_name"]),
+                    account_no=str(row["account_no"]),
+                    currency=str(row["currency"]),
+                    withdrawal_amount=self._to_decimal(row["withdrawal_amount"]),  # type: ignore[arg-type]
+                    transferred_amount=self._to_decimal(row["transferred_amount"]),  # type: ignore[arg-type]
+                    pending_amount=self._to_decimal(row["pending_amount"]),  # type: ignore[arg-type]
+                    withdrawal_status=str(row["withdrawal_status"]),
+                    review_status=str(row["review_status"]),
+                    withdrawal_date=row["withdrawal_date"],  # type: ignore[arg-type]
+                    voucher_no=str(row["voucher_no"]),
+                    owner=str(row["owner"]),
+                    remark=str(row["remark"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_customer_evaluations(
+        self,
+        *,
+        evaluation_no: str | None,
+        statement_no: str | None,
+        customer_name: str | None,
+        assessor: str | None,
+        score_level: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementCustomerEvaluationData:
+        """Read-only customer evaluation rows for `/factory-statements/list`."""
+        normalized_evaluation_no = self._normalize_text(evaluation_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_customer_name = self._normalize_text(customer_name)
+        normalized_assessor = self._normalize_text(assessor)
+        normalized_score_level = self._normalize_text(score_level)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "evaluation_no": "CE-2026-0501",
+                "statement_no": "FS-202605011140-9C12A8",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "customer_name": "广州艺帛贸易",
+                "customer_code": "CUS-0132",
+                "assessor": "李佳琳",
+                "score": Decimal("92.0"),
+                "score_level": "A",
+                "review_status": "已通过",
+                "follow_up_status": "已完成",
+                "evaluation_date": date(2026, 5, 1),
+                "expiry_date": date(2026, 11, 1),
+                "owner": "李佳琳",
+                "remark": "交付稳定、回款及时",
+            },
+            {
+                "evaluation_no": "CE-2026-0502",
+                "statement_no": "FS-202605021255-6D77B1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "customer_name": "深圳雅尚服饰",
+                "customer_code": "CUS-0218",
+                "assessor": "周晨",
+                "score": Decimal("84.0"),
+                "score_level": "B",
+                "review_status": "待复核",
+                "follow_up_status": "待跟进",
+                "evaluation_date": date(2026, 5, 2),
+                "expiry_date": date(2026, 11, 2),
+                "owner": "周晨",
+                "remark": "报价敏感，需加强账期管理",
+            },
+            {
+                "evaluation_no": "CE-2026-0503",
+                "statement_no": "FS-202605031420-1F39E6",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "customer_name": "杭州新禾服装",
+                "customer_code": "CUS-0305",
+                "assessor": "吴静怡",
+                "score": Decimal("76.5"),
+                "score_level": "C",
+                "review_status": "复核中",
+                "follow_up_status": "跟进中",
+                "evaluation_date": date(2026, 5, 3),
+                "expiry_date": date(2026, 11, 3),
+                "owner": "吴静怡",
+                "remark": "退货频次偏高，建议压缩信用额度",
+            },
+            {
+                "evaluation_no": "CE-2026-0504",
+                "statement_no": "FS-202605041605-8B65C4",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "customer_name": "苏州织远商贸",
+                "customer_code": "CUS-0440",
+                "assessor": "邵伟",
+                "score": Decimal("68.0"),
+                "score_level": "D",
+                "review_status": "未开始",
+                "follow_up_status": "已作废",
+                "evaluation_date": date(2026, 5, 4),
+                "expiry_date": date(2026, 11, 4),
+                "owner": "邵伟",
+                "remark": "客户资料不完整，评估单作废",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_evaluation_no and row["evaluation_no"] != normalized_evaluation_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_customer_name and row["customer_name"] != normalized_customer_name:
+                continue
+            if normalized_assessor and row["assessor"] != normalized_assessor:
+                continue
+            if normalized_score_level and row["score_level"] != normalized_score_level:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["evaluation_date"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["evaluation_no"]),
+                        str(row["statement_no"]),
+                        str(row["customer_name"]),
+                        str(row["customer_code"]),
+                        str(row["assessor"]),
+                        str(row["owner"]),
+                        str(row["remark"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["evaluation_date"], entry["evaluation_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementCustomerEvaluationData(
+            items=[
+                FactoryStatementCustomerEvaluationItem(
+                    evaluation_no=str(row["evaluation_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    customer_name=str(row["customer_name"]),
+                    customer_code=str(row["customer_code"]),
+                    assessor=str(row["assessor"]),
+                    score=self._to_decimal(row["score"]),  # type: ignore[arg-type]
+                    score_level=str(row["score_level"]),
+                    review_status=str(row["review_status"]),
+                    follow_up_status=str(row["follow_up_status"]),
+                    evaluation_date=row["evaluation_date"],  # type: ignore[arg-type]
+                    expiry_date=row["expiry_date"],  # type: ignore[arg-type]
+                    owner=str(row["owner"]),
+                    remark=str(row["remark"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
         )
 
     def confirm_statement(

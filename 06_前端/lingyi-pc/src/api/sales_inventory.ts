@@ -573,6 +573,45 @@ export interface FinishedGoodsAdjustmentData {
   page_size: number
 }
 
+export interface FinishedGoodsTransferQuery {
+  transfer_no?: string
+  item_code?: string
+  source_warehouse?: string
+  target_warehouse?: string
+  transfer_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FinishedGoodsTransferItem {
+  transfer_no: string
+  item_code: string
+  item_name: string
+  source_warehouse: string
+  target_warehouse: string
+  planned_transfer_qty: NumericLike
+  actual_transfer_qty: NumericLike
+  pending_transfer_qty: NumericLike
+  transfer_status: string
+  review_status: string
+  transfer_date: string
+  transfer_reason: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface FinishedGoodsTransferData {
+  items: FinishedGoodsTransferItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface FinishedGoodsReportQuery {
   no?: string
   style?: string
@@ -997,6 +1036,25 @@ export const fetchSalesInventoryFinishedGoodsAdjustment = async (
     page_size: query.page_size ?? 20,
   })
   return request<FinishedGoodsAdjustmentData>(`/api/sales-inventory/finished-goods-adjustment?${queryString}`)
+}
+
+export const fetchSalesInventoryFinishedGoodsTransfer = async (
+  query: FinishedGoodsTransferQuery,
+): Promise<ApiResponse<FinishedGoodsTransferData>> => {
+  const queryString = toQuery({
+    transfer_no: query.transfer_no,
+    item_code: query.item_code,
+    source_warehouse: query.source_warehouse,
+    target_warehouse: query.target_warehouse,
+    transfer_status: query.transfer_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FinishedGoodsTransferData>(`/api/sales-inventory/finished-goods-transfer?${queryString}`)
 }
 
 export const fetchSalesInventoryFinishedGoodsReport = async (

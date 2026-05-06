@@ -46,6 +46,164 @@ export interface FactoryStatementListData {
   page_size: number
 }
 
+export interface FactoryStatementExpenseReimbursementPaymentQuery {
+  payment_no?: string
+  reimbursement_no?: string
+  statement_no?: string
+  supplier?: string
+  payment_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementExpenseReimbursementPaymentItem {
+  payment_no: string
+  reimbursement_no: string
+  statement_no: string
+  company: string
+  supplier: string
+  expense_type: string
+  payable_amount: NumericLike
+  paid_amount: NumericLike
+  pending_amount: NumericLike
+  payment_status: string
+  review_status: string
+  payment_date: string
+  payable_account: string
+  cost_center: string
+  owner: string
+  ref_no: string
+}
+
+export interface FactoryStatementExpenseReimbursementPaymentData {
+  items: FactoryStatementExpenseReimbursementPaymentItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FactoryStatementBankDepositQuery {
+  deposit_no?: string
+  statement_no?: string
+  bank_name?: string
+  account_name?: string
+  deposit_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementBankDepositItem {
+  deposit_no: string
+  statement_no: string
+  company: string
+  bank_name: string
+  account_name: string
+  account_no: string
+  currency: string
+  deposit_amount: NumericLike
+  confirmed_amount: NumericLike
+  pending_amount: NumericLike
+  deposit_status: string
+  review_status: string
+  deposit_date: string
+  voucher_no: string
+  owner: string
+  remark: string
+}
+
+export interface FactoryStatementBankDepositData {
+  items: FactoryStatementBankDepositItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FactoryStatementBankWithdrawalQuery {
+  withdrawal_no?: string
+  statement_no?: string
+  bank_name?: string
+  account_name?: string
+  withdrawal_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementBankWithdrawalItem {
+  withdrawal_no: string
+  statement_no: string
+  company: string
+  bank_name: string
+  account_name: string
+  account_no: string
+  currency: string
+  withdrawal_amount: NumericLike
+  transferred_amount: NumericLike
+  pending_amount: NumericLike
+  withdrawal_status: string
+  review_status: string
+  withdrawal_date: string
+  voucher_no: string
+  owner: string
+  remark: string
+}
+
+export interface FactoryStatementBankWithdrawalData {
+  items: FactoryStatementBankWithdrawalItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FactoryStatementCustomerEvaluationQuery {
+  evaluation_no?: string
+  statement_no?: string
+  customer_name?: string
+  assessor?: string
+  score_level?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementCustomerEvaluationItem {
+  evaluation_no: string
+  statement_no: string
+  company: string
+  customer_name: string
+  customer_code: string
+  assessor: string
+  score: NumericLike
+  score_level: string
+  review_status: string
+  follow_up_status: string
+  evaluation_date: string
+  expiry_date: string
+  owner: string
+  remark: string
+}
+
+export interface FactoryStatementCustomerEvaluationData {
+  items: FactoryStatementCustomerEvaluationItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface FactoryStatementDetailItem {
   id: number
   line_no: number
@@ -212,6 +370,84 @@ export const fetchFactoryStatements = async (
     page_size: query.page_size ?? 20,
   })
   return request<FactoryStatementListData>(`/api/factory-statements/?${queryString}`)
+}
+
+export const fetchFactoryStatementExpenseReimbursementPayments = async (
+  query: FactoryStatementExpenseReimbursementPaymentQuery,
+): Promise<ApiResponse<FactoryStatementExpenseReimbursementPaymentData>> => {
+  const queryString = toQuery({
+    payment_no: query.payment_no,
+    reimbursement_no: query.reimbursement_no,
+    statement_no: query.statement_no,
+    supplier: query.supplier,
+    payment_status: query.payment_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementExpenseReimbursementPaymentData>(
+    `/api/factory-statements/expense-reimbursement-payments?${queryString}`,
+  )
+}
+
+export const fetchFactoryStatementBankDeposits = async (
+  query: FactoryStatementBankDepositQuery,
+): Promise<ApiResponse<FactoryStatementBankDepositData>> => {
+  const queryString = toQuery({
+    deposit_no: query.deposit_no,
+    statement_no: query.statement_no,
+    bank_name: query.bank_name,
+    account_name: query.account_name,
+    deposit_status: query.deposit_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementBankDepositData>(`/api/factory-statements/bank-deposits?${queryString}`)
+}
+
+export const fetchFactoryStatementBankWithdrawals = async (
+  query: FactoryStatementBankWithdrawalQuery,
+): Promise<ApiResponse<FactoryStatementBankWithdrawalData>> => {
+  const queryString = toQuery({
+    withdrawal_no: query.withdrawal_no,
+    statement_no: query.statement_no,
+    bank_name: query.bank_name,
+    account_name: query.account_name,
+    withdrawal_status: query.withdrawal_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementBankWithdrawalData>(`/api/factory-statements/bank-withdrawals?${queryString}`)
+}
+
+export const fetchFactoryStatementCustomerEvaluations = async (
+  query: FactoryStatementCustomerEvaluationQuery,
+): Promise<ApiResponse<FactoryStatementCustomerEvaluationData>> => {
+  const queryString = toQuery({
+    evaluation_no: query.evaluation_no,
+    statement_no: query.statement_no,
+    customer_name: query.customer_name,
+    assessor: query.assessor,
+    score_level: query.score_level,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementCustomerEvaluationData>(`/api/factory-statements/customer-evaluations?${queryString}`)
 }
 
 export const fetchFactoryStatementDetail = async (

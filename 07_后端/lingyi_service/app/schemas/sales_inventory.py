@@ -479,6 +479,35 @@ class FinishedGoodsAdjustmentData(BaseModel):
     page_size: int
 
 
+class FinishedGoodsTransferItem(BaseModel):
+    """Read-only finished goods transfer row."""
+
+    transfer_no: str
+    item_code: str
+    item_name: str
+    source_warehouse: str
+    target_warehouse: str
+    planned_transfer_qty: Decimal
+    actual_transfer_qty: Decimal
+    pending_transfer_qty: Decimal
+    transfer_status: str
+    review_status: str
+    transfer_date: date
+    transfer_reason: str
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class FinishedGoodsTransferData(BaseModel):
+    """Read-only finished goods transfer response."""
+
+    items: list[FinishedGoodsTransferItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class FinishedGoodsReportItem(BaseModel):
     """Read-only finished goods in/out report row."""
 

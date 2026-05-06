@@ -17,6 +17,8 @@ from app.schemas.sales_inventory import FinishedGoodsCountData
 from app.schemas.sales_inventory import FinishedGoodsCountItem
 from app.schemas.sales_inventory import FinishedGoodsAdjustmentData
 from app.schemas.sales_inventory import FinishedGoodsAdjustmentItem
+from app.schemas.sales_inventory import FinishedGoodsTransferData
+from app.schemas.sales_inventory import FinishedGoodsTransferItem
 from app.schemas.sales_inventory import FinishedGoodsReservedInboundData
 from app.schemas.sales_inventory import FinishedGoodsReservedInboundItem
 from app.schemas.sales_inventory import FinishedGoodsOtherInboundData
@@ -2206,6 +2208,169 @@ class SalesInventoryService:
                     review_status=row["review_status"],
                     adjustment_date=row["adjustment_date"],
                     adjust_reason=row["adjust_reason"],
+                    owner=row["owner"],
+                    ref_no=row["ref_no"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_finished_goods_transfer(
+        self,
+        *,
+        transfer_no: str | None,
+        item_code: str | None,
+        source_warehouse: str | None,
+        target_warehouse: str | None,
+        transfer_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> FinishedGoodsTransferData:
+        normalized_transfer_no = self._text(transfer_no)
+        normalized_item_code = self._text(item_code)
+        normalized_source_warehouse = self._text(source_warehouse)
+        normalized_target_warehouse = self._text(target_warehouse)
+        normalized_transfer_status = self._text(transfer_status)
+        normalized_review_status = self._text(review_status)
+        normalized_keyword = self._text(keyword)
+
+        seed_rows = [
+            {
+                "transfer_no": "FGTR-2026-0501",
+                "item_code": "FG-HOODIE-101",
+                "item_name": "连帽卫衣成品",
+                "source_warehouse": "成品主仓",
+                "target_warehouse": "电商前置仓",
+                "planned_transfer_qty": Decimal("140"),
+                "actual_transfer_qty": Decimal("90"),
+                "pending_transfer_qty": Decimal("50"),
+                "transfer_status": "调仓中",
+                "review_status": "待复核",
+                "transfer_date": date(2026, 5, 1),
+                "transfer_reason": "大促前置备货",
+                "owner": "李佳琳",
+                "ref_no": "FG-TRF-2026-0501",
+                "company": "凌云服饰",
+            },
+            {
+                "transfer_no": "FGTR-2026-0502",
+                "item_code": "FG-TRENCH-205",
+                "item_name": "风衣成品",
+                "source_warehouse": "成品主仓",
+                "target_warehouse": "线下门店仓",
+                "planned_transfer_qty": Decimal("80"),
+                "actual_transfer_qty": Decimal("80"),
+                "pending_transfer_qty": Decimal("0"),
+                "transfer_status": "已完成",
+                "review_status": "已通过",
+                "transfer_date": date(2026, 5, 2),
+                "transfer_reason": "门店补货",
+                "owner": "周晨",
+                "ref_no": "FG-TRF-2026-0502",
+                "company": "凌云服饰",
+            },
+            {
+                "transfer_no": "FGTR-2026-0503",
+                "item_code": "FG-SKIRT-318",
+                "item_name": "百褶半裙成品",
+                "source_warehouse": "成品发货A仓",
+                "target_warehouse": "成品主仓",
+                "planned_transfer_qty": Decimal("120"),
+                "actual_transfer_qty": Decimal("0"),
+                "pending_transfer_qty": Decimal("120"),
+                "transfer_status": "待确认",
+                "review_status": "未开始",
+                "transfer_date": date(2026, 5, 3),
+                "transfer_reason": "退回主仓整备",
+                "owner": "吴静怡",
+                "ref_no": "FG-TRF-2026-0503",
+                "company": "凌云服饰",
+            },
+            {
+                "transfer_no": "FGTR-2026-0504",
+                "item_code": "FG-PANTS-052",
+                "item_name": "休闲长裤成品",
+                "source_warehouse": "成品发货B仓",
+                "target_warehouse": "成品主仓",
+                "planned_transfer_qty": Decimal("60"),
+                "actual_transfer_qty": Decimal("40"),
+                "pending_transfer_qty": Decimal("20"),
+                "transfer_status": "草稿",
+                "review_status": "复核中",
+                "transfer_date": date(2026, 5, 4),
+                "transfer_reason": "库存结构优化",
+                "owner": "邵伟",
+                "ref_no": "FG-TRF-2026-0504",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_transfer_no and row["transfer_no"] != normalized_transfer_no:
+                continue
+            if normalized_item_code and row["item_code"] != normalized_item_code:
+                continue
+            if normalized_source_warehouse and row["source_warehouse"] != normalized_source_warehouse:
+                continue
+            if normalized_target_warehouse and row["target_warehouse"] != normalized_target_warehouse:
+                continue
+            if normalized_transfer_status and row["transfer_status"] != normalized_transfer_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+            if from_date and row["transfer_date"] < from_date:
+                continue
+            if to_date and row["transfer_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["transfer_no"],
+                        row["item_code"],
+                        row["item_name"],
+                        row["source_warehouse"],
+                        row["target_warehouse"],
+                        row["transfer_status"],
+                        row["review_status"],
+                        row["transfer_reason"],
+                        row["owner"],
+                        row["ref_no"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["transfer_date"], entry["transfer_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FinishedGoodsTransferData(
+            items=[
+                FinishedGoodsTransferItem(
+                    transfer_no=row["transfer_no"],
+                    item_code=row["item_code"],
+                    item_name=row["item_name"],
+                    source_warehouse=row["source_warehouse"],
+                    target_warehouse=row["target_warehouse"],
+                    planned_transfer_qty=row["planned_transfer_qty"],
+                    actual_transfer_qty=row["actual_transfer_qty"],
+                    pending_transfer_qty=row["pending_transfer_qty"],
+                    transfer_status=row["transfer_status"],
+                    review_status=row["review_status"],
+                    transfer_date=row["transfer_date"],
+                    transfer_reason=row["transfer_reason"],
                     owner=row["owner"],
                     ref_no=row["ref_no"],
                     company=row["company"],

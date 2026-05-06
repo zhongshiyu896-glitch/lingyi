@@ -2871,6 +2871,235 @@
             </div>
           </template>
         </section>
+
+        <el-divider />
+
+        <section
+          class="finished-goods-transfer-section"
+          data-testid="finished-goods-transfer-section"
+        >
+          <div class="section-header">
+            <div class="title-group">
+              <span class="title">成品调仓</span>
+              <span class="sub-title">TASK-Y59B-P1-01 / 只读语义</span>
+            </div>
+            <el-tag type="danger" effect="plain">共享路由高风险增量区块</el-tag>
+          </div>
+
+          <el-form :inline="true" :model="finishedGoodsTransferQuery" class="query-form">
+            <el-form-item label="调仓单号">
+              <el-input
+                v-model="finishedGoodsTransferQuery.transfer_no"
+                clearable
+                placeholder="调仓单号"
+                @keyup.enter="onFinishedGoodsTransferSearch"
+              />
+            </el-form-item>
+            <el-form-item label="成品编码">
+              <el-input
+                v-model="finishedGoodsTransferQuery.item_code"
+                clearable
+                placeholder="成品编码"
+                @keyup.enter="onFinishedGoodsTransferSearch"
+              />
+            </el-form-item>
+            <el-form-item label="调出仓库">
+              <el-input
+                v-model="finishedGoodsTransferQuery.source_warehouse"
+                clearable
+                placeholder="调出仓库"
+                @keyup.enter="onFinishedGoodsTransferSearch"
+              />
+            </el-form-item>
+            <el-form-item label="调入仓库">
+              <el-input
+                v-model="finishedGoodsTransferQuery.target_warehouse"
+                clearable
+                placeholder="调入仓库"
+                @keyup.enter="onFinishedGoodsTransferSearch"
+              />
+            </el-form-item>
+            <el-form-item label="调仓状态">
+              <el-select
+                v-model="finishedGoodsTransferQuery.transfer_status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="草稿" value="草稿" />
+                <el-option label="待确认" value="待确认" />
+                <el-option label="调仓中" value="调仓中" />
+                <el-option label="已完成" value="已完成" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="复核状态">
+              <el-select
+                v-model="finishedGoodsTransferQuery.review_status"
+                clearable
+                placeholder="全部状态"
+                style="width: 140px"
+              >
+                <el-option label="未开始" value="未开始" />
+                <el-option label="待复核" value="待复核" />
+                <el-option label="复核中" value="复核中" />
+                <el-option label="已通过" value="已通过" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="关键词">
+              <el-input
+                v-model="finishedGoodsTransferQuery.keyword"
+                clearable
+                placeholder="调仓单号/成品/仓库/调仓人"
+                @keyup.enter="onFinishedGoodsTransferSearch"
+              />
+            </el-form-item>
+            <el-form-item label="开始日期">
+              <el-date-picker
+                v-model="finishedGoodsTransferQuery.from_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="开始日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item label="结束日期">
+              <el-date-picker
+                v-model="finishedGoodsTransferQuery.to_date"
+                type="date"
+                value-format="YYYY-MM-DD"
+                placeholder="结束日期"
+                clearable
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button :disabled="!canRead" @click="onFinishedGoodsTransferReset">重置</el-button>
+              <el-button type="primary" :disabled="!canRead" @click="onFinishedGoodsTransferSearch">
+                查询
+              </el-button>
+            </el-form-item>
+          </el-form>
+
+          <div class="toolbar-row">
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('成品调仓确认提示')"
+            >
+              调仓确认提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('成品调仓复核提示')"
+            >
+              复核提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canRead"
+              @click="onGuardedAction('成品调仓差异处理提示')"
+            >
+              差异处理提示
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canExport"
+              @click="onGuardedAction('导出成品调仓')"
+            >
+              导出
+            </el-button>
+            <el-button
+              data-write-guard="true"
+              :disabled="!canExport"
+              @click="onGuardedAction('打印成品调仓')"
+            >
+              打印
+            </el-button>
+          </div>
+
+          <el-alert
+            v-if="finishedGoodsTransferError"
+            class="error-alert"
+            type="error"
+            :closable="false"
+            :title="`成品调仓加载失败：${finishedGoodsTransferError}`"
+          />
+
+          <el-empty v-if="!canRead" description="无成品调仓查看权限" />
+          <template v-else>
+            <div class="summary-row">
+              <el-tag type="info" effect="plain">调仓记录：{{ finishedGoodsTransferTotal }}</el-tag>
+              <el-tag type="success" effect="plain">计划调仓总量：{{ finishedGoodsTransferPlannedTotal }}</el-tag>
+              <el-tag type="warning" effect="plain">已调仓总量：{{ finishedGoodsTransferActualTotal }}</el-tag>
+              <el-tag type="danger" effect="plain">待调仓总量：{{ finishedGoodsTransferPendingTotal }}</el-tag>
+            </div>
+
+            <el-table
+              :data="finishedGoodsTransferRows"
+              border
+              v-loading="finishedGoodsTransferLoading"
+              empty-text="暂无成品调仓数据，请调整筛选条件后重试"
+            >
+              <el-table-column prop="transfer_no" label="调仓单号" min-width="150" />
+              <el-table-column prop="item_code" label="成品编码" min-width="130" />
+              <el-table-column prop="item_name" label="成品名称" min-width="150" />
+              <el-table-column prop="source_warehouse" label="调出仓库" min-width="120" />
+              <el-table-column prop="target_warehouse" label="调入仓库" min-width="120" />
+              <el-table-column label="计划调仓" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.planned_transfer_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="已调仓" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.actual_transfer_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="待调仓" min-width="100">
+                <template #default="scope">{{ formatAmount(scope.row.pending_transfer_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="调仓状态" min-width="100">
+                <template #default="scope">
+                  <el-tag :type="finishedGoodsTransferStatusType(scope.row.transfer_status)" effect="light">
+                    {{ scope.row.transfer_status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="复核状态" min-width="100">
+                <template #default="scope">
+                  <el-tag :type="finishedGoodsTransferReviewStatusType(scope.row.review_status)" effect="light">
+                    {{ scope.row.review_status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="transfer_date" label="调仓日期" min-width="120" />
+              <el-table-column prop="transfer_reason" label="调仓原因" min-width="140" />
+              <el-table-column prop="owner" label="调仓人" min-width="100" />
+              <el-table-column prop="ref_no" label="关联单据" min-width="140" />
+              <el-table-column label="操作" min-width="110" fixed="right">
+                <template #default>
+                  <el-button
+                    data-write-guard="true"
+                    link
+                    type="primary"
+                    @click="onGuardedAction('查看成品调仓')"
+                  >
+                    查看
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="pager">
+              <el-pagination
+                background
+                layout="prev, pager, next, total, sizes"
+                :current-page="finishedGoodsTransferQuery.page"
+                :page-size="finishedGoodsTransferQuery.page_size"
+                :total="finishedGoodsTransferTotal"
+                :page-sizes="[10, 20, 50, 100]"
+                @current-change="onFinishedGoodsTransferPageChange"
+                @size-change="onFinishedGoodsTransferSizeChange"
+              />
+            </div>
+          </template>
+        </section>
       </template>
     </el-card>
   </div>
@@ -2883,6 +3112,7 @@ import {
   fetchSalesInventoryCustomerReturnInbound,
   fetchSalesInventoryCustomerReturnApplications,
   fetchSalesInventoryFinishedGoodsAdjustment,
+  fetchSalesInventoryFinishedGoodsTransfer,
   fetchSalesInventoryFinishedGoodsCount,
   fetchSalesInventoryFinishedGoodsOtherOutbound,
   fetchSalesInventoryFinishedGoodsOtherInbound,
@@ -2897,6 +3127,7 @@ import {
   type CustomerReturnInboundItem,
   type CustomerReturnApplicationItem,
   type FinishedGoodsAdjustmentItem,
+  type FinishedGoodsTransferItem,
   type FinishedGoodsCountItem,
   type FinishedGoodsOtherOutboundItem,
   type FinishedGoodsOtherInboundItem,
@@ -2968,6 +3199,10 @@ const finishedGoodsAdjustmentLoading = ref<boolean>(false)
 const finishedGoodsAdjustmentRows = ref<FinishedGoodsAdjustmentItem[]>([])
 const finishedGoodsAdjustmentTotal = ref<number>(0)
 const finishedGoodsAdjustmentError = ref<string>('')
+const finishedGoodsTransferLoading = ref<boolean>(false)
+const finishedGoodsTransferRows = ref<FinishedGoodsTransferItem[]>([])
+const finishedGoodsTransferTotal = ref<number>(0)
+const finishedGoodsTransferError = ref<string>('')
 
 const canRead = computed<boolean>(() => {
   return (
@@ -3266,6 +3501,30 @@ const finishedGoodsAdjustmentDiffTotal = computed<string>(() => {
   return qty.toFixed(2)
 })
 
+const finishedGoodsTransferPlannedTotal = computed<string>(() => {
+  const qty = finishedGoodsTransferRows.value.reduce((sum, row) => {
+    const current = Number(row.planned_transfer_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsTransferActualTotal = computed<string>(() => {
+  const qty = finishedGoodsTransferRows.value.reduce((sum, row) => {
+    const current = Number(row.actual_transfer_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const finishedGoodsTransferPendingTotal = computed<string>(() => {
+  const qty = finishedGoodsTransferRows.value.reduce((sum, row) => {
+    const current = Number(row.pending_transfer_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
 const query = reactive({
   no: '',
   style: '',
@@ -3445,6 +3704,20 @@ const finishedGoodsAdjustmentQuery = reactive({
   page_size: 20,
 })
 
+const finishedGoodsTransferQuery = reactive({
+  transfer_no: '',
+  item_code: '',
+  source_warehouse: '',
+  target_warehouse: '',
+  transfer_status: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
     return '-'
@@ -3521,6 +3794,11 @@ const resetFinishedGoodsCountRows = (): void => {
 const resetFinishedGoodsAdjustmentRows = (): void => {
   finishedGoodsAdjustmentRows.value = []
   finishedGoodsAdjustmentTotal.value = 0
+}
+
+const resetFinishedGoodsTransferRows = (): void => {
+  finishedGoodsTransferRows.value = []
+  finishedGoodsTransferTotal.value = 0
 }
 
 const loadRows = async (): Promise<void> => {
@@ -4021,6 +4299,43 @@ const loadFinishedGoodsAdjustment = async (): Promise<void> => {
   }
 }
 
+const loadFinishedGoodsTransfer = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetFinishedGoodsTransferRows()
+    finishedGoodsTransferError.value = ''
+    return
+  }
+  finishedGoodsTransferLoading.value = true
+  finishedGoodsTransferError.value = ''
+  try {
+    if (finishedGoodsTransferQuery.keyword.trim().toUpperCase() === '__ERROR__') {
+      throw new Error('成品调仓区块本地模拟错误态')
+    }
+    const result = await fetchSalesInventoryFinishedGoodsTransfer({
+      transfer_no: finishedGoodsTransferQuery.transfer_no.trim() || undefined,
+      item_code: finishedGoodsTransferQuery.item_code.trim() || undefined,
+      source_warehouse: finishedGoodsTransferQuery.source_warehouse.trim() || undefined,
+      target_warehouse: finishedGoodsTransferQuery.target_warehouse.trim() || undefined,
+      transfer_status: finishedGoodsTransferQuery.transfer_status || undefined,
+      review_status: finishedGoodsTransferQuery.review_status || undefined,
+      keyword: finishedGoodsTransferQuery.keyword.trim() || undefined,
+      from_date: finishedGoodsTransferQuery.from_date || undefined,
+      to_date: finishedGoodsTransferQuery.to_date || undefined,
+      page: finishedGoodsTransferQuery.page,
+      page_size: finishedGoodsTransferQuery.page_size,
+    })
+    finishedGoodsTransferRows.value = result.data.items
+    finishedGoodsTransferTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    finishedGoodsTransferError.value = message
+    resetFinishedGoodsTransferRows()
+    ElMessage.error(message)
+  } finally {
+    finishedGoodsTransferLoading.value = false
+  }
+}
+
 const onSearch = (): void => {
   query.page = 1
   void loadRows()
@@ -4292,6 +4607,32 @@ const finishedGoodsAdjustmentStatusType = (
 }
 
 const finishedGoodsAdjustmentReviewStatusType = (
+  status: string | null | undefined,
+): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '已通过') {
+    return 'success'
+  }
+  if (normalized === '待复核' || normalized === '复核中') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const finishedGoodsTransferStatusType = (
+  status: string | null | undefined,
+): 'success' | 'warning' | 'info' => {
+  const normalized = (status || '').trim()
+  if (normalized === '已完成') {
+    return 'success'
+  }
+  if (normalized === '待确认' || normalized === '调仓中' || normalized === '草稿') {
+    return 'warning'
+  }
+  return 'info'
+}
+
+const finishedGoodsTransferReviewStatusType = (
   status: string | null | undefined,
 ): 'success' | 'warning' | 'info' => {
   const normalized = (status || '').trim()
@@ -4693,6 +5034,37 @@ const onFinishedGoodsAdjustmentSizeChange = (size: number): void => {
   void loadFinishedGoodsAdjustment()
 }
 
+const onFinishedGoodsTransferSearch = (): void => {
+  finishedGoodsTransferQuery.page = 1
+  void loadFinishedGoodsTransfer()
+}
+
+const onFinishedGoodsTransferReset = (): void => {
+  finishedGoodsTransferQuery.transfer_no = ''
+  finishedGoodsTransferQuery.item_code = ''
+  finishedGoodsTransferQuery.source_warehouse = ''
+  finishedGoodsTransferQuery.target_warehouse = ''
+  finishedGoodsTransferQuery.transfer_status = ''
+  finishedGoodsTransferQuery.review_status = ''
+  finishedGoodsTransferQuery.keyword = ''
+  finishedGoodsTransferQuery.from_date = ''
+  finishedGoodsTransferQuery.to_date = ''
+  finishedGoodsTransferQuery.page = 1
+  finishedGoodsTransferQuery.page_size = 20
+  void loadFinishedGoodsTransfer()
+}
+
+const onFinishedGoodsTransferPageChange = (page: number): void => {
+  finishedGoodsTransferQuery.page = page
+  void loadFinishedGoodsTransfer()
+}
+
+const onFinishedGoodsTransferSizeChange = (size: number): void => {
+  finishedGoodsTransferQuery.page_size = size
+  finishedGoodsTransferQuery.page = 1
+  void loadFinishedGoodsTransfer()
+}
+
 const onPageChange = (page: number): void => {
   query.page = page
   void loadRows()
@@ -4727,6 +5099,7 @@ onMounted(async () => {
     await loadFinishedGoodsOtherOutbound()
     await loadFinishedGoodsCount()
     await loadFinishedGoodsAdjustment()
+    await loadFinishedGoodsTransfer()
   }
 })
 </script>

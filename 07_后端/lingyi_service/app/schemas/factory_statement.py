@@ -76,6 +76,124 @@ class FactoryStatementListData(BaseModel):
     page_size: int
 
 
+class FactoryStatementExpenseReimbursementPaymentItem(BaseModel):
+    """Read-only expense reimbursement payment row."""
+
+    payment_no: str
+    reimbursement_no: str
+    statement_no: str
+    company: str
+    supplier: str
+    expense_type: str
+    payable_amount: Decimal
+    paid_amount: Decimal
+    pending_amount: Decimal
+    payment_status: str
+    review_status: str
+    payment_date: date
+    payable_account: str
+    cost_center: str
+    owner: str
+    ref_no: str
+
+
+class FactoryStatementExpenseReimbursementPaymentData(BaseModel):
+    """Read-only expense reimbursement payment response."""
+
+    items: list[FactoryStatementExpenseReimbursementPaymentItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementBankDepositItem(BaseModel):
+    """Read-only bank deposit row."""
+
+    deposit_no: str
+    statement_no: str
+    company: str
+    bank_name: str
+    account_name: str
+    account_no: str
+    currency: str
+    deposit_amount: Decimal
+    confirmed_amount: Decimal
+    pending_amount: Decimal
+    deposit_status: str
+    review_status: str
+    deposit_date: date
+    voucher_no: str
+    owner: str
+    remark: str
+
+
+class FactoryStatementBankDepositData(BaseModel):
+    """Read-only bank deposit response."""
+
+    items: list[FactoryStatementBankDepositItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementBankWithdrawalItem(BaseModel):
+    """Read-only bank withdrawal row."""
+
+    withdrawal_no: str
+    statement_no: str
+    company: str
+    bank_name: str
+    account_name: str
+    account_no: str
+    currency: str
+    withdrawal_amount: Decimal
+    transferred_amount: Decimal
+    pending_amount: Decimal
+    withdrawal_status: str
+    review_status: str
+    withdrawal_date: date
+    voucher_no: str
+    owner: str
+    remark: str
+
+
+class FactoryStatementBankWithdrawalData(BaseModel):
+    """Read-only bank withdrawal response."""
+
+    items: list[FactoryStatementBankWithdrawalItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementCustomerEvaluationItem(BaseModel):
+    """Read-only customer evaluation row."""
+
+    evaluation_no: str
+    statement_no: str
+    company: str
+    customer_name: str
+    customer_code: str
+    assessor: str
+    score: Decimal
+    score_level: str
+    review_status: str
+    follow_up_status: str
+    evaluation_date: date
+    expiry_date: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementCustomerEvaluationData(BaseModel):
+    """Read-only customer evaluation response."""
+
+    items: list[FactoryStatementCustomerEvaluationItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class FactoryStatementItemData(BaseModel):
     """Statement detail item snapshot row."""
 
