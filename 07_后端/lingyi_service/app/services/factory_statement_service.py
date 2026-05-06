@@ -56,6 +56,16 @@ from app.schemas.factory_statement import FactoryStatementCreateData
 from app.schemas.factory_statement import FactoryStatementCreateRequest
 from app.schemas.factory_statement import FactoryStatementCustomerEvaluationData
 from app.schemas.factory_statement import FactoryStatementCustomerEvaluationItem
+from app.schemas.factory_statement import FactoryStatementCustomerReconciliationData
+from app.schemas.factory_statement import FactoryStatementCustomerReconciliationItem
+from app.schemas.factory_statement import FactoryStatementCustomerReceivableSummaryData
+from app.schemas.factory_statement import FactoryStatementCustomerReceivableSummaryItem
+from app.schemas.factory_statement import FactoryStatementCustomerUnpaidReportData
+from app.schemas.factory_statement import FactoryStatementCustomerUnpaidReportItem
+from app.schemas.factory_statement import FactoryStatementFactoryEvaluationData
+from app.schemas.factory_statement import FactoryStatementFactoryEvaluationItem
+from app.schemas.factory_statement import FactoryStatementFactoryReconciliationData
+from app.schemas.factory_statement import FactoryStatementFactoryReconciliationItem
 from app.schemas.factory_statement import FactoryStatementDetailData
 from app.schemas.factory_statement import FactoryStatementExpenseReimbursementPaymentData
 from app.schemas.factory_statement import FactoryStatementExpenseReimbursementPaymentItem
@@ -1294,6 +1304,943 @@ class FactoryStatementService:
                     follow_up_status=str(row["follow_up_status"]),
                     evaluation_date=row["evaluation_date"],  # type: ignore[arg-type]
                     expiry_date=row["expiry_date"],  # type: ignore[arg-type]
+                    owner=str(row["owner"]),
+                    remark=str(row["remark"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_customer_reconciliations(
+        self,
+        *,
+        reconciliation_no: str | None,
+        statement_no: str | None,
+        customer_name: str | None,
+        settlement_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementCustomerReconciliationData:
+        """Read-only customer reconciliation rows for `/factory-statements/list`."""
+        normalized_reconciliation_no = self._normalize_text(reconciliation_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_customer_name = self._normalize_text(customer_name)
+        normalized_settlement_status = self._normalize_text(settlement_status)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "reconciliation_no": "CR-2026-0501",
+                "statement_no": "FS-202605011140-9C12A8",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "customer_name": "广州艺帛贸易",
+                "customer_code": "CUS-0132",
+                "currency": "CNY",
+                "receivable_amount": Decimal("23500.00"),
+                "settled_amount": Decimal("23500.00"),
+                "pending_amount": Decimal("0.00"),
+                "settlement_status": "已结算",
+                "review_status": "已通过",
+                "due_date": date(2026, 5, 1),
+                "reconciled_at": date(2026, 5, 3),
+                "owner": "李佳琳",
+                "remark": "已完成回款核销",
+            },
+            {
+                "reconciliation_no": "CR-2026-0502",
+                "statement_no": "FS-202605021255-6D77B1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "customer_name": "深圳雅尚服饰",
+                "customer_code": "CUS-0218",
+                "currency": "CNY",
+                "receivable_amount": Decimal("18200.00"),
+                "settled_amount": Decimal("9600.00"),
+                "pending_amount": Decimal("8600.00"),
+                "settlement_status": "待结算",
+                "review_status": "待复核",
+                "due_date": date(2026, 5, 2),
+                "reconciled_at": date(2026, 5, 2),
+                "owner": "周晨",
+                "remark": "客户申请分期结算",
+            },
+            {
+                "reconciliation_no": "CR-2026-0503",
+                "statement_no": "FS-202605031420-1F39E6",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "customer_name": "杭州新禾服装",
+                "customer_code": "CUS-0305",
+                "currency": "CNY",
+                "receivable_amount": Decimal("16740.00"),
+                "settled_amount": Decimal("0.00"),
+                "pending_amount": Decimal("16740.00"),
+                "settlement_status": "结算中",
+                "review_status": "复核中",
+                "due_date": date(2026, 5, 3),
+                "reconciled_at": date(2026, 5, 3),
+                "owner": "吴静怡",
+                "remark": "回款凭证待财务复核",
+            },
+            {
+                "reconciliation_no": "CR-2026-0504",
+                "statement_no": "FS-202605041605-8B65C4",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "customer_name": "苏州织远商贸",
+                "customer_code": "CUS-0440",
+                "currency": "CNY",
+                "receivable_amount": Decimal("14320.00"),
+                "settled_amount": Decimal("0.00"),
+                "pending_amount": Decimal("14320.00"),
+                "settlement_status": "已作废",
+                "review_status": "未开始",
+                "due_date": date(2026, 5, 4),
+                "reconciled_at": date(2026, 5, 4),
+                "owner": "邵伟",
+                "remark": "单据资料缺失作废重开",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_reconciliation_no and row["reconciliation_no"] != normalized_reconciliation_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_customer_name and row["customer_name"] != normalized_customer_name:
+                continue
+            if normalized_settlement_status and row["settlement_status"] != normalized_settlement_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["due_date"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["reconciliation_no"]),
+                        str(row["statement_no"]),
+                        str(row["customer_name"]),
+                        str(row["customer_code"]),
+                        str(row["owner"]),
+                        str(row["remark"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["due_date"], entry["reconciliation_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementCustomerReconciliationData(
+            items=[
+                FactoryStatementCustomerReconciliationItem(
+                    reconciliation_no=str(row["reconciliation_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    customer_name=str(row["customer_name"]),
+                    customer_code=str(row["customer_code"]),
+                    currency=str(row["currency"]),
+                    receivable_amount=self._to_decimal(row["receivable_amount"]),  # type: ignore[arg-type]
+                    settled_amount=self._to_decimal(row["settled_amount"]),  # type: ignore[arg-type]
+                    pending_amount=self._to_decimal(row["pending_amount"]),  # type: ignore[arg-type]
+                    settlement_status=str(row["settlement_status"]),
+                    review_status=str(row["review_status"]),
+                    due_date=row["due_date"],  # type: ignore[arg-type]
+                    reconciled_at=row["reconciled_at"],  # type: ignore[arg-type]
+                    owner=str(row["owner"]),
+                    remark=str(row["remark"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_customer_unpaid_reports(
+        self,
+        *,
+        report_no: str | None,
+        statement_no: str | None,
+        customer_name: str | None,
+        collection_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementCustomerUnpaidReportData:
+        """Read-only customer unpaid report rows for `/factory-statements/list`."""
+        normalized_report_no = self._normalize_text(report_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_customer_name = self._normalize_text(customer_name)
+        normalized_collection_status = self._normalize_text(collection_status)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "report_no": "CUR-2026-0501",
+                "statement_no": "FS-202605011140-9C12A8",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "customer_name": "广州艺帛贸易",
+                "customer_code": "CUS-0132",
+                "currency": "CNY",
+                "receivable_amount": Decimal("25200.00"),
+                "received_amount": Decimal("12000.00"),
+                "unpaid_amount": Decimal("13200.00"),
+                "overdue_days": 7,
+                "collection_status": "催收中",
+                "review_status": "待复核",
+                "due_date": date(2026, 5, 1),
+                "last_collection_at": date(2026, 5, 5),
+                "owner": "李佳琳",
+                "remark": "客户承诺本周补齐尾款",
+            },
+            {
+                "report_no": "CUR-2026-0502",
+                "statement_no": "FS-202605021255-6D77B1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "customer_name": "深圳雅尚服饰",
+                "customer_code": "CUS-0218",
+                "currency": "CNY",
+                "receivable_amount": Decimal("18450.00"),
+                "received_amount": Decimal("18450.00"),
+                "unpaid_amount": Decimal("0.00"),
+                "overdue_days": 0,
+                "collection_status": "已收款",
+                "review_status": "已通过",
+                "due_date": date(2026, 5, 2),
+                "last_collection_at": date(2026, 5, 2),
+                "owner": "周晨",
+                "remark": "已完成收款核销",
+            },
+            {
+                "report_no": "CUR-2026-0503",
+                "statement_no": "FS-202605031420-1F39E6",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "customer_name": "杭州新禾服装",
+                "customer_code": "CUS-0305",
+                "currency": "CNY",
+                "receivable_amount": Decimal("16980.00"),
+                "received_amount": Decimal("5300.00"),
+                "unpaid_amount": Decimal("11680.00"),
+                "overdue_days": 3,
+                "collection_status": "待催收",
+                "review_status": "复核中",
+                "due_date": date(2026, 5, 3),
+                "last_collection_at": date(2026, 5, 4),
+                "owner": "吴静怡",
+                "remark": "客户反馈货损，待商务确认差额",
+            },
+            {
+                "report_no": "CUR-2026-0504",
+                "statement_no": "FS-202605041605-8B65C4",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "customer_name": "苏州织远商贸",
+                "customer_code": "CUS-0440",
+                "currency": "CNY",
+                "receivable_amount": Decimal("14320.00"),
+                "received_amount": Decimal("0.00"),
+                "unpaid_amount": Decimal("14320.00"),
+                "overdue_days": 0,
+                "collection_status": "已作废",
+                "review_status": "未开始",
+                "due_date": date(2026, 5, 4),
+                "last_collection_at": date(2026, 5, 4),
+                "owner": "邵伟",
+                "remark": "单据作废，待重开后重新催收",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_report_no and row["report_no"] != normalized_report_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_customer_name and row["customer_name"] != normalized_customer_name:
+                continue
+            if normalized_collection_status and row["collection_status"] != normalized_collection_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["due_date"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["report_no"]),
+                        str(row["statement_no"]),
+                        str(row["customer_name"]),
+                        str(row["customer_code"]),
+                        str(row["owner"]),
+                        str(row["remark"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["due_date"], entry["report_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementCustomerUnpaidReportData(
+            items=[
+                FactoryStatementCustomerUnpaidReportItem(
+                    report_no=str(row["report_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    customer_name=str(row["customer_name"]),
+                    customer_code=str(row["customer_code"]),
+                    currency=str(row["currency"]),
+                    receivable_amount=self._to_decimal(row["receivable_amount"]),  # type: ignore[arg-type]
+                    received_amount=self._to_decimal(row["received_amount"]),  # type: ignore[arg-type]
+                    unpaid_amount=self._to_decimal(row["unpaid_amount"]),  # type: ignore[arg-type]
+                    overdue_days=int(row["overdue_days"]),
+                    collection_status=str(row["collection_status"]),
+                    review_status=str(row["review_status"]),
+                    due_date=row["due_date"],  # type: ignore[arg-type]
+                    last_collection_at=row["last_collection_at"],  # type: ignore[arg-type]
+                    owner=str(row["owner"]),
+                    remark=str(row["remark"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_customer_receivable_summaries(
+        self,
+        *,
+        summary_no: str | None,
+        statement_no: str | None,
+        customer_name: str | None,
+        risk_level: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementCustomerReceivableSummaryData:
+        """Read-only customer receivable summary rows for `/factory-statements/list`."""
+        normalized_summary_no = self._normalize_text(summary_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_customer_name = self._normalize_text(customer_name)
+        normalized_risk_level = self._normalize_text(risk_level)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "summary_no": "CRS-2026-0501",
+                "statement_no": "FS-202605011140-9C12A8",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "customer_name": "广州艺帛贸易",
+                "customer_code": "CUS-0132",
+                "currency": "CNY",
+                "opening_receivable": Decimal("16800.00"),
+                "current_receivable": Decimal("25200.00"),
+                "received_amount": Decimal("12000.00"),
+                "ending_receivable": Decimal("30000.00"),
+                "aging_30": Decimal("9600.00"),
+                "aging_60": Decimal("11800.00"),
+                "aging_90_plus": Decimal("8600.00"),
+                "risk_level": "高风险",
+                "review_status": "待复核",
+                "summary_date": date(2026, 5, 1),
+                "owner": "李佳琳",
+                "remark": "超 60 天账龄占比较高，需加密跟催",
+            },
+            {
+                "summary_no": "CRS-2026-0502",
+                "statement_no": "FS-202605021255-6D77B1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "customer_name": "深圳雅尚服饰",
+                "customer_code": "CUS-0218",
+                "currency": "CNY",
+                "opening_receivable": Decimal("12400.00"),
+                "current_receivable": Decimal("18450.00"),
+                "received_amount": Decimal("18450.00"),
+                "ending_receivable": Decimal("12400.00"),
+                "aging_30": Decimal("12400.00"),
+                "aging_60": Decimal("0.00"),
+                "aging_90_plus": Decimal("0.00"),
+                "risk_level": "低风险",
+                "review_status": "已通过",
+                "summary_date": date(2026, 5, 2),
+                "owner": "周晨",
+                "remark": "本期新增应收已回款，历史余额稳定",
+            },
+            {
+                "summary_no": "CRS-2026-0503",
+                "statement_no": "FS-202605031420-1F39E6",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "customer_name": "杭州新禾服装",
+                "customer_code": "CUS-0305",
+                "currency": "CNY",
+                "opening_receivable": Decimal("9800.00"),
+                "current_receivable": Decimal("16980.00"),
+                "received_amount": Decimal("5300.00"),
+                "ending_receivable": Decimal("21480.00"),
+                "aging_30": Decimal("10200.00"),
+                "aging_60": Decimal("6680.00"),
+                "aging_90_plus": Decimal("4600.00"),
+                "risk_level": "中风险",
+                "review_status": "复核中",
+                "summary_date": date(2026, 5, 3),
+                "owner": "吴静怡",
+                "remark": "客户存在货损争议，回款节奏需复核",
+            },
+            {
+                "summary_no": "CRS-2026-0504",
+                "statement_no": "FS-202605041605-8B65C4",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "customer_name": "苏州织远商贸",
+                "customer_code": "CUS-0440",
+                "currency": "CNY",
+                "opening_receivable": Decimal("15200.00"),
+                "current_receivable": Decimal("14320.00"),
+                "received_amount": Decimal("0.00"),
+                "ending_receivable": Decimal("29520.00"),
+                "aging_30": Decimal("6800.00"),
+                "aging_60": Decimal("9200.00"),
+                "aging_90_plus": Decimal("13520.00"),
+                "risk_level": "高风险",
+                "review_status": "未开始",
+                "summary_date": date(2026, 5, 4),
+                "owner": "邵伟",
+                "remark": "长期未回款，建议升级客户信用等级预警",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_summary_no and row["summary_no"] != normalized_summary_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_customer_name and row["customer_name"] != normalized_customer_name:
+                continue
+            if normalized_risk_level and row["risk_level"] != normalized_risk_level:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["summary_date"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["summary_no"]),
+                        str(row["statement_no"]),
+                        str(row["customer_name"]),
+                        str(row["customer_code"]),
+                        str(row["owner"]),
+                        str(row["remark"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["summary_date"], entry["summary_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementCustomerReceivableSummaryData(
+            items=[
+                FactoryStatementCustomerReceivableSummaryItem(
+                    summary_no=str(row["summary_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    customer_name=str(row["customer_name"]),
+                    customer_code=str(row["customer_code"]),
+                    currency=str(row["currency"]),
+                    opening_receivable=self._to_decimal(row["opening_receivable"]),  # type: ignore[arg-type]
+                    current_receivable=self._to_decimal(row["current_receivable"]),  # type: ignore[arg-type]
+                    received_amount=self._to_decimal(row["received_amount"]),  # type: ignore[arg-type]
+                    ending_receivable=self._to_decimal(row["ending_receivable"]),  # type: ignore[arg-type]
+                    aging_30=self._to_decimal(row["aging_30"]),  # type: ignore[arg-type]
+                    aging_60=self._to_decimal(row["aging_60"]),  # type: ignore[arg-type]
+                    aging_90_plus=self._to_decimal(row["aging_90_plus"]),  # type: ignore[arg-type]
+                    risk_level=str(row["risk_level"]),
+                    review_status=str(row["review_status"]),
+                    summary_date=row["summary_date"],  # type: ignore[arg-type]
+                    owner=str(row["owner"]),
+                    remark=str(row["remark"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_factory_evaluations(
+        self,
+        *,
+        evaluation_no: str | None,
+        statement_no: str | None,
+        factory_name: str | None,
+        assessor: str | None,
+        score_level: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementFactoryEvaluationData:
+        """Read-only factory evaluation rows for `/factory-statements/list`."""
+        normalized_evaluation_no = self._normalize_text(evaluation_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_factory_name = self._normalize_text(factory_name)
+        normalized_assessor = self._normalize_text(assessor)
+        normalized_score_level = self._normalize_text(score_level)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "evaluation_no": "FE-2026-0501",
+                "statement_no": "FS-202605011140-9C12A8",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "factory_name": "东莞卓越制衣厂",
+                "factory_code": "FAC-0018",
+                "assessor": "李佳琳",
+                "score": Decimal("91.0"),
+                "score_level": "A",
+                "review_status": "已通过",
+                "follow_up_status": "已完成",
+                "evaluation_date": date(2026, 5, 1),
+                "expiry_date": date(2026, 11, 1),
+                "owner": "李佳琳",
+                "remark": "交期稳定、返修率低",
+            },
+            {
+                "evaluation_no": "FE-2026-0502",
+                "statement_no": "FS-202605021255-6D77B1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "factory_name": "广州星河辅料厂",
+                "factory_code": "FAC-0033",
+                "assessor": "周晨",
+                "score": Decimal("84.5"),
+                "score_level": "B",
+                "review_status": "待复核",
+                "follow_up_status": "待跟进",
+                "evaluation_date": date(2026, 5, 2),
+                "expiry_date": date(2026, 11, 2),
+                "owner": "周晨",
+                "remark": "价格波动可控，交付偶发延期",
+            },
+            {
+                "evaluation_no": "FE-2026-0503",
+                "statement_no": "FS-202605031420-1F39E6",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "factory_name": "深圳远航加工厂",
+                "factory_code": "FAC-0046",
+                "assessor": "吴静怡",
+                "score": Decimal("76.0"),
+                "score_level": "C",
+                "review_status": "复核中",
+                "follow_up_status": "跟进中",
+                "evaluation_date": date(2026, 5, 3),
+                "expiry_date": date(2026, 11, 3),
+                "owner": "吴静怡",
+                "remark": "品质波动偏高，需加强驻厂巡检",
+            },
+            {
+                "evaluation_no": "FE-2026-0504",
+                "statement_no": "FS-202605041605-8B65C4",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "factory_name": "杭州匠心制衣厂",
+                "factory_code": "FAC-0061",
+                "assessor": "邵伟",
+                "score": Decimal("68.0"),
+                "score_level": "D",
+                "review_status": "未开始",
+                "follow_up_status": "已作废",
+                "evaluation_date": date(2026, 5, 4),
+                "expiry_date": date(2026, 11, 4),
+                "owner": "邵伟",
+                "remark": "资质文件待补充，本次评估作废",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_evaluation_no and row["evaluation_no"] != normalized_evaluation_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_factory_name and row["factory_name"] != normalized_factory_name:
+                continue
+            if normalized_assessor and row["assessor"] != normalized_assessor:
+                continue
+            if normalized_score_level and row["score_level"] != normalized_score_level:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["evaluation_date"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["evaluation_no"]),
+                        str(row["statement_no"]),
+                        str(row["factory_name"]),
+                        str(row["factory_code"]),
+                        str(row["assessor"]),
+                        str(row["owner"]),
+                        str(row["remark"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["evaluation_date"], entry["evaluation_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementFactoryEvaluationData(
+            items=[
+                FactoryStatementFactoryEvaluationItem(
+                    evaluation_no=str(row["evaluation_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    supplier=str(row["supplier"]),
+                    factory_name=str(row["factory_name"]),
+                    factory_code=str(row["factory_code"]),
+                    assessor=str(row["assessor"]),
+                    score=self._to_decimal(row["score"]),  # type: ignore[arg-type]
+                    score_level=str(row["score_level"]),
+                    review_status=str(row["review_status"]),
+                    follow_up_status=str(row["follow_up_status"]),
+                    evaluation_date=row["evaluation_date"],  # type: ignore[arg-type]
+                    expiry_date=row["expiry_date"],  # type: ignore[arg-type]
+                    owner=str(row["owner"]),
+                    remark=str(row["remark"]),
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_factory_reconciliations(
+        self,
+        *,
+        reconciliation_no: str | None,
+        statement_no: str | None,
+        supplier: str | None,
+        factory_name: str | None,
+        settlement_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+        readable_companies: set[str] | None,
+        readable_suppliers: set[str] | None,
+    ) -> FactoryStatementFactoryReconciliationData:
+        """Read-only factory reconciliation rows for `/factory-statements/list`."""
+        normalized_reconciliation_no = self._normalize_text(reconciliation_no)
+        normalized_statement_no = self._normalize_text(statement_no)
+        normalized_supplier = self._normalize_text(supplier)
+        normalized_factory_name = self._normalize_text(factory_name)
+        normalized_settlement_status = self._normalize_text(settlement_status)
+        normalized_review_status = self._normalize_text(review_status)
+        normalized_keyword = self._normalize_text(keyword)
+
+        if from_date and to_date and from_date > to_date:
+            raise BusinessException(code=FACTORY_STATEMENT_PERIOD_INVALID)
+
+        seed_rows: list[dict[str, object]] = [
+            {
+                "reconciliation_no": "FR-2026-0501",
+                "statement_no": "FS-202605011140-9C12A8",
+                "company": "凌云服饰",
+                "supplier": "东莞卓越制衣厂",
+                "factory_name": "东莞卓越制衣厂",
+                "factory_code": "FAC-0018",
+                "currency": "CNY",
+                "reconciliation_amount": Decimal("26800.00"),
+                "settled_amount": Decimal("26800.00"),
+                "pending_amount": Decimal("0.00"),
+                "settlement_status": "已对账",
+                "review_status": "已通过",
+                "follow_up_status": "已完成",
+                "reconciled_at": date(2026, 5, 1),
+                "due_date": date(2026, 5, 3),
+                "owner": "李佳琳",
+                "remark": "批次加工费核对完成",
+            },
+            {
+                "reconciliation_no": "FR-2026-0502",
+                "statement_no": "FS-202605021255-6D77B1",
+                "company": "凌云服饰",
+                "supplier": "广州星河辅料厂",
+                "factory_name": "广州星河辅料厂",
+                "factory_code": "FAC-0033",
+                "currency": "CNY",
+                "reconciliation_amount": Decimal("21450.00"),
+                "settled_amount": Decimal("12000.00"),
+                "pending_amount": Decimal("9450.00"),
+                "settlement_status": "待对账",
+                "review_status": "待复核",
+                "follow_up_status": "待跟进",
+                "reconciled_at": date(2026, 5, 2),
+                "due_date": date(2026, 5, 5),
+                "owner": "周晨",
+                "remark": "辅料损耗争议待处理",
+            },
+            {
+                "reconciliation_no": "FR-2026-0503",
+                "statement_no": "FS-202605031420-1F39E6",
+                "company": "凌云服饰",
+                "supplier": "深圳远航加工厂",
+                "factory_name": "深圳远航加工厂",
+                "factory_code": "FAC-0046",
+                "currency": "CNY",
+                "reconciliation_amount": Decimal("18730.00"),
+                "settled_amount": Decimal("6000.00"),
+                "pending_amount": Decimal("12730.00"),
+                "settlement_status": "对账中",
+                "review_status": "复核中",
+                "follow_up_status": "跟进中",
+                "reconciled_at": date(2026, 5, 3),
+                "due_date": date(2026, 5, 6),
+                "owner": "吴静怡",
+                "remark": "返工费用凭证待补充",
+            },
+            {
+                "reconciliation_no": "FR-2026-0504",
+                "statement_no": "FS-202605041605-8B65C4",
+                "company": "凌云服饰",
+                "supplier": "杭州匠心制衣厂",
+                "factory_name": "杭州匠心制衣厂",
+                "factory_code": "FAC-0061",
+                "currency": "CNY",
+                "reconciliation_amount": Decimal("13200.00"),
+                "settled_amount": Decimal("0.00"),
+                "pending_amount": Decimal("13200.00"),
+                "settlement_status": "已作废",
+                "review_status": "未开始",
+                "follow_up_status": "已作废",
+                "reconciled_at": date(2026, 5, 4),
+                "due_date": date(2026, 5, 7),
+                "owner": "邵伟",
+                "remark": "单据重复提交，作废重建",
+            },
+        ]
+
+        filtered_rows: list[dict[str, object]] = []
+        keyword_lc = (normalized_keyword or "").lower()
+        for row in seed_rows:
+            if normalized_reconciliation_no and row["reconciliation_no"] != normalized_reconciliation_no:
+                continue
+            if normalized_statement_no and row["statement_no"] != normalized_statement_no:
+                continue
+            if normalized_supplier and row["supplier"] != normalized_supplier:
+                continue
+            if normalized_factory_name and row["factory_name"] != normalized_factory_name:
+                continue
+            if normalized_settlement_status and row["settlement_status"] != normalized_settlement_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+
+            row_company = str(row["company"])
+            row_supplier = str(row["supplier"])
+            if readable_companies is not None and row_company not in readable_companies:
+                continue
+            if readable_suppliers is not None and row_supplier not in readable_suppliers:
+                continue
+
+            row_date = row["reconciled_at"]
+            if from_date and isinstance(row_date, date) and row_date < from_date:
+                continue
+            if to_date and isinstance(row_date, date) and row_date > to_date:
+                continue
+
+            if keyword_lc:
+                haystack = " ".join(
+                    [
+                        str(row["reconciliation_no"]),
+                        str(row["statement_no"]),
+                        str(row["supplier"]),
+                        str(row["factory_name"]),
+                        str(row["factory_code"]),
+                        str(row["owner"]),
+                        str(row["remark"]),
+                    ]
+                ).lower()
+                if keyword_lc not in haystack:
+                    continue
+
+            filtered_rows.append(row)
+
+        filtered_rows.sort(
+            key=lambda entry: (entry["reconciled_at"], entry["reconciliation_no"]),  # type: ignore[index]
+            reverse=True,
+        )
+
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FactoryStatementFactoryReconciliationData(
+            items=[
+                FactoryStatementFactoryReconciliationItem(
+                    reconciliation_no=str(row["reconciliation_no"]),
+                    statement_no=str(row["statement_no"]),
+                    company=str(row["company"]),
+                    supplier=str(row["supplier"]),
+                    factory_name=str(row["factory_name"]),
+                    factory_code=str(row["factory_code"]),
+                    currency=str(row["currency"]),
+                    reconciliation_amount=self._to_decimal(row["reconciliation_amount"]),  # type: ignore[arg-type]
+                    settled_amount=self._to_decimal(row["settled_amount"]),  # type: ignore[arg-type]
+                    pending_amount=self._to_decimal(row["pending_amount"]),  # type: ignore[arg-type]
+                    settlement_status=str(row["settlement_status"]),
+                    review_status=str(row["review_status"]),
+                    follow_up_status=str(row["follow_up_status"]),
+                    reconciled_at=row["reconciled_at"],  # type: ignore[arg-type]
+                    due_date=row["due_date"],  # type: ignore[arg-type]
                     owner=str(row["owner"]),
                     remark=str(row["remark"]),
                 )

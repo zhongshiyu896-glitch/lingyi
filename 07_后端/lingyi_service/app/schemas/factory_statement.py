@@ -194,6 +194,157 @@ class FactoryStatementCustomerEvaluationData(BaseModel):
     page_size: int
 
 
+class FactoryStatementCustomerReconciliationItem(BaseModel):
+    """Read-only customer reconciliation row."""
+
+    reconciliation_no: str
+    statement_no: str
+    company: str
+    customer_name: str
+    customer_code: str
+    currency: str
+    receivable_amount: Decimal
+    settled_amount: Decimal
+    pending_amount: Decimal
+    settlement_status: str
+    review_status: str
+    due_date: date
+    reconciled_at: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementCustomerReconciliationData(BaseModel):
+    """Read-only customer reconciliation response."""
+
+    items: list[FactoryStatementCustomerReconciliationItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementCustomerUnpaidReportItem(BaseModel):
+    """Read-only customer unpaid report row."""
+
+    report_no: str
+    statement_no: str
+    company: str
+    customer_name: str
+    customer_code: str
+    currency: str
+    receivable_amount: Decimal
+    received_amount: Decimal
+    unpaid_amount: Decimal
+    overdue_days: int
+    collection_status: str
+    review_status: str
+    due_date: date
+    last_collection_at: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementCustomerUnpaidReportData(BaseModel):
+    """Read-only customer unpaid report response."""
+
+    items: list[FactoryStatementCustomerUnpaidReportItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementCustomerReceivableSummaryItem(BaseModel):
+    """Read-only customer receivable summary row."""
+
+    summary_no: str
+    statement_no: str
+    company: str
+    customer_name: str
+    customer_code: str
+    currency: str
+    opening_receivable: Decimal
+    current_receivable: Decimal
+    received_amount: Decimal
+    ending_receivable: Decimal
+    aging_30: Decimal
+    aging_60: Decimal
+    aging_90_plus: Decimal
+    risk_level: str
+    review_status: str
+    summary_date: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementCustomerReceivableSummaryData(BaseModel):
+    """Read-only customer receivable summary response."""
+
+    items: list[FactoryStatementCustomerReceivableSummaryItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementFactoryEvaluationItem(BaseModel):
+    """Read-only factory evaluation row."""
+
+    evaluation_no: str
+    statement_no: str
+    company: str
+    supplier: str
+    factory_name: str
+    factory_code: str
+    assessor: str
+    score: Decimal
+    score_level: str
+    review_status: str
+    follow_up_status: str
+    evaluation_date: date
+    expiry_date: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementFactoryEvaluationData(BaseModel):
+    """Read-only factory evaluation response."""
+
+    items: list[FactoryStatementFactoryEvaluationItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementFactoryReconciliationItem(BaseModel):
+    """Read-only factory reconciliation row."""
+
+    reconciliation_no: str
+    statement_no: str
+    company: str
+    supplier: str
+    factory_name: str
+    factory_code: str
+    currency: str
+    reconciliation_amount: Decimal
+    settled_amount: Decimal
+    pending_amount: Decimal
+    settlement_status: str
+    review_status: str
+    follow_up_status: str
+    reconciled_at: date
+    due_date: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementFactoryReconciliationData(BaseModel):
+    """Read-only factory reconciliation response."""
+
+    items: list[FactoryStatementFactoryReconciliationItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class FactoryStatementItemData(BaseModel):
     """Statement detail item snapshot row."""
 

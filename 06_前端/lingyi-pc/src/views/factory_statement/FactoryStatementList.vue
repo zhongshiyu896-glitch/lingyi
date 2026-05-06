@@ -1030,6 +1030,1092 @@
       </template>
     </el-card>
 
+    <el-card shadow="never" class="customer-reconciliation-section">
+      <template #header>
+        <div class="header-row">
+          <span>客户对账表（TASK-Y64B-P1-01）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读客户对账表语义映射"
+        description="对账确认、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="customer-reconciliation-alert"
+      />
+
+      <el-form :inline="true" :model="customerReconciliationQuery" class="customer-reconciliation-filter-form">
+        <el-form-item label="对账单号">
+          <el-input
+            v-model="customerReconciliationQuery.reconciliation_no"
+            clearable
+            placeholder="请输入客户对账单号"
+          />
+        </el-form-item>
+        <el-form-item label="业务单号">
+          <el-input
+            v-model="customerReconciliationQuery.statement_no"
+            clearable
+            placeholder="请输入关联业务单号"
+          />
+        </el-form-item>
+        <el-form-item label="客户名称">
+          <el-input
+            v-model="customerReconciliationQuery.customer_name"
+            clearable
+            placeholder="请输入客户名称"
+          />
+        </el-form-item>
+        <el-form-item label="结算状态">
+          <el-select
+            v-model="customerReconciliationQuery.settlement_status"
+            clearable
+            placeholder="请选择结算状态"
+            style="width: 170px"
+          >
+            <el-option label="待结算" value="待结算" />
+            <el-option label="结算中" value="结算中" />
+            <el-option label="已结算" value="已结算" />
+            <el-option label="已作废" value="已作废" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="customerReconciliationQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="customerReconciliationQuery.keyword"
+            clearable
+            placeholder="对账单号/客户名称/客户编码/经办人"
+            style="width: 300px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="customerReconciliationQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="customerReconciliationQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadCustomerReconciliations">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetCustomerReconciliationFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="customerReconciliationError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="customerReconciliationError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无客户对账表查看权限" />
+      <template v-else>
+        <el-table
+          :data="customerReconciliationRows"
+          border
+          v-loading="customerReconciliationLoading"
+          empty-text="暂无客户对账表数据"
+        >
+          <el-table-column prop="reconciliation_no" label="对账单号" min-width="180" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="130" />
+          <el-table-column prop="customer_name" label="客户名称" min-width="160" />
+          <el-table-column prop="customer_code" label="客户编码" min-width="130" />
+          <el-table-column prop="currency" label="币种" width="90" />
+          <el-table-column label="应收金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.receivable_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="已结金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.settled_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="待结金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.pending_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="结算状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="customerReconciliationSettlementTag(scope.row.settlement_status)">
+                {{ scope.row.settlement_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="due_date" label="应收日期" min-width="120" />
+          <el-table-column prop="reconciled_at" label="对账日期" min-width="120" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="180" />
+          <el-table-column label="操作" fixed="right" width="320">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:customer-reconciliation-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('对账确认提示')"
+              >
+                对账确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:customer-reconciliation-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:customer-reconciliation-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('结算校验')"
+              >
+                结算校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:customer-reconciliation-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:customer-reconciliation-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="customerReconciliationQuery.page"
+            :page-size="customerReconciliationQuery.page_size"
+            :total="customerReconciliationTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onCustomerReconciliationPageChange"
+            @size-change="onCustomerReconciliationSizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
+    <el-card shadow="never" class="customer-unpaid-report-section">
+      <template #header>
+        <div class="header-row">
+          <span>客户未收款报表（TASK-Y64B-P1-02）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读客户未收款报表语义映射"
+        description="催收、确认收款、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="customer-unpaid-report-alert"
+      />
+
+      <el-form :inline="true" :model="customerUnpaidReportQuery" class="customer-unpaid-report-filter-form">
+        <el-form-item label="报表单号">
+          <el-input
+            v-model="customerUnpaidReportQuery.report_no"
+            clearable
+            placeholder="请输入未收款报表单号"
+          />
+        </el-form-item>
+        <el-form-item label="业务单号">
+          <el-input
+            v-model="customerUnpaidReportQuery.statement_no"
+            clearable
+            placeholder="请输入关联业务单号"
+          />
+        </el-form-item>
+        <el-form-item label="客户名称">
+          <el-input
+            v-model="customerUnpaidReportQuery.customer_name"
+            clearable
+            placeholder="请输入客户名称"
+          />
+        </el-form-item>
+        <el-form-item label="催收状态">
+          <el-select
+            v-model="customerUnpaidReportQuery.collection_status"
+            clearable
+            placeholder="请选择催收状态"
+            style="width: 170px"
+          >
+            <el-option label="待催收" value="待催收" />
+            <el-option label="催收中" value="催收中" />
+            <el-option label="已收款" value="已收款" />
+            <el-option label="已作废" value="已作废" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="customerUnpaidReportQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="customerUnpaidReportQuery.keyword"
+            clearable
+            placeholder="报表单号/客户名称/客户编码/经办人"
+            style="width: 300px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="customerUnpaidReportQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="customerUnpaidReportQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadCustomerUnpaidReports">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetCustomerUnpaidReportFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="customerUnpaidReportError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="customerUnpaidReportError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无客户未收款报表查看权限" />
+      <template v-else>
+        <el-table
+          :data="customerUnpaidReportRows"
+          border
+          v-loading="customerUnpaidReportLoading"
+          empty-text="暂无客户未收款报表数据"
+        >
+          <el-table-column prop="report_no" label="报表单号" min-width="180" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="130" />
+          <el-table-column prop="customer_name" label="客户名称" min-width="160" />
+          <el-table-column prop="customer_code" label="客户编码" min-width="130" />
+          <el-table-column prop="currency" label="币种" width="90" />
+          <el-table-column label="应收金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.receivable_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="已收金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.received_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="未收金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.unpaid_amount) }}</template>
+          </el-table-column>
+          <el-table-column prop="overdue_days" label="逾期天数" width="110" />
+          <el-table-column label="催收状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="customerUnpaidCollectionTag(scope.row.collection_status)">
+                {{ scope.row.collection_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="due_date" label="应收日期" min-width="120" />
+          <el-table-column prop="last_collection_at" label="最近催收日期" min-width="130" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="180" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:customer-unpaid-report-collect"
+                data-guard-state="disabled"
+                @click="showGuardedAction('催收提示')"
+              >
+                催收提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:customer-unpaid-report-receive"
+                data-guard-state="disabled"
+                @click="showGuardedAction('确认收款提示')"
+              >
+                确认收款提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:customer-unpaid-report-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:customer-unpaid-report-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('结算校验')"
+              >
+                结算校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:customer-unpaid-report-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:customer-unpaid-report-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="customerUnpaidReportQuery.page"
+            :page-size="customerUnpaidReportQuery.page_size"
+            :total="customerUnpaidReportTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onCustomerUnpaidReportPageChange"
+            @size-change="onCustomerUnpaidReportSizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
+    <el-card
+      shadow="never"
+      class="customer-receivable-summary-section"
+      data-testid="customer-receivable-summary-section"
+    >
+      <template #header>
+        <div class="header-row">
+          <span>客户应收账款汇总表（TASK-Y64B-P1-03）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读客户应收账款汇总表语义映射"
+        description="对账确认、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="customer-receivable-summary-alert"
+      />
+
+      <el-form :inline="true" :model="customerReceivableSummaryQuery" class="customer-receivable-summary-filter-form">
+        <el-form-item label="汇总单号">
+          <el-input
+            v-model="customerReceivableSummaryQuery.summary_no"
+            clearable
+            placeholder="请输入汇总单号"
+          />
+        </el-form-item>
+        <el-form-item label="业务单号">
+          <el-input
+            v-model="customerReceivableSummaryQuery.statement_no"
+            clearable
+            placeholder="请输入关联业务单号"
+          />
+        </el-form-item>
+        <el-form-item label="客户名称">
+          <el-input
+            v-model="customerReceivableSummaryQuery.customer_name"
+            clearable
+            placeholder="请输入客户名称"
+          />
+        </el-form-item>
+        <el-form-item label="风险等级">
+          <el-select
+            v-model="customerReceivableSummaryQuery.risk_level"
+            clearable
+            placeholder="请选择风险等级"
+            style="width: 170px"
+          >
+            <el-option label="低风险" value="低风险" />
+            <el-option label="中风险" value="中风险" />
+            <el-option label="高风险" value="高风险" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="customerReceivableSummaryQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="customerReceivableSummaryQuery.keyword"
+            clearable
+            placeholder="汇总单号/客户名称/客户编码/经办人"
+            style="width: 320px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="customerReceivableSummaryQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="customerReceivableSummaryQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadCustomerReceivableSummaries">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetCustomerReceivableSummaryFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="customerReceivableSummaryError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="customerReceivableSummaryError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无客户应收账款汇总表查看权限" />
+      <template v-else>
+        <el-table
+          :data="customerReceivableSummaryRows"
+          border
+          v-loading="customerReceivableSummaryLoading"
+          empty-text="暂无客户应收账款汇总表数据"
+        >
+          <el-table-column prop="summary_no" label="汇总单号" min-width="180" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="130" />
+          <el-table-column prop="customer_name" label="客户名称" min-width="160" />
+          <el-table-column prop="customer_code" label="客户编码" min-width="130" />
+          <el-table-column prop="currency" label="币种" width="90" />
+          <el-table-column label="期初应收" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.opening_receivable) }}</template>
+          </el-table-column>
+          <el-table-column label="本期应收" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.current_receivable) }}</template>
+          </el-table-column>
+          <el-table-column label="本期已收" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.received_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="期末应收" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.ending_receivable) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄30天内" width="140">
+            <template #default="scope">{{ formatAmount(scope.row.aging_30) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄31-60天" width="140">
+            <template #default="scope">{{ formatAmount(scope.row.aging_60) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄90天以上" width="150">
+            <template #default="scope">{{ formatAmount(scope.row.aging_90_plus) }}</template>
+          </el-table-column>
+          <el-table-column label="风险等级" min-width="120">
+            <template #default="scope">
+              <el-tag :type="customerReceivableRiskTag(scope.row.risk_level)">
+                {{ scope.row.risk_level }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="summary_date" label="汇总日期" min-width="120" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="200" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:customer-receivable-summary-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('对账确认提示')"
+              >
+                对账确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:customer-receivable-summary-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:customer-receivable-summary-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('结算校验')"
+              >
+                结算校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:customer-receivable-summary-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:customer-receivable-summary-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="customerReceivableSummaryQuery.page"
+            :page-size="customerReceivableSummaryQuery.page_size"
+            :total="customerReceivableSummaryTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onCustomerReceivableSummaryPageChange"
+            @size-change="onCustomerReceivableSummarySizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
+    <el-card shadow="never" class="factory-evaluation-section" data-testid="factory-evaluation-section">
+      <template #header>
+        <div class="header-row">
+          <span>加工厂评估表（TASK-Y64B-P1-04）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读加工厂评估表语义映射"
+        description="评估确认、复核、评级调整、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="factory-evaluation-alert"
+      />
+
+      <el-form :inline="true" :model="factoryEvaluationQuery" class="factory-evaluation-filter-form">
+        <el-form-item label="评估单号">
+          <el-input v-model="factoryEvaluationQuery.evaluation_no" clearable placeholder="请输入评估单号" />
+        </el-form-item>
+        <el-form-item label="关联业务单号">
+          <el-input v-model="factoryEvaluationQuery.statement_no" clearable placeholder="请输入关联业务单号" />
+        </el-form-item>
+        <el-form-item label="加工厂名称">
+          <el-input v-model="factoryEvaluationQuery.factory_name" clearable placeholder="请输入加工厂名称" />
+        </el-form-item>
+        <el-form-item label="评估人">
+          <el-input v-model="factoryEvaluationQuery.assessor" clearable placeholder="请输入评估人" />
+        </el-form-item>
+        <el-form-item label="评分等级">
+          <el-select v-model="factoryEvaluationQuery.score_level" clearable placeholder="请选择评分等级" style="width: 170px">
+            <el-option label="A" value="A" />
+            <el-option label="B" value="B" />
+            <el-option label="C" value="C" />
+            <el-option label="D" value="D" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select v-model="factoryEvaluationQuery.review_status" clearable placeholder="请选择复核状态" style="width: 170px">
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="factoryEvaluationQuery.keyword"
+            clearable
+            placeholder="评估单号/加工厂名称/加工厂编码/经办人"
+            style="width: 320px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="factoryEvaluationQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="factoryEvaluationQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadFactoryEvaluations">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetFactoryEvaluationFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="factoryEvaluationError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="factoryEvaluationError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无加工厂评估表查看权限" />
+      <template v-else>
+        <el-table :data="factoryEvaluationRows" border v-loading="factoryEvaluationLoading" empty-text="暂无加工厂评估表数据">
+          <el-table-column prop="evaluation_no" label="评估单号" min-width="170" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="130" />
+          <el-table-column prop="supplier" label="供应商" min-width="140" />
+          <el-table-column prop="factory_name" label="加工厂名称" min-width="170" />
+          <el-table-column prop="factory_code" label="加工厂编码" min-width="130" />
+          <el-table-column prop="assessor" label="评估人" min-width="110" />
+          <el-table-column label="评分" width="100">
+            <template #default="scope">{{ scope.row.score }}</template>
+          </el-table-column>
+          <el-table-column label="评分等级" min-width="110">
+            <template #default="scope">
+              <el-tag :type="customerEvaluationScoreTag(scope.row.score_level)">
+                {{ scope.row.score_level }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="跟进状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="followUpStatusTag(scope.row.follow_up_status)">
+                {{ scope.row.follow_up_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="evaluation_date" label="评估日期" min-width="120" />
+          <el-table-column prop="expiry_date" label="有效截止" min-width="120" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:factory-evaluation-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('评估确认提示')"
+              >
+                评估确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:factory-evaluation-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:factory-evaluation-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('评级校验')"
+              >
+                评级校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:factory-evaluation-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:factory-evaluation-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="factoryEvaluationQuery.page"
+            :page-size="factoryEvaluationQuery.page_size"
+            :total="factoryEvaluationTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onFactoryEvaluationPageChange"
+            @size-change="onFactoryEvaluationSizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
+    <el-card
+      shadow="never"
+      class="factory-reconciliation-section"
+      data-testid="factory-reconciliation-section"
+    >
+      <template #header>
+        <div class="header-row">
+          <span>加工厂对账表（TASK-Y64B-P1-05）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读加工厂对账表语义映射"
+        description="对账确认、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="factory-reconciliation-alert"
+      />
+
+      <el-form :inline="true" :model="factoryReconciliationQuery" class="factory-reconciliation-filter-form">
+        <el-form-item label="对账单号">
+          <el-input v-model="factoryReconciliationQuery.reconciliation_no" clearable placeholder="请输入加工厂对账单号" />
+        </el-form-item>
+        <el-form-item label="关联业务单号">
+          <el-input v-model="factoryReconciliationQuery.statement_no" clearable placeholder="请输入关联业务单号" />
+        </el-form-item>
+        <el-form-item label="供应商">
+          <el-input v-model="factoryReconciliationQuery.supplier" clearable placeholder="请输入供应商名称" />
+        </el-form-item>
+        <el-form-item label="加工厂名称">
+          <el-input v-model="factoryReconciliationQuery.factory_name" clearable placeholder="请输入加工厂名称" />
+        </el-form-item>
+        <el-form-item label="对账状态">
+          <el-select
+            v-model="factoryReconciliationQuery.settlement_status"
+            clearable
+            placeholder="请选择对账状态"
+            style="width: 170px"
+          >
+            <el-option label="待对账" value="待对账" />
+            <el-option label="对账中" value="对账中" />
+            <el-option label="已对账" value="已对账" />
+            <el-option label="已作废" value="已作废" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="factoryReconciliationQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="factoryReconciliationQuery.keyword"
+            clearable
+            placeholder="对账单号/供应商/加工厂编码/经办人"
+            style="width: 320px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="factoryReconciliationQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="factoryReconciliationQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadFactoryReconciliations">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetFactoryReconciliationFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="factoryReconciliationError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="factoryReconciliationError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无加工厂对账表查看权限" />
+      <template v-else>
+        <el-table
+          :data="factoryReconciliationRows"
+          border
+          v-loading="factoryReconciliationLoading"
+          empty-text="暂无加工厂对账表数据"
+        >
+          <el-table-column prop="reconciliation_no" label="对账单号" min-width="170" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="130" />
+          <el-table-column prop="supplier" label="供应商" min-width="140" />
+          <el-table-column prop="factory_name" label="加工厂名称" min-width="170" />
+          <el-table-column prop="factory_code" label="加工厂编码" min-width="130" />
+          <el-table-column prop="currency" label="币种" width="90" />
+          <el-table-column label="对账金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.reconciliation_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="已结金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.settled_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="待结金额" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.pending_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="对账状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="factoryReconciliationSettlementTag(scope.row.settlement_status)">
+                {{ scope.row.settlement_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="跟进状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="followUpStatusTag(scope.row.follow_up_status)">
+                {{ scope.row.follow_up_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="reconciled_at" label="对账日期" min-width="120" />
+          <el-table-column prop="due_date" label="到期日期" min-width="120" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:factory-reconciliation-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('对账确认提示')"
+              >
+                对账确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:factory-reconciliation-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:factory-reconciliation-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('结算校验')"
+              >
+                结算校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:factory-reconciliation-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:factory-reconciliation-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="factoryReconciliationQuery.page"
+            :page-size="factoryReconciliationQuery.page_size"
+            :total="factoryReconciliationTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onFactoryReconciliationPageChange"
+            @size-change="onFactoryReconciliationSizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
     <el-dialog v-model="createVisible" title="创建加工厂对账单" width="680px">
         <el-form :model="createForm" label-width="120px">
           <el-form-item label="公司">
@@ -1079,11 +2165,21 @@ import {
   fetchFactoryStatementBankDeposits,
   fetchFactoryStatementBankWithdrawals,
   fetchFactoryStatementCustomerEvaluations,
+  fetchFactoryStatementFactoryEvaluations,
+  fetchFactoryStatementFactoryReconciliations,
+  fetchFactoryStatementCustomerReceivableSummaries,
+  fetchFactoryStatementCustomerReconciliations,
+  fetchFactoryStatementCustomerUnpaidReports,
   fetchFactoryStatementExpenseReimbursementPayments,
   fetchFactoryStatements,
   type FactoryStatementBankDepositItem,
   type FactoryStatementBankWithdrawalItem,
   type FactoryStatementCustomerEvaluationItem,
+  type FactoryStatementFactoryEvaluationItem,
+  type FactoryStatementFactoryReconciliationItem,
+  type FactoryStatementCustomerReceivableSummaryItem,
+  type FactoryStatementCustomerReconciliationItem,
+  type FactoryStatementCustomerUnpaidReportItem,
   type FactoryStatementCreatePayload,
   type FactoryStatementExpenseReimbursementPaymentItem,
   type FactoryStatementListItem,
@@ -1115,6 +2211,26 @@ const customerEvaluationLoading = ref<boolean>(false)
 const customerEvaluationError = ref<string>('')
 const customerEvaluationRows = ref<FactoryStatementCustomerEvaluationItem[]>([])
 const customerEvaluationTotal = ref<number>(0)
+const customerReconciliationLoading = ref<boolean>(false)
+const customerReconciliationError = ref<string>('')
+const customerReconciliationRows = ref<FactoryStatementCustomerReconciliationItem[]>([])
+const customerReconciliationTotal = ref<number>(0)
+const customerUnpaidReportLoading = ref<boolean>(false)
+const customerUnpaidReportError = ref<string>('')
+const customerUnpaidReportRows = ref<FactoryStatementCustomerUnpaidReportItem[]>([])
+const customerUnpaidReportTotal = ref<number>(0)
+const customerReceivableSummaryLoading = ref<boolean>(false)
+const customerReceivableSummaryError = ref<string>('')
+const customerReceivableSummaryRows = ref<FactoryStatementCustomerReceivableSummaryItem[]>([])
+const customerReceivableSummaryTotal = ref<number>(0)
+const factoryEvaluationLoading = ref<boolean>(false)
+const factoryEvaluationError = ref<string>('')
+const factoryEvaluationRows = ref<FactoryStatementFactoryEvaluationItem[]>([])
+const factoryEvaluationTotal = ref<number>(0)
+const factoryReconciliationLoading = ref<boolean>(false)
+const factoryReconciliationError = ref<string>('')
+const factoryReconciliationRows = ref<FactoryStatementFactoryReconciliationItem[]>([])
+const factoryReconciliationTotal = ref<number>(0)
 
 const P1_READONLY_MODE = true
 const readonlyWriteHint = '当前为只读对账视图，已禁用写动作'
@@ -1188,6 +2304,73 @@ const customerEvaluationQuery = reactive({
   customer_name: '',
   assessor: '',
   score_level: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const customerReconciliationQuery = reactive({
+  reconciliation_no: '',
+  statement_no: '',
+  customer_name: '',
+  settlement_status: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const customerUnpaidReportQuery = reactive({
+  report_no: '',
+  statement_no: '',
+  customer_name: '',
+  collection_status: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const customerReceivableSummaryQuery = reactive({
+  summary_no: '',
+  statement_no: '',
+  customer_name: '',
+  risk_level: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const factoryEvaluationQuery = reactive({
+  evaluation_no: '',
+  statement_no: '',
+  factory_name: '',
+  assessor: '',
+  score_level: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const factoryReconciliationQuery = reactive({
+  reconciliation_no: '',
+  statement_no: '',
+  supplier: '',
+  factory_name: '',
+  settlement_status: '',
   review_status: '',
   keyword: '',
   from_date: '',
@@ -1474,6 +2657,75 @@ const customerEvaluationScoreTag = (level: string | null | undefined): 'success'
   return 'info'
 }
 
+const customerReconciliationSettlementTag = (
+  status: string | null | undefined,
+): 'warning' | 'success' | 'danger' | 'info' => {
+  if (status === '待结算') {
+    return 'warning'
+  }
+  if (status === '结算中') {
+    return 'info'
+  }
+  if (status === '已结算') {
+    return 'success'
+  }
+  if (status === '已作废') {
+    return 'danger'
+  }
+  return 'info'
+}
+
+const customerUnpaidCollectionTag = (
+  status: string | null | undefined,
+): 'warning' | 'success' | 'danger' | 'info' => {
+  if (status === '待催收') {
+    return 'warning'
+  }
+  if (status === '催收中') {
+    return 'info'
+  }
+  if (status === '已收款') {
+    return 'success'
+  }
+  if (status === '已作废') {
+    return 'danger'
+  }
+  return 'info'
+}
+
+const factoryReconciliationSettlementTag = (
+  status: string | null | undefined,
+): 'warning' | 'success' | 'danger' | 'info' => {
+  if (status === '待对账') {
+    return 'warning'
+  }
+  if (status === '对账中') {
+    return 'info'
+  }
+  if (status === '已对账') {
+    return 'success'
+  }
+  if (status === '已作废') {
+    return 'danger'
+  }
+  return 'info'
+}
+
+const customerReceivableRiskTag = (
+  riskLevel: string | null | undefined,
+): 'warning' | 'success' | 'danger' | 'info' => {
+  if (riskLevel === '高风险') {
+    return 'danger'
+  }
+  if (riskLevel === '中风险') {
+    return 'warning'
+  }
+  if (riskLevel === '低风险') {
+    return 'success'
+  }
+  return 'info'
+}
+
 const buildIdempotencyKey = (prefix: string): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `${prefix}-${crypto.randomUUID()}`
@@ -1563,6 +2815,36 @@ const resetCustomerEvaluationRows = (): void => {
   customerEvaluationRows.value = []
   customerEvaluationTotal.value = 0
   customerEvaluationError.value = ''
+}
+
+const resetCustomerReconciliationRows = (): void => {
+  customerReconciliationRows.value = []
+  customerReconciliationTotal.value = 0
+  customerReconciliationError.value = ''
+}
+
+const resetCustomerUnpaidReportRows = (): void => {
+  customerUnpaidReportRows.value = []
+  customerUnpaidReportTotal.value = 0
+  customerUnpaidReportError.value = ''
+}
+
+const resetCustomerReceivableSummaryRows = (): void => {
+  customerReceivableSummaryRows.value = []
+  customerReceivableSummaryTotal.value = 0
+  customerReceivableSummaryError.value = ''
+}
+
+const resetFactoryEvaluationRows = (): void => {
+  factoryEvaluationRows.value = []
+  factoryEvaluationTotal.value = 0
+  factoryEvaluationError.value = ''
+}
+
+const resetFactoryReconciliationRows = (): void => {
+  factoryReconciliationRows.value = []
+  factoryReconciliationTotal.value = 0
+  factoryReconciliationError.value = ''
 }
 
 const applySampleFilters = (): void => {
@@ -1741,6 +3023,168 @@ const loadCustomerEvaluations = async (): Promise<void> => {
   }
 }
 
+const loadCustomerReconciliations = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetCustomerReconciliationRows()
+    return
+  }
+
+  customerReconciliationLoading.value = true
+  customerReconciliationError.value = ''
+  try {
+    const result = await fetchFactoryStatementCustomerReconciliations({
+      reconciliation_no: customerReconciliationQuery.reconciliation_no.trim() || undefined,
+      statement_no: customerReconciliationQuery.statement_no.trim() || undefined,
+      customer_name: customerReconciliationQuery.customer_name.trim() || undefined,
+      settlement_status: customerReconciliationQuery.settlement_status || undefined,
+      review_status: customerReconciliationQuery.review_status || undefined,
+      keyword: customerReconciliationQuery.keyword.trim() || undefined,
+      from_date: customerReconciliationQuery.from_date || undefined,
+      to_date: customerReconciliationQuery.to_date || undefined,
+      page: customerReconciliationQuery.page,
+      page_size: customerReconciliationQuery.page_size,
+    })
+    customerReconciliationRows.value = result.data.items
+    customerReconciliationTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    customerReconciliationError.value = `客户对账表加载失败：${message}`
+    ElMessage.error(customerReconciliationError.value)
+  } finally {
+    customerReconciliationLoading.value = false
+  }
+}
+
+const loadCustomerUnpaidReports = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetCustomerUnpaidReportRows()
+    return
+  }
+
+  customerUnpaidReportLoading.value = true
+  customerUnpaidReportError.value = ''
+  try {
+    const result = await fetchFactoryStatementCustomerUnpaidReports({
+      report_no: customerUnpaidReportQuery.report_no.trim() || undefined,
+      statement_no: customerUnpaidReportQuery.statement_no.trim() || undefined,
+      customer_name: customerUnpaidReportQuery.customer_name.trim() || undefined,
+      collection_status: customerUnpaidReportQuery.collection_status || undefined,
+      review_status: customerUnpaidReportQuery.review_status || undefined,
+      keyword: customerUnpaidReportQuery.keyword.trim() || undefined,
+      from_date: customerUnpaidReportQuery.from_date || undefined,
+      to_date: customerUnpaidReportQuery.to_date || undefined,
+      page: customerUnpaidReportQuery.page,
+      page_size: customerUnpaidReportQuery.page_size,
+    })
+    customerUnpaidReportRows.value = result.data.items
+    customerUnpaidReportTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    customerUnpaidReportError.value = `客户未收款报表加载失败：${message}`
+    ElMessage.error(customerUnpaidReportError.value)
+  } finally {
+    customerUnpaidReportLoading.value = false
+  }
+}
+
+const loadCustomerReceivableSummaries = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetCustomerReceivableSummaryRows()
+    return
+  }
+
+  customerReceivableSummaryLoading.value = true
+  customerReceivableSummaryError.value = ''
+  try {
+    const result = await fetchFactoryStatementCustomerReceivableSummaries({
+      summary_no: customerReceivableSummaryQuery.summary_no.trim() || undefined,
+      statement_no: customerReceivableSummaryQuery.statement_no.trim() || undefined,
+      customer_name: customerReceivableSummaryQuery.customer_name.trim() || undefined,
+      risk_level: customerReceivableSummaryQuery.risk_level || undefined,
+      review_status: customerReceivableSummaryQuery.review_status || undefined,
+      keyword: customerReceivableSummaryQuery.keyword.trim() || undefined,
+      from_date: customerReceivableSummaryQuery.from_date || undefined,
+      to_date: customerReceivableSummaryQuery.to_date || undefined,
+      page: customerReceivableSummaryQuery.page,
+      page_size: customerReceivableSummaryQuery.page_size,
+    })
+    customerReceivableSummaryRows.value = result.data.items
+    customerReceivableSummaryTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    customerReceivableSummaryError.value = `客户应收账款汇总表加载失败：${message}`
+    ElMessage.error(customerReceivableSummaryError.value)
+  } finally {
+    customerReceivableSummaryLoading.value = false
+  }
+}
+
+const loadFactoryEvaluations = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetFactoryEvaluationRows()
+    return
+  }
+
+  factoryEvaluationLoading.value = true
+  factoryEvaluationError.value = ''
+  try {
+    const result = await fetchFactoryStatementFactoryEvaluations({
+      evaluation_no: factoryEvaluationQuery.evaluation_no.trim() || undefined,
+      statement_no: factoryEvaluationQuery.statement_no.trim() || undefined,
+      factory_name: factoryEvaluationQuery.factory_name.trim() || undefined,
+      assessor: factoryEvaluationQuery.assessor.trim() || undefined,
+      score_level: factoryEvaluationQuery.score_level || undefined,
+      review_status: factoryEvaluationQuery.review_status || undefined,
+      keyword: factoryEvaluationQuery.keyword.trim() || undefined,
+      from_date: factoryEvaluationQuery.from_date || undefined,
+      to_date: factoryEvaluationQuery.to_date || undefined,
+      page: factoryEvaluationQuery.page,
+      page_size: factoryEvaluationQuery.page_size,
+    })
+    factoryEvaluationRows.value = result.data.items
+    factoryEvaluationTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    factoryEvaluationError.value = `加工厂评估表加载失败：${message}`
+    ElMessage.error(factoryEvaluationError.value)
+  } finally {
+    factoryEvaluationLoading.value = false
+  }
+}
+
+const loadFactoryReconciliations = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetFactoryReconciliationRows()
+    return
+  }
+
+  factoryReconciliationLoading.value = true
+  factoryReconciliationError.value = ''
+  try {
+    const result = await fetchFactoryStatementFactoryReconciliations({
+      reconciliation_no: factoryReconciliationQuery.reconciliation_no.trim() || undefined,
+      statement_no: factoryReconciliationQuery.statement_no.trim() || undefined,
+      supplier: factoryReconciliationQuery.supplier.trim() || undefined,
+      factory_name: factoryReconciliationQuery.factory_name.trim() || undefined,
+      settlement_status: factoryReconciliationQuery.settlement_status || undefined,
+      review_status: factoryReconciliationQuery.review_status || undefined,
+      keyword: factoryReconciliationQuery.keyword.trim() || undefined,
+      from_date: factoryReconciliationQuery.from_date || undefined,
+      to_date: factoryReconciliationQuery.to_date || undefined,
+      page: factoryReconciliationQuery.page,
+      page_size: factoryReconciliationQuery.page_size,
+    })
+    factoryReconciliationRows.value = result.data.items
+    factoryReconciliationTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    factoryReconciliationError.value = `加工厂对账表加载失败：${message}`
+    ElMessage.error(factoryReconciliationError.value)
+  } finally {
+    factoryReconciliationLoading.value = false
+  }
+}
+
 const goDetail = (statementId: number): void => {
   router.push({ path: '/factory-statements/detail', query: { id: String(statementId) } })
 }
@@ -1820,6 +3264,73 @@ const resetCustomerEvaluationFilters = async (): Promise<void> => {
   await loadCustomerEvaluations()
 }
 
+const resetCustomerReconciliationFilters = async (): Promise<void> => {
+  customerReconciliationQuery.reconciliation_no = ''
+  customerReconciliationQuery.statement_no = ''
+  customerReconciliationQuery.customer_name = ''
+  customerReconciliationQuery.settlement_status = ''
+  customerReconciliationQuery.review_status = ''
+  customerReconciliationQuery.keyword = ''
+  customerReconciliationQuery.from_date = ''
+  customerReconciliationQuery.to_date = ''
+  customerReconciliationQuery.page = 1
+  await loadCustomerReconciliations()
+}
+
+const resetCustomerUnpaidReportFilters = async (): Promise<void> => {
+  customerUnpaidReportQuery.report_no = ''
+  customerUnpaidReportQuery.statement_no = ''
+  customerUnpaidReportQuery.customer_name = ''
+  customerUnpaidReportQuery.collection_status = ''
+  customerUnpaidReportQuery.review_status = ''
+  customerUnpaidReportQuery.keyword = ''
+  customerUnpaidReportQuery.from_date = ''
+  customerUnpaidReportQuery.to_date = ''
+  customerUnpaidReportQuery.page = 1
+  await loadCustomerUnpaidReports()
+}
+
+const resetCustomerReceivableSummaryFilters = async (): Promise<void> => {
+  customerReceivableSummaryQuery.summary_no = ''
+  customerReceivableSummaryQuery.statement_no = ''
+  customerReceivableSummaryQuery.customer_name = ''
+  customerReceivableSummaryQuery.risk_level = ''
+  customerReceivableSummaryQuery.review_status = ''
+  customerReceivableSummaryQuery.keyword = ''
+  customerReceivableSummaryQuery.from_date = ''
+  customerReceivableSummaryQuery.to_date = ''
+  customerReceivableSummaryQuery.page = 1
+  await loadCustomerReceivableSummaries()
+}
+
+const resetFactoryEvaluationFilters = async (): Promise<void> => {
+  factoryEvaluationQuery.evaluation_no = ''
+  factoryEvaluationQuery.statement_no = ''
+  factoryEvaluationQuery.factory_name = ''
+  factoryEvaluationQuery.assessor = ''
+  factoryEvaluationQuery.score_level = ''
+  factoryEvaluationQuery.review_status = ''
+  factoryEvaluationQuery.keyword = ''
+  factoryEvaluationQuery.from_date = ''
+  factoryEvaluationQuery.to_date = ''
+  factoryEvaluationQuery.page = 1
+  await loadFactoryEvaluations()
+}
+
+const resetFactoryReconciliationFilters = async (): Promise<void> => {
+  factoryReconciliationQuery.reconciliation_no = ''
+  factoryReconciliationQuery.statement_no = ''
+  factoryReconciliationQuery.supplier = ''
+  factoryReconciliationQuery.factory_name = ''
+  factoryReconciliationQuery.settlement_status = ''
+  factoryReconciliationQuery.review_status = ''
+  factoryReconciliationQuery.keyword = ''
+  factoryReconciliationQuery.from_date = ''
+  factoryReconciliationQuery.to_date = ''
+  factoryReconciliationQuery.page = 1
+  await loadFactoryReconciliations()
+}
+
 const onExpensePaymentPageChange = (page: number): void => {
   expensePaymentQuery.page = page
   loadExpenseReimbursementPayments()
@@ -1864,6 +3375,61 @@ const onCustomerEvaluationSizeChange = (size: number): void => {
   loadCustomerEvaluations()
 }
 
+const onCustomerReconciliationPageChange = (page: number): void => {
+  customerReconciliationQuery.page = page
+  loadCustomerReconciliations()
+}
+
+const onCustomerReconciliationSizeChange = (size: number): void => {
+  customerReconciliationQuery.page_size = size
+  customerReconciliationQuery.page = 1
+  loadCustomerReconciliations()
+}
+
+const onCustomerUnpaidReportPageChange = (page: number): void => {
+  customerUnpaidReportQuery.page = page
+  loadCustomerUnpaidReports()
+}
+
+const onCustomerUnpaidReportSizeChange = (size: number): void => {
+  customerUnpaidReportQuery.page_size = size
+  customerUnpaidReportQuery.page = 1
+  loadCustomerUnpaidReports()
+}
+
+const onCustomerReceivableSummaryPageChange = (page: number): void => {
+  customerReceivableSummaryQuery.page = page
+  loadCustomerReceivableSummaries()
+}
+
+const onCustomerReceivableSummarySizeChange = (size: number): void => {
+  customerReceivableSummaryQuery.page_size = size
+  customerReceivableSummaryQuery.page = 1
+  loadCustomerReceivableSummaries()
+}
+
+const onFactoryEvaluationPageChange = (page: number): void => {
+  factoryEvaluationQuery.page = page
+  loadFactoryEvaluations()
+}
+
+const onFactoryEvaluationSizeChange = (size: number): void => {
+  factoryEvaluationQuery.page_size = size
+  factoryEvaluationQuery.page = 1
+  loadFactoryEvaluations()
+}
+
+const onFactoryReconciliationPageChange = (page: number): void => {
+  factoryReconciliationQuery.page = page
+  loadFactoryReconciliations()
+}
+
+const onFactoryReconciliationSizeChange = (size: number): void => {
+  factoryReconciliationQuery.page_size = size
+  factoryReconciliationQuery.page = 1
+  loadFactoryReconciliations()
+}
+
 onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
@@ -1878,6 +3444,11 @@ onMounted(async () => {
     await loadBankDeposits()
     await loadBankWithdrawals()
     await loadCustomerEvaluations()
+    await loadCustomerReconciliations()
+    await loadCustomerUnpaidReports()
+    await loadCustomerReceivableSummaries()
+    await loadFactoryEvaluations()
+    await loadFactoryReconciliations()
   }
 })
 </script>
@@ -1932,6 +3503,46 @@ onMounted(async () => {
 }
 
 .customer-evaluation-alert {
+  margin-bottom: 12px;
+}
+
+.customer-reconciliation-filter-form {
+  margin-top: 8px;
+}
+
+.customer-reconciliation-alert {
+  margin-bottom: 12px;
+}
+
+.customer-unpaid-report-filter-form {
+  margin-top: 8px;
+}
+
+.customer-unpaid-report-alert {
+  margin-bottom: 12px;
+}
+
+.customer-receivable-summary-filter-form {
+  margin-top: 8px;
+}
+
+.customer-receivable-summary-alert {
+  margin-bottom: 12px;
+}
+
+.factory-evaluation-filter-form {
+  margin-top: 8px;
+}
+
+.factory-evaluation-alert {
+  margin-bottom: 12px;
+}
+
+.factory-reconciliation-filter-form {
+  margin-top: 8px;
+}
+
+.factory-reconciliation-alert {
   margin-bottom: 12px;
 }
 

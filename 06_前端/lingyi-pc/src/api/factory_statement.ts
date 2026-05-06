@@ -204,6 +204,204 @@ export interface FactoryStatementCustomerEvaluationData {
   page_size: number
 }
 
+export interface FactoryStatementCustomerReconciliationQuery {
+  reconciliation_no?: string
+  statement_no?: string
+  customer_name?: string
+  settlement_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementCustomerReconciliationItem {
+  reconciliation_no: string
+  statement_no: string
+  company: string
+  customer_name: string
+  customer_code: string
+  currency: string
+  receivable_amount: NumericLike
+  settled_amount: NumericLike
+  pending_amount: NumericLike
+  settlement_status: string
+  review_status: string
+  due_date: string
+  reconciled_at: string
+  owner: string
+  remark: string
+}
+
+export interface FactoryStatementCustomerReconciliationData {
+  items: FactoryStatementCustomerReconciliationItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FactoryStatementCustomerUnpaidReportQuery {
+  report_no?: string
+  statement_no?: string
+  customer_name?: string
+  collection_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementCustomerUnpaidReportItem {
+  report_no: string
+  statement_no: string
+  company: string
+  customer_name: string
+  customer_code: string
+  currency: string
+  receivable_amount: NumericLike
+  received_amount: NumericLike
+  unpaid_amount: NumericLike
+  overdue_days: number
+  collection_status: string
+  review_status: string
+  due_date: string
+  last_collection_at: string
+  owner: string
+  remark: string
+}
+
+export interface FactoryStatementCustomerUnpaidReportData {
+  items: FactoryStatementCustomerUnpaidReportItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FactoryStatementCustomerReceivableSummaryQuery {
+  summary_no?: string
+  statement_no?: string
+  customer_name?: string
+  risk_level?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementCustomerReceivableSummaryItem {
+  summary_no: string
+  statement_no: string
+  company: string
+  customer_name: string
+  customer_code: string
+  currency: string
+  opening_receivable: NumericLike
+  current_receivable: NumericLike
+  received_amount: NumericLike
+  ending_receivable: NumericLike
+  aging_30: NumericLike
+  aging_60: NumericLike
+  aging_90_plus: NumericLike
+  risk_level: string
+  review_status: string
+  summary_date: string
+  owner: string
+  remark: string
+}
+
+export interface FactoryStatementCustomerReceivableSummaryData {
+  items: FactoryStatementCustomerReceivableSummaryItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FactoryStatementFactoryEvaluationQuery {
+  evaluation_no?: string
+  statement_no?: string
+  factory_name?: string
+  assessor?: string
+  score_level?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementFactoryEvaluationItem {
+  evaluation_no: string
+  statement_no: string
+  company: string
+  supplier: string
+  factory_name: string
+  factory_code: string
+  assessor: string
+  score: NumericLike
+  score_level: string
+  review_status: string
+  follow_up_status: string
+  evaluation_date: string
+  expiry_date: string
+  owner: string
+  remark: string
+}
+
+export interface FactoryStatementFactoryEvaluationData {
+  items: FactoryStatementFactoryEvaluationItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FactoryStatementFactoryReconciliationQuery {
+  reconciliation_no?: string
+  statement_no?: string
+  supplier?: string
+  factory_name?: string
+  settlement_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FactoryStatementFactoryReconciliationItem {
+  reconciliation_no: string
+  statement_no: string
+  company: string
+  supplier: string
+  factory_name: string
+  factory_code: string
+  currency: string
+  reconciliation_amount: NumericLike
+  settled_amount: NumericLike
+  pending_amount: NumericLike
+  settlement_status: string
+  review_status: string
+  follow_up_status: string
+  reconciled_at: string
+  due_date: string
+  owner: string
+  remark: string
+}
+
+export interface FactoryStatementFactoryReconciliationData {
+  items: FactoryStatementFactoryReconciliationItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface FactoryStatementDetailItem {
   id: number
   line_no: number
@@ -448,6 +646,102 @@ export const fetchFactoryStatementCustomerEvaluations = async (
     page_size: query.page_size ?? 20,
   })
   return request<FactoryStatementCustomerEvaluationData>(`/api/factory-statements/customer-evaluations?${queryString}`)
+}
+
+export const fetchFactoryStatementCustomerReconciliations = async (
+  query: FactoryStatementCustomerReconciliationQuery,
+): Promise<ApiResponse<FactoryStatementCustomerReconciliationData>> => {
+  const queryString = toQuery({
+    reconciliation_no: query.reconciliation_no,
+    statement_no: query.statement_no,
+    customer_name: query.customer_name,
+    settlement_status: query.settlement_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementCustomerReconciliationData>(`/api/factory-statements/customer-reconciliations?${queryString}`)
+}
+
+export const fetchFactoryStatementCustomerUnpaidReports = async (
+  query: FactoryStatementCustomerUnpaidReportQuery,
+): Promise<ApiResponse<FactoryStatementCustomerUnpaidReportData>> => {
+  const queryString = toQuery({
+    report_no: query.report_no,
+    statement_no: query.statement_no,
+    customer_name: query.customer_name,
+    collection_status: query.collection_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementCustomerUnpaidReportData>(`/api/factory-statements/customer-unpaid-reports?${queryString}`)
+}
+
+export const fetchFactoryStatementCustomerReceivableSummaries = async (
+  query: FactoryStatementCustomerReceivableSummaryQuery,
+): Promise<ApiResponse<FactoryStatementCustomerReceivableSummaryData>> => {
+  const queryString = toQuery({
+    summary_no: query.summary_no,
+    statement_no: query.statement_no,
+    customer_name: query.customer_name,
+    risk_level: query.risk_level,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementCustomerReceivableSummaryData>(
+    `/api/factory-statements/customer-receivable-summaries?${queryString}`,
+  )
+}
+
+export const fetchFactoryStatementFactoryEvaluations = async (
+  query: FactoryStatementFactoryEvaluationQuery,
+): Promise<ApiResponse<FactoryStatementFactoryEvaluationData>> => {
+  const queryString = toQuery({
+    evaluation_no: query.evaluation_no,
+    statement_no: query.statement_no,
+    factory_name: query.factory_name,
+    assessor: query.assessor,
+    score_level: query.score_level,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementFactoryEvaluationData>(`/api/factory-statements/factory-evaluations?${queryString}`)
+}
+
+export const fetchFactoryStatementFactoryReconciliations = async (
+  query: FactoryStatementFactoryReconciliationQuery,
+): Promise<ApiResponse<FactoryStatementFactoryReconciliationData>> => {
+  const queryString = toQuery({
+    reconciliation_no: query.reconciliation_no,
+    statement_no: query.statement_no,
+    supplier: query.supplier,
+    factory_name: query.factory_name,
+    settlement_status: query.settlement_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FactoryStatementFactoryReconciliationData>(
+    `/api/factory-statements/factory-reconciliations?${queryString}`,
+  )
 }
 
 export const fetchFactoryStatementDetail = async (
