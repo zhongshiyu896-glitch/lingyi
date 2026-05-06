@@ -339,6 +339,146 @@ class FinishedGoodsOtherInboundData(BaseModel):
     page_size: int
 
 
+class CustomerReturnApplicationItem(BaseModel):
+    """Read-only customer return application row."""
+
+    application_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    requested_return_qty: Decimal
+    confirmed_return_qty: Decimal
+    pending_return_qty: Decimal
+    application_status: str
+    approval_status: str
+    application_date: date
+    source_doc_no: str
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class CustomerReturnApplicationData(BaseModel):
+    """Read-only customer return application response."""
+
+    items: list[CustomerReturnApplicationItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class CustomerReturnInboundItem(BaseModel):
+    """Read-only customer return inbound row."""
+
+    inbound_no: str
+    application_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    planned_inbound_qty: Decimal
+    actual_inbound_qty: Decimal
+    pending_inbound_qty: Decimal
+    inbound_status: str
+    review_status: str
+    inbound_date: date
+    source_doc_no: str
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class CustomerReturnInboundData(BaseModel):
+    """Read-only customer return inbound response."""
+
+    items: list[CustomerReturnInboundItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FinishedGoodsOtherOutboundItem(BaseModel):
+    """Read-only finished goods other outbound row."""
+
+    outbound_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    planned_outbound_qty: Decimal
+    actual_outbound_qty: Decimal
+    pending_outbound_qty: Decimal
+    outbound_status: str
+    review_status: str
+    outbound_date: date
+    source_doc_no: str
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class FinishedGoodsOtherOutboundData(BaseModel):
+    """Read-only finished goods other outbound response."""
+
+    items: list[FinishedGoodsOtherOutboundItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FinishedGoodsCountItem(BaseModel):
+    """Read-only finished goods count row."""
+
+    count_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    book_qty: Decimal
+    counted_qty: Decimal
+    diff_qty: Decimal
+    count_status: str
+    review_status: str
+    count_date: date
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class FinishedGoodsCountData(BaseModel):
+    """Read-only finished goods count response."""
+
+    items: list[FinishedGoodsCountItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FinishedGoodsAdjustmentItem(BaseModel):
+    """Read-only finished goods adjustment row."""
+
+    adjustment_no: str
+    item_code: str
+    item_name: str
+    warehouse: str
+    before_qty: Decimal
+    adjusted_qty: Decimal
+    diff_qty: Decimal
+    adjustment_status: str
+    review_status: str
+    adjustment_date: date
+    adjust_reason: str
+    owner: str
+    ref_no: str
+    company: str | None = None
+
+
+class FinishedGoodsAdjustmentData(BaseModel):
+    """Read-only finished goods adjustment response."""
+
+    items: list[FinishedGoodsAdjustmentItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class FinishedGoodsReportItem(BaseModel):
     """Read-only finished goods in/out report row."""
 

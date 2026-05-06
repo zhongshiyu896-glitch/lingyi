@@ -7,6 +7,16 @@ from decimal import Decimal
 from typing import Any
 
 from app.schemas.sales_inventory import CustomerItem
+from app.schemas.sales_inventory import CustomerReturnApplicationData
+from app.schemas.sales_inventory import CustomerReturnApplicationItem
+from app.schemas.sales_inventory import CustomerReturnInboundData
+from app.schemas.sales_inventory import CustomerReturnInboundItem
+from app.schemas.sales_inventory import FinishedGoodsOtherOutboundData
+from app.schemas.sales_inventory import FinishedGoodsOtherOutboundItem
+from app.schemas.sales_inventory import FinishedGoodsCountData
+from app.schemas.sales_inventory import FinishedGoodsCountItem
+from app.schemas.sales_inventory import FinishedGoodsAdjustmentData
+from app.schemas.sales_inventory import FinishedGoodsAdjustmentItem
 from app.schemas.sales_inventory import FinishedGoodsReservedInboundData
 from app.schemas.sales_inventory import FinishedGoodsReservedInboundItem
 from app.schemas.sales_inventory import FinishedGoodsOtherInboundData
@@ -1347,7 +1357,7 @@ class SalesInventoryService:
         keyword: str | None,
         page: int,
         page_size: int,
-    ) -> FinishedGoodsReportData:
+        ) -> FinishedGoodsReportData:
         normalized_no = self._text(no)
         normalized_style = self._text(style)
         normalized_keyword = self._text(keyword)
@@ -1436,6 +1446,775 @@ class SalesInventoryService:
             page=page,
             page_size=page_size,
             dropped_count=0,
+        )
+
+    def get_customer_return_applications(
+        self,
+        *,
+        application_no: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        application_status: str | None,
+        approval_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> CustomerReturnApplicationData:
+        normalized_application_no = self._text(application_no)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_application_status = self._text(application_status)
+        normalized_approval_status = self._text(approval_status)
+        normalized_keyword = self._text(keyword)
+
+        seed_rows = [
+            {
+                "application_no": "CRA-2026-0501",
+                "item_code": "FG-HOODIE-101",
+                "item_name": "连帽卫衣成品",
+                "warehouse": "成品主仓",
+                "requested_return_qty": Decimal("42"),
+                "confirmed_return_qty": Decimal("20"),
+                "pending_return_qty": Decimal("22"),
+                "application_status": "已受理",
+                "approval_status": "待复核",
+                "application_date": date(2026, 5, 1),
+                "source_doc_no": "SO-2026-0408",
+                "owner": "李佳琳",
+                "ref_no": "RET-REQ-2026-0501",
+                "company": "凌云服饰",
+            },
+            {
+                "application_no": "CRA-2026-0502",
+                "item_code": "FG-TRENCH-205",
+                "item_name": "风衣成品",
+                "warehouse": "成品发货A仓",
+                "requested_return_qty": Decimal("18"),
+                "confirmed_return_qty": Decimal("18"),
+                "pending_return_qty": Decimal("0"),
+                "application_status": "已确认",
+                "approval_status": "已通过",
+                "application_date": date(2026, 5, 2),
+                "source_doc_no": "SO-2026-0411",
+                "owner": "周晨",
+                "ref_no": "RET-REQ-2026-0502",
+                "company": "凌云服饰",
+            },
+            {
+                "application_no": "CRA-2026-0503",
+                "item_code": "FG-SKIRT-318",
+                "item_name": "百褶半裙成品",
+                "warehouse": "成品主仓",
+                "requested_return_qty": Decimal("30"),
+                "confirmed_return_qty": Decimal("0"),
+                "pending_return_qty": Decimal("30"),
+                "application_status": "草稿",
+                "approval_status": "未开始",
+                "application_date": date(2026, 5, 3),
+                "source_doc_no": "SO-2026-0413",
+                "owner": "吴静怡",
+                "ref_no": "RET-REQ-2026-0503",
+                "company": "凌云服饰",
+            },
+            {
+                "application_no": "CRA-2026-0504",
+                "item_code": "FG-PANTS-052",
+                "item_name": "休闲长裤成品",
+                "warehouse": "成品发货B仓",
+                "requested_return_qty": Decimal("24"),
+                "confirmed_return_qty": Decimal("12"),
+                "pending_return_qty": Decimal("12"),
+                "application_status": "已受理",
+                "approval_status": "复核中",
+                "application_date": date(2026, 5, 4),
+                "source_doc_no": "SO-2026-0416",
+                "owner": "邵伟",
+                "ref_no": "RET-REQ-2026-0504",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_application_no and row["application_no"] != normalized_application_no:
+                continue
+            if normalized_item_code and row["item_code"] != normalized_item_code:
+                continue
+            if normalized_warehouse and row["warehouse"] != normalized_warehouse:
+                continue
+            if normalized_application_status and row["application_status"] != normalized_application_status:
+                continue
+            if normalized_approval_status and row["approval_status"] != normalized_approval_status:
+                continue
+            if from_date and row["application_date"] < from_date:
+                continue
+            if to_date and row["application_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["application_no"],
+                        row["item_code"],
+                        row["item_name"],
+                        row["warehouse"],
+                        row["application_status"],
+                        row["approval_status"],
+                        row["source_doc_no"],
+                        row["owner"],
+                        row["ref_no"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["application_date"], entry["application_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return CustomerReturnApplicationData(
+            items=[
+                CustomerReturnApplicationItem(
+                    application_no=row["application_no"],
+                    item_code=row["item_code"],
+                    item_name=row["item_name"],
+                    warehouse=row["warehouse"],
+                    requested_return_qty=row["requested_return_qty"],
+                    confirmed_return_qty=row["confirmed_return_qty"],
+                    pending_return_qty=row["pending_return_qty"],
+                    application_status=row["application_status"],
+                    approval_status=row["approval_status"],
+                    application_date=row["application_date"],
+                    source_doc_no=row["source_doc_no"],
+                    owner=row["owner"],
+                    ref_no=row["ref_no"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_customer_return_inbound(
+        self,
+        *,
+        inbound_no: str | None,
+        application_no: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        inbound_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> CustomerReturnInboundData:
+        normalized_inbound_no = self._text(inbound_no)
+        normalized_application_no = self._text(application_no)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_inbound_status = self._text(inbound_status)
+        normalized_review_status = self._text(review_status)
+        normalized_keyword = self._text(keyword)
+
+        seed_rows = [
+            {
+                "inbound_no": "CRI-2026-0501",
+                "application_no": "CRA-2026-0501",
+                "item_code": "FG-HOODIE-101",
+                "item_name": "连帽卫衣成品",
+                "warehouse": "成品主仓",
+                "planned_inbound_qty": Decimal("20"),
+                "actual_inbound_qty": Decimal("10"),
+                "pending_inbound_qty": Decimal("10"),
+                "inbound_status": "待入仓",
+                "review_status": "待复核",
+                "inbound_date": date(2026, 5, 1),
+                "source_doc_no": "RET-IN-2026-0501",
+                "owner": "李佳琳",
+                "ref_no": "RET-INB-2026-0501",
+                "company": "凌云服饰",
+            },
+            {
+                "inbound_no": "CRI-2026-0502",
+                "application_no": "CRA-2026-0502",
+                "item_code": "FG-TRENCH-205",
+                "item_name": "风衣成品",
+                "warehouse": "成品发货A仓",
+                "planned_inbound_qty": Decimal("18"),
+                "actual_inbound_qty": Decimal("18"),
+                "pending_inbound_qty": Decimal("0"),
+                "inbound_status": "已完成",
+                "review_status": "已通过",
+                "inbound_date": date(2026, 5, 2),
+                "source_doc_no": "RET-IN-2026-0502",
+                "owner": "周晨",
+                "ref_no": "RET-INB-2026-0502",
+                "company": "凌云服饰",
+            },
+            {
+                "inbound_no": "CRI-2026-0503",
+                "application_no": "CRA-2026-0503",
+                "item_code": "FG-SKIRT-318",
+                "item_name": "百褶半裙成品",
+                "warehouse": "成品主仓",
+                "planned_inbound_qty": Decimal("12"),
+                "actual_inbound_qty": Decimal("0"),
+                "pending_inbound_qty": Decimal("12"),
+                "inbound_status": "草稿",
+                "review_status": "未开始",
+                "inbound_date": date(2026, 5, 3),
+                "source_doc_no": "RET-IN-2026-0503",
+                "owner": "吴静怡",
+                "ref_no": "RET-INB-2026-0503",
+                "company": "凌云服饰",
+            },
+            {
+                "inbound_no": "CRI-2026-0504",
+                "application_no": "CRA-2026-0504",
+                "item_code": "FG-PANTS-052",
+                "item_name": "休闲长裤成品",
+                "warehouse": "成品发货B仓",
+                "planned_inbound_qty": Decimal("24"),
+                "actual_inbound_qty": Decimal("12"),
+                "pending_inbound_qty": Decimal("12"),
+                "inbound_status": "入仓中",
+                "review_status": "复核中",
+                "inbound_date": date(2026, 5, 4),
+                "source_doc_no": "RET-IN-2026-0504",
+                "owner": "邵伟",
+                "ref_no": "RET-INB-2026-0504",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_inbound_no and row["inbound_no"] != normalized_inbound_no:
+                continue
+            if normalized_application_no and row["application_no"] != normalized_application_no:
+                continue
+            if normalized_item_code and row["item_code"] != normalized_item_code:
+                continue
+            if normalized_warehouse and row["warehouse"] != normalized_warehouse:
+                continue
+            if normalized_inbound_status and row["inbound_status"] != normalized_inbound_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+            if from_date and row["inbound_date"] < from_date:
+                continue
+            if to_date and row["inbound_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["inbound_no"],
+                        row["application_no"],
+                        row["item_code"],
+                        row["item_name"],
+                        row["warehouse"],
+                        row["inbound_status"],
+                        row["review_status"],
+                        row["source_doc_no"],
+                        row["owner"],
+                        row["ref_no"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["inbound_date"], entry["inbound_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return CustomerReturnInboundData(
+            items=[
+                CustomerReturnInboundItem(
+                    inbound_no=row["inbound_no"],
+                    application_no=row["application_no"],
+                    item_code=row["item_code"],
+                    item_name=row["item_name"],
+                    warehouse=row["warehouse"],
+                    planned_inbound_qty=row["planned_inbound_qty"],
+                    actual_inbound_qty=row["actual_inbound_qty"],
+                    pending_inbound_qty=row["pending_inbound_qty"],
+                    inbound_status=row["inbound_status"],
+                    review_status=row["review_status"],
+                    inbound_date=row["inbound_date"],
+                    source_doc_no=row["source_doc_no"],
+                    owner=row["owner"],
+                    ref_no=row["ref_no"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_finished_goods_other_outbound(
+        self,
+        *,
+        outbound_no: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        outbound_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> FinishedGoodsOtherOutboundData:
+        normalized_outbound_no = self._text(outbound_no)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_outbound_status = self._text(outbound_status)
+        normalized_review_status = self._text(review_status)
+        normalized_keyword = self._text(keyword)
+
+        seed_rows = [
+            {
+                "outbound_no": "FGOO-2026-0501",
+                "item_code": "FG-HOODIE-101",
+                "item_name": "连帽卫衣成品",
+                "warehouse": "成品主仓",
+                "planned_outbound_qty": Decimal("36"),
+                "actual_outbound_qty": Decimal("18"),
+                "pending_outbound_qty": Decimal("18"),
+                "outbound_status": "待出仓",
+                "review_status": "待复核",
+                "outbound_date": date(2026, 5, 1),
+                "source_doc_no": "FG-SRC-2026-0501",
+                "owner": "李佳琳",
+                "ref_no": "FG-OUT-2026-0501",
+                "company": "凌云服饰",
+            },
+            {
+                "outbound_no": "FGOO-2026-0502",
+                "item_code": "FG-TRENCH-205",
+                "item_name": "风衣成品",
+                "warehouse": "成品发货A仓",
+                "planned_outbound_qty": Decimal("24"),
+                "actual_outbound_qty": Decimal("24"),
+                "pending_outbound_qty": Decimal("0"),
+                "outbound_status": "已完成",
+                "review_status": "已通过",
+                "outbound_date": date(2026, 5, 2),
+                "source_doc_no": "FG-SRC-2026-0502",
+                "owner": "周晨",
+                "ref_no": "FG-OUT-2026-0502",
+                "company": "凌云服饰",
+            },
+            {
+                "outbound_no": "FGOO-2026-0503",
+                "item_code": "FG-SKIRT-318",
+                "item_name": "百褶半裙成品",
+                "warehouse": "成品主仓",
+                "planned_outbound_qty": Decimal("20"),
+                "actual_outbound_qty": Decimal("0"),
+                "pending_outbound_qty": Decimal("20"),
+                "outbound_status": "草稿",
+                "review_status": "未开始",
+                "outbound_date": date(2026, 5, 3),
+                "source_doc_no": "FG-SRC-2026-0503",
+                "owner": "吴静怡",
+                "ref_no": "FG-OUT-2026-0503",
+                "company": "凌云服饰",
+            },
+            {
+                "outbound_no": "FGOO-2026-0504",
+                "item_code": "FG-PANTS-052",
+                "item_name": "休闲长裤成品",
+                "warehouse": "成品发货B仓",
+                "planned_outbound_qty": Decimal("30"),
+                "actual_outbound_qty": Decimal("12"),
+                "pending_outbound_qty": Decimal("18"),
+                "outbound_status": "出仓中",
+                "review_status": "复核中",
+                "outbound_date": date(2026, 5, 4),
+                "source_doc_no": "FG-SRC-2026-0504",
+                "owner": "邵伟",
+                "ref_no": "FG-OUT-2026-0504",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_outbound_no and row["outbound_no"] != normalized_outbound_no:
+                continue
+            if normalized_item_code and row["item_code"] != normalized_item_code:
+                continue
+            if normalized_warehouse and row["warehouse"] != normalized_warehouse:
+                continue
+            if normalized_outbound_status and row["outbound_status"] != normalized_outbound_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+            if from_date and row["outbound_date"] < from_date:
+                continue
+            if to_date and row["outbound_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["outbound_no"],
+                        row["item_code"],
+                        row["item_name"],
+                        row["warehouse"],
+                        row["outbound_status"],
+                        row["review_status"],
+                        row["source_doc_no"],
+                        row["owner"],
+                        row["ref_no"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["outbound_date"], entry["outbound_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FinishedGoodsOtherOutboundData(
+            items=[
+                FinishedGoodsOtherOutboundItem(
+                    outbound_no=row["outbound_no"],
+                    item_code=row["item_code"],
+                    item_name=row["item_name"],
+                    warehouse=row["warehouse"],
+                    planned_outbound_qty=row["planned_outbound_qty"],
+                    actual_outbound_qty=row["actual_outbound_qty"],
+                    pending_outbound_qty=row["pending_outbound_qty"],
+                    outbound_status=row["outbound_status"],
+                    review_status=row["review_status"],
+                    outbound_date=row["outbound_date"],
+                    source_doc_no=row["source_doc_no"],
+                    owner=row["owner"],
+                    ref_no=row["ref_no"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_finished_goods_count(
+        self,
+        *,
+        count_no: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        count_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> FinishedGoodsCountData:
+        normalized_count_no = self._text(count_no)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_count_status = self._text(count_status)
+        normalized_review_status = self._text(review_status)
+        normalized_keyword = self._text(keyword)
+
+        seed_rows = [
+            {
+                "count_no": "FGC-2026-0501",
+                "item_code": "FG-HOODIE-101",
+                "item_name": "连帽卫衣成品",
+                "warehouse": "成品主仓",
+                "book_qty": Decimal("180"),
+                "counted_qty": Decimal("176"),
+                "diff_qty": Decimal("-4"),
+                "count_status": "盘点中",
+                "review_status": "待复核",
+                "count_date": date(2026, 5, 1),
+                "owner": "李佳琳",
+                "ref_no": "FG-CNT-2026-0501",
+                "company": "凌云服饰",
+            },
+            {
+                "count_no": "FGC-2026-0502",
+                "item_code": "FG-TRENCH-205",
+                "item_name": "风衣成品",
+                "warehouse": "成品发货A仓",
+                "book_qty": Decimal("96"),
+                "counted_qty": Decimal("96"),
+                "diff_qty": Decimal("0"),
+                "count_status": "已完成",
+                "review_status": "已通过",
+                "count_date": date(2026, 5, 2),
+                "owner": "周晨",
+                "ref_no": "FG-CNT-2026-0502",
+                "company": "凌云服饰",
+            },
+            {
+                "count_no": "FGC-2026-0503",
+                "item_code": "FG-SKIRT-318",
+                "item_name": "百褶半裙成品",
+                "warehouse": "成品主仓",
+                "book_qty": Decimal("128"),
+                "counted_qty": Decimal("0"),
+                "diff_qty": Decimal("-128"),
+                "count_status": "待盘点",
+                "review_status": "未开始",
+                "count_date": date(2026, 5, 3),
+                "owner": "吴静怡",
+                "ref_no": "FG-CNT-2026-0503",
+                "company": "凌云服饰",
+            },
+            {
+                "count_no": "FGC-2026-0504",
+                "item_code": "FG-PANTS-052",
+                "item_name": "休闲长裤成品",
+                "warehouse": "成品发货B仓",
+                "book_qty": Decimal("142"),
+                "counted_qty": Decimal("139"),
+                "diff_qty": Decimal("-3"),
+                "count_status": "盘点中",
+                "review_status": "复核中",
+                "count_date": date(2026, 5, 4),
+                "owner": "邵伟",
+                "ref_no": "FG-CNT-2026-0504",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_count_no and row["count_no"] != normalized_count_no:
+                continue
+            if normalized_item_code and row["item_code"] != normalized_item_code:
+                continue
+            if normalized_warehouse and row["warehouse"] != normalized_warehouse:
+                continue
+            if normalized_count_status and row["count_status"] != normalized_count_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+            if from_date and row["count_date"] < from_date:
+                continue
+            if to_date and row["count_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["count_no"],
+                        row["item_code"],
+                        row["item_name"],
+                        row["warehouse"],
+                        row["count_status"],
+                        row["review_status"],
+                        row["owner"],
+                        row["ref_no"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["count_date"], entry["count_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FinishedGoodsCountData(
+            items=[
+                FinishedGoodsCountItem(
+                    count_no=row["count_no"],
+                    item_code=row["item_code"],
+                    item_name=row["item_name"],
+                    warehouse=row["warehouse"],
+                    book_qty=row["book_qty"],
+                    counted_qty=row["counted_qty"],
+                    diff_qty=row["diff_qty"],
+                    count_status=row["count_status"],
+                    review_status=row["review_status"],
+                    count_date=row["count_date"],
+                    owner=row["owner"],
+                    ref_no=row["ref_no"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_finished_goods_adjustment(
+        self,
+        *,
+        adjustment_no: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        adjustment_status: str | None,
+        review_status: str | None,
+        keyword: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> FinishedGoodsAdjustmentData:
+        normalized_adjustment_no = self._text(adjustment_no)
+        normalized_item_code = self._text(item_code)
+        normalized_warehouse = self._text(warehouse)
+        normalized_adjustment_status = self._text(adjustment_status)
+        normalized_review_status = self._text(review_status)
+        normalized_keyword = self._text(keyword)
+
+        seed_rows = [
+            {
+                "adjustment_no": "FGA-2026-0501",
+                "item_code": "FG-HOODIE-101",
+                "item_name": "连帽卫衣成品",
+                "warehouse": "成品主仓",
+                "before_qty": Decimal("180"),
+                "adjusted_qty": Decimal("176"),
+                "diff_qty": Decimal("-4"),
+                "adjustment_status": "调整中",
+                "review_status": "待复核",
+                "adjustment_date": date(2026, 5, 1),
+                "adjust_reason": "盘点差异修正",
+                "owner": "李佳琳",
+                "ref_no": "FG-ADJ-2026-0501",
+                "company": "凌云服饰",
+            },
+            {
+                "adjustment_no": "FGA-2026-0502",
+                "item_code": "FG-TRENCH-205",
+                "item_name": "风衣成品",
+                "warehouse": "成品发货A仓",
+                "before_qty": Decimal("96"),
+                "adjusted_qty": Decimal("99"),
+                "diff_qty": Decimal("3"),
+                "adjustment_status": "已完成",
+                "review_status": "已通过",
+                "adjustment_date": date(2026, 5, 2),
+                "adjust_reason": "到货补差",
+                "owner": "周晨",
+                "ref_no": "FG-ADJ-2026-0502",
+                "company": "凌云服饰",
+            },
+            {
+                "adjustment_no": "FGA-2026-0503",
+                "item_code": "FG-SKIRT-318",
+                "item_name": "百褶半裙成品",
+                "warehouse": "成品主仓",
+                "before_qty": Decimal("128"),
+                "adjusted_qty": Decimal("128"),
+                "diff_qty": Decimal("0"),
+                "adjustment_status": "草稿",
+                "review_status": "未开始",
+                "adjustment_date": date(2026, 5, 3),
+                "adjust_reason": "待业务确认",
+                "owner": "吴静怡",
+                "ref_no": "FG-ADJ-2026-0503",
+                "company": "凌云服饰",
+            },
+            {
+                "adjustment_no": "FGA-2026-0504",
+                "item_code": "FG-PANTS-052",
+                "item_name": "休闲长裤成品",
+                "warehouse": "成品发货B仓",
+                "before_qty": Decimal("142"),
+                "adjusted_qty": Decimal("139"),
+                "diff_qty": Decimal("-3"),
+                "adjustment_status": "待确认",
+                "review_status": "复核中",
+                "adjustment_date": date(2026, 5, 4),
+                "adjust_reason": "库存冻结回写",
+                "owner": "邵伟",
+                "ref_no": "FG-ADJ-2026-0504",
+                "company": "凌云服饰",
+            },
+        ]
+
+        filtered_rows = []
+        for row in seed_rows:
+            if normalized_adjustment_no and row["adjustment_no"] != normalized_adjustment_no:
+                continue
+            if normalized_item_code and row["item_code"] != normalized_item_code:
+                continue
+            if normalized_warehouse and row["warehouse"] != normalized_warehouse:
+                continue
+            if normalized_adjustment_status and row["adjustment_status"] != normalized_adjustment_status:
+                continue
+            if normalized_review_status and row["review_status"] != normalized_review_status:
+                continue
+            if from_date and row["adjustment_date"] < from_date:
+                continue
+            if to_date and row["adjustment_date"] > to_date:
+                continue
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        row["adjustment_no"],
+                        row["item_code"],
+                        row["item_name"],
+                        row["warehouse"],
+                        row["adjustment_status"],
+                        row["review_status"],
+                        row["adjust_reason"],
+                        row["owner"],
+                        row["ref_no"],
+                    ]
+                )
+                if not self._contains_like(haystack, normalized_keyword):
+                    continue
+            filtered_rows.append(row)
+
+        filtered_rows.sort(key=lambda entry: (entry["adjustment_date"], entry["adjustment_no"]), reverse=True)
+        total = len(filtered_rows)
+        start = max(page - 1, 0) * page_size
+        end = start + page_size
+        paged_rows = filtered_rows[start:end]
+
+        return FinishedGoodsAdjustmentData(
+            items=[
+                FinishedGoodsAdjustmentItem(
+                    adjustment_no=row["adjustment_no"],
+                    item_code=row["item_code"],
+                    item_name=row["item_name"],
+                    warehouse=row["warehouse"],
+                    before_qty=row["before_qty"],
+                    adjusted_qty=row["adjusted_qty"],
+                    diff_qty=row["diff_qty"],
+                    adjustment_status=row["adjustment_status"],
+                    review_status=row["review_status"],
+                    adjustment_date=row["adjustment_date"],
+                    adjust_reason=row["adjust_reason"],
+                    owner=row["owner"],
+                    ref_no=row["ref_no"],
+                    company=row["company"],
+                )
+                for row in paged_rows
+            ],
+            total=total,
+            page=page,
+            page_size=page_size,
         )
 
     def list_warehouses(

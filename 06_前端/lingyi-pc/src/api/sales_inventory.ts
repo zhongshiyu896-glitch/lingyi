@@ -387,6 +387,192 @@ export interface FinishedGoodsOtherInboundData {
   page_size: number
 }
 
+export interface CustomerReturnApplicationQuery {
+  application_no?: string
+  item_code?: string
+  warehouse?: string
+  application_status?: string
+  approval_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface CustomerReturnApplicationItem {
+  application_no: string
+  item_code: string
+  item_name: string
+  warehouse: string
+  requested_return_qty: NumericLike
+  confirmed_return_qty: NumericLike
+  pending_return_qty: NumericLike
+  application_status: string
+  approval_status: string
+  application_date: string
+  source_doc_no: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface CustomerReturnApplicationData {
+  items: CustomerReturnApplicationItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface CustomerReturnInboundQuery {
+  inbound_no?: string
+  application_no?: string
+  item_code?: string
+  warehouse?: string
+  inbound_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface CustomerReturnInboundItem {
+  inbound_no: string
+  application_no: string
+  item_code: string
+  item_name: string
+  warehouse: string
+  planned_inbound_qty: NumericLike
+  actual_inbound_qty: NumericLike
+  pending_inbound_qty: NumericLike
+  inbound_status: string
+  review_status: string
+  inbound_date: string
+  source_doc_no: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface CustomerReturnInboundData {
+  items: CustomerReturnInboundItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FinishedGoodsOtherOutboundQuery {
+  outbound_no?: string
+  item_code?: string
+  warehouse?: string
+  outbound_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FinishedGoodsOtherOutboundItem {
+  outbound_no: string
+  item_code: string
+  item_name: string
+  warehouse: string
+  planned_outbound_qty: NumericLike
+  actual_outbound_qty: NumericLike
+  pending_outbound_qty: NumericLike
+  outbound_status: string
+  review_status: string
+  outbound_date: string
+  source_doc_no: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface FinishedGoodsOtherOutboundData {
+  items: FinishedGoodsOtherOutboundItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FinishedGoodsCountQuery {
+  count_no?: string
+  item_code?: string
+  warehouse?: string
+  count_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FinishedGoodsCountItem {
+  count_no: string
+  item_code: string
+  item_name: string
+  warehouse: string
+  book_qty: NumericLike
+  counted_qty: NumericLike
+  diff_qty: NumericLike
+  count_status: string
+  review_status: string
+  count_date: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface FinishedGoodsCountData {
+  items: FinishedGoodsCountItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface FinishedGoodsAdjustmentQuery {
+  adjustment_no?: string
+  item_code?: string
+  warehouse?: string
+  adjustment_status?: string
+  review_status?: string
+  keyword?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface FinishedGoodsAdjustmentItem {
+  adjustment_no: string
+  item_code: string
+  item_name: string
+  warehouse: string
+  before_qty: NumericLike
+  adjusted_qty: NumericLike
+  diff_qty: NumericLike
+  adjustment_status: string
+  review_status: string
+  adjustment_date: string
+  adjust_reason: string
+  owner: string
+  ref_no: string
+  company?: string | null
+}
+
+export interface FinishedGoodsAdjustmentData {
+  items: FinishedGoodsAdjustmentItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface FinishedGoodsReportQuery {
   no?: string
   style?: string
@@ -714,6 +900,103 @@ export const fetchSalesInventoryFinishedGoodsOtherInbound = async (
   return request<FinishedGoodsOtherInboundData>(
     `/api/sales-inventory/finished-goods-other-inbound?${queryString}`,
   )
+}
+
+export const fetchSalesInventoryCustomerReturnApplications = async (
+  query: CustomerReturnApplicationQuery,
+): Promise<ApiResponse<CustomerReturnApplicationData>> => {
+  const queryString = toQuery({
+    application_no: query.application_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    application_status: query.application_status,
+    approval_status: query.approval_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<CustomerReturnApplicationData>(
+    `/api/sales-inventory/customer-return-applications?${queryString}`,
+  )
+}
+
+export const fetchSalesInventoryCustomerReturnInbound = async (
+  query: CustomerReturnInboundQuery,
+): Promise<ApiResponse<CustomerReturnInboundData>> => {
+  const queryString = toQuery({
+    inbound_no: query.inbound_no,
+    application_no: query.application_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    inbound_status: query.inbound_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<CustomerReturnInboundData>(
+    `/api/sales-inventory/customer-return-inbound?${queryString}`,
+  )
+}
+
+export const fetchSalesInventoryFinishedGoodsOtherOutbound = async (
+  query: FinishedGoodsOtherOutboundQuery,
+): Promise<ApiResponse<FinishedGoodsOtherOutboundData>> => {
+  const queryString = toQuery({
+    outbound_no: query.outbound_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    outbound_status: query.outbound_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FinishedGoodsOtherOutboundData>(
+    `/api/sales-inventory/finished-goods-other-outbound?${queryString}`,
+  )
+}
+
+export const fetchSalesInventoryFinishedGoodsCount = async (
+  query: FinishedGoodsCountQuery,
+): Promise<ApiResponse<FinishedGoodsCountData>> => {
+  const queryString = toQuery({
+    count_no: query.count_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    count_status: query.count_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FinishedGoodsCountData>(`/api/sales-inventory/finished-goods-count?${queryString}`)
+}
+
+export const fetchSalesInventoryFinishedGoodsAdjustment = async (
+  query: FinishedGoodsAdjustmentQuery,
+): Promise<ApiResponse<FinishedGoodsAdjustmentData>> => {
+  const queryString = toQuery({
+    adjustment_no: query.adjustment_no,
+    item_code: query.item_code,
+    warehouse: query.warehouse,
+    adjustment_status: query.adjustment_status,
+    review_status: query.review_status,
+    keyword: query.keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<FinishedGoodsAdjustmentData>(`/api/sales-inventory/finished-goods-adjustment?${queryString}`)
 }
 
 export const fetchSalesInventoryFinishedGoodsReport = async (
