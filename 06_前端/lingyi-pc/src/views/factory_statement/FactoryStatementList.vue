@@ -2116,6 +2116,1086 @@
       </template>
     </el-card>
 
+    <el-card
+      shadow="never"
+      class="factory-payable-summary-section"
+      data-testid="factory-payable-summary-section"
+    >
+      <template #header>
+        <div class="header-row">
+          <span>加工厂应付账款汇总表（TASK-Y69B-P1-01）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读加工厂应付账款汇总表语义映射"
+        description="付款确认、复核、付款校验、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="factory-payable-summary-alert"
+      />
+
+      <el-form :inline="true" :model="factoryPayableSummaryQuery" class="factory-payable-summary-filter-form">
+        <el-form-item label="汇总单号">
+          <el-input v-model="factoryPayableSummaryQuery.summary_no" clearable placeholder="请输入汇总单号" />
+        </el-form-item>
+        <el-form-item label="关联业务单号">
+          <el-input v-model="factoryPayableSummaryQuery.statement_no" clearable placeholder="请输入关联业务单号" />
+        </el-form-item>
+        <el-form-item label="供应商">
+          <el-input v-model="factoryPayableSummaryQuery.supplier" clearable placeholder="请输入供应商名称" />
+        </el-form-item>
+        <el-form-item label="加工厂名称">
+          <el-input v-model="factoryPayableSummaryQuery.factory_name" clearable placeholder="请输入加工厂名称" />
+        </el-form-item>
+        <el-form-item label="风险等级">
+          <el-select
+            v-model="factoryPayableSummaryQuery.risk_level"
+            clearable
+            placeholder="请选择风险等级"
+            style="width: 170px"
+          >
+            <el-option label="低风险" value="低风险" />
+            <el-option label="中风险" value="中风险" />
+            <el-option label="高风险" value="高风险" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="factoryPayableSummaryQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="factoryPayableSummaryQuery.keyword"
+            clearable
+            placeholder="汇总单号/供应商/加工厂编码/经办人"
+            style="width: 320px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="factoryPayableSummaryQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="factoryPayableSummaryQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadFactoryPayableSummaries">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetFactoryPayableSummaryFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="factoryPayableSummaryError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="factoryPayableSummaryError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无加工厂应付账款汇总表查看权限" />
+      <template v-else>
+        <el-table
+          :data="factoryPayableSummaryRows"
+          border
+          v-loading="factoryPayableSummaryLoading"
+          empty-text="暂无加工厂应付账款汇总表数据"
+        >
+          <el-table-column prop="summary_no" label="汇总单号" min-width="170" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="130" />
+          <el-table-column prop="supplier" label="供应商" min-width="140" />
+          <el-table-column prop="factory_name" label="加工厂名称" min-width="170" />
+          <el-table-column prop="factory_code" label="加工厂编码" min-width="130" />
+          <el-table-column prop="currency" label="币种" width="90" />
+          <el-table-column label="期初应付" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.opening_payable) }}</template>
+          </el-table-column>
+          <el-table-column label="本期应付" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.current_payable) }}</template>
+          </el-table-column>
+          <el-table-column label="本期已付" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.paid_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="期末应付" width="130">
+            <template #default="scope">{{ formatAmount(scope.row.ending_payable) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄30天内" width="140">
+            <template #default="scope">{{ formatAmount(scope.row.aging_30) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄31-60天" width="140">
+            <template #default="scope">{{ formatAmount(scope.row.aging_60) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄90天以上" width="150">
+            <template #default="scope">{{ formatAmount(scope.row.aging_90_plus) }}</template>
+          </el-table-column>
+          <el-table-column label="风险等级" min-width="120">
+            <template #default="scope">
+              <el-tag :type="customerReceivableRiskTag(scope.row.risk_level)">
+                {{ scope.row.risk_level }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="summary_date" label="汇总日期" min-width="120" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:factory-payable-summary-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('付款确认提示')"
+              >
+                付款确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:factory-payable-summary-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:factory-payable-summary-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('付款校验')"
+              >
+                付款校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:factory-payable-summary-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:factory-payable-summary-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="factoryPayableSummaryQuery.page"
+            :page-size="factoryPayableSummaryQuery.page_size"
+            :total="factoryPayableSummaryTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onFactoryPayableSummaryPageChange"
+            @size-change="onFactoryPayableSummarySizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
+    <el-card shadow="never" class="supplier-evaluation-section" data-testid="supplier-evaluation-section">
+      <template #header>
+        <div class="header-row">
+          <span>供应商评估表（TASK-Y69B-P1-02）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读供应商评估表语义映射"
+        description="评估确认、复核、评级校验、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="supplier-evaluation-alert"
+      />
+
+      <el-form :inline="true" :model="supplierEvaluationQuery" class="supplier-evaluation-filter-form">
+        <el-form-item label="评估单号">
+          <el-input v-model="supplierEvaluationQuery.evaluation_no" clearable placeholder="请输入评估单号" />
+        </el-form-item>
+        <el-form-item label="关联业务单号">
+          <el-input v-model="supplierEvaluationQuery.statement_no" clearable placeholder="请输入关联业务单号" />
+        </el-form-item>
+        <el-form-item label="供应商">
+          <el-input v-model="supplierEvaluationQuery.supplier" clearable placeholder="请输入供应商名称" />
+        </el-form-item>
+        <el-form-item label="评估人">
+          <el-input v-model="supplierEvaluationQuery.assessor" clearable placeholder="请输入评估人" />
+        </el-form-item>
+        <el-form-item label="评分等级">
+          <el-select v-model="supplierEvaluationQuery.score_level" clearable placeholder="请选择评分等级" style="width: 170px">
+            <el-option label="A" value="A" />
+            <el-option label="B" value="B" />
+            <el-option label="C" value="C" />
+            <el-option label="D" value="D" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="supplierEvaluationQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="supplierEvaluationQuery.keyword"
+            clearable
+            placeholder="评估单号/供应商名称/供应商编码/经办人"
+            style="width: 320px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="supplierEvaluationQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="supplierEvaluationQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadSupplierEvaluations">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetSupplierEvaluationFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="supplierEvaluationError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="supplierEvaluationError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无供应商评估表查看权限" />
+      <template v-else>
+        <el-table :data="supplierEvaluationRows" border v-loading="supplierEvaluationLoading" empty-text="暂无供应商评估表数据">
+          <el-table-column prop="evaluation_no" label="评估单号" min-width="170" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="130" />
+          <el-table-column prop="supplier" label="供应商" min-width="150" />
+          <el-table-column prop="supplier_code" label="供应商编码" min-width="130" />
+          <el-table-column prop="assessor" label="评估人" min-width="110" />
+          <el-table-column label="评分" width="100">
+            <template #default="scope">{{ scope.row.score }}</template>
+          </el-table-column>
+          <el-table-column label="评分等级" min-width="110">
+            <template #default="scope">
+              <el-tag :type="customerEvaluationScoreTag(scope.row.score_level)">
+                {{ scope.row.score_level }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="跟进状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="followUpStatusTag(scope.row.follow_up_status)">
+                {{ scope.row.follow_up_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="evaluation_date" label="评估日期" min-width="120" />
+          <el-table-column prop="expiry_date" label="有效截止" min-width="120" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-evaluation-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('评估确认提示')"
+              >
+                评估确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-evaluation-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-evaluation-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('评级校验')"
+              >
+                评级校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-evaluation-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-evaluation-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="supplierEvaluationQuery.page"
+            :page-size="supplierEvaluationQuery.page_size"
+            :total="supplierEvaluationTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onSupplierEvaluationPageChange"
+            @size-change="onSupplierEvaluationSizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
+    <el-card
+      shadow="never"
+      class="supplier-reconciliation-section"
+      data-testid="supplier-reconciliation-section"
+    >
+      <template #header>
+        <div class="header-row">
+          <span>供应商对账表（TASK-Y69B-P1-03）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读供应商对账表语义映射"
+        description="对账确认、复核、对账校验、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="supplier-reconciliation-alert"
+      />
+
+      <el-form :inline="true" :model="supplierReconciliationQuery" class="supplier-reconciliation-filter-form">
+        <el-form-item label="对账单号">
+          <el-input v-model="supplierReconciliationQuery.reconciliation_no" clearable placeholder="请输入对账单号" />
+        </el-form-item>
+        <el-form-item label="关联业务单号">
+          <el-input v-model="supplierReconciliationQuery.statement_no" clearable placeholder="请输入关联业务单号" />
+        </el-form-item>
+        <el-form-item label="供应商">
+          <el-input v-model="supplierReconciliationQuery.supplier" clearable placeholder="请输入供应商名称" />
+        </el-form-item>
+        <el-form-item label="供应商编码">
+          <el-input v-model="supplierReconciliationQuery.supplier_code" clearable placeholder="请输入供应商编码" />
+        </el-form-item>
+        <el-form-item label="结算状态">
+          <el-select
+            v-model="supplierReconciliationQuery.settlement_status"
+            clearable
+            placeholder="请选择结算状态"
+            style="width: 170px"
+          >
+            <el-option label="未结算" value="未结算" />
+            <el-option label="部分结算" value="部分结算" />
+            <el-option label="已结算" value="已结算" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="supplierReconciliationQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="supplierReconciliationQuery.keyword"
+            clearable
+            placeholder="对账单号/供应商/供应商编码/经办人"
+            style="width: 320px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="supplierReconciliationQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="supplierReconciliationQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadSupplierReconciliations">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetSupplierReconciliationFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="supplierReconciliationError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="supplierReconciliationError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无供应商对账表查看权限" />
+      <template v-else>
+        <el-table
+          :data="supplierReconciliationRows"
+          border
+          v-loading="supplierReconciliationLoading"
+          empty-text="暂无供应商对账表数据"
+        >
+          <el-table-column prop="reconciliation_no" label="对账单号" min-width="170" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="120" />
+          <el-table-column prop="supplier" label="供应商" min-width="140" />
+          <el-table-column prop="supplier_code" label="供应商编码" min-width="130" />
+          <el-table-column prop="currency" label="币种" width="80" />
+          <el-table-column label="对账金额" min-width="120">
+            <template #default="scope">{{ formatAmount(scope.row.reconciliation_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="已结算金额" min-width="120">
+            <template #default="scope">{{ formatAmount(scope.row.settled_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="待结算金额" min-width="120">
+            <template #default="scope">{{ formatAmount(scope.row.pending_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="结算状态" min-width="110">
+            <template #default="scope">
+              <el-tag :type="factoryReconciliationSettlementTag(scope.row.settlement_status)">
+                {{ scope.row.settlement_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="110">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="跟进状态" min-width="110">
+            <template #default="scope">
+              <el-tag :type="followUpStatusTag(scope.row.follow_up_status)">
+                {{ scope.row.follow_up_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="reconciled_at" label="对账日期" min-width="120" />
+          <el-table-column prop="due_date" label="到期日期" min-width="120" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-reconciliation-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('对账确认提示')"
+              >
+                对账确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-reconciliation-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-reconciliation-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('对账校验')"
+              >
+                对账校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-reconciliation-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-reconciliation-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="supplierReconciliationQuery.page"
+            :page-size="supplierReconciliationQuery.page_size"
+            :total="supplierReconciliationTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onSupplierReconciliationPageChange"
+            @size-change="onSupplierReconciliationSizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
+    <el-card
+      shadow="never"
+      class="supplier-payable-summary-section"
+      data-testid="supplier-payable-summary-section"
+    >
+      <template #header>
+        <div class="header-row">
+          <span>供应商应付账款汇总表（TASK-Y69B-P1-04）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读供应商应付账款汇总表语义映射"
+        description="汇总确认、复核、风险校验、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="supplier-payable-summary-alert"
+      />
+
+      <el-form :inline="true" :model="supplierPayableSummaryQuery" class="supplier-payable-summary-filter-form">
+        <el-form-item label="汇总单号">
+          <el-input v-model="supplierPayableSummaryQuery.summary_no" clearable placeholder="请输入汇总单号" />
+        </el-form-item>
+        <el-form-item label="关联业务单号">
+          <el-input v-model="supplierPayableSummaryQuery.statement_no" clearable placeholder="请输入关联业务单号" />
+        </el-form-item>
+        <el-form-item label="供应商">
+          <el-input v-model="supplierPayableSummaryQuery.supplier" clearable placeholder="请输入供应商名称" />
+        </el-form-item>
+        <el-form-item label="供应商编码">
+          <el-input v-model="supplierPayableSummaryQuery.supplier_code" clearable placeholder="请输入供应商编码" />
+        </el-form-item>
+        <el-form-item label="风险等级">
+          <el-select
+            v-model="supplierPayableSummaryQuery.risk_level"
+            clearable
+            placeholder="请选择风险等级"
+            style="width: 170px"
+          >
+            <el-option label="高风险" value="高风险" />
+            <el-option label="中风险" value="中风险" />
+            <el-option label="低风险" value="低风险" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="supplierPayableSummaryQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="待复核" value="待复核" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="supplierPayableSummaryQuery.keyword"
+            clearable
+            placeholder="汇总单号/供应商/供应商编码/经办人"
+            style="width: 320px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="supplierPayableSummaryQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="supplierPayableSummaryQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadSupplierPayableSummaries">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetSupplierPayableSummaryFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="supplierPayableSummaryError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="supplierPayableSummaryError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无供应商应付账款汇总表查看权限" />
+      <template v-else>
+        <el-table
+          :data="supplierPayableSummaryRows"
+          border
+          v-loading="supplierPayableSummaryLoading"
+          empty-text="暂无供应商应付账款汇总表数据"
+        >
+          <el-table-column prop="summary_no" label="汇总单号" min-width="170" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="120" />
+          <el-table-column prop="supplier" label="供应商" min-width="140" />
+          <el-table-column prop="supplier_code" label="供应商编码" min-width="130" />
+          <el-table-column prop="currency" label="币种" width="80" />
+          <el-table-column label="期初应付" min-width="110">
+            <template #default="scope">{{ formatAmount(scope.row.opening_payable) }}</template>
+          </el-table-column>
+          <el-table-column label="本期新增应付" min-width="120">
+            <template #default="scope">{{ formatAmount(scope.row.current_payable) }}</template>
+          </el-table-column>
+          <el-table-column label="本期已付" min-width="110">
+            <template #default="scope">{{ formatAmount(scope.row.paid_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="期末应付" min-width="110">
+            <template #default="scope">{{ formatAmount(scope.row.ending_payable) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄30天" min-width="110">
+            <template #default="scope">{{ formatAmount(scope.row.aging_30) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄60天" min-width="110">
+            <template #default="scope">{{ formatAmount(scope.row.aging_60) }}</template>
+          </el-table-column>
+          <el-table-column label="账龄90天+" min-width="110">
+            <template #default="scope">{{ formatAmount(scope.row.aging_90_plus) }}</template>
+          </el-table-column>
+          <el-table-column label="风险等级" min-width="110">
+            <template #default="scope">
+              <el-tag :type="customerReceivableRiskTag(scope.row.risk_level)">
+                {{ scope.row.risk_level }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="110">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="跟进状态" min-width="110">
+            <template #default="scope">
+              <el-tag :type="followUpStatusTag(scope.row.follow_up_status)">
+                {{ scope.row.follow_up_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="summary_date" label="汇总日期" min-width="120" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-payable-summary-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('汇总确认提示')"
+              >
+                汇总确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-payable-summary-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-payable-summary-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('风险校验')"
+              >
+                风险校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-payable-summary-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:supplier-payable-summary-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="supplierPayableSummaryQuery.page"
+            :page-size="supplierPayableSummaryQuery.page_size"
+            :total="supplierPayableSummaryTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onSupplierPayableSummaryPageChange"
+            @size-change="onSupplierPayableSummarySizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
+    <el-card shadow="never" class="bank-ledger-section" data-testid="bank-ledger-section">
+      <template #header>
+        <div class="header-row">
+          <span>银行流水（TASK-Y69B-P1-05）</span>
+        </div>
+      </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="只读银行流水语义映射"
+        description="入账确认、复核、流水校验、导出、打印等动作保持 guarded 提示，不触发真实写请求。"
+        class="bank-ledger-alert"
+      />
+
+      <el-form :inline="true" :model="bankLedgerQuery" class="bank-ledger-filter-form">
+        <el-form-item label="流水单号">
+          <el-input v-model="bankLedgerQuery.ledger_no" clearable placeholder="请输入流水单号" />
+        </el-form-item>
+        <el-form-item label="关联业务单号">
+          <el-input v-model="bankLedgerQuery.statement_no" clearable placeholder="请输入关联业务单号" />
+        </el-form-item>
+        <el-form-item label="银行">
+          <el-input v-model="bankLedgerQuery.bank_name" clearable placeholder="请输入银行名称" />
+        </el-form-item>
+        <el-form-item label="账户名称">
+          <el-input v-model="bankLedgerQuery.account_name" clearable placeholder="请输入账户名称" />
+        </el-form-item>
+        <el-form-item label="交易类型">
+          <el-select
+            v-model="bankLedgerQuery.transaction_type"
+            clearable
+            placeholder="请选择交易类型"
+            style="width: 170px"
+          >
+            <el-option label="收入" value="收入" />
+            <el-option label="支出" value="支出" />
+            <el-option label="手续费" value="手续费" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="流水状态">
+          <el-select
+            v-model="bankLedgerQuery.ledger_status"
+            clearable
+            placeholder="请选择流水状态"
+            style="width: 170px"
+          >
+            <el-option label="待登记" value="待登记" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已对账" value="已对账" />
+            <el-option label="已归档" value="已归档" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核状态">
+          <el-select
+            v-model="bankLedgerQuery.review_status"
+            clearable
+            placeholder="请选择复核状态"
+            style="width: 170px"
+          >
+            <el-option label="未开始" value="未开始" />
+            <el-option label="复核中" value="复核中" />
+            <el-option label="已通过" value="已通过" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="bankLedgerQuery.keyword"
+            clearable
+            placeholder="流水单号/关联业务单号/银行/凭证号/经办人"
+            style="width: 320px"
+          />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="bankLedgerQuery.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择开始日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="bankLedgerQuery.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择结束日期"
+            clearable
+          />
+        </el-form-item>
+        <el-form-item label="操作">
+          <el-button type="primary" :disabled="!canRead" @click="loadBankLedgers">查询</el-button>
+          <el-button :disabled="!canRead" @click="resetBankLedgerFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert
+        v-if="bankLedgerError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="bankLedgerError"
+        class="error-alert"
+      />
+      <el-empty v-if="!canRead" description="无银行流水查看权限" />
+      <template v-else>
+        <el-table :data="bankLedgerRows" border v-loading="bankLedgerLoading" empty-text="暂无银行流水数据">
+          <el-table-column prop="ledger_no" label="流水单号" min-width="170" />
+          <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
+          <el-table-column prop="company" label="公司" min-width="120" />
+          <el-table-column prop="bank_name" label="银行" min-width="150" />
+          <el-table-column prop="account_name" label="账户名称" min-width="160" />
+          <el-table-column prop="account_no" label="账号" min-width="130" />
+          <el-table-column prop="currency" label="币种" width="80" />
+          <el-table-column prop="transaction_type" label="交易类型" min-width="100" />
+          <el-table-column label="借方金额" min-width="110">
+            <template #default="scope">{{ formatAmount(scope.row.debit_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="贷方金额" min-width="110">
+            <template #default="scope">{{ formatAmount(scope.row.credit_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="交易后余额" min-width="120">
+            <template #default="scope">{{ formatAmount(scope.row.balance_after) }}</template>
+          </el-table-column>
+          <el-table-column label="流水状态" min-width="100">
+            <template #default="scope">
+              <el-tag :type="bankLedgerStatusTag(scope.row.ledger_status)">
+                {{ scope.row.ledger_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="复核状态" min-width="100">
+            <template #default="scope">
+              <el-tag :type="paymentReviewTag(scope.row.review_status)">
+                {{ scope.row.review_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="ledger_date" label="流水日期" min-width="120" />
+          <el-table-column prop="voucher_no" label="凭证号" min-width="140" />
+          <el-table-column prop="owner" label="经办人" min-width="100" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" fixed="right" width="380">
+            <template #default>
+              <el-button
+                link
+                type="success"
+                data-action-type="write"
+                data-write-guard="readonly:bank-ledger-confirm"
+                data-guard-state="disabled"
+                @click="showGuardedAction('入账确认提示')"
+              >
+                入账确认提示
+              </el-button>
+              <el-button
+                link
+                type="warning"
+                data-action-type="write"
+                data-write-guard="readonly:bank-ledger-review"
+                data-guard-state="disabled"
+                @click="showGuardedAction('复核提示')"
+              >
+                复核提示
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                data-action-type="write"
+                data-write-guard="readonly:bank-ledger-verify"
+                data-guard-state="disabled"
+                @click="showGuardedAction('流水校验')"
+              >
+                流水校验
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:bank-ledger-export"
+                data-guard-state="disabled"
+                @click="showGuardedAction('导出')"
+              >
+                导出
+              </el-button>
+              <el-button
+                link
+                type="info"
+                data-action-type="write"
+                data-write-guard="readonly:bank-ledger-print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div class="pager">
+          <el-pagination
+            background
+            layout="prev, pager, next, total, sizes"
+            :current-page="bankLedgerQuery.page"
+            :page-size="bankLedgerQuery.page_size"
+            :total="bankLedgerTotal"
+            :page-sizes="[10, 20, 50, 100]"
+            @current-change="onBankLedgerPageChange"
+            @size-change="onBankLedgerSizeChange"
+          />
+        </div>
+      </template>
+    </el-card>
+
     <el-dialog v-model="createVisible" title="创建加工厂对账单" width="680px">
         <el-form :model="createForm" label-width="120px">
           <el-form-item label="公司">
@@ -2163,20 +3243,30 @@ import { ElMessage } from 'element-plus'
 import {
   createFactoryStatement,
   fetchFactoryStatementBankDeposits,
+  fetchFactoryStatementBankLedgers,
   fetchFactoryStatementBankWithdrawals,
   fetchFactoryStatementCustomerEvaluations,
   fetchFactoryStatementFactoryEvaluations,
+  fetchFactoryStatementFactoryPayableSummaries,
   fetchFactoryStatementFactoryReconciliations,
+  fetchFactoryStatementSupplierPayableSummaries,
+  fetchFactoryStatementSupplierReconciliations,
+  fetchFactoryStatementSupplierEvaluations,
   fetchFactoryStatementCustomerReceivableSummaries,
   fetchFactoryStatementCustomerReconciliations,
   fetchFactoryStatementCustomerUnpaidReports,
   fetchFactoryStatementExpenseReimbursementPayments,
   fetchFactoryStatements,
+  type FactoryStatementBankLedgerItem,
   type FactoryStatementBankDepositItem,
   type FactoryStatementBankWithdrawalItem,
   type FactoryStatementCustomerEvaluationItem,
   type FactoryStatementFactoryEvaluationItem,
+  type FactoryStatementFactoryPayableSummaryItem,
   type FactoryStatementFactoryReconciliationItem,
+  type FactoryStatementSupplierPayableSummaryItem,
+  type FactoryStatementSupplierReconciliationItem,
+  type FactoryStatementSupplierEvaluationItem,
   type FactoryStatementCustomerReceivableSummaryItem,
   type FactoryStatementCustomerReconciliationItem,
   type FactoryStatementCustomerUnpaidReportItem,
@@ -2207,6 +3297,10 @@ const bankWithdrawalLoading = ref<boolean>(false)
 const bankWithdrawalError = ref<string>('')
 const bankWithdrawalRows = ref<FactoryStatementBankWithdrawalItem[]>([])
 const bankWithdrawalTotal = ref<number>(0)
+const bankLedgerLoading = ref<boolean>(false)
+const bankLedgerError = ref<string>('')
+const bankLedgerRows = ref<FactoryStatementBankLedgerItem[]>([])
+const bankLedgerTotal = ref<number>(0)
 const customerEvaluationLoading = ref<boolean>(false)
 const customerEvaluationError = ref<string>('')
 const customerEvaluationRows = ref<FactoryStatementCustomerEvaluationItem[]>([])
@@ -2231,6 +3325,22 @@ const factoryReconciliationLoading = ref<boolean>(false)
 const factoryReconciliationError = ref<string>('')
 const factoryReconciliationRows = ref<FactoryStatementFactoryReconciliationItem[]>([])
 const factoryReconciliationTotal = ref<number>(0)
+const factoryPayableSummaryLoading = ref<boolean>(false)
+const factoryPayableSummaryError = ref<string>('')
+const factoryPayableSummaryRows = ref<FactoryStatementFactoryPayableSummaryItem[]>([])
+const factoryPayableSummaryTotal = ref<number>(0)
+const supplierEvaluationLoading = ref<boolean>(false)
+const supplierEvaluationError = ref<string>('')
+const supplierEvaluationRows = ref<FactoryStatementSupplierEvaluationItem[]>([])
+const supplierEvaluationTotal = ref<number>(0)
+const supplierReconciliationLoading = ref<boolean>(false)
+const supplierReconciliationError = ref<string>('')
+const supplierReconciliationRows = ref<FactoryStatementSupplierReconciliationItem[]>([])
+const supplierReconciliationTotal = ref<number>(0)
+const supplierPayableSummaryLoading = ref<boolean>(false)
+const supplierPayableSummaryError = ref<string>('')
+const supplierPayableSummaryRows = ref<FactoryStatementSupplierPayableSummaryItem[]>([])
+const supplierPayableSummaryTotal = ref<number>(0)
 
 const P1_READONLY_MODE = true
 const readonlyWriteHint = '当前为只读对账视图，已禁用写动作'
@@ -2290,6 +3400,21 @@ const bankWithdrawalQuery = reactive({
   bank_name: '',
   account_name: '',
   withdrawal_status: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const bankLedgerQuery = reactive({
+  ledger_no: '',
+  statement_no: '',
+  bank_name: '',
+  account_name: '',
+  transaction_type: '',
+  ledger_status: '',
   review_status: '',
   keyword: '',
   from_date: '',
@@ -2371,6 +3496,62 @@ const factoryReconciliationQuery = reactive({
   supplier: '',
   factory_name: '',
   settlement_status: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const factoryPayableSummaryQuery = reactive({
+  summary_no: '',
+  statement_no: '',
+  supplier: '',
+  factory_name: '',
+  risk_level: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const supplierEvaluationQuery = reactive({
+  evaluation_no: '',
+  statement_no: '',
+  supplier: '',
+  assessor: '',
+  score_level: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const supplierReconciliationQuery = reactive({
+  reconciliation_no: '',
+  statement_no: '',
+  supplier: '',
+  supplier_code: '',
+  settlement_status: '',
+  review_status: '',
+  keyword: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
+})
+
+const supplierPayableSummaryQuery = reactive({
+  summary_no: '',
+  statement_no: '',
+  supplier: '',
+  supplier_code: '',
+  risk_level: '',
   review_status: '',
   keyword: '',
   from_date: '',
@@ -2628,6 +3809,22 @@ const bankWithdrawalStatusTag = (status: string | null | undefined): 'warning' |
   return 'info'
 }
 
+const bankLedgerStatusTag = (status: string | null | undefined): 'warning' | 'success' | 'danger' | 'info' => {
+  if (status === '待登记') {
+    return 'warning'
+  }
+  if (status === '复核中') {
+    return 'info'
+  }
+  if (status === '已对账') {
+    return 'success'
+  }
+  if (status === '已归档') {
+    return 'danger'
+  }
+  return 'info'
+}
+
 const followUpStatusTag = (status: string | null | undefined): 'warning' | 'success' | 'danger' | 'info' => {
   if (status === '待跟进') {
     return 'warning'
@@ -2811,6 +4008,12 @@ const resetBankWithdrawalRows = (): void => {
   bankWithdrawalError.value = ''
 }
 
+const resetBankLedgerRows = (): void => {
+  bankLedgerRows.value = []
+  bankLedgerTotal.value = 0
+  bankLedgerError.value = ''
+}
+
 const resetCustomerEvaluationRows = (): void => {
   customerEvaluationRows.value = []
   customerEvaluationTotal.value = 0
@@ -2845,6 +4048,30 @@ const resetFactoryReconciliationRows = (): void => {
   factoryReconciliationRows.value = []
   factoryReconciliationTotal.value = 0
   factoryReconciliationError.value = ''
+}
+
+const resetFactoryPayableSummaryRows = (): void => {
+  factoryPayableSummaryRows.value = []
+  factoryPayableSummaryTotal.value = 0
+  factoryPayableSummaryError.value = ''
+}
+
+const resetSupplierEvaluationRows = (): void => {
+  supplierEvaluationRows.value = []
+  supplierEvaluationTotal.value = 0
+  supplierEvaluationError.value = ''
+}
+
+const resetSupplierReconciliationRows = (): void => {
+  supplierReconciliationRows.value = []
+  supplierReconciliationTotal.value = 0
+  supplierReconciliationError.value = ''
+}
+
+const resetSupplierPayableSummaryRows = (): void => {
+  supplierPayableSummaryRows.value = []
+  supplierPayableSummaryTotal.value = 0
+  supplierPayableSummaryError.value = ''
 }
 
 const applySampleFilters = (): void => {
@@ -2987,6 +4214,40 @@ const loadBankWithdrawals = async (): Promise<void> => {
     ElMessage.error(bankWithdrawalError.value)
   } finally {
     bankWithdrawalLoading.value = false
+  }
+}
+
+const loadBankLedgers = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetBankLedgerRows()
+    return
+  }
+
+  bankLedgerLoading.value = true
+  bankLedgerError.value = ''
+  try {
+    const result = await fetchFactoryStatementBankLedgers({
+      ledger_no: bankLedgerQuery.ledger_no.trim() || undefined,
+      statement_no: bankLedgerQuery.statement_no.trim() || undefined,
+      bank_name: bankLedgerQuery.bank_name.trim() || undefined,
+      account_name: bankLedgerQuery.account_name.trim() || undefined,
+      transaction_type: bankLedgerQuery.transaction_type || undefined,
+      ledger_status: bankLedgerQuery.ledger_status || undefined,
+      review_status: bankLedgerQuery.review_status || undefined,
+      keyword: bankLedgerQuery.keyword.trim() || undefined,
+      from_date: bankLedgerQuery.from_date || undefined,
+      to_date: bankLedgerQuery.to_date || undefined,
+      page: bankLedgerQuery.page,
+      page_size: bankLedgerQuery.page_size,
+    })
+    bankLedgerRows.value = result.data.items
+    bankLedgerTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    bankLedgerError.value = `银行流水加载失败：${message}`
+    ElMessage.error(bankLedgerError.value)
+  } finally {
+    bankLedgerLoading.value = false
   }
 }
 
@@ -3185,6 +4446,138 @@ const loadFactoryReconciliations = async (): Promise<void> => {
   }
 }
 
+const loadFactoryPayableSummaries = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetFactoryPayableSummaryRows()
+    return
+  }
+
+  factoryPayableSummaryLoading.value = true
+  factoryPayableSummaryError.value = ''
+  try {
+    const result = await fetchFactoryStatementFactoryPayableSummaries({
+      summary_no: factoryPayableSummaryQuery.summary_no.trim() || undefined,
+      statement_no: factoryPayableSummaryQuery.statement_no.trim() || undefined,
+      supplier: factoryPayableSummaryQuery.supplier.trim() || undefined,
+      factory_name: factoryPayableSummaryQuery.factory_name.trim() || undefined,
+      risk_level: factoryPayableSummaryQuery.risk_level || undefined,
+      review_status: factoryPayableSummaryQuery.review_status || undefined,
+      keyword: factoryPayableSummaryQuery.keyword.trim() || undefined,
+      from_date: factoryPayableSummaryQuery.from_date || undefined,
+      to_date: factoryPayableSummaryQuery.to_date || undefined,
+      page: factoryPayableSummaryQuery.page,
+      page_size: factoryPayableSummaryQuery.page_size,
+    })
+    factoryPayableSummaryRows.value = result.data.items
+    factoryPayableSummaryTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    factoryPayableSummaryError.value = `加工厂应付账款汇总表加载失败：${message}`
+    ElMessage.error(factoryPayableSummaryError.value)
+  } finally {
+    factoryPayableSummaryLoading.value = false
+  }
+}
+
+const loadSupplierEvaluations = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetSupplierEvaluationRows()
+    return
+  }
+
+  supplierEvaluationLoading.value = true
+  supplierEvaluationError.value = ''
+  try {
+    const result = await fetchFactoryStatementSupplierEvaluations({
+      evaluation_no: supplierEvaluationQuery.evaluation_no.trim() || undefined,
+      statement_no: supplierEvaluationQuery.statement_no.trim() || undefined,
+      supplier: supplierEvaluationQuery.supplier.trim() || undefined,
+      assessor: supplierEvaluationQuery.assessor.trim() || undefined,
+      score_level: supplierEvaluationQuery.score_level || undefined,
+      review_status: supplierEvaluationQuery.review_status || undefined,
+      keyword: supplierEvaluationQuery.keyword.trim() || undefined,
+      from_date: supplierEvaluationQuery.from_date || undefined,
+      to_date: supplierEvaluationQuery.to_date || undefined,
+      page: supplierEvaluationQuery.page,
+      page_size: supplierEvaluationQuery.page_size,
+    })
+    supplierEvaluationRows.value = result.data.items
+    supplierEvaluationTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    supplierEvaluationError.value = `供应商评估表加载失败：${message}`
+    ElMessage.error(supplierEvaluationError.value)
+  } finally {
+    supplierEvaluationLoading.value = false
+  }
+}
+
+const loadSupplierReconciliations = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetSupplierReconciliationRows()
+    return
+  }
+
+  supplierReconciliationLoading.value = true
+  supplierReconciliationError.value = ''
+  try {
+    const result = await fetchFactoryStatementSupplierReconciliations({
+      reconciliation_no: supplierReconciliationQuery.reconciliation_no.trim() || undefined,
+      statement_no: supplierReconciliationQuery.statement_no.trim() || undefined,
+      supplier: supplierReconciliationQuery.supplier.trim() || undefined,
+      supplier_code: supplierReconciliationQuery.supplier_code.trim() || undefined,
+      settlement_status: supplierReconciliationQuery.settlement_status || undefined,
+      review_status: supplierReconciliationQuery.review_status || undefined,
+      keyword: supplierReconciliationQuery.keyword.trim() || undefined,
+      from_date: supplierReconciliationQuery.from_date || undefined,
+      to_date: supplierReconciliationQuery.to_date || undefined,
+      page: supplierReconciliationQuery.page,
+      page_size: supplierReconciliationQuery.page_size,
+    })
+    supplierReconciliationRows.value = result.data.items
+    supplierReconciliationTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    supplierReconciliationError.value = `供应商对账表加载失败：${message}`
+    ElMessage.error(supplierReconciliationError.value)
+  } finally {
+    supplierReconciliationLoading.value = false
+  }
+}
+
+const loadSupplierPayableSummaries = async (): Promise<void> => {
+  if (!canRead.value) {
+    resetSupplierPayableSummaryRows()
+    return
+  }
+
+  supplierPayableSummaryLoading.value = true
+  supplierPayableSummaryError.value = ''
+  try {
+    const result = await fetchFactoryStatementSupplierPayableSummaries({
+      summary_no: supplierPayableSummaryQuery.summary_no.trim() || undefined,
+      statement_no: supplierPayableSummaryQuery.statement_no.trim() || undefined,
+      supplier: supplierPayableSummaryQuery.supplier.trim() || undefined,
+      supplier_code: supplierPayableSummaryQuery.supplier_code.trim() || undefined,
+      risk_level: supplierPayableSummaryQuery.risk_level || undefined,
+      review_status: supplierPayableSummaryQuery.review_status || undefined,
+      keyword: supplierPayableSummaryQuery.keyword.trim() || undefined,
+      from_date: supplierPayableSummaryQuery.from_date || undefined,
+      to_date: supplierPayableSummaryQuery.to_date || undefined,
+      page: supplierPayableSummaryQuery.page,
+      page_size: supplierPayableSummaryQuery.page_size,
+    })
+    supplierPayableSummaryRows.value = result.data.items
+    supplierPayableSummaryTotal.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    supplierPayableSummaryError.value = `供应商应付账款汇总表加载失败：${message}`
+    ElMessage.error(supplierPayableSummaryError.value)
+  } finally {
+    supplierPayableSummaryLoading.value = false
+  }
+}
+
 const goDetail = (statementId: number): void => {
   router.push({ path: '/factory-statements/detail', query: { id: String(statementId) } })
 }
@@ -3248,6 +4641,21 @@ const resetBankWithdrawalFilters = async (): Promise<void> => {
   bankWithdrawalQuery.to_date = ''
   bankWithdrawalQuery.page = 1
   await loadBankWithdrawals()
+}
+
+const resetBankLedgerFilters = async (): Promise<void> => {
+  bankLedgerQuery.ledger_no = ''
+  bankLedgerQuery.statement_no = ''
+  bankLedgerQuery.bank_name = ''
+  bankLedgerQuery.account_name = ''
+  bankLedgerQuery.transaction_type = ''
+  bankLedgerQuery.ledger_status = ''
+  bankLedgerQuery.review_status = ''
+  bankLedgerQuery.keyword = ''
+  bankLedgerQuery.from_date = ''
+  bankLedgerQuery.to_date = ''
+  bankLedgerQuery.page = 1
+  await loadBankLedgers()
 }
 
 const resetCustomerEvaluationFilters = async (): Promise<void> => {
@@ -3331,6 +4739,62 @@ const resetFactoryReconciliationFilters = async (): Promise<void> => {
   await loadFactoryReconciliations()
 }
 
+const resetFactoryPayableSummaryFilters = async (): Promise<void> => {
+  factoryPayableSummaryQuery.summary_no = ''
+  factoryPayableSummaryQuery.statement_no = ''
+  factoryPayableSummaryQuery.supplier = ''
+  factoryPayableSummaryQuery.factory_name = ''
+  factoryPayableSummaryQuery.risk_level = ''
+  factoryPayableSummaryQuery.review_status = ''
+  factoryPayableSummaryQuery.keyword = ''
+  factoryPayableSummaryQuery.from_date = ''
+  factoryPayableSummaryQuery.to_date = ''
+  factoryPayableSummaryQuery.page = 1
+  await loadFactoryPayableSummaries()
+}
+
+const resetSupplierEvaluationFilters = async (): Promise<void> => {
+  supplierEvaluationQuery.evaluation_no = ''
+  supplierEvaluationQuery.statement_no = ''
+  supplierEvaluationQuery.supplier = ''
+  supplierEvaluationQuery.assessor = ''
+  supplierEvaluationQuery.score_level = ''
+  supplierEvaluationQuery.review_status = ''
+  supplierEvaluationQuery.keyword = ''
+  supplierEvaluationQuery.from_date = ''
+  supplierEvaluationQuery.to_date = ''
+  supplierEvaluationQuery.page = 1
+  await loadSupplierEvaluations()
+}
+
+const resetSupplierReconciliationFilters = async (): Promise<void> => {
+  supplierReconciliationQuery.reconciliation_no = ''
+  supplierReconciliationQuery.statement_no = ''
+  supplierReconciliationQuery.supplier = ''
+  supplierReconciliationQuery.supplier_code = ''
+  supplierReconciliationQuery.settlement_status = ''
+  supplierReconciliationQuery.review_status = ''
+  supplierReconciliationQuery.keyword = ''
+  supplierReconciliationQuery.from_date = ''
+  supplierReconciliationQuery.to_date = ''
+  supplierReconciliationQuery.page = 1
+  await loadSupplierReconciliations()
+}
+
+const resetSupplierPayableSummaryFilters = async (): Promise<void> => {
+  supplierPayableSummaryQuery.summary_no = ''
+  supplierPayableSummaryQuery.statement_no = ''
+  supplierPayableSummaryQuery.supplier = ''
+  supplierPayableSummaryQuery.supplier_code = ''
+  supplierPayableSummaryQuery.risk_level = ''
+  supplierPayableSummaryQuery.review_status = ''
+  supplierPayableSummaryQuery.keyword = ''
+  supplierPayableSummaryQuery.from_date = ''
+  supplierPayableSummaryQuery.to_date = ''
+  supplierPayableSummaryQuery.page = 1
+  await loadSupplierPayableSummaries()
+}
+
 const onExpensePaymentPageChange = (page: number): void => {
   expensePaymentQuery.page = page
   loadExpenseReimbursementPayments()
@@ -3362,6 +4826,17 @@ const onBankWithdrawalSizeChange = (size: number): void => {
   bankWithdrawalQuery.page_size = size
   bankWithdrawalQuery.page = 1
   loadBankWithdrawals()
+}
+
+const onBankLedgerPageChange = (page: number): void => {
+  bankLedgerQuery.page = page
+  loadBankLedgers()
+}
+
+const onBankLedgerSizeChange = (size: number): void => {
+  bankLedgerQuery.page_size = size
+  bankLedgerQuery.page = 1
+  loadBankLedgers()
 }
 
 const onCustomerEvaluationPageChange = (page: number): void => {
@@ -3430,6 +4905,50 @@ const onFactoryReconciliationSizeChange = (size: number): void => {
   loadFactoryReconciliations()
 }
 
+const onFactoryPayableSummaryPageChange = (page: number): void => {
+  factoryPayableSummaryQuery.page = page
+  loadFactoryPayableSummaries()
+}
+
+const onFactoryPayableSummarySizeChange = (size: number): void => {
+  factoryPayableSummaryQuery.page_size = size
+  factoryPayableSummaryQuery.page = 1
+  loadFactoryPayableSummaries()
+}
+
+const onSupplierEvaluationPageChange = (page: number): void => {
+  supplierEvaluationQuery.page = page
+  loadSupplierEvaluations()
+}
+
+const onSupplierEvaluationSizeChange = (size: number): void => {
+  supplierEvaluationQuery.page_size = size
+  supplierEvaluationQuery.page = 1
+  loadSupplierEvaluations()
+}
+
+const onSupplierReconciliationPageChange = (page: number): void => {
+  supplierReconciliationQuery.page = page
+  loadSupplierReconciliations()
+}
+
+const onSupplierReconciliationSizeChange = (size: number): void => {
+  supplierReconciliationQuery.page_size = size
+  supplierReconciliationQuery.page = 1
+  loadSupplierReconciliations()
+}
+
+const onSupplierPayableSummaryPageChange = (page: number): void => {
+  supplierPayableSummaryQuery.page = page
+  loadSupplierPayableSummaries()
+}
+
+const onSupplierPayableSummarySizeChange = (size: number): void => {
+  supplierPayableSummaryQuery.page_size = size
+  supplierPayableSummaryQuery.page = 1
+  loadSupplierPayableSummaries()
+}
+
 onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
@@ -3443,12 +4962,17 @@ onMounted(async () => {
     await loadExpenseReimbursementPayments()
     await loadBankDeposits()
     await loadBankWithdrawals()
+    await loadBankLedgers()
     await loadCustomerEvaluations()
     await loadCustomerReconciliations()
     await loadCustomerUnpaidReports()
     await loadCustomerReceivableSummaries()
     await loadFactoryEvaluations()
     await loadFactoryReconciliations()
+    await loadFactoryPayableSummaries()
+    await loadSupplierEvaluations()
+    await loadSupplierReconciliations()
+    await loadSupplierPayableSummaries()
   }
 })
 </script>
@@ -3543,6 +5067,46 @@ onMounted(async () => {
 }
 
 .factory-reconciliation-alert {
+  margin-bottom: 12px;
+}
+
+.factory-payable-summary-filter-form {
+  margin-top: 8px;
+}
+
+.factory-payable-summary-alert {
+  margin-bottom: 12px;
+}
+
+.supplier-evaluation-filter-form {
+  margin-top: 8px;
+}
+
+.supplier-evaluation-alert {
+  margin-bottom: 12px;
+}
+
+.supplier-reconciliation-filter-form {
+  margin-top: 8px;
+}
+
+.supplier-reconciliation-alert {
+  margin-bottom: 12px;
+}
+
+.supplier-payable-summary-filter-form {
+  margin-top: 8px;
+}
+
+.supplier-payable-summary-alert {
+  margin-bottom: 12px;
+}
+
+.bank-ledger-filter-form {
+  margin-top: 8px;
+}
+
+.bank-ledger-alert {
   margin-bottom: 12px;
 }
 

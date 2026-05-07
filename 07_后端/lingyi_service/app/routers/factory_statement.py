@@ -46,6 +46,7 @@ from app.core.request_id import get_request_id_from_request
 from app.models.factory_statement import LyFactoryStatement
 from app.schemas.factory_statement import FactoryStatementCancelRequest
 from app.schemas.factory_statement import FactoryStatementBankDepositData
+from app.schemas.factory_statement import FactoryStatementBankLedgerData
 from app.schemas.factory_statement import FactoryStatementBankWithdrawalData
 from app.schemas.factory_statement import FactoryStatementConfirmRequest
 from app.schemas.factory_statement import FactoryStatementCreateRequest
@@ -54,7 +55,11 @@ from app.schemas.factory_statement import FactoryStatementCustomerReconciliation
 from app.schemas.factory_statement import FactoryStatementCustomerReceivableSummaryData
 from app.schemas.factory_statement import FactoryStatementCustomerUnpaidReportData
 from app.schemas.factory_statement import FactoryStatementFactoryEvaluationData
+from app.schemas.factory_statement import FactoryStatementFactoryPayableSummaryData
 from app.schemas.factory_statement import FactoryStatementFactoryReconciliationData
+from app.schemas.factory_statement import FactoryStatementSupplierEvaluationData
+from app.schemas.factory_statement import FactoryStatementSupplierPayableSummaryData
+from app.schemas.factory_statement import FactoryStatementSupplierReconciliationData
 from app.schemas.factory_statement import FactoryStatementPayableDraftRequest
 from app.schemas.factory_statement import FactoryStatementExpenseReimbursementPaymentData
 from app.schemas.factory_statement import FactoryStatementPayableWorkerRunOnceRequest
@@ -1980,6 +1985,593 @@ def list_factory_reconciliations(
             supplier=supplier,
             factory_name=factory_name,
             settlement_status=settlement_status,
+            review_status=review_status,
+            keyword=keyword,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+        )
+
+        audit.record_success(
+            module="factory_statement",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="FACTORY_STATEMENT",
+            resource_id=None,
+            resource_no=None,
+            before_data=None,
+            after_data={
+                "total": data.total,
+                "page": data.page,
+                "page_size": data.page_size,
+            },
+            context=context,
+        )
+        _commit_or_raise_write_error(session)
+        return _ok(data.model_dump(mode="json"))
+    except HTTPException as exc:
+        _rollback_safely(session)
+        return _map_permission_error(exc)
+    except AppException as exc:
+        _rollback_safely(session)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=exc.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(exc)
+    except Exception as exc:  # pragma: no cover
+        _rollback_safely(session)
+        log_safe_error(
+            logger_obj=logger,
+            message="factory_statement_internal_error",
+            exc=exc,
+            request_id=get_request_id_from_request(request),
+            extra={"module": "factory_statement", "action": action, "error_code": FACTORY_STATEMENT_INTERNAL_ERROR},
+        )
+        error = BusinessException(code=FACTORY_STATEMENT_INTERNAL_ERROR)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=error.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(error)
+
+
+@router.get("/factory-payable-summaries")
+def list_factory_payable_summaries(
+    request: Request,
+    summary_no: str | None = Query(default=None),
+    statement_no: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    factory_name: str | None = Query(default=None),
+    risk_level: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = FACTORY_STATEMENT_READ
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    service = FactoryStatementService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="factory_statement",
+            resource_type="factory_statement",
+            resource_id=None,
+        )
+        readable_companies, readable_suppliers = _resolve_readable_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+        )
+
+        data: FactoryStatementFactoryPayableSummaryData = service.get_factory_payable_summaries(
+            summary_no=summary_no,
+            statement_no=statement_no,
+            supplier=supplier,
+            factory_name=factory_name,
+            risk_level=risk_level,
+            review_status=review_status,
+            keyword=keyword,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+        )
+
+        audit.record_success(
+            module="factory_statement",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="FACTORY_STATEMENT",
+            resource_id=None,
+            resource_no=None,
+            before_data=None,
+            after_data={
+                "total": data.total,
+                "page": data.page,
+                "page_size": data.page_size,
+            },
+            context=context,
+        )
+        _commit_or_raise_write_error(session)
+        return _ok(data.model_dump(mode="json"))
+    except HTTPException as exc:
+        _rollback_safely(session)
+        return _map_permission_error(exc)
+    except AppException as exc:
+        _rollback_safely(session)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=exc.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(exc)
+    except Exception as exc:  # pragma: no cover
+        _rollback_safely(session)
+        log_safe_error(
+            logger_obj=logger,
+            message="factory_statement_internal_error",
+            exc=exc,
+            request_id=get_request_id_from_request(request),
+            extra={"module": "factory_statement", "action": action, "error_code": FACTORY_STATEMENT_INTERNAL_ERROR},
+        )
+        error = BusinessException(code=FACTORY_STATEMENT_INTERNAL_ERROR)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=error.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(error)
+
+
+@router.get("/supplier-evaluations")
+def list_supplier_evaluations(
+    request: Request,
+    evaluation_no: str | None = Query(default=None),
+    statement_no: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    assessor: str | None = Query(default=None),
+    score_level: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = FACTORY_STATEMENT_READ
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    service = FactoryStatementService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="factory_statement",
+            resource_type="factory_statement",
+            resource_id=None,
+        )
+        readable_companies, readable_suppliers = _resolve_readable_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+        )
+
+        data: FactoryStatementSupplierEvaluationData = service.get_supplier_evaluations(
+            evaluation_no=evaluation_no,
+            statement_no=statement_no,
+            supplier=supplier,
+            assessor=assessor,
+            score_level=score_level,
+            review_status=review_status,
+            keyword=keyword,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+        )
+
+        audit.record_success(
+            module="factory_statement",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="FACTORY_STATEMENT",
+            resource_id=None,
+            resource_no=None,
+            before_data=None,
+            after_data={
+                "total": data.total,
+                "page": data.page,
+                "page_size": data.page_size,
+            },
+            context=context,
+        )
+        _commit_or_raise_write_error(session)
+        return _ok(data.model_dump(mode="json"))
+    except HTTPException as exc:
+        _rollback_safely(session)
+        return _map_permission_error(exc)
+    except AppException as exc:
+        _rollback_safely(session)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=exc.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(exc)
+    except Exception as exc:  # pragma: no cover
+        _rollback_safely(session)
+        log_safe_error(
+            logger_obj=logger,
+            message="factory_statement_internal_error",
+            exc=exc,
+            request_id=get_request_id_from_request(request),
+            extra={"module": "factory_statement", "action": action, "error_code": FACTORY_STATEMENT_INTERNAL_ERROR},
+        )
+        error = BusinessException(code=FACTORY_STATEMENT_INTERNAL_ERROR)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=error.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(error)
+
+
+@router.get("/supplier-reconciliations")
+def list_supplier_reconciliations(
+    request: Request,
+    reconciliation_no: str | None = Query(default=None),
+    statement_no: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    supplier_code: str | None = Query(default=None),
+    settlement_status: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = FACTORY_STATEMENT_READ
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    service = FactoryStatementService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="factory_statement",
+            resource_type="factory_statement",
+            resource_id=None,
+        )
+        readable_companies, readable_suppliers = _resolve_readable_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+        )
+
+        data: FactoryStatementSupplierReconciliationData = service.get_supplier_reconciliations(
+            reconciliation_no=reconciliation_no,
+            statement_no=statement_no,
+            supplier=supplier,
+            supplier_code=supplier_code,
+            settlement_status=settlement_status,
+            review_status=review_status,
+            keyword=keyword,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+        )
+
+        audit.record_success(
+            module="factory_statement",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="FACTORY_STATEMENT",
+            resource_id=None,
+            resource_no=None,
+            before_data=None,
+            after_data={
+                "total": data.total,
+                "page": data.page,
+                "page_size": data.page_size,
+            },
+            context=context,
+        )
+        _commit_or_raise_write_error(session)
+        return _ok(data.model_dump(mode="json"))
+    except HTTPException as exc:
+        _rollback_safely(session)
+        return _map_permission_error(exc)
+    except AppException as exc:
+        _rollback_safely(session)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=exc.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(exc)
+    except Exception as exc:  # pragma: no cover
+        _rollback_safely(session)
+        log_safe_error(
+            logger_obj=logger,
+            message="factory_statement_internal_error",
+            exc=exc,
+            request_id=get_request_id_from_request(request),
+            extra={"module": "factory_statement", "action": action, "error_code": FACTORY_STATEMENT_INTERNAL_ERROR},
+        )
+        error = BusinessException(code=FACTORY_STATEMENT_INTERNAL_ERROR)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=error.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(error)
+
+
+@router.get("/supplier-payable-summaries")
+def list_supplier_payable_summaries(
+    request: Request,
+    summary_no: str | None = Query(default=None),
+    statement_no: str | None = Query(default=None),
+    supplier: str | None = Query(default=None),
+    supplier_code: str | None = Query(default=None),
+    risk_level: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = FACTORY_STATEMENT_READ
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    service = FactoryStatementService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="factory_statement",
+            resource_type="factory_statement",
+            resource_id=None,
+        )
+        readable_companies, readable_suppliers = _resolve_readable_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+        )
+
+        data: FactoryStatementSupplierPayableSummaryData = service.get_supplier_payable_summaries(
+            summary_no=summary_no,
+            statement_no=statement_no,
+            supplier=supplier,
+            supplier_code=supplier_code,
+            risk_level=risk_level,
+            review_status=review_status,
+            keyword=keyword,
+            from_date=from_date,
+            to_date=to_date,
+            page=page,
+            page_size=page_size,
+            readable_companies=readable_companies,
+            readable_suppliers=readable_suppliers,
+        )
+
+        audit.record_success(
+            module="factory_statement",
+            action=action,
+            operator=current_user.username,
+            operator_roles=current_user.roles,
+            resource_type="FACTORY_STATEMENT",
+            resource_id=None,
+            resource_no=None,
+            before_data=None,
+            after_data={
+                "total": data.total,
+                "page": data.page,
+                "page_size": data.page_size,
+            },
+            context=context,
+        )
+        _commit_or_raise_write_error(session)
+        return _ok(data.model_dump(mode="json"))
+    except HTTPException as exc:
+        _rollback_safely(session)
+        return _map_permission_error(exc)
+    except AppException as exc:
+        _rollback_safely(session)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=exc.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(exc)
+    except Exception as exc:  # pragma: no cover
+        _rollback_safely(session)
+        log_safe_error(
+            logger_obj=logger,
+            message="factory_statement_internal_error",
+            exc=exc,
+            request_id=get_request_id_from_request(request),
+            extra={"module": "factory_statement", "action": action, "error_code": FACTORY_STATEMENT_INTERNAL_ERROR},
+        )
+        error = BusinessException(code=FACTORY_STATEMENT_INTERNAL_ERROR)
+        try:
+            _record_failure_safely(
+                session=session,
+                audit=audit,
+                context=context,
+                action=action,
+                current_user=current_user,
+                resource_id=None,
+                resource_no=None,
+                error_code=error.code,
+            )
+        except AuditWriteFailed as audit_exc:
+            return _app_err(audit_exc)
+        return _app_err(error)
+
+
+@router.get("/bank-ledgers")
+def list_bank_ledgers(
+    request: Request,
+    ledger_no: str | None = Query(default=None),
+    statement_no: str | None = Query(default=None),
+    bank_name: str | None = Query(default=None),
+    account_name: str | None = Query(default=None),
+    transaction_type: str | None = Query(default=None),
+    ledger_status: str | None = Query(default=None),
+    review_status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    from_date: date | None = Query(default=None),
+    to_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = FACTORY_STATEMENT_READ
+    permission_service = PermissionService(session=session)
+    audit = AuditService(session=session)
+    context = AuditContext.from_request(request)
+    service = FactoryStatementService(session=session)
+
+    try:
+        permission_service.require_action(
+            current_user=current_user,
+            request_obj=request,
+            action=action,
+            module="factory_statement",
+            resource_type="factory_statement",
+            resource_id=None,
+        )
+        readable_companies, readable_suppliers = _resolve_readable_scope(
+            permission_service=permission_service,
+            current_user=current_user,
+            request=request,
+        )
+
+        data: FactoryStatementBankLedgerData = service.get_bank_ledgers(
+            ledger_no=ledger_no,
+            statement_no=statement_no,
+            bank_name=bank_name,
+            account_name=account_name,
+            transaction_type=transaction_type,
+            ledger_status=ledger_status,
             review_status=review_status,
             keyword=keyword,
             from_date=from_date,

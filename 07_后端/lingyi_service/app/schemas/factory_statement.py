@@ -166,6 +166,37 @@ class FactoryStatementBankWithdrawalData(BaseModel):
     page_size: int
 
 
+class FactoryStatementBankLedgerItem(BaseModel):
+    """Read-only bank ledger row."""
+
+    ledger_no: str
+    statement_no: str
+    company: str
+    bank_name: str
+    account_name: str
+    account_no: str
+    currency: str
+    transaction_type: str
+    debit_amount: Decimal
+    credit_amount: Decimal
+    balance_after: Decimal
+    ledger_status: str
+    review_status: str
+    ledger_date: date
+    voucher_no: str
+    owner: str
+    remark: str
+
+
+class FactoryStatementBankLedgerData(BaseModel):
+    """Read-only bank ledger response."""
+
+    items: list[FactoryStatementBankLedgerItem]
+    total: int
+    page: int
+    page_size: int
+
+
 class FactoryStatementCustomerEvaluationItem(BaseModel):
     """Read-only customer evaluation row."""
 
@@ -340,6 +371,130 @@ class FactoryStatementFactoryReconciliationData(BaseModel):
     """Read-only factory reconciliation response."""
 
     items: list[FactoryStatementFactoryReconciliationItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementFactoryPayableSummaryItem(BaseModel):
+    """Read-only factory payable summary row."""
+
+    summary_no: str
+    statement_no: str
+    company: str
+    supplier: str
+    factory_name: str
+    factory_code: str
+    currency: str
+    opening_payable: Decimal
+    current_payable: Decimal
+    paid_amount: Decimal
+    ending_payable: Decimal
+    aging_30: Decimal
+    aging_60: Decimal
+    aging_90_plus: Decimal
+    risk_level: str
+    review_status: str
+    summary_date: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementFactoryPayableSummaryData(BaseModel):
+    """Read-only factory payable summary response."""
+
+    items: list[FactoryStatementFactoryPayableSummaryItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementSupplierEvaluationItem(BaseModel):
+    """Read-only supplier evaluation row."""
+
+    evaluation_no: str
+    statement_no: str
+    company: str
+    supplier: str
+    supplier_code: str
+    assessor: str
+    score: Decimal
+    score_level: str
+    review_status: str
+    follow_up_status: str
+    evaluation_date: date
+    expiry_date: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementSupplierEvaluationData(BaseModel):
+    """Read-only supplier evaluation response."""
+
+    items: list[FactoryStatementSupplierEvaluationItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementSupplierReconciliationItem(BaseModel):
+    """Read-only supplier reconciliation row."""
+
+    reconciliation_no: str
+    statement_no: str
+    company: str
+    supplier: str
+    supplier_code: str
+    currency: str
+    reconciliation_amount: Decimal
+    settled_amount: Decimal
+    pending_amount: Decimal
+    settlement_status: str
+    review_status: str
+    follow_up_status: str
+    reconciled_at: date
+    due_date: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementSupplierReconciliationData(BaseModel):
+    """Read-only supplier reconciliation response."""
+
+    items: list[FactoryStatementSupplierReconciliationItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class FactoryStatementSupplierPayableSummaryItem(BaseModel):
+    """Read-only supplier payable summary row."""
+
+    summary_no: str
+    statement_no: str
+    company: str
+    supplier: str
+    supplier_code: str
+    currency: str
+    opening_payable: Decimal
+    current_payable: Decimal
+    paid_amount: Decimal
+    ending_payable: Decimal
+    aging_30: Decimal
+    aging_60: Decimal
+    aging_90_plus: Decimal
+    risk_level: str
+    review_status: str
+    follow_up_status: str
+    summary_date: date
+    owner: str
+    remark: str
+
+
+class FactoryStatementSupplierPayableSummaryData(BaseModel):
+    """Read-only supplier payable summary response."""
+
+    items: list[FactoryStatementSupplierPayableSummaryItem]
     total: int
     page: int
     page_size: int
