@@ -29,6 +29,87 @@ interface ReportCatalogScope {
   report_type?: string | null
 }
 
+interface ReportEmployeeTaskStatisticsQuery {
+  company?: string
+  department?: string
+  task_status?: string
+  employee_keyword?: string
+  from_date?: string
+  to_date?: string
+}
+
+interface ReportEmployeeTaskStatisticsItem {
+  employee_id: string
+  employee_name: string
+  department: string
+  pending_tasks: number
+  in_progress_tasks: number
+  completed_tasks: number
+  overdue_tasks: number
+  completion_rate: string
+  latest_task_no: string
+  latest_task_title: string
+  latest_due_date: string
+  updated_at: string
+  status: string
+}
+
+interface ReportEmployeeTaskStatisticsScope {
+  company?: string | null
+  department?: string | null
+  task_status?: string | null
+  employee_keyword?: string | null
+  from_date?: string | null
+  to_date?: string | null
+}
+
+interface ReportEmployeeTaskStatisticsData {
+  items: ReportEmployeeTaskStatisticsItem[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+  requested_scope: ReportEmployeeTaskStatisticsScope
+}
+
+interface ReportApprovalReportQuery {
+  company?: string
+  approver_keyword?: string
+  approval_status?: string
+  from_date?: string
+  to_date?: string
+}
+
+interface ReportApprovalReportItem {
+  approval_no: string
+  approval_type: string
+  related_doc_no: string
+  applicant: string
+  approver: string
+  department: string
+  amount: string
+  priority: string
+  submitted_at: string
+  completed_at: string
+  status: string
+  remark: string
+}
+
+interface ReportApprovalReportScope {
+  company?: string | null
+  approver_keyword?: string | null
+  approval_status?: string | null
+  from_date?: string | null
+  to_date?: string | null
+}
+
+interface ReportApprovalReportData {
+  items: ReportApprovalReportItem[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+  requested_scope: ReportApprovalReportScope
+}
+
 interface ReportCatalogListData {
   items: ReportCatalogItem[]
   requested_scope: ReportCatalogScope
@@ -64,6 +145,35 @@ const fetchReportCatalog = (query: ReportCatalogQuery): Promise<ApiResponse<Repo
   return request<ReportCatalogListData>(url)
 }
 
+const fetchReportEmployeeTaskStatistics = (
+  query: ReportEmployeeTaskStatisticsQuery,
+): Promise<ApiResponse<ReportEmployeeTaskStatisticsData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    department: query.department,
+    task_status: query.task_status,
+    employee_keyword: query.employee_keyword,
+    from_date: query.from_date,
+    to_date: query.to_date,
+  })
+  const url = queryString
+    ? `/api/reports/employee-task-statistics?${queryString}`
+    : '/api/reports/employee-task-statistics'
+  return request<ReportEmployeeTaskStatisticsData>(url)
+}
+
+const fetchReportApprovalReports = (query: ReportApprovalReportQuery): Promise<ApiResponse<ReportApprovalReportData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    approver_keyword: query.approver_keyword,
+    approval_status: query.approval_status,
+    from_date: query.from_date,
+    to_date: query.to_date,
+  })
+  const url = queryString ? `/api/reports/approval-reports?${queryString}` : '/api/reports/approval-reports'
+  return request<ReportApprovalReportData>(url)
+}
+
 const fetchReportCatalogDetail = (
   reportKey: string,
   company?: string,
@@ -96,6 +206,8 @@ const exportReportCatalogCsv = async (query: ReportCatalogQuery): Promise<void> 
 
 const reportApi = {
   fetchReportCatalog,
+  fetchReportEmployeeTaskStatistics,
+  fetchReportApprovalReports,
   fetchReportCatalogDetail,
   exportReportCatalogCsv,
 }

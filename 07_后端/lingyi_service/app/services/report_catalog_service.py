@@ -7,6 +7,12 @@ from app.schemas.report import ReportCatalogDetailData
 from app.schemas.report import ReportCatalogItemData
 from app.schemas.report import ReportCatalogListData
 from app.schemas.report import ReportCatalogRequestedScope
+from app.schemas.report import ReportApprovalReportData
+from app.schemas.report import ReportApprovalReportItemData
+from app.schemas.report import ReportApprovalReportScope
+from app.schemas.report import ReportEmployeeTaskStatisticsData
+from app.schemas.report import ReportEmployeeTaskStatisticsItemData
+from app.schemas.report import ReportEmployeeTaskStatisticsScope
 
 
 class ReportCatalogService:
@@ -232,6 +238,159 @@ class ReportCatalogService:
             status="designed",
         ),
     )
+    _EMPLOYEE_TASK_STATUS_TAGS: tuple[str, ...] = ("正常", "预警", "冻结")
+    _EMPLOYEE_TASK_UI_BUTTONS: tuple[str, ...] = ("查看", "确认", "审核", "导出", "打印", "上传")
+    _EMPLOYEE_TASK_UI_TABLE_HEADERS: tuple[str, ...] = (
+        "员工编号",
+        "员工姓名",
+        "部门",
+        "待办任务",
+        "进行中任务",
+        "已完成任务",
+        "逾期任务",
+        "完成率",
+        "最近任务单号",
+        "最近任务标题",
+        "最近截止日期",
+        "更新时间",
+        "状态",
+    )
+    _EMPLOYEE_TASK_STATISTICS: tuple[ReportEmployeeTaskStatisticsItemData, ...] = (
+        ReportEmployeeTaskStatisticsItemData(
+            employee_id="E-1001",
+            employee_name="陈晓敏",
+            department="生产计划",
+            pending_tasks=3,
+            in_progress_tasks=6,
+            completed_tasks=18,
+            overdue_tasks=1,
+            completion_rate="75%",
+            latest_task_no="TASK-PLN-20260507-001",
+            latest_task_title="夏季卫衣排产校核",
+            latest_due_date="2026-05-09",
+            updated_at="2026-05-07 10:30",
+            status="正常",
+        ),
+        ReportEmployeeTaskStatisticsItemData(
+            employee_id="E-1002",
+            employee_name="李志远",
+            department="仓储协同",
+            pending_tasks=5,
+            in_progress_tasks=8,
+            completed_tasks=21,
+            overdue_tasks=2,
+            completion_rate="72%",
+            latest_task_no="TASK-WHS-20260507-014",
+            latest_task_title="成品收发差异复核",
+            latest_due_date="2026-05-08",
+            updated_at="2026-05-07 11:05",
+            status="预警",
+        ),
+        ReportEmployeeTaskStatisticsItemData(
+            employee_id="E-1003",
+            employee_name="王嘉宁",
+            department="财务对账",
+            pending_tasks=2,
+            in_progress_tasks=4,
+            completed_tasks=26,
+            overdue_tasks=0,
+            completion_rate="84%",
+            latest_task_no="TASK-FIN-20260507-006",
+            latest_task_title="供应商票据核销",
+            latest_due_date="2026-05-10",
+            updated_at="2026-05-07 09:55",
+            status="正常",
+        ),
+        ReportEmployeeTaskStatisticsItemData(
+            employee_id="E-1004",
+            employee_name="赵文涛",
+            department="质检中心",
+            pending_tasks=7,
+            in_progress_tasks=5,
+            completed_tasks=15,
+            overdue_tasks=4,
+            completion_rate="58%",
+            latest_task_no="TASK-QA-20260507-009",
+            latest_task_title="批次抽检异常闭环",
+            latest_due_date="2026-05-07",
+            updated_at="2026-05-07 12:10",
+            status="冻结",
+        ),
+    )
+    _APPROVAL_REPORT_STATUS_TAGS: tuple[str, ...] = ("待审批", "已通过", "已驳回")
+    _APPROVAL_REPORT_UI_BUTTONS: tuple[str, ...] = ("查看", "确认", "审核", "导出", "打印", "上传")
+    _APPROVAL_REPORT_UI_TABLE_HEADERS: tuple[str, ...] = (
+        "审批单号",
+        "审批类型",
+        "关联单据",
+        "申请人",
+        "审批人",
+        "部门",
+        "金额",
+        "优先级",
+        "提交时间",
+        "完成时间",
+        "状态",
+        "备注",
+    )
+    _APPROVAL_REPORTS: tuple[ReportApprovalReportItemData, ...] = (
+        ReportApprovalReportItemData(
+            approval_no="APR-20260507-001",
+            approval_type="费用报销",
+            related_doc_no="EXP-20260507-011",
+            applicant="陈晓敏",
+            approver="刘主管",
+            department="财务对账",
+            amount="1280.00",
+            priority="高",
+            submitted_at="2026-05-07 09:10",
+            completed_at="-",
+            status="待审批",
+            remark="差旅报销待一审",
+        ),
+        ReportApprovalReportItemData(
+            approval_no="APR-20260506-021",
+            approval_type="付款申请",
+            related_doc_no="PAY-20260506-088",
+            applicant="李志远",
+            approver="王经理",
+            department="仓储协同",
+            amount="5600.00",
+            priority="中",
+            submitted_at="2026-05-06 14:22",
+            completed_at="2026-05-06 15:05",
+            status="已通过",
+            remark="供应商运费付款",
+        ),
+        ReportApprovalReportItemData(
+            approval_no="APR-20260505-037",
+            approval_type="采购补单",
+            related_doc_no="PO-20260505-133",
+            applicant="赵文涛",
+            approver="王经理",
+            department="生产计划",
+            amount="9200.00",
+            priority="高",
+            submitted_at="2026-05-05 16:18",
+            completed_at="2026-05-05 17:40",
+            status="已驳回",
+            remark="资料不完整驳回补充",
+        ),
+        ReportApprovalReportItemData(
+            approval_no="APR-20260504-019",
+            approval_type="预算调整",
+            related_doc_no="BDG-20260504-009",
+            applicant="王嘉宁",
+            approver="刘主管",
+            department="财务对账",
+            amount="3000.00",
+            priority="低",
+            submitted_at="2026-05-04 11:03",
+            completed_at="2026-05-04 11:36",
+            status="已通过",
+            remark="月度预算微调",
+        ),
+    )
 
     @classmethod
     def list_catalog(
@@ -280,6 +439,118 @@ class ReportCatalogService:
                     requested_scope=ReportCatalogRequestedScope(company=cls._norm(company)),
                 )
         raise KeyError("report not found")
+
+    @classmethod
+    def get_employee_task_statistics(
+        cls,
+        *,
+        company: str | None,
+        department: str | None,
+        task_status: str | None,
+        employee_keyword: str | None,
+        from_date: str | None,
+        to_date: str | None,
+    ) -> ReportEmployeeTaskStatisticsData:
+        normalized_company = cls._norm(company)
+        normalized_department = cls._norm(department)
+        normalized_status = cls._norm(task_status)
+        normalized_employee_keyword = cls._norm(employee_keyword)
+        normalized_from_date = cls._norm(from_date)
+        normalized_to_date = cls._norm(to_date)
+
+        if normalized_status and normalized_status not in cls._EMPLOYEE_TASK_STATUS_TAGS:
+            raise ValueError("task_status 不合法")
+        if normalized_from_date and normalized_to_date and normalized_from_date > normalized_to_date:
+            raise ValueError("from_date 不能大于 to_date")
+
+        items = [item.model_copy(deep=True) for item in cls._EMPLOYEE_TASK_STATISTICS]
+
+        if normalized_department:
+            items = [item for item in items if normalized_department in item.department]
+        if normalized_status:
+            items = [item for item in items if item.status == normalized_status]
+        if normalized_employee_keyword:
+            items = [
+                item
+                for item in items
+                if normalized_employee_keyword in item.employee_name
+                or normalized_employee_keyword in item.employee_id
+                or normalized_employee_keyword in item.latest_task_no
+                or normalized_employee_keyword in item.latest_task_title
+            ]
+        if normalized_from_date:
+            items = [item for item in items if item.latest_due_date >= normalized_from_date]
+        if normalized_to_date:
+            items = [item for item in items if item.latest_due_date <= normalized_to_date]
+
+        return ReportEmployeeTaskStatisticsData(
+            items=items,
+            status_tags=list(cls._EMPLOYEE_TASK_STATUS_TAGS),
+            ui_buttons=list(cls._EMPLOYEE_TASK_UI_BUTTONS),
+            ui_table_headers=list(cls._EMPLOYEE_TASK_UI_TABLE_HEADERS),
+            requested_scope=ReportEmployeeTaskStatisticsScope(
+                company=normalized_company,
+                department=normalized_department,
+                task_status=normalized_status,
+                employee_keyword=normalized_employee_keyword,
+                from_date=normalized_from_date,
+                to_date=normalized_to_date,
+            ),
+        )
+
+    @classmethod
+    def get_approval_reports(
+        cls,
+        *,
+        company: str | None,
+        approver_keyword: str | None,
+        approval_status: str | None,
+        from_date: str | None,
+        to_date: str | None,
+    ) -> ReportApprovalReportData:
+        normalized_company = cls._norm(company)
+        normalized_approver_keyword = cls._norm(approver_keyword)
+        normalized_approval_status = cls._norm(approval_status)
+        normalized_from_date = cls._norm(from_date)
+        normalized_to_date = cls._norm(to_date)
+
+        if normalized_approval_status and normalized_approval_status not in cls._APPROVAL_REPORT_STATUS_TAGS:
+            raise ValueError("approval_status 不合法")
+        if normalized_from_date and normalized_to_date and normalized_from_date > normalized_to_date:
+            raise ValueError("from_date 不能大于 to_date")
+
+        items = [item.model_copy(deep=True) for item in cls._APPROVAL_REPORTS]
+
+        if normalized_approver_keyword:
+            items = [
+                item
+                for item in items
+                if normalized_approver_keyword in item.approver
+                or normalized_approver_keyword in item.applicant
+                or normalized_approver_keyword in item.approval_no
+                or normalized_approver_keyword in item.related_doc_no
+                or normalized_approver_keyword in item.approval_type
+            ]
+        if normalized_approval_status:
+            items = [item for item in items if item.status == normalized_approval_status]
+        if normalized_from_date:
+            items = [item for item in items if item.submitted_at[:10] >= normalized_from_date]
+        if normalized_to_date:
+            items = [item for item in items if item.submitted_at[:10] <= normalized_to_date]
+
+        return ReportApprovalReportData(
+            items=items,
+            status_tags=list(cls._APPROVAL_REPORT_STATUS_TAGS),
+            ui_buttons=list(cls._APPROVAL_REPORT_UI_BUTTONS),
+            ui_table_headers=list(cls._APPROVAL_REPORT_UI_TABLE_HEADERS),
+            requested_scope=ReportApprovalReportScope(
+                company=normalized_company,
+                approver_keyword=normalized_approver_keyword,
+                approval_status=normalized_approval_status,
+                from_date=normalized_from_date,
+                to_date=normalized_to_date,
+            ),
+        )
 
     @classmethod
     def _allowed_source_modules(cls) -> set[str]:

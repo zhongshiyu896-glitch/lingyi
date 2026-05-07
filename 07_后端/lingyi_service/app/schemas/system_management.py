@@ -147,3 +147,79 @@ class SystemUserCatalogData(BaseModel):
     total: int
     role_options: list[str] = Field(default_factory=list)
     status_options: list[str] = Field(default_factory=list)
+
+
+class SystemOrganizationFrameworkActionData(BaseModel):
+    """One readonly action descriptor for organization framework row."""
+
+    action_key: str
+    label: str
+    guarded: bool
+    disabled_reason: str
+
+
+class SystemOrganizationFrameworkItemData(BaseModel):
+    """One readonly organization framework row."""
+
+    org_code: str
+    org_name: str
+    parent_org_name: str
+    manager_name: str
+    org_level: str
+    headcount_planned: int
+    headcount_on_duty: int
+    status: str
+    effective_date: str
+    updated_at: str
+    remark: str
+    actions: list[SystemOrganizationFrameworkActionData] = Field(default_factory=list)
+
+
+class SystemOrganizationFrameworkData(BaseModel):
+    """Payload for organization framework query."""
+
+    items: list[SystemOrganizationFrameworkItemData] = Field(default_factory=list)
+    total: int
+    org_level_options: list[str] = Field(default_factory=list)
+    status_tags: list[str] = Field(default_factory=list)
+    ui_buttons: list[str] = Field(default_factory=list)
+    ui_table_headers: list[str] = Field(default_factory=list)
+
+
+class SystemIntegrationPlatformActionData(BaseModel):
+    """One readonly action descriptor for integration platform row."""
+
+    action_key: str
+    label: str
+    guarded: bool
+    disabled_reason: str
+
+
+class SystemIntegrationPlatformItemData(BaseModel):
+    """One readonly integration platform row."""
+
+    platform_code: str
+    platform_name: str
+    platform_type: str
+    endpoint_mode: str
+    connector: str
+    webhook_url_masked: str
+    sync_direction: str
+    status: str
+    last_sync_at: str
+    retry_policy: str
+    updated_at: str
+    remark: str
+    actions: list[SystemIntegrationPlatformActionData] = Field(default_factory=list)
+
+
+class SystemIntegrationPlatformData(BaseModel):
+    """Payload for integration platform query."""
+
+    items: list[SystemIntegrationPlatformItemData] = Field(default_factory=list)
+    total: int
+    platform_type_options: list[str] = Field(default_factory=list)
+    endpoint_mode_options: list[str] = Field(default_factory=list)
+    status_tags: list[str] = Field(default_factory=list)
+    ui_buttons: list[str] = Field(default_factory=list)
+    ui_table_headers: list[str] = Field(default_factory=list)

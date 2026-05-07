@@ -148,6 +148,87 @@ export interface SystemUserCatalogData {
   status_options: string[]
 }
 
+export interface SystemOrganizationFrameworkQuery {
+  org_level?: string
+  status?: '生效' | '待生效' | '停用'
+  keyword?: string
+  effective_start_date?: string
+  effective_end_date?: string
+}
+
+export interface SystemOrganizationFrameworkAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemOrganizationFrameworkItem {
+  org_code: string
+  org_name: string
+  parent_org_name: string
+  manager_name: string
+  org_level: string
+  headcount_planned: number
+  headcount_on_duty: number
+  status: string
+  effective_date: string
+  updated_at: string
+  remark: string
+  actions: SystemOrganizationFrameworkAction[]
+}
+
+export interface SystemOrganizationFrameworkData {
+  items: SystemOrganizationFrameworkItem[]
+  total: number
+  org_level_options: string[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+}
+
+export interface SystemIntegrationPlatformQuery {
+  platform_type?: string
+  status?: '运行中' | '告警' | '停用'
+  endpoint_mode?: string
+  keyword?: string
+  updated_start_date?: string
+  updated_end_date?: string
+}
+
+export interface SystemIntegrationPlatformAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemIntegrationPlatformItem {
+  platform_code: string
+  platform_name: string
+  platform_type: string
+  endpoint_mode: string
+  connector: string
+  webhook_url_masked: string
+  sync_direction: string
+  status: string
+  last_sync_at: string
+  retry_policy: string
+  updated_at: string
+  remark: string
+  actions: SystemIntegrationPlatformAction[]
+}
+
+export interface SystemIntegrationPlatformData {
+  items: SystemIntegrationPlatformItem[]
+  total: number
+  platform_type_options: string[]
+  endpoint_mode_options: string[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+}
+
 export const fetchSystemConfigCatalog = async (
   query: SystemConfigCatalogQuery,
 ): Promise<ApiResponse<SystemConfigCatalogData>> => {
@@ -204,12 +285,43 @@ export const fetchSystemUserCatalog = async (
   return request<SystemUserCatalogData>(url)
 }
 
+export const fetchSystemOrganizationFrameworks = async (
+  query: SystemOrganizationFrameworkQuery,
+): Promise<ApiResponse<SystemOrganizationFrameworkData>> => {
+  const queryString = toQuery({
+    org_level: query.org_level,
+    status: query.status,
+    keyword: query.keyword,
+    effective_start_date: query.effective_start_date,
+    effective_end_date: query.effective_end_date,
+  })
+  const url = queryString ? `/api/system/organization-frameworks?${queryString}` : '/api/system/organization-frameworks'
+  return request<SystemOrganizationFrameworkData>(url)
+}
+
+export const fetchSystemIntegrationPlatforms = async (
+  query: SystemIntegrationPlatformQuery,
+): Promise<ApiResponse<SystemIntegrationPlatformData>> => {
+  const queryString = toQuery({
+    platform_type: query.platform_type,
+    status: query.status,
+    endpoint_mode: query.endpoint_mode,
+    keyword: query.keyword,
+    updated_start_date: query.updated_start_date,
+    updated_end_date: query.updated_end_date,
+  })
+  const url = queryString ? `/api/system/integration-platforms?${queryString}` : '/api/system/integration-platforms'
+  return request<SystemIntegrationPlatformData>(url)
+}
+
 const systemManagementApi = {
   fetchSystemConfigCatalog,
   fetchSystemDictionaryCatalog,
   fetchSystemHealthSummary,
   fetchSystemApprovalFlows,
   fetchSystemUserCatalog,
+  fetchSystemOrganizationFrameworks,
+  fetchSystemIntegrationPlatforms,
 }
 
 export default systemManagementApi

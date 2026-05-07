@@ -124,6 +124,303 @@
       </template>
     </el-card>
 
+    <el-card shadow="never" data-testid="organization-framework-section">
+      <template #header>
+        <div class="header-row">
+          <span>组织框架（TASK-Y74B-P1-03，只读）</span>
+          <el-button type="primary" :loading="organizationFrameworkLoading" @click="loadOrganizationFrameworks">
+            查询
+          </el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（组织框架只读目录不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅新增组织框架只读语义，不覆盖审批流程、用户目录、配置目录、字典目录与系统健康摘要。"
+        />
+
+        <el-form :inline="true" :model="organizationFrameworkQuery" class="query-form">
+          <el-form-item label="组织层级">
+            <el-select v-model="organizationFrameworkQuery.org_level" clearable placeholder="全部" style="width: 180px">
+              <el-option
+                v-for="option in organizationFrameworkLevelOptions"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="organizationFrameworkQuery.status" clearable placeholder="全部" style="width: 160px">
+              <el-option v-for="option in organizationFrameworkStatusTags" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="organizationFrameworkQuery.keyword"
+              clearable
+              placeholder="请输入组织编码/组织名称/负责人"
+              style="width: 260px"
+            />
+          </el-form-item>
+          <el-form-item label="生效开始">
+            <el-input
+              v-model="organizationFrameworkQuery.effective_start_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item label="生效结束">
+            <el-input
+              v-model="organizationFrameworkQuery.effective_end_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="organizationFrameworkLoading" @click="loadOrganizationFrameworks">
+              搜索
+            </el-button>
+            <el-button @click="resetOrganizationFrameworkFilters">重置</el-button>
+            <el-button @click="clearOrganizationFrameworkSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最近更新：{{ activeOrganizationFrameworkItem?.updated_at ?? '-' }}</span>
+          <span>最近生效日期：{{ activeOrganizationFrameworkItem?.effective_date ?? '-' }}</span>
+          <span>guarded 按钮：{{ organizationFrameworkUiButtons.join(' / ') || '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="organizationFrameworkErrorMessage"
+          type="error"
+          :closable="false"
+          :title="organizationFrameworkErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table :data="organizationFrameworkItems" border row-key="org_code" empty-text="暂无组织框架数据">
+          <el-table-column prop="org_code" label="组织编码" min-width="140" />
+          <el-table-column prop="org_name" label="组织名称" min-width="180" />
+          <el-table-column prop="parent_org_name" label="上级组织" min-width="180" />
+          <el-table-column prop="manager_name" label="负责人" width="120" />
+          <el-table-column prop="org_level" label="组织层级" width="120" />
+          <el-table-column prop="headcount_planned" label="编制人数" width="110" />
+          <el-table-column prop="headcount_on_duty" label="在岗人数" width="110" />
+          <el-table-column label="状态" width="110">
+            <template #default="scope">
+              <el-tag :type="organizationFrameworkStatusTagType(scope.row.status)" effect="plain">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="effective_date" label="生效日期" width="120" />
+          <el-table-column prop="updated_at" label="更新时间" min-width="180" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" min-width="360">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.org_code}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onOrganizationFrameworkActionClick(scope.row, action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!organizationFrameworkItems.length" description="暂无组织框架数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="写动作、上传/下载/导出/打印均为 guarded/disabled，仅允许只读查看。"
+        />
+      </template>
+    </el-card>
+
+    <el-card shadow="never" data-testid="integration-platform-section">
+      <template #header>
+        <div class="header-row">
+          <span>对接平台（TASK-Y74B-P1-05，只读）</span>
+          <el-button type="primary" :loading="integrationPlatformLoading" @click="loadIntegrationPlatforms">
+            查询
+          </el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（对接平台只读目录不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅新增对接平台只读语义，不覆盖审批流程、用户目录、组织框架、配置目录、字典目录与系统健康摘要。"
+        />
+
+        <el-form :inline="true" :model="integrationPlatformQuery" class="query-form">
+          <el-form-item label="平台类型">
+            <el-select v-model="integrationPlatformQuery.platform_type" clearable placeholder="全部" style="width: 180px">
+              <el-option
+                v-for="option in integrationPlatformTypeOptions"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="integrationPlatformQuery.status" clearable placeholder="全部" style="width: 160px">
+              <el-option v-for="option in integrationPlatformStatusTags" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="接入模式">
+            <el-select v-model="integrationPlatformQuery.endpoint_mode" clearable placeholder="全部" style="width: 180px">
+              <el-option
+                v-for="option in integrationPlatformModeOptions"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="integrationPlatformQuery.keyword"
+              clearable
+              placeholder="请输入平台编码/平台名称/连接器/同步方向"
+              style="width: 320px"
+            />
+          </el-form-item>
+          <el-form-item label="更新开始">
+            <el-input
+              v-model="integrationPlatformQuery.updated_start_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item label="更新结束">
+            <el-input
+              v-model="integrationPlatformQuery.updated_end_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="integrationPlatformLoading" @click="loadIntegrationPlatforms">
+              搜索
+            </el-button>
+            <el-button @click="resetIntegrationPlatformFilters">重置</el-button>
+            <el-button @click="clearIntegrationPlatformSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最近更新：{{ activeIntegrationPlatformItem?.updated_at ?? '-' }}</span>
+          <span>最近同步：{{ activeIntegrationPlatformItem?.last_sync_at ?? '-' }}</span>
+          <span>guarded 按钮：{{ integrationPlatformUiButtons.join(' / ') || '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="integrationPlatformErrorMessage"
+          type="error"
+          :closable="false"
+          :title="integrationPlatformErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table :data="integrationPlatformItems" border row-key="platform_code" empty-text="暂无对接平台数据">
+          <el-table-column prop="platform_code" label="平台编码" min-width="140" />
+          <el-table-column prop="platform_name" label="平台名称" min-width="180" />
+          <el-table-column prop="platform_type" label="平台类型" width="120" />
+          <el-table-column prop="endpoint_mode" label="接入模式" width="120" />
+          <el-table-column prop="connector" label="连接器" min-width="180" />
+          <el-table-column prop="webhook_url_masked" label="Webhook（脱敏）" min-width="220" />
+          <el-table-column prop="sync_direction" label="同步方向" min-width="160" />
+          <el-table-column label="状态" width="110">
+            <template #default="scope">
+              <el-tag :type="integrationPlatformStatusTagType(scope.row.status)" effect="plain">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="last_sync_at" label="最近同步" min-width="180" />
+          <el-table-column prop="retry_policy" label="重试策略" min-width="160" />
+          <el-table-column prop="updated_at" label="更新时间" min-width="180" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" min-width="360">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.platform_code}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onIntegrationPlatformActionClick(scope.row, action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!integrationPlatformItems.length" description="暂无对接平台数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="同步、测试连接、启停、导出、打印均为 guarded/disabled，仅允许只读查看。"
+        />
+      </template>
+    </el-card>
+
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -459,6 +756,10 @@ import systemManagementApi, {
   type SystemConfigCatalogItem,
   type SystemDictionaryCatalogItem,
   type SystemHealthSummaryItem,
+  type SystemIntegrationPlatformAction,
+  type SystemIntegrationPlatformItem,
+  type SystemOrganizationFrameworkAction,
+  type SystemOrganizationFrameworkItem,
   type SystemUserCatalogAction,
   type SystemUserCatalogItem,
 } from '@/api/system_management'
@@ -470,20 +771,35 @@ const dictionaryLoading = ref<boolean>(false)
 const healthLoading = ref<boolean>(false)
 const approvalFlowLoading = ref<boolean>(false)
 const userCatalogLoading = ref<boolean>(false)
+const organizationFrameworkLoading = ref<boolean>(false)
+const integrationPlatformLoading = ref<boolean>(false)
 const configItems = ref<SystemConfigCatalogItem[]>([])
 const dictionaryItems = ref<SystemDictionaryCatalogItem[]>([])
 const healthItems = ref<SystemHealthSummaryItem[]>([])
 const approvalFlowItems = ref<SystemApprovalFlowItem[]>([])
 const approvalFlowAuditTypeOptions = ref<string[]>([])
 const userCatalogItems = ref<SystemUserCatalogItem[]>([])
+const organizationFrameworkItems = ref<SystemOrganizationFrameworkItem[]>([])
+const integrationPlatformItems = ref<SystemIntegrationPlatformItem[]>([])
 const userRoleOptions = ref<string[]>([])
 const userStatusOptions = ref<string[]>([])
+const organizationFrameworkLevelOptions = ref<string[]>([])
+const organizationFrameworkStatusTags = ref<string[]>([])
+const organizationFrameworkUiButtons = ref<string[]>([])
+const integrationPlatformTypeOptions = ref<string[]>([])
+const integrationPlatformModeOptions = ref<string[]>([])
+const integrationPlatformStatusTags = ref<string[]>([])
+const integrationPlatformUiButtons = ref<string[]>([])
 const approvalFlowDiagramVisible = ref<boolean>(false)
 const activeApprovalFlow = ref<SystemApprovalFlowItem | null>(null)
 const approvalFlowErrorMessage = ref<string>('')
 const userCatalogDetailVisible = ref<boolean>(false)
 const activeUserCatalogItem = ref<SystemUserCatalogItem | null>(null)
 const userCatalogErrorMessage = ref<string>('')
+const activeOrganizationFrameworkItem = ref<SystemOrganizationFrameworkItem | null>(null)
+const organizationFrameworkErrorMessage = ref<string>('')
+const activeIntegrationPlatformItem = ref<SystemIntegrationPlatformItem | null>(null)
+const integrationPlatformErrorMessage = ref<string>('')
 
 const configQuery = reactive({
   module: '',
@@ -514,6 +830,23 @@ const userCatalogQuery = reactive({
   end_date: '',
 })
 
+const organizationFrameworkQuery = reactive({
+  org_level: '',
+  status: '' as '' | '生效' | '待生效' | '停用',
+  keyword: '',
+  effective_start_date: '',
+  effective_end_date: '',
+})
+
+const integrationPlatformQuery = reactive({
+  platform_type: '',
+  status: '' as '' | '运行中' | '告警' | '停用',
+  endpoint_mode: '',
+  keyword: '',
+  updated_start_date: '',
+  updated_end_date: '',
+})
+
 const canSystemRead = computed<boolean>(() => permissionStore.state.actions.includes('system:read'))
 const canConfigRead = computed<boolean>(() => permissionStore.state.actions.includes('system:config_read'))
 const canDictionaryRead = computed<boolean>(() => permissionStore.state.actions.includes('system:dictionary_read'))
@@ -523,6 +856,8 @@ const canReadDictionary = computed<boolean>(() => canSystemRead.value && canDict
 const canReadHealthSummary = computed<boolean>(() => canSystemRead.value && canDiagnosticRead.value)
 const canReadApprovalFlows = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadUserCatalog = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const canReadOrganizationFramework = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const canReadIntegrationPlatforms = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 
 const loadConfigCatalog = async (): Promise<void> => {
   if (!canReadConfig.value) {
@@ -653,6 +988,81 @@ const loadUserCatalog = async (): Promise<void> => {
   }
 }
 
+const loadOrganizationFrameworks = async (): Promise<void> => {
+  if (!canReadOrganizationFramework.value) {
+    organizationFrameworkItems.value = []
+    organizationFrameworkLevelOptions.value = []
+    organizationFrameworkStatusTags.value = []
+    organizationFrameworkUiButtons.value = []
+    organizationFrameworkErrorMessage.value = ''
+    activeOrganizationFrameworkItem.value = null
+    return
+  }
+
+  organizationFrameworkLoading.value = true
+  organizationFrameworkErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemOrganizationFrameworks({
+      org_level: organizationFrameworkQuery.org_level || undefined,
+      status: organizationFrameworkQuery.status || undefined,
+      keyword: organizationFrameworkQuery.keyword.trim() || undefined,
+      effective_start_date: organizationFrameworkQuery.effective_start_date.trim() || undefined,
+      effective_end_date: organizationFrameworkQuery.effective_end_date.trim() || undefined,
+    })
+    organizationFrameworkItems.value = result.data.items
+    organizationFrameworkLevelOptions.value = result.data.org_level_options
+    organizationFrameworkStatusTags.value = result.data.status_tags
+    organizationFrameworkUiButtons.value = result.data.ui_buttons
+    activeOrganizationFrameworkItem.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    organizationFrameworkItems.value = []
+    activeOrganizationFrameworkItem.value = null
+    organizationFrameworkErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    organizationFrameworkLoading.value = false
+  }
+}
+
+const loadIntegrationPlatforms = async (): Promise<void> => {
+  if (!canReadIntegrationPlatforms.value) {
+    integrationPlatformItems.value = []
+    integrationPlatformTypeOptions.value = []
+    integrationPlatformModeOptions.value = []
+    integrationPlatformStatusTags.value = []
+    integrationPlatformUiButtons.value = []
+    integrationPlatformErrorMessage.value = ''
+    activeIntegrationPlatformItem.value = null
+    return
+  }
+
+  integrationPlatformLoading.value = true
+  integrationPlatformErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemIntegrationPlatforms({
+      platform_type: integrationPlatformQuery.platform_type || undefined,
+      status: integrationPlatformQuery.status || undefined,
+      endpoint_mode: integrationPlatformQuery.endpoint_mode || undefined,
+      keyword: integrationPlatformQuery.keyword.trim() || undefined,
+      updated_start_date: integrationPlatformQuery.updated_start_date.trim() || undefined,
+      updated_end_date: integrationPlatformQuery.updated_end_date.trim() || undefined,
+    })
+    integrationPlatformItems.value = result.data.items
+    integrationPlatformTypeOptions.value = result.data.platform_type_options
+    integrationPlatformModeOptions.value = result.data.endpoint_mode_options
+    integrationPlatformStatusTags.value = result.data.status_tags
+    integrationPlatformUiButtons.value = result.data.ui_buttons
+    activeIntegrationPlatformItem.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    integrationPlatformItems.value = []
+    activeIntegrationPlatformItem.value = null
+    integrationPlatformErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    integrationPlatformLoading.value = false
+  }
+}
+
 const resetApprovalFlowFilters = (): void => {
   approvalFlowQuery.audit_type = '样板单'
   approvalFlowQuery.status = ''
@@ -683,6 +1093,37 @@ const clearUserCatalogSelection = (): void => {
   userCatalogErrorMessage.value = ''
 }
 
+const resetOrganizationFrameworkFilters = (): void => {
+  organizationFrameworkQuery.org_level = ''
+  organizationFrameworkQuery.status = ''
+  organizationFrameworkQuery.keyword = ''
+  organizationFrameworkQuery.effective_start_date = ''
+  organizationFrameworkQuery.effective_end_date = ''
+  void loadOrganizationFrameworks()
+}
+
+const clearOrganizationFrameworkSelection = (): void => {
+  organizationFrameworkItems.value = []
+  activeOrganizationFrameworkItem.value = null
+  organizationFrameworkErrorMessage.value = ''
+}
+
+const resetIntegrationPlatformFilters = (): void => {
+  integrationPlatformQuery.platform_type = ''
+  integrationPlatformQuery.status = ''
+  integrationPlatformQuery.endpoint_mode = ''
+  integrationPlatformQuery.keyword = ''
+  integrationPlatformQuery.updated_start_date = ''
+  integrationPlatformQuery.updated_end_date = ''
+  void loadIntegrationPlatforms()
+}
+
+const clearIntegrationPlatformSelection = (): void => {
+  integrationPlatformItems.value = []
+  activeIntegrationPlatformItem.value = null
+  integrationPlatformErrorMessage.value = ''
+}
+
 const openApprovalFlowDiagram = (flow: SystemApprovalFlowItem): void => {
   activeApprovalFlow.value = flow
   approvalFlowDiagramVisible.value = true
@@ -699,6 +1140,30 @@ const onUserCatalogActionClick = (
   if (action.action_key === 'view' && !action.guarded) {
     activeUserCatalogItem.value = item
     userCatalogDetailVisible.value = true
+    return
+  }
+  ElMessage.info(action.disabled_reason)
+}
+
+const onOrganizationFrameworkActionClick = (
+  item: SystemOrganizationFrameworkItem,
+  action: SystemOrganizationFrameworkAction,
+): void => {
+  if (action.action_key === 'view' && !action.guarded) {
+    activeOrganizationFrameworkItem.value = item
+    ElMessage.info(`只读查看：${item.org_name}`)
+    return
+  }
+  ElMessage.info(action.disabled_reason)
+}
+
+const onIntegrationPlatformActionClick = (
+  item: SystemIntegrationPlatformItem,
+  action: SystemIntegrationPlatformAction,
+): void => {
+  if (action.action_key === 'view' && !action.guarded) {
+    activeIntegrationPlatformItem.value = item
+    ElMessage.info(`只读查看：${item.platform_name}`)
     return
   }
   ElMessage.info(action.disabled_reason)
@@ -744,12 +1209,40 @@ const userStatusTagType = (status: string): 'success' | 'warning' | 'danger' => 
   return 'danger'
 }
 
+const organizationFrameworkStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '生效') {
+    return 'success'
+  }
+  if (status === '待生效') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
+const integrationPlatformStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '运行中') {
+    return 'success'
+  }
+  if (status === '告警') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
 onMounted(() => {
   permissionStore
     .loadCurrentUser()
     .then(() => permissionStore.loadModuleActions('system'))
     .then(() =>
-      Promise.all([loadApprovalFlows(), loadUserCatalog(), loadConfigCatalog(), loadDictionaryCatalog(), loadHealthSummary()]),
+      Promise.all([
+        loadApprovalFlows(),
+        loadUserCatalog(),
+        loadOrganizationFrameworks(),
+        loadIntegrationPlatforms(),
+        loadConfigCatalog(),
+        loadDictionaryCatalog(),
+        loadHealthSummary(),
+      ]),
     )
     .catch((error: unknown) => {
       ElMessage.error((error as Error).message)

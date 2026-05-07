@@ -92,6 +92,28 @@ def _user_catalog_error(detail_message: str, status_code: int = 503) -> None:
     )
 
 
+def _organization_framework_error(detail_message: str, status_code: int = 503) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": "ORGANIZATION_FRAMEWORK_UNAVAILABLE",
+            "message": detail_message,
+            "data": None,
+        },
+    )
+
+
+def _integration_platform_error(detail_message: str, status_code: int = 503) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": "INTEGRATION_PLATFORM_UNAVAILABLE",
+            "message": detail_message,
+            "data": None,
+        },
+    )
+
+
 def _system_health_action() -> str:
     return getattr(system_permissions, "SYSTEM_" + "DIAG" + "NOSTIC")
 
@@ -282,5 +304,103 @@ def get_system_user_catalog(
         role=_scope_text(role),
         status=_scope_text(status),
         keyword=normalized_keyword,
+    )
+    return _ok(data)
+
+
+@router.get("/organization-frameworks")
+def get_system_organization_frameworks(
+    request: Request,
+    org_level: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    effective_start_date: str | None = Query(default=None),
+    effective_end_date: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_READ,
+        module="system",
+        resource_type="system_organization_framework",
+    )
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_CONFIG_READ,
+        module="system",
+        resource_type="system_organization_framework",
+    )
+
+    normalized_keyword = _scope_text(keyword)
+    normalized_effective_start_date = _scope_text(effective_start_date)
+    normalized_effective_end_date = _scope_text(effective_end_date)
+    if normalized_effective_start_date is not None and len(normalized_effective_start_date) != 10:
+        _invalid_query("effective_start_date 必须为 YYYY-MM-DD")
+    if normalized_effective_end_date is not None and len(normalized_effective_end_date) != 10:
+        _invalid_query("effective_end_date 必须为 YYYY-MM-DD")
+
+    if normalized_keyword == "__simulate_error__":
+        _organization_framework_error("组织框架目录暂不可用，请稍后重试。")
+
+    data = SystemConfigCatalogService.list_organization_framework_catalog(
+        org_level=_scope_text(org_level),
+        status=_scope_text(status),
+        keyword=normalized_keyword,
+        effective_start_date=normalized_effective_start_date,
+        effective_end_date=normalized_effective_end_date,
+    )
+    return _ok(data)
+
+
+@router.get("/integration-platforms")
+def get_system_integration_platforms(
+    request: Request,
+    platform_type: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    endpoint_mode: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    updated_start_date: str | None = Query(default=None),
+    updated_end_date: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_READ,
+        module="system",
+        resource_type="system_integration_platform",
+    )
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_CONFIG_READ,
+        module="system",
+        resource_type="system_integration_platform",
+    )
+
+    normalized_keyword = _scope_text(keyword)
+    normalized_updated_start_date = _scope_text(updated_start_date)
+    normalized_updated_end_date = _scope_text(updated_end_date)
+    if normalized_updated_start_date is not None and len(normalized_updated_start_date) != 10:
+        _invalid_query("updated_start_date 必须为 YYYY-MM-DD")
+    if normalized_updated_end_date is not None and len(normalized_updated_end_date) != 10:
+        _invalid_query("updated_end_date 必须为 YYYY-MM-DD")
+
+    if normalized_keyword == "__simulate_error__":
+        _integration_platform_error("对接平台目录暂不可用，请稍后重试。")
+
+    data = SystemConfigCatalogService.list_integration_platform_catalog(
+        platform_type=_scope_text(platform_type),
+        status=_scope_text(status),
+        endpoint_mode=_scope_text(endpoint_mode),
+        keyword=normalized_keyword,
+        updated_start_date=normalized_updated_start_date,
+        updated_end_date=normalized_updated_end_date,
     )
     return _ok(data)
