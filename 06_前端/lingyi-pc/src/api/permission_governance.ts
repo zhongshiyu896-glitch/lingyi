@@ -29,6 +29,36 @@ export interface PermissionRoleMatrixData {
   roles: PermissionRoleMatrixEntry[]
 }
 
+export interface PermissionMenuManagementAction {
+  action_key: string
+  action_label: string
+  guarded: boolean
+  guard_reason?: string | null
+}
+
+export interface PermissionMenuManagementItem {
+  menu_key: string
+  menu_name: string
+  module: string
+  route: string
+  permission_action: string
+  status: string
+  owner_role: string
+  description: string
+  actions: PermissionMenuManagementAction[]
+}
+
+export interface PermissionMenuManagementData {
+  items: PermissionMenuManagementItem[]
+  total: number
+}
+
+export interface PermissionMenuManagementQuery {
+  module?: string
+  status?: 'enabled' | 'disabled' | 'planned'
+  keyword?: string
+}
+
 export interface PermissionSecurityAuditQuery {
   from_date?: string
   to_date?: string
@@ -132,6 +162,14 @@ const fetchPermissionRolesMatrix = (): Promise<ApiResponse<PermissionRoleMatrixD
   return request<PermissionRoleMatrixData>('/api/permissions/roles/matrix')
 }
 
+const fetchPermissionMenuManagement = (
+  query: PermissionMenuManagementQuery,
+): Promise<ApiResponse<PermissionMenuManagementData>> => {
+  const queryString = toQuery({ ...query })
+  const url = queryString ? `/api/permissions/menu-management?${queryString}` : '/api/permissions/menu-management'
+  return request<PermissionMenuManagementData>(url)
+}
+
 const fetchPermissionSecurityAudit = (
   query: PermissionSecurityAuditQuery,
 ): Promise<ApiResponse<PermissionSecurityAuditData>> => {
@@ -180,6 +218,7 @@ const exportPermissionOperationAuditCsv = async (query: PermissionOperationAudit
 const permissionGovernanceApi = {
   fetchPermissionActionCatalog,
   fetchPermissionRolesMatrix,
+  fetchPermissionMenuManagement,
   fetchPermissionSecurityAudit,
   fetchPermissionOperationAudit,
   exportPermissionSecurityAuditCsv,

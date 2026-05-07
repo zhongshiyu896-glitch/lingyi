@@ -223,3 +223,115 @@ class SystemIntegrationPlatformData(BaseModel):
     status_tags: list[str] = Field(default_factory=list)
     ui_buttons: list[str] = Field(default_factory=list)
     ui_table_headers: list[str] = Field(default_factory=list)
+
+
+class SystemAnnouncementActionData(BaseModel):
+    """One readonly action descriptor for system announcement row."""
+
+    action_key: str
+    label: str
+    guarded: bool
+    disabled_reason: str
+
+
+class SystemAnnouncementItemData(BaseModel):
+    """One readonly system announcement row."""
+
+    announcement_code: str
+    title: str
+    category: str
+    target_scope: str
+    publish_status: str
+    published_at: str
+    expires_at: str
+    priority: str
+    owner: str
+    updated_at: str
+    remark: str
+    actions: list[SystemAnnouncementActionData] = Field(default_factory=list)
+
+
+class SystemAnnouncementData(BaseModel):
+    """Payload for system announcement query."""
+
+    items: list[SystemAnnouncementItemData] = Field(default_factory=list)
+    total: int
+    category_options: list[str] = Field(default_factory=list)
+    status_tags: list[str] = Field(default_factory=list)
+    ui_buttons: list[str] = Field(default_factory=list)
+    ui_table_headers: list[str] = Field(default_factory=list)
+
+
+class SystemOperationLogActionData(BaseModel):
+    """One readonly action descriptor for operation log row."""
+
+    action_key: str
+    label: str
+    guarded: bool
+    disabled_reason: str
+
+
+class SystemOperationLogItemData(BaseModel):
+    """One readonly system operation log row."""
+
+    log_id: str
+    module: str
+    operation_type: str
+    operation_name: str
+    info: str
+    operator: str
+    result_status: str
+    operated_at: str
+    client_ip: str
+    trace_id: str
+    remark: str
+    actions: list[SystemOperationLogActionData] = Field(default_factory=list)
+
+
+class SystemOperationLogData(BaseModel):
+    """Payload for system operation log query."""
+
+    items: list[SystemOperationLogItemData] = Field(default_factory=list)
+    total: int
+    module_options: list[str] = Field(default_factory=list)
+    operation_type_options: list[str] = Field(default_factory=list)
+    status_tags: list[str] = Field(default_factory=list)
+    ui_buttons: list[str] = Field(default_factory=list)
+    ui_table_headers: list[str] = Field(default_factory=list)
+
+
+class SystemDocumentCodeActionData(BaseModel):
+    """One readonly action descriptor for document code row."""
+
+    action_key: str
+    label: str
+    guarded: bool
+    disabled_reason: str
+
+
+class SystemDocumentCodeItemData(BaseModel):
+    """One readonly system document code row."""
+
+    document_code_id: str
+    document_name: str
+    document_type: str
+    prefix: str
+    serial_rule: str
+    current_sequence: int
+    status: str
+    reset_cycle: str
+    owner: str
+    updated_at: str
+    remark: str
+    actions: list[SystemDocumentCodeActionData] = Field(default_factory=list)
+
+
+class SystemDocumentCodeData(BaseModel):
+    """Payload for system document code query."""
+
+    items: list[SystemDocumentCodeItemData] = Field(default_factory=list)
+    total: int
+    document_type_options: list[str] = Field(default_factory=list)
+    status_tags: list[str] = Field(default_factory=list)
+    ui_buttons: list[str] = Field(default_factory=list)
+    ui_table_headers: list[str] = Field(default_factory=list)

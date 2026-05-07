@@ -58,6 +58,36 @@ class PermissionRoleMatrixData(BaseModel):
     roles: list[PermissionRoleMatrixEntry] = Field(default_factory=list)
 
 
+class PermissionMenuManagementActionData(BaseModel):
+    """One readonly UI action under menu management."""
+
+    action_key: str
+    action_label: str
+    guarded: bool = True
+    guard_reason: str | None = None
+
+
+class PermissionMenuManagementItemData(BaseModel):
+    """One row in menu management readonly response."""
+
+    menu_key: str
+    menu_name: str
+    module: str
+    route: str
+    permission_action: str
+    status: str
+    owner_role: str
+    description: str
+    actions: list[PermissionMenuManagementActionData] = Field(default_factory=list)
+
+
+class PermissionMenuManagementData(BaseModel):
+    """Payload for menu management readonly endpoint."""
+
+    items: list[PermissionMenuManagementItemData] = Field(default_factory=list)
+    total: int
+
+
 class PermissionGovernanceDiagnosticCheck(BaseModel):
     """One diagnostic check result row."""
 

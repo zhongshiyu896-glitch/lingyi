@@ -62,6 +62,93 @@
       </template>
     </el-card>
 
+    <el-card shadow="never" data-testid="menu-management-section">
+      <template #header>
+        <div class="header-row">
+          <span>菜单管理（TASK-Y79B-P1-01，只读）</span>
+          <el-button type="primary" :loading="menuLoading" @click="loadMenuManagement">刷新</el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 permission:read 权限（菜单管理只读区块不可见）"
+      />
+
+      <template v-else>
+        <el-form :inline="true" :model="menuManagementQuery" class="query-form">
+          <el-form-item label="模块">
+            <el-select v-model="menuManagementQuery.module" clearable placeholder="全部" style="width: 180px">
+              <el-option
+                v-for="option in menuManagementModuleOptions"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="menuManagementQuery.status" clearable placeholder="全部" style="width: 180px">
+              <el-option label="enabled" value="enabled" />
+              <el-option label="planned" value="planned" />
+              <el-option label="disabled" value="disabled" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input v-model="menuManagementQuery.keyword" clearable placeholder="菜单编码/菜单名称/路由" style="width: 260px" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="menuLoading" @click="loadMenuManagement">查询</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="guarded-summary">
+          <span>guarded 按钮：{{ menuGuardedButtons.join(' / ') || '-' }}</span>
+        </div>
+
+        <el-table :data="menuManagement.items" border row-key="menu_key" empty-text="暂无菜单管理数据">
+          <el-table-column prop="menu_name" label="菜单名称" min-width="200" />
+          <el-table-column prop="module" label="模块" min-width="120" />
+          <el-table-column prop="route" label="路由" min-width="200" />
+          <el-table-column prop="permission_action" label="读取动作" min-width="170" />
+          <el-table-column label="状态" width="110">
+            <template #default="scope">
+              <el-tag
+                :type="
+                  scope.row.status === 'enabled' ? 'success' : scope.row.status === 'planned' ? 'warning' : 'info'
+                "
+                effect="plain"
+              >
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="owner_role" label="归属角色" min-width="140" />
+          <el-table-column prop="description" label="说明" min-width="220" />
+          <el-table-column label="操作" width="280">
+            <template #default="scope">
+              <el-button
+                v-for="action in scope.row.actions"
+                :key="`${scope.row.menu_key}-${action.action_key}`"
+                size="small"
+                :type="action.guarded ? 'warning' : 'primary'"
+                :plain="action.guarded"
+                :disabled="action.guarded"
+                :title="action.guarded ? action.guard_reason || '只读区块：写动作已禁用' : '只读查看'"
+                @click="onMenuAction(scope.row.menu_name, action.action_label, action.guarded, action.guard_reason)"
+              >
+                {{ action.action_label }}
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!menuManagement.items.length" description="暂无菜单管理数据" />
+      </template>
+    </el-card>
+
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -189,6 +276,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import permissionGovernanceApi, {
   type PermissionActionCatalogModule,
+  type PermissionMenuManagementData,
   type PermissionOperationAuditData,
   type PermissionOperationAuditQuery,
   type PermissionRoleMatrixEntry,
@@ -211,8 +299,13 @@ const loading = ref<boolean>(false)
 const auditLoading = ref<boolean>(false)
 const securityExporting = ref<boolean>(false)
 const operationExporting = ref<boolean>(false)
+const menuLoading = ref<boolean>(false)
 const catalogRows = ref<CatalogRow[]>([])
 const roleRows = ref<PermissionRoleMatrixEntry[]>([])
+const menuManagement = ref<PermissionMenuManagementData>({
+  items: [],
+  total: 0,
+})
 
 const securityAudit = ref<PermissionSecurityAuditData>({
   items: [],
@@ -255,9 +348,31 @@ const operationQuery = reactive<PermissionOperationAuditQuery>({
   page_size: 20,
 })
 
+const menuManagementQuery = reactive({
+  module: '',
+  status: '',
+  keyword: '',
+})
+
 const canRead = computed<boolean>(() => permissionStore.state.actions.includes('permission:read'))
 const canAuditRead = computed<boolean>(() => permissionStore.state.actions.includes('permission:audit_read'))
 const canExport = computed<boolean>(() => permissionStore.state.actions.includes('permission:export'))
+const menuManagementModuleOptions = computed<string[]>(() => {
+  const modules = new Set<string>()
+  menuManagement.value.items.forEach((item) => modules.add(item.module))
+  return Array.from(modules)
+})
+const menuGuardedButtons = computed<string[]>(() => {
+  const labels = new Set<string>()
+  menuManagement.value.items.forEach((item) => {
+    item.actions.forEach((action) => {
+      if (action.guarded) {
+        labels.add(action.action_label)
+      }
+    })
+  })
+  return Array.from(labels)
+})
 
 const normalizeAuditText = (value?: string | null): string => {
   const raw = String(value ?? '').trim()
@@ -318,6 +433,40 @@ const loadData = async (): Promise<void> => {
   } finally {
     loading.value = false
   }
+}
+
+const loadMenuManagement = async (): Promise<void> => {
+  menuLoading.value = true
+  try {
+    if (!canRead.value) {
+      menuManagement.value = { items: [], total: 0 }
+      return
+    }
+    const response = await permissionGovernanceApi.fetchPermissionMenuManagement({
+      module: menuManagementQuery.module || undefined,
+      status: (menuManagementQuery.status as 'enabled' | 'disabled' | 'planned' | '') || undefined,
+      keyword: menuManagementQuery.keyword || undefined,
+    })
+    menuManagement.value = response.data
+  } catch (error: unknown) {
+    menuManagement.value = { items: [], total: 0 }
+    ElMessage.error((error as Error).message)
+  } finally {
+    menuLoading.value = false
+  }
+}
+
+const onMenuAction = (
+  menuName: string,
+  actionLabel: string,
+  guarded: boolean,
+  guardReason?: string | null,
+): void => {
+  if (guarded) {
+    ElMessage.warning(guardReason || '只读首版：写动作已禁用')
+    return
+  }
+  ElMessage.info(`只读查看：${menuName} / ${actionLabel}`)
 }
 
 const loadAuditData = async (): Promise<void> => {
@@ -403,6 +552,7 @@ onMounted(() => {
     .then(() => permissionStore.loadModuleActions('permission'))
     .then(async () => {
       await loadData()
+      await loadMenuManagement()
       await loadAuditData()
     })
     .catch((error: unknown) => {

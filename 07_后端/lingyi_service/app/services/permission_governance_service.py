@@ -18,6 +18,9 @@ from app.models.audit import LySecurityAuditLog
 from app.schemas.permission_governance import PermissionActionCatalogData
 from app.schemas.permission_governance import PermissionActionCatalogEntry
 from app.schemas.permission_governance import PermissionActionCatalogModule
+from app.schemas.permission_governance import PermissionMenuManagementActionData
+from app.schemas.permission_governance import PermissionMenuManagementData
+from app.schemas.permission_governance import PermissionMenuManagementItemData
 from app.schemas.permission_governance import PermissionOperationAuditItemData
 from app.schemas.permission_governance import PermissionOperationAuditListData
 from app.schemas.permission_governance import PermissionRoleMatrixData
@@ -95,6 +98,43 @@ class PermissionGovernanceService:
                 )
             )
         return PermissionRoleMatrixData(roles=rows)
+
+    @classmethod
+    def get_menu_management(
+        cls,
+        *,
+        module: str | None,
+        status: str | None,
+        keyword: str | None,
+    ) -> PermissionMenuManagementData:
+        items = cls._build_menu_management_items()
+
+        normalized_module = (module or "").strip().lower()
+        normalized_status = (status or "").strip().lower()
+        normalized_keyword = (keyword or "").strip().lower()
+
+        def _matches(item: PermissionMenuManagementItemData) -> bool:
+            if normalized_module and item.module.lower() != normalized_module:
+                return False
+            if normalized_status and item.status.lower() != normalized_status:
+                return False
+            if normalized_keyword:
+                haystack = " ".join(
+                    [
+                        item.menu_key,
+                        item.menu_name,
+                        item.module,
+                        item.route,
+                        item.permission_action,
+                        item.description,
+                    ]
+                ).lower()
+                if normalized_keyword not in haystack:
+                    return False
+            return True
+
+        filtered_items = [item for item in items if _matches(item)]
+        return PermissionMenuManagementData(items=filtered_items, total=len(filtered_items))
 
     @classmethod
     def list_security_audits(
@@ -244,6 +284,88 @@ class PermissionGovernanceService:
             ui_exposed=classification.ui_exposed,
             description=cls._describe_action(action=action, classification=classification),
         )
+
+    @classmethod
+    def _build_menu_management_items(cls) -> list[PermissionMenuManagementItemData]:
+        common_actions = [
+            PermissionMenuManagementActionData(action_key="view", action_label="查看详情", guarded=False),
+            PermissionMenuManagementActionData(
+                action_key="edit_menu",
+                action_label="编辑菜单",
+                guarded=True,
+                guard_reason="只读首版：菜单编辑写动作已禁用",
+            ),
+            PermissionMenuManagementActionData(
+                action_key="bind_permissions",
+                action_label="权限绑定",
+                guarded=True,
+                guard_reason="只读首版：权限绑定写动作已禁用",
+            ),
+            PermissionMenuManagementActionData(
+                action_key="publish_order",
+                action_label="排序发布",
+                guarded=True,
+                guard_reason="只读首版：排序发布写动作已禁用",
+            ),
+        ]
+
+        return [
+            PermissionMenuManagementItemData(
+                menu_key="permission-action-catalog",
+                menu_name="权限治理动作目录",
+                module="permission",
+                route="/permissions/governance",
+                permission_action="permission:read",
+                status="enabled",
+                owner_role="System Manager",
+                description="只读展示权限动作目录，不提供写入变更。",
+                actions=common_actions,
+            ),
+            PermissionMenuManagementItemData(
+                menu_key="permission-roles-matrix",
+                menu_name="角色矩阵",
+                module="permission",
+                route="/permissions/governance",
+                permission_action="permission:read",
+                status="enabled",
+                owner_role="System Manager",
+                description="只读展示角色与动作映射，不执行写入。",
+                actions=common_actions,
+            ),
+            PermissionMenuManagementItemData(
+                menu_key="permission-security-audit",
+                menu_name="安全审计查询",
+                module="permission",
+                route="/permissions/governance",
+                permission_action="permission:audit_read",
+                status="enabled",
+                owner_role="System Manager",
+                description="只读审计查询，导出能力由独立权限控制且默认 guarded。",
+                actions=common_actions,
+            ),
+            PermissionMenuManagementItemData(
+                menu_key="permission-operation-audit",
+                menu_name="操作审计查询",
+                module="permission",
+                route="/permissions/governance",
+                permission_action="permission:audit_read",
+                status="enabled",
+                owner_role="System Manager",
+                description="只读展示操作审计数据，不允许执行变更动作。",
+                actions=common_actions,
+            ),
+            PermissionMenuManagementItemData(
+                menu_key="permission-diagnostic",
+                menu_name="治理诊断摘要",
+                module="permission",
+                route="/permissions/governance",
+                permission_action="permission:diagnostic",
+                status="enabled",
+                owner_role="System Manager",
+                description="只读诊断摘要入口，写动作与发布动作保持禁用。",
+                actions=common_actions,
+            ),
+        ]
 
     @staticmethod
     def _module_of_action(action: str) -> str:

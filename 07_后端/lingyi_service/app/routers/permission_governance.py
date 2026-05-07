@@ -171,6 +171,34 @@ def get_permission_roles_matrix(
     return _ok(PermissionGovernanceService.get_roles_matrix())
 
 
+@router.get("/menu-management")
+def get_permission_menu_management(
+    request: Request,
+    module: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    PermissionService(session=session).require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=PERMISSION_READ,
+        module="permission",
+        resource_type="permission_menu_management",
+    )
+    normalized_status = _scope_text(status)
+    if normalized_status is not None and normalized_status not in {"enabled", "disabled", "planned"}:
+        _invalid_query("status 仅支持 enabled、disabled 或 planned")
+    return _ok(
+        PermissionGovernanceService.get_menu_management(
+            module=_scope_text(module),
+            status=normalized_status,
+            keyword=_scope_text(keyword),
+        )
+    )
+
+
 @router.get("/diagnostic")
 def get_permission_governance_diagnostic(
     request: Request,

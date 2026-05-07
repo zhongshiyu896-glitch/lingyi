@@ -421,6 +421,433 @@
       </template>
     </el-card>
 
+    <el-card shadow="never" data-testid="system-announcement-section">
+      <template #header>
+        <div class="header-row">
+          <span>系统公告（TASK-Y79B-P1-02，只读）</span>
+          <el-button type="primary" :loading="systemAnnouncementLoading" @click="loadSystemAnnouncements">
+            查询
+          </el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（系统公告只读目录不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅新增系统公告只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、配置目录、字典目录与系统健康摘要。"
+        />
+
+        <el-form :inline="true" :model="systemAnnouncementQuery" class="query-form">
+          <el-form-item label="分类">
+            <el-select v-model="systemAnnouncementQuery.category" clearable placeholder="全部" style="width: 180px">
+              <el-option
+                v-for="option in systemAnnouncementCategoryOptions"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="发布状态">
+            <el-select v-model="systemAnnouncementQuery.status" clearable placeholder="全部" style="width: 160px">
+              <el-option v-for="option in systemAnnouncementStatusTags" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="目标范围">
+            <el-input
+              v-model="systemAnnouncementQuery.target_scope"
+              clearable
+              placeholder="请输入目标范围"
+              style="width: 180px"
+            />
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="systemAnnouncementQuery.keyword"
+              clearable
+              placeholder="请输入公告编号/标题/负责人"
+              style="width: 280px"
+            />
+          </el-form-item>
+          <el-form-item label="发布开始">
+            <el-input
+              v-model="systemAnnouncementQuery.published_start_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item label="发布结束">
+            <el-input
+              v-model="systemAnnouncementQuery.published_end_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="systemAnnouncementLoading" @click="loadSystemAnnouncements">
+              搜索
+            </el-button>
+            <el-button @click="resetSystemAnnouncementFilters">重置</el-button>
+            <el-button @click="clearSystemAnnouncementSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最近发布：{{ activeSystemAnnouncementItem?.published_at ?? '-' }}</span>
+          <span>最近更新：{{ activeSystemAnnouncementItem?.updated_at ?? '-' }}</span>
+          <span>guarded 按钮：{{ systemAnnouncementUiButtons.join(' / ') || '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="systemAnnouncementErrorMessage"
+          type="error"
+          :closable="false"
+          :title="systemAnnouncementErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table :data="systemAnnouncementItems" border row-key="announcement_code" empty-text="暂无系统公告数据">
+          <el-table-column prop="announcement_code" label="公告编号" min-width="140" />
+          <el-table-column prop="title" label="标题" min-width="220" />
+          <el-table-column prop="category" label="分类" width="130" />
+          <el-table-column prop="target_scope" label="目标范围" min-width="140" />
+          <el-table-column label="发布状态" width="110">
+            <template #default="scope">
+              <el-tag :type="systemAnnouncementStatusTagType(scope.row.publish_status)" effect="plain">
+                {{ scope.row.publish_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="published_at" label="发布时间" min-width="180" />
+          <el-table-column prop="expires_at" label="失效时间" min-width="180" />
+          <el-table-column prop="priority" label="优先级" width="100" />
+          <el-table-column prop="owner" label="负责人" width="120" />
+          <el-table-column prop="updated_at" label="更新时间" min-width="180" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" min-width="360">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.announcement_code}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onSystemAnnouncementActionClick(scope.row, action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!systemAnnouncementItems.length" description="暂无系统公告数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="发布、撤回、置顶、导出、打印均为 guarded/disabled，仅允许只读查看。"
+        />
+      </template>
+    </el-card>
+
+    <el-card shadow="never" data-testid="operation-log-section">
+      <template #header>
+        <div class="header-row">
+          <span>操作日志（TASK-Y79B-P1-03，只读）</span>
+          <el-button type="primary" :loading="operationLogLoading" @click="loadOperationLogs">查询</el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（操作日志只读目录不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅新增操作日志只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、系统公告、配置目录、字典目录与系统健康摘要。"
+        />
+
+        <el-form :inline="true" :model="operationLogQuery" class="query-form">
+          <el-form-item label="模块">
+            <el-select v-model="operationLogQuery.module" clearable placeholder="全部" style="width: 180px">
+              <el-option v-for="option in operationLogModuleOptions" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="操作类型">
+            <el-select v-model="operationLogQuery.operation_type" clearable placeholder="全部" style="width: 180px">
+              <el-option v-for="option in operationLogTypeOptions" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="结果状态">
+            <el-select v-model="operationLogQuery.result_status" clearable placeholder="全部" style="width: 160px">
+              <el-option v-for="option in operationLogStatusTags" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="操作人">
+            <el-input v-model="operationLogQuery.operator" clearable placeholder="请输入操作人" style="width: 180px" />
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="operationLogQuery.keyword"
+              clearable
+              placeholder="请输入日志编号/操作名称/详情关键词"
+              style="width: 300px"
+            />
+          </el-form-item>
+          <el-form-item label="操作开始">
+            <el-input
+              v-model="operationLogQuery.operated_start_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item label="操作结束">
+            <el-input
+              v-model="operationLogQuery.operated_end_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="operationLogLoading" @click="loadOperationLogs">搜索</el-button>
+            <el-button @click="resetOperationLogFilters">重置</el-button>
+            <el-button @click="clearOperationLogSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最近操作：{{ activeOperationLogItem?.operated_at ?? '-' }}</span>
+          <span>最近追踪ID：{{ activeOperationLogItem?.trace_id ?? '-' }}</span>
+          <span>guarded 按钮：{{ operationLogUiButtons.join(' / ') || '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="operationLogErrorMessage"
+          type="error"
+          :closable="false"
+          :title="operationLogErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table :data="operationLogItems" border row-key="log_id" empty-text="暂无操作日志数据">
+          <el-table-column prop="log_id" label="日志编号" min-width="140" />
+          <el-table-column prop="module" label="模块" min-width="160" />
+          <el-table-column prop="operation_type" label="操作类型" width="120" />
+          <el-table-column prop="operation_name" label="操作名称" min-width="180" />
+          <el-table-column prop="info" label="详情摘要" min-width="220" />
+          <el-table-column prop="operator" label="操作人" width="120" />
+          <el-table-column label="结果状态" width="110">
+            <template #default="scope">
+              <el-tag :type="operationLogResultTagType(scope.row.result_status)" effect="plain">
+                {{ scope.row.result_status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="operated_at" label="操作时间" min-width="180" />
+          <el-table-column prop="client_ip" label="客户端IP" min-width="140" />
+          <el-table-column prop="trace_id" label="追踪ID" min-width="180" />
+          <el-table-column prop="remark" label="备注" min-width="200" />
+          <el-table-column label="操作" min-width="320">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.log_id}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onOperationLogActionClick(scope.row, action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!operationLogItems.length" description="暂无操作日志数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="查看详情、筛选、导出、打印、清理日志、归档均为 guarded/disabled，仅允许只读查看。"
+        />
+      </template>
+    </el-card>
+
+    <el-card shadow="never" data-testid="document-code-section">
+      <template #header>
+        <div class="header-row">
+          <span>单据编码（TASK-Y79B-P1-04，只读）</span>
+          <el-button type="primary" :loading="documentCodeLoading" @click="loadDocumentCodes">查询</el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（单据编码只读目录不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅新增单据编码只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、系统公告、操作日志、配置目录、字典目录与系统健康摘要。"
+        />
+
+        <el-form :inline="true" :model="documentCodeQuery" class="query-form">
+          <el-form-item label="单据类型">
+            <el-select v-model="documentCodeQuery.document_type" clearable placeholder="全部" style="width: 180px">
+              <el-option v-for="option in documentCodeTypeOptions" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="documentCodeQuery.status" clearable placeholder="全部" style="width: 160px">
+              <el-option v-for="option in documentCodeStatusTags" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="documentCodeQuery.keyword"
+              clearable
+              placeholder="请输入编码编号/单据名称/前缀关键词"
+              style="width: 300px"
+            />
+          </el-form-item>
+          <el-form-item label="更新开始">
+            <el-input
+              v-model="documentCodeQuery.updated_start_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item label="更新结束">
+            <el-input
+              v-model="documentCodeQuery.updated_end_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="documentCodeLoading" @click="loadDocumentCodes">搜索</el-button>
+            <el-button @click="resetDocumentCodeFilters">重置</el-button>
+            <el-button @click="clearDocumentCodeSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最近更新：{{ activeDocumentCodeItem?.updated_at ?? '-' }}</span>
+          <span>最近流水号：{{ activeDocumentCodeItem?.current_sequence ?? '-' }}</span>
+          <span>guarded 按钮：{{ documentCodeUiButtons.join(' / ') || '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="documentCodeErrorMessage"
+          type="error"
+          :closable="false"
+          :title="documentCodeErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table :data="documentCodeItems" border row-key="document_code_id" empty-text="暂无单据编码数据">
+          <el-table-column prop="document_code_id" label="编码编号" min-width="140" />
+          <el-table-column prop="document_name" label="单据名称" min-width="170" />
+          <el-table-column prop="document_type" label="单据类型" min-width="140" />
+          <el-table-column prop="prefix" label="编码前缀" width="120" />
+          <el-table-column prop="serial_rule" label="流水规则" min-width="180" />
+          <el-table-column prop="current_sequence" label="当前流水号" width="120" />
+          <el-table-column label="状态" width="110">
+            <template #default="scope">
+              <el-tag :type="documentCodeStatusTagType(scope.row.status)" effect="plain">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="reset_cycle" label="重置周期" width="120" />
+          <el-table-column prop="owner" label="负责人" width="120" />
+          <el-table-column prop="updated_at" label="更新时间" min-width="180" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" min-width="420">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.document_code_id}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onDocumentCodeActionClick(scope.row, action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!documentCodeItems.length" description="暂无单据编码数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="新增、编辑、启停、预览、重置、导出、打印均为 guarded/disabled，仅允许只读查看。"
+        />
+      </template>
+    </el-card>
+
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -751,6 +1178,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import systemManagementApi, {
+  type SystemAnnouncementAction,
+  type SystemAnnouncementItem,
+  type SystemDocumentCodeAction,
+  type SystemDocumentCodeItem,
+  type SystemOperationLogAction,
+  type SystemOperationLogItem,
   type SystemApprovalFlowAction,
   type SystemApprovalFlowItem,
   type SystemConfigCatalogItem,
@@ -773,6 +1206,9 @@ const approvalFlowLoading = ref<boolean>(false)
 const userCatalogLoading = ref<boolean>(false)
 const organizationFrameworkLoading = ref<boolean>(false)
 const integrationPlatformLoading = ref<boolean>(false)
+const systemAnnouncementLoading = ref<boolean>(false)
+const operationLogLoading = ref<boolean>(false)
+const documentCodeLoading = ref<boolean>(false)
 const configItems = ref<SystemConfigCatalogItem[]>([])
 const dictionaryItems = ref<SystemDictionaryCatalogItem[]>([])
 const healthItems = ref<SystemHealthSummaryItem[]>([])
@@ -781,6 +1217,9 @@ const approvalFlowAuditTypeOptions = ref<string[]>([])
 const userCatalogItems = ref<SystemUserCatalogItem[]>([])
 const organizationFrameworkItems = ref<SystemOrganizationFrameworkItem[]>([])
 const integrationPlatformItems = ref<SystemIntegrationPlatformItem[]>([])
+const systemAnnouncementItems = ref<SystemAnnouncementItem[]>([])
+const operationLogItems = ref<SystemOperationLogItem[]>([])
+const documentCodeItems = ref<SystemDocumentCodeItem[]>([])
 const userRoleOptions = ref<string[]>([])
 const userStatusOptions = ref<string[]>([])
 const organizationFrameworkLevelOptions = ref<string[]>([])
@@ -790,6 +1229,16 @@ const integrationPlatformTypeOptions = ref<string[]>([])
 const integrationPlatformModeOptions = ref<string[]>([])
 const integrationPlatformStatusTags = ref<string[]>([])
 const integrationPlatformUiButtons = ref<string[]>([])
+const systemAnnouncementCategoryOptions = ref<string[]>([])
+const systemAnnouncementStatusTags = ref<string[]>([])
+const systemAnnouncementUiButtons = ref<string[]>([])
+const operationLogModuleOptions = ref<string[]>([])
+const operationLogTypeOptions = ref<string[]>([])
+const operationLogStatusTags = ref<string[]>([])
+const operationLogUiButtons = ref<string[]>([])
+const documentCodeTypeOptions = ref<string[]>([])
+const documentCodeStatusTags = ref<string[]>([])
+const documentCodeUiButtons = ref<string[]>([])
 const approvalFlowDiagramVisible = ref<boolean>(false)
 const activeApprovalFlow = ref<SystemApprovalFlowItem | null>(null)
 const approvalFlowErrorMessage = ref<string>('')
@@ -800,6 +1249,12 @@ const activeOrganizationFrameworkItem = ref<SystemOrganizationFrameworkItem | nu
 const organizationFrameworkErrorMessage = ref<string>('')
 const activeIntegrationPlatformItem = ref<SystemIntegrationPlatformItem | null>(null)
 const integrationPlatformErrorMessage = ref<string>('')
+const activeSystemAnnouncementItem = ref<SystemAnnouncementItem | null>(null)
+const systemAnnouncementErrorMessage = ref<string>('')
+const activeOperationLogItem = ref<SystemOperationLogItem | null>(null)
+const operationLogErrorMessage = ref<string>('')
+const activeDocumentCodeItem = ref<SystemDocumentCodeItem | null>(null)
+const documentCodeErrorMessage = ref<string>('')
 
 const configQuery = reactive({
   module: '',
@@ -847,6 +1302,33 @@ const integrationPlatformQuery = reactive({
   updated_end_date: '',
 })
 
+const systemAnnouncementQuery = reactive({
+  category: '',
+  status: '' as '' | '已发布' | '草稿' | '已撤回',
+  target_scope: '',
+  keyword: '',
+  published_start_date: '',
+  published_end_date: '',
+})
+
+const operationLogQuery = reactive({
+  module: '',
+  operation_type: '',
+  result_status: '' as '' | '成功' | '失败' | '部分成功',
+  operator: '',
+  keyword: '',
+  operated_start_date: '',
+  operated_end_date: '',
+})
+
+const documentCodeQuery = reactive({
+  document_type: '',
+  status: '' as '' | '启用' | '停用' | '草稿',
+  keyword: '',
+  updated_start_date: '',
+  updated_end_date: '',
+})
+
 const canSystemRead = computed<boolean>(() => permissionStore.state.actions.includes('system:read'))
 const canConfigRead = computed<boolean>(() => permissionStore.state.actions.includes('system:config_read'))
 const canDictionaryRead = computed<boolean>(() => permissionStore.state.actions.includes('system:dictionary_read'))
@@ -858,6 +1340,9 @@ const canReadApprovalFlows = computed<boolean>(() => canSystemRead.value && canC
 const canReadUserCatalog = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadOrganizationFramework = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadIntegrationPlatforms = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const canReadSystemAnnouncements = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const canReadOperationLogs = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const canReadDocumentCodes = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 
 const loadConfigCatalog = async (): Promise<void> => {
   if (!canReadConfig.value) {
@@ -1063,6 +1548,119 @@ const loadIntegrationPlatforms = async (): Promise<void> => {
   }
 }
 
+const loadSystemAnnouncements = async (): Promise<void> => {
+  if (!canReadSystemAnnouncements.value) {
+    systemAnnouncementItems.value = []
+    systemAnnouncementCategoryOptions.value = []
+    systemAnnouncementStatusTags.value = []
+    systemAnnouncementUiButtons.value = []
+    systemAnnouncementErrorMessage.value = ''
+    activeSystemAnnouncementItem.value = null
+    return
+  }
+
+  systemAnnouncementLoading.value = true
+  systemAnnouncementErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemAnnouncements({
+      category: systemAnnouncementQuery.category || undefined,
+      status: systemAnnouncementQuery.status || undefined,
+      target_scope: systemAnnouncementQuery.target_scope.trim() || undefined,
+      keyword: systemAnnouncementQuery.keyword.trim() || undefined,
+      published_start_date: systemAnnouncementQuery.published_start_date.trim() || undefined,
+      published_end_date: systemAnnouncementQuery.published_end_date.trim() || undefined,
+    })
+    systemAnnouncementItems.value = result.data.items
+    systemAnnouncementCategoryOptions.value = result.data.category_options
+    systemAnnouncementStatusTags.value = result.data.status_tags
+    systemAnnouncementUiButtons.value = result.data.ui_buttons
+    activeSystemAnnouncementItem.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    systemAnnouncementItems.value = []
+    activeSystemAnnouncementItem.value = null
+    systemAnnouncementErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    systemAnnouncementLoading.value = false
+  }
+}
+
+const loadOperationLogs = async (): Promise<void> => {
+  if (!canReadOperationLogs.value) {
+    operationLogItems.value = []
+    operationLogModuleOptions.value = []
+    operationLogTypeOptions.value = []
+    operationLogStatusTags.value = []
+    operationLogUiButtons.value = []
+    operationLogErrorMessage.value = ''
+    activeOperationLogItem.value = null
+    return
+  }
+
+  operationLogLoading.value = true
+  operationLogErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemOperationLogs({
+      module: operationLogQuery.module || undefined,
+      operation_type: operationLogQuery.operation_type || undefined,
+      result_status: operationLogQuery.result_status || undefined,
+      operator: operationLogQuery.operator.trim() || undefined,
+      keyword: operationLogQuery.keyword.trim() || undefined,
+      operated_start_date: operationLogQuery.operated_start_date.trim() || undefined,
+      operated_end_date: operationLogQuery.operated_end_date.trim() || undefined,
+    })
+    operationLogItems.value = result.data.items
+    operationLogModuleOptions.value = result.data.module_options
+    operationLogTypeOptions.value = result.data.operation_type_options
+    operationLogStatusTags.value = result.data.status_tags
+    operationLogUiButtons.value = result.data.ui_buttons
+    activeOperationLogItem.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    operationLogItems.value = []
+    activeOperationLogItem.value = null
+    operationLogErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    operationLogLoading.value = false
+  }
+}
+
+const loadDocumentCodes = async (): Promise<void> => {
+  if (!canReadDocumentCodes.value) {
+    documentCodeItems.value = []
+    documentCodeTypeOptions.value = []
+    documentCodeStatusTags.value = []
+    documentCodeUiButtons.value = []
+    documentCodeErrorMessage.value = ''
+    activeDocumentCodeItem.value = null
+    return
+  }
+
+  documentCodeLoading.value = true
+  documentCodeErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemDocumentCodes({
+      document_type: documentCodeQuery.document_type || undefined,
+      status: documentCodeQuery.status || undefined,
+      keyword: documentCodeQuery.keyword.trim() || undefined,
+      updated_start_date: documentCodeQuery.updated_start_date.trim() || undefined,
+      updated_end_date: documentCodeQuery.updated_end_date.trim() || undefined,
+    })
+    documentCodeItems.value = result.data.items
+    documentCodeTypeOptions.value = result.data.document_type_options
+    documentCodeStatusTags.value = result.data.status_tags
+    documentCodeUiButtons.value = result.data.ui_buttons
+    activeDocumentCodeItem.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    documentCodeItems.value = []
+    activeDocumentCodeItem.value = null
+    documentCodeErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    documentCodeLoading.value = false
+  }
+}
+
 const resetApprovalFlowFilters = (): void => {
   approvalFlowQuery.audit_type = '样板单'
   approvalFlowQuery.status = ''
@@ -1124,6 +1722,54 @@ const clearIntegrationPlatformSelection = (): void => {
   integrationPlatformErrorMessage.value = ''
 }
 
+const resetSystemAnnouncementFilters = (): void => {
+  systemAnnouncementQuery.category = ''
+  systemAnnouncementQuery.status = ''
+  systemAnnouncementQuery.target_scope = ''
+  systemAnnouncementQuery.keyword = ''
+  systemAnnouncementQuery.published_start_date = ''
+  systemAnnouncementQuery.published_end_date = ''
+  void loadSystemAnnouncements()
+}
+
+const clearSystemAnnouncementSelection = (): void => {
+  systemAnnouncementItems.value = []
+  activeSystemAnnouncementItem.value = null
+  systemAnnouncementErrorMessage.value = ''
+}
+
+const resetOperationLogFilters = (): void => {
+  operationLogQuery.module = ''
+  operationLogQuery.operation_type = ''
+  operationLogQuery.result_status = ''
+  operationLogQuery.operator = ''
+  operationLogQuery.keyword = ''
+  operationLogQuery.operated_start_date = ''
+  operationLogQuery.operated_end_date = ''
+  void loadOperationLogs()
+}
+
+const clearOperationLogSelection = (): void => {
+  operationLogItems.value = []
+  activeOperationLogItem.value = null
+  operationLogErrorMessage.value = ''
+}
+
+const resetDocumentCodeFilters = (): void => {
+  documentCodeQuery.document_type = ''
+  documentCodeQuery.status = ''
+  documentCodeQuery.keyword = ''
+  documentCodeQuery.updated_start_date = ''
+  documentCodeQuery.updated_end_date = ''
+  void loadDocumentCodes()
+}
+
+const clearDocumentCodeSelection = (): void => {
+  documentCodeItems.value = []
+  activeDocumentCodeItem.value = null
+  documentCodeErrorMessage.value = ''
+}
+
 const openApprovalFlowDiagram = (flow: SystemApprovalFlowItem): void => {
   activeApprovalFlow.value = flow
   approvalFlowDiagramVisible.value = true
@@ -1164,6 +1810,42 @@ const onIntegrationPlatformActionClick = (
   if (action.action_key === 'view' && !action.guarded) {
     activeIntegrationPlatformItem.value = item
     ElMessage.info(`只读查看：${item.platform_name}`)
+    return
+  }
+  ElMessage.info(action.disabled_reason)
+}
+
+const onSystemAnnouncementActionClick = (
+  item: SystemAnnouncementItem,
+  action: SystemAnnouncementAction,
+): void => {
+  if (action.action_key === 'view' && !action.guarded) {
+    activeSystemAnnouncementItem.value = item
+    ElMessage.info(`只读查看：${item.title}`)
+    return
+  }
+  ElMessage.info(action.disabled_reason)
+}
+
+const onOperationLogActionClick = (
+  item: SystemOperationLogItem,
+  action: SystemOperationLogAction,
+): void => {
+  if (action.action_key === 'view' && !action.guarded) {
+    activeOperationLogItem.value = item
+    ElMessage.info(`只读查看：${item.operation_name}`)
+    return
+  }
+  ElMessage.info(action.disabled_reason)
+}
+
+const onDocumentCodeActionClick = (
+  item: SystemDocumentCodeItem,
+  action: SystemDocumentCodeAction,
+): void => {
+  if (action.action_key === 'view' && !action.guarded) {
+    activeDocumentCodeItem.value = item
+    ElMessage.info(`只读查看：${item.document_name}`)
     return
   }
   ElMessage.info(action.disabled_reason)
@@ -1229,6 +1911,36 @@ const integrationPlatformStatusTagType = (status: string): 'success' | 'warning'
   return 'danger'
 }
 
+const systemAnnouncementStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '已发布') {
+    return 'success'
+  }
+  if (status === '草稿') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
+const operationLogResultTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '成功') {
+    return 'success'
+  }
+  if (status === '部分成功') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
+const documentCodeStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '启用') {
+    return 'success'
+  }
+  if (status === '草稿') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
 onMounted(() => {
   permissionStore
     .loadCurrentUser()
@@ -1239,6 +1951,9 @@ onMounted(() => {
         loadUserCatalog(),
         loadOrganizationFrameworks(),
         loadIntegrationPlatforms(),
+        loadSystemAnnouncements(),
+        loadOperationLogs(),
+        loadDocumentCodes(),
         loadConfigCatalog(),
         loadDictionaryCatalog(),
         loadHealthSummary(),

@@ -229,6 +229,127 @@ export interface SystemIntegrationPlatformData {
   ui_table_headers: string[]
 }
 
+export interface SystemAnnouncementQuery {
+  category?: string
+  status?: '已发布' | '草稿' | '已撤回'
+  target_scope?: string
+  keyword?: string
+  published_start_date?: string
+  published_end_date?: string
+}
+
+export interface SystemAnnouncementAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemAnnouncementItem {
+  announcement_code: string
+  title: string
+  category: string
+  target_scope: string
+  publish_status: string
+  published_at: string
+  expires_at: string
+  priority: string
+  owner: string
+  updated_at: string
+  remark: string
+  actions: SystemAnnouncementAction[]
+}
+
+export interface SystemAnnouncementData {
+  items: SystemAnnouncementItem[]
+  total: number
+  category_options: string[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+}
+
+export interface SystemOperationLogQuery {
+  module?: string
+  operation_type?: string
+  result_status?: '成功' | '失败' | '部分成功'
+  operator?: string
+  keyword?: string
+  operated_start_date?: string
+  operated_end_date?: string
+}
+
+export interface SystemOperationLogAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemOperationLogItem {
+  log_id: string
+  module: string
+  operation_type: string
+  operation_name: string
+  info: string
+  operator: string
+  result_status: string
+  operated_at: string
+  client_ip: string
+  trace_id: string
+  remark: string
+  actions: SystemOperationLogAction[]
+}
+
+export interface SystemOperationLogData {
+  items: SystemOperationLogItem[]
+  total: number
+  module_options: string[]
+  operation_type_options: string[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+}
+
+export interface SystemDocumentCodeQuery {
+  document_type?: string
+  status?: '启用' | '停用' | '草稿'
+  keyword?: string
+  updated_start_date?: string
+  updated_end_date?: string
+}
+
+export interface SystemDocumentCodeAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemDocumentCodeItem {
+  document_code_id: string
+  document_name: string
+  document_type: string
+  prefix: string
+  serial_rule: string
+  current_sequence: number
+  status: string
+  reset_cycle: string
+  owner: string
+  updated_at: string
+  remark: string
+  actions: SystemDocumentCodeAction[]
+}
+
+export interface SystemDocumentCodeData {
+  items: SystemDocumentCodeItem[]
+  total: number
+  document_type_options: string[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+}
+
 export const fetchSystemConfigCatalog = async (
   query: SystemConfigCatalogQuery,
 ): Promise<ApiResponse<SystemConfigCatalogData>> => {
@@ -314,6 +435,51 @@ export const fetchSystemIntegrationPlatforms = async (
   return request<SystemIntegrationPlatformData>(url)
 }
 
+export const fetchSystemAnnouncements = async (
+  query: SystemAnnouncementQuery,
+): Promise<ApiResponse<SystemAnnouncementData>> => {
+  const queryString = toQuery({
+    category: query.category,
+    status: query.status,
+    target_scope: query.target_scope,
+    keyword: query.keyword,
+    published_start_date: query.published_start_date,
+    published_end_date: query.published_end_date,
+  })
+  const url = queryString ? `/api/system/system-announcements?${queryString}` : '/api/system/system-announcements'
+  return request<SystemAnnouncementData>(url)
+}
+
+export const fetchSystemOperationLogs = async (
+  query: SystemOperationLogQuery,
+): Promise<ApiResponse<SystemOperationLogData>> => {
+  const queryString = toQuery({
+    module: query.module,
+    operation_type: query.operation_type,
+    result_status: query.result_status,
+    operator: query.operator,
+    keyword: query.keyword,
+    operated_start_date: query.operated_start_date,
+    operated_end_date: query.operated_end_date,
+  })
+  const url = queryString ? `/api/system/operation-logs?${queryString}` : '/api/system/operation-logs'
+  return request<SystemOperationLogData>(url)
+}
+
+export const fetchSystemDocumentCodes = async (
+  query: SystemDocumentCodeQuery,
+): Promise<ApiResponse<SystemDocumentCodeData>> => {
+  const queryString = toQuery({
+    document_type: query.document_type,
+    status: query.status,
+    keyword: query.keyword,
+    updated_start_date: query.updated_start_date,
+    updated_end_date: query.updated_end_date,
+  })
+  const url = queryString ? `/api/system/document-codes?${queryString}` : '/api/system/document-codes'
+  return request<SystemDocumentCodeData>(url)
+}
+
 const systemManagementApi = {
   fetchSystemConfigCatalog,
   fetchSystemDictionaryCatalog,
@@ -322,6 +488,9 @@ const systemManagementApi = {
   fetchSystemUserCatalog,
   fetchSystemOrganizationFrameworks,
   fetchSystemIntegrationPlatforms,
+  fetchSystemAnnouncements,
+  fetchSystemOperationLogs,
+  fetchSystemDocumentCodes,
 }
 
 export default systemManagementApi
