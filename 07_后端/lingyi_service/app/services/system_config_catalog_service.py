@@ -17,6 +17,12 @@ from app.schemas.system_management import SystemAnnouncementItemData
 from app.schemas.system_management import SystemIntegrationPlatformActionData
 from app.schemas.system_management import SystemIntegrationPlatformData
 from app.schemas.system_management import SystemIntegrationPlatformItemData
+from app.schemas.system_management import SystemMessageNotificationSettingActionData
+from app.schemas.system_management import SystemMessageNotificationSettingItemData
+from app.schemas.system_management import SystemMessageNotificationSettingsData
+from app.schemas.system_management import SystemPreferenceSettingActionData
+from app.schemas.system_management import SystemPreferenceSettingItemData
+from app.schemas.system_management import SystemPreferenceSettingsData
 from app.schemas.system_management import SystemOperationLogActionData
 from app.schemas.system_management import SystemOperationLogData
 from app.schemas.system_management import SystemOperationLogItemData
@@ -1137,6 +1143,312 @@ class SystemConfigCatalogService:
         ),
     )
 
+    _MESSAGE_NOTIFICATION_SETTINGS_CATALOG: tuple[SystemMessageNotificationSettingItemData, ...] = (
+        SystemMessageNotificationSettingItemData(
+            setting_code="MSG-NOTIFY-001",
+            setting_name="订单状态通知",
+            channel="企业微信",
+            target_scope="销售团队",
+            digest_mode="实时推送",
+            trigger_events="订单创建,订单审核通过,订单出库",
+            status="启用",
+            owner="运营中心",
+            updated_at="2026-05-08T10:25:00Z",
+            remark="只读模式：不允许修改通知触发条件与渠道。",
+            actions=[
+                SystemMessageNotificationSettingActionData(
+                    action_key="view",
+                    label="查看",
+                    guarded=False,
+                    disabled_reason="只读模式：仅允许查看消息通知设置。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="edit",
+                    label="编辑（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许编辑消息通知设置。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="toggle",
+                    label="启停（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许切换通知状态。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="test_send",
+                    label="测试发送（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许触发真实发送。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="export",
+                    label="导出（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：导出入口禁用。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="print",
+                    label="打印（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：打印入口禁用。",
+                ),
+            ],
+        ),
+        SystemMessageNotificationSettingItemData(
+            setting_code="MSG-NOTIFY-002",
+            setting_name="库存预警通知",
+            channel="邮件",
+            target_scope="仓储运营组",
+            digest_mode="每日汇总",
+            trigger_events="低库存预警,滞留库存预警",
+            status="草稿",
+            owner="仓储运营组",
+            updated_at="2026-05-08T09:40:00Z",
+            remark="草稿态仅用于只读核对，发布动作受控。",
+            actions=[
+                SystemMessageNotificationSettingActionData(
+                    action_key="view",
+                    label="查看",
+                    guarded=False,
+                    disabled_reason="只读模式：仅允许查看消息通知设置。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="edit",
+                    label="编辑（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许编辑消息通知设置。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="toggle",
+                    label="启停（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许切换通知状态。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="test_send",
+                    label="测试发送（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许触发真实发送。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="export",
+                    label="导出（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：导出入口禁用。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="print",
+                    label="打印（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：打印入口禁用。",
+                ),
+            ],
+        ),
+        SystemMessageNotificationSettingItemData(
+            setting_code="MSG-NOTIFY-003",
+            setting_name="系统异常告警通知",
+            channel="Webhook",
+            target_scope="平台运维组",
+            digest_mode="实时推送",
+            trigger_events="接口异常,任务失败,重试超限",
+            status="停用",
+            owner="平台运维组",
+            updated_at="2026-05-07T18:05:00Z",
+            remark="停用记录保留审计可见性，禁止写操作。",
+            actions=[
+                SystemMessageNotificationSettingActionData(
+                    action_key="view",
+                    label="查看",
+                    guarded=False,
+                    disabled_reason="只读模式：仅允许查看消息通知设置。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="edit",
+                    label="编辑（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许编辑消息通知设置。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="toggle",
+                    label="启停（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许切换通知状态。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="test_send",
+                    label="测试发送（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许触发真实发送。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="export",
+                    label="导出（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：导出入口禁用。",
+                ),
+                SystemMessageNotificationSettingActionData(
+                    action_key="print",
+                    label="打印（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：打印入口禁用。",
+                ),
+            ],
+        ),
+    )
+
+    _PREFERENCE_SETTINGS_CATALOG: tuple[SystemPreferenceSettingItemData, ...] = (
+        SystemPreferenceSettingItemData(
+            setting_code="PREF-SETTING-001",
+            setting_name="个人仪表盘布局",
+            preference_scope="个人工作台",
+            value_type="布局模板",
+            current_value_masked="紧凑视图",
+            effective_level="用户级",
+            status="启用",
+            owner="平台产品组",
+            updated_at="2026-05-08T08:35:00Z",
+            remark="只读模式：不允许调整布局模板与默认面板。",
+            actions=[
+                SystemPreferenceSettingActionData(
+                    action_key="view",
+                    label="查看",
+                    guarded=False,
+                    disabled_reason="只读模式：仅允许查看偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="edit",
+                    label="编辑（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许编辑偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="toggle",
+                    label="启停（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许切换偏好设置状态。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="sync",
+                    label="同步（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许触发同步偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="export",
+                    label="导出（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：导出入口禁用。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="print",
+                    label="打印（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：打印入口禁用。",
+                ),
+            ],
+        ),
+        SystemPreferenceSettingItemData(
+            setting_code="PREF-SETTING-002",
+            setting_name="消息提醒频率",
+            preference_scope="通知偏好",
+            value_type="频率策略",
+            current_value_masked="每30分钟聚合",
+            effective_level="角色级",
+            status="草稿",
+            owner="运营中心",
+            updated_at="2026-05-08T07:50:00Z",
+            remark="草稿态仅用于只读核对，启停动作受控。",
+            actions=[
+                SystemPreferenceSettingActionData(
+                    action_key="view",
+                    label="查看",
+                    guarded=False,
+                    disabled_reason="只读模式：仅允许查看偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="edit",
+                    label="编辑（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许编辑偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="toggle",
+                    label="启停（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许切换偏好设置状态。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="sync",
+                    label="同步（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许触发同步偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="export",
+                    label="导出（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：导出入口禁用。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="print",
+                    label="打印（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：打印入口禁用。",
+                ),
+            ],
+        ),
+        SystemPreferenceSettingItemData(
+            setting_code="PREF-SETTING-003",
+            setting_name="跨端展示偏好",
+            preference_scope="多终端展示",
+            value_type="展示策略",
+            current_value_masked="移动端优先",
+            effective_level="系统级",
+            status="停用",
+            owner="平台运维组",
+            updated_at="2026-05-07T19:20:00Z",
+            remark="停用记录保留审计可见性，禁止写操作。",
+            actions=[
+                SystemPreferenceSettingActionData(
+                    action_key="view",
+                    label="查看",
+                    guarded=False,
+                    disabled_reason="只读模式：仅允许查看偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="edit",
+                    label="编辑（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许编辑偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="toggle",
+                    label="启停（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许切换偏好设置状态。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="sync",
+                    label="同步（guarded）",
+                    guarded=True,
+                    disabled_reason="只读模式：不允许触发同步偏好设置。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="export",
+                    label="导出（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：导出入口禁用。",
+                ),
+                SystemPreferenceSettingActionData(
+                    action_key="print",
+                    label="打印（disabled）",
+                    guarded=True,
+                    disabled_reason="只读模式：打印入口禁用。",
+                ),
+            ],
+        ),
+    )
+
     @classmethod
     def list_catalog(
         cls,
@@ -1573,6 +1885,150 @@ class SystemConfigCatalogService:
             items=items,
             total=len(items),
             document_type_options=document_type_options,
+            status_tags=status_tags,
+            ui_buttons=ui_buttons,
+            ui_table_headers=ui_table_headers,
+        )
+
+    @classmethod
+    def list_message_notification_settings_catalog(
+        cls,
+        *,
+        channel: str | None,
+        status: str | None,
+        target_scope: str | None,
+        keyword: str | None,
+        updated_start_date: str | None,
+        updated_end_date: str | None,
+    ) -> SystemMessageNotificationSettingsData:
+        normalized_channel = cls._norm(channel)
+        normalized_status = cls._norm(status)
+        normalized_target_scope = cls._norm(target_scope)
+        normalized_keyword = cls._norm(keyword)
+        normalized_updated_start_date = cls._norm(updated_start_date)
+        normalized_updated_end_date = cls._norm(updated_end_date)
+
+        items = [item.model_copy(deep=True) for item in cls._MESSAGE_NOTIFICATION_SETTINGS_CATALOG]
+
+        if normalized_channel is not None:
+            items = [item for item in items if item.channel == normalized_channel]
+        if normalized_status is not None:
+            items = [item for item in items if item.status == normalized_status]
+        if normalized_target_scope is not None:
+            items = [item for item in items if item.target_scope == normalized_target_scope]
+        if normalized_keyword is not None:
+            lowered_keyword = normalized_keyword.lower()
+            items = [
+                item
+                for item in items
+                if lowered_keyword in item.setting_code.lower()
+                or lowered_keyword in item.setting_name.lower()
+                or lowered_keyword in item.channel.lower()
+                or lowered_keyword in item.trigger_events.lower()
+                or lowered_keyword in item.owner.lower()
+            ]
+        if normalized_updated_start_date is not None:
+            items = [item for item in items if item.updated_at[:10] >= normalized_updated_start_date]
+        if normalized_updated_end_date is not None:
+            items = [item for item in items if item.updated_at[:10] <= normalized_updated_end_date]
+
+        channel_options = sorted({item.channel for item in cls._MESSAGE_NOTIFICATION_SETTINGS_CATALOG})
+        status_tags = sorted({item.status for item in cls._MESSAGE_NOTIFICATION_SETTINGS_CATALOG})
+        ui_buttons = [
+            "查看",
+            "编辑（guarded）",
+            "启停（guarded）",
+            "测试发送（guarded）",
+            "导出（disabled）",
+            "打印（disabled）",
+        ]
+        ui_table_headers = [
+            "设置编号",
+            "设置名称",
+            "通知渠道",
+            "目标范围",
+            "推送模式",
+            "触发事件",
+            "状态",
+            "负责人",
+            "更新时间",
+            "备注",
+        ]
+
+        return SystemMessageNotificationSettingsData(
+            items=items,
+            total=len(items),
+            channel_options=channel_options,
+            status_tags=status_tags,
+            ui_buttons=ui_buttons,
+            ui_table_headers=ui_table_headers,
+        )
+
+    @classmethod
+    def list_preference_settings_catalog(
+        cls,
+        *,
+        preference_scope: str | None,
+        status: str | None,
+        keyword: str | None,
+        updated_start_date: str | None,
+        updated_end_date: str | None,
+    ) -> SystemPreferenceSettingsData:
+        normalized_preference_scope = cls._norm(preference_scope)
+        normalized_status = cls._norm(status)
+        normalized_keyword = cls._norm(keyword)
+        normalized_updated_start_date = cls._norm(updated_start_date)
+        normalized_updated_end_date = cls._norm(updated_end_date)
+
+        items = [item.model_copy(deep=True) for item in cls._PREFERENCE_SETTINGS_CATALOG]
+
+        if normalized_preference_scope is not None:
+            items = [item for item in items if item.preference_scope == normalized_preference_scope]
+        if normalized_status is not None:
+            items = [item for item in items if item.status == normalized_status]
+        if normalized_keyword is not None:
+            lowered_keyword = normalized_keyword.lower()
+            items = [
+                item
+                for item in items
+                if lowered_keyword in item.setting_code.lower()
+                or lowered_keyword in item.setting_name.lower()
+                or lowered_keyword in item.preference_scope.lower()
+                or lowered_keyword in item.value_type.lower()
+                or lowered_keyword in item.owner.lower()
+            ]
+        if normalized_updated_start_date is not None:
+            items = [item for item in items if item.updated_at[:10] >= normalized_updated_start_date]
+        if normalized_updated_end_date is not None:
+            items = [item for item in items if item.updated_at[:10] <= normalized_updated_end_date]
+
+        preference_scope_options = sorted({item.preference_scope for item in cls._PREFERENCE_SETTINGS_CATALOG})
+        status_tags = sorted({item.status for item in cls._PREFERENCE_SETTINGS_CATALOG})
+        ui_buttons = [
+            "查看",
+            "编辑（guarded）",
+            "启停（guarded）",
+            "同步（guarded）",
+            "导出（disabled）",
+            "打印（disabled）",
+        ]
+        ui_table_headers = [
+            "设置编号",
+            "设置名称",
+            "适用范围",
+            "参数类型",
+            "当前值（脱敏）",
+            "生效层级",
+            "状态",
+            "负责人",
+            "更新时间",
+            "备注",
+        ]
+
+        return SystemPreferenceSettingsData(
+            items=items,
+            total=len(items),
+            preference_scope_options=preference_scope_options,
             status_tags=status_tags,
             ui_buttons=ui_buttons,
             ui_table_headers=ui_table_headers,

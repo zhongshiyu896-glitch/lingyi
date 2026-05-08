@@ -848,6 +848,334 @@
       </template>
     </el-card>
 
+    <el-card shadow="never" data-testid="message-notification-settings-section">
+      <template #header>
+        <div class="header-row">
+          <span>消息通知设置（TASK-Y84B-P1-02，只读）</span>
+          <el-button
+            type="primary"
+            :loading="messageNotificationSettingLoading"
+            @click="loadMessageNotificationSettings"
+          >
+            查询
+          </el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（消息通知设置只读目录不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅新增消息通知设置只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、系统公告、操作日志、单据编码、配置目录、字典目录与系统健康摘要。"
+        />
+
+        <el-form :inline="true" :model="messageNotificationSettingQuery" class="query-form">
+          <el-form-item label="通知渠道">
+            <el-select
+              v-model="messageNotificationSettingQuery.channel"
+              clearable
+              placeholder="全部"
+              style="width: 180px"
+            >
+              <el-option
+                v-for="option in messageNotificationSettingChannelOptions"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select
+              v-model="messageNotificationSettingQuery.status"
+              clearable
+              placeholder="全部"
+              style="width: 160px"
+            >
+              <el-option
+                v-for="option in messageNotificationSettingStatusTags"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="目标范围">
+            <el-input
+              v-model="messageNotificationSettingQuery.target_scope"
+              clearable
+              placeholder="请输入目标范围"
+              style="width: 180px"
+            />
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="messageNotificationSettingQuery.keyword"
+              clearable
+              placeholder="请输入设置编号/设置名称/事件关键词"
+              style="width: 300px"
+            />
+          </el-form-item>
+          <el-form-item label="更新开始">
+            <el-input
+              v-model="messageNotificationSettingQuery.updated_start_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item label="更新结束">
+            <el-input
+              v-model="messageNotificationSettingQuery.updated_end_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button
+              type="primary"
+              :loading="messageNotificationSettingLoading"
+              @click="loadMessageNotificationSettings"
+            >
+              搜索
+            </el-button>
+            <el-button @click="resetMessageNotificationSettingFilters">重置</el-button>
+            <el-button @click="clearMessageNotificationSettingSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最近更新：{{ activeMessageNotificationSettingItem?.updated_at ?? '-' }}</span>
+          <span>默认渠道：{{ activeMessageNotificationSettingItem?.channel ?? '-' }}</span>
+          <span>guarded 按钮：{{ messageNotificationSettingUiButtons.join(' / ') || '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="messageNotificationSettingErrorMessage"
+          type="error"
+          :closable="false"
+          :title="messageNotificationSettingErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table
+          :data="messageNotificationSettingItems"
+          border
+          row-key="setting_code"
+          empty-text="暂无消息通知设置数据"
+        >
+          <el-table-column prop="setting_code" label="设置编号" min-width="140" />
+          <el-table-column prop="setting_name" label="设置名称" min-width="200" />
+          <el-table-column prop="channel" label="通知渠道" min-width="120" />
+          <el-table-column prop="target_scope" label="目标范围" min-width="140" />
+          <el-table-column prop="digest_mode" label="推送模式" min-width="140" />
+          <el-table-column prop="trigger_events" label="触发事件" min-width="220" />
+          <el-table-column label="状态" width="110">
+            <template #default="scope">
+              <el-tag :type="messageNotificationSettingStatusTagType(scope.row.status)" effect="plain">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="owner" label="负责人" width="120" />
+          <el-table-column prop="updated_at" label="更新时间" min-width="180" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" min-width="400">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.setting_code}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onMessageNotificationSettingActionClick(scope.row, action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!messageNotificationSettingItems.length" description="暂无消息通知设置数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="编辑、启停、测试发送、导出、打印均为 guarded/disabled，仅允许只读查看。"
+        />
+      </template>
+    </el-card>
+
+    <el-card shadow="never" data-testid="preference-settings-section">
+      <template #header>
+        <div class="header-row">
+          <span>偏好设置（TASK-Y84B-P1-03，只读）</span>
+          <el-button type="primary" :loading="preferenceSettingLoading" @click="loadPreferenceSettings">
+            查询
+          </el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canSystemRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:read 权限"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-else-if="!canConfigRead"
+        type="warning"
+        :closable="false"
+        title="当前账号无 system:config_read 权限（偏好设置只读目录不可见）"
+        style="margin-bottom: 12px"
+      />
+
+      <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本任务仅新增偏好设置只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、系统公告、操作日志、单据编码、消息通知设置、配置目录、字典目录与系统健康摘要。"
+        />
+
+        <el-form :inline="true" :model="preferenceSettingQuery" class="query-form">
+          <el-form-item label="适用范围">
+            <el-select
+              v-model="preferenceSettingQuery.preference_scope"
+              clearable
+              placeholder="全部"
+              style="width: 180px"
+            >
+              <el-option
+                v-for="option in preferenceSettingScopeOptions"
+                :key="option"
+                :label="option"
+                :value="option"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select
+              v-model="preferenceSettingQuery.status"
+              clearable
+              placeholder="全部"
+              style="width: 160px"
+            >
+              <el-option v-for="option in preferenceSettingStatusTags" :key="option" :label="option" :value="option" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="preferenceSettingQuery.keyword"
+              clearable
+              placeholder="请输入设置编号/设置名称/参数类型"
+              style="width: 280px"
+            />
+          </el-form-item>
+          <el-form-item label="更新开始">
+            <el-input
+              v-model="preferenceSettingQuery.updated_start_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item label="更新结束">
+            <el-input
+              v-model="preferenceSettingQuery.updated_end_date"
+              clearable
+              placeholder="YYYY-MM-DD"
+              style="width: 160px"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="preferenceSettingLoading" @click="loadPreferenceSettings">搜索</el-button>
+            <el-button @click="resetPreferenceSettingFilters">重置</el-button>
+            <el-button @click="clearPreferenceSettingSelection">清空</el-button>
+          </el-form-item>
+        </el-form>
+
+        <div class="meta-row">
+          <span>最近更新：{{ activePreferenceSettingItem?.updated_at ?? '-' }}</span>
+          <span>生效层级：{{ activePreferenceSettingItem?.effective_level ?? '-' }}</span>
+          <span>guarded 按钮：{{ preferenceSettingUiButtons.join(' / ') || '-' }}</span>
+        </div>
+
+        <el-alert
+          v-if="preferenceSettingErrorMessage"
+          type="error"
+          :closable="false"
+          :title="preferenceSettingErrorMessage"
+          style="margin-bottom: 12px"
+        />
+
+        <el-table :data="preferenceSettingItems" border row-key="setting_code" empty-text="暂无偏好设置数据">
+          <el-table-column prop="setting_code" label="设置编号" min-width="140" />
+          <el-table-column prop="setting_name" label="设置名称" min-width="180" />
+          <el-table-column prop="preference_scope" label="适用范围" min-width="140" />
+          <el-table-column prop="value_type" label="参数类型" min-width="140" />
+          <el-table-column prop="current_value_masked" label="当前值（脱敏）" min-width="170" />
+          <el-table-column prop="effective_level" label="生效层级" min-width="120" />
+          <el-table-column label="状态" width="110">
+            <template #default="scope">
+              <el-tag :type="preferenceSettingStatusTagType(scope.row.status)" effect="plain">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="owner" label="负责人" width="120" />
+          <el-table-column prop="updated_at" label="更新时间" min-width="180" />
+          <el-table-column prop="remark" label="备注" min-width="220" />
+          <el-table-column label="操作" min-width="400">
+            <template #default="scope">
+              <div class="action-group">
+                <el-button
+                  v-for="action in scope.row.actions"
+                  :key="`${scope.row.setting_code}-${action.action_key}`"
+                  type="primary"
+                  link
+                  :disabled="action.guarded"
+                  @click="onPreferenceSettingActionClick(scope.row, action)"
+                >
+                  {{ action.label }}
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-empty v-if="!preferenceSettingItems.length" description="暂无偏好设置数据" />
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          style="margin-top: 12px"
+          title="编辑、启停、同步、导出、打印均为 guarded/disabled，仅允许只读查看。"
+        />
+      </template>
+    </el-card>
+
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -1182,6 +1510,10 @@ import systemManagementApi, {
   type SystemAnnouncementItem,
   type SystemDocumentCodeAction,
   type SystemDocumentCodeItem,
+  type SystemMessageNotificationSettingAction,
+  type SystemMessageNotificationSettingItem,
+  type SystemPreferenceSettingAction,
+  type SystemPreferenceSettingItem,
   type SystemOperationLogAction,
   type SystemOperationLogItem,
   type SystemApprovalFlowAction,
@@ -1209,6 +1541,8 @@ const integrationPlatformLoading = ref<boolean>(false)
 const systemAnnouncementLoading = ref<boolean>(false)
 const operationLogLoading = ref<boolean>(false)
 const documentCodeLoading = ref<boolean>(false)
+const messageNotificationSettingLoading = ref<boolean>(false)
+const preferenceSettingLoading = ref<boolean>(false)
 const configItems = ref<SystemConfigCatalogItem[]>([])
 const dictionaryItems = ref<SystemDictionaryCatalogItem[]>([])
 const healthItems = ref<SystemHealthSummaryItem[]>([])
@@ -1220,6 +1554,8 @@ const integrationPlatformItems = ref<SystemIntegrationPlatformItem[]>([])
 const systemAnnouncementItems = ref<SystemAnnouncementItem[]>([])
 const operationLogItems = ref<SystemOperationLogItem[]>([])
 const documentCodeItems = ref<SystemDocumentCodeItem[]>([])
+const messageNotificationSettingItems = ref<SystemMessageNotificationSettingItem[]>([])
+const preferenceSettingItems = ref<SystemPreferenceSettingItem[]>([])
 const userRoleOptions = ref<string[]>([])
 const userStatusOptions = ref<string[]>([])
 const organizationFrameworkLevelOptions = ref<string[]>([])
@@ -1239,6 +1575,12 @@ const operationLogUiButtons = ref<string[]>([])
 const documentCodeTypeOptions = ref<string[]>([])
 const documentCodeStatusTags = ref<string[]>([])
 const documentCodeUiButtons = ref<string[]>([])
+const messageNotificationSettingChannelOptions = ref<string[]>([])
+const messageNotificationSettingStatusTags = ref<string[]>([])
+const messageNotificationSettingUiButtons = ref<string[]>([])
+const preferenceSettingScopeOptions = ref<string[]>([])
+const preferenceSettingStatusTags = ref<string[]>([])
+const preferenceSettingUiButtons = ref<string[]>([])
 const approvalFlowDiagramVisible = ref<boolean>(false)
 const activeApprovalFlow = ref<SystemApprovalFlowItem | null>(null)
 const approvalFlowErrorMessage = ref<string>('')
@@ -1255,6 +1597,10 @@ const activeOperationLogItem = ref<SystemOperationLogItem | null>(null)
 const operationLogErrorMessage = ref<string>('')
 const activeDocumentCodeItem = ref<SystemDocumentCodeItem | null>(null)
 const documentCodeErrorMessage = ref<string>('')
+const activeMessageNotificationSettingItem = ref<SystemMessageNotificationSettingItem | null>(null)
+const messageNotificationSettingErrorMessage = ref<string>('')
+const activePreferenceSettingItem = ref<SystemPreferenceSettingItem | null>(null)
+const preferenceSettingErrorMessage = ref<string>('')
 
 const configQuery = reactive({
   module: '',
@@ -1329,6 +1675,23 @@ const documentCodeQuery = reactive({
   updated_end_date: '',
 })
 
+const messageNotificationSettingQuery = reactive({
+  channel: '',
+  status: '' as '' | '启用' | '停用' | '草稿',
+  target_scope: '',
+  keyword: '',
+  updated_start_date: '',
+  updated_end_date: '',
+})
+
+const preferenceSettingQuery = reactive({
+  preference_scope: '',
+  status: '' as '' | '启用' | '停用' | '草稿',
+  keyword: '',
+  updated_start_date: '',
+  updated_end_date: '',
+})
+
 const canSystemRead = computed<boolean>(() => permissionStore.state.actions.includes('system:read'))
 const canConfigRead = computed<boolean>(() => permissionStore.state.actions.includes('system:config_read'))
 const canDictionaryRead = computed<boolean>(() => permissionStore.state.actions.includes('system:dictionary_read'))
@@ -1343,6 +1706,8 @@ const canReadIntegrationPlatforms = computed<boolean>(() => canSystemRead.value 
 const canReadSystemAnnouncements = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadOperationLogs = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadDocumentCodes = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const canReadMessageNotificationSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const canReadPreferenceSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 
 const loadConfigCatalog = async (): Promise<void> => {
   if (!canReadConfig.value) {
@@ -1661,6 +2026,79 @@ const loadDocumentCodes = async (): Promise<void> => {
   }
 }
 
+const loadMessageNotificationSettings = async (): Promise<void> => {
+  if (!canReadMessageNotificationSettings.value) {
+    messageNotificationSettingItems.value = []
+    messageNotificationSettingChannelOptions.value = []
+    messageNotificationSettingStatusTags.value = []
+    messageNotificationSettingUiButtons.value = []
+    messageNotificationSettingErrorMessage.value = ''
+    activeMessageNotificationSettingItem.value = null
+    return
+  }
+
+  messageNotificationSettingLoading.value = true
+  messageNotificationSettingErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemMessageNotificationSettings({
+      channel: messageNotificationSettingQuery.channel || undefined,
+      status: messageNotificationSettingQuery.status || undefined,
+      target_scope: messageNotificationSettingQuery.target_scope.trim() || undefined,
+      keyword: messageNotificationSettingQuery.keyword.trim() || undefined,
+      updated_start_date: messageNotificationSettingQuery.updated_start_date.trim() || undefined,
+      updated_end_date: messageNotificationSettingQuery.updated_end_date.trim() || undefined,
+    })
+    messageNotificationSettingItems.value = result.data.items
+    messageNotificationSettingChannelOptions.value = result.data.channel_options
+    messageNotificationSettingStatusTags.value = result.data.status_tags
+    messageNotificationSettingUiButtons.value = result.data.ui_buttons
+    activeMessageNotificationSettingItem.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    messageNotificationSettingItems.value = []
+    activeMessageNotificationSettingItem.value = null
+    messageNotificationSettingErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    messageNotificationSettingLoading.value = false
+  }
+}
+
+const loadPreferenceSettings = async (): Promise<void> => {
+  if (!canReadPreferenceSettings.value) {
+    preferenceSettingItems.value = []
+    preferenceSettingScopeOptions.value = []
+    preferenceSettingStatusTags.value = []
+    preferenceSettingUiButtons.value = []
+    preferenceSettingErrorMessage.value = ''
+    activePreferenceSettingItem.value = null
+    return
+  }
+
+  preferenceSettingLoading.value = true
+  preferenceSettingErrorMessage.value = ''
+  try {
+    const result = await systemManagementApi.fetchSystemPreferenceSettings({
+      preference_scope: preferenceSettingQuery.preference_scope || undefined,
+      status: preferenceSettingQuery.status || undefined,
+      keyword: preferenceSettingQuery.keyword.trim() || undefined,
+      updated_start_date: preferenceSettingQuery.updated_start_date.trim() || undefined,
+      updated_end_date: preferenceSettingQuery.updated_end_date.trim() || undefined,
+    })
+    preferenceSettingItems.value = result.data.items
+    preferenceSettingScopeOptions.value = result.data.preference_scope_options
+    preferenceSettingStatusTags.value = result.data.status_tags
+    preferenceSettingUiButtons.value = result.data.ui_buttons
+    activePreferenceSettingItem.value = result.data.items[0] ?? null
+  } catch (error: unknown) {
+    preferenceSettingItems.value = []
+    activePreferenceSettingItem.value = null
+    preferenceSettingErrorMessage.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    preferenceSettingLoading.value = false
+  }
+}
+
 const resetApprovalFlowFilters = (): void => {
   approvalFlowQuery.audit_type = '样板单'
   approvalFlowQuery.status = ''
@@ -1770,6 +2208,37 @@ const clearDocumentCodeSelection = (): void => {
   documentCodeErrorMessage.value = ''
 }
 
+const resetMessageNotificationSettingFilters = (): void => {
+  messageNotificationSettingQuery.channel = ''
+  messageNotificationSettingQuery.status = ''
+  messageNotificationSettingQuery.target_scope = ''
+  messageNotificationSettingQuery.keyword = ''
+  messageNotificationSettingQuery.updated_start_date = ''
+  messageNotificationSettingQuery.updated_end_date = ''
+  void loadMessageNotificationSettings()
+}
+
+const clearMessageNotificationSettingSelection = (): void => {
+  messageNotificationSettingItems.value = []
+  activeMessageNotificationSettingItem.value = null
+  messageNotificationSettingErrorMessage.value = ''
+}
+
+const resetPreferenceSettingFilters = (): void => {
+  preferenceSettingQuery.preference_scope = ''
+  preferenceSettingQuery.status = ''
+  preferenceSettingQuery.keyword = ''
+  preferenceSettingQuery.updated_start_date = ''
+  preferenceSettingQuery.updated_end_date = ''
+  void loadPreferenceSettings()
+}
+
+const clearPreferenceSettingSelection = (): void => {
+  preferenceSettingItems.value = []
+  activePreferenceSettingItem.value = null
+  preferenceSettingErrorMessage.value = ''
+}
+
 const openApprovalFlowDiagram = (flow: SystemApprovalFlowItem): void => {
   activeApprovalFlow.value = flow
   approvalFlowDiagramVisible.value = true
@@ -1846,6 +2315,30 @@ const onDocumentCodeActionClick = (
   if (action.action_key === 'view' && !action.guarded) {
     activeDocumentCodeItem.value = item
     ElMessage.info(`只读查看：${item.document_name}`)
+    return
+  }
+  ElMessage.info(action.disabled_reason)
+}
+
+const onMessageNotificationSettingActionClick = (
+  item: SystemMessageNotificationSettingItem,
+  action: SystemMessageNotificationSettingAction,
+): void => {
+  if (action.action_key === 'view' && !action.guarded) {
+    activeMessageNotificationSettingItem.value = item
+    ElMessage.info(`只读查看：${item.setting_name}`)
+    return
+  }
+  ElMessage.info(action.disabled_reason)
+}
+
+const onPreferenceSettingActionClick = (
+  item: SystemPreferenceSettingItem,
+  action: SystemPreferenceSettingAction,
+): void => {
+  if (action.action_key === 'view' && !action.guarded) {
+    activePreferenceSettingItem.value = item
+    ElMessage.info(`只读查看：${item.setting_name}`)
     return
   }
   ElMessage.info(action.disabled_reason)
@@ -1941,6 +2434,26 @@ const documentCodeStatusTagType = (status: string): 'success' | 'warning' | 'dan
   return 'danger'
 }
 
+const messageNotificationSettingStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '启用') {
+    return 'success'
+  }
+  if (status === '草稿') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
+const preferenceSettingStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === '启用') {
+    return 'success'
+  }
+  if (status === '草稿') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
 onMounted(() => {
   permissionStore
     .loadCurrentUser()
@@ -1954,6 +2467,8 @@ onMounted(() => {
         loadSystemAnnouncements(),
         loadOperationLogs(),
         loadDocumentCodes(),
+        loadMessageNotificationSettings(),
+        loadPreferenceSettings(),
         loadConfigCatalog(),
         loadDictionaryCatalog(),
         loadHealthSummary(),

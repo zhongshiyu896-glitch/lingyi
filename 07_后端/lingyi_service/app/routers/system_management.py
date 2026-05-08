@@ -147,6 +147,28 @@ def _document_code_error(detail_message: str, status_code: int = 503) -> None:
     )
 
 
+def _message_notification_settings_error(detail_message: str, status_code: int = 503) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": "MESSAGE_NOTIFICATION_SETTINGS_UNAVAILABLE",
+            "message": detail_message,
+            "data": None,
+        },
+    )
+
+
+def _preference_settings_error(detail_message: str, status_code: int = 503) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": "PREFERENCE_SETTINGS_UNAVAILABLE",
+            "message": detail_message,
+            "data": None,
+        },
+    )
+
+
 def _system_health_action() -> str:
     return getattr(system_permissions, "SYSTEM_" + "DIAG" + "NOSTIC")
 
@@ -581,6 +603,104 @@ def get_system_document_codes(
 
     data = SystemConfigCatalogService.list_document_code_catalog(
         document_type=_scope_text(document_type),
+        status=_scope_text(status),
+        keyword=normalized_keyword,
+        updated_start_date=normalized_updated_start_date,
+        updated_end_date=normalized_updated_end_date,
+    )
+    return _ok(data)
+
+
+@router.get("/message-notification-settings")
+def get_system_message_notification_settings(
+    request: Request,
+    channel: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    target_scope: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    updated_start_date: str | None = Query(default=None),
+    updated_end_date: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_READ,
+        module="system",
+        resource_type="system_message_notification_settings",
+    )
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_CONFIG_READ,
+        module="system",
+        resource_type="system_message_notification_settings",
+    )
+
+    normalized_keyword = _scope_text(keyword)
+    normalized_updated_start_date = _scope_text(updated_start_date)
+    normalized_updated_end_date = _scope_text(updated_end_date)
+    if normalized_updated_start_date is not None and len(normalized_updated_start_date) != 10:
+        _invalid_query("updated_start_date 必须为 YYYY-MM-DD")
+    if normalized_updated_end_date is not None and len(normalized_updated_end_date) != 10:
+        _invalid_query("updated_end_date 必须为 YYYY-MM-DD")
+
+    if normalized_keyword == "__simulate_error__":
+        _message_notification_settings_error("消息通知设置目录暂不可用，请稍后重试。")
+
+    data = SystemConfigCatalogService.list_message_notification_settings_catalog(
+        channel=_scope_text(channel),
+        status=_scope_text(status),
+        target_scope=_scope_text(target_scope),
+        keyword=normalized_keyword,
+        updated_start_date=normalized_updated_start_date,
+        updated_end_date=normalized_updated_end_date,
+    )
+    return _ok(data)
+
+
+@router.get("/preference-settings")
+def get_system_preference_settings(
+    request: Request,
+    preference_scope: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    updated_start_date: str | None = Query(default=None),
+    updated_end_date: str | None = Query(default=None),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_READ,
+        module="system",
+        resource_type="system_preference_settings",
+    )
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=SYSTEM_CONFIG_READ,
+        module="system",
+        resource_type="system_preference_settings",
+    )
+
+    normalized_keyword = _scope_text(keyword)
+    normalized_updated_start_date = _scope_text(updated_start_date)
+    normalized_updated_end_date = _scope_text(updated_end_date)
+    if normalized_updated_start_date is not None and len(normalized_updated_start_date) != 10:
+        _invalid_query("updated_start_date 必须为 YYYY-MM-DD")
+    if normalized_updated_end_date is not None and len(normalized_updated_end_date) != 10:
+        _invalid_query("updated_end_date 必须为 YYYY-MM-DD")
+
+    if normalized_keyword == "__simulate_error__":
+        _preference_settings_error("偏好设置目录暂不可用，请稍后重试。")
+
+    data = SystemConfigCatalogService.list_preference_settings_catalog(
+        preference_scope=_scope_text(preference_scope),
         status=_scope_text(status),
         keyword=normalized_keyword,
         updated_start_date=normalized_updated_start_date,

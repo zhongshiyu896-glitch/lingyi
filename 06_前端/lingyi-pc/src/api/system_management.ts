@@ -350,6 +350,83 @@ export interface SystemDocumentCodeData {
   ui_table_headers: string[]
 }
 
+export interface SystemMessageNotificationSettingsQuery {
+  channel?: string
+  status?: '启用' | '停用' | '草稿'
+  target_scope?: string
+  keyword?: string
+  updated_start_date?: string
+  updated_end_date?: string
+}
+
+export interface SystemMessageNotificationSettingAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemMessageNotificationSettingItem {
+  setting_code: string
+  setting_name: string
+  channel: string
+  target_scope: string
+  digest_mode: string
+  trigger_events: string
+  status: string
+  owner: string
+  updated_at: string
+  remark: string
+  actions: SystemMessageNotificationSettingAction[]
+}
+
+export interface SystemMessageNotificationSettingsData {
+  items: SystemMessageNotificationSettingItem[]
+  total: number
+  channel_options: string[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+}
+
+export interface SystemPreferenceSettingsQuery {
+  preference_scope?: string
+  status?: '启用' | '停用' | '草稿'
+  keyword?: string
+  updated_start_date?: string
+  updated_end_date?: string
+}
+
+export interface SystemPreferenceSettingAction {
+  action_key: string
+  label: string
+  guarded: boolean
+  disabled_reason: string
+}
+
+export interface SystemPreferenceSettingItem {
+  setting_code: string
+  setting_name: string
+  preference_scope: string
+  value_type: string
+  current_value_masked: string
+  effective_level: string
+  status: string
+  owner: string
+  updated_at: string
+  remark: string
+  actions: SystemPreferenceSettingAction[]
+}
+
+export interface SystemPreferenceSettingsData {
+  items: SystemPreferenceSettingItem[]
+  total: number
+  preference_scope_options: string[]
+  status_tags: string[]
+  ui_buttons: string[]
+  ui_table_headers: string[]
+}
+
 export const fetchSystemConfigCatalog = async (
   query: SystemConfigCatalogQuery,
 ): Promise<ApiResponse<SystemConfigCatalogData>> => {
@@ -480,6 +557,37 @@ export const fetchSystemDocumentCodes = async (
   return request<SystemDocumentCodeData>(url)
 }
 
+export const fetchSystemMessageNotificationSettings = async (
+  query: SystemMessageNotificationSettingsQuery,
+): Promise<ApiResponse<SystemMessageNotificationSettingsData>> => {
+  const queryString = toQuery({
+    channel: query.channel,
+    status: query.status,
+    target_scope: query.target_scope,
+    keyword: query.keyword,
+    updated_start_date: query.updated_start_date,
+    updated_end_date: query.updated_end_date,
+  })
+  const url = queryString
+    ? `/api/system/message-notification-settings?${queryString}`
+    : '/api/system/message-notification-settings'
+  return request<SystemMessageNotificationSettingsData>(url)
+}
+
+export const fetchSystemPreferenceSettings = async (
+  query: SystemPreferenceSettingsQuery,
+): Promise<ApiResponse<SystemPreferenceSettingsData>> => {
+  const queryString = toQuery({
+    preference_scope: query.preference_scope,
+    status: query.status,
+    keyword: query.keyword,
+    updated_start_date: query.updated_start_date,
+    updated_end_date: query.updated_end_date,
+  })
+  const url = queryString ? `/api/system/preference-settings?${queryString}` : '/api/system/preference-settings'
+  return request<SystemPreferenceSettingsData>(url)
+}
+
 const systemManagementApi = {
   fetchSystemConfigCatalog,
   fetchSystemDictionaryCatalog,
@@ -491,6 +599,8 @@ const systemManagementApi = {
   fetchSystemAnnouncements,
   fetchSystemOperationLogs,
   fetchSystemDocumentCodes,
+  fetchSystemMessageNotificationSettings,
+  fetchSystemPreferenceSettings,
 }
 
 export default systemManagementApi

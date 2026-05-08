@@ -335,3 +335,75 @@ class SystemDocumentCodeData(BaseModel):
     status_tags: list[str] = Field(default_factory=list)
     ui_buttons: list[str] = Field(default_factory=list)
     ui_table_headers: list[str] = Field(default_factory=list)
+
+
+class SystemMessageNotificationSettingActionData(BaseModel):
+    """One readonly action descriptor for message notification setting row."""
+
+    action_key: str
+    label: str
+    guarded: bool
+    disabled_reason: str
+
+
+class SystemMessageNotificationSettingItemData(BaseModel):
+    """One readonly message notification setting row."""
+
+    setting_code: str
+    setting_name: str
+    channel: str
+    target_scope: str
+    digest_mode: str
+    trigger_events: str
+    status: str
+    owner: str
+    updated_at: str
+    remark: str
+    actions: list[SystemMessageNotificationSettingActionData] = Field(default_factory=list)
+
+
+class SystemMessageNotificationSettingsData(BaseModel):
+    """Payload for message notification setting query."""
+
+    items: list[SystemMessageNotificationSettingItemData] = Field(default_factory=list)
+    total: int
+    channel_options: list[str] = Field(default_factory=list)
+    status_tags: list[str] = Field(default_factory=list)
+    ui_buttons: list[str] = Field(default_factory=list)
+    ui_table_headers: list[str] = Field(default_factory=list)
+
+
+class SystemPreferenceSettingActionData(BaseModel):
+    """One readonly action descriptor for preference setting row."""
+
+    action_key: str
+    label: str
+    guarded: bool
+    disabled_reason: str
+
+
+class SystemPreferenceSettingItemData(BaseModel):
+    """One readonly preference setting row."""
+
+    setting_code: str
+    setting_name: str
+    preference_scope: str
+    value_type: str
+    current_value_masked: str
+    effective_level: str
+    status: str
+    owner: str
+    updated_at: str
+    remark: str
+    actions: list[SystemPreferenceSettingActionData] = Field(default_factory=list)
+
+
+class SystemPreferenceSettingsData(BaseModel):
+    """Payload for preference setting query."""
+
+    items: list[SystemPreferenceSettingItemData] = Field(default_factory=list)
+    total: int
+    preference_scope_options: list[str] = Field(default_factory=list)
+    status_tags: list[str] = Field(default_factory=list)
+    ui_buttons: list[str] = Field(default_factory=list)
+    ui_table_headers: list[str] = Field(default_factory=list)
