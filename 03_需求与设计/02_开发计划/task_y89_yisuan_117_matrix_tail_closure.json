@@ -1,0 +1,35 @@
+{
+  "task_id": "TASK-Y89B",
+  "archived_commit": "80d6471ac2b739317b43ede20ada99a6e14bd0bc",
+  "parent": "ef1404eadf0597ef105279373a10462f0486abc5",
+  "latest_subject": "chore: seal p1 system management tail pages",
+  "source_candidate_batch": "task_y84_next_p1_candidate_batch.json",
+  "matrix_tail_reached": true,
+  "candidate_count": 3,
+  "closed_candidates": [
+    {
+      "source_matrix_entry": "Y1-115",
+      "page_name": "系统参数",
+      "impl_task_id": "TASK-Y85B-01-IMPL"
+    },
+    {
+      "source_matrix_entry": "Y1-116",
+      "page_name": "消息通知设置",
+      "impl_task_id": "TASK-Y85B-02-IMPL"
+    },
+    {
+      "source_matrix_entry": "Y1-117",
+      "page_name": "偏好设置",
+      "impl_task_id": "TASK-Y85B-03-IMPL"
+    }
+  ],
+  "skipped_or_remaining": [],
+  "next_p1_candidate_count": 0,
+  "product_test_diff_empty": true,
+  "staged_area_empty": true,
+  "push_status": "NOT_PUSHED",
+  "branch": "codex/sprint4-seal",
+  "remote_head": "4dbaecf81aaf07c69ef1146b64feb7db5e08fac1",
+  "local_ahead_remote_count": 18,
+  "remote_contains_head": false
+}
