@@ -1,6 +1,6 @@
 <template>
-  <div class="factory-statement-list-page">
-    <el-card shadow="never">
+  <div class="factory-statement-list-page" data-testid="factory-statement-list-page">
+    <el-card shadow="never" data-testid="factory-statement-main-section">
       <template #header>
         <div class="header-row">
           <span>加工厂对账单列表</span>
@@ -24,14 +24,21 @@
         title="款式打板下单对账表（TASK-Y22B-P1-02）"
         description="本页补齐只读语义映射；创建/确认/取消/应付草稿/导出等写动作仅保留 guarded 语义，不触发真实写请求。"
         class="reconciliation-alert"
+        data-testid="factory-statement-main-alert"
       />
 
-      <el-form :inline="true" :model="query">
+      <el-form :inline="true" :model="query" data-testid="factory-statement-query-form">
         <el-form-item label="供应商">
-          <el-input v-model="query.supplier" clearable placeholder="请输入供应商" />
+          <el-input v-model="query.supplier" clearable placeholder="请输入供应商" data-testid="factory-statement-filter-supplier" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.statement_status" clearable placeholder="请选择状态" style="width: 160px">
+          <el-select
+            v-model="query.statement_status"
+            clearable
+            placeholder="请选择状态"
+            style="width: 160px"
+            data-testid="factory-statement-filter-status"
+          >
             <el-option label="草稿" value="draft" />
             <el-option label="已确认" value="confirmed" />
             <el-option label="已取消" value="cancelled" />
@@ -45,6 +52,7 @@
             value-format="YYYY-MM-DD"
             placeholder="请选择开始日期"
             clearable
+            data-testid="factory-statement-filter-from-date"
           />
         </el-form-item>
         <el-form-item label="结束日期">
@@ -54,10 +62,14 @@
             value-format="YYYY-MM-DD"
             placeholder="请选择结束日期"
             clearable
+            data-testid="factory-statement-filter-to-date"
           />
         </el-form-item>
         <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="loadRows">查询</el-button>
+          <el-button type="primary" :disabled="!canRead" data-testid="factory-statement-query-button" @click="applyPrimaryQuery">
+            查询
+          </el-button>
+          <el-button :disabled="!canRead" data-testid="factory-statement-reset-button" @click="resetPrimaryFilters">重置</el-button>
         </el-form-item>
       </el-form>
 
@@ -112,10 +124,24 @@
         </el-form-item>
       </el-form>
 
-      <el-alert v-if="readError" type="error" :closable="false" show-icon :title="readError" class="error-alert" />
-      <el-empty v-if="!canRead" description="无加工厂对账单查看权限" />
+      <el-alert
+        v-if="readError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="readError"
+        class="error-alert"
+        data-testid="factory-statement-error-alert"
+      />
+      <el-empty v-if="!canRead" description="无加工厂对账单查看权限" data-testid="factory-statement-no-permission" />
       <template v-else>
-        <el-table :data="displayRows" border v-loading="loading" empty-text="暂无款式打板下单对账数据">
+        <el-table
+          :data="displayRows"
+          border
+          v-loading="loading"
+          empty-text="暂无款式打板下单对账数据"
+          data-testid="factory-statement-main-table"
+        >
           <el-table-column prop="sample_order_no" label="打板单号" min-width="180" />
           <el-table-column prop="style_code" label="款号" min-width="140" />
           <el-table-column prop="factory_name" label="工厂" min-width="140" />
@@ -145,7 +171,7 @@
           </el-table-column>
           <el-table-column label="状态" min-width="150">
             <template #default="scope">
-              <el-tag :type="statusTag(scope.row.statement_status)">
+              <el-tag :type="statusTag(scope.row.statement_status)" data-testid="factory-statement-status-tag">
                 {{ statementStatusLabel(scope.row.statement_status) }}
               </el-tag>
             </template>
@@ -163,7 +189,9 @@
           <el-table-column prop="created_at" label="创建时间" min-width="180" />
           <el-table-column label="操作" fixed="right" width="340">
             <template #default="scope">
-              <el-button link type="primary" @click="goDetail(scope.row.id)">查看</el-button>
+              <el-button link type="primary" data-testid="factory-statement-detail-button" @click="goDetail(scope.row.id)">
+                查看
+              </el-button>
               <el-button link type="primary" @click="goPrint(scope.row.id)">打印</el-button>
               <el-button
                 link
@@ -211,6 +239,7 @@
 
         <div class="pager">
           <el-pagination
+            data-testid="factory-statement-pagination"
             background
             layout="prev, pager, next, total, sizes"
             :current-page="query.page"
@@ -4088,6 +4117,24 @@ const resetSampleFilters = (): void => {
   sampleQuery.min_amount = undefined
   sampleQuery.max_amount = undefined
   sampleQuery.status = ''
+}
+
+const applyPrimaryQuery = async (): Promise<void> => {
+  if (!canRead.value) {
+    return
+  }
+  query.page = 1
+  await loadRows()
+}
+
+const resetPrimaryFilters = async (): Promise<void> => {
+  query.supplier = ''
+  query.statement_status = ''
+  query.from_date = ''
+  query.to_date = ''
+  query.page = 1
+  query.page_size = 20
+  await loadRows()
 }
 
 const loadRows = async (): Promise<void> => {

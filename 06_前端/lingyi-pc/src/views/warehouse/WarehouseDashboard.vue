@@ -1,26 +1,27 @@
 <template>
-  <div class="warehouse-page">
-    <el-card shadow="never">
+  <div class="warehouse-page" data-testid="warehouse-page">
+    <el-card shadow="never" data-testid="warehouse-stock-summary-section">
       <template #header>
         <div class="header-row">
           <div class="title-wrap">
             <h2>成品进销存 / 成品库存</h2>
             <span class="subtitle">成品库存台账（只读首版）</span>
           </div>
-          <el-radio-group v-model="displayMode" size="small">
+          <el-radio-group v-model="displayMode" size="small" data-testid="warehouse-stock-display-mode-toggle">
             <el-radio-button label="vertical">竖向</el-radio-button>
             <el-radio-button label="horizontal">横向</el-radio-button>
           </el-radio-group>
         </div>
       </template>
 
-      <el-form :inline="true" :model="query" class="query-form">
+      <el-form :inline="true" :model="query" class="query-form" data-testid="warehouse-stock-filters">
         <el-form-item label="仓库">
           <el-input
             v-model="query.warehouse"
             clearable
             placeholder="仓库"
             aria-label="仓库"
+            data-testid="warehouse-stock-warehouse-filter"
           />
         </el-form-item>
         <el-form-item label="单号">
@@ -29,6 +30,7 @@
             clearable
             placeholder="单号"
             aria-label="单号"
+            data-testid="warehouse-stock-order-filter"
           />
         </el-form-item>
         <el-form-item label="款式">
@@ -37,12 +39,13 @@
             clearable
             placeholder="款式"
             aria-label="款式"
+            data-testid="warehouse-stock-style-filter"
           />
         </el-form-item>
         <el-form-item>
           <el-button @click="expanded = !expanded">{{ expanded ? '收起' : '展开' }}</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-          <el-button type="primary" :loading="loading" @click="loadData">查询</el-button>
+          <el-button data-testid="warehouse-stock-reset-button" @click="resetQuery">重置</el-button>
+          <el-button type="primary" :loading="loading" data-testid="warehouse-stock-search-button" @click="applyPrimaryQuery">查询</el-button>
         </el-form-item>
       </el-form>
 
@@ -76,12 +79,18 @@
       </el-form>
 
       <div class="action-row">
-        <el-button type="primary" @click="openLedgerDetail">显示进出明细</el-button>
+        <el-button
+          type="primary"
+          data-testid="warehouse-stock-open-ledger-button"
+          @click="openLedgerDetail"
+        >
+          显示进出明细
+        </el-button>
         <el-tooltip content="只读首版未开放真实导出动作" placement="top">
-          <el-button :disabled="true">导出</el-button>
+          <el-button :disabled="true" data-write-guard data-testid="warehouse-stock-export-guarded-button">导出</el-button>
         </el-tooltip>
         <el-tooltip content="安全库存设置属于后续受控动作，本批次保持禁用" placement="top">
-          <el-button :disabled="true">设置安全库存</el-button>
+          <el-button :disabled="true" data-write-guard data-testid="warehouse-stock-safety-guarded-button">设置安全库存</el-button>
         </el-tooltip>
       </div>
 
@@ -775,10 +784,12 @@
       />
 
       <el-table
-        :data="displayRows"
+        :data="pagedDisplayRows"
         border
         v-loading="loading"
         empty-text="暂无成品库存数据，请调整筛选条件后重试"
+        data-testid="warehouse-stock-main-table"
+        :class="`stock-table-${displayMode}`"
         @selection-change="onSelectionChange"
       >
         <el-table-column type="selection" width="52" />
@@ -811,9 +822,27 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="stock-pagination" data-testid="warehouse-stock-pagination">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="displayRows.length"
+          background
+          layout="total, sizes, prev, pager, next"
+          @current-change="handlePageChange"
+          @size-change="handlePageSizeChange"
+        />
+      </div>
     </el-card>
 
-    <el-dialog v-model="ledgerDialogVisible" title="进出明细（只读）" width="960px">
+    <el-dialog
+      v-model="ledgerDialogVisible"
+      title="进出明细（只读）"
+      width="960px"
+      data-testid="warehouse-stock-ledger-dialog"
+    >
       <el-table
         :data="ledgerRows"
         border
@@ -880,6 +909,8 @@ const loading = ref<boolean>(false)
 const ledgerLoading = ref<boolean>(false)
 const expanded = ref<boolean>(false)
 const displayMode = ref<'vertical' | 'horizontal'>('vertical')
+const currentPage = ref<number>(1)
+const pageSize = ref<number>(20)
 const errorMessage = ref<string>('')
 const managementErrorMessage = ref<string>('')
 const materialErrorMessage = ref<string>('')
@@ -1364,6 +1395,12 @@ const displayRows = computed<DisplayRow[]>(() => {
   return rows
 })
 
+const pagedDisplayRows = computed<DisplayRow[]>(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return displayRows.value.slice(start, end)
+})
+
 const managementDisplayRows = computed<WarehouseManagementItem[]>(() => {
   const keyword = query.management_keyword.trim().toLowerCase()
   const status = query.management_status.trim().toLowerCase()
@@ -1553,6 +1590,22 @@ const semiFinishedOutboundStatusTag = (
   return 'success'
 }
 
+const applyPrimaryQuery = (): void => {
+  currentPage.value = 1
+  void loadData({ forceRemote: true })
+}
+
+const handlePageChange = (page: number): void => {
+  currentPage.value = page
+  void loadData()
+}
+
+const handlePageSizeChange = (size: number): void => {
+  pageSize.value = size
+  currentPage.value = 1
+  void loadData()
+}
+
 const resetQuery = (): void => {
   query.company = ''
   query.warehouse = ''
@@ -1588,16 +1641,19 @@ const resetQuery = (): void => {
   query.semi_finished_outbound_status = ''
   query.from_date = ''
   query.to_date = ''
+  currentPage.value = 1
+  pageSize.value = 20
+  selectedRows.value = []
   managementErrorMessage.value = ''
   materialErrorMessage.value = ''
   otherInboundErrorMessage.value = ''
   purchaseReturnOutboundErrorMessage.value = ''
   factoryReturnMaterialReportErrorMessage.value = ''
   semiFinishedOutboundErrorMessage.value = ''
-  void loadData()
+  void loadData({ forceRemote: true })
 }
 
-const loadData = async (): Promise<void> => {
+const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
   if (!canRead.value) {
     summaryRows.value = []
     managementRows.value = []
@@ -1627,7 +1683,13 @@ const loadData = async (): Promise<void> => {
 
   const normalized = normalizeQuery()
   const useLocalSeed =
-    !normalized.company && !normalized.warehouse && !normalized.item_code && !normalized.from_date && !normalized.to_date
+    !options?.forceRemote &&
+    !normalized.company &&
+    !normalized.warehouse &&
+    !normalized.item_code &&
+    !normalized.from_date &&
+    !normalized.to_date &&
+    !query.order_no.trim()
   if (useLocalSeed) {
     errorMessage.value = ''
     managementErrorMessage.value = ''
@@ -1681,7 +1743,11 @@ const loadData = async (): Promise<void> => {
       semiFinishedOutboundResult,
     ] = await Promise.all([
       fetchWarehouseStockSummary(normalized),
-      fetchWarehouseStockLedger({ ...normalized, page: 1, page_size: 200 }),
+      fetchWarehouseStockLedger({
+        ...normalized,
+        page: currentPage.value,
+        page_size: pageSize.value,
+      }),
       fetchWarehouseOtherInbound({
         company: normalized.company,
         warehouse: otherInboundWarehouse,
@@ -1719,6 +1785,7 @@ const loadData = async (): Promise<void> => {
     semiFinishedOutboundRows.value = semiFinishedOutboundResult.data.items
     ledgerRows.value = ledgerResult.data.items
     orderMap.value = buildOrderMap(ledgerResult.data.items)
+    selectedRows.value = []
   } catch (error) {
     const message = (error as Error).message || '请求失败'
     errorMessage.value = message
@@ -1734,6 +1801,7 @@ const loadData = async (): Promise<void> => {
     purchaseReturnOutboundRows.value = []
     factoryReturnMaterialReportRows.value = []
     semiFinishedOutboundRows.value = []
+    selectedRows.value = []
     ElMessage.error(message)
   } finally {
     loading.value = false
@@ -1836,16 +1904,6 @@ const openLedgerDetail = async (): Promise<void> => {
     return
   }
   const normalized = normalizeQuery()
-  const useLocalSeed =
-    !normalized.company && !normalized.warehouse && !normalized.item_code && !normalized.from_date && !normalized.to_date
-  if (useLocalSeed) {
-    ledgerRows.value = localSeedLedgerRows.filter((row) => (
-      row.warehouse === selected.warehouse && row.item_code === selected.style_no
-    ))
-    ledgerDialogVisible.value = true
-    return
-  }
-
   ledgerLoading.value = true
   try {
     const result = await fetchWarehouseStockLedger({
@@ -2171,6 +2229,12 @@ onMounted(async () => {
 
 .scope-alert {
   margin-bottom: 12px;
+}
+
+.stock-pagination {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .image-placeholder {

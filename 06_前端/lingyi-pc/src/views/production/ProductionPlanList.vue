@@ -1,6 +1,6 @@
 <template>
-  <div class="production-followup-page">
-    <el-card shadow="never">
+  <div class="production-followup-page" data-testid="production-plan-page">
+    <el-card shadow="never" data-testid="production-plan-main-section">
       <template #header>
         <div class="header-row">
           <div class="title-group">
@@ -11,12 +11,13 @@
         </div>
       </template>
 
-      <el-form :inline="true" :model="query" class="query-form">
+      <el-form :inline="true" :model="query" class="query-form" data-testid="production-plan-query-form">
         <el-form-item label="订单">
           <el-input
             v-model="query.sales_order"
             clearable
             placeholder="订单"
+            data-testid="production-plan-filter-sales-order"
             @keyup.enter="onSearch"
           />
         </el-form-item>
@@ -25,6 +26,7 @@
             v-model="query.keyword"
             clearable
             placeholder="请输入"
+            data-testid="production-plan-filter-keyword"
             @keyup.enter="onSearch"
           />
         </el-form-item>
@@ -33,11 +35,18 @@
             v-model="query.turnover_no"
             clearable
             placeholder="翻单号"
+            data-testid="production-plan-filter-turnover-no"
             @keyup.enter="onSearch"
           />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 160px">
+          <el-select
+            v-model="query.status"
+            clearable
+            placeholder="全部状态"
+            style="width: 160px"
+            data-testid="production-plan-filter-status"
+          >
             <el-option label="草稿" value="draft" />
             <el-option label="已计划" value="planned" />
             <el-option label="已物料检查" value="material_checked" />
@@ -55,6 +64,7 @@
             value-format="YYYY-MM-DD"
             placeholder="开始时间"
             clearable
+            data-testid="production-plan-filter-from-date"
           />
         </el-form-item>
         <el-form-item label="结束时间">
@@ -64,18 +74,26 @@
             value-format="YYYY-MM-DD"
             placeholder="结束时间"
             clearable
+            data-testid="production-plan-filter-to-date"
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :disabled="!canRead" @click="onSearch">搜索</el-button>
-          <el-button :disabled="!canRead" @click="onReset">重置</el-button>
+          <el-button type="primary" :disabled="!canRead" data-testid="production-plan-search" @click="onSearch">搜索</el-button>
+          <el-button :disabled="!canRead" data-testid="production-plan-reset" @click="onReset">重置</el-button>
         </el-form-item>
       </el-form>
 
-      <div class="toolbar-row">
-        <el-button :disabled="!canRead" @click="onSearch">筛选</el-button>
-        <el-button :disabled="!canRead" @click="onClearFilters">清空</el-button>
-        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('确定', true)">确定</el-button>
+      <div class="toolbar-row" data-testid="production-plan-toolbar">
+        <el-button :disabled="!canRead" data-testid="production-plan-filter" @click="onSearch">筛选</el-button>
+        <el-button :disabled="!canRead" data-testid="production-plan-clear" @click="onClearFilters">清空</el-button>
+        <el-button
+          :disabled="!canWriteGuarded"
+          data-action-type="write"
+          data-testid="production-plan-guarded-confirm"
+          @click="onGuardedAction('确定', true)"
+        >
+          确定
+        </el-button>
         <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('标志已读', true)">标志已读</el-button>
         <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('删除消息', true)">删除消息</el-button>
         <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('新增消息', true)">新增消息</el-button>
@@ -88,15 +106,17 @@
         type="error"
         :closable="false"
         :title="`大货跟进数据加载失败：${lastError}`"
+        data-testid="production-plan-error-alert"
       />
 
-      <el-empty v-if="!canRead" description="无大货跟进查看权限" />
+      <el-empty v-if="!canRead" description="无大货跟进查看权限" data-testid="production-plan-no-permission" />
       <template v-else>
         <el-table
           :data="rows"
           border
           v-loading="loading"
           empty-text="暂无大货跟进数据，请调整筛选条件后重试"
+          data-testid="production-plan-table"
         >
           <el-table-column label="订单信息" min-width="260">
             <template #default="scope">
@@ -140,12 +160,19 @@
           </el-table-column>
           <el-table-column label="操作" fixed="right" min-width="110">
             <template #default="scope">
-              <el-button link type="primary" @click="goDetail(scope.row.id)">跟进</el-button>
+              <el-button
+                link
+                type="primary"
+                :data-testid="`production-plan-detail-${scope.row.id}`"
+                @click="goDetail(scope.row.id)"
+              >
+                跟进
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
 
-        <div class="pager">
+        <div class="pager" data-testid="production-plan-pager">
           <el-pagination
             background
             layout="prev, pager, next, total, sizes"
@@ -153,6 +180,7 @@
             :page-size="query.page_size"
             :total="total"
             :page-sizes="[10, 20, 50, 100]"
+            data-testid="production-plan-pagination"
             @current-change="onPageChange"
             @size-change="onSizeChange"
           />

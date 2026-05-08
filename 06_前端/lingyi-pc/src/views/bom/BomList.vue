@@ -1,9 +1,9 @@
 <template>
   <div class="bom-list-page">
-    <el-card shadow="never">
-      <el-form :inline="true" :model="query">
+    <el-card shadow="never" data-testid="bom-main-list-section">
+      <el-form :inline="true" :model="query" data-testid="bom-main-list-filters">
         <el-form-item label="款式编码">
-          <el-input v-model="query.item_code" clearable placeholder="Item Code" />
+          <el-input v-model="query.item_code" clearable placeholder="Item Code" data-testid="bom-main-item-code-filter" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select
@@ -12,6 +12,7 @@
             placeholder="请选择状态"
             aria-label="BOM状态筛选"
             style="width: 160px"
+            data-testid="bom-main-status-filter"
           >
             <el-option label="草稿" value="draft" />
             <el-option label="已发布" value="active" />
@@ -19,12 +20,16 @@
           </el-select>
         </el-form-item>
         <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="loadList">查询</el-button>
+          <el-button type="primary" :disabled="!canRead" data-testid="bom-main-search-button" @click="runMainQuery">
+            查询
+          </el-button>
+          <el-button :disabled="!canRead" data-testid="bom-main-reset-button" @click="resetMainQuery">重置</el-button>
           <el-button
             v-if="canCreate"
             data-action-type="write"
             data-write-guard="permission:create(v-if)"
             data-guard-state="visible_when_allowed"
+            data-testid="bom-main-create-guarded-button"
             @click="goCreate"
           >
             新建 BOM
@@ -34,11 +39,32 @@
 
       <el-empty v-if="!canRead" description="无 BOM 查看权限" />
       <template v-else>
-        <el-table :data="rows" v-loading="loading" border empty-text="暂无BOM数据" class="bom-main-table">
+        <el-alert
+          v-if="listError"
+          class="main-list-error-alert"
+          title="BOM主列表加载失败"
+          :description="listError"
+          type="error"
+          show-icon
+          :closable="false"
+        />
+
+        <el-table
+          :data="rows"
+          v-loading="loading"
+          border
+          empty-text="暂无BOM数据"
+          class="bom-main-table"
+          data-testid="bom-main-table"
+        >
           <el-table-column prop="bom_no" label="BOM编号" min-width="280" />
           <el-table-column prop="item_code" label="款式编码" min-width="140" />
           <el-table-column prop="version_no" label="版本" min-width="100" />
-          <el-table-column prop="status" label="状态" width="120" />
+          <el-table-column label="状态" width="120">
+            <template #default="scope">
+              <el-tag :type="statusTagType(scope.row.status)">{{ scope.row.status }}</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="默认" width="80">
             <template #default="scope">
               <el-tag :type="scope.row.is_default ? 'success' : 'info'">
@@ -49,7 +75,9 @@
           <el-table-column prop="effective_date" label="生效日期" min-width="120" />
           <el-table-column label="操作" width="120" fixed="right">
             <template #default="scope">
-              <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
+              <el-button link type="primary" data-testid="bom-main-detail-button" @click="goDetail(scope.row.id)">
+                详情
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -66,6 +94,68 @@
             @size-change="onSizeChange"
           />
         </div>
+
+        <el-drawer
+          v-model="bomDetailVisible"
+          title="BOM详情（只读）"
+          size="52%"
+          destroy-on-close
+          data-testid="bom-main-detail-drawer"
+        >
+          <div v-loading="bomDetailLoading" class="bom-detail-readonly-panel">
+            <el-alert
+              v-if="bomDetailError"
+              class="bom-detail-error-alert"
+              title="BOM详情加载失败"
+              :description="bomDetailError"
+              type="error"
+              show-icon
+              :closable="false"
+            />
+            <template v-else-if="bomDetail">
+              <el-descriptions :column="2" border size="small" class="bom-detail-header">
+                <el-descriptions-item label="BOM编号">{{ bomDetail.bom.bom_no }}</el-descriptions-item>
+                <el-descriptions-item label="款式编码">{{ bomDetail.bom.item_code }}</el-descriptions-item>
+                <el-descriptions-item label="版本">{{ bomDetail.bom.version_no }}</el-descriptions-item>
+                <el-descriptions-item label="状态">
+                  <el-tag :type="statusTagType(bomDetail.bom.status)">{{ bomDetail.bom.status }}</el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="默认">
+                  {{ bomDetail.bom.is_default ? '是' : '否' }}
+                </el-descriptions-item>
+                <el-descriptions-item label="生效日期">
+                  {{ bomDetail.bom.effective_date || '-' }}
+                </el-descriptions-item>
+              </el-descriptions>
+
+              <el-divider content-position="left">物料明细</el-divider>
+              <el-table :data="bomDetail.items" border size="small" empty-text="暂无物料明细">
+                <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
+                <el-table-column prop="color" label="颜色" min-width="100" />
+                <el-table-column prop="size" label="尺码" min-width="90" />
+                <el-table-column prop="qty_per_piece" label="单件用量" min-width="100" />
+                <el-table-column prop="loss_rate" label="损耗率" min-width="90" />
+                <el-table-column prop="uom" label="单位" min-width="80" />
+                <el-table-column prop="remark" label="备注" min-width="180" />
+              </el-table>
+
+              <el-divider content-position="left">工序明细</el-divider>
+              <el-table :data="bomDetail.operations" border size="small" empty-text="暂无工序明细">
+                <el-table-column prop="process_name" label="工序名称" min-width="150" />
+                <el-table-column prop="sequence_no" label="顺序" min-width="80" />
+                <el-table-column label="委外" min-width="80">
+                  <template #default="scope">
+                    {{ scope.row.is_subcontract ? '是' : '否' }}
+                  </template>
+                </el-table-column>
+                <el-table-column prop="wage_rate" label="工价" min-width="100" />
+                <el-table-column prop="subcontract_cost_per_piece" label="外协单价" min-width="110" />
+                <el-table-column prop="remark" label="备注" min-width="180" />
+              </el-table>
+            </template>
+            <el-empty v-else description="暂无详情数据" />
+          </div>
+        </el-drawer>
 
         <el-divider content-position="left">面料（TASK-Y27B-P1-01）</el-divider>
 
@@ -1584,10 +1674,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchBomAccessoriesPackaging,
+  fetchBomDetail,
   fetchBomFabrics,
   fetchBomList,
   fetchBomMaterialDeduction,
@@ -1600,6 +1690,7 @@ import {
   fetchBomProcessingTypes,
   fetchBomPurchaseOrders,
   type BomAccessoriesPackagingItem,
+  type BomDetailData,
   type BomFabricItem,
   type BomListItem,
   type BomMaterialGalleryItem,
@@ -1614,10 +1705,14 @@ import {
 } from '@/api/bom'
 import { usePermissionStore } from '@/stores/permission'
 
-const router = useRouter()
 const loading = ref<boolean>(false)
 const rows = ref<BomListItem[]>([])
 const total = ref<number>(0)
+const listError = ref<string>('')
+const bomDetailVisible = ref<boolean>(false)
+const bomDetailLoading = ref<boolean>(false)
+const bomDetailError = ref<string>('')
+const bomDetail = ref<BomDetailData | null>(null)
 const fabricLoading = ref<boolean>(false)
 const fabricRows = ref<BomFabricItem[]>([])
 const fabricTotal = ref<number>(0)
@@ -1804,18 +1899,36 @@ const loadList = async (): Promise<void> => {
   if (!canRead.value) {
     rows.value = []
     total.value = 0
+    listError.value = ''
     return
   }
   loading.value = true
+  listError.value = ''
   try {
     const result = await fetchBomList(query)
     rows.value = result.data.items
     total.value = result.data.total
   } catch (error) {
+    rows.value = []
+    total.value = 0
+    listError.value = (error as Error).message
     ElMessage.error((error as Error).message)
   } finally {
     loading.value = false
   }
+}
+
+const runMainQuery = (): void => {
+  query.page = 1
+  loadList()
+}
+
+const resetMainQuery = (): void => {
+  query.item_code = ''
+  query.status = ''
+  query.page = 1
+  query.page_size = 20
+  loadList()
 }
 
 const onPageChange = (page: number): void => {
@@ -2411,8 +2524,28 @@ const guardedReadonlyAction = (action: string): void => {
   ElMessage.warning(`${action}功能受控：当前仅开放只读演示`)
 }
 
+const openBomDetail = async (id: number): Promise<void> => {
+  if (!canRead.value) {
+    ElMessage.warning('无 BOM 查看权限')
+    return
+  }
+  bomDetailVisible.value = true
+  bomDetailLoading.value = true
+  bomDetailError.value = ''
+  bomDetail.value = null
+  try {
+    const result = await fetchBomDetail(id)
+    bomDetail.value = result.data
+  } catch (error) {
+    bomDetailError.value = (error as Error).message
+    ElMessage.error((error as Error).message)
+  } finally {
+    bomDetailLoading.value = false
+  }
+}
+
 const goDetail = (id: number): void => {
-  router.push({ path: '/bom/detail', query: { id: String(id) } })
+  void openBomDetail(id)
 }
 
 const goCreate = (): void => {
@@ -2420,7 +2553,7 @@ const goCreate = (): void => {
     ElMessage.warning('无新建 BOM 权限')
     return
   }
-  router.push('/bom/detail')
+  guardedReadonlyAction('新建 BOM')
 }
 
 const openFabricDetail = (row: BomFabricItem): void => {
@@ -2496,6 +2629,10 @@ onMounted(async () => {
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+}
+
+.main-list-error-alert {
+  margin-bottom: 12px;
 }
 
 .fabric-section {
@@ -2646,6 +2783,20 @@ onMounted(async () => {
 
 .purchase-error-alert {
   margin-bottom: 12px;
+}
+
+.bom-detail-readonly-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bom-detail-header {
+  margin-bottom: 4px;
+}
+
+.bom-detail-error-alert {
+  margin-bottom: 4px;
 }
 
 .preview-grid {

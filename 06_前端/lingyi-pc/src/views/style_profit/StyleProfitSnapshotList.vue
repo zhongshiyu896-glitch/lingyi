@@ -1,6 +1,6 @@
 <template>
-  <div class="style-profit-list-page">
-    <el-card shadow="never">
+  <div class="style-profit-list-page" data-testid="style-profit-page">
+    <el-card shadow="never" data-testid="style-profit-main-section">
       <template #header>
         <div class="header-row">
           <div class="title-group">
@@ -10,15 +10,15 @@
         </div>
       </template>
 
-      <el-form :inline="true" :model="query" class="query-form">
+      <el-form :inline="true" :model="query" class="query-form" data-testid="style-profit-query-form">
         <el-form-item label="款式">
-          <el-input v-model="query.item_code" clearable placeholder="款式" />
+          <el-input v-model="query.item_code" clearable placeholder="款式" data-testid="style-profit-filter-item-code" />
         </el-form-item>
         <el-form-item label="品牌">
-          <el-input v-model="query.company" clearable placeholder="请输入" />
+          <el-input v-model="query.company" clearable placeholder="请输入" data-testid="style-profit-filter-company" />
         </el-form-item>
         <el-form-item label="关键词">
-          <el-input v-model="query.sales_order" clearable placeholder="请输入" />
+          <el-input v-model="query.sales_order" clearable placeholder="请输入" data-testid="style-profit-filter-sales-order" />
         </el-form-item>
         <el-form-item label="开始时间">
           <el-date-picker
@@ -27,6 +27,7 @@
             value-format="YYYY-MM-DD"
             placeholder="开始时间"
             clearable
+            data-testid="style-profit-filter-from-date"
           />
         </el-form-item>
         <el-form-item label="结束时间">
@@ -36,33 +37,40 @@
             value-format="YYYY-MM-DD"
             placeholder="结束时间"
             clearable
+            data-testid="style-profit-filter-to-date"
           />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.snapshot_status" clearable placeholder="全部状态" style="width: 140px">
+          <el-select
+            v-model="query.snapshot_status"
+            clearable
+            placeholder="全部状态"
+            style="width: 140px"
+            data-testid="style-profit-filter-status"
+          >
             <el-option label="已完成" value="complete" />
             <el-option label="待复核" value="incomplete" />
           </el-select>
         </el-form-item>
 
         <el-form-item class="button-group">
-          <el-button type="primary" :disabled="!canRead || loading" @click="loadRows">筛选</el-button>
-          <el-button :disabled="!canRead || loading" @click="resetQuery">重置</el-button>
-          <el-button :disabled="!canRead || loading" @click="loadRows">搜索</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('清空')">清空</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('确定')">确定</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('导出')">导出</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('列设置')">列设置</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('重置列')">重置列</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('标志已读')">标志已读</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('删除消息')">删除消息</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('新增消息')">新增消息</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('保存')">保存</el-button>
-          <el-button :disabled="!canRead || loading" @click="guardedAction('取消')">取消</el-button>
+          <el-button type="primary" :disabled="!canRead || loading" data-testid="style-profit-filter-button" @click="loadRows">筛选</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-reset-button" @click="resetQuery">重置</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-search-button" @click="loadRows">搜索</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-clear" @click="guardedAction('清空')">清空</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-confirm" @click="guardedAction('确定')">确定</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-export" @click="guardedAction('导出')">导出</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-column-setting" @click="guardedAction('列设置')">列设置</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-reset-column" @click="guardedAction('重置列')">重置列</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-mark-read" @click="guardedAction('标志已读')">标志已读</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-delete-msg" @click="guardedAction('删除消息')">删除消息</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-add-msg" @click="guardedAction('新增消息')">新增消息</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-save" @click="guardedAction('保存')">保存</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-cancel" @click="guardedAction('取消')">取消</el-button>
         </el-form-item>
       </el-form>
 
-      <el-empty v-if="!canRead" description="无款式利润查看权限" />
+      <el-empty v-if="!canRead" description="无款式利润查看权限" data-testid="style-profit-no-permission" />
       <template v-else>
         <el-alert
           v-if="errorMessage"
@@ -71,26 +79,33 @@
           show-icon
           :title="`订单款式利润预测明细表数据加载失败：${errorMessage}`"
           class="error-alert"
+          data-testid="style-profit-error-alert"
         />
-        <div class="summary-grid" v-if="rows.length > 0">
-          <el-card shadow="never" class="summary-card">
+        <div class="summary-grid" v-if="rows.length > 0" data-testid="style-profit-summary-grid">
+          <el-card shadow="never" class="summary-card" data-testid="style-profit-summary-revenue">
             <div class="summary-label">销售预测金额</div>
             <div class="summary-value">{{ formatAmount(totalRevenueAmount) }}</div>
           </el-card>
-          <el-card shadow="never" class="summary-card">
+          <el-card shadow="never" class="summary-card" data-testid="style-profit-summary-cost">
             <div class="summary-label">成本预测金额</div>
             <div class="summary-value">{{ formatAmount(totalCostAmount) }}</div>
           </el-card>
-          <el-card shadow="never" class="summary-card">
+          <el-card shadow="never" class="summary-card" data-testid="style-profit-summary-profit">
             <div class="summary-label">利润预测金额</div>
             <div class="summary-value">{{ formatAmount(totalProfitAmount) }}</div>
           </el-card>
-          <el-card shadow="never" class="summary-card">
+          <el-card shadow="never" class="summary-card" data-testid="style-profit-summary-rate">
             <div class="summary-label">平均利润率</div>
             <div class="summary-value">{{ formatProfitRate(avgProfitRate) }}</div>
           </el-card>
         </div>
-        <el-table :data="rows" border v-loading="loading" empty-text="暂无订单款式利润预测明细数据，请调整筛选条件后重试">
+        <el-table
+          :data="rows"
+          border
+          v-loading="loading"
+          empty-text="暂无订单款式利润预测明细数据，请调整筛选条件后重试"
+          data-testid="style-profit-main-table"
+        >
           <el-table-column label="图片" width="80">
             <template #default>-</template>
           </el-table-column>
@@ -153,7 +168,7 @@
           <el-table-column prop="created_at" label="发送时间" min-width="180" />
           <el-table-column label="状态" min-width="120">
             <template #default="scope">
-              <el-tag :type="statusTagType(scope.row.snapshot_status)">
+              <el-tag :type="statusTagType(scope.row.snapshot_status)" data-testid="style-profit-status-tag">
                 {{ statusText(scope.row.snapshot_status) }}
               </el-tag>
             </template>
@@ -163,12 +178,19 @@
           </el-table-column>
           <el-table-column label="操作" width="100" fixed="right">
             <template #default="scope">
-              <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
+              <el-button
+                link
+                type="primary"
+                :data-testid="`style-profit-detail-${scope.row.id}`"
+                @click="goDetail(scope.row.id)"
+              >
+                详情
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
 
-        <div class="pager">
+        <div class="pager" data-testid="style-profit-pager">
           <el-pagination
             background
             layout="prev, pager, next, total, sizes"
@@ -176,6 +198,7 @@
             :page-size="query.page_size"
             :total="total"
             :page-sizes="[10, 20, 50, 100]"
+            data-testid="style-profit-pagination"
             @current-change="onPageChange"
             @size-change="onSizeChange"
           />
