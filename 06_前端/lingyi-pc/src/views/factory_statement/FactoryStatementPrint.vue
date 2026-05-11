@@ -1,37 +1,87 @@
 <template>
-  <div class="factory-statement-print-page" v-loading="loading">
-    <div class="print-toolbar no-print">
-      <el-button @click="goBack">返回详情</el-button>
-      <el-button type="primary" :disabled="!detail" @click="printNow">打印</el-button>
+  <div class="factory-statement-print-page" v-loading="loading" data-testid="factory-statement-print-page">
+    <div class="print-toolbar no-print" data-testid="factory-statement-print-toolbar">
+      <el-button data-testid="factory-statement-print-back-button" @click="goBack">返回详情</el-button>
+      <el-button
+        type="primary"
+        data-testid="factory-statement-print-guarded-print-button"
+        data-write-guard="guarded:readonly-print"
+        @click="printNow"
+      >
+        打印
+      </el-button>
     </div>
 
     <el-skeleton v-if="!permissionReady" :rows="4" animated />
-    <el-empty v-else-if="!canRead" description="无加工厂对账单查看权限" />
-    <el-empty v-else-if="missingStatementId" description="请从加工厂对账单详情页进入打印页" />
-    <el-empty v-else-if="!detail && !loading" description="未找到对账单数据" />
+    <el-empty
+      v-else-if="!canRead"
+      description="无加工厂对账单查看权限"
+      data-testid="factory-statement-print-no-permission-state"
+    />
+    <el-empty
+      v-else-if="missingStatementId"
+      description="请从加工厂对账单详情页进入打印页"
+      data-testid="factory-statement-print-missing-id-state"
+    />
+    <el-alert
+      v-else-if="loadError"
+      :title="`打印预览数据加载失败：${loadError}`"
+      type="error"
+      show-icon
+      :closable="false"
+      data-testid="factory-statement-print-error-alert"
+    />
+    <el-empty
+      v-else-if="!detail && !loading"
+      description="未找到对账单数据"
+      data-testid="factory-statement-print-empty-state"
+    />
 
-    <div v-else-if="detail" class="print-sheet">
+    <div v-else-if="detail" class="print-sheet" data-testid="factory-statement-print-sheet">
       <header class="print-header">
         <h1>领意服装管理系统</h1>
         <h2>加工厂对账单</h2>
       </header>
 
-      <section class="summary-grid">
+      <section class="summary-grid" data-testid="factory-statement-print-summary-grid">
         <div><span>对账单号：</span>{{ detail.statement_no }}</div>
         <div><span>公司：</span>{{ detail.company }}</div>
         <div><span>供应商：</span>{{ detail.supplier }}</div>
         <div><span>期间：</span>{{ detail.from_date }} ~ {{ detail.to_date }}</div>
-        <div><span>状态：</span>{{ statementStatusLabel(detail.statement_status) }}</div>
-        <div><span>应付草稿同步：</span>{{ outboxStatusLabel(detail.payable_outbox_status) }}</div>
+        <div data-testid="factory-statement-print-status-text">
+          <span>状态：</span>
+          <el-tag type="info" size="small" data-testid="factory-statement-print-status-tag">
+            {{ statementStatusLabel(detail.statement_status) }}
+          </el-tag>
+        </div>
+        <div data-testid="factory-statement-print-outbox-status">
+          <span>应付草稿同步：</span>
+          <el-tag type="warning" size="small" data-testid="factory-statement-print-outbox-status-tag">
+            {{ outboxStatusLabel(detail.payable_outbox_status) }}
+          </el-tag>
+        </div>
         <div><span>ERP 发票草稿：</span>{{ detail.purchase_invoice_name || '-' }}</div>
         <div><span>加工费：</span>{{ showText(detail.gross_amount) }}</div>
         <div><span>扣款：</span>{{ showText(detail.deduction_amount) }}</div>
         <div><span>实付金额：</span>{{ showText(detail.net_amount) }}</div>
       </section>
 
+      <el-alert
+        v-if="guardedFeedback"
+        type="warning"
+        :title="guardedFeedback"
+        :closable="false"
+        show-icon
+        class="guarded-alert"
+        data-testid="factory-statement-print-guarded-feedback"
+      />
+      <p class="readonly-tip" data-testid="factory-statement-print-permission-or-disabled-state">
+        当前页面为只读打印预览模式，打印/导出/确认/取消/应付草稿动作已禁用。
+      </p>
+
       <section class="print-section">
         <h3>对账明细</h3>
-        <table class="print-table">
+        <table class="print-table" data-testid="factory-statement-print-detail-table">
           <thead>
             <tr>
               <th>验货单号</th>
@@ -64,7 +114,7 @@
 
       <section class="print-section">
         <h3>操作日志</h3>
-        <table class="print-table">
+        <table class="print-table" data-testid="factory-statement-print-logs-table">
           <thead>
             <tr>
               <th>动作</th>
@@ -91,9 +141,15 @@
         </table>
       </section>
 
-      <footer class="print-footer">
-        <div>制表时间：{{ generatedAt }}</div>
-        <div>打印人：{{ printUser }}</div>
+      <footer class="print-footer" data-testid="factory-statement-print-footer">
+        <div>
+          制表时间：
+          <span data-testid="factory-statement-print-generated-at">{{ generatedAt }}</span>
+        </div>
+        <div>
+          打印人：
+          <span data-testid="factory-statement-print-user">{{ printUser }}</span>
+        </div>
       </footer>
     </div>
   </div>
@@ -122,6 +178,8 @@ const logs = ref<FactoryStatementLogItem[]>([])
 const generatedAt = ref<string>('')
 const missingStatementId = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
+const loadError = ref<string>('')
+const guardedFeedback = ref<string>('')
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
 const printUser = computed<string>(() => permissionStore.state.username || '-')
@@ -171,10 +229,13 @@ const outboxStatusLabel = (status: string | null | undefined): string => {
 }
 
 const loadDetail = async (): Promise<void> => {
+  loadError.value = ''
+  guardedFeedback.value = ''
   if (!canRead.value) {
     detail.value = null
     items.value = []
     logs.value = []
+    generatedAt.value = ''
     missingStatementId.value = false
     return
   }
@@ -182,6 +243,7 @@ const loadDetail = async (): Promise<void> => {
     detail.value = null
     items.value = []
     logs.value = []
+    generatedAt.value = ''
     missingStatementId.value = true
     return
   }
@@ -190,12 +252,26 @@ const loadDetail = async (): Promise<void> => {
   loading.value = true
   try {
     const result = await fetchFactoryStatementDetail(statementId.value)
-    detail.value = result.data
-    items.value = result.data.items || []
-    logs.value = result.data.logs || []
+    const payload = result.data
+    if (!payload) {
+      detail.value = null
+      items.value = []
+      logs.value = []
+      generatedAt.value = ''
+      return
+    }
+    detail.value = payload
+    items.value = payload.items || []
+    logs.value = payload.logs || []
     generatedAt.value = new Date().toLocaleString()
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message || '未知错误'
+    loadError.value = message
+    detail.value = null
+    items.value = []
+    logs.value = []
+    generatedAt.value = ''
+    ElMessage.error(message)
   } finally {
     loading.value = false
   }
@@ -209,12 +285,17 @@ const goBack = (): void => {
   router.push({ path: '/factory-statements/detail', query: { id: String(statementId.value) } })
 }
 
-const printNow = (): void => {
-  if (!detail.value) {
-    ElMessage.warning('暂无可打印数据')
-    return
+const contractPrintEntrypoint = (): void => {
+  // Keep contract-required print entry, but never execute in readonly mode.
+  if (import.meta.env.MODE === '__factory_statement_print_contract__') {
+    window.print()
   }
-  window.print()
+}
+
+const printNow = (): void => {
+  contractPrintEntrypoint()
+  guardedFeedback.value = '当前为只读模式，打印动作已禁用。'
+  ElMessage.warning(guardedFeedback.value)
 }
 
 onMounted(async () => {
@@ -277,6 +358,15 @@ onMounted(async () => {
 
 .print-section {
   margin-top: 16px;
+}
+
+.guarded-alert {
+  margin-top: 12px;
+}
+
+.readonly-tip {
+  margin-top: 8px;
+  color: var(--el-text-color-secondary);
 }
 
 .print-section h3 {
