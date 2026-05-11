@@ -1,20 +1,56 @@
 <template>
-  <div class="quality-page">
+  <div class="quality-page" data-testid="quality-inspection-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
           <span>质量检验单列表</span>
           <div class="header-actions">
-            <el-button type="primary" :disabled="!canRead" @click="loadRows">查询</el-button>
-            <el-button v-if="canExport" :disabled="!canRead" @click="submitExport">导出快照</el-button>
-            <el-button v-if="canExport" :disabled="!canRead" @click="submitExportFile('xlsx')">导出 Excel</el-button>
-            <el-button v-if="canExport" :disabled="!canRead" @click="submitExportFile('pdf')">导出 PDF</el-button>
+            <el-button
+              type="primary"
+              :disabled="!canRead"
+              data-testid="quality-query-button"
+              @click="applyPrimaryQuery"
+            >
+              查询
+            </el-button>
+            <el-button
+              :disabled="!canRead"
+              data-testid="quality-reset-button"
+              @click="resetPrimaryFilters"
+            >
+              重置
+            </el-button>
+            <el-button
+              v-if="canExport"
+              :disabled="!canRead"
+              data-testid="quality-export-snapshot-button"
+              @click="showGuardedAction('导出快照')"
+            >
+              导出快照
+            </el-button>
+            <el-button
+              v-if="canExport"
+              :disabled="!canRead"
+              data-testid="quality-export-xlsx-button"
+              @click="showGuardedAction('导出 Excel')"
+            >
+              导出 Excel
+            </el-button>
+            <el-button
+              v-if="canExport"
+              :disabled="!canRead"
+              data-testid="quality-export-pdf-button"
+              @click="showGuardedAction('导出 PDF')"
+            >
+              导出 PDF
+            </el-button>
             <el-button
               v-if="canCreate"
               type="success"
+              data-testid="quality-create-button"
               data-action-type="write"
-              data-write-guard="permission:quality_create(v-if)+handler"
-              data-guard-state="visible_when_allowed"
+              data-write-guard="guarded:readonly_mode"
+              data-guard-state="guarded"
               @click="openCreateDialog"
             >
               创建检验单
@@ -23,18 +59,24 @@
         </div>
       </template>
 
-      <el-form :inline="true" :model="query">
+      <el-form :inline="true" :model="query" data-testid="quality-filter-form">
         <el-form-item label="公司">
-          <el-input v-model="query.company" clearable placeholder="company" />
+          <el-input v-model="query.company" clearable placeholder="company" data-testid="quality-filter-company" />
         </el-form-item>
         <el-form-item label="物料">
-          <el-input v-model="query.item_code" clearable placeholder="item_code" />
+          <el-input v-model="query.item_code" clearable placeholder="item_code" data-testid="quality-filter-item-code" />
         </el-form-item>
         <el-form-item label="供应商">
-          <el-input v-model="query.supplier" clearable placeholder="supplier" />
+          <el-input v-model="query.supplier" clearable placeholder="supplier" data-testid="quality-filter-supplier" />
         </el-form-item>
         <el-form-item label="来源类型">
-          <el-select v-model="query.source_type" clearable placeholder="全部来源类型" style="width: 180px">
+          <el-select
+            v-model="query.source_type"
+            clearable
+            placeholder="全部来源类型"
+            style="width: 180px"
+            data-testid="quality-filter-source-type"
+          >
             <el-option label="来料检验" value="incoming_material" />
             <el-option label="外发收货检验" value="subcontract_receipt" />
             <el-option label="成品检验" value="finished_goods" />
@@ -42,33 +84,68 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 140px">
+          <el-select
+            v-model="query.status"
+            clearable
+            placeholder="全部状态"
+            style="width: 140px"
+            data-testid="quality-filter-status"
+          >
             <el-option label="草稿" value="draft" />
             <el-option label="已确认" value="confirmed" />
             <el-option label="已取消" value="cancelled" />
           </el-select>
         </el-form-item>
         <el-form-item label="开始日期">
-          <el-date-picker v-model="query.from_date" type="date" value-format="YYYY-MM-DD" placeholder="开始日期" clearable />
+          <el-date-picker
+            v-model="query.from_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="开始日期"
+            clearable
+            data-testid="quality-filter-from-date"
+          />
         </el-form-item>
         <el-form-item label="结束日期">
-          <el-date-picker v-model="query.to_date" type="date" value-format="YYYY-MM-DD" placeholder="结束日期" clearable />
+          <el-date-picker
+            v-model="query.to_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="结束日期"
+            clearable
+            data-testid="quality-filter-to-date"
+          />
         </el-form-item>
       </el-form>
 
-      <el-skeleton v-if="!permissionReady" :rows="4" animated />
-      <el-empty v-else-if="!canRead" description="无质量管理查看权限" />
+      <el-skeleton v-if="!permissionReady" :rows="4" animated data-testid="quality-permission-loading" />
+      <el-empty v-else-if="!canRead" description="无质量管理查看权限" data-testid="quality-permission-state" />
       <el-tabs v-else v-model="activeTab">
         <el-tab-pane label="检验列表" name="list">
           <el-alert
             v-if="statistics"
             class="summary-alert"
+            data-testid="quality-statistics-alert"
             type="info"
             :closable="false"
             :title="`本页筛选统计：检验 ${statistics.total_count} 单，检验数量 ${formatAmount(statistics.total_inspected_qty)}，缺陷率 ${formatRate(statistics.overall_defect_rate)}`"
           />
+          <el-alert
+            v-if="listError"
+            class="summary-alert"
+            data-testid="quality-error-state"
+            type="error"
+            :closable="false"
+            :title="listError"
+          />
 
-          <el-table :data="rows" border v-loading="loading" empty-text="暂无检验单数据，请调整筛选条件后重试">
+          <el-table
+            :data="rows"
+            border
+            v-loading="loading"
+            empty-text="暂无检验单数据，请调整筛选条件后重试"
+            data-testid="quality-list-table"
+          >
             <el-table-column prop="inspection_no" label="检验单号" min-width="180" />
             <el-table-column prop="company" label="公司" min-width="120" />
             <el-table-column prop="item_code" label="物料" min-width="140" />
@@ -90,24 +167,45 @@
             </el-table-column>
             <el-table-column label="结果" width="110">
               <template #default="scope">
-                <el-tag :type="resultTag(scope.row.result)">{{ resultLabel(scope.row.result) }}</el-tag>
+                <el-tag :type="resultTag(scope.row.result)" data-testid="quality-result-tag">{{ resultLabel(scope.row.result) }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="状态" width="110">
               <template #default="scope">
-                <el-tag :type="statusTag(scope.row.status)">{{ statusLabel(scope.row.status) }}</el-tag>
+                <el-tag :type="statusTag(scope.row.status)" data-testid="quality-status-tag">{{ statusLabel(scope.row.status) }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="操作" fixed="right" width="230">
               <template #default="scope">
-                <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
-                <el-button v-if="canExport" link type="success" @click="submitExportFile('xlsx', scope.row.id)">Excel</el-button>
-                <el-button v-if="canExport" link type="warning" @click="submitExportFile('pdf', scope.row.id)">PDF</el-button>
+                <el-button link type="primary" data-testid="quality-detail-button" @click="goDetail(scope.row.id)">详情</el-button>
+                <el-button
+                  v-if="canExport"
+                  link
+                  type="success"
+                  data-testid="quality-row-export-xlsx-button"
+                  @click="showGuardedAction('导出 Excel')"
+                >
+                  Excel
+                </el-button>
+                <el-button
+                  v-if="canExport"
+                  link
+                  type="warning"
+                  data-testid="quality-row-export-pdf-button"
+                  @click="showGuardedAction('导出 PDF')"
+                >
+                  PDF
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
+          <el-empty
+            v-if="!loading && rows.length === 0"
+            description="暂无检验单数据，请调整筛选条件后重试"
+            data-testid="quality-empty-state"
+          />
 
-          <div class="pager">
+          <div class="pager" data-testid="quality-pagination">
             <el-pagination
               background
               layout="prev, pager, next, total, sizes"
@@ -125,19 +223,19 @@
           <el-empty v-if="!statistics" description="暂无统计数据" />
           <template v-else>
             <div class="stat-cards">
-              <el-card shadow="never">
+              <el-card shadow="never" data-testid="quality-stat-card-total-count">
                 <div class="stat-label">检验单总数</div>
                 <div class="stat-value">{{ statistics.total_count }}</div>
               </el-card>
-              <el-card shadow="never">
+              <el-card shadow="never" data-testid="quality-stat-card-inspected">
                 <div class="stat-label">检验数量</div>
                 <div class="stat-value">{{ formatAmount(statistics.total_inspected_qty) }}</div>
               </el-card>
-              <el-card shadow="never">
+              <el-card shadow="never" data-testid="quality-stat-card-rejected">
                 <div class="stat-label">不合格数量</div>
                 <div class="stat-value">{{ formatAmount(statistics.total_rejected_qty) }}</div>
               </el-card>
-              <el-card shadow="never">
+              <el-card shadow="never" data-testid="quality-stat-card-defect-rate">
                 <div class="stat-label">总体缺陷率</div>
                 <div class="stat-value">{{ formatRate(statistics.overall_defect_rate) }}</div>
               </el-card>
@@ -245,73 +343,35 @@
       </el-tabs>
     </el-card>
 
-    <el-dialog v-model="createDialogVisible" title="创建质量检验单" width="640px" destroy-on-close>
-      <el-form :model="createForm" label-width="120px">
-        <el-form-item label="公司" required>
-          <el-input v-model="createForm.company" clearable placeholder="company" />
-        </el-form-item>
-        <el-form-item label="来源类型" required>
-          <el-select v-model="createForm.source_type" placeholder="请选择来源类型" style="width: 100%">
-            <el-option label="来料检验" value="incoming_material" />
-            <el-option label="外发收货检验" value="subcontract_receipt" />
-            <el-option label="成品检验" value="finished_goods" />
-            <el-option label="手工检验" value="manual" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="来源单号">
-          <el-input v-model="createForm.source_id" clearable placeholder="source_id" />
-        </el-form-item>
-        <el-form-item label="物料" required>
-          <el-input v-model="createForm.item_code" clearable placeholder="item_code" />
-        </el-form-item>
-        <el-form-item label="供应商">
-          <el-input v-model="createForm.supplier" clearable placeholder="supplier" />
-        </el-form-item>
-        <el-form-item label="仓库">
-          <el-input v-model="createForm.warehouse" clearable placeholder="warehouse" />
-        </el-form-item>
-        <el-form-item label="检验日期" required>
-          <el-date-picker v-model="createForm.inspection_date" type="date" value-format="YYYY-MM-DD" placeholder="请选择检验日期" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="检验数量" required>
-          <el-input v-model="createForm.inspected_qty" clearable placeholder="inspected_qty" />
-        </el-form-item>
-        <el-form-item label="合格数量" required>
-          <el-input v-model="createForm.accepted_qty" clearable placeholder="accepted_qty" />
-        </el-form-item>
-        <el-form-item label="不合格数量" required>
-          <el-input v-model="createForm.rejected_qty" clearable placeholder="rejected_qty" />
-        </el-form-item>
-        <el-form-item label="缺陷数量">
-          <el-input v-model="createForm.defect_qty" clearable placeholder="defect_qty" />
-        </el-form-item>
-        <el-form-item label="结果">
-          <el-select v-model="createForm.result" placeholder="请选择检验结果" style="width: 100%">
-            <el-option label="待定" value="pending" />
-            <el-option label="合格" value="pass" />
-            <el-option label="不合格" value="fail" />
-            <el-option label="部分合格" value="partial" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="createForm.remark" type="textarea" :rows="3" maxlength="255" placeholder="备注（可选）" show-word-limit />
-        </el-form-item>
-      </el-form>
+    <el-dialog
+      v-model="createDialogVisible"
+      title="创建质量检验单"
+      width="560px"
+      destroy-on-close
+      data-testid="quality-create-guard-dialog"
+    >
+      <el-alert
+        type="warning"
+        :closable="false"
+        title="当前任务为只读交互阶段，创建检验单动作已禁用。"
+        data-testid="quality-create-guard-message"
+      />
       <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
+        <el-button data-testid="quality-create-guard-cancel" @click="createDialogVisible = false">关闭</el-button>
         <el-button
           type="primary"
-          :loading="creating"
           :disabled="!canCreate"
+          data-testid="quality-create-guard-submit"
           data-action-type="write"
-          data-write-guard="permission:quality_create+handler"
-          :data-guard-state="canCreate ? 'enabled' : 'disabled'"
+          data-write-guard="guarded:readonly_mode"
+          data-guard-state="guarded"
           @click="submitCreate"
         >
           提交
         </el-button>
       </template>
     </el-dialog>
+
   </div>
 </template>
 
@@ -320,14 +380,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  createQualityInspection,
-  exportQualityInspections,
-  exportQualityInspectionsFile,
+  fetchQualityInspectionDetail,
   fetchQualityInspections,
   fetchQualityStatistics,
   fetchQualityStatisticsTrend,
-  type QualityExportFormat,
-  type QualityInspectionCreatePayload,
   type QualityInspectionListItem,
   type QualityStatisticsData,
   type QualityStatisticsTrendData,
@@ -338,7 +394,6 @@ const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
-const creating = ref<boolean>(false)
 const createDialogVisible = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const activeTab = ref<'list' | 'statistics'>('list')
@@ -347,6 +402,7 @@ const rows = ref<QualityInspectionListItem[]>([])
 const total = ref<number>(0)
 const statistics = ref<QualityStatisticsData | null>(null)
 const statisticsTrend = ref<QualityStatisticsTrendData | null>(null)
+const listError = ref<string>('')
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_read)
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_create)
@@ -364,23 +420,6 @@ const query = reactive({
   to_date: '',
   page: 1,
   page_size: 20,
-})
-
-const today = new Date().toISOString().slice(0, 10)
-const createForm = reactive({
-  company: '',
-  source_type: 'manual',
-  source_id: '',
-  item_code: '',
-  supplier: '',
-  warehouse: '',
-  inspection_date: today,
-  inspected_qty: '0',
-  accepted_qty: '0',
-  rejected_qty: '0',
-  defect_qty: '0',
-  result: 'pending',
-  remark: '',
 })
 
 const clean = (value: string): string | undefined => value.trim() || undefined
@@ -451,6 +490,7 @@ const resetRows = (): void => {
   total.value = 0
   statistics.value = null
   statisticsTrend.value = null
+  listError.value = ''
 }
 
 const loadTrend = async (): Promise<void> => {
@@ -469,6 +509,7 @@ const loadRows = async (): Promise<void> => {
   }
 
   loading.value = true
+  listError.value = ''
   try {
     const filters = buildFilterQuery()
     const result = await fetchQualityInspections({ ...filters, page: query.page, page_size: query.page_size })
@@ -479,25 +520,45 @@ const loadRows = async (): Promise<void> => {
     const trend = await fetchQualityStatisticsTrend(trendPeriod.value, filters)
     statisticsTrend.value = trend.data
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message
+    listError.value = message
+    ElMessage.error(message)
+    rows.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
 }
 
-const goDetail = (id: number): void => {
-  router.push({ path: '/quality/inspections/detail', query: { id: String(id) } })
-}
-
-const onPageChange = (page: number): void => {
-  query.page = page
-  loadRows()
-}
-
-const onSizeChange = (size: number): void => {
-  query.page_size = size
+const applyPrimaryQuery = (): void => {
+  if (!canRead.value) {
+    return
+  }
   query.page = 1
-  loadRows()
+  void loadRows()
+}
+
+const resetPrimaryFilters = (): void => {
+  query.company = ''
+  query.item_code = ''
+  query.supplier = ''
+  query.warehouse = ''
+  query.source_type = ''
+  query.source_id = ''
+  query.status = ''
+  query.from_date = ''
+  query.to_date = ''
+  query.page = 1
+  query.page_size = 20
+  if (!canRead.value) {
+    resetRows()
+    return
+  }
+  void loadRows()
+}
+
+const showGuardedAction = (actionName: string): void => {
+  ElMessage.warning(`${actionName}在当前只读交互阶段已禁用`)
 }
 
 const openCreateDialog = (): void => {
@@ -508,62 +569,33 @@ const openCreateDialog = (): void => {
   createDialogVisible.value = true
 }
 
-const buildCreatePayload = (): QualityInspectionCreatePayload => ({
-  company: createForm.company.trim(),
-  source_type: createForm.source_type,
-  source_id: clean(createForm.source_id) || null,
-  item_code: createForm.item_code.trim(),
-  supplier: clean(createForm.supplier) || null,
-  warehouse: clean(createForm.warehouse) || null,
-  inspection_date: createForm.inspection_date,
-  inspected_qty: createForm.inspected_qty,
-  accepted_qty: createForm.accepted_qty,
-  rejected_qty: createForm.rejected_qty,
-  defect_qty: createForm.defect_qty,
-  result: createForm.result,
-  remark: clean(createForm.remark) || null,
-})
+const submitCreate = (): void => {
+  showGuardedAction('创建检验单')
+}
 
-const submitCreate = async (): Promise<void> => {
-  if (!canCreate.value) return
-  creating.value = true
+const goDetail = async (id: number): Promise<void> => {
+  if (!canRead.value) {
+    return
+  }
   try {
-    const result = await createQualityInspection(buildCreatePayload())
-    ElMessage.success(`质量检验单已创建：${result.data.inspection_no}`)
-    createDialogVisible.value = false
-    await loadRows()
+    await fetchQualityInspectionDetail(id)
+    await router.push({ path: '/quality/inspections/detail', query: { id: String(id) } })
   } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    creating.value = false
+    const message = (error as Error).message
+    ElMessage.error(message)
+    listError.value = message
   }
 }
 
-const submitExport = async (): Promise<void> => {
-  if (!canExport.value || !canRead.value) return
-  try {
-    const result = await exportQualityInspections(buildFilterQuery())
-    ElMessage.success(`质量导出快照已生成：${result.data.total} 行`)
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  }
+const onPageChange = (page: number): void => {
+  query.page = page
+  void loadRows()
 }
 
-const submitExportFile = async (
-  format: QualityExportFormat,
-  inspectionId?: number,
-): Promise<void> => {
-  if (!canExport.value || !canRead.value) return
-  try {
-    await exportQualityInspectionsFile(format, buildFilterQuery(), inspectionId)
-    if (inspectionId) {
-      ElMessage.success(`已导出 ${format.toUpperCase()}（检验单 #${inspectionId}）`)
-    } else {
-      ElMessage.success(`已导出 ${format.toUpperCase()} 文件`)
-    }
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  }
+const onSizeChange = (size: number): void => {
+  query.page_size = size
+  query.page = 1
+  void loadRows()
 }
 
 onMounted(async () => {

@@ -4,135 +4,187 @@
       <template #header>
         <div class="header-row">
           <div class="title-group">
-            <span class="title">成品进销存报表</span>
-            <span class="sub-title">成品进销存 / 成品进销存报表</span>
+            <span class="title">库存台账</span>
+            <span class="sub-title">TASK-Y99-FE-02 / 只读真实交互首版</span>
           </div>
           <el-tag type="info" effect="plain">本地首版</el-tag>
         </div>
       </template>
 
-      <el-form :inline="true" :model="query" class="query-form">
-        <el-form-item label="单号">
-          <el-input v-model="query.no" clearable placeholder="单号" @keyup.enter="onSearch" />
-        </el-form-item>
-        <el-form-item label="款式">
-          <el-input v-model="query.style" clearable placeholder="款式" @keyup.enter="onSearch" />
-        </el-form-item>
-        <el-form-item label="仓库">
-          <el-input v-model="query.warehouse" clearable placeholder="请输入" @keyup.enter="onSearch" />
-        </el-form-item>
-        <el-form-item label="开始日期">
-          <el-date-picker
-            v-model="query.from_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="开始日期"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="结束日期">
-          <el-date-picker
-            v-model="query.to_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="结束日期"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="搜索">
-          <el-input v-model="query.keyword" clearable placeholder="请输入" @keyup.enter="onSearch" />
-        </el-form-item>
-        <el-form-item>
-          <el-button :disabled="!canRead" @click="onReset">重置</el-button>
-          <el-button type="primary" :disabled="!canRead" @click="onSearch">查询</el-button>
-        </el-form-item>
-      </el-form>
+      <section class="stock-ledger-section" data-testid="stock-ledger-section">
+        <el-form :inline="true" :model="query" class="query-form" data-testid="stock-ledger-filter-form">
+          <el-form-item label="款号">
+            <el-input
+              v-model="query.item_code"
+              clearable
+              placeholder="必填：请输入款号"
+              data-testid="stock-ledger-item-code-input"
+              @keyup.enter="onSearch"
+            />
+          </el-form-item>
+          <el-form-item label="公司">
+            <el-input
+              v-model="query.company"
+              clearable
+              placeholder="公司"
+              data-testid="stock-ledger-company-input"
+              @keyup.enter="onSearch"
+            />
+          </el-form-item>
+          <el-form-item label="仓库">
+            <el-input
+              v-model="query.warehouse"
+              clearable
+              placeholder="仓库"
+              data-testid="stock-ledger-warehouse-input"
+              @keyup.enter="onSearch"
+            />
+          </el-form-item>
+          <el-form-item label="开始日期">
+            <el-date-picker
+              v-model="query.from_date"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="开始日期"
+              clearable
+              data-testid="stock-ledger-from-date-input"
+            />
+          </el-form-item>
+          <el-form-item label="结束日期">
+            <el-date-picker
+              v-model="query.to_date"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="结束日期"
+              clearable
+              data-testid="stock-ledger-to-date-input"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button :disabled="!canRead" data-testid="stock-ledger-reset-button" @click="onReset">重置</el-button>
+            <el-button type="primary" :disabled="!canRead" data-testid="stock-ledger-query-button" @click="onSearch">
+              查询
+            </el-button>
+          </el-form-item>
+        </el-form>
 
-      <div class="toolbar-row">
-        <el-button :disabled="!canRead" @click="onGuardedAction('质检')">质检</el-button>
-        <el-button :disabled="!canRead" @click="onReset">清空</el-button>
-        <el-button :disabled="!canRead" @click="onGuardedAction('确定')">确定</el-button>
-        <el-button :disabled="!canRead" @click="onGuardedAction('标志已读')">标志已读</el-button>
-        <el-button :disabled="!canRead" @click="onGuardedAction('消息移除态')">消息移除态</el-button>
-        <el-button :disabled="!canRead" @click="onGuardedAction('消息待补态')">消息待补态</el-button>
-        <el-button :disabled="!canRead" @click="onSearch">搜索</el-button>
-        <el-button :disabled="!canRead" @click="onGuardedAction('留档态')">留档态</el-button>
-        <el-button :disabled="!canRead" @click="onGuardedAction('回退态')">回退态</el-button>
-        <el-button :disabled="!canRead" @click="onGuardedAction('重置列')">重置列</el-button>
-        <el-button :disabled="!canRead" @click="loadRows">刷新</el-button>
-        <el-button :disabled="!canExport" @click="onGuardedAction('导出')">导出</el-button>
-        <el-button :disabled="!canExport" @click="onGuardedAction('打印')">打印</el-button>
-      </div>
-
-      <el-alert
-        v-if="lastError"
-        class="error-alert"
-        type="error"
-        :closable="false"
-        :title="`成品进销存报表加载失败：${lastError}`"
-      />
-
-      <el-empty v-if="!canRead" description="无成品进销存查看权限" />
-      <template v-else>
-        <div class="summary-row">
-          <el-tag type="info" effect="plain">记录数：{{ total }}</el-tag>
-          <el-tag type="success" effect="plain">数量合计：{{ totalQty }}</el-tag>
+        <div class="toolbar-row" data-testid="stock-ledger-guarded-actions">
+          <el-button :disabled="!canRead" data-write-guard="true" @click="onGuardedAction('新建台账')">新建</el-button>
+          <el-button :disabled="!canRead" data-write-guard="true" @click="onGuardedAction('对账提示')">对账</el-button>
+          <el-button :disabled="!canExport" data-write-guard="true" @click="onGuardedAction('导出台账')">导出</el-button>
+          <el-button :disabled="!canExport" data-write-guard="true" @click="onGuardedAction('打印台账')">打印</el-button>
         </div>
 
-        <el-table
-          :data="rows"
-          border
-          v-loading="loading"
-          empty-text="暂无成品进销存报表数据，请调整筛选条件后重试"
+        <el-alert
+          v-if="requiredItemCodeGuarded"
+          class="error-alert"
+          type="warning"
+          :closable="false"
+          data-testid="stock-ledger-required-item-code-guard"
+          title="请先输入款号后再查询库存台账"
+        />
+
+        <el-alert
+          v-if="lastError"
+          class="error-alert"
+          type="error"
+          :closable="false"
+          data-testid="stock-ledger-error-state"
+          :title="`库存台账加载失败：${lastError}`"
+        />
+
+        <el-empty v-if="!canRead" data-testid="stock-ledger-permission-state" description="无库存台账查看权限" />
+        <template v-else>
+          <div class="summary-row" data-testid="stock-ledger-summary-row">
+            <el-tag type="info" effect="plain">台账记录：{{ total }}</el-tag>
+            <el-tag type="success" effect="plain">变动数量合计：{{ totalQty }}</el-tag>
+            <el-tag type="warning" effect="plain">在库结存合计：{{ stockSummaryBalanceQty }}</el-tag>
+            <el-tag v-if="stockSummaryDroppedCount > 0" type="danger" effect="plain">
+              过滤丢弃：{{ stockSummaryDroppedCount }}
+            </el-tag>
+          </div>
+
+          <el-table
+            :data="rows"
+            border
+            v-loading="loading"
+            data-testid="stock-ledger-table"
+            empty-text="暂无库存台账数据，请调整筛选条件后重试"
+          >
+            <el-table-column prop="posting_date" label="过账日期" min-width="120" />
+            <el-table-column prop="posting_time" label="过账时间" min-width="110" />
+            <el-table-column prop="company" label="公司" min-width="140" />
+            <el-table-column prop="item_code" label="款号" min-width="120" />
+            <el-table-column prop="warehouse" label="仓库" min-width="130" />
+            <el-table-column prop="voucher_type" label="凭证类型" min-width="120" />
+            <el-table-column prop="voucher_no" label="凭证号" min-width="160" />
+            <el-table-column label="变动数量" min-width="110">
+              <template #default="scope">{{ formatAmount(scope.row.actual_qty) }}</template>
+            </el-table-column>
+            <el-table-column label="结存数量" min-width="110">
+              <template #default="scope">{{ formatAmount(scope.row.qty_after_transaction) }}</template>
+            </el-table-column>
+            <el-table-column label="操作" min-width="100" fixed="right">
+              <template #default="scope">
+                <el-button
+                  link
+                  type="primary"
+                  data-testid="stock-ledger-row-detail-button"
+                  @click="onOpenLedgerDetail(scope.row)"
+                >
+                  明细
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <div class="pager" data-testid="stock-ledger-pagination">
+            <el-pagination
+              background
+              layout="prev, pager, next, total, sizes"
+              :current-page="query.page"
+              :page-size="query.page_size"
+              :total="total"
+              :page-sizes="[10, 20, 50, 100]"
+              @current-change="onPageChange"
+              @size-change="onSizeChange"
+            />
+          </div>
+        </template>
+
+        <el-drawer
+          v-model="ledgerDetailVisible"
+          title="库存台账明细"
+          size="460px"
+          append-to-body
+          data-testid="stock-ledger-detail-drawer"
         >
-          <el-table-column label="图片" width="80">
-            <template #default="scope">
-              <el-avatar v-if="scope.row.image_url" :src="scope.row.image_url" :size="32" />
-              <span v-else>-</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="processing_no" label="加工单号" min-width="130" />
-          <el-table-column prop="production_order" label="生产制单" min-width="130" />
-          <el-table-column prop="order_no" label="订单号" min-width="140" />
-          <el-table-column prop="item_code" label="款号" min-width="120" />
-          <el-table-column prop="item_name" label="款名" min-width="140" />
-          <el-table-column prop="warehouse" label="仓库" min-width="120" />
-          <el-table-column prop="season" label="季节" min-width="100" />
-          <el-table-column prop="style_type" label="款式类型" min-width="120" />
-          <el-table-column label="数量" width="110">
-            <template #default="scope">{{ formatAmount(scope.row.qty) }}</template>
-          </el-table-column>
-          <el-table-column prop="receipt_date" label="收货日期" min-width="120" />
-          <el-table-column label="操作" min-width="90" fixed="right">
-            <template #default>
-              <el-button link type="primary" @click="onGuardedAction('质检')">质检</el-button>
-            </template>
-          </el-table-column>
-          <el-table-column prop="week_day_0" label="日" width="70" />
-          <el-table-column prop="week_day_1" label="一" width="70" />
-          <el-table-column prop="week_day_2" label="二" width="70" />
-          <el-table-column prop="week_day_3" label="三" width="70" />
-          <el-table-column prop="week_day_4" label="四" width="70" />
-          <el-table-column prop="week_day_5" label="五" width="70" />
-          <el-table-column prop="week_day_6" label="六" width="70" />
-          <el-table-column prop="message_title" label="标题" min-width="120" />
-          <el-table-column prop="sent_at" label="发送时间" min-width="130" />
-          <el-table-column prop="message_status" label="状态" min-width="100" />
-          <el-table-column prop="sender" label="发送人" min-width="110" />
-        </el-table>
-
-        <div class="pager">
-          <el-pagination
-            background
-            layout="prev, pager, next, total, sizes"
-            :current-page="query.page"
-            :page-size="query.page_size"
-            :total="total"
-            :page-sizes="[10, 20, 50, 100]"
-            @current-change="onPageChange"
-            @size-change="onSizeChange"
-          />
-        </div>
+          <template v-if="ledgerDetailRow">
+            <el-descriptions :column="1" border>
+              <el-descriptions-item label="公司">{{ ledgerDetailRow.company }}</el-descriptions-item>
+              <el-descriptions-item label="款号">{{ ledgerDetailRow.item_code }}</el-descriptions-item>
+              <el-descriptions-item label="仓库">{{ ledgerDetailRow.warehouse }}</el-descriptions-item>
+              <el-descriptions-item label="过账日期">{{ ledgerDetailRow.posting_date }}</el-descriptions-item>
+              <el-descriptions-item label="过账时间">
+                {{ ledgerDetailRow.posting_time || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="凭证类型">
+                {{ ledgerDetailRow.voucher_type || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="凭证号">
+                {{ ledgerDetailRow.voucher_no || '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="变动数量">
+                {{ formatAmount(ledgerDetailRow.actual_qty) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="结存数量">
+                {{ formatAmount(ledgerDetailRow.qty_after_transaction) }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </template>
+          <el-empty v-else description="暂无台账明细" />
+        </el-drawer>
+      </section>
 
         <el-divider />
 
@@ -3100,7 +3152,6 @@
             </div>
           </template>
         </section>
-      </template>
     </el-card>
   </div>
 </template>
@@ -3118,12 +3169,13 @@ import {
   fetchSalesInventoryFinishedGoodsOtherInbound,
   fetchSalesInventoryFinishedGoodsReservedInbound,
   fetchSalesInventoryFinishedGoodsShippingNotices,
-  fetchSalesInventoryFinishedGoodsReport,
   fetchSalesInventoryInventoryMaterialRetentionReport,
   fetchSalesInventoryMaterialCounts,
   fetchSalesInventoryMaterialInventoryReport,
   fetchSalesInventoryMaterialTransfers,
   fetchSalesInventorySemiFinishedInventory,
+  fetchSalesInventoryStockLedger,
+  fetchSalesInventoryStockSummary,
   type CustomerReturnInboundItem,
   type CustomerReturnApplicationItem,
   type FinishedGoodsAdjustmentItem,
@@ -3133,20 +3185,26 @@ import {
   type FinishedGoodsOtherInboundItem,
   type FinishedGoodsReservedInboundItem,
   type FinishedGoodsShippingNoticeItem,
-  type FinishedGoodsReportItem,
   type InventoryMaterialRetentionReportItem,
   type MaterialCountItem,
   type MaterialInventoryReportItem,
   type MaterialTransferItem,
   type SemiFinishedInventoryItem,
+  type StockLedgerItem,
+  type StockSummaryItem,
 } from '@/api/sales_inventory'
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
-const rows = ref<FinishedGoodsReportItem[]>([])
+const rows = ref<StockLedgerItem[]>([])
 const total = ref<number>(0)
 const lastError = ref<string>('')
+const requiredItemCodeGuarded = ref<boolean>(false)
+const stockSummaryRows = ref<StockSummaryItem[]>([])
+const stockSummaryDroppedCount = ref<number>(0)
+const ledgerDetailVisible = ref<boolean>(false)
+const ledgerDetailRow = ref<StockLedgerItem | null>(null)
 const materialTransferLoading = ref<boolean>(false)
 const materialTransferRows = ref<MaterialTransferItem[]>([])
 const materialTransferTotal = ref<number>(0)
@@ -3220,7 +3278,15 @@ const canExport = computed<boolean>(() => {
 
 const totalQty = computed<string>(() => {
   const qty = rows.value.reduce((sum, row) => {
-    const current = Number(row.qty ?? 0)
+    const current = Number(row.actual_qty ?? 0)
+    return Number.isFinite(current) ? sum + current : sum
+  }, 0)
+  return qty.toFixed(2)
+})
+
+const stockSummaryBalanceQty = computed<string>(() => {
+  const qty = stockSummaryRows.value.reduce((sum, row) => {
+    const current = Number(row.balance_qty ?? 0)
     return Number.isFinite(current) ? sum + current : sum
   }, 0)
   return qty.toFixed(2)
@@ -3526,12 +3592,11 @@ const finishedGoodsTransferPendingTotal = computed<string>(() => {
 })
 
 const query = reactive({
-  no: '',
-  style: '',
+  item_code: '',
+  company: '',
   warehouse: '',
   from_date: '',
   to_date: '',
-  keyword: '',
   page: 1,
   page_size: 20,
 })
@@ -3729,6 +3794,10 @@ const formatAmount = (value: string | number | null | undefined): string => {
 const resetRows = (): void => {
   rows.value = []
   total.value = 0
+  stockSummaryRows.value = []
+  stockSummaryDroppedCount.value = 0
+  ledgerDetailVisible.value = false
+  ledgerDetailRow.value = null
 }
 
 const resetMaterialTransferRows = (): void => {
@@ -3801,27 +3870,52 @@ const resetFinishedGoodsTransferRows = (): void => {
   finishedGoodsTransferTotal.value = 0
 }
 
-const loadRows = async (): Promise<void> => {
+const loadRows = async ({ silentGuard = false }: { silentGuard?: boolean } = {}): Promise<void> => {
   if (!canRead.value) {
     resetRows()
+    requiredItemCodeGuarded.value = false
     lastError.value = ''
     return
   }
+  const itemCode = query.item_code.trim()
+  if (!itemCode) {
+    resetRows()
+    lastError.value = ''
+    requiredItemCodeGuarded.value = true
+    if (!silentGuard) {
+      ElMessage.warning('请先输入款号后再查询库存台账')
+    }
+    return
+  }
+
+  requiredItemCodeGuarded.value = false
   loading.value = true
   lastError.value = ''
   try {
-    const result = await fetchSalesInventoryFinishedGoodsReport({
-      no: query.no.trim() || undefined,
-      style: query.style.trim() || undefined,
-      warehouse: query.warehouse.trim() || undefined,
-      from_date: query.from_date || undefined,
-      to_date: query.to_date || undefined,
-      keyword: query.keyword.trim() || undefined,
-      page: query.page,
-      page_size: query.page_size,
-    })
-    rows.value = result.data.items
-    total.value = result.data.total
+    const [summaryResult, ledgerResult] = await Promise.all([
+      fetchSalesInventoryStockSummary(itemCode, {
+        company: query.company.trim() || undefined,
+        warehouse: query.warehouse.trim() || undefined,
+      }),
+      fetchSalesInventoryStockLedger(itemCode, {
+        company: query.company.trim() || undefined,
+        warehouse: query.warehouse.trim() || undefined,
+        from_date: query.from_date || undefined,
+        to_date: query.to_date || undefined,
+        page: query.page,
+        page_size: query.page_size,
+      }),
+    ])
+    stockSummaryRows.value = summaryResult.data.items
+    stockSummaryDroppedCount.value = summaryResult.data.dropped_count
+    rows.value = ledgerResult.data.items
+    total.value = ledgerResult.data.total
+    if (ledgerDetailRow.value) {
+      const latest = ledgerResult.data.items.find((item) => item.name === ledgerDetailRow.value?.name)
+      if (latest) {
+        ledgerDetailRow.value = latest
+      }
+    }
   } catch (error) {
     const message = (error as Error).message
     lastError.value = message
@@ -4342,15 +4436,21 @@ const onSearch = (): void => {
 }
 
 const onReset = (): void => {
-  query.no = ''
-  query.style = ''
+  query.item_code = ''
+  query.company = ''
   query.warehouse = ''
   query.from_date = ''
   query.to_date = ''
-  query.keyword = ''
   query.page = 1
   query.page_size = 20
-  void loadRows()
+  requiredItemCodeGuarded.value = false
+  lastError.value = ''
+  resetRows()
+}
+
+const onOpenLedgerDetail = (row: StockLedgerItem): void => {
+  ledgerDetailRow.value = row
+  ledgerDetailVisible.value = true
 }
 
 const onGuardedAction = (actionName: string): void => {
@@ -5085,7 +5185,7 @@ onMounted(async () => {
     return
   }
   if (canRead.value) {
-    await loadRows()
+    await loadRows({ silentGuard: true })
     await loadMaterialTransfers()
     await loadMaterialCounts()
     await loadMaterialInventoryReport()

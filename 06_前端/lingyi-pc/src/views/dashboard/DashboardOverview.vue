@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-overview-page">
+  <div class="dashboard-overview-page" data-testid="dashboard-overview-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -8,23 +8,30 @@
             <span class="subtitle">报价单到工厂合同质检流程看板（只读首版）</span>
           </div>
           <div class="header-actions">
-            <el-select v-model="selectedBoard" aria-label="大货看板" style="width: 170px">
+            <el-select v-model="selectedBoard" aria-label="大货看板" style="width: 170px" data-testid="dashboard-overview-board-select">
               <el-option label="大货看板" value="kanban" />
             </el-select>
-            <el-button type="primary" :loading="loading" :disabled="!canRead" @click="loadOverview">
+            <el-button
+              type="primary"
+              :loading="loading"
+              :disabled="!canRead"
+              data-testid="dashboard-overview-search-button"
+              @click="onSearch"
+            >
               搜索
             </el-button>
           </div>
         </div>
       </template>
 
-      <el-form :inline="true" :model="query" class="query-form">
+      <el-form :inline="true" :model="query" class="query-form" data-testid="dashboard-overview-filter-form">
         <el-form-item label="关键词">
           <el-input
             v-model="query.keyword"
             clearable
             placeholder="请输入"
             aria-label="请输入"
+            data-testid="dashboard-overview-keyword-input"
           />
         </el-form-item>
         <el-form-item label="开始时间">
@@ -34,6 +41,7 @@
             value-format="YYYY-MM-DD"
             placeholder="开始时间"
             clearable
+            data-testid="dashboard-overview-from-date-input"
           />
         </el-form-item>
         <el-form-item label="结束时间">
@@ -43,16 +51,17 @@
             value-format="YYYY-MM-DD"
             placeholder="结束时间"
             clearable
+            data-testid="dashboard-overview-to-date-input"
           />
         </el-form-item>
         <el-form-item>
-          <el-button @click="resetQuery">重置</el-button>
-          <el-button @click="guardedAction('清空')">清空</el-button>
-          <el-button @click="guardedAction('确定')">确定</el-button>
-          <el-button @click="guardedAction('标志已读')">标志已读</el-button>
-          <el-button @click="guardedAction('删除消息')">删除消息</el-button>
-          <el-button @click="guardedAction('新增消息')">新增消息</el-button>
-          <el-button @click="guardedAction('保存')">保存</el-button>
+          <el-button data-testid="dashboard-overview-reset-button" @click="resetQuery">重置</el-button>
+          <el-button data-write-guard="true" @click="guardedAction('清空')">清空</el-button>
+          <el-button data-write-guard="true" @click="guardedAction('确定')">确定</el-button>
+          <el-button data-write-guard="true" @click="guardedAction('标志已读')">标志已读</el-button>
+          <el-button data-write-guard="true" @click="guardedAction('删除消息')">删除消息</el-button>
+          <el-button data-write-guard="true" @click="guardedAction('新增消息')">新增消息</el-button>
+          <el-button data-write-guard="true" @click="guardedAction('保存')">保存</el-button>
         </el-form-item>
       </el-form>
 
@@ -63,6 +72,7 @@
         title="权限信息加载中"
         show-icon
         class="state-alert"
+        data-testid="dashboard-overview-permission-loading"
       />
       <el-alert
         v-else-if="!canRead"
@@ -71,6 +81,7 @@
         title="当前账号无大货看板读取权限，仅展示受限界面"
         show-icon
         class="state-alert"
+        data-testid="dashboard-overview-permission-state"
       />
       <el-alert
         v-if="errorMessage"
@@ -79,6 +90,7 @@
         :title="`大货看板数据加载失败：${errorMessage}`"
         show-icon
         class="state-alert"
+        data-testid="dashboard-overview-error-state"
       />
       <el-alert
         v-if="canRead && !canWrite"
@@ -87,25 +99,34 @@
         title="当前仅开放只读模式，写动作按钮已受控"
         show-icon
         class="state-alert"
+        data-testid="dashboard-overview-disabled-state"
+      />
+      <el-alert
+        v-if="flowFeedback"
+        type="info"
+        :closable="false"
+        :title="flowFeedback"
+        class="state-alert"
+        data-testid="dashboard-overview-flow-feedback"
       />
 
-      <div class="home-enhanced-section">
+      <div class="home-enhanced-section" data-testid="dashboard-overview-home-section">
         <div class="section-header">
           <div class="title-wrap">
             <h3>{{ homeOverview.summary_title }}</h3>
             <span class="subtitle">首页 / 经营总览增强（P1）</span>
           </div>
           <div class="header-actions">
-            <el-button :disabled="!canRead" @click="loadOverview">刷新指标</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('导出概览')">导出概览</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('新增待办')">新增待办</el-button>
+            <el-button :disabled="!canRead" data-testid="dashboard-overview-refresh-button" @click="refreshOverview">刷新指标</el-button>
+            <el-button :disabled="!canRead" data-write-guard="true" @click="guardedAction('导出概览')">导出概览</el-button>
+            <el-button :disabled="!canRead" data-write-guard="true" @click="guardedAction('新增待办')">新增待办</el-button>
           </div>
         </div>
 
         <el-empty v-if="homeEnhancedEmpty" description="暂无首页增强数据，请调整筛选条件后重试" />
 
         <template v-else>
-          <div class="metrics-grid">
+          <div class="metrics-grid" data-testid="dashboard-overview-metrics-grid">
             <div v-for="card in homeOverview.metric_cards" :key="card.key" class="metric-card">
               <span class="metric-label">{{ card.label }}</span>
               <span class="metric-value">{{ card.value }}{{ card.unit ?? '' }}</span>
@@ -113,7 +134,7 @@
             </div>
           </div>
 
-          <div class="home-summary-grid">
+          <div class="home-summary-grid" data-testid="dashboard-overview-summary-grid">
             <el-card shadow="never" class="summary-panel">
               <template #header>
                 <span>待办/预警</span>
@@ -163,7 +184,7 @@
         </template>
       </div>
 
-      <div class="quick-filter-row">
+      <div class="quick-filter-row" data-testid="dashboard-overview-quick-filters">
         <el-tag
           v-for="item in boardData.quick_filters"
           :key="item"
@@ -174,7 +195,7 @@
         </el-tag>
       </div>
 
-      <div class="flow-board">
+      <div class="flow-board" data-testid="dashboard-overview-flow-board">
         <div class="flow-row">
           <FlowNodeCard
             :node="materialNode"
@@ -230,6 +251,7 @@
         border
         v-loading="loading"
         empty-text="暂无大货看板数据，请调整筛选条件后重试"
+        data-testid="dashboard-overview-message-table"
       >
         <el-table-column label="图片" width="70">
           <template #default>
@@ -259,10 +281,37 @@
         <el-table-column prop="sender" label="发送人" min-width="100" />
         <el-table-column label="详情" width="88" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDetail(row)">详情</el-button>
+            <el-button link type="primary" data-testid="dashboard-overview-detail-button" @click="openDetail(row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
+      <el-empty
+        v-if="!loading && !errorMessage && filteredMessages.length === 0"
+        description="暂无消息数据"
+        data-testid="dashboard-overview-empty-state"
+      />
+
+      <el-drawer
+        v-model="detailVisible"
+        title="消息详情（只读）"
+        size="480px"
+        append-to-body
+        data-testid="dashboard-overview-detail-drawer"
+      >
+        <template v-if="detailRow">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="订单号">{{ detailRow.order_no }}</el-descriptions-item>
+            <el-descriptions-item label="客户">{{ detailRow.customer }}</el-descriptions-item>
+            <el-descriptions-item label="款号">{{ detailRow.style_no }}</el-descriptions-item>
+            <el-descriptions-item label="款名">{{ detailRow.style_name }}</el-descriptions-item>
+            <el-descriptions-item label="标题">{{ detailRow.title }}</el-descriptions-item>
+            <el-descriptions-item label="发送时间">{{ detailRow.sent_at }}</el-descriptions-item>
+            <el-descriptions-item label="发送人">{{ detailRow.sender }}</el-descriptions-item>
+            <el-descriptions-item label="状态">{{ detailRow.status }}</el-descriptions-item>
+          </el-descriptions>
+        </template>
+        <el-empty v-else description="暂无详情" />
+      </el-drawer>
     </el-card>
   </div>
 </template>
@@ -290,6 +339,9 @@ const loading = ref<boolean>(false)
 const selectedBoard = ref<'kanban'>('kanban')
 const overview = ref<DashboardOverviewData | null>(null)
 const errorMessage = ref<string>('')
+const flowFeedback = ref<string>('')
+const detailVisible = ref<boolean>(false)
+const detailRow = ref<DashboardKanbanMessageRow | null>(null)
 
 const query = reactive({
   company: '样衣制造',
@@ -456,17 +508,30 @@ const todoStatusTag = (value: string): 'success' | 'warning' | 'danger' | 'info'
 }
 
 const guardedAction = (actionName: string): void => {
+  flowFeedback.value = `${actionName} 为受控动作，仅反馈不执行写入`
   ElMessage.warning(`${actionName} 为受控动作，本地首版保持只读`)
 }
 
-const resetQuery = (): void => {
+const resetQuery = async (): Promise<void> => {
   query.keyword = ''
   query.from_date = ''
   query.to_date = ''
   errorMessage.value = ''
+  flowFeedback.value = '筛选条件已重置，已执行只读刷新'
+  await loadOverview('reset')
 }
 
-const loadOverview = async (): Promise<void> => {
+const onSearch = async (): Promise<void> => {
+  flowFeedback.value = '已执行搜索请求'
+  await loadOverview('search')
+}
+
+const refreshOverview = async (): Promise<void> => {
+  flowFeedback.value = '已刷新经营指标'
+  await loadOverview('refresh')
+}
+
+const loadOverview = async (_source: 'search' | 'reset' | 'refresh' | 'mounted' = 'search'): Promise<void> => {
   if (!canRead.value) {
     ElMessage.warning('当前账号无大货看板读取权限')
     return
@@ -494,9 +559,11 @@ const loadOverview = async (): Promise<void> => {
 
 const openFlowRoute = async (route: string | null | undefined): Promise<void> => {
   if (!route) {
+    flowFeedback.value = '流程节点无可跳转页面，已受控'
     guardedAction('流程入口')
     return
   }
+  flowFeedback.value = `流程节点只读跳转：${route}`
   const from = router.currentRoute.value.fullPath
   try {
     await router.push(route)
@@ -519,10 +586,9 @@ const openDetail = async (row: DashboardKanbanMessageRow): Promise<void> => {
     ElMessage.warning('当前账号无详情读取权限')
     return
   }
-  await router.push({
-    path: '/sales-inventory/sales-orders',
-    query: { keyword: row.order_no },
-  })
+  detailRow.value = row
+  detailVisible.value = true
+  flowFeedback.value = `已打开只读详情：${row.order_no}`
 }
 
 onMounted(async () => {

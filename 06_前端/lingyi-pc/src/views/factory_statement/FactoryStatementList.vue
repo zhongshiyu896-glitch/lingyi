@@ -73,15 +73,20 @@
         </el-form-item>
       </el-form>
 
-      <el-form :inline="true" :model="sampleQuery" class="sample-filter-form">
+      <el-form :inline="true" :model="sampleQuery" class="sample-filter-form" data-testid="factory-statement-sample-filter-form">
         <el-form-item label="打板单号">
-          <el-input v-model="sampleQuery.sample_order_no" clearable placeholder="请输入打板单号" />
+          <el-input
+            v-model="sampleQuery.sample_order_no"
+            clearable
+            placeholder="请输入打板单号"
+            data-testid="factory-statement-sample-filter-order-no"
+          />
         </el-form-item>
         <el-form-item label="款号">
-          <el-input v-model="sampleQuery.style_code" clearable placeholder="请输入款号" />
+          <el-input v-model="sampleQuery.style_code" clearable placeholder="请输入款号" data-testid="factory-statement-sample-filter-style-code" />
         </el-form-item>
         <el-form-item label="工厂">
-          <el-input v-model="sampleQuery.factory_name" clearable placeholder="请输入工厂" />
+          <el-input v-model="sampleQuery.factory_name" clearable placeholder="请输入工厂" data-testid="factory-statement-sample-filter-factory" />
         </el-form-item>
         <el-form-item label="下单时间">
           <el-date-picker
@@ -91,6 +96,7 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             clearable
+            data-testid="factory-statement-sample-filter-date-range"
           />
         </el-form-item>
         <el-form-item label="金额区间">
@@ -100,6 +106,7 @@
             :controls="false"
             placeholder="最小金额"
             style="width: 130px"
+            data-testid="factory-statement-sample-filter-min-amount"
           />
           <span class="range-sep">~</span>
           <el-input-number
@@ -108,10 +115,17 @@
             :controls="false"
             placeholder="最大金额"
             style="width: 130px"
+            data-testid="factory-statement-sample-filter-max-amount"
           />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="sampleQuery.status" clearable placeholder="请选择状态" style="width: 160px">
+          <el-select
+            v-model="sampleQuery.status"
+            clearable
+            placeholder="请选择状态"
+            style="width: 160px"
+            data-testid="factory-statement-sample-filter-status"
+          >
             <el-option label="草稿" value="draft" />
             <el-option label="已确认" value="confirmed" />
             <el-option label="已取消" value="cancelled" />
@@ -119,8 +133,9 @@
           </el-select>
         </el-form-item>
         <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="applySampleFilters">筛选</el-button>
-          <el-button :disabled="!canRead" @click="resetSampleFilters">重置</el-button>
+          <el-button type="primary" :disabled="!canRead" data-testid="factory-statement-sample-filter-apply" @click="applySampleFilters">筛选</el-button>
+          <el-button :disabled="!canRead" data-testid="factory-statement-sample-filter-reset" @click="resetSampleFilters">重置</el-button>
+          <el-tag size="small" type="info" data-testid="factory-statement-sample-filter-state">{{ sampleFilterStateText }}</el-tag>
         </el-form-item>
       </el-form>
 
@@ -189,10 +204,25 @@
           <el-table-column prop="created_at" label="创建时间" min-width="180" />
           <el-table-column label="操作" fixed="right" width="340">
             <template #default="scope">
-              <el-button link type="primary" data-testid="factory-statement-detail-button" @click="goDetail(scope.row.id)">
+              <el-button
+                link
+                type="primary"
+                data-testid="factory-statement-detail-button"
+                @click="openReadonlyDetail(scope.row.id)"
+              >
                 查看
               </el-button>
-              <el-button link type="primary" @click="goPrint(scope.row.id)">打印</el-button>
+              <el-button
+                link
+                type="info"
+                data-testid="factory-statement-print-guarded-button"
+                data-action-type="write"
+                data-write-guard="readonly:print"
+                data-guard-state="disabled"
+                @click="showGuardedAction('打印')"
+              >
+                打印
+              </el-button>
               <el-button
                 link
                 type="info"
@@ -1946,7 +1976,12 @@
         class="factory-reconciliation-alert"
       />
 
-      <el-form :inline="true" :model="factoryReconciliationQuery" class="factory-reconciliation-filter-form">
+      <el-form
+        :inline="true"
+        :model="factoryReconciliationQuery"
+        class="factory-reconciliation-filter-form"
+        data-testid="factory-reconciliation-filter-form"
+      >
         <el-form-item label="对账单号">
           <el-input v-model="factoryReconciliationQuery.reconciliation_no" clearable placeholder="请输入加工厂对账单号" />
         </el-form-item>
@@ -2012,8 +2047,21 @@
           />
         </el-form-item>
         <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="loadFactoryReconciliations">查询</el-button>
-          <el-button :disabled="!canRead" @click="resetFactoryReconciliationFilters">重置</el-button>
+          <el-button
+            type="primary"
+            :disabled="!canRead"
+            data-testid="factory-reconciliation-query-button"
+            @click="loadFactoryReconciliations"
+          >
+            查询
+          </el-button>
+          <el-button
+            :disabled="!canRead"
+            data-testid="factory-reconciliation-reset-button"
+            @click="resetFactoryReconciliationFilters"
+          >
+            重置
+          </el-button>
         </el-form-item>
       </el-form>
 
@@ -2024,14 +2072,16 @@
         show-icon
         :title="factoryReconciliationError"
         class="error-alert"
+        data-testid="factory-reconciliation-error-alert"
       />
-      <el-empty v-if="!canRead" description="无加工厂对账表查看权限" />
+      <el-empty v-if="!canRead" description="无加工厂对账表查看权限" data-testid="factory-reconciliation-no-permission" />
       <template v-else>
         <el-table
           :data="factoryReconciliationRows"
           border
           v-loading="factoryReconciliationLoading"
           empty-text="暂无加工厂对账表数据"
+          data-testid="factory-reconciliation-table"
         >
           <el-table-column prop="reconciliation_no" label="对账单号" min-width="170" />
           <el-table-column prop="statement_no" label="关联业务单号" min-width="170" />
@@ -2132,6 +2182,7 @@
 
         <div class="pager">
           <el-pagination
+            data-testid="factory-reconciliation-pagination"
             background
             layout="prev, pager, next, total, sizes"
             :current-page="factoryReconciliationQuery.page"
@@ -3262,12 +3313,77 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="detailVisible"
+      title="加工厂对账单详情（只读）"
+      width="1080px"
+      data-testid="factory-statement-readonly-detail-dialog"
+    >
+      <el-skeleton v-if="detailLoading" :rows="6" animated data-testid="factory-statement-detail-loading" />
+      <el-alert
+        v-else-if="detailError"
+        type="error"
+        :closable="false"
+        show-icon
+        :title="detailError"
+        data-testid="factory-statement-detail-error-alert"
+      />
+      <template v-else-if="detailData">
+        <div class="statement-detail-summary" data-testid="factory-statement-detail-summary">
+          <el-descriptions :column="3" border size="small">
+            <el-descriptions-item label="对账单号">{{ detailData.statement_no }}</el-descriptions-item>
+            <el-descriptions-item label="状态">{{ statementStatusLabel(detailData.statement_status) }}</el-descriptions-item>
+            <el-descriptions-item label="公司">{{ detailData.company }}</el-descriptions-item>
+            <el-descriptions-item label="供应商">{{ detailData.supplier }}</el-descriptions-item>
+            <el-descriptions-item label="期间">{{ detailData.from_date }} ~ {{ detailData.to_date }}</el-descriptions-item>
+            <el-descriptions-item label="来源条数">{{ detailData.source_count }}</el-descriptions-item>
+            <el-descriptions-item label="加工费">{{ formatAmount(detailData.gross_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="扣款">{{ formatAmount(detailData.deduction_amount) }}</el-descriptions-item>
+            <el-descriptions-item label="实付金额">{{ formatAmount(detailData.net_amount) }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+        <el-table
+          :data="detailData.items"
+          border
+          size="small"
+          empty-text="该对账单暂无明细"
+          data-testid="factory-statement-detail-items-table"
+        >
+          <el-table-column prop="line_no" label="行号" width="70" />
+          <el-table-column prop="inspection_no" label="质检单号" min-width="140" />
+          <el-table-column prop="subcontract_no" label="外发单号" min-width="140" />
+          <el-table-column prop="item_code" label="物料编码" min-width="140" />
+          <el-table-column label="检验数量" width="110">
+            <template #default="scope">{{ scope.row.inspected_qty }}</template>
+          </el-table-column>
+          <el-table-column label="次品数量" width="110">
+            <template #default="scope">{{ scope.row.rejected_qty }}</template>
+          </el-table-column>
+          <el-table-column label="合格数量" width="110">
+            <template #default="scope">{{ scope.row.accepted_qty }}</template>
+          </el-table-column>
+          <el-table-column label="加工费" width="120">
+            <template #default="scope">{{ formatAmount(scope.row.gross_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="扣款" width="120">
+            <template #default="scope">{{ formatAmount(scope.row.deduction_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="实付金额" width="120">
+            <template #default="scope">{{ formatAmount(scope.row.net_amount) }}</template>
+          </el-table-column>
+        </el-table>
+      </template>
+      <el-empty v-else description="暂无详情数据" data-testid="factory-statement-detail-empty" />
+      <template #footer>
+        <el-button data-testid="factory-statement-detail-close" @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   createFactoryStatement,
@@ -3284,6 +3400,7 @@ import {
   fetchFactoryStatementCustomerReceivableSummaries,
   fetchFactoryStatementCustomerReconciliations,
   fetchFactoryStatementCustomerUnpaidReports,
+  fetchFactoryStatementDetail,
   fetchFactoryStatementExpenseReimbursementPayments,
   fetchFactoryStatements,
   type FactoryStatementBankLedgerItem,
@@ -3299,18 +3416,22 @@ import {
   type FactoryStatementCustomerReceivableSummaryItem,
   type FactoryStatementCustomerReconciliationItem,
   type FactoryStatementCustomerUnpaidReportItem,
+  type FactoryStatementDetailData,
   type FactoryStatementCreatePayload,
   type FactoryStatementExpenseReimbursementPaymentItem,
   type FactoryStatementListItem,
 } from '@/api/factory_statement'
 import { usePermissionStore } from '@/stores/permission'
 
-const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
 const creating = ref<boolean>(false)
 const createVisible = ref<boolean>(false)
+const detailVisible = ref<boolean>(false)
+const detailLoading = ref<boolean>(false)
+const detailError = ref<string>('')
+const detailData = ref<FactoryStatementDetailData | null>(null)
 const readError = ref<string>('')
 const rows = ref<FactoryStatementListItem[]>([])
 const total = ref<number>(0)
@@ -3598,6 +3719,7 @@ const sampleQuery = reactive({
   max_amount: undefined as number | undefined,
   status: '',
 })
+const sampleFilterStatus = ref<'idle' | 'applied' | 'reset'>('idle')
 
 const createForm = reactive({
   company: '',
@@ -3725,6 +3847,16 @@ const displayRows = computed<SampleOrderReconciliationRow[]>(() => {
       }
       return true
     })
+})
+
+const sampleFilterStateText = computed<string>(() => {
+  if (sampleFilterStatus.value === 'applied') {
+    return `样品筛选已应用（${displayRows.value.length} 条）`
+  }
+  if (sampleFilterStatus.value === 'reset') {
+    return '样品筛选已重置'
+  }
+  return '样品筛选待操作'
 })
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -4107,6 +4239,7 @@ const applySampleFilters = (): void => {
   if (!canRead.value) {
     return
   }
+  sampleFilterStatus.value = 'applied'
 }
 
 const resetSampleFilters = (): void => {
@@ -4117,6 +4250,7 @@ const resetSampleFilters = (): void => {
   sampleQuery.min_amount = undefined
   sampleQuery.max_amount = undefined
   sampleQuery.status = ''
+  sampleFilterStatus.value = 'reset'
 }
 
 const applyPrimaryQuery = async (): Promise<void> => {
@@ -4625,12 +4759,25 @@ const loadSupplierPayableSummaries = async (): Promise<void> => {
   }
 }
 
-const goDetail = (statementId: number): void => {
-  router.push({ path: '/factory-statements/detail', query: { id: String(statementId) } })
-}
-
-const goPrint = (statementId: number): void => {
-  router.push({ path: '/factory-statements/print', query: { id: String(statementId) } })
+const openReadonlyDetail = async (statementId: number): Promise<void> => {
+  if (!canRead.value) {
+    ElMessage.error('无加工厂对账单查看权限')
+    return
+  }
+  detailVisible.value = true
+  detailLoading.value = true
+  detailError.value = ''
+  detailData.value = null
+  try {
+    const result = await fetchFactoryStatementDetail(statementId)
+    detailData.value = result.data
+  } catch (error) {
+    const message = (error as Error).message
+    detailError.value = `详情加载失败：${message}`
+    ElMessage.error(detailError.value)
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 const showGuardedAction = (actionLabel: string): void => {
