@@ -1,41 +1,63 @@
 <template>
-  <div class="production-plan-detail-page">
-    <el-card shadow="never" v-loading="loading">
+  <div class="production-plan-detail-page" data-testid="production-plan-detail-page">
+    <el-card shadow="never" v-loading="loading" data-testid="production-plan-detail-main-card">
       <template #header>
-        <div class="header-row">
-          <span>生产计划详情</span>
-          <el-button @click="goBack">返回</el-button>
+        <div class="header-row" data-testid="production-plan-detail-header">
+          <span data-testid="production-plan-detail-title">生产计划详情</span>
+          <el-button data-testid="production-plan-detail-back" @click="goBack">返回</el-button>
         </div>
       </template>
 
-      <el-skeleton v-if="!permissionReady" :rows="4" animated />
-      <el-empty v-else-if="!canRead" description="无生产计划查看权限" />
+      <el-skeleton v-if="!permissionReady" :rows="4" animated data-testid="production-plan-detail-loading" />
+      <el-empty
+        v-else-if="!canRead"
+        description="无生产计划查看权限"
+        data-testid="production-plan-detail-permission-state"
+      />
 
       <template v-else>
-        <el-empty v-if="missingPlanId" description="请从生产计划列表进入详情页" />
-        <el-descriptions v-else-if="detail" :column="3" border>
-          <el-descriptions-item label="计划单号">{{ detail.plan_no }}</el-descriptions-item>
+        <el-empty v-if="missingPlanId" description="请从生产计划列表进入详情页" data-testid="production-plan-detail-missing-id-state" />
+        <el-descriptions v-else-if="detail" :column="3" border data-testid="production-plan-detail-main-fields">
+          <el-descriptions-item label="计划单号"><span data-testid="production-plan-detail-field-plan-no">{{ detail.plan_no }}</span></el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag>{{ statusLabel(detail.status) }}</el-tag>
+            <el-tag data-testid="production-plan-detail-status-tag">{{ statusLabel(detail.status) }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="公司">{{ detail.company }}</el-descriptions-item>
+          <el-descriptions-item label="公司"><span data-testid="production-plan-detail-field-company">{{ detail.company }}</span></el-descriptions-item>
           <el-descriptions-item label="销售单">{{ detail.sales_order }}</el-descriptions-item>
           <el-descriptions-item label="销售单行">{{ detail.sales_order_item }}</el-descriptions-item>
           <el-descriptions-item label="客户">{{ detail.customer || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="款式">{{ detail.item_code }}</el-descriptions-item>
+          <el-descriptions-item label="款式"><span data-testid="production-plan-detail-field-item-code">{{ detail.item_code }}</span></el-descriptions-item>
           <el-descriptions-item label="BOM ID">{{ detail.bom_id }}</el-descriptions-item>
           <el-descriptions-item label="BOM 版本">{{ detail.bom_version || '-' }}</el-descriptions-item>
           <el-descriptions-item label="计划数量">{{ detail.planned_qty }}</el-descriptions-item>
           <el-descriptions-item label="计划开工日">{{ detail.planned_start_date || '-' }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ detail.created_at }}</el-descriptions-item>
         </el-descriptions>
+        <el-alert
+          v-else-if="loadError"
+          type="error"
+          :closable="false"
+          show-icon
+          :title="loadError"
+          data-testid="production-plan-detail-error-state"
+        />
+        <el-empty v-else description="暂无生产计划详情数据" data-testid="production-plan-detail-empty-state" />
       </template>
     </el-card>
 
-    <el-card v-if="canRead && detail" shadow="never">
+    <el-alert
+      v-if="guardedFeedback"
+      type="warning"
+      :closable="false"
+      show-icon
+      :title="guardedFeedback"
+      data-testid="production-plan-detail-guarded-feedback"
+    />
+
+    <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-work-order-mapping">
       <template #header><span>Work Order 映射</span></template>
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="Work Order">{{ currentWorkOrder || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="Work Order"><span data-testid="production-plan-detail-work-order">{{ currentWorkOrder || '-' }}</span></el-descriptions-item>
         <el-descriptions-item label="同步状态">{{ workOrderSyncStatusLabel }}</el-descriptions-item>
         <el-descriptions-item label="ERP Docstatus">{{ detail?.erpnext_docstatus ?? '-' }}</el-descriptions-item>
         <el-descriptions-item label="ERP 状态">{{ detail?.erpnext_status || '-' }}</el-descriptions-item>
@@ -44,7 +66,7 @@
       </el-descriptions>
     </el-card>
 
-    <el-card v-if="canRead && detail" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-material-check-card">
       <template #header><span>物料检查</span></template>
       <el-alert
         v-if="materialCheckGuardReason"
@@ -54,17 +76,17 @@
         :title="materialCheckGuardReason"
         style="margin-bottom: 12px"
       />
-      <el-form :model="materialCheckForm" label-width="140px">
+      <el-form :model="materialCheckForm" label-width="140px" data-testid="production-plan-detail-material-check-form">
         <el-form-item label="仓库">
-          <el-input v-model="materialCheckForm.warehouse" placeholder="WIP Warehouse - LY" />
+          <el-input v-model="materialCheckForm.warehouse" placeholder="WIP Warehouse - LY" data-testid="production-plan-detail-material-check-warehouse" />
         </el-form-item>
       </el-form>
-      <el-button type="primary" :loading="checkingMaterials" :disabled="!canRunMaterialCheck" @click="runMaterialCheck">
+      <el-button type="primary" data-action-type="write" data-write-guard="guarded:readonly" data-testid="production-plan-detail-material-check-action" @click="runMaterialCheck">
         执行物料检查
       </el-button>
     </el-card>
 
-    <el-card v-if="canRead && detail" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-create-work-order-card">
       <template #header><span>create-work-order 候选入口</span></template>
       <el-alert
         type="info"
@@ -81,12 +103,12 @@
         :title="createWorkOrderGuardReason"
         style="margin-bottom: 12px"
       />
-      <el-form :model="createWorkOrderForm" label-width="140px">
+      <el-form :model="createWorkOrderForm" label-width="140px" data-testid="production-plan-detail-create-work-order-form">
         <el-form-item label="FG Warehouse">
-          <el-input v-model="createWorkOrderForm.fg_warehouse" placeholder="FG Warehouse - LY" />
+          <el-input v-model="createWorkOrderForm.fg_warehouse" placeholder="FG Warehouse - LY" data-testid="production-plan-detail-create-fg-warehouse" />
         </el-form-item>
         <el-form-item label="WIP Warehouse">
-          <el-input v-model="createWorkOrderForm.wip_warehouse" placeholder="WIP Warehouse - LY" />
+          <el-input v-model="createWorkOrderForm.wip_warehouse" placeholder="WIP Warehouse - LY" data-testid="production-plan-detail-create-wip-warehouse" />
         </el-form-item>
         <el-form-item label="计划开工日">
           <el-date-picker
@@ -95,18 +117,20 @@
             value-format="YYYY-MM-DD"
             format="YYYY-MM-DD"
             placeholder="选择开工日期"
+            data-testid="production-plan-detail-create-start-date"
           />
         </el-form-item>
         <el-form-item label="幂等键">
-          <el-input v-model="createWorkOrderForm.idempotency_key" placeholder="idempotency key" />
+          <el-input v-model="createWorkOrderForm.idempotency_key" placeholder="idempotency key" data-testid="production-plan-detail-create-idempotency-key" />
         </el-form-item>
       </el-form>
-      <div style="display: flex; gap: 8px">
-        <el-button :disabled="creatingWorkOrder" @click="resetCreateWorkOrderForm">重置</el-button>
+      <div style="display: flex; gap: 8px" data-testid="production-plan-detail-create-work-order-actions">
+        <el-button data-testid="production-plan-detail-create-work-order-reset" @click="resetCreateWorkOrderForm">重置</el-button>
         <el-button
           type="primary"
-          :loading="creatingWorkOrder"
-          :disabled="!canCreateWorkOrderAction"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
+          data-testid="production-plan-detail-create-work-order-action"
           @click="submitCreateWorkOrder"
         >
           创建 Work Order（候选）
@@ -114,17 +138,18 @@
       </div>
     </el-card>
 
-    <el-card v-if="canRead && detail" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-write-entry-status">
       <template #header><span>写入口状态</span></template>
       <el-alert
         type="warning"
         :closable="false"
         show-icon
         :title="writeEntryFrozenMessage"
+        data-testid="production-plan-detail-permission-or-disabled-state"
       />
     </el-card>
 
-    <el-card v-if="canRead && detail" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-material-snapshot-card">
       <template #header><span>物料检查快照</span></template>
       <el-alert
         type="info"
@@ -132,7 +157,13 @@
         show-icon
         title="可用库存为后端快照；未接库存实时快照前仅作参考。"
       />
-      <el-table :data="detail?.material_snapshots || []" border style="margin-top: 12px" empty-text="暂无物料检查快照">
+      <el-table
+        :data="detail?.material_snapshots || []"
+        border
+        style="margin-top: 12px"
+        empty-text="暂无物料检查快照"
+        data-testid="production-plan-detail-material-snapshot-table"
+      >
         <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
         <el-table-column prop="qty_per_piece" label="单件用量" width="110" />
         <el-table-column prop="loss_rate" label="损耗率" width="100" />
@@ -146,9 +177,14 @@
       </el-table>
     </el-card>
 
-    <el-card v-if="canRead && detail" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-job-card-mapping">
       <template #header><span>Job Card 映射</span></template>
-      <el-table :data="detail?.job_cards || []" border empty-text="暂无 Job Card 映射数据">
+      <el-table
+        :data="detail?.job_cards || []"
+        border
+        empty-text="暂无 Job Card 映射数据"
+        data-testid="production-plan-detail-job-card-table"
+      >
         <el-table-column prop="job_card" label="Job Card" min-width="180" />
         <el-table-column label="Work Order" min-width="180">
           <template #default>{{ currentWorkOrder || '-' }}</template>
@@ -169,10 +205,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  checkProductionMaterials,
-  createProductionWorkOrder,
   fetchProductionPlanDetail,
-  type ProductionCreateWorkOrderPayload,
   type ProductionPlanDetailData,
 } from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
@@ -183,10 +216,10 @@ const permissionStore = usePermissionStore()
 
 const detail = ref<ProductionPlanDetailData | null>(null)
 const missingPlanId = ref<boolean>(false)
+const loadError = ref<string>('')
+const guardedFeedback = ref<string>('')
 const loading = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
-const checkingMaterials = ref<boolean>(false)
-const creatingWorkOrder = ref<boolean>(false)
 
 const materialCheckForm = reactive({
   warehouse: 'WIP Warehouse - LY',
@@ -237,9 +270,6 @@ const createWorkOrderValidationError = computed<string | null>(() => {
   }
   return null
 })
-const canCreateWorkOrderAction = computed<boolean>(() => {
-  return canWorkOrderCreate.value && !!detail.value && !createWorkOrderValidationError.value
-})
 const createWorkOrderGuardReason = computed<string>(() => {
   if (!canWorkOrderCreate.value) {
     return '无创建工单权限'
@@ -261,10 +291,6 @@ const isMaterialCheckStatusAllowed = computed<boolean>(() => MATERIAL_CHECK_ALLO
 const normalizedMaterialCheckWarehouse = computed<string>(() => materialCheckForm.warehouse.trim())
 const isMaterialCheckFormValid = computed<boolean>(() => normalizedMaterialCheckWarehouse.value.length > 0)
 
-const canMaterialCheckAction = computed<boolean>(() => {
-  return canMaterialCheck.value && isMaterialCheckStatusAllowed.value
-})
-const canRunMaterialCheck = computed<boolean>(() => canMaterialCheckAction.value && isMaterialCheckFormValid.value)
 const materialCheckGuardReason = computed<string>(() => {
   if (!canMaterialCheck.value) {
     return '无物料检查权限'
@@ -317,6 +343,12 @@ const buildIdempotencyKey = (prefix: string): string => {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+const guardedWriteAction = (actionLabel: string, reason = '当前为只读模式，已禁用写入操作'): void => {
+  const message = `${actionLabel}：${reason}`
+  guardedFeedback.value = message
+  ElMessage.warning(message)
+}
+
 const resetCreateWorkOrderForm = (): void => {
   createWorkOrderForm.fg_warehouse = 'FG Warehouse - LY'
   createWorkOrderForm.wip_warehouse = 'WIP Warehouse - LY'
@@ -334,93 +366,64 @@ const ensurePlanId = (): number => {
 const loadDetail = async (): Promise<void> => {
   if (!canRead.value) {
     detail.value = null
+    loadError.value = ''
     missingPlanId.value = false
     return
   }
   if (!hasValidPlanId.value) {
     detail.value = null
+    loadError.value = ''
     missingPlanId.value = true
     return
   }
   missingPlanId.value = false
+  loadError.value = ''
   loading.value = true
   try {
     const result = await fetchProductionPlanDetail(ensurePlanId())
     detail.value = result.data
+    loadError.value = ''
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message || '加载生产计划详情失败'
+    detail.value = null
+    loadError.value = message
+    ElMessage.error(message)
   } finally {
     loading.value = false
   }
 }
 
-const runMaterialCheck = async (): Promise<void> => {
+const runMaterialCheck = (): void => {
   if (!canMaterialCheck.value) {
-    ElMessage.error('无物料检查权限')
+    guardedWriteAction('执行物料检查', '无物料检查权限')
     return
   }
   if (!isMaterialCheckStatusAllowed.value) {
-    ElMessage.error('当前状态不允许执行物料检查')
+    guardedWriteAction('执行物料检查', '当前状态不允许执行物料检查')
     return
   }
   if (!isMaterialCheckFormValid.value) {
-    ElMessage.error('仓库不能为空')
+    guardedWriteAction('执行物料检查', '仓库不能为空')
     return
   }
-
-  checkingMaterials.value = true
-  try {
-    await checkProductionMaterials(ensurePlanId(), {
-      warehouse: normalizedMaterialCheckWarehouse.value,
-    })
-    ElMessage.success('物料检查完成')
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    checkingMaterials.value = false
-  }
+  guardedWriteAction('执行物料检查')
 }
 
-const submitCreateWorkOrder = async (): Promise<void> => {
+const submitCreateWorkOrder = (): void => {
   if (!canWorkOrderCreate.value) {
-    ElMessage.error('无创建工单权限')
+    guardedWriteAction('创建 Work Order', '无创建工单权限')
     return
   }
   if (!detail.value) {
-    ElMessage.error('生产计划详情不存在')
+    guardedWriteAction('创建 Work Order', '生产计划详情不存在')
     return
   }
   const validationError = createWorkOrderValidationError.value
   if (validationError) {
-    ElMessage.error(validationError)
+    guardedWriteAction('创建 Work Order', validationError)
     return
   }
-
-  const payload: ProductionCreateWorkOrderPayload = {
-    fg_warehouse: normalizedCreateWorkOrderForm.value.fg_warehouse,
-    wip_warehouse: normalizedCreateWorkOrderForm.value.wip_warehouse,
-    start_date: normalizedCreateWorkOrderForm.value.start_date,
-    idempotency_key: normalizedCreateWorkOrderForm.value.idempotency_key,
-  }
-  if (!payload.idempotency_key) {
-    ElMessage.error('idempotency_key 不能为空')
-    return
-  }
-
-  creatingWorkOrder.value = true
-  try {
-    const result = await createProductionWorkOrder(ensurePlanId(), payload)
-    ElMessage.success(
-      `工单候选入口提交成功（outbox #${result.data.outbox_id}，状态 ${syncStatusLabel(result.data.sync_status)}）`,
-    )
-    createWorkOrderForm.idempotency_key = buildIdempotencyKey('production-create-work-order')
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    creatingWorkOrder.value = false
-  }
+  guardedWriteAction('创建 Work Order')
 }
 
 const goBack = (): void => {

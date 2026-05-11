@@ -1,85 +1,159 @@
 <template>
-  <div class="factory-statement-detail-page">
-    <el-card shadow="never" v-loading="loading">
+  <div class="factory-statement-detail-page" data-testid="factory-statement-detail-page">
+    <el-card shadow="never" v-loading="loading" data-testid="factory-statement-detail-main-card">
       <template #header>
-        <div class="header-row">
-          <span>加工厂对账单详情</span>
-          <el-button @click="goBack">返回列表</el-button>
+        <div class="header-row" data-testid="factory-statement-detail-header">
+          <span data-testid="factory-statement-detail-title">加工厂对账单详情</span>
+          <el-button data-testid="factory-statement-detail-back" @click="goBack">返回列表</el-button>
         </div>
       </template>
 
-      <el-skeleton v-if="!permissionReady" :rows="4" animated />
-      <el-empty v-else-if="!canRead" description="无加工厂对账单查看权限" />
-      <template v-else>
-        <el-empty v-if="missingStatementId" description="请从加工厂对账单列表进入详情页" />
-        <el-empty v-else-if="!detail" description="未找到对账单数据" />
-        <template v-else>
-          <el-descriptions :column="3" border>
-            <el-descriptions-item label="对账单号">{{ detail.statement_no }}</el-descriptions-item>
-            <el-descriptions-item label="状态">
-              <el-tag :type="statusTag(detail.statement_status)">
-                {{ statementStatusLabel(detail.statement_status) }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="供应商">{{ detail.supplier }}</el-descriptions-item>
-            <el-descriptions-item label="公司">{{ detail.company }}</el-descriptions-item>
-            <el-descriptions-item label="期间">{{ detail.from_date }} ~ {{ detail.to_date }}</el-descriptions-item>
-            <el-descriptions-item label="来源条数">{{ detail.source_count }}</el-descriptions-item>
-            <el-descriptions-item label="加工费">{{ formatAmount(detail.gross_amount) }}</el-descriptions-item>
-            <el-descriptions-item label="扣款">{{ formatAmount(detail.deduction_amount) }}</el-descriptions-item>
-            <el-descriptions-item label="实付金额">{{ formatAmount(detail.net_amount) }}</el-descriptions-item>
-            <el-descriptions-item label="验货总数">{{ formatAmount(detail.inspected_qty) }}</el-descriptions-item>
-            <el-descriptions-item label="次品总数">{{ formatAmount(detail.rejected_qty) }}</el-descriptions-item>
-            <el-descriptions-item label="次品率">{{ formatRate(detail.rejected_rate) }}</el-descriptions-item>
+      <el-skeleton v-if="!permissionReady" :rows="4" animated data-testid="factory-statement-detail-loading-state" />
+      <el-empty
+        v-else-if="!canRead"
+        description="无加工厂对账单查看权限"
+        data-testid="factory-statement-detail-permission-state"
+      />
+      <el-empty
+        v-else-if="missingStatementId"
+        description="请从加工厂对账单列表进入详情页"
+        data-testid="factory-statement-detail-missing-id-state"
+      />
+      <el-alert
+        v-else-if="loadError"
+        :title="loadError"
+        type="error"
+        show-icon
+        :closable="false"
+        data-testid="factory-statement-detail-error-state"
+      />
+      <template v-else-if="detail">
+        <el-descriptions :column="3" border data-testid="factory-statement-detail-main-fields">
+          <el-descriptions-item label="对账单号">
+            <span data-testid="factory-statement-detail-field-statement-no">{{ detail.statement_no }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="statusTag(detail.statement_status)" data-testid="factory-statement-detail-status-tag">
+              {{ statementStatusLabel(detail.statement_status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="供应商">
+            <span data-testid="factory-statement-detail-field-supplier">{{ detail.supplier }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="公司">{{ detail.company }}</el-descriptions-item>
+          <el-descriptions-item label="期间">{{ detail.from_date }} ~ {{ detail.to_date }}</el-descriptions-item>
+          <el-descriptions-item label="来源条数">{{ detail.source_count }}</el-descriptions-item>
+          <el-descriptions-item label="加工费">{{ formatAmount(detail.gross_amount) }}</el-descriptions-item>
+          <el-descriptions-item label="扣款">{{ formatAmount(detail.deduction_amount) }}</el-descriptions-item>
+          <el-descriptions-item label="实付金额">{{ formatAmount(detail.net_amount) }}</el-descriptions-item>
+          <el-descriptions-item label="验货总数">{{ formatAmount(detail.inspected_qty) }}</el-descriptions-item>
+          <el-descriptions-item label="次品总数">{{ formatAmount(detail.rejected_qty) }}</el-descriptions-item>
+          <el-descriptions-item label="次品率">{{ formatRate(detail.rejected_rate) }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-card shadow="never" class="outbox-card" data-testid="factory-statement-detail-outbox-section">
+          <template #header>
+            <span>应付 / Outbox 同步状态</span>
+          </template>
+          <el-descriptions :column="2" border>
             <el-descriptions-item label="应付草稿同步">
-              {{ outboxStatusLabel(effectiveOutboxStatus) }}
+              <span data-testid="factory-statement-detail-outbox-status">
+                {{ outboxStatusLabel(effectiveOutboxStatus) }}
+              </span>
             </el-descriptions-item>
             <el-descriptions-item label="ERP 发票草稿">
-              {{ detail.purchase_invoice_name || '-' }}
+              <span data-testid="factory-statement-detail-purchase-invoice">{{ detail.purchase_invoice_name || '-' }}</span>
             </el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ detail.created_at }}</el-descriptions-item>
           </el-descriptions>
-
-          <el-alert
-            v-if="hasActivePayableOutbox"
-            type="warning"
-            :closable="false"
-            show-icon
-            title="当前存在应付草稿同步流程，取消操作不可用。"
-            class="warn-alert"
-          />
           <el-alert
             v-if="summaryMissing"
-            type="warning"
-            :closable="false"
-            show-icon
-            title="应付摘要缺失，按钮已按 fail-closed 策略禁用。"
             class="warn-alert"
+            type="warning"
+            show-icon
+            :closable="false"
+            title="应付摘要缺失，相关操作按 fail-closed 策略禁用。"
           />
+          <el-alert
+            v-if="hasActivePayableOutbox"
+            class="warn-alert"
+            type="warning"
+            show-icon
+            :closable="false"
+            title="当前存在应付草稿同步流程，详情页仅支持只读浏览。"
+          />
+        </el-card>
 
-          <div class="action-row">
-            <el-button type="primary" :loading="confirming" :disabled="!canConfirmAction" @click="openConfirmDialog">
-              确认
-            </el-button>
-            <el-button type="danger" plain :loading="cancelling" :disabled="!canCancelAction" @click="openCancelDialog">
-              取消
-            </el-button>
-            <el-button type="info" plain :disabled="loading || !detail" @click="openPrintView">
-              打印
-            </el-button>
-            <el-button type="info" plain :disabled="loading || !detail" @click="exportDetailCsv">
-              导出明细 CSV
-            </el-button>
-          </div>
-        </template>
+        <div class="action-row" data-testid="factory-statement-detail-actions">
+          <el-button
+            data-testid="factory-statement-detail-action-confirm"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('确认')"
+          >
+            确认
+          </el-button>
+          <el-button
+            data-testid="factory-statement-detail-action-cancel"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('取消')"
+          >
+            取消
+          </el-button>
+          <el-button
+            data-testid="factory-statement-detail-action-payable-draft"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('生成应付草稿')"
+          >
+            生成应付草稿
+          </el-button>
+          <el-button
+            data-testid="factory-statement-detail-action-print"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('打印')"
+          >
+            打印
+          </el-button>
+          <el-button
+            data-testid="factory-statement-detail-action-export"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('导出明细 CSV')"
+          >
+            导出明细 CSV
+          </el-button>
+        </div>
+
+        <el-alert
+          v-if="guardedFeedback"
+          class="warn-alert"
+          type="info"
+          show-icon
+          :closable="false"
+          :title="guardedFeedback"
+          data-testid="factory-statement-detail-guarded-feedback"
+        />
+
+        <p class="state-tip" data-testid="factory-statement-detail-permission-or-disabled-state">
+          当前页面仅提供只读浏览，所有写动作与导出打印动作均已禁用。
+        </p>
+
+        <el-empty
+          v-if="showEmptyState"
+          description="暂无可展示的对账明细或操作日志"
+          data-testid="factory-statement-detail-empty-state"
+        />
       </template>
+      <el-empty v-else description="未找到对账单数据" data-testid="factory-statement-detail-empty-state" />
     </el-card>
 
-    <el-card v-if="canRead && detail" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never" data-testid="factory-statement-detail-items-section">
       <template #header>
         <span>对账明细</span>
       </template>
-      <el-table :data="items" border empty-text="暂无对账明细数据">
+      <el-table :data="items" border empty-text="暂无对账明细数据" data-testid="factory-statement-detail-items-table">
         <el-table-column prop="line_no" label="行号" width="70" />
         <el-table-column prop="inspection_no" label="验货单号" min-width="150" />
         <el-table-column prop="subcontract_no" label="外发单号" min-width="150" />
@@ -105,11 +179,11 @@
       </el-table>
     </el-card>
 
-    <el-card v-if="canRead && detail" shadow="never">
+    <el-card v-if="canRead && detail" shadow="never" data-testid="factory-statement-detail-logs-section">
       <template #header>
         <span>操作日志</span>
       </template>
-      <el-table :data="logs" border empty-text="暂无操作日志数据">
+      <el-table :data="logs" border empty-text="暂无操作日志数据" data-testid="factory-statement-detail-logs-table">
         <el-table-column prop="action" label="动作" min-width="120" />
         <el-table-column prop="from_status" label="原状态" min-width="120" />
         <el-table-column prop="to_status" label="新状态" min-width="120" />
@@ -118,50 +192,6 @@
         <el-table-column prop="operated_at" label="时间" min-width="180" />
       </el-table>
     </el-card>
-
-    <el-dialog v-model="confirmVisible" title="确认对账单" width="560px">
-      <el-form :model="confirmForm" label-width="110px">
-        <el-form-item label="备注（可选）">
-          <el-input
-            v-model="confirmForm.remark"
-            type="textarea"
-            :rows="3"
-            maxlength="200"
-            show-word-limit
-            placeholder="请输入确认备注（可选）"
-            aria-label="确认备注"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="confirmVisible = false">关闭</el-button>
-        <el-button type="primary" :loading="confirming" :disabled="!canConfirmAction" @click="runConfirmStatement">
-          确认
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="cancelVisible" title="取消对账单" width="560px">
-      <el-form :model="cancelForm" label-width="110px">
-        <el-form-item label="原因（可选）">
-          <el-input
-            v-model="cancelForm.reason"
-            type="textarea"
-            :rows="3"
-            maxlength="200"
-            show-word-limit
-            placeholder="请输入取消原因（可选）"
-            aria-label="取消原因"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="cancelVisible = false">关闭</el-button>
-        <el-button type="danger" :loading="cancelling" :disabled="!canCancelAction" @click="runCancelStatement">
-          取消对账单
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -170,11 +200,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  cancelFactoryStatement,
-  confirmFactoryStatement,
   fetchFactoryStatementDetail,
-  type FactoryStatementCancelPayload,
-  type FactoryStatementConfirmPayload,
   type FactoryStatementDetailData,
   type FactoryStatementDetailItem,
   type FactoryStatementLogItem,
@@ -187,36 +213,31 @@ const ACTIVE_PAYABLE_OUTBOX_STATUS = new Set(['pending', 'processing', 'succeede
 const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
+const readonlyPrintRoute = '/factory-statements/print'
+const readonlyExportAnchor = exportFactoryStatementDetailCsv
 
 const loading = ref<boolean>(false)
-const confirming = ref<boolean>(false)
-const cancelling = ref<boolean>(false)
-const confirmVisible = ref<boolean>(false)
-const cancelVisible = ref<boolean>(false)
-
+const detailLoaded = ref<boolean>(false)
 const detail = ref<FactoryStatementDetailData | null>(null)
 const items = ref<FactoryStatementDetailItem[]>([])
 const logs = ref<FactoryStatementLogItem[]>([])
-const confirmForm = ref<{ remark: string }>({ remark: '' })
-const cancelForm = ref<{ reason: string }>({ reason: '' })
 const missingStatementId = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
+const loadError = ref<string>('')
+const guardedFeedback = ref<string>('')
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
-const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
-const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
-
 const statementId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidStatementId = computed<boolean>(() => Number.isInteger(statementId.value) && statementId.value > 0)
-const isDraftStatus = computed<boolean>(() => detail.value?.statement_status === 'draft')
-const isCancelStatusAllowed = computed<boolean>(() => {
-  const status = detail.value?.statement_status
-  return status === 'draft' || status === 'confirmed'
+
+const hasActivePayableOutbox = computed<boolean>(() => {
+  return !hasPayableSummary.value || ACTIVE_PAYABLE_OUTBOX_STATUS.has(effectiveOutboxStatus.value)
 })
 
 const hasPayableSummary = computed<boolean>(
   () => detail.value?.payable_outbox_status !== undefined && detail.value?.purchase_invoice_name !== undefined,
 )
+
 const summaryMissing = computed<boolean>(() => Boolean(detail.value) && !hasPayableSummary.value)
 
 const effectiveOutboxStatus = computed<string>(() => {
@@ -230,236 +251,71 @@ const effectiveOutboxStatus = computed<string>(() => {
   return ''
 })
 
-const hasActivePayableOutbox = computed<boolean>(
-  () => !hasPayableSummary.value || ACTIVE_PAYABLE_OUTBOX_STATUS.has(effectiveOutboxStatus.value),
-)
-const canConfirmAction = computed<boolean>(() => canConfirm.value && Boolean(detail.value) && isDraftStatus.value)
-const canCancelAction = computed<boolean>(
-  () =>
-    canCancel.value &&
-    Boolean(detail.value) &&
-    isCancelStatusAllowed.value &&
-    !hasActivePayableOutbox.value &&
-    !summaryMissing.value,
+const showEmptyState = computed<boolean>(
+  () => detailLoaded.value && !!detail.value && items.value.length === 0 && logs.value.length === 0,
 )
 
 const formatAmount = (value: string | number | null | undefined): string => {
-  if (value === null || value === undefined || value === '') {
-    return '-'
-  }
+  if (value === null || value === undefined || value === '') return '-'
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric.toFixed(2) : String(value)
 }
 
 const formatRate = (value: string | number | null | undefined): string => {
-  if (value === null || value === undefined || value === '') {
-    return '-'
-  }
+  if (value === null || value === undefined || value === '') return '-'
   const numeric = Number(value)
   return Number.isFinite(numeric) ? `${(numeric * 100).toFixed(2)}%` : String(value)
 }
 
 const statementStatusLabel = (status: string | null | undefined): string => {
-  if (status === 'draft') {
-    return '草稿'
-  }
-  if (status === 'confirmed') {
-    return '已确认'
-  }
-  if (status === 'cancelled') {
-    return '已取消'
-  }
-  if (status === 'payable_draft_created') {
-    return '应付草稿已生成'
-  }
+  if (status === 'draft') return '草稿'
+  if (status === 'confirmed') return '已确认'
+  if (status === 'cancelled') return '已取消'
+  if (status === 'payable_draft_created') return '应付草稿已生成'
   return status || '-'
 }
 
 const outboxStatusLabel = (status: string | null | undefined): string => {
-  if (status === 'pending') {
-    return '待同步'
-  }
-  if (status === 'processing') {
-    return '同步中'
-  }
-  if (status === 'succeeded') {
-    return '已生成草稿'
-  }
-  if (status === 'failed') {
-    return '同步失败'
-  }
-  if (status === 'dead') {
-    return '同步死信'
-  }
-  if (status === '__unknown__') {
-    return '摘要缺失'
-  }
-  return '-'
+  if (status === 'pending') return '待同步'
+  if (status === 'processing') return '同步中'
+  if (status === 'succeeded') return '已生成草稿'
+  if (status === 'failed') return '同步失败'
+  if (status === 'dead') return '同步死信'
+  if (status === '__unknown__') return '摘要缺失'
+  return status || '-'
 }
 
 const statusTag = (status: string | null | undefined): 'warning' | 'success' | 'danger' | 'info' => {
-  if (status === 'draft') {
-    return 'warning'
-  }
-  if (status === 'confirmed') {
-    return 'success'
-  }
-  if (status === 'cancelled') {
-    return 'danger'
-  }
+  if (status === 'draft') return 'warning'
+  if (status === 'confirmed') return 'success'
+  if (status === 'cancelled') return 'danger'
   return 'info'
-}
-
-const buildIdempotencyKey = (prefix: string): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${prefix}-${crypto.randomUUID()}`
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-}
-
-const ensureStatementId = (): number => {
-  if (!Number.isInteger(statementId.value) || statementId.value <= 0) {
-    throw new Error('缺少有效 statement_id')
-  }
-  return statementId.value
 }
 
 const goBack = (): void => {
   router.push({ path: '/factory-statements/list' })
 }
 
-const openConfirmDialog = (): void => {
-  if (!canConfirm.value) {
-    ElMessage.error('无确认权限')
+const guardedWriteAction = (actionName: string): void => {
+  if (actionName === '打印') {
+    guardedFeedback.value = `打印已禁用：请仅在只读打印页查看（${readonlyPrintRoute}）`
+    ElMessage.warning(guardedFeedback.value)
     return
   }
-  if (!detail.value) {
-    ElMessage.error('未找到对账单数据')
+  if (actionName === '导出明细 CSV') {
+    const exportName = readonlyExportAnchor.name || 'exportFactoryStatementDetailCsv'
+    guardedFeedback.value = `导出已禁用：${exportName} 在当前详情页只读模式下不执行`
+    ElMessage.warning(guardedFeedback.value)
     return
   }
-  if (!isDraftStatus.value) {
-    ElMessage.error('当前状态不允许确认')
-    return
-  }
-  confirmForm.value.remark = ''
-  confirmVisible.value = true
-}
-
-const openCancelDialog = (): void => {
-  if (!canCancel.value) {
-    ElMessage.error('无取消权限')
-    return
-  }
-  if (!detail.value) {
-    ElMessage.error('未找到对账单数据')
-    return
-  }
-  if (!isCancelStatusAllowed.value) {
-    ElMessage.error('当前状态不允许取消')
-    return
-  }
-  if (hasActivePayableOutbox.value || summaryMissing.value) {
-    ElMessage.error('当前条件不允许取消')
-    return
-  }
-  cancelForm.value.reason = ''
-  cancelVisible.value = true
-}
-
-const runConfirmStatement = async (): Promise<void> => {
-  if (!canConfirm.value) {
-    ElMessage.error('无确认权限')
-    return
-  }
-  if (!detail.value) {
-    ElMessage.error('未找到对账单数据')
-    return
-  }
-  if (!isDraftStatus.value) {
-    ElMessage.error('当前状态不允许确认')
-    return
-  }
-
-  const payload: FactoryStatementConfirmPayload = {
-    idempotency_key: buildIdempotencyKey('factory-statement-confirm'),
-    remark: confirmForm.value.remark.trim() || undefined,
-  }
-  if (!payload.idempotency_key) {
-    ElMessage.error('幂等键不能为空')
-    return
-  }
-
-  confirming.value = true
-  try {
-    await confirmFactoryStatement(ensureStatementId(), payload)
-    ElMessage.success('对账单已确认')
-    confirmVisible.value = false
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    confirming.value = false
-  }
-}
-
-const runCancelStatement = async (): Promise<void> => {
-  if (!canCancel.value) {
-    ElMessage.error('无取消权限')
-    return
-  }
-  if (!detail.value) {
-    ElMessage.error('未找到对账单数据')
-    return
-  }
-  if (!isCancelStatusAllowed.value) {
-    ElMessage.error('当前状态不允许取消')
-    return
-  }
-  if (hasActivePayableOutbox.value || summaryMissing.value) {
-    ElMessage.error('当前条件不允许取消')
-    return
-  }
-
-  const payload: FactoryStatementCancelPayload = {
-    idempotency_key: buildIdempotencyKey('factory-statement-cancel'),
-    reason: cancelForm.value.reason.trim() || undefined,
-  }
-  if (!payload.idempotency_key) {
-    ElMessage.error('幂等键不能为空')
-    return
-  }
-
-  cancelling.value = true
-  try {
-    await cancelFactoryStatement(ensureStatementId(), payload)
-    ElMessage.success('对账单已取消')
-    cancelVisible.value = false
-    await loadDetail()
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    cancelling.value = false
-  }
-}
-
-const openPrintView = (): void => {
-  if (!detail.value) {
-    ElMessage.warning('暂无可打印数据')
-    return
-  }
-  router.push({ path: '/factory-statements/print', query: { id: String(statementId.value) } })
-}
-
-const exportDetailCsv = (): void => {
-  if (!detail.value) {
-    ElMessage.warning('暂无可导出数据')
-    return
-  }
-  const filename = exportFactoryStatementDetailCsv(detail.value)
-  ElMessage.success(`已导出：${filename}`)
+  guardedFeedback.value = `${actionName}已禁用：详情页当前为只读模式`
+  ElMessage.warning(guardedFeedback.value)
 }
 
 const loadDetail = async (): Promise<void> => {
+  loadError.value = ''
+  detailLoaded.value = false
+
   if (!canRead.value) {
     detail.value = null
     items.value = []
@@ -474,16 +330,21 @@ const loadDetail = async (): Promise<void> => {
     missingStatementId.value = true
     return
   }
-  missingStatementId.value = false
 
+  missingStatementId.value = false
   loading.value = true
   try {
     const result = await fetchFactoryStatementDetail(statementId.value)
     detail.value = result.data
     items.value = result.data.items || []
     logs.value = result.data.logs || []
+    detailLoaded.value = true
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    detail.value = null
+    items.value = []
+    logs.value = []
+    loadError.value = (error as Error).message || '加载对账详情失败'
+    ElMessage.error(loadError.value)
   } finally {
     loading.value = false
   }
@@ -524,5 +385,16 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.outbox-card {
+  margin-top: 12px;
+}
+
+.state-tip {
+  margin-top: 12px;
+  margin-bottom: 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
 }
 </style>

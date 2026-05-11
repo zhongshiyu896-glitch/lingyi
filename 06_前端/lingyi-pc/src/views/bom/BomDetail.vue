@@ -1,134 +1,163 @@
 <template>
-  <div class="bom-detail-page">
-    <el-card shadow="never">
+  <div class="bom-detail-page" data-testid="bom-detail-page">
+    <el-card shadow="never" data-testid="bom-detail-main-card">
       <template #header>
-        <div class="header-row">
-          <span>BOM 详情</span>
-          <el-button @click="goBack">返回列表</el-button>
+        <div class="header-row" data-testid="bom-detail-header">
+          <span data-testid="bom-detail-title">BOM 详情</span>
+          <el-button data-testid="bom-detail-back" @click="goBack">返回列表</el-button>
         </div>
       </template>
 
-      <el-form label-width="110px">
-        <el-form-item label="BOM编号">
-          <el-input :model-value="bomNo" placeholder="BOM编号" disabled />
-        </el-form-item>
-        <el-form-item label="款式编码">
-          <el-input v-model="form.item_code" :disabled="isEditMode" placeholder="Item Code" />
-        </el-form-item>
-        <el-form-item label="版本号">
-          <el-input v-model="form.version_no" :disabled="!isDraftEditable" placeholder="如：V1" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-tag>{{ statusText }}</el-tag>
-        </el-form-item>
-      </el-form>
+      <el-alert
+        v-if="missingId"
+        data-testid="bom-detail-missing-id-state"
+        title="缺少 BOM ID，无法加载详情"
+        type="warning"
+        show-icon
+        :closable="false"
+      />
+      <el-alert
+        v-else-if="permissionDenied"
+        data-testid="bom-detail-permission-state"
+        title="当前账号无 BOM 查看权限"
+        type="warning"
+        show-icon
+        :closable="false"
+      />
+      <el-alert
+        v-else-if="loadError"
+        data-testid="bom-detail-error-state"
+        :title="loadError"
+        type="error"
+        show-icon
+        :closable="false"
+      />
 
-      <div class="actions">
-        <el-button
-          v-if="isDraftEditable && ((isEditMode && canUpdate) || (!isEditMode && canCreate))"
-          type="primary"
-          :loading="saving"
-          data-action-type="write"
-          :data-write-guard="isEditMode ? 'permission:update(v-if)+handler' : 'permission:create(v-if)+handler'"
-          :data-guard-state="isDraftEditable ? 'enabled_or_loading' : 'disabled'"
-          @click="saveDraft"
-        >
-          {{ isEditMode ? '保存草稿' : '创建 BOM' }}
-        </el-button>
-        <el-button
-          v-if="canSetDefault"
-          :disabled="!isEditMode || status !== 'active'"
-          :loading="settingDefault"
-          @click="setDefault"
-        >
-          设为默认
-        </el-button>
-        <el-button
-          v-if="canPublish"
-          type="success"
-          :disabled="!isEditMode || status !== 'draft'"
-          :loading="activating"
-          @click="activate"
-        >
-          发布
-        </el-button>
-        <el-button
-          v-if="canDeactivate"
-          type="danger"
-          :disabled="!isEditMode || status !== 'active'"
-          :loading="deactivating"
-          @click="deactivate"
-        >
-          停用
-        </el-button>
-      </div>
+      <template v-else>
+        <el-form label-width="110px" data-testid="bom-detail-main-fields">
+          <el-form-item label="BOM编号">
+            <el-input :model-value="bomNo" disabled data-testid="bom-detail-field-bom-no" />
+          </el-form-item>
+          <el-form-item label="款式编码">
+            <el-input :model-value="form.item_code" disabled data-testid="bom-detail-field-item-code" />
+          </el-form-item>
+          <el-form-item label="版本号">
+            <el-input :model-value="form.version_no" disabled data-testid="bom-detail-field-version-no" />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-tag :type="statusTagType" data-testid="bom-detail-status-tag">{{ statusText }}</el-tag>
+          </el-form-item>
+        </el-form>
+
+        <div class="actions" data-testid="bom-detail-actions">
+          <el-button
+            data-testid="bom-detail-action-save-draft"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('保存草稿')"
+          >
+            保存草稿
+          </el-button>
+          <el-button
+            data-testid="bom-detail-action-create"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('创建 BOM')"
+          >
+            创建 BOM
+          </el-button>
+          <el-button
+            data-testid="bom-detail-action-set-default"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('设为默认')"
+          >
+            设为默认
+          </el-button>
+          <el-button
+            data-testid="bom-detail-action-activate"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('发布')"
+          >
+            发布
+          </el-button>
+          <el-button
+            data-testid="bom-detail-action-deactivate"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('停用')"
+          >
+            停用
+          </el-button>
+          <el-button
+            data-testid="bom-detail-action-explode"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('展开计算')"
+          >
+            展开计算
+          </el-button>
+        </div>
+
+        <el-alert
+          v-if="guardedFeedback"
+          data-testid="bom-detail-guarded-feedback"
+          :title="guardedFeedback"
+          type="info"
+          show-icon
+          :closable="false"
+          style="margin-top: 12px"
+        />
+
+        <el-alert
+          v-if="showEmptyState"
+          data-testid="bom-detail-empty-state"
+          title="暂无 BOM 明细数据"
+          type="info"
+          show-icon
+          :closable="false"
+          style="margin-top: 12px"
+        />
+
+        <p class="state-tip" data-testid="bom-detail-permission-or-disabled-state">
+          当前页面仅提供只读浏览，写操作入口均已禁用。
+        </p>
+      </template>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card shadow="never" data-testid="bom-detail-material-section">
       <template #header>
         <div class="card-header">
           <span>物料明细</span>
-          <el-button size="small" :disabled="!isDraftEditable || !canDraftMutate" @click="addBomItem">新增物料</el-button>
+          <el-button
+            size="small"
+            data-testid="bom-detail-add-material"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('新增物料')"
+          >
+            新增物料
+          </el-button>
         </div>
       </template>
-      <el-table :data="bomItems" border empty-text="暂无物料明细">
-        <el-table-column label="物料编码" min-width="180">
-          <template #default="scope">
-            <el-input v-model="scope.row.material_item_code" placeholder="物料编码" :disabled="!isDraftEditable" />
-          </template>
-        </el-table-column>
-        <el-table-column label="颜色" min-width="120">
-          <template #default="scope">
-            <el-input v-model="scope.row.color" placeholder="颜色" :disabled="!isDraftEditable" />
-          </template>
-        </el-table-column>
-        <el-table-column label="尺码" min-width="100">
-          <template #default="scope">
-            <el-input v-model="scope.row.size" placeholder="尺码" :disabled="!isDraftEditable" />
-          </template>
-        </el-table-column>
-        <el-table-column label="单件用量" min-width="120">
-          <template #default="scope">
-            <el-input-number
-              v-model="scope.row.qty_per_piece"
-              :disabled="!isDraftEditable"
-              :min="0.000001"
-              :step="0.1"
-              aria-label="单件用量"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="损耗率" min-width="120">
-          <template #default="scope">
-            <el-input-number
-              v-model="scope.row.loss_rate"
-              :disabled="!isDraftEditable"
-              :min="0"
-              :step="0.01"
-              aria-label="损耗率"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="单位" min-width="100">
-          <template #default="scope">
-            <el-input v-model="scope.row.uom" placeholder="单位" :disabled="!isDraftEditable" />
-          </template>
-        </el-table-column>
-        <el-table-column label="备注" min-width="160">
-          <template #default="scope">
-            <el-input v-model="scope.row.remark" placeholder="备注" :disabled="!isDraftEditable" />
-          </template>
-        </el-table-column>
+      <el-table :data="bomItems" border empty-text="暂无物料明细" data-testid="bom-detail-material-table">
+        <el-table-column prop="material_item_code" label="物料编码" min-width="180" />
+        <el-table-column prop="color" label="颜色" min-width="120" />
+        <el-table-column prop="size" label="尺码" min-width="100" />
+        <el-table-column prop="qty_per_piece" label="单件用量" min-width="120" />
+        <el-table-column prop="loss_rate" label="损耗率" min-width="120" />
+        <el-table-column prop="uom" label="单位" min-width="100" />
+        <el-table-column prop="remark" label="备注" min-width="160" />
         <el-table-column label="操作" width="90">
           <template #default="scope">
             <el-button
               link
               type="danger"
               data-action-type="write"
-              :data-write-guard="isEditMode ? 'permission:update+draft_editable' : 'permission:create+draft_editable'"
-              :data-guard-state="!isDraftEditable || !canDraftMutate ? 'disabled' : 'enabled'"
-              :disabled="!isDraftEditable || !canDraftMutate"
-              @click="removeBomItem(scope.$index)"
+              data-write-guard="guarded:readonly"
+              :data-testid="`bom-detail-remove-material-${scope.$index}`"
+              @click="guardedWriteAction('删除物料')"
             >
               删除
             </el-button>
@@ -137,114 +166,56 @@
       </el-table>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card shadow="never" data-testid="bom-detail-operation-section">
       <template #header>
         <div class="card-header">
           <span>工序明细</span>
-          <el-button size="small" :disabled="!isDraftEditable || !canDraftMutate" @click="addOperation">新增工序</el-button>
+          <el-button
+            size="small"
+            data-testid="bom-detail-add-operation"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            @click="guardedWriteAction('新增工序')"
+          >
+            新增工序
+          </el-button>
         </div>
       </template>
-      <el-table :data="operations" border empty-text="暂无工序明细">
-        <el-table-column label="工序名称" min-width="180">
-          <template #default="scope">
-            <el-input v-model="scope.row.process_name" placeholder="工序名称" :disabled="!isDraftEditable" />
-          </template>
-        </el-table-column>
-        <el-table-column label="序号" width="100">
-          <template #default="scope">
-            <el-input-number
-              v-model="scope.row.sequence_no"
-              :disabled="!isDraftEditable"
-              :min="1"
-              :step="1"
-              aria-label="工序序号"
-            />
-          </template>
-        </el-table-column>
+      <el-table :data="operations" border empty-text="暂无工序明细" data-testid="bom-detail-operation-table">
+        <el-table-column prop="process_name" label="工序名称" min-width="180" />
+        <el-table-column prop="sequence_no" label="序号" width="100" />
         <el-table-column label="外发" width="100">
           <template #default="scope">
-            <el-switch v-model="scope.row.is_subcontract" :disabled="!isDraftEditable" />
+            <el-tag :type="scope.row.is_subcontract ? 'warning' : 'success'" data-testid="bom-detail-operation-mode-tag">
+              {{ scope.row.is_subcontract ? '外发' : '本厂' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="本厂工价" min-width="120">
           <template #default="scope">
-            <el-input-number
-              v-model="scope.row.wage_rate"
-              :disabled="!isDraftEditable || scope.row.is_subcontract"
-              :min="0"
-              :step="0.1"
-              aria-label="本厂工价"
-            />
+            {{ scope.row.wage_rate ?? '-' }}
           </template>
         </el-table-column>
         <el-table-column label="外发单价" min-width="120">
           <template #default="scope">
-            <el-input-number
-              v-model="scope.row.subcontract_cost_per_piece"
-              :disabled="!isDraftEditable || !scope.row.is_subcontract"
-              :min="0"
-              :step="0.1"
-              aria-label="外发单价"
-            />
+            {{ scope.row.subcontract_cost_per_piece ?? '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="备注" min-width="160">
-          <template #default="scope">
-            <el-input v-model="scope.row.remark" placeholder="备注" :disabled="!isDraftEditable" />
-          </template>
-        </el-table-column>
+        <el-table-column prop="remark" label="备注" min-width="160" />
         <el-table-column label="操作" width="90">
           <template #default="scope">
             <el-button
               link
               type="danger"
-              :disabled="!isDraftEditable || !canDraftMutate"
-              @click="removeOperation(scope.$index)"
+              data-action-type="write"
+              data-write-guard="guarded:readonly"
+              :data-testid="`bom-detail-remove-operation-${scope.$index}`"
+              @click="guardedWriteAction('删除工序')"
             >
               删除
             </el-button>
           </template>
         </el-table-column>
-      </el-table>
-    </el-card>
-
-    <el-card shadow="never">
-      <template #header><span>BOM 展开预览</span></template>
-      <el-form :inline="true">
-        <el-form-item label="订单数量">
-          <el-input-number v-model="explodeForm.order_qty" :min="0.000001" :step="1" aria-label="订单数量" />
-        </el-form-item>
-        <el-form-item label="操作">
-          <el-button type="primary" :disabled="!isEditMode || !canRead" :loading="exploding" @click="explode">
-            展开计算
-          </el-button>
-        </el-form-item>
-      </el-form>
-      <el-form-item label="尺码分布(JSON)">
-        <el-input
-          v-model="explodeForm.size_ratio_json"
-          type="textarea"
-          :rows="2"
-          placeholder='例如 {"M":60,"L":40}'
-        />
-      </el-form-item>
-
-      <el-descriptions :column="2" border v-if="explodeResult">
-        <el-descriptions-item label="物料总量">{{ explodeResult.total_material_qty }}</el-descriptions-item>
-        <el-descriptions-item label="工序总成本">{{ explodeResult.total_operation_cost }}</el-descriptions-item>
-      </el-descriptions>
-
-      <el-table empty-text="暂无展开结果"
-        v-if="explodeResult && explodeResult.material_requirements.length > 0"
-        :data="explodeResult.material_requirements"
-        border
-        style="margin-top: 12px"
-      >
-        <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
-        <el-table-column prop="color" label="颜色" min-width="100" />
-        <el-table-column prop="size" label="尺码" min-width="100" />
-        <el-table-column prop="uom" label="单位" width="100" />
-        <el-table-column prop="qty" label="需求数量" min-width="120" />
       </el-table>
     </el-card>
   </div>
@@ -253,21 +224,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  activateBom,
-  createBom,
-  deactivateBom,
-  explodeBom,
-  fetchBomDetail,
-  fetchBomList,
-  setDefaultBom,
-  updateBomDraft,
-  type BomCreatePayload,
-  type BomExplodeData,
-  type BomItemPayload,
-  type BomOperationPayload,
-} from '@/api/bom'
+import { ElMessage } from 'element-plus'
+import { fetchBomDetail } from '@/api/bom'
 import { usePermissionStore } from '@/stores/permission'
 
 interface BomItemForm {
@@ -298,58 +256,41 @@ const bomId = ref<number | null>(parsedId > 0 ? parsedId : null)
 const bomNo = ref<string>('-')
 const status = ref<string>('draft')
 
-const saving = ref<boolean>(false)
-const settingDefault = ref<boolean>(false)
-const activating = ref<boolean>(false)
-const deactivating = ref<boolean>(false)
-const exploding = ref<boolean>(false)
-
 const form = reactive({
   item_code: '',
   version_no: 'V1',
 })
 
-const emptyBomItem = (): BomItemForm => ({
-  material_item_code: '',
-  color: '',
-  size: '',
-  qty_per_piece: 1,
-  loss_rate: 0,
-  uom: '',
-  remark: '',
-})
+const bomItems = ref<BomItemForm[]>([])
+const operations = ref<BomOperationForm[]>([])
+const loadError = ref<string>('')
+const guardedFeedback = ref<string>('')
+const loading = ref<boolean>(false)
+const detailLoaded = ref<boolean>(false)
 
-const emptyOperation = (): BomOperationForm => ({
-  process_name: '',
-  sequence_no: 1,
-  is_subcontract: false,
-  wage_rate: 0,
-  subcontract_cost_per_piece: null,
-  remark: '',
-})
-
-const bomItems = ref<BomItemForm[]>([emptyBomItem()])
-const operations = ref<BomOperationForm[]>([emptyOperation()])
-
-const explodeForm = reactive({
-  order_qty: 100,
-  size_ratio_json: '',
-})
-const explodeResult = ref<BomExplodeData | null>(null)
-
-const isEditMode = computed<boolean>(() => bomId.value !== null)
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
-const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.create)
-const canUpdate = computed<boolean>(() => permissionStore.state.buttonPermissions.update)
-const canPublish = computed<boolean>(() => permissionStore.state.buttonPermissions.publish)
-const canDeactivate = computed<boolean>(() => permissionStore.state.buttonPermissions.deactivate)
-const canSetDefault = computed<boolean>(() => permissionStore.state.buttonPermissions.set_default)
-const isDraftEditable = computed<boolean>(() => !isEditMode.value || status.value === 'draft')
-const canDraftMutate = computed<boolean>(() => (isEditMode.value ? canUpdate.value : canCreate.value))
+const missingId = computed<boolean>(() => bomId.value === null)
+const permissionDenied = computed<boolean>(() => !missingId.value && !loading.value && !canRead.value)
+const showEmptyState = computed<boolean>(
+  () =>
+    detailLoaded.value &&
+    !loading.value &&
+    !loadError.value &&
+    !permissionDenied.value &&
+    bomItems.value.length === 0 &&
+    operations.value.length === 0,
+)
+
 const statusText = computed<string>(() => {
   if (status.value === 'active') return '已发布'
   if (status.value === 'inactive') return '已停用'
   return '草稿'
+})
+
+const statusTagType = computed<'success' | 'danger' | 'info'>(() => {
+  if (status.value === 'active') return 'success'
+  if (status.value === 'inactive') return 'danger'
+  return 'info'
 })
 
 const refreshPermissions = async (): Promise<void> => {
@@ -360,80 +301,7 @@ const refreshPermissions = async (): Promise<void> => {
   }
 }
 
-const normalizeItemPayload = (): BomItemPayload[] =>
-  bomItems.value.map((item) => ({
-    material_item_code: item.material_item_code.trim(),
-    color: item.color || undefined,
-    size: item.size || undefined,
-    qty_per_piece: item.qty_per_piece,
-    loss_rate: item.loss_rate,
-    uom: item.uom.trim(),
-    remark: item.remark || undefined,
-  }))
-
-const normalizeOperationPayload = (): BomOperationPayload[] =>
-  operations.value.map((op) => ({
-    process_name: op.process_name.trim(),
-    sequence_no: op.sequence_no,
-    is_subcontract: op.is_subcontract,
-    wage_rate: op.is_subcontract ? undefined : (op.wage_rate ?? undefined),
-    subcontract_cost_per_piece: op.is_subcontract ? (op.subcontract_cost_per_piece ?? undefined) : undefined,
-    remark: op.remark || undefined,
-  }))
-
-const validateBeforeSave = (): boolean => {
-  if (!form.item_code.trim()) {
-    ElMessage.warning('请填写款式编码')
-    return false
-  }
-  if (!form.version_no.trim()) {
-    ElMessage.warning('请填写版本号')
-    return false
-  }
-  if (bomItems.value.length === 0) {
-    ElMessage.warning('请至少添加一条物料明细')
-    return false
-  }
-  if (operations.value.length === 0) {
-    ElMessage.warning('请至少添加一条工序明细')
-    return false
-  }
-  for (const item of bomItems.value) {
-    if (!item.material_item_code.trim() || !item.uom.trim()) {
-      ElMessage.warning('物料编码与单位不能为空')
-      return false
-    }
-    if (item.qty_per_piece <= 0) {
-      ElMessage.warning('单件用量必须大于0')
-      return false
-    }
-    if (item.loss_rate < 0) {
-      ElMessage.warning('损耗率必须大于等于0')
-      return false
-    }
-  }
-  for (const op of operations.value) {
-    if (!op.process_name.trim() || op.sequence_no < 1) {
-      ElMessage.warning('工序名称不能为空且序号必须大于0')
-      return false
-    }
-    if (op.is_subcontract && (op.subcontract_cost_per_piece === null || op.subcontract_cost_per_piece < 0)) {
-      ElMessage.warning('外发工序必须填写外发单价')
-      return false
-    }
-    if (!op.is_subcontract && (op.wage_rate === null || op.wage_rate < 0)) {
-      ElMessage.warning('本厂工序必须填写本厂工价')
-      return false
-    }
-  }
-  return true
-}
-
 const loadDetail = async (id: number): Promise<void> => {
-  if (!canRead.value) {
-    ElMessage.warning('无权查看该 BOM')
-    return
-  }
   const result = await fetchBomDetail(id)
   const detail = result.data
   bomNo.value = detail.bom.bom_no
@@ -459,176 +327,9 @@ const loadDetail = async (id: number): Promise<void> => {
   }))
 }
 
-const resolveCreatedBomId = async (name: string): Promise<number | null> => {
-  const listResult = await fetchBomList({
-    item_code: form.item_code,
-    status: undefined,
-    page: 1,
-    page_size: 100,
-  })
-  const found = listResult.data.items.find((row) => row.bom_no === name)
-  return found ? found.id : null
-}
-
-const saveDraft = async (): Promise<void> => {
-  if (isEditMode.value && !canUpdate.value) {
-    ElMessage.warning('无权执行该操作')
-    return
-  }
-  if (!isEditMode.value && !canCreate.value) {
-    ElMessage.warning('无权执行该操作')
-    return
-  }
-  if (!validateBeforeSave()) return
-  saving.value = true
-  try {
-    if (isEditMode.value && bomId.value) {
-      await updateBomDraft(bomId.value, {
-        version_no: form.version_no,
-        bom_items: normalizeItemPayload(),
-        operations: normalizeOperationPayload(),
-      })
-      ElMessage.success('草稿更新成功')
-      await loadDetail(bomId.value)
-      return
-    }
-
-    const payload: BomCreatePayload = {
-      item_code: form.item_code.trim(),
-      version_no: form.version_no.trim(),
-      bom_items: normalizeItemPayload(),
-      operations: normalizeOperationPayload(),
-    }
-    const result = await createBom(payload)
-    const newId = await resolveCreatedBomId(result.data.name)
-    if (newId) {
-      bomId.value = newId
-      await router.replace({ path: '/bom/detail', query: { id: String(newId) } })
-      await refreshPermissions()
-      await loadDetail(newId)
-    } else {
-      bomNo.value = result.data.name
-    }
-    ElMessage.success('BOM 创建成功')
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    saving.value = false
-  }
-}
-
-const setDefault = async (): Promise<void> => {
-  if (!bomId.value) return
-  if (!canSetDefault.value) {
-    ElMessage.warning('无权执行该操作')
-    return
-  }
-  settingDefault.value = true
-  try {
-    await setDefaultBom(bomId.value)
-    ElMessage.success('默认 BOM 设置成功')
-    await refreshPermissions()
-    await loadDetail(bomId.value)
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    settingDefault.value = false
-  }
-}
-
-const activate = async (): Promise<void> => {
-  if (!bomId.value) return
-  if (!canPublish.value) {
-    ElMessage.warning('无权执行该操作')
-    return
-  }
-  activating.value = true
-  try {
-    await activateBom(bomId.value)
-    ElMessage.success('BOM 发布成功')
-    await refreshPermissions()
-    await loadDetail(bomId.value)
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    activating.value = false
-  }
-}
-
-const deactivate = async (): Promise<void> => {
-  if (!bomId.value) return
-  if (!canDeactivate.value) {
-    ElMessage.warning('无权执行该操作')
-    return
-  }
-  try {
-    const promptResult = await ElMessageBox.prompt('请输入停用原因', '停用 BOM', {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      inputPlaceholder: '例如：版本替换',
-    })
-    deactivating.value = true
-    await deactivateBom(bomId.value, promptResult.value || '')
-    ElMessage.success('BOM 已停用')
-    await refreshPermissions()
-    await loadDetail(bomId.value)
-  } catch (error) {
-    if ((error as Error).message !== 'cancel') {
-      ElMessage.error((error as Error).message)
-    }
-  } finally {
-    deactivating.value = false
-  }
-}
-
-const explode = async (): Promise<void> => {
-  if (!bomId.value) return
-  if (!canRead.value) {
-    ElMessage.warning('无 BOM 查看权限')
-    return
-  }
-  exploding.value = true
-  try {
-    let sizeRatio: Record<string, number> = {}
-    if (explodeForm.size_ratio_json.trim()) {
-      sizeRatio = JSON.parse(explodeForm.size_ratio_json) as Record<string, number>
-    }
-    const result = await explodeBom(bomId.value, {
-      order_qty: explodeForm.order_qty,
-      size_ratio: sizeRatio,
-    })
-    explodeResult.value = result.data
-    ElMessage.success('BOM 展开完成')
-  } catch (error) {
-    ElMessage.error((error as Error).message)
-  } finally {
-    exploding.value = false
-  }
-}
-
-const addBomItem = (): void => {
-  if (!isDraftEditable.value || !canDraftMutate.value) return
-  bomItems.value.push(emptyBomItem())
-}
-
-const removeBomItem = (index: number): void => {
-  if (!isDraftEditable.value || !canDraftMutate.value) return
-  if (bomItems.value.length <= 1) return
-  bomItems.value.splice(index, 1)
-}
-
-const addOperation = (): void => {
-  if (!isDraftEditable.value || !canDraftMutate.value) return
-  operations.value.push({
-    ...emptyOperation(),
-    sequence_no: operations.value.length + 1,
-  })
-}
-
-const removeOperation = (index: number): void => {
-  if (!isDraftEditable.value || !canDraftMutate.value) return
-  if (operations.value.length <= 1) return
-  operations.value.splice(index, 1)
+const guardedWriteAction = (action: string): void => {
+  guardedFeedback.value = `${action}已禁用：详情页当前为只读模式`
+  ElMessage.warning(guardedFeedback.value)
 }
 
 const goBack = (): void => {
@@ -636,20 +337,23 @@ const goBack = (): void => {
 }
 
 onMounted(async () => {
+  loadError.value = ''
+  guardedFeedback.value = ''
   try {
     await permissionStore.loadCurrentUser()
     await refreshPermissions()
-    if (bomId.value) {
-      if (!canRead.value) {
-        ElMessage.warning('无 BOM 查看权限')
-        return
-      }
-      await loadDetail(bomId.value)
-    } else if (!canCreate.value) {
-      ElMessage.warning('无权新建 BOM')
-    }
+
+    if (missingId.value) return
+    if (!canRead.value) return
+
+    loading.value = true
+    await loadDetail(bomId.value as number)
+    detailLoaded.value = true
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    loadError.value = (error as Error).message || '加载 BOM 详情失败'
+    ElMessage.error(loadError.value)
+  } finally {
+    loading.value = false
   }
 })
 </script>
@@ -676,5 +380,13 @@ onMounted(async () => {
 .actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.state-tip {
+  margin-top: 12px;
+  margin-bottom: 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
 }
 </style>
