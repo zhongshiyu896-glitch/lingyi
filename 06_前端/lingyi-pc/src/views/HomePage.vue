@@ -1,19 +1,43 @@
 <template>
-  <main class="home-page">
-    <section class="home-header">
+  <main class="home-page" data-testid="home-page">
+    <section class="home-header" data-testid="home-header-section">
       <div>
         <p class="eyebrow">Lingyi PC</p>
         <h1>领意服装管理系统</h1>
         <p class="subtitle">业务工作台</p>
       </div>
-      <div class="session-panel">
+      <div class="session-panel" data-testid="home-session-panel">
         <span class="session-label">当前账号</span>
-        <strong>{{ currentUser || '未获取到会话' }}</strong>
-        <span>{{ currentRoles }}</span>
+        <strong data-testid="home-session-username">{{ currentUser || '未获取到会话' }}</strong>
+        <span data-testid="home-session-roles">{{ currentRoles }}</span>
       </div>
     </section>
 
-    <section class="quick-grid" aria-label="核心入口">
+    <el-alert
+      type="info"
+      :closable="false"
+      show-icon
+      title="首页导航为只读演示；写动作入口统一禁用或拦截。"
+      data-testid="home-navigation-readonly-state"
+      class="home-readonly-alert"
+    />
+
+    <el-alert
+      v-if="showPermissionOrDisabledState"
+      type="warning"
+      :closable="false"
+      show-icon
+      title="当前会话权限或状态受限，部分入口不可用。"
+      data-testid="home-permission-or-disabled-state"
+      class="home-permission-alert"
+    />
+
+    <section class="home-navigation-feedback" data-testid="home-navigation-feedback">
+      <span class="feedback-label">最近导航</span>
+      <span class="feedback-path">{{ navigationFeedback || '暂无' }}</span>
+    </section>
+
+    <section class="quick-grid" aria-label="核心入口" data-testid="home-primary-entries">
       <button
         v-for="item in primaryEntries"
         :key="item.path"
@@ -22,6 +46,7 @@
         data-action-type="navigation"
         data-readonly-action="true"
         :data-route-path="item.path"
+        :data-testid="entryTestId('home-primary-entry', item.path)"
         @click="go(item.path)"
       >
         <span>{{ item.title }}</span>
@@ -29,9 +54,14 @@
       </button>
     </section>
 
-    <section class="module-bands">
-      <div v-for="group in entryGroups" :key="group.title" class="module-band">
-        <div class="band-title">{{ group.title }}</div>
+    <section class="module-bands" data-testid="home-module-groups">
+      <div
+        v-for="(group, groupIndex) in entryGroups"
+        :key="group.title"
+        class="module-band"
+        :data-testid="groupTestId(groupIndex)"
+      >
+        <div class="band-title" :data-testid="groupTitleTestId(groupIndex)">{{ group.title }}</div>
         <div class="module-links">
           <button
             v-for="item in group.items"
@@ -40,6 +70,7 @@
             data-action-type="navigation"
             data-readonly-action="true"
             :data-route-path="item.path"
+            :data-testid="entryTestId('home-module-entry', item.path)"
             @click="go(item.path)"
           >
             {{ item.title }}
@@ -70,6 +101,7 @@ const router = useRouter()
 const permissionStore = usePermissionStore()
 const currentUser = ref<string>('')
 const roles = ref<string[]>([])
+const navigationFeedback = ref<string>('')
 
 const entryGroups: EntryGroup[] = [
   {
@@ -118,12 +150,41 @@ const primaryEntries = computed<EntryItem[]>(() => [
 ])
 
 const currentRoles = computed<string>(() => roles.value.join(' / ') || '未获取到角色')
+const showPermissionOrDisabledState = computed<boolean>(() => {
+  return permissionStore.state.status === 'guest' || !currentUser.value
+})
+
+const normalizeRouteId = (path: string): string =>
+  path
+    .replace(/^\/+/, '')
+    .replace(/[\/:?&=#]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+
+const entryTestId = (prefix: string, path: string): string => {
+  const normalized = normalizeRouteId(path)
+  return normalized ? `${prefix}-${normalized}` : `${prefix}-root`
+}
+
+const groupTestId = (groupIndex: number): string => `home-module-group-${groupIndex + 1}`
+const groupTitleTestId = (groupIndex: number): string => `home-module-group-title-${groupIndex + 1}`
+
+const updateNavigationFeedback = (path: string): void => {
+  navigationFeedback.value = path
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.setItem('lingyi.home.last_nav_path', path)
+  }
+}
 
 const go = (path: string): void => {
+  updateNavigationFeedback(path)
   router.push(path)
 }
 
 onMounted(async () => {
+  if (typeof window !== 'undefined') {
+    navigationFeedback.value = window.sessionStorage.getItem('lingyi.home.last_nav_path') || ''
+  }
   try {
     await permissionStore.loadCurrentUser()
     currentUser.value = permissionStore.state.username || '访客会话'
@@ -141,6 +202,35 @@ onMounted(async () => {
   background: #f6f7f9;
   color: #1f2933;
   padding: 28px;
+}
+
+.home-readonly-alert,
+.home-permission-alert,
+.home-navigation-feedback {
+  max-width: 1180px;
+  margin: 0 auto 12px;
+}
+
+.home-navigation-feedback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border: 1px solid #e1e6ef;
+  border-radius: 6px;
+}
+
+.feedback-label {
+  color: #687386;
+  font-size: 13px;
+}
+
+.feedback-path {
+  color: #1f2933;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .home-header {

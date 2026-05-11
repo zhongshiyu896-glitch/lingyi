@@ -1,15 +1,24 @@
 <template>
-  <div class="report-catalog-page">
+  <div class="report-catalog-page" data-testid="report-catalog-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
           <span>报表中心 / 资金计划报表（TASK-Y3B-08）</span>
           <div class="header-actions">
-            <el-button type="primary" :loading="queryLoading" @click="loadCatalog">查询</el-button>
+            <el-button
+              type="primary"
+              :loading="queryLoading"
+              data-testid="report-catalog-query-button"
+              @click="loadCatalog"
+            >
+              查询
+            </el-button>
             <el-button
               type="success"
               plain
-              :disabled="!canExport || queryLoading || financeItems.length === 0"
+              :disabled="queryLoading || financeItems.length === 0"
+              data-testid="report-catalog-export-guarded-button"
+              data-write-guard="guarded:readonly-report-export"
               @click="handleExport"
             >
               导出（只读）
@@ -18,15 +27,26 @@
         </div>
       </template>
 
-      <el-form :inline="true" :model="query" class="query-form">
+      <el-form :inline="true" :model="query" class="query-form" data-testid="report-catalog-query-form">
         <el-form-item label="公司">
-          <el-input v-model="query.company" clearable placeholder="请输入" />
+          <el-input v-model="query.company" clearable placeholder="请输入" data-testid="report-catalog-company-input" />
         </el-form-item>
         <el-form-item label="客户">
-          <el-input v-model="query.customer_keyword" clearable placeholder="请输入" />
+          <el-input
+            v-model="query.customer_keyword"
+            clearable
+            placeholder="请输入"
+            data-testid="report-catalog-customer-input"
+          />
         </el-form-item>
         <el-form-item label="来源模块">
-          <el-select v-model="query.source_module" clearable placeholder="全部" style="width: 180px">
+          <el-select
+            v-model="query.source_module"
+            clearable
+            placeholder="全部"
+            style="width: 180px"
+            data-testid="report-catalog-source-module-select"
+          >
             <el-option v-for="item in sourceModuleOptions" :key="item" :label="item" :value="item" />
           </el-select>
         </el-form-item>
@@ -69,6 +89,7 @@
         type="warning"
         :closable="false"
         title="当前账号无 report:read 权限"
+        data-testid="report-catalog-permission-state"
         style="margin-bottom: 12px"
       />
       <el-alert
@@ -76,6 +97,7 @@
         type="warning"
         :closable="false"
         title="当前账号无 report:export 权限，导出按钮保持禁用。"
+        data-testid="report-catalog-export-permission-state"
         style="margin-bottom: 12px"
       />
       <el-alert
@@ -103,6 +125,15 @@
         type="error"
         :closable="false"
         :title="financeErrorMessage"
+        data-testid="report-catalog-error-state"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-if="exportGuardMessage"
+        type="warning"
+        :closable="false"
+        :title="exportGuardMessage"
+        data-testid="report-catalog-export-guarded-state"
         style="margin-bottom: 12px"
       />
 
@@ -110,6 +141,7 @@
         v-if="financeItems.length > 0"
         :data="financeItems"
         border
+        data-testid="report-catalog-table"
         empty-text="暂无资金计划报表目录数据"
         @row-click="onFinanceRowClick"
       >
@@ -132,9 +164,9 @@
         <el-table-column prop="status" label="状态" width="120" />
       </el-table>
 
-      <el-empty v-else description="暂无资金计划报表目录数据" />
+      <el-empty v-else description="暂无资金计划报表目录数据" data-testid="report-catalog-empty-state" />
 
-      <el-card v-if="selectedFinanceItem" shadow="never" class="detail-card">
+      <el-card v-if="selectedFinanceItem" shadow="never" class="detail-card" data-testid="report-catalog-detail-card">
         <template #header>
           <div class="header-row">
             <span>报表详情：{{ selectedFinanceItem.name }}</span>
@@ -235,6 +267,7 @@
           v-if="employeeTaskItems.length > 0"
           :data="employeeTaskItems"
           border
+          data-testid="employee-task-statistics-table"
           empty-text="暂无员工任务统计数据"
           @row-click="onEmployeeTaskRowClick"
         >
@@ -264,7 +297,11 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-else description="暂无员工任务统计数据" />
+        <el-empty
+          v-else
+          description="暂无员工任务统计数据"
+          data-testid="employee-task-statistics-empty-state"
+        />
 
         <el-card v-if="selectedEmployeeTaskItem" shadow="never" class="detail-card">
           <template #header>
@@ -349,6 +386,7 @@
           v-if="approvalItems.length > 0"
           :data="approvalItems"
           border
+          data-testid="approval-report-table"
           empty-text="暂无审批报表数据"
           @row-click="onApprovalRowClick"
         >
@@ -377,7 +415,7 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-else description="暂无审批报表数据" />
+        <el-empty v-else description="暂无审批报表数据" data-testid="approval-report-empty-state" />
 
         <el-card v-if="selectedApprovalItem" shadow="never" class="detail-card">
           <template #header>
@@ -495,6 +533,7 @@ const approvalLoading = ref<boolean>(false)
 const financeItems = ref<ReportCatalogItem[]>([])
 const selectedFinanceItem = ref<ReportCatalogItem | null>(null)
 const financeErrorMessage = ref<string>('')
+const exportGuardMessage = ref<string>('')
 const employeeTaskErrorMessage = ref<string>('')
 const approvalErrorMessage = ref<string>('')
 const scopeExpandedToOtherReports = ref<boolean>(false)
@@ -603,6 +642,7 @@ const loadFinanceCatalog = (): Promise<void> => {
   loading.value = true
   selectedFinanceItem.value = null
   financeErrorMessage.value = ''
+  exportGuardMessage.value = ''
   scopeExpandedToOtherReports.value = false
   return reportApi
     .fetchReportCatalog({
@@ -621,6 +661,7 @@ const loadFinanceCatalog = (): Promise<void> => {
     })
     .catch((error: unknown) => {
       financeItems.value = []
+      selectedFinanceItem.value = null
       const message = (error as Error).message || '目录加载失败'
       financeErrorMessage.value = `目录加载失败：${message}`
       ElMessage.error(message)
@@ -654,6 +695,10 @@ const loadEmployeeTaskStatistics = (): Promise<void> => {
     })
     .catch((error: unknown) => {
       employeeTaskItems.value = []
+      selectedEmployeeTaskItem.value = null
+      employeeTaskStatusTags.value = []
+      employeeTaskButtons.value = []
+      employeeTaskTableHeaders.value = []
       const message = (error as Error).message || '员工任务统计加载失败'
       employeeTaskErrorMessage.value = `员工任务统计加载失败：${message}`
       ElMessage.error(message)
@@ -686,6 +731,10 @@ const loadApprovalReports = (): Promise<void> => {
     })
     .catch((error: unknown) => {
       approvalItems.value = []
+      selectedApprovalItem.value = null
+      approvalStatusTags.value = []
+      approvalButtons.value = []
+      approvalTableHeaders.value = []
       const message = (error as Error).message || '审批报表加载失败'
       approvalErrorMessage.value = `审批报表加载失败：${message}`
       ElMessage.error(message)
@@ -706,6 +755,7 @@ const onFinanceRowClick = (row: ReportCatalogItem): Promise<void> => {
       selectedFinanceItem.value = result.data.item
     })
     .catch((error: unknown) => {
+      selectedFinanceItem.value = null
       const message = (error as Error).message || '详情加载失败'
       financeErrorMessage.value = `详情加载失败：${message}`
       ElMessage.error(message)
@@ -721,28 +771,20 @@ const onApprovalRowClick = (row: ApprovalReportItem): void => {
 }
 
 const handleExport = (): Promise<void> => {
+  exportGuardMessage.value = ''
   if (!canExport.value) {
     ElMessage.warning('当前账号无 report:export 权限')
+    exportGuardMessage.value = '当前账号无 report:export 权限，导出动作已拦截。'
     return Promise.resolve()
   }
   if (!financeItems.value.length) {
     ElMessage.info('无可导出的资金计划报表目录数据')
+    exportGuardMessage.value = '无可导出的资金计划报表目录数据，导出动作已拦截。'
     return Promise.resolve()
   }
-  return reportApi
-    .exportReportCatalogCsv({
-      company: query.company.trim() || undefined,
-      source_module: query.source_module || undefined,
-      report_type: query.report_type || undefined,
-    })
-    .then(() => {
-      ElMessage.success('已触发本地只读导出')
-    })
-    .catch((error: unknown) => {
-      const message = (error as Error).message || '导出失败'
-      financeErrorMessage.value = `导出失败：${message}`
-      ElMessage.error(message)
-    })
+  exportGuardMessage.value = '导出属于副作用动作，当前为只读演示模式，已执行 guarded 拦截。'
+  ElMessage.warning(exportGuardMessage.value)
+  return Promise.resolve()
 }
 
 onMounted(() => {
