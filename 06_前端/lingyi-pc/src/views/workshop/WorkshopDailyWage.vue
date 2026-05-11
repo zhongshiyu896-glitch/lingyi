@@ -1,10 +1,11 @@
 <template>
-  <div class="workshop-daily-wage">
-    <el-card shadow="never">
+  <div class="workshop-daily-wage" data-testid="workshop-daily-wage-page">
+    <el-card shadow="never" data-testid="workshop-daily-wage-main-section">
       <template #header>
         <div class="header-row">
           <span>员工日薪统计</span>
           <el-button
+            data-testid="workshop-daily-wage-back-to-ticket-list"
             data-action-type="navigation"
             data-readonly-action="true"
             data-route-path="/workshop/tickets"
@@ -15,62 +16,100 @@
         </div>
       </template>
 
-      <el-form :inline="true" :model="query">
+      <el-form :inline="true" :model="query" data-testid="workshop-daily-wage-filter-form">
         <el-form-item label="员工">
-          <el-input v-model="query.employee" clearable placeholder="Employee" />
+          <div data-testid="workshop-daily-wage-filter-employee">
+            <el-input v-model="query.employee" clearable placeholder="Employee" />
+          </div>
         </el-form-item>
         <el-form-item label="工序">
-          <el-input v-model="query.process_name" clearable placeholder="Process" />
+          <div data-testid="workshop-daily-wage-filter-process-name">
+            <el-input v-model="query.process_name" clearable placeholder="Process" />
+          </div>
         </el-form-item>
         <el-form-item label="款式">
-          <el-input v-model="query.item_code" clearable placeholder="Item Code" />
+          <div data-testid="workshop-daily-wage-filter-item-code">
+            <el-input v-model="query.item_code" clearable placeholder="Item Code" />
+          </div>
         </el-form-item>
         <el-form-item label="日期从">
-          <el-date-picker
-            v-model="query.from_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="选择开始日期"
-            aria-label="日薪开始日期"
-          />
+          <div data-testid="workshop-daily-wage-filter-from-date">
+            <el-date-picker
+              v-model="query.from_date"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="选择开始日期"
+              aria-label="日薪开始日期"
+            />
+          </div>
         </el-form-item>
         <el-form-item label="到">
-          <el-date-picker
-            v-model="query.to_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="选择结束日期"
-            aria-label="日薪结束日期"
-          />
+          <div data-testid="workshop-daily-wage-filter-to-date">
+            <el-date-picker
+              v-model="query.to_date"
+              type="date"
+              value-format="YYYY-MM-DD"
+              placeholder="选择结束日期"
+              aria-label="日薪结束日期"
+            />
+          </div>
         </el-form-item>
         <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="loadRows">查询</el-button>
+          <div class="query-action" data-testid="workshop-daily-wage-query-btn">
+            <el-button type="primary" :disabled="!canRead" @click="applyPrimaryQuery">查询</el-button>
+          </div>
+          <div class="query-action" data-testid="workshop-daily-wage-reset-btn">
+            <el-button :disabled="!canRead" @click="resetPrimaryFilters">重置</el-button>
+          </div>
         </el-form-item>
       </el-form>
 
       <el-skeleton v-if="!permissionReady" :rows="4" animated />
-      <el-empty v-else-if="!canRead" description="无日薪查看权限" />
+      <el-empty
+        v-else-if="!canRead"
+        description="无日薪查看权限"
+        data-testid="workshop-daily-wage-no-permission"
+      />
       <template v-else>
+        <el-alert
+          v-if="errorMessage"
+          style="margin-bottom: 12px"
+          type="error"
+          :closable="false"
+          show-icon
+          :title="errorMessage"
+          data-testid="workshop-daily-wage-error-state"
+        />
         <el-alert
           style="margin-bottom: 12px"
           type="success"
           :closable="false"
           show-icon
           :title="`当前查询工资合计：${totalAmount}`"
+          data-testid="workshop-daily-wage-total-amount"
         />
 
-        <el-table :data="rows" v-loading="loading" border empty-text="暂无日薪统计记录">
-          <el-table-column prop="employee" label="员工" min-width="120" />
-          <el-table-column prop="work_date" label="日期" min-width="120" />
-          <el-table-column prop="process_name" label="工序" min-width="120" />
-          <el-table-column prop="item_code" label="款式" min-width="120" />
-          <el-table-column prop="register_qty" label="登记数量" min-width="110" />
-          <el-table-column prop="reversal_qty" label="撤销数量" min-width="110" />
-          <el-table-column prop="net_qty" label="净数量" min-width="110" />
-          <el-table-column prop="wage_amount" label="工资金额" min-width="120" />
-        </el-table>
+        <div data-testid="workshop-daily-wage-table">
+          <el-table :data="rows" v-loading="loading" border empty-text="暂无日薪统计记录">
+            <el-table-column prop="employee" label="员工" min-width="120" />
+            <el-table-column prop="work_date" label="日期" min-width="120" />
+            <el-table-column prop="process_name" label="工序" min-width="120" />
+            <el-table-column prop="item_code" label="款式" min-width="120" />
+            <el-table-column prop="register_qty" label="登记数量" min-width="110" />
+            <el-table-column prop="reversal_qty" label="撤销数量" min-width="110" />
+            <el-table-column prop="net_qty" label="净数量" min-width="110" />
+            <el-table-column prop="wage_amount" label="工资金额" min-width="120" />
+          </el-table>
+        </div>
 
-        <div class="pager">
+        <el-empty
+          v-if="!loading && !errorMessage && rows.length === 0"
+          description="暂无日薪统计记录"
+          class="empty-state"
+          data-testid="workshop-daily-wage-empty-state"
+        />
+
+        <div class="pager" data-testid="workshop-daily-wage-pagination">
           <el-pagination
             background
             layout="prev, pager, next, total, sizes"
@@ -101,6 +140,7 @@ const permissionReady = ref<boolean>(false)
 const rows = ref<WorkshopDailyWageRow[]>([])
 const total = ref<number>(0)
 const totalAmount = ref<string | number>('0')
+const errorMessage = ref<string>('')
 
 const query = reactive({
   employee: '',
@@ -119,19 +159,39 @@ const loadRows = async (): Promise<void> => {
     rows.value = []
     total.value = 0
     totalAmount.value = '0'
+    errorMessage.value = ''
     return
   }
   loading.value = true
+  errorMessage.value = ''
   try {
     const result = await fetchWorkshopDailyWages(query)
     rows.value = result.data.items
     total.value = result.data.total
     totalAmount.value = result.data.total_amount
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message || '日薪统计加载失败'
+    errorMessage.value = message
+    ElMessage.error(message)
   } finally {
     loading.value = false
   }
+}
+
+const applyPrimaryQuery = (): void => {
+  query.page = 1
+  loadRows()
+}
+
+const resetPrimaryFilters = (): void => {
+  query.employee = ''
+  query.process_name = ''
+  query.item_code = ''
+  query.from_date = ''
+  query.to_date = ''
+  query.page = 1
+  query.page_size = 20
+  loadRows()
 }
 
 const onPageChange = (page: number): void => {
@@ -173,6 +233,15 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.query-action {
+  display: inline-flex;
+  margin-right: 8px;
+}
+
+.empty-state {
+  margin-top: 12px;
 }
 
 .pager {

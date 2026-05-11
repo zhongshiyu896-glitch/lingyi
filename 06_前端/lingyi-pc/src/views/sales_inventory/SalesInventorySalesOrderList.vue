@@ -1,5 +1,5 @@
 <template>
-  <div class="sales-inventory-page">
+  <div class="sales-inventory-page" data-testid="sales-order-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -11,13 +11,14 @@
         </div>
       </template>
 
-      <el-form :inline="true" :model="query" class="query-form">
+      <el-form :inline="true" :model="query" class="query-form" data-testid="sales-order-filter-form">
         <el-form-item label="订单号">
           <el-input
             v-model="query.order_no"
             clearable
             placeholder="订单号"
-            @keyup.enter="onSearch"
+            data-testid="sales-order-filter-order-no"
+            @keyup.enter="applyPrimaryQuery"
           />
         </el-form-item>
         <el-form-item label="关键词">
@@ -25,10 +26,11 @@
             v-model="query.keyword"
             clearable
             placeholder="款号/款名/客户款号"
-            @keyup.enter="onSearch"
+            data-testid="sales-order-filter-keyword"
+            @keyup.enter="applyPrimaryQuery"
           />
         </el-form-item>
-        <el-form-item label="开始时间">
+        <el-form-item label="开始时间" data-testid="sales-order-filter-from-date">
           <el-date-picker
             v-model="query.from_date"
             type="date"
@@ -37,7 +39,7 @@
             clearable
           />
         </el-form-item>
-        <el-form-item label="结束时间">
+        <el-form-item label="结束时间" data-testid="sales-order-filter-to-date">
           <el-date-picker
             v-model="query.to_date"
             type="date"
@@ -47,31 +49,61 @@
           />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :disabled="!canRead" @click="onSearch">搜索</el-button>
-          <el-button :disabled="!canRead" @click="onReset">重置</el-button>
+          <el-button
+            data-testid="sales-order-query-button"
+            type="primary"
+            :disabled="!canRead"
+            @click="applyPrimaryQuery"
+          >
+            搜索
+          </el-button>
+          <el-button
+            data-testid="sales-order-reset-button"
+            :disabled="!canRead"
+            @click="resetPrimaryFilters"
+          >
+            重置
+          </el-button>
         </el-form-item>
       </el-form>
 
-      <div class="toolbar-row">
-        <el-button @click="onUnavailableAction('筛选')">筛选</el-button>
-        <el-button type="primary" :disabled="!canRead" @click="onUnavailableAction('新建')">新建</el-button>
-        <el-button :disabled="!canRead" @click="onUnavailableAction('下单')">下单</el-button>
-        <el-button :disabled="!canRead" @click="onUnavailableAction('获取订单')">获取订单</el-button>
-        <el-button :disabled="!canRead" @click="onUnavailableAction('导入')">导入</el-button>
-        <el-button :disabled="!canExport" @click="onUnavailableAction('导出')">导出</el-button>
+      <div class="toolbar-row" data-testid="sales-order-toolbar">
+        <el-button data-testid="sales-order-guarded-filter" @click="onUnavailableAction('筛选')">筛选</el-button>
+        <el-button
+          data-testid="sales-order-guarded-new"
+          type="primary"
+          :disabled="!canRead"
+          @click="onUnavailableAction('新建')"
+        >
+          新建
+        </el-button>
+        <el-button data-testid="sales-order-guarded-place-order" :disabled="!canRead" @click="onUnavailableAction('下单')">
+          下单
+        </el-button>
+        <el-button data-testid="sales-order-guarded-fetch" :disabled="!canRead" @click="onUnavailableAction('获取订单')">
+          获取订单
+        </el-button>
+        <el-button data-testid="sales-order-guarded-import" :disabled="!canRead" @click="onUnavailableAction('导入')">
+          导入
+        </el-button>
+        <el-button data-testid="sales-order-guarded-export" :disabled="!canExport" @click="onUnavailableAction('导出')">
+          导出
+        </el-button>
       </div>
 
       <el-alert
         v-if="lastError"
+        data-testid="sales-order-error-state"
         class="error-alert"
         type="error"
         :closable="false"
         :title="`订单列表加载失败：${lastError}`"
       />
 
-      <el-empty v-if="!canRead" description="无销售库存查看权限" />
+      <el-empty v-if="!canRead" data-testid="sales-order-permission-state" description="无销售库存查看权限" />
       <template v-else>
         <el-table
+          data-testid="sales-order-table"
           :data="rows"
           border
           empty-text="暂无订单数据，请调整筛选条件后重试"
@@ -82,23 +114,60 @@
           <el-table-column prop="company" label="单位" min-width="130" />
           <el-table-column prop="transaction_date" label="下单日期" width="120" />
           <el-table-column prop="delivery_date" label="交期" width="120" />
-          <el-table-column prop="status" label="状态" min-width="120" />
+          <el-table-column label="状态" min-width="120">
+            <template #default="scope">
+              <el-tag data-testid="sales-order-status-tag" effect="plain" :type="resolveOrderStatusType(scope.row.status)">
+                {{ scope.row.status || '-' }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="数量/金额" min-width="130">
             <template #default="scope">{{ formatAmount(scope.row.grand_total) }}</template>
           </el-table-column>
           <el-table-column prop="currency" label="币种" width="100" />
           <el-table-column label="操作" fixed="right" min-width="230">
             <template #default="scope">
-              <el-button link type="primary" @click="onUnavailableAction('进度')">进度</el-button>
-              <el-button link type="primary" @click="goDetail(scope.row.name)">详情</el-button>
-              <el-button link type="primary" @click="onUnavailableAction('打印')">打印</el-button>
-              <el-button link type="primary" @click="onUnavailableAction('更多')">更多</el-button>
+              <el-button
+                data-testid="sales-order-guarded-progress"
+                link
+                type="primary"
+                @click="onUnavailableAction('进度')"
+              >
+                进度
+              </el-button>
+              <el-button data-testid="sales-order-detail-button" link type="primary" @click="goDetail(scope.row.name)">
+                详情
+              </el-button>
+              <el-button
+                data-testid="sales-order-guarded-print"
+                link
+                type="primary"
+                @click="onUnavailableAction('打印')"
+              >
+                打印
+              </el-button>
+              <el-button
+                data-testid="sales-order-guarded-more"
+                link
+                type="primary"
+                @click="onUnavailableAction('更多')"
+              >
+                更多
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
+        <p
+          v-if="!loading && rows.length === 0 && !lastError"
+          data-testid="sales-order-empty-state"
+          class="state-hint"
+        >
+          暂无订单数据，请调整筛选条件后重试
+        </p>
 
         <div class="pager">
           <el-pagination
+            data-testid="sales-order-pagination"
             background
             layout="prev, pager, next, total, sizes"
             :current-page="query.page"
@@ -112,7 +181,7 @@
 
         <el-divider />
 
-        <section class="p1-03-section">
+        <section class="p1-03-section" data-testid="sales-order-fulfillment-section">
           <div class="section-header">
             <div class="title-group">
               <span class="title">订单生产加工数量对照表</span>
@@ -121,12 +190,13 @@
             <el-tag type="warning" effect="plain">只读对照</el-tag>
           </div>
 
-          <el-form :inline="true" :model="fulfillmentQuery" class="query-form">
+          <el-form :inline="true" :model="fulfillmentQuery" class="query-form" data-testid="sales-order-fulfillment-filter-form">
             <el-form-item label="款号">
               <el-input
                 v-model="fulfillmentQuery.item_code"
                 clearable
                 placeholder="款号"
+                data-testid="sales-order-fulfillment-filter-item-code"
                 @keyup.enter="onFulfillmentSearch"
               />
             </el-form-item>
@@ -135,6 +205,7 @@
                 v-model="fulfillmentQuery.item_name"
                 clearable
                 placeholder="款名关键词"
+                data-testid="sales-order-fulfillment-filter-item-name"
                 @keyup.enter="onFulfillmentSearch"
               />
             </el-form-item>
@@ -143,22 +214,49 @@
                 v-model="fulfillmentQuery.warehouse"
                 clearable
                 placeholder="仓库"
+                data-testid="sales-order-fulfillment-filter-warehouse"
                 @keyup.enter="onFulfillmentSearch"
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :disabled="!canRead" @click="onFulfillmentSearch">查询</el-button>
-              <el-button :disabled="!canRead" @click="onFulfillmentReset">重置</el-button>
+              <el-button
+                data-testid="sales-order-fulfillment-query-button"
+                type="primary"
+                :disabled="!canRead"
+                @click="onFulfillmentSearch"
+              >
+                查询
+              </el-button>
+              <el-button
+                data-testid="sales-order-fulfillment-reset-button"
+                :disabled="!canRead"
+                @click="onFulfillmentReset"
+              >
+                重置
+              </el-button>
             </el-form-item>
           </el-form>
 
-          <div class="toolbar-row">
-            <el-button :disabled="!canExport" @click="onUnavailableAction('对照导出')">导出</el-button>
-            <el-button :disabled="!canRead" @click="onUnavailableAction('对照列设置')">列设置</el-button>
+          <div class="toolbar-row" data-testid="sales-order-fulfillment-toolbar">
+            <el-button
+              data-testid="sales-order-fulfillment-guarded-export"
+              :disabled="!canExport"
+              @click="onUnavailableAction('对照导出')"
+            >
+              导出
+            </el-button>
+            <el-button
+              data-testid="sales-order-fulfillment-guarded-columns"
+              :disabled="!canRead"
+              @click="onUnavailableAction('对照列设置')"
+            >
+              列设置
+            </el-button>
           </div>
 
           <el-alert
             v-if="fulfillmentError"
+            data-testid="sales-order-fulfillment-error-state"
             class="error-alert"
             type="error"
             :closable="false"
@@ -166,6 +264,7 @@
           />
 
           <el-table
+            data-testid="sales-order-fulfillment-table"
             :data="fulfillmentRows"
             border
             class="comparison-table"
@@ -186,19 +285,51 @@
             </el-table-column>
             <el-table-column label="状态" min-width="130">
               <template #default="scope">
-                <el-tag :type="resolveFulfillmentStatus(scope.row.fulfillment_rate).type" effect="plain">
+                <el-tag
+                  data-testid="sales-order-fulfillment-status-tag"
+                  :type="resolveFulfillmentStatus(scope.row.fulfillment_rate).type"
+                  effect="plain"
+                >
                   {{ resolveFulfillmentStatus(scope.row.fulfillment_rate).label }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="操作" fixed="right" min-width="220">
               <template #default="scope">
-                <el-button link type="primary" @click="goDetail(scope.row.sales_order)">查看</el-button>
-                <el-button link type="primary" @click="onUnavailableAction('对照导出')">导出</el-button>
-                <el-button link type="primary" @click="onUnavailableAction('对照更多')">更多</el-button>
+                <el-button
+                  data-testid="sales-order-fulfillment-detail-button"
+                  link
+                  type="primary"
+                  @click="goDetail(scope.row.sales_order)"
+                >
+                  查看
+                </el-button>
+                <el-button
+                  data-testid="sales-order-fulfillment-guarded-export-link"
+                  link
+                  type="primary"
+                  @click="onUnavailableAction('对照导出')"
+                >
+                  导出
+                </el-button>
+                <el-button
+                  data-testid="sales-order-fulfillment-guarded-more-link"
+                  link
+                  type="primary"
+                  @click="onUnavailableAction('对照更多')"
+                >
+                  更多
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
+          <p
+            v-if="!fulfillmentLoading && fulfillmentRows.length === 0 && !fulfillmentError"
+            data-testid="sales-order-fulfillment-empty-state"
+            class="state-hint"
+          >
+            暂无订单生产加工数量对照数据
+          </p>
         </section>
       </template>
     </el-card>
@@ -210,6 +341,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  fetchSalesInventorySalesOrderDetail,
   fetchSalesInventorySalesOrderFulfillment,
   fetchSalesInventorySalesOrders,
   type SalesOrderFulfillmentItem,
@@ -226,6 +358,7 @@ const lastError = ref<string>('')
 const fulfillmentLoading = ref<boolean>(false)
 const fulfillmentRows = ref<SalesOrderFulfillmentItem[]>([])
 const fulfillmentError = ref<string>('')
+const defaultPageSize = 20
 
 const canRead = computed<boolean>(() => {
   return (
@@ -273,6 +406,16 @@ const formatPercent = (value: string | number | null | undefined): string => {
     return String(value)
   }
   return `${(numeric * 100).toFixed(1)}%`
+}
+
+const resolveOrderStatusType = (status: string | null | undefined): 'success' | 'warning' | 'info' => {
+  if (status === 'Completed' || status === '已完成') {
+    return 'success'
+  }
+  if (status === 'Draft' || status === 'To Deliver and Bill' || status === '待发货') {
+    return 'warning'
+  }
+  return 'info'
 }
 
 const resolveFulfillmentStatus = (value: string | number | null | undefined): { label: string; type: 'success' | 'warning' | 'danger' | 'info' } => {
@@ -363,19 +506,19 @@ const loadFulfillmentRows = async (): Promise<void> => {
   }
 }
 
-const onSearch = (): void => {
+const applyPrimaryQuery = (): void => {
   query.page = 1
   void loadRows()
   void loadFulfillmentRows()
 }
 
-const onReset = (): void => {
+const resetPrimaryFilters = (): void => {
   query.order_no = ''
   query.keyword = ''
   query.from_date = ''
   query.to_date = ''
   query.page = 1
-  query.page_size = 20
+  query.page_size = defaultPageSize
   fulfillmentQuery.item_code = ''
   fulfillmentQuery.item_name = ''
   fulfillmentQuery.warehouse = ''
@@ -398,8 +541,19 @@ const onUnavailableAction = (actionName: string): void => {
   ElMessage.warning(`${actionName}功能在本地首版暂未接入，仅保留按钮与状态对齐`)
 }
 
-const goDetail = (name: string): void => {
-  router.push({ path: '/sales-inventory/sales-orders/detail', query: { name } })
+const goDetail = async (name: string): Promise<void> => {
+  if (!name) {
+    ElMessage.warning('缺少订单编号，无法打开详情')
+    return
+  }
+  try {
+    await fetchSalesInventorySalesOrderDetail(name)
+  } catch (error) {
+    // 详情页仍可继续打开，由详情页承接只读错误提示。
+    ElMessage.warning((error as Error).message || '详情数据加载失败')
+  } finally {
+    void router.push({ path: '/sales-inventory/sales-orders/detail', query: { name } })
+  }
 }
 
 const onPageChange = (page: number): void => {
@@ -487,5 +641,10 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+}
+
+.state-hint {
+  margin-top: 8px;
+  color: var(--el-text-color-secondary);
 }
 </style>

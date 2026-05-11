@@ -1,41 +1,67 @@
 <template>
-  <div class="subcontract-list-page">
-    <el-card shadow="never">
+  <div class="subcontract-list-page" data-testid="subcontract-list-page">
+    <el-card shadow="never" data-testid="subcontract-main-card">
       <template #header>
         <div class="header-row">
           <span>外发单列表</span>
+          <div class="header-actions" data-testid="subcontract-guarded-actions">
+            <el-button size="small" @click="guardedAction('新建外发单')">新建外发单</el-button>
+            <el-button size="small" @click="guardedAction('发料')">发料</el-button>
+            <el-button size="small" @click="guardedAction('回料')">回料</el-button>
+            <el-button size="small" @click="guardedAction('验货')">验货</el-button>
+            <el-button size="small" @click="guardedAction('同步重试')">同步重试</el-button>
+          </div>
         </div>
       </template>
 
-      <el-form :inline="true" :model="query">
+        <el-form :inline="true" :model="query" data-testid="subcontract-filter-form">
         <el-form-item label="加工厂">
-          <el-input v-model="query.supplier" clearable placeholder="Supplier" />
+          <div data-testid="subcontract-filter-supplier">
+            <el-input v-model="query.supplier" clearable placeholder="Supplier" />
+          </div>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select
-            v-model="query.status"
-            clearable
-            placeholder="全部状态"
-            aria-label="外发单状态筛选"
-            style="width: 150px"
-          >
-            <el-option label="草稿" value="draft" />
-            <el-option label="已发料" value="issued" />
-            <el-option label="加工中" value="processing" />
-            <el-option label="待回料" value="waiting_receive" />
-            <el-option label="待验货" value="waiting_inspection" />
-            <el-option label="已完成" value="completed" />
-            <el-option label="已取消" value="cancelled" />
-          </el-select>
+          <div data-testid="subcontract-filter-status">
+            <el-select
+              v-model="query.status"
+              clearable
+              placeholder="全部状态"
+              aria-label="外发单状态筛选"
+              style="width: 150px"
+            >
+              <el-option label="草稿" value="draft" />
+              <el-option label="已发料" value="issued" />
+              <el-option label="加工中" value="processing" />
+              <el-option label="待回料" value="waiting_receive" />
+              <el-option label="待验货" value="waiting_inspection" />
+              <el-option label="已完成" value="completed" />
+              <el-option label="已取消" value="cancelled" />
+            </el-select>
+          </div>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :disabled="!canRead" @click="loadOrders">查询</el-button>
+          <div class="query-action" data-testid="subcontract-query-btn">
+            <el-button type="primary" :disabled="!canRead" @click="applyQuery">查询</el-button>
+          </div>
+          <div class="query-action" data-testid="subcontract-reset-btn">
+            <el-button :disabled="!canRead" @click="resetQuery">重置</el-button>
+          </div>
         </el-form-item>
       </el-form>
 
-      <el-empty v-if="!canRead" description="无外发查看权限" />
+      <el-empty v-if="!canRead" description="无外发查看权限" data-testid="subcontract-permission-empty-state" />
       <template v-else>
-        <el-table :data="rows" v-loading="loading" border empty-text="暂无外发单数据">
+        <el-alert
+          v-if="errorMessage"
+          type="error"
+          :title="errorMessage"
+          show-icon
+          :closable="false"
+          class="error-state"
+          data-testid="subcontract-error-state"
+        />
+        <div data-testid="subcontract-table">
+          <el-table :data="rows" v-loading="loading" border empty-text="暂无外发单数据">
           <el-table-column prop="subcontract_no" label="外发单号" min-width="220" />
           <el-table-column prop="company" label="公司" min-width="150" />
           <el-table-column prop="supplier" label="加工厂" min-width="160" />
@@ -48,7 +74,9 @@
           <el-table-column prop="net_amount" label="净应付金额" width="120" />
           <el-table-column label="状态" min-width="180">
             <template #default="scope">
-              <el-tag>{{ statusLabel(scope.row.status) }}</el-tag>
+              <span data-testid="subcontract-status-tag">
+                <el-tag>{{ statusLabel(scope.row.status) }}</el-tag>
+              </span>
               <el-tag v-if="scope.row.resource_scope_status === 'blocked_scope'" type="danger" class="scope-tag">
                 权限范围异常
               </el-tag>
@@ -59,12 +87,22 @@
           </el-table-column>
           <el-table-column label="操作" width="120" fixed="right">
             <template #default="scope">
-              <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
+              <span data-testid="subcontract-detail-entry">
+                <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
+              </span>
             </template>
           </el-table-column>
-        </el-table>
+          </el-table>
+        </div>
 
-        <div class="pager">
+        <el-empty
+          v-if="!loading && !errorMessage && rows.length === 0"
+          description="暂无外发单数据"
+          class="empty-state"
+          data-testid="subcontract-empty-state"
+        />
+
+        <div class="pager" data-testid="subcontract-pagination">
           <el-pagination
             background
             layout="prev, pager, next, total, sizes"
@@ -96,6 +134,7 @@ const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
 const rows = ref<SubcontractOrderListItem[]>([])
 const total = ref<number>(0)
+const errorMessage = ref<string>('')
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 
@@ -147,22 +186,43 @@ const syncStatusLabel = (row: SubcontractOrderListItem): string => {
   return '未入列'
 }
 
+const guardedAction = (actionLabel: string): void => {
+  ElMessage.warning(`${actionLabel} 仅可在授权流程中执行，当前为只读模式`)
+}
+
 const loadOrders = async (): Promise<void> => {
   if (!canRead.value) {
     rows.value = []
     total.value = 0
+    errorMessage.value = ''
     return
   }
   loading.value = true
+  errorMessage.value = ''
   try {
     const payload = await fetchSubcontractOrders(query)
     rows.value = payload.data.items
     total.value = payload.data.total
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message || '外发单列表加载失败'
+    errorMessage.value = message
+    ElMessage.error(message)
   } finally {
     loading.value = false
   }
+}
+
+const applyQuery = (): void => {
+  query.page = 1
+  loadOrders()
+}
+
+const resetQuery = (): void => {
+  query.supplier = ''
+  query.status = ''
+  query.page = 1
+  query.page_size = 20
+  loadOrders()
 }
 
 const goDetail = (id: number): void => {
@@ -202,10 +262,30 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.query-action {
+  display: inline-flex;
+  margin-right: 8px;
 }
 
 .scope-tag {
   margin-left: 8px;
+}
+
+.error-state {
+  margin-bottom: 12px;
+}
+
+.empty-state {
+  margin-top: 12px;
 }
 
 .pager {
