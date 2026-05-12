@@ -1,0 +1,94 @@
+{
+  "task_id": "TASK-Z002B-06-IMPL",
+  "source_head": "7a9936f9d681f53422a695d55af8d05f2c092ef8",
+  "route_scope": [
+    "/bom/detail",
+    "/bom/list"
+  ],
+  "route_open": true,
+  "first_screen_visible": true,
+  "local_test_db_confirmed": true,
+  "scenario_tag": "Z002-BOM-DEACTIVATE-20260512-001",
+  "setup_write_counts": {
+    "create_post_count": 1,
+    "update_put_count": 1,
+    "activate_post_count": 1,
+    "set_default_post_count": 1
+  },
+  "deactivate_post_triggered": true,
+  "deactivate_post_count": 1,
+  "status_after_deactivate_mapped": true,
+  "default_cleared_or_ineligible_verified": true,
+  "detail_get_after_deactivate": true,
+  "list_get_after_deactivate": true,
+  "repeated_or_invalid_deactivate_fail_closed": true,
+  "write_request_count": 5,
+  "approved_write_request_count": 5,
+  "unexpected_write_request_count": 0,
+  "forbidden_deactivate_request_count": 0,
+  "production_write_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "unexplained_console_errors_total": 0,
+  "unexplained_network_4xx_5xx_total": 0,
+  "expected_network_4xx_5xx_total": 0,
+  "expected_console_errors_total": 0,
+  "screenshots_dir": "/tmp/task_z002b06_bom_screenshots_2026-05-12_162746",
+  "screenshots_count": 8,
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_apparel_bom": 0,
+    "ly_apparel_bom_item": 0,
+    "ly_bom_operation": 0,
+    "ly_operation_audit_log": 0
+  },
+  "cleanup_result_json": "/tmp/task_z002b06_cleanup_result.json",
+  "cleanup_order": [
+    "ly_apparel_bom_item",
+    "ly_bom_operation",
+    "ly_operation_audit_log",
+    "ly_apparel_bom"
+  ],
+  "approved_write_requests": [
+    {
+      "method": "POST",
+      "path": "/api/bom/",
+      "status": 200,
+      "host": "127.0.0.1:5174",
+      "source": "api-setup"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/bom/2",
+      "status": 200,
+      "host": "127.0.0.1:5174",
+      "source": "api-setup"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/2/activate",
+      "status": 200,
+      "host": "127.0.0.1:5174",
+      "source": "api-setup"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/2/set-default",
+      "status": 200,
+      "host": "127.0.0.1:5174",
+      "source": "api-setup"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/2/deactivate",
+      "status": 200,
+      "host": "127.0.0.1:5174",
+      "ts": 1778574468470,
+      "source": "browser"
+    }
+  ],
+  "unexpected_write_requests": [],
+  "forbidden_deactivate_requests": [],
+  "unexplained_console_errors": [],
+  "unexplained_network_4xx_5xx": []
+}

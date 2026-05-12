@@ -1,0 +1,143 @@
+{
+  "task_id": "TASK-Z002B-04-IMPL",
+  "source_head": "7a9936f9d681f53422a695d55af8d05f2c092ef8",
+  "route_scope": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "browser_result_json": "/tmp/task_z002b04_bom_browser_result_2026-05-12_0557.json",
+  "screenshots_dir": "/tmp/task_z002b04_bom_screenshots_2026-05-12_0557",
+  "screenshots_count": 12,
+  "local_test_db_confirmed": true,
+  "local_test_db_evidence": {
+    "backend_entry": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/local_dev.py",
+    "app_env": "development",
+    "db_url": "sqlite:///./lingyi_service.local.db",
+    "precheck_backend_auth_me_url": "http://127.0.0.1:8000/api/auth/me",
+    "precheck_frontend_auth_me_url": "http://127.0.0.1:5174/api/auth/me",
+    "precheck_backend_auth_me_status": 200,
+    "precheck_frontend_auth_me_status": 200
+  },
+  "route_open": true,
+  "first_screen_visible": true,
+  "production_write_count": 0,
+  "scenario_tags": [
+    "Z002-BOM-ACTIVE-20260512-001",
+    "Z002-BOM-ACTIVE-20260512-002"
+  ],
+  "scenario_tag_field_carrier": "version_no",
+  "scenario_item_code": "DEMO-TEE-Z002A-Z002A-Z002A-Z002A-Z002A-Z002A",
+  "create_post_count": 2,
+  "activate_post_count": 2,
+  "set_default_post_count": 2,
+  "create_post_triggered": true,
+  "detail_get_after_create": true,
+  "list_get_after_update": true,
+  "detail_get_after_update": true,
+  "approved_write_request_count": 6,
+  "approved_write_requests": [
+    {
+      "method": "POST",
+      "path": "/api/bom/",
+      "intent": "create_bom",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/",
+      "intent": "create_bom",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/7/activate",
+      "intent": "activate_bom",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/7/set-default",
+      "intent": "set_default_bom",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/8/activate",
+      "intent": "activate_bom",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/8/set-default",
+      "intent": "set_default_bom",
+      "status": 200
+    }
+  ],
+  "write_request_count": 6,
+  "same_item_default_uniqueness_verified": true,
+  "second_set_default_clears_first": true,
+  "active_status_visible": true,
+  "default_badge_visible": true,
+  "forbidden_bom_action_request_count": 0,
+  "forbidden_bom_action_requests": [],
+  "unexpected_write_request_count": 0,
+  "unexpected_write_requests": [],
+  "upload_download_export_print_request_count": 0,
+  "unexplained_console_errors_total": 0,
+  "unexplained_console_errors": [],
+  "unexplained_network_4xx_5xx_total": 0,
+  "unexplained_network_4xx_5xx": [],
+  "expected_network_4xx_5xx_total": 1,
+  "expected_network_4xx_5xx": [
+    {
+      "method": "GET",
+      "path": "/api/bom/8",
+      "status": 503,
+      "purpose": "error_state_probe"
+    }
+  ],
+  "expected_console_errors_total": 1,
+  "expected_console_errors": [
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  ],
+  "empty_state": true,
+  "error_state": true,
+  "permission_or_disabled_state": true,
+  "guarded_write_feedback": true,
+  "rollback_cleanup_executed": true,
+  "cleanup_scope_prefix": "Z002-BOM-ACTIVE-",
+  "cleanup_result_json": "/tmp/task_z002b04_cleanup_result.json",
+  "cleanup_order": [
+    "ly_apparel_bom_item",
+    "ly_bom_operation",
+    "ly_apparel_bom",
+    "ly_operation_audit_log"
+  ],
+  "residual_counts_by_table": {
+    "ly_apparel_bom": 0,
+    "ly_apparel_bom_item": 0,
+    "ly_bom_operation": 0,
+    "ly_operation_audit_log": 0
+  },
+  "zero_residual": true,
+  "command_validation": {
+    "python_compile_related_backend": "PASS",
+    "npm_precheck_dev_runtime": "PASS",
+    "npm_typecheck": "PASS",
+    "npm_verify": "PASS",
+    "git_diff_cached_name_only": "EMPTY",
+    "git_diff_cached_check": "PASS",
+    "git_diff_check": "PASS",
+    "git_diff_name_only_06_07": [
+      "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+      "07_后端/lingyi_service/app/services/bom_service.py"
+    ]
+  },
+  "lifecycle_actions": {
+    "git_add": false,
+    "git_commit": false,
+    "git_push": false,
+    "pr_merge_tag_release": false,
+    "repo_cleanup_reset_restore_clean_delete": false
+  }
+}

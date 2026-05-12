@@ -1,0 +1,104 @@
+{
+  "task_id": "TASK-Z002B-03-IMPL",
+  "source_head": "7a9936f9d681f53422a695d55af8d05f2c092ef8",
+  "route_scope": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "browser_result_json": "/tmp/task_z002b03_bom_browser_result_2026-05-12_0333.json",
+  "screenshots_dir": "/tmp/task_z002b03_bom_screenshots_2026-05-12_0333",
+  "screenshots_count": 9,
+  "local_test_db_confirmed": true,
+  "local_test_db_evidence": {
+    "backend_entry": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/local_dev.py",
+    "app_env": "development",
+    "db_url": "sqlite:///./lingyi_service.local.db",
+    "precheck_backend_auth_me": "http://127.0.0.1:8000/api/auth/me",
+    "precheck_frontend_auth_me": "http://127.0.0.1:5174/api/auth/me"
+  },
+  "scenario_tag": "Z002-BOM-DRAFT-20260512-001",
+  "scenario_tag_field_carrier": "version_no",
+  "updated_version_value": "Z002-BOM-DRAFT-20260512-001-U1",
+  "route_open": true,
+  "first_screen_visible": true,
+  "create_post_triggered": true,
+  "detail_get_after_create": true,
+  "update_put_triggered": true,
+  "list_get_after_update": true,
+  "detail_get_after_update": true,
+  "approved_write_request_count": 2,
+  "approved_write_requests": [
+    {
+      "method": "POST",
+      "path": "/api/bom/",
+      "status": 200,
+      "intent": "create_bom"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/bom/7",
+      "status": 200,
+      "intent": "update_bom_draft"
+    }
+  ],
+  "write_request_count": 2,
+  "production_write_count": 0,
+  "unexpected_write_request_count": 0,
+  "unexpected_write_requests": [],
+  "forbidden_bom_action_request_count": 0,
+  "forbidden_bom_action_requests": [],
+  "upload_download_export_print_request_count": 0,
+  "unexplained_console_errors_total": 0,
+  "unexplained_console_errors": [],
+  "unexplained_network_4xx_5xx_total": 0,
+  "unexplained_network_4xx_5xx": [],
+  "expected_network_4xx_5xx_total": 1,
+  "expected_network_4xx_5xx": [
+    {
+      "method": "GET",
+      "path": "/api/bom/6",
+      "status": 503,
+      "purpose": "error_state_probe"
+    }
+  ],
+  "expected_console_errors_total": 1,
+  "expected_console_errors": [
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  ],
+  "rollback_cleanup_executed": true,
+  "cleanup_scope_prefix": "Z002-BOM-DRAFT-",
+  "cleanup_order": [
+    "ly_apparel_bom_item",
+    "ly_bom_operation",
+    "ly_apparel_bom",
+    "ly_operation_audit_log"
+  ],
+  "residual_counts_by_table": {
+    "ly_apparel_bom": 0,
+    "ly_apparel_bom_item": 0,
+    "ly_bom_operation": 0,
+    "ly_operation_audit_log": 0
+  },
+  "zero_residual": true,
+  "empty_state": true,
+  "error_state": true,
+  "missing_id_state": true,
+  "permission_or_disabled_state": true,
+  "guarded_write_feedback": true,
+  "command_validation": {
+    "python_compile_related_backend": "PASS",
+    "npm_precheck_dev_runtime": "PASS",
+    "npm_typecheck": "PASS",
+    "npm_verify": "PASS",
+    "git_diff_cached_name_only": "EMPTY",
+    "git_diff_cached_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "lifecycle_actions": {
+    "git_add": false,
+    "git_commit": false,
+    "git_push": false,
+    "pr_merge_tag_release": false,
+    "repo_cleanup_reset_restore_clean_delete": false
+  }
+}

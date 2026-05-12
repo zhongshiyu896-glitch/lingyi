@@ -1,0 +1,162 @@
+{
+  "task_id": "TASK-Z002B-05-IMPL",
+  "source_head": "7a9936f9d681f53422a695d55af8d05f2c092ef8",
+  "route_scope": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "browser_result_json": "/tmp/task_z002b05_bom_browser_result_2026-05-12_0652.json",
+  "screenshots_dir": "/tmp/task_z002b05_bom_screenshots_2026-05-12_0652",
+  "screenshots_count": 9,
+  "local_test_db_confirmed": true,
+  "local_test_db_evidence": {
+    "backend_entry": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/local_dev.py",
+    "app_env": "development",
+    "db_url": "sqlite:///./lingyi_service.local.db",
+    "precheck_backend_auth_me_url": "http://127.0.0.1:8000/api/auth/me",
+    "precheck_frontend_auth_me_url": "http://127.0.0.1:5174/api/auth/me"
+  },
+  "scenario_tag": "Z002-BOM-EXPLODE-20260512-001",
+  "scenario_tag_field_carrier": "version_no",
+  "scenario_item_code": "DEMO-TEE-Z002E-Z002E",
+  "route_open": true,
+  "first_screen_visible": true,
+  "production_write_count": 0,
+  "setup_write_counts": {
+    "create_post_count": 1,
+    "update_put_count": 1,
+    "activate_post_count": 1,
+    "set_default_post_count": 1
+  },
+  "explode_post_triggered": true,
+  "explode_post_count": 1,
+  "material_requirements_mapped": true,
+  "operation_costs_mapped": true,
+  "material_total_recomputed": true,
+  "operation_total_recomputed": true,
+  "grand_total_recomputed": true,
+  "calculation_delta": {
+    "material_delta": 0,
+    "operation_delta": 0,
+    "grand_delta": 0
+  },
+  "calculation_delta_within_tolerance": true,
+  "tolerance": 1e-06,
+  "invalid_input_fail_closed": true,
+  "forbidden_deactivate_request_count": 0,
+  "forbidden_deactivate_requests": [],
+  "forbidden_bom_action_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "unexpected_write_requests": [],
+  "approved_write_request_count": 5,
+  "approved_write_requests": [
+    {
+      "method": "POST",
+      "path": "/api/bom/",
+      "host": "127.0.0.1:5174",
+      "status": 200,
+      "intent": "create_bom"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/bom/3",
+      "host": "127.0.0.1:5174",
+      "status": 200,
+      "intent": "update_bom_draft"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/3/activate",
+      "host": "127.0.0.1:5174",
+      "status": 200,
+      "intent": "activate_bom"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/3/set-default",
+      "host": "127.0.0.1:5174",
+      "status": 200,
+      "intent": "set_default_bom"
+    },
+    {
+      "url": "http://127.0.0.1:5174/api/bom/3/explode",
+      "host": "127.0.0.1:5174",
+      "path": "/api/bom/3/explode",
+      "method": "POST",
+      "status": 0,
+      "source": "ui"
+    }
+  ],
+  "write_request_count": 5,
+  "upload_download_export_print_request_count": 0,
+  "unexplained_console_errors_total": 0,
+  "unexplained_console_errors": [],
+  "unexplained_network_4xx_5xx_total": 0,
+  "unexplained_network_4xx_5xx": [],
+  "expected_network_4xx_5xx_total": 1,
+  "expected_network_4xx_5xx": [
+    {
+      "method": "GET",
+      "path": "/api/bom/3",
+      "status": 503,
+      "purpose": "error_state_probe"
+    }
+  ],
+  "expected_console_errors_total": 1,
+  "expected_console_errors": [
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  ],
+  "detail_get_after_create": true,
+  "list_get_after_update": true,
+  "detail_get_after_update": true,
+  "empty_state": true,
+  "error_state": true,
+  "permission_or_disabled_state": true,
+  "guarded_write_feedback": true,
+  "created_records": [
+    {
+      "scenario_tag": "Z002-BOM-EXPLODE-20260512-001",
+      "bom_id": 3,
+      "bom_no": "BOM-DEMO-TEE-Z002E-Z002E-Z002-BOM-EXPLODE-20260512-001-20260512065221079422",
+      "item_code": "DEMO-TEE-Z002E-Z002E",
+      "updated_version": "Z002-BOM-EXPLODE-20260512-001-U1"
+    }
+  ],
+  "rollback_cleanup_executed": true,
+  "cleanup_scope_prefix": "Z002-BOM-EXPLODE-",
+  "cleanup_result_json": "/tmp/task_z002b05_cleanup_result.json",
+  "cleanup_order": [
+    "ly_apparel_bom_item",
+    "ly_bom_operation",
+    "ly_apparel_bom",
+    "ly_operation_audit_log"
+  ],
+  "residual_counts_by_table": {
+    "ly_apparel_bom": 0,
+    "ly_apparel_bom_item": 0,
+    "ly_bom_operation": 0,
+    "ly_operation_audit_log": 0,
+    "ly_bom_explode_result": 0
+  },
+  "zero_residual": true,
+  "command_validation": {
+    "python_compile_related_backend": "PASS",
+    "npm_precheck_dev_runtime": "PASS",
+    "npm_typecheck": "PASS",
+    "npm_verify": "PASS",
+    "git_diff_cached_name_only": "EMPTY",
+    "git_diff_cached_check": "PASS",
+    "git_diff_check": "PASS",
+    "git_diff_name_only_06_07": [
+      "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+      "07_后端/lingyi_service/app/services/bom_service.py"
+    ]
+  },
+  "lifecycle_actions": {
+    "git_add": false,
+    "git_commit": false,
+    "git_push": false,
+    "pr_merge_tag_release": false,
+    "repo_cleanup_reset_restore_clean_delete": false
+  }
+}
