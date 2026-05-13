@@ -317,6 +317,7 @@ def create_production_plan(
     session: Session = Depends(get_db_session),
 ):
     action = PRODUCTION_PLAN_CREATE
+    raw_request_id = request.headers.get("X-Request-ID")
     permission_service = PermissionService(session=session)
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
@@ -331,7 +332,7 @@ def create_production_plan(
             resource_id=None,
         )
         service = _service(session=session, request=request)
-        scope_company, scope_item_code = service.resolve_create_scope(payload=payload)
+        scope_company, scope_item_code = service.resolve_create_scope(payload=payload, request_id=raw_request_id)
         permission_service.ensure_production_resource_permission(
             current_user=current_user,
             request_obj=request,
@@ -344,7 +345,7 @@ def create_production_plan(
             enforce_action=False,
         )
 
-        data = service.create_plan(payload=payload, operator=current_user.username)
+        data = service.create_plan(payload=payload, operator=current_user.username, request_id=raw_request_id)
         audit.record_success(
             module="production",
             action=action,

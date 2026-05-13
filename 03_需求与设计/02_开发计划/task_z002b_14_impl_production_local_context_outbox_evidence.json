@@ -1,0 +1,90 @@
+{
+  "task_id": "TASK-Z002B-14-IMPL",
+  "source_head": "1c0afbc0ad11662a52dc99870140b756f863bf03",
+  "APP_ENV": "development",
+  "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+  "local_test_db_confirmed": true,
+  "local_dev_gate_evidence": {
+    "entrypoint": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/local_dev.py",
+    "env_defaults": {
+      "APP_ENV": "development",
+      "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+      "LINGYI_ALLOW_DEV_AUTH": "true",
+      "LINGYI_ERPNEXT_BASE_URL": ""
+    }
+  },
+  "scenario_tag": "Z002-PRODUCTION-PLAN-LOCALCTX-20260513-017",
+  "scenario_tag_carriers": {
+    "sales_order": "SO-Z002-PRODUCTION-PLAN-LOCALCTX-20260513-017",
+    "sales_order_item": "SOI-Z002-PRODUCTION-PLAN-LOCALCTX-20260513-017",
+    "idempotency_key_plan": "Z002-PRODUCTION-PLAN-LOCALCTX-20260513-017",
+    "idempotency_key_work_order": "Z002-PRODUCTION-PLAN-LOCALCTX-20260513-017-WO",
+    "request_id_plan": "Z002-PRODUCTION-PLAN-LOCALCTX-20260513-017-REQ-PLAN",
+    "request_id_work_order": "Z002-PRODUCTION-PLAN-LOCALCTX-20260513-017-REQ-WO"
+  },
+  "create_plan_post_triggered": true,
+  "create_work_order_outbox_post_triggered": true,
+  "approved_write_request_count": 2,
+  "approved_write_requests": [
+    {
+      "method": "POST",
+      "endpoint": "/api/production/plans",
+      "status_code": 200
+    },
+    {
+      "method": "POST",
+      "endpoint": "/api/production/plans/1/create-work-order",
+      "status_code": 200
+    }
+  ],
+  "unexpected_write_request_count": 0,
+  "material_check_request_count": 0,
+  "sync_job_cards_request_count": 0,
+  "internal_worker_request_count": 0,
+  "erpnext_write_count": 0,
+  "production_write_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "forbidden_write_requests": [],
+  "plan_created": true,
+  "outbox_created": true,
+  "outbox_only_verified": true,
+  "status_log_mapped": {
+    "detail_status_before_cleanup": "work_order_pending",
+    "latest_work_order_outbox_status_before_cleanup": "pending",
+    "list_status_before_cleanup": "work_order_pending"
+  },
+  "browser_result_json": "/tmp/task_z002b14_browser_result.json",
+  "screenshots_dir": "/tmp/task_z002b14_screenshots",
+  "screenshots_count": 3,
+  "cleanup_json": "/tmp/task_z002b14_cleanup.json",
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_production_work_order_outbox": 0,
+    "ly_production_work_order_link": 0,
+    "ly_production_job_card_link": 0,
+    "ly_production_plan_material": 0,
+    "ly_production_status_log": 0,
+    "ly_production_plan": 0
+  },
+  "unexplained_console_errors_total": 0,
+  "unexplained_network_4xx_5xx_total": 0,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/production.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_service.py"
+  ],
+  "forbidden_actions_check": {
+    "worker_or_erpnext_adapter_edit": false,
+    "test_code_edit": false,
+    "control_plane_or_a_log_or_c_audit_edit": false,
+    "production_write": false,
+    "erpnext_write": false,
+    "material_check_sync_internal_worker_triggered": false,
+    "upload_download_export_print_triggered": false,
+    "git_lifecycle_action_executed": false,
+    "pr_merge_tag_release_executed": false,
+    "repo_cleanup_action_executed": false,
+    "parked_blockers_released": false
+  }
+}

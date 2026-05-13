@@ -92,7 +92,8 @@
         type="info"
         :closable="false"
         show-icon
-        title="当前仅开放 create-work-order 候选入口；sync-job-cards 继续冻结，internal worker 路径保持不变。"
+        title="当前为 local synthetic context + outbox-only 验证入口；sync-job-cards 继续冻结，internal worker 路径保持不变。"
+        data-testid="production-plan-detail-local-context-mode"
         style="margin-bottom: 12px"
       />
       <el-alert
@@ -123,14 +124,20 @@
         <el-form-item label="幂等键">
           <el-input v-model="createWorkOrderForm.idempotency_key" placeholder="idempotency key" data-testid="production-plan-detail-create-idempotency-key" />
         </el-form-item>
+        <el-form-item label="Request ID">
+          <el-input v-model="createWorkOrderForm.request_id" placeholder="request id" data-testid="production-plan-detail-create-request-id" />
+        </el-form-item>
       </el-form>
       <div style="display: flex; gap: 8px" data-testid="production-plan-detail-create-work-order-actions">
         <el-button data-testid="production-plan-detail-create-work-order-reset" @click="resetCreateWorkOrderForm">重置</el-button>
         <el-button
           type="primary"
           data-action-type="write"
-          data-write-guard="guarded:readonly"
+          data-write-guard="allowed:create-work-order-outbox-only"
+          data-write-allowlist="create-work-order-outbox-only"
           data-testid="production-plan-detail-create-work-order-action"
+          :loading="creatingWorkOrder"
+          :disabled="creatingWorkOrder"
           @click="submitCreateWorkOrder"
         >
           创建 Work Order（候选）
@@ -205,6 +212,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  createProductionWorkOrder,
   fetchProductionPlanDetail,
   type ProductionPlanDetailData,
 } from '@/api/production'
@@ -219,6 +227,7 @@ const missingPlanId = ref<boolean>(false)
 const loadError = ref<string>('')
 const guardedFeedback = ref<string>('')
 const loading = ref<boolean>(false)
+const creatingWorkOrder = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 
 const materialCheckForm = reactive({
@@ -229,6 +238,7 @@ const createWorkOrderForm = reactive({
   wip_warehouse: 'WIP Warehouse - LY',
   start_date: '',
   idempotency_key: '',
+  request_id: '',
 })
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
@@ -254,6 +264,7 @@ const normalizedCreateWorkOrderForm = computed(() => ({
   wip_warehouse: createWorkOrderForm.wip_warehouse.trim(),
   start_date: createWorkOrderForm.start_date.trim(),
   idempotency_key: createWorkOrderForm.idempotency_key.trim(),
+  request_id: createWorkOrderForm.request_id.trim(),
 }))
 const createWorkOrderValidationError = computed<string | null>(() => {
   if (!normalizedCreateWorkOrderForm.value.fg_warehouse) {
@@ -267,6 +278,9 @@ const createWorkOrderValidationError = computed<string | null>(() => {
   }
   if (!normalizedCreateWorkOrderForm.value.idempotency_key) {
     return 'idempotency_key 不能为空'
+  }
+  if (!normalizedCreateWorkOrderForm.value.request_id) {
+    return 'request_id 不能为空'
   }
   return null
 })
@@ -343,6 +357,12 @@ const buildIdempotencyKey = (prefix: string): string => {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+const buildRequestId = (prefix: string): string => {
+  const compact = prefix.replace(/[^A-Za-z0-9_.-]/g, '-').slice(0, 40)
+  const random = Math.random().toString(36).slice(2, 10)
+  return `${compact}-${Date.now()}-${random}`.slice(0, 64)
+}
+
 const guardedWriteAction = (actionLabel: string, reason = '当前为只读模式，已禁用写入操作'): void => {
   const message = `${actionLabel}：${reason}`
   guardedFeedback.value = message
@@ -354,6 +374,7 @@ const resetCreateWorkOrderForm = (): void => {
   createWorkOrderForm.wip_warehouse = 'WIP Warehouse - LY'
   createWorkOrderForm.start_date = ''
   createWorkOrderForm.idempotency_key = buildIdempotencyKey('production-create-work-order')
+  createWorkOrderForm.request_id = buildRequestId('production-create-work-order')
 }
 
 const ensurePlanId = (): number => {
@@ -409,7 +430,7 @@ const runMaterialCheck = (): void => {
   guardedWriteAction('执行物料检查')
 }
 
-const submitCreateWorkOrder = (): void => {
+const submitCreateWorkOrder = async (): Promise<void> => {
   if (!canWorkOrderCreate.value) {
     guardedWriteAction('创建 Work Order', '无创建工单权限')
     return
@@ -423,7 +444,27 @@ const submitCreateWorkOrder = (): void => {
     guardedWriteAction('创建 Work Order', validationError)
     return
   }
-  guardedWriteAction('创建 Work Order')
+  try {
+    creatingWorkOrder.value = true
+    await createProductionWorkOrder(
+      ensurePlanId(),
+      {
+        fg_warehouse: normalizedCreateWorkOrderForm.value.fg_warehouse,
+        wip_warehouse: normalizedCreateWorkOrderForm.value.wip_warehouse,
+        start_date: normalizedCreateWorkOrderForm.value.start_date,
+        idempotency_key: normalizedCreateWorkOrderForm.value.idempotency_key,
+      },
+      normalizedCreateWorkOrderForm.value.request_id,
+    )
+    guardedFeedback.value = ''
+    ElMessage.success('create-work-order 已写入本地 outbox')
+    await loadDetail()
+  } catch (error) {
+    const message = (error as Error).message || '创建 Work Order 失败'
+    guardedWriteAction('创建 Work Order', message)
+  } finally {
+    creatingWorkOrder.value = false
+  }
 }
 
 const goBack = (): void => {

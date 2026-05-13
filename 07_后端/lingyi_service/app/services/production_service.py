@@ -6,6 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 import hashlib
 import json
+import os
 import re
 from typing import Any
 
@@ -32,6 +33,7 @@ from app.core.error_codes import PRODUCTION_WORK_ORDER_SYNC_FAILED
 from app.core.exceptions import BusinessException
 from app.core.exceptions import DatabaseReadFailed
 from app.core.exceptions import DatabaseWriteFailed
+from app.core.exceptions import ERPNextServiceUnavailableError
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.production import LyProductionJobCardLink
@@ -72,6 +74,7 @@ from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
 from app.schemas.production import ProductionWorkOrderOutboxSummary
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
+from app.services.erpnext_production_adapter import ERPNextSalesOrder
 from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 from app.services.production_work_order_outbox_service import ProductionWorkOrderOutboxService
 
@@ -87,6 +90,9 @@ PRODUCTION_MATERIAL_CHECK_ALLOWED_STATUSES = frozenset(
         "work_order_created",
     }
 )
+PRODUCTION_LOCAL_SYNTHETIC_SCENARIO_PATTERN = re.compile(r"(Z002-PRODUCTION-PLAN-LOCALCTX-\d{8}-\d{3})")
+PRODUCTION_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+PRODUCTION_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 
 
 class ProductionService:
@@ -102,8 +108,9 @@ class ProductionService:
         *,
         payload: ProductionPlanCreateRequest,
         operator: str,
+        request_id: str | None = None,
     ) -> ProductionPlanCreateData:
-        sales_order, target_item, company = self._load_sales_order_context(payload=payload)
+        sales_order, target_item, company = self._load_sales_order_context(payload=payload, request_id=request_id)
 
         bom = self._resolve_bom(item_code=target_item.item_code, bom_id=payload.bom_id)
         if str(bom.item_code).strip() != target_item.item_code:
@@ -182,9 +189,14 @@ class ProductionService:
             company=company,
         )
 
-    def resolve_create_scope(self, *, payload: ProductionPlanCreateRequest) -> tuple[str, str]:
+    def resolve_create_scope(
+        self,
+        *,
+        payload: ProductionPlanCreateRequest,
+        request_id: str | None = None,
+    ) -> tuple[str, str]:
         """Resolve company/item scope for create-plan permission checks."""
-        _, target_item, company = self._load_sales_order_context(payload=payload)
+        _, target_item, company = self._load_sales_order_context(payload=payload, request_id=request_id)
         return company, str(target_item.item_code)
 
     def list_plans(
@@ -1578,10 +1590,24 @@ class ProductionService:
         self,
         *,
         payload: ProductionPlanCreateRequest,
+        request_id: str | None = None,
     ) -> tuple[Any, ERPNextSalesOrderItem, str]:
-        sales_order = self.erp_adapter.get_sales_order(sales_order=payload.sales_order.strip())
+        sales_order_name = payload.sales_order.strip()
+        sales_order = None
+        try:
+            sales_order = self.erp_adapter.get_sales_order(sales_order=sales_order_name)
+        except ERPNextServiceUnavailableError:
+            synthetic_context = self._build_local_synthetic_sales_order_context(payload=payload, request_id=request_id)
+            if synthetic_context is not None:
+                return synthetic_context
+            raise
+
         if sales_order is None:
+            synthetic_context = self._build_local_synthetic_sales_order_context(payload=payload, request_id=request_id)
+            if synthetic_context is not None:
+                return synthetic_context
             raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order 不存在")
+
         if int(sales_order.docstatus) != 1:
             raise BusinessException(code=PRODUCTION_SO_NOT_APPROVED, message="Sales Order 未提交")
         if (sales_order.status or "").strip().lower() in {"cancelled", "closed"}:
@@ -1596,6 +1622,85 @@ class ProductionService:
         if not company:
             raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order company 缺失")
         return sales_order, target_item, company
+
+    def _build_local_synthetic_sales_order_context(
+        self,
+        *,
+        payload: ProductionPlanCreateRequest,
+        request_id: str | None = None,
+    ) -> tuple[ERPNextSalesOrder, ERPNextSalesOrderItem, str] | None:
+        if not self._is_local_synthetic_context_enabled():
+            return None
+
+        scenario_tag = self._extract_local_synthetic_scenario_tag(payload=payload, request_id=request_id)
+        if scenario_tag is None:
+            return None
+
+        item_code = payload.item_code.strip()
+        sales_order_name = payload.sales_order.strip()
+        sales_order_item_name = (payload.sales_order_item or "").strip()
+        company = (payload.company or os.getenv("LINGYI_LOCAL_DEV_COMPANY", PRODUCTION_LOCAL_DEFAULT_COMPANY)).strip()
+        if not company:
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="local synthetic context 缺少 company")
+        if not sales_order_item_name:
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="local synthetic context 缺少 sales_order_item")
+
+        planned_qty = Decimal(str(payload.planned_qty))
+        synthetic_item = ERPNextSalesOrderItem(
+            name=sales_order_item_name,
+            item_code=item_code,
+            qty=planned_qty,
+        )
+        synthetic_order = ERPNextSalesOrder(
+            name=sales_order_name,
+            docstatus=1,
+            status="To Deliver and Bill",
+            company=company,
+            customer=f"LOCAL_SYNTHETIC_{scenario_tag}",
+            items=(synthetic_item,),
+        )
+        return synthetic_order, synthetic_item, company
+
+    @staticmethod
+    def _is_local_synthetic_context_enabled() -> bool:
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        db_url = os.getenv("LINGYI_DB_URL", "").strip()
+        return app_env == "development" and db_url == PRODUCTION_LOCAL_ALLOWED_DB_URL
+
+    @staticmethod
+    def _extract_local_synthetic_scenario_tag(
+        payload: ProductionPlanCreateRequest,
+        request_id: str | None = None,
+    ) -> str | None:
+        carriers = [
+            (payload.idempotency_key or "").strip(),
+            (payload.sales_order or "").strip(),
+            (payload.sales_order_item or "").strip(),
+        ]
+        if not all(carriers):
+            return None
+
+        matched_tags: list[str] = []
+        for value in carriers:
+            matched = PRODUCTION_LOCAL_SYNTHETIC_SCENARIO_PATTERN.search(value)
+            if matched is None:
+                return None
+            matched_tags.append(matched.group(1))
+
+        if len(set(matched_tags)) != 1:
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
+        scenario_tag = matched_tags[0]
+        request_id_value = (request_id or "").strip()
+        if not request_id_value:
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="request_id 不能为空")
+
+        request_match = PRODUCTION_LOCAL_SYNTHETIC_SCENARIO_PATTERN.search(request_id_value)
+        if request_match is None:
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
+        if request_match.group(1) != scenario_tag:
+            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+
+        return scenario_tag
 
     def _remaining_plannable_qty(self, *, sales_order_item: ERPNextSalesOrderItem) -> Decimal:
         try:

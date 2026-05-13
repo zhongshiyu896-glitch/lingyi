@@ -386,10 +386,14 @@ const toQuery = (params: Record<string, unknown>): string => {
 
 export const createProductionPlan = async (
   payload: ProductionPlanCreatePayload,
+  requestId?: string,
 ): Promise<ApiResponse<{ plan_id: number; plan_no: string; status: string; company: string }>> =>
   request<{ plan_id: number; plan_no: string; status: string; company: string }>('/api/production/plans', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(requestId ? { 'X-Request-ID': requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
@@ -538,10 +542,14 @@ export const checkProductionMaterials = async (
 export const createProductionWorkOrder = async (
   planId: number,
   payload: ProductionCreateWorkOrderPayload,
+  requestId?: string,
 ): Promise<ApiResponse<ProductionCreateWorkOrderData>> =>
   request<ProductionCreateWorkOrderData>(`/api/production/plans/${planId}/create-work-order`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(requestId ? { 'X-Request-ID': requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
