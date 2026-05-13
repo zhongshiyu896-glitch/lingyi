@@ -87,7 +87,7 @@ from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.workshop_outbox_service import WorkshopOutboxService
 
 logger = logging.getLogger(__name__)
-WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-TICKET-REGISTER-\d{8}-\d{3})")
+WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-(?:TICKET-REGISTER|BATCH)-\d{8}-\d{3})")
 WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 WORKSHOP_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 WORKSHOP_LOCAL_DEFAULT_ITEM_CODE = "DEMO-TEE"
@@ -546,6 +546,7 @@ class WorkshopService:
         operator: str,
         request_id: str,
         resolved_resource: WorkshopResourceContext | None = None,
+        local_scenario_tag: str | None = None,
     ) -> WorkshopTicketData:
         """Public wrapper for processing one batch row."""
         return self._handle_batch_row(
@@ -553,6 +554,7 @@ class WorkshopService:
             operator=operator,
             request_id=request_id,
             resolved_resource=resolved_resource,
+            local_scenario_tag=local_scenario_tag,
             row_guard=None,
         )
 
@@ -1195,6 +1197,7 @@ class WorkshopService:
         operator: str,
         request_id: str,
         resolved_resource: WorkshopResourceContext | None = None,
+        local_scenario_tag: str | None = None,
         row_guard: Any | None = None,
     ) -> WorkshopTicketData:
         row_resource = resolved_resource or self.resolve_job_card_resource(
@@ -1202,6 +1205,7 @@ class WorkshopService:
             process_name=row.process_name,
             request_item_code=row.item_code,
             enforce_status=True,
+            local_scenario_tag=local_scenario_tag,
         )
         if callable(row_guard):
             row_guard(row, row_resource)
@@ -1225,6 +1229,7 @@ class WorkshopService:
                 operator=operator,
                 request_id=request_id,
                 resolved_resource=row_resource,
+                local_scenario_tag=local_scenario_tag,
             )
         if operation_type == self.OP_REVERSAL:
             reversal_result = self.reverse_ticket(
@@ -1244,6 +1249,7 @@ class WorkshopService:
                 operator=operator,
                 request_id=request_id,
                 resolved_resource=row_resource,
+                local_scenario_tag=local_scenario_tag,
             )
             return WorkshopTicketData(
                 ticket_no=reversal_result.ticket_no,

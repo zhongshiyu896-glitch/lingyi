@@ -19,8 +19,9 @@
             <el-button
               v-if="canBatch"
               data-action-type="write"
-              data-write-guard="readonly:ticket_batch"
-              data-guard-state="guarded_readonly"
+              data-write-guard="allowed:workshop-ticket-batch-local-only-entry"
+              data-write-allowlist="workshop-ticket-batch"
+              data-guard-state="allowlist-local-dev"
               @click="goBatch"
             >
               批量导入

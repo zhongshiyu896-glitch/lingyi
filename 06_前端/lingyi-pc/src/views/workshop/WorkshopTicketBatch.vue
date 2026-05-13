@@ -40,8 +40,9 @@
           :loading="submitting"
           data-action-type="write"
           data-testid="workshop-ticket-batch-submit-button"
-          data-write-guard="guarded:readonly-ticket-batch-submit"
-          :data-guard-state="canBatch ? 'guarded-permission-ready' : 'guarded-no-permission'"
+          data-write-guard="allowed:workshop-ticket-batch-local-only"
+          data-write-allowlist="workshop-ticket-batch"
+          :data-guard-state="canBatch ? 'allowlist-local-dev' : 'guarded-no-permission'"
           @click="submitBatch"
         >
           开始导入
@@ -68,10 +69,27 @@
       <p class="permission-tip" data-testid="workshop-ticket-batch-permission-or-disabled-state">
         {{
           canBatch
-            ? '当前页面为只读演示，批量导入写动作已拦截。'
+            ? '当前页面允许本地测试库批量导入，受 scenario_tag 与 local-dev 门禁约束。'
             : '当前账号无批量导入权限，写动作已禁用。'
         }}
       </p>
+
+      <el-alert
+        v-if="batchReceipt"
+        type="success"
+        :closable="false"
+        show-icon
+        data-testid="workshop-ticket-batch-receipt"
+        :title="`导入完成：成功 ${batchReceipt.success_count} 条，失败 ${batchReceipt.failed_count} 条`"
+      />
+      <el-alert
+        v-if="readbackHint"
+        type="info"
+        :closable="false"
+        show-icon
+        data-testid="workshop-ticket-batch-readback-hint"
+        :title="readbackHint"
+      />
 
       <el-descriptions v-if="parseSummary" :column="3" border data-testid="workshop-ticket-batch-readonly-preview">
         <el-descriptions-item label="总行数">{{ parseSummary.total }}</el-descriptions-item>
@@ -83,7 +101,7 @@
         v-if="previewRows.length > 0"
         :data="previewRows"
         border
-        empty-text="暂无只读预览"
+        empty-text="暂无预览"
         style="margin-top: 12px"
         data-testid="workshop-ticket-batch-preview-table"
       >
@@ -116,6 +134,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { batchWorkshopTickets, fetchWorkshopTickets } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
@@ -124,6 +143,11 @@ const rawJson = ref<string>('')
 const submitting = ref<boolean>(false)
 const guardedFeedback = ref<string>('')
 const validationHint = ref<string>('')
+const readbackHint = ref<string>('')
+const batchReceipt = ref<{
+  success_count: number
+  failed_count: number
+} | null>(null)
 const parseSummary = ref<{ total: number; valid: number; invalid: number } | null>(null)
 const previewRows = ref<Array<{
   row_index: number
@@ -141,11 +165,14 @@ const validationRows = ref<Array<{
 }>>([])
 
 const canBatch = computed<boolean>(() => permissionStore.state.buttonPermissions.ticket_batch)
+const SCENARIO_PATTERN = /(Z002-WORKSHOP-BATCH-\d{8}-\d{3})/
 
 const resetParseState = (): void => {
   parseSummary.value = null
   previewRows.value = []
   validationRows.value = []
+  batchReceipt.value = null
+  readbackHint.value = ''
 }
 
 const parsePayload = (notify: boolean): boolean => {
@@ -180,7 +207,7 @@ const parsePayload = (notify: boolean): boolean => {
     qty: number
   }> = []
   const invalids: Array<{ row_index: number; ticket_key: string; code: string; message: string }> = []
-  const requiredFields = ['ticket_key', 'job_card', 'employee', 'process_name', 'qty', 'work_date']
+  const requiredFields = ['ticket_key', 'job_card', 'employee', 'process_name', 'qty', 'work_date', 'source_ref']
 
   rows.forEach((row, idx) => {
     const rowIndex = idx + 1
@@ -198,6 +225,12 @@ const parsePayload = (notify: boolean): boolean => {
       if (!row.reason || String(row.reason).trim().length === 0) {
         missing.push('reason')
       }
+    }
+    if (!SCENARIO_PATTERN.test(String(row.ticket_key || ''))) {
+      missing.push('ticket_key(scenario_tag)')
+    }
+    if (!SCENARIO_PATTERN.test(String(row.source_ref || ''))) {
+      missing.push('source_ref(scenario_tag)')
     }
     if (missing.length > 0) {
       invalids.push({
@@ -233,7 +266,14 @@ const parsePayload = (notify: boolean): boolean => {
   return true
 }
 
-const submitBatch = (): void => {
+const extractScenarioTag = (value: string): string | null => {
+  const matched = value.match(SCENARIO_PATTERN)
+  return matched ? matched[1] : null
+}
+
+const buildRequestId = (scenarioTag: string): string => `${scenarioTag}-REQ-BATCH`
+
+const submitBatch = async (): Promise<void> => {
   const ok = parsePayload(true)
   if (!ok) return
 
@@ -243,8 +283,85 @@ const submitBatch = (): void => {
     return
   }
 
-  guardedFeedback.value = '批量导入属于写动作，当前为只读演示模式，已拦截真实导入请求。'
-  ElMessage.warning(guardedFeedback.value)
+  let payloadRows: Array<Record<string, unknown>> = []
+  try {
+    const parsed = JSON.parse(rawJson.value || '[]')
+    if (!Array.isArray(parsed)) throw new Error('导入内容必须是 JSON 数组')
+    payloadRows = parsed
+  } catch (error) {
+    guardedFeedback.value = `JSON 解析失败：${(error as Error).message}`
+    ElMessage.error(guardedFeedback.value)
+    return
+  }
+
+  if (payloadRows.length === 0) {
+    guardedFeedback.value = '请先输入导入数据（非空 JSON 数组）'
+    ElMessage.warning(guardedFeedback.value)
+    return
+  }
+
+  const scenarioTags = payloadRows
+    .map((row) => [extractScenarioTag(String(row.ticket_key || '')), extractScenarioTag(String(row.source_ref || ''))])
+    .flat()
+    .filter((tag): tag is string => Boolean(tag))
+
+  if (scenarioTags.length === 0) {
+    guardedFeedback.value = 'scenario_tag 缺失或格式非法，请检查 ticket_key/source_ref。'
+    ElMessage.warning(guardedFeedback.value)
+    return
+  }
+  const scenarioTag = scenarioTags[0]
+  if (!scenarioTags.every((tag) => tag === scenarioTag)) {
+    guardedFeedback.value = 'scenario_tag 载体不一致，已阻断提交。'
+    ElMessage.warning(guardedFeedback.value)
+    return
+  }
+
+  submitting.value = true
+  guardedFeedback.value = ''
+  readbackHint.value = ''
+  try {
+    const requestId = buildRequestId(scenarioTag)
+    const response = await batchWorkshopTickets(
+      payloadRows as Array<{
+        operation_type?: 'register' | 'reversal'
+        ticket_key: string
+        job_card: string
+        item_code?: string
+        employee: string
+        process_name: string
+        color?: string
+        size?: string
+        qty: number
+        work_date: string
+        source: string
+        source_ref?: string
+        original_ticket_id?: number
+        reason?: string
+      }>,
+      { requestId },
+    )
+    const data = response.data
+    batchReceipt.value = {
+      success_count: data.success_count,
+      failed_count: data.failed_count,
+    }
+    validationRows.value = data.failed_items.map((item) => ({
+      row_index: item.row_index,
+      ticket_key: item.ticket_key,
+      code: item.error_code || item.code,
+      message: item.message,
+    }))
+    ElMessage.success(`导入完成：成功 ${data.success_count} 条，失败 ${data.failed_count} 条`)
+
+    const readback = await fetchWorkshopTickets({ page: 1, page_size: 20 })
+    readbackHint.value = `回读完成：当前可见 ${readback.data.items.length} 条，total=${readback.data.total}`
+  } catch (error) {
+    guardedFeedback.value = (error as Error).message || '批量导入失败'
+    ElMessage.error(guardedFeedback.value)
+  } finally {
+    submitting.value = false
+  }
 }
 
 const goList = (): void => {

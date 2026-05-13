@@ -98,6 +98,7 @@ router = APIRouter(prefix="/api/workshop", tags=["workshop"])
 logger = logging.getLogger(__name__)
 WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-TICKET-REGISTER-\d{8}-\d{3})")
+WORKSHOP_LOCAL_BATCH_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-BATCH-\d{8}-\d{3})")
 
 
 ROW_LEVEL_BATCH_APP_CODES = {
@@ -289,6 +290,13 @@ def _match_scenario_tag(value: str) -> str | None:
     return matched.group(1)
 
 
+def _match_batch_scenario_tag(value: str) -> str | None:
+    matched = WORKSHOP_LOCAL_BATCH_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
 def _validate_local_ticket_write_gate(
     *,
     mode: str,
@@ -334,6 +342,45 @@ def _validate_local_ticket_write_gate(
     if mode not in {"register", "reversal"}:
         raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="unsupported workshop write mode")
     return scenario_tag
+
+
+def _validate_local_ticket_batch_gate(
+    *,
+    payload: WorkshopTicketBatchRequest,
+    request_id: str,
+    request_obj: Request,
+) -> str:
+    if not _is_local_workshop_write_enabled():
+        raise BusinessException(code=AUTH_FORBIDDEN, message="仅允许本地开发测试库执行工票写入")
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 不能为空")
+
+    header_tag = _match_batch_scenario_tag(request_id_header)
+    if header_tag is None:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
+
+    normalized_request_tag = _match_batch_scenario_tag((request_id or "").strip())
+    if normalized_request_tag is None:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
+    if normalized_request_tag != header_tag:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+
+    for row in payload.tickets:
+        ticket_key = row.ticket_key.strip()
+        source_ref = (row.source_ref or "").strip()
+        if not ticket_key or not source_ref:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失")
+
+        ticket_tag = _match_batch_scenario_tag(ticket_key)
+        source_ref_tag = _match_batch_scenario_tag(source_ref)
+        if ticket_tag is None or source_ref_tag is None:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失或格式非法")
+        if ticket_tag != source_ref_tag or ticket_tag != header_tag:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
+
+    return header_tag
 
 
 def _record_batch_security_denial_strict(
@@ -622,6 +669,11 @@ def batch_tickets(
     request_id = get_request_id_from_request(request)
 
     try:
+        local_scenario_tag = _validate_local_ticket_batch_gate(
+            payload=payload,
+            request_id=request_id,
+            request_obj=request,
+        )
         permission_service.require_action(
             current_user=current_user,
             request_obj=request,
@@ -647,6 +699,7 @@ def batch_tickets(
                     process_name=row.process_name,
                     request_item_code=row.item_code,
                     enforce_status=True,
+                    local_scenario_tag=local_scenario_tag,
                 )
 
                 if user_permissions is not None:
@@ -743,6 +796,7 @@ def batch_tickets(
                             operator=current_user.username,
                             request_id=request_id,
                             resolved_resource=row_resource,
+                            local_scenario_tag=local_scenario_tag,
                         )
                     )
             except HTTPException as exc:

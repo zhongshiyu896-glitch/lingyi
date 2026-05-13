@@ -1,0 +1,116 @@
+{
+  "task_id": "TASK-Z002B-26-IMPL",
+  "source_head": "7f5611fed765f3fb41ee35deefa89db72235749c",
+  "source_subject": "chore: seal workshop ticket write closure",
+  "APP_ENV": "development",
+  "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+  "local_test_db_confirmed": true,
+  "scenario_tag": "Z002-WORKSHOP-BATCH-20260513-026",
+  "scenario_tag_carriers": {
+    "payload.ticket_key": "TK-Z002-WORKSHOP-BATCH-20260513-026-REG-101 / TK-Z002-WORKSHOP-BATCH-20260513-026-REG-102",
+    "payload.source_ref": "SRC-Z002-WORKSHOP-BATCH-20260513-026-101 / SRC-Z002-WORKSHOP-BATCH-20260513-026-102",
+    "header.X-Request-ID": "Z002-WORKSHOP-BATCH-20260513-026-REQ-BATCH"
+  },
+  "route_open": true,
+  "first_screen_visible": true,
+  "batch_json_parse_preview": true,
+  "batch_post_triggered": true,
+  "batch_post_status": 200,
+  "batch_success_receipt_visible": true,
+  "batch_failed_items_visible": true,
+  "list_get_after_batch": true,
+  "list_get_after_batch_status": 200,
+  "missing_request_id_fail_closed": true,
+  "missing_request_id_status": 409,
+  "mismatched_request_id_fail_closed": true,
+  "mismatched_request_id_status": 409,
+  "missing_or_mismatched_scenario_tag_fail_closed": true,
+  "missing_source_ref_status": 409,
+  "mismatched_source_ref_status": 409,
+  "db_write_on_failed_gate_count": 0,
+  "approved_write_request_count": 1,
+  "approved_write_requests": [
+    {
+      "url": "http://127.0.0.1:5174/api/workshop/tickets/batch",
+      "method": "POST",
+      "status": 200
+    }
+  ],
+  "unexpected_write_request_count": 0,
+  "forbidden_batch_sync_worker_request_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_request_count": 0,
+  "production_write_count": 0,
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ys_workshop_ticket": 0,
+    "ys_workshop_daily_wage": 0,
+    "ys_workshop_job_card_sync_outbox": 0,
+    "ys_workshop_job_card_sync_log": 0,
+    "ys_workshop_outbox_access_denial": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "unexplained_console_errors_total": 0,
+  "unexplained_network_4xx_5xx_total": 0,
+  "browser_json": "/tmp/task_z002b26_browser_result.json",
+  "cleanup_json": "/tmp/task_z002b26_cleanup.json",
+  "api_run_json": "/tmp/task_z002b26_fail_probe.json",
+  "screenshots_dir": "/tmp/task_z002b26_screenshots",
+  "screenshots_count": 3,
+  "screenshots": [
+    "/tmp/task_z002b26_screenshots/01_batch_page.png",
+    "/tmp/task_z002b26_screenshots/02_batch_preview.png",
+    "/tmp/task_z002b26_screenshots/03_batch_receipt.png"
+  ],
+  "fail_closed_cases": {
+    "missing_request_id": {
+      "status": 409,
+      "body": {
+        "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+        "message": "request_id 不能为空",
+        "data": {}
+      }
+    },
+    "mismatched_request_id": {
+      "status": 409,
+      "body": {
+        "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+        "message": "scenario_tag 载体不一致",
+        "data": {}
+      }
+    },
+    "missing_source_ref": {
+      "status": 409,
+      "body": {
+        "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+        "message": "scenario_tag 载体缺失",
+        "data": {}
+      }
+    },
+    "mismatched_source_ref": {
+      "status": 409,
+      "body": {
+        "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+        "message": "scenario_tag 载体不一致",
+        "data": {}
+      }
+    }
+  },
+  "explained_network_events": [],
+  "allowed_write_endpoints": [
+    "POST /api/workshop/tickets/batch"
+  ],
+  "readback_get_triggered": true,
+  "forbidden_write_request_counts": {
+    "POST /api/workshop/tickets/register": 0,
+    "POST /api/workshop/tickets/reversal": 0,
+    "POST /api/workshop/job-cards/{job_card}/sync": 0,
+    "POST /api/workshop/internal/job-card-sync/run-once": 0,
+    "POST /api/production/work-orders/{work_order}/sync-job-cards": 0,
+    "POST /api/production/internal/work-order-sync/run-once": 0
+  },
+  "allowed_batch_import_write_count": 1
+}

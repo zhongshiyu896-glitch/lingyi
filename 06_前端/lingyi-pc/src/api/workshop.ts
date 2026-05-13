@@ -206,6 +206,7 @@ export const reverseWorkshopTicket = (
 
 export const batchWorkshopTickets = (
   tickets: Array<WorkshopTicketRegisterPayload & { operation_type?: 'register' | 'reversal'; reason?: string }>,
+  meta?: WorkshopWriteRequestMeta,
 ): Promise<
   ApiResponse<{
     success_count: number
@@ -216,7 +217,10 @@ export const batchWorkshopTickets = (
 > =>
   request('/api/workshop/tickets/batch', {
     method: 'POST',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: buildAuthHeaders({
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    }),
     body: JSON.stringify({ tickets }),
   })
 
