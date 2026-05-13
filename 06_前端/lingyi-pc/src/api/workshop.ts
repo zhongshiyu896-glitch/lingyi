@@ -34,6 +34,10 @@ export interface WorkshopTicketReversalPayload {
   reason: string
 }
 
+export interface WorkshopWriteRequestMeta {
+  requestId?: string
+}
+
 export interface WorkshopTicketData {
   ticket_no: string
   ticket_id: number
@@ -176,19 +180,27 @@ const request = async <T>(url: string, init?: RequestInit): Promise<ApiResponse<
 
 export const registerWorkshopTicket = (
   payload: WorkshopTicketRegisterPayload,
+  meta?: WorkshopWriteRequestMeta,
 ): Promise<ApiResponse<WorkshopTicketData>> =>
   request('/api/workshop/tickets/register', {
     method: 'POST',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: buildAuthHeaders({
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    }),
     body: JSON.stringify(payload),
   })
 
 export const reverseWorkshopTicket = (
   payload: WorkshopTicketReversalPayload,
+  meta?: WorkshopWriteRequestMeta,
 ): Promise<ApiResponse<WorkshopTicketData>> =>
   request('/api/workshop/tickets/reversal', {
     method: 'POST',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: buildAuthHeaders({
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    }),
     body: JSON.stringify(payload),
   })
 

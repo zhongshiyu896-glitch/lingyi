@@ -1,0 +1,86 @@
+{
+  "task_id": "TASK-Z002B-20-IMPL",
+  "source_head": "c7a472e181ac0711ecacb5d6048e9ec89df685e6",
+  "source_subject": "chore: seal local production write boundary prep",
+  "APP_ENV": "development",
+  "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+  "local_test_db_confirmed": true,
+  "route_open": true,
+  "first_screen_visible": true,
+  "register_form_validation": true,
+  "scenario_tag": "Z002-WORKSHOP-TICKET-REGISTER-20260513-001",
+  "scenario_tag_carriers": {
+    "payload.ticket_key.register": "TK-Z002-WORKSHOP-TICKET-REGISTER-20260513-001-REG-001",
+    "payload.source_ref.register": "SRC-Z002-WORKSHOP-TICKET-REGISTER-20260513-001-001",
+    "payload.ticket_key.reversal": "TK-Z002-WORKSHOP-TICKET-REGISTER-20260513-001-REV-001",
+    "payload.reason.reversal": "REV-Z002-WORKSHOP-TICKET-REGISTER-20260513-001-001",
+    "header.X-Request-ID.register": "Z002-WORKSHOP-TICKET-REGISTER-20260513-001-REQ-REGISTER",
+    "header.X-Request-ID.reversal": "Z002-WORKSHOP-TICKET-REGISTER-20260513-001-REQ-REVERSAL",
+    "header.X-Request-ID.mismatch": "Z002-WORKSHOP-TICKET-REGISTER-20260513-999-REQ"
+  },
+  "register_post_triggered": true,
+  "register_post_status": 200,
+  "detail_or_list_get_after_register": true,
+  "detail_or_list_get_after_register_status": 200,
+  "reversal_post_triggered": true,
+  "reversal_post_status": 200,
+  "detail_or_list_get_after_reversal": true,
+  "detail_or_list_get_after_reversal_status": 200,
+  "duplicate_or_invalid_reversal_fail_closed": true,
+  "duplicate_or_invalid_reversal_status": 409,
+  "missing_or_mismatched_scenario_tag_fail_closed": true,
+  "missing_request_id_register_status": 409,
+  "mismatched_request_id_register_status": 409,
+  "db_write_on_failed_gate_count": 0,
+  "approved_write_request_count": 2,
+  "approved_write_requests": [
+    {
+      "method": "POST",
+      "endpoint": "/api/workshop/tickets/register",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "endpoint": "/api/workshop/tickets/reversal",
+      "status": 200
+    }
+  ],
+  "unexpected_write_request_count": 0,
+  "forbidden_batch_sync_worker_request_count": 0,
+  "material_check_request_count": 0,
+  "sync_job_cards_request_count": 0,
+  "internal_worker_request_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "erpnext_write_count": 0,
+  "production_write_count": 0,
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ys_workshop_ticket": 0,
+    "ys_workshop_daily_wage": 0,
+    "ys_workshop_job_card_sync_outbox": 0,
+    "ys_workshop_job_card_sync_log": 0,
+    "ys_workshop_outbox_access_denial": 0,
+    "ys_workshop_outbox_access_denial_total": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "register_button_marker": "allowed:workshop-ticket-register-local-only",
+  "register_button_allowlist": "workshop-ticket-register",
+  "reversal_button_marker": "allowed:workshop-ticket-reversal-local-only",
+  "reversal_button_allowlist": "workshop-ticket-reversal",
+  "guarded_marker_removed": true,
+  "browser_json": "/tmp/task_z002b20_browser_result.json",
+  "cleanup_json": "/tmp/task_z002b20_cleanup.json",
+  "screenshots_dir": "/tmp/task_z002b20_screenshots",
+  "screenshots_count": 3,
+  "unexplained_console_errors_total": 0,
+  "unexplained_network_4xx_5xx_total": 0,
+  "explained_network_events": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "reason": "expected dev-auth probe"
+    }
+  ]
+}

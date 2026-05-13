@@ -76,7 +76,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="来源单号" data-testid="workshop-ticket-register-field-source-ref">
-            <el-input v-model="form.source_ref" placeholder="请输入来源单号（可选）" data-testid="workshop-ticket-register-input-source-ref" />
+            <el-input v-model="form.source_ref" placeholder="请输入来源单号（需包含 scenario_tag）" data-testid="workshop-ticket-register-input-source-ref" />
           </el-form-item>
         </template>
 
@@ -101,8 +101,9 @@
             :loading="submitting"
             data-action-type="write"
             data-testid="workshop-ticket-register-submit-button"
-            data-write-guard="guarded:readonly-ticket-submit"
-            :data-guard-state="activePermission ? 'guarded-permission-ready' : 'guarded-no-permission'"
+            :data-write-guard="mode === 'register' ? 'allowed:workshop-ticket-register-local-only' : 'allowed:workshop-ticket-reversal-local-only'"
+            :data-write-allowlist="mode === 'register' ? 'workshop-ticket-register' : 'workshop-ticket-reversal'"
+            :data-guard-state="activePermission ? 'allowlist-local-dev' : 'guarded-no-permission'"
             @click="submit"
           >
             {{ mode === 'register' ? '提交登记' : '提交撤销' }}
@@ -129,7 +130,7 @@
       <p class="permission-tip" data-testid="workshop-ticket-register-permission-or-disabled-state">
         {{
           activePermission
-            ? '当前页面为只读演示模式，登记/撤销提交动作已 guard，不会触发真实写请求。'
+            ? '当前页面允许本地测试库写入：登记/撤销仅在 local-dev gate + scenario_tag 通过后触发。'
             : '当前账号无提交权限，登记/撤销写动作已禁用。'
         }}
       </p>
@@ -137,7 +138,7 @@
 
     <el-card shadow="never" data-testid="workshop-ticket-register-readonly-draft-preview">
       <template #header>
-        <span>本地只读草稿预览</span>
+        <span>本地写入草稿预览</span>
       </template>
       <el-descriptions :column="2" border size="small">
         <el-descriptions-item label="模式">{{ mode === 'register' ? '登记工票' : '撤销工票' }}</el-descriptions-item>
@@ -159,10 +160,18 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import {
+  fetchWorkshopTickets,
+  registerWorkshopTicket,
+  reverseWorkshopTicket,
+  type WorkshopTicketRegisterPayload,
+  type WorkshopTicketReversalPayload,
+} from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
 const permissionStore = usePermissionStore()
+const SCENARIO_PATTERN = /(Z002-WORKSHOP-TICKET-REGISTER-\d{8}-\d{3})/
 const mode = ref<'register' | 'reversal'>('register')
 const submitting = ref<boolean>(false)
 const guardedFeedback = ref<string>('')
@@ -193,6 +202,7 @@ const requiredFieldErrors = computed<string[]>(() => {
   if (!form.employee) missing.push('employee')
   if (!form.process_name) missing.push('process_name')
   if (!form.work_date) missing.push('work_date')
+  if (mode.value === 'register' && !form.source_ref) missing.push('source_ref')
   if (mode.value === 'reversal' && !form.original_ticket_id) missing.push('original_ticket_id')
   if (mode.value === 'reversal' && !form.reason) missing.push('reason')
   return missing
@@ -212,7 +222,45 @@ const readonlyDraft = computed(() => ({
   reason: form.reason.trim(),
 }))
 
-const submit = (): void => {
+const buildScenarioTag = (): string => {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const sequence = `${Math.floor(Math.random() * 1000)}`.padStart(3, '0')
+  return `Z002-WORKSHOP-TICKET-REGISTER-${datePart}-${sequence}`
+}
+
+const extractScenarioTag = (value: string): string | null => {
+  const matched = value.match(SCENARIO_PATTERN)
+  return matched ? matched[1] : null
+}
+
+const resolveScenarioTag = (): string => {
+  const carriers = [form.ticket_key, form.source_ref, form.reason]
+  for (const carrier of carriers) {
+    const tag = extractScenarioTag(carrier)
+    if (tag) return tag
+  }
+  return buildScenarioTag()
+}
+
+const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string): string => {
+  const normalized = value.trim()
+  if (normalized) {
+    const existing = extractScenarioTag(normalized)
+    if (existing === tag) return normalized
+  }
+  return `${tag}-${fallbackSuffix}`
+}
+
+const readbackAfterWrite = async (jobCard: string): Promise<number> => {
+  const result = await fetchWorkshopTickets({
+    job_card: jobCard,
+    page: 1,
+    page_size: 20,
+  })
+  return result.data.total
+}
+
+const submit = async (): Promise<void> => {
   guardedFeedback.value = ''
   validationHint.value = ''
   if (requiredFieldErrors.value.length > 0) {
@@ -225,11 +273,61 @@ const submit = (): void => {
     ElMessage.warning(guardedFeedback.value)
     return
   }
-  guardedFeedback.value =
-    mode.value === 'register'
-      ? '当前为只读模式，登记提交已guard，不会发起真实POST请求。'
-      : '当前为只读模式，撤销提交已guard，不会发起真实POST请求。'
-  ElMessage.warning(guardedFeedback.value)
+
+  const scenarioTag = resolveScenarioTag()
+  const requestId = `${scenarioTag}-REQ`
+  form.ticket_key = withScenarioCarrier(form.ticket_key, scenarioTag, 'TK')
+  if (mode.value === 'register') {
+    form.source_ref = withScenarioCarrier(form.source_ref, scenarioTag, 'SRC')
+  } else {
+    form.reason = withScenarioCarrier(form.reason, scenarioTag, 'REVERSAL')
+  }
+
+  submitting.value = true
+  try {
+    if (mode.value === 'register') {
+      const payload: WorkshopTicketRegisterPayload = {
+        ticket_key: form.ticket_key,
+        job_card: form.job_card.trim(),
+        employee: form.employee.trim(),
+        process_name: form.process_name.trim(),
+        color: form.color.trim() || undefined,
+        size: form.size.trim() || undefined,
+        qty: form.qty,
+        work_date: form.work_date,
+        source: form.source,
+        source_ref: form.source_ref.trim(),
+      }
+      const result = await registerWorkshopTicket(payload, { requestId })
+      if (!form.original_ticket_id) form.original_ticket_id = result.data.ticket_id
+      const total = await readbackAfterWrite(payload.job_card)
+      guardedFeedback.value = `登记成功（ticket_id=${result.data.ticket_id}），回读总数=${total}。`
+      ElMessage.success('工票登记成功（local-dev）')
+      return
+    }
+
+    const payload: WorkshopTicketReversalPayload = {
+      ticket_key: form.ticket_key,
+      job_card: form.job_card.trim(),
+      employee: form.employee.trim(),
+      process_name: form.process_name.trim(),
+      color: form.color.trim() || undefined,
+      size: form.size.trim() || undefined,
+      qty: form.qty,
+      work_date: form.work_date,
+      original_ticket_id: form.original_ticket_id,
+      reason: form.reason.trim(),
+    }
+    const result = await reverseWorkshopTicket(payload, { requestId })
+    const total = await readbackAfterWrite(payload.job_card)
+    guardedFeedback.value = `撤销成功（ticket_id=${result.data.ticket_id}），回读总数=${total}。`
+    ElMessage.success('工票撤销成功（local-dev）')
+  } catch (error) {
+    guardedFeedback.value = `提交失败（fail-closed）：${(error as Error).message}`
+    ElMessage.error(guardedFeedback.value)
+  } finally {
+    submitting.value = false
+  }
 }
 
 const goList = (): void => {

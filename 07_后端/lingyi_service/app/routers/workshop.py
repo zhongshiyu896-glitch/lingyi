@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Generator
 import logging
+import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -94,6 +96,8 @@ from app.services.workshop_service import WorkshopService
 
 router = APIRouter(prefix="/api/workshop", tags=["workshop"])
 logger = logging.getLogger(__name__)
+WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-TICKET-REGISTER-\d{8}-\d{3})")
 
 
 ROW_LEVEL_BATCH_APP_CODES = {
@@ -272,6 +276,66 @@ def _batch_row_fail(
     )
 
 
+def _is_local_workshop_write_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    return app_env == "development" and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+
+
+def _match_scenario_tag(value: str) -> str | None:
+    matched = WORKSHOP_LOCAL_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _validate_local_ticket_write_gate(
+    *,
+    mode: str,
+    ticket_key: str,
+    secondary_carrier: str,
+    request_id: str,
+    request_obj: Request,
+) -> str:
+    if not _is_local_workshop_write_enabled():
+        raise BusinessException(code=AUTH_FORBIDDEN, message="仅允许本地开发测试库执行工票写入")
+
+    carriers = [ticket_key.strip(), secondary_carrier.strip()]
+    if not all(carriers):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失")
+
+    carrier_tags: list[str] = []
+    for value in carriers:
+        tag = _match_scenario_tag(value)
+        if tag is None:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失或格式非法")
+        carrier_tags.append(tag)
+
+    if len(set(carrier_tags)) != 1:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
+    scenario_tag = carrier_tags[0]
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 不能为空")
+
+    header_tag = _match_scenario_tag(request_id_header)
+    if header_tag is None:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
+    if header_tag != scenario_tag:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+
+    normalized_tag = _match_scenario_tag((request_id or "").strip())
+    if normalized_tag is None:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
+    if normalized_tag != scenario_tag:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+
+    if mode not in {"register", "reversal"}:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="unsupported workshop write mode")
+    return scenario_tag
+
+
 def _record_batch_security_denial_strict(
     *,
     audit: AuditService,
@@ -313,11 +377,19 @@ def register_ticket(
     resource = None
 
     try:
+        local_scenario_tag = _validate_local_ticket_write_gate(
+            mode="register",
+            ticket_key=payload.ticket_key,
+            secondary_carrier=payload.source_ref or "",
+            request_id=request_id,
+            request_obj=request,
+        )
         resource = service.resolve_job_card_resource(
             job_card=payload.job_card,
             process_name=payload.process_name,
             request_item_code=payload.item_code,
             enforce_status=True,
+            local_scenario_tag=local_scenario_tag,
         )
         permission_service.ensure_workshop_resource_permission(
             current_user=current_user,
@@ -335,6 +407,7 @@ def register_ticket(
             operator=current_user.username,
             request_id=request_id,
             resolved_resource=resource,
+            local_scenario_tag=local_scenario_tag,
         )
         after_data = service.get_ticket_snapshot(ticket_id=data.ticket_id)
         audit.record_success(
@@ -421,11 +494,19 @@ def reverse_ticket(
     request_id = get_request_id_from_request(request)
 
     try:
+        local_scenario_tag = _validate_local_ticket_write_gate(
+            mode="reversal",
+            ticket_key=payload.ticket_key,
+            secondary_carrier=payload.reason,
+            request_id=request_id,
+            request_obj=request,
+        )
         resource = service.resolve_job_card_resource(
             job_card=payload.job_card,
             process_name=payload.process_name,
             request_item_code=payload.item_code,
             enforce_status=True,
+            local_scenario_tag=local_scenario_tag,
         )
         permission_service.ensure_workshop_resource_permission(
             current_user=current_user,
@@ -457,6 +538,7 @@ def reverse_ticket(
             operator=current_user.username,
             request_id=request_id,
             resolved_resource=resource,
+            local_scenario_tag=local_scenario_tag,
         )
         after_data = service.get_ticket_snapshot(ticket_id=data.ticket_id)
         audit.record_success(

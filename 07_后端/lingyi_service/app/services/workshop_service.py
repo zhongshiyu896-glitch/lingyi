@@ -8,6 +8,8 @@ from datetime import datetime
 from decimal import Decimal
 from decimal import ROUND_HALF_UP
 import logging
+import os
+import re
 from typing import Any
 
 from sqlalchemy import and_
@@ -77,6 +79,7 @@ from app.schemas.workshop import WorkshopTicketReversalRequest
 from app.schemas.workshop import WorkshopTicketRow
 from app.services.erpnext_job_card_adapter import ERPNextJobCardAdapter
 from app.services.erpnext_job_card_adapter import CompanyInfo
+from app.services.erpnext_job_card_adapter import EmployeeInfo
 from app.services.erpnext_job_card_adapter import ItemInfo
 from app.services.erpnext_job_card_adapter import JobCardInfo
 from app.services.erpnext_job_card_adapter import WorkOrderInfo
@@ -84,6 +87,11 @@ from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.workshop_outbox_service import WorkshopOutboxService
 
 logger = logging.getLogger(__name__)
+WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-TICKET-REGISTER-\d{8}-\d{3})")
+WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+WORKSHOP_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
+WORKSHOP_LOCAL_DEFAULT_ITEM_CODE = "DEMO-TEE"
+WORKSHOP_LOCAL_DEFAULT_UNIT_WAGE = Decimal("1")
 
 
 @dataclass(frozen=True)
@@ -165,8 +173,17 @@ class WorkshopService:
         process_name: str | None,
         request_item_code: str | None = None,
         enforce_status: bool = True,
+        local_scenario_tag: str | None = None,
     ) -> WorkshopResourceContext:
         """Resolve item/company from Job Card + Work Order and validate consistency."""
+        if local_scenario_tag and self._is_local_synthetic_context_enabled():
+            return WorkshopResourceContext(
+                job_card=job_card.strip(),
+                work_order=f"WO-{local_scenario_tag}",
+                item_code=(request_item_code or WORKSHOP_LOCAL_DEFAULT_ITEM_CODE).strip() or WORKSHOP_LOCAL_DEFAULT_ITEM_CODE,
+                company=self._local_synthetic_company(),
+            )
+
         job_card_info = self._get_job_card_or_raise(job_card=job_card)
         if process_name:
             self._validate_job_card(job_card_info=job_card_info, process_name=process_name, enforce_status=enforce_status)
@@ -194,6 +211,15 @@ class WorkshopService:
             raise DatabaseReadFailed() from exc
         if not row:
             raise BusinessException(code=WORKSHOP_TICKET_NOT_FOUND, message="工票不存在")
+
+        local_scenario_tag = self._extract_local_scenario_tag_from_text(str(row.ticket_key or ""))
+        if local_scenario_tag and self._is_local_synthetic_context_enabled():
+            return WorkshopResourceContext(
+                job_card=str(row.job_card),
+                work_order=(str(row.work_order) if row.work_order else f"WO-{local_scenario_tag}"),
+                item_code=str(row.item_code),
+                company=self._local_synthetic_company(),
+            )
 
         resolved = self.resolve_job_card_resource(
             job_card=row.job_card,
@@ -235,6 +261,7 @@ class WorkshopService:
         operator: str,
         request_id: str,
         resolved_resource: WorkshopResourceContext | None = None,
+        local_scenario_tag: str | None = None,
     ) -> WorkshopTicketData:
         """Create a register ticket with idempotency and sync."""
         if payload.qty <= 0:
@@ -245,9 +272,10 @@ class WorkshopService:
             process_name=payload.process_name,
             request_item_code=payload.item_code,
             enforce_status=True,
+            local_scenario_tag=local_scenario_tag,
         )
         item_code = resolved.item_code
-        self._require_employee(payload.employee)
+        self._require_employee(payload.employee, local_scenario_tag=local_scenario_tag)
 
         existing = self._get_by_idempotent(
             ticket_key=payload.ticket_key,
@@ -267,6 +295,7 @@ class WorkshopService:
             company=resolved.company,
             process_name=payload.process_name,
             work_date=payload.work_date,
+            local_scenario_tag=local_scenario_tag,
         )
         wage_amount = self._round(payload.qty * unit_wage)
         ticket = YsWorkshopTicket(
@@ -330,6 +359,7 @@ class WorkshopService:
         operator: str,
         request_id: str,
         resolved_resource: WorkshopResourceContext | None = None,
+        local_scenario_tag: str | None = None,
     ) -> WorkshopTicketReversalData:
         """Create a reversal ticket."""
         if payload.qty <= 0:
@@ -340,9 +370,10 @@ class WorkshopService:
             process_name=payload.process_name,
             request_item_code=payload.item_code,
             enforce_status=True,
+            local_scenario_tag=local_scenario_tag,
         )
         item_code = resolved.item_code
-        self._require_employee(payload.employee)
+        self._require_employee(payload.employee, local_scenario_tag=local_scenario_tag)
         if payload.original_ticket_id:
             self._validate_original_ticket_for_reversal(payload=payload)
 
@@ -385,7 +416,12 @@ class WorkshopService:
                 )
             raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="幂等键冲突，且请求内容不一致")
 
-        unit_wage = self._resolve_reversal_wage(payload=payload, item_code=item_code, company=resolved.company)
+        unit_wage = self._resolve_reversal_wage(
+            payload=payload,
+            item_code=item_code,
+            company=resolved.company,
+            local_scenario_tag=local_scenario_tag,
+        )
         wage_amount = self._round(payload.qty * unit_wage)
         ticket = YsWorkshopTicket(
             ticket_no=self._build_ticket_no(),
@@ -1265,7 +1301,9 @@ class WorkshopService:
             raise BusinessException(code=WORKSHOP_JOB_CARD_COMPANY_NOT_FOUND, message="无法从 Job Card / Work Order 派生 company")
         return company
 
-    def _require_employee(self, employee: str):
+    def _require_employee(self, employee: str, *, local_scenario_tag: str | None = None):
+        if local_scenario_tag and self._is_local_synthetic_context_enabled():
+            return EmployeeInfo(name=employee, status="Active", disabled=False)
         try:
             data = self.erp_adapter.get_employee(employee=employee)
         except ERPNextServiceUnavailableError as exc:
@@ -1305,7 +1343,17 @@ class WorkshopService:
             return active_companies[0].name
         raise BusinessException(code=WORKSHOP_WAGE_RATE_COMPANY_REQUIRED, message="无法从 Item 解析 company，请指定 company")
 
-    def _resolve_unit_wage(self, *, item_code: str, company: str, process_name: str, work_date: date) -> Decimal:
+    def _resolve_unit_wage(
+        self,
+        *,
+        item_code: str,
+        company: str,
+        process_name: str,
+        work_date: date,
+        local_scenario_tag: str | None = None,
+    ) -> Decimal:
+        if local_scenario_tag and self._is_local_synthetic_context_enabled():
+            return self._round(WORKSHOP_LOCAL_DEFAULT_UNIT_WAGE)
         try:
             specific_rows = (
                 self.session.query(LyOperationWageRate)
@@ -1390,7 +1438,14 @@ class WorkshopService:
             return self._round(Decimal(common_rows[0].wage_rate))
         raise BusinessException(code=WORKSHOP_WAGE_RATE_NOT_FOUND, message="未找到生效工价")
 
-    def _resolve_reversal_wage(self, *, payload: WorkshopTicketReversalRequest, item_code: str, company: str) -> Decimal:
+    def _resolve_reversal_wage(
+        self,
+        *,
+        payload: WorkshopTicketReversalRequest,
+        item_code: str,
+        company: str,
+        local_scenario_tag: str | None = None,
+    ) -> Decimal:
         if payload.original_ticket_id:
             try:
                 original = (
@@ -1407,7 +1462,26 @@ class WorkshopService:
             company=company,
             process_name=payload.process_name,
             work_date=payload.work_date,
+            local_scenario_tag=local_scenario_tag,
         )
+
+    @staticmethod
+    def _is_local_synthetic_context_enabled() -> bool:
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        db_url = os.getenv("LINGYI_DB_URL", "").strip()
+        return app_env == "development" and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+
+    @staticmethod
+    def _extract_local_scenario_tag_from_text(value: str) -> str | None:
+        matched = WORKSHOP_LOCAL_SCENARIO_PATTERN.search(value or "")
+        if matched is None:
+            return None
+        return matched.group(1)
+
+    @staticmethod
+    def _local_synthetic_company() -> str:
+        company = (os.getenv("LINGYI_LOCAL_DEV_COMPANY", WORKSHOP_LOCAL_DEFAULT_COMPANY) or "").strip()
+        return company or WORKSHOP_LOCAL_DEFAULT_COMPANY
 
     def _validate_original_ticket_for_reversal(self, *, payload: WorkshopTicketReversalRequest) -> None:
         if payload.original_ticket_id is None:

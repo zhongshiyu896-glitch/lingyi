@@ -9,8 +9,9 @@
               v-if="canRegister"
               type="primary"
               data-action-type="write"
-              data-write-guard="readonly:ticket_register"
-              data-guard-state="guarded_readonly"
+              data-write-guard="allowed:workshop-ticket-register-local-only-entry"
+              data-write-allowlist="workshop-ticket-register"
+              data-guard-state="allowlist-local-dev"
               @click="goRegister"
             >
               工票登记
@@ -318,7 +319,7 @@ const onSizeChange = (size: number): void => {
 }
 
 const goRegister = (): void => {
-  guardedWriteAction('工票登记')
+  void router.push('/workshop/tickets/register')
 }
 const goBatch = (): void => {
   guardedWriteAction('批量导入')
