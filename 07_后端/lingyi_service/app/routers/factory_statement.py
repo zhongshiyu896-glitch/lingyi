@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Generator
 from datetime import date
 import logging
+import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -24,6 +26,7 @@ from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import FACTORY_STATEMENT_DATABASE_WRITE_FAILED
+from app.core.error_codes import FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import FACTORY_STATEMENT_INTERNAL_ERROR
 from app.core.error_codes import FACTORY_STATEMENT_PERMISSION_DENIED
 from app.core.error_codes import FACTORY_STATEMENT_PERMISSION_SOURCE_UNAVAILABLE
@@ -73,6 +76,8 @@ from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/factory-statements", tags=["factory_statement"])
 logger = logging.getLogger(__name__)
+FACTORY_STATEMENT_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+FACTORY_STATEMENT_SCENARIO_PATTERN = re.compile(r"(Z002-FACTORY-STMT-\d{8}-\d{3})")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -136,6 +141,93 @@ def _permission_error_code(exc: HTTPException) -> str:
             return FACTORY_STATEMENT_PERMISSION_SOURCE_UNAVAILABLE
         return code
     return "HTTP_ERROR"
+
+
+def _scope_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _is_local_factory_statement_write_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    return app_env == "development" and db_url == FACTORY_STATEMENT_LOCAL_ALLOWED_DB_URL
+
+
+def _match_factory_statement_scenario_tag(value: str) -> str | None:
+    matched = FACTORY_STATEMENT_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _raise_factory_statement_idempotency_conflict(message: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT,
+            "message": message,
+            "data": {},
+        },
+    )
+
+
+def _ensure_chain_match(*, label: str, payload_value: str | None, header_value: str | None) -> None:
+    normalized_payload = _scope_text(payload_value)
+    normalized_header = _scope_text(header_value)
+    if normalized_payload is None or normalized_header is None:
+        _raise_factory_statement_idempotency_conflict(f"{label} 载体缺失")
+    if normalized_payload != normalized_header:
+        _raise_factory_statement_idempotency_conflict(f"{label} 载体不一致")
+
+
+def _validate_local_factory_statement_write_gate(
+    *,
+    request_obj: Request,
+    scenario_carriers: list[str | None],
+) -> str:
+    if not _is_local_factory_statement_write_enabled():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": AUTH_FORBIDDEN,
+                "message": "仅允许本地开发测试库执行加工厂对账写入",
+                "data": {},
+            },
+        )
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_factory_statement_idempotency_conflict("request_id 不能为空")
+
+    header_tag = _match_factory_statement_scenario_tag(request_id_header)
+    if header_tag is None:
+        _raise_factory_statement_idempotency_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    request_tag = _match_factory_statement_scenario_tag(request_id)
+    if request_tag is None:
+        _raise_factory_statement_idempotency_conflict("request_id 未包含合法 scenario_tag")
+    if request_tag != header_tag:
+        _raise_factory_statement_idempotency_conflict("request_id 与 scenario_tag 不一致")
+
+    carrier_tags: list[str] = []
+    for raw_value in scenario_carriers:
+        normalized = _scope_text(raw_value)
+        if normalized is None:
+            _raise_factory_statement_idempotency_conflict("scenario_tag 载体缺失")
+        scenario_tag = _match_factory_statement_scenario_tag(normalized)
+        if scenario_tag is None:
+            _raise_factory_statement_idempotency_conflict("scenario_tag 载体缺失或格式非法")
+        carrier_tags.append(scenario_tag)
+
+    if len(set(carrier_tags)) != 1:
+        _raise_factory_statement_idempotency_conflict("scenario_tag 载体不一致")
+    if carrier_tags[0] != header_tag:
+        _raise_factory_statement_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
+    return header_tag
 
 
 def _rollback_safely(session: Session) -> None:
@@ -254,6 +346,11 @@ def create_factory_statement(
 
     resource_no: str | None = None
     try:
+        _validate_local_factory_statement_write_gate(
+            request_obj=request,
+            scenario_carriers=[payload.idempotency_key, payload.scenario_tag],
+        )
+
         permission_service.ensure_factory_statement_resource_permission(
             current_user=current_user,
             request_obj=request,
@@ -293,6 +390,14 @@ def create_factory_statement(
         return _ok(result.model_dump(mode="json"))
     except HTTPException as exc:
         _rollback_safely(session)
+        if _permission_error_code(exc) == FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT:
+            detail = exc.detail if isinstance(exc.detail, dict) else {}
+            message = str(detail.get("message") or message_of(FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT))
+            return _err(
+                FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT,
+                message,
+                status_of(FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT),
+            )
         try:
             _record_failure_safely(
                 session=session,
@@ -403,6 +508,14 @@ def confirm_factory_statement(
             )
         resource_no = str(header.statement_no)
 
+        _validate_local_factory_statement_write_gate(
+            request_obj=request,
+            scenario_carriers=[payload.idempotency_key, payload.scenario_tag],
+        )
+        _ensure_chain_match(label="company", payload_value=payload.company, header_value=str(header.company))
+        _ensure_chain_match(label="supplier", payload_value=payload.supplier, header_value=str(header.supplier))
+        _ensure_chain_match(label="statement_no", payload_value=payload.statement_no, header_value=str(header.statement_no))
+
         permission_service.ensure_factory_statement_resource_permission(
             current_user=current_user,
             request_obj=request,
@@ -443,6 +556,14 @@ def confirm_factory_statement(
         return _ok(result.model_dump(mode="json"))
     except HTTPException as exc:
         _rollback_safely(session)
+        if _permission_error_code(exc) == FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT:
+            detail = exc.detail if isinstance(exc.detail, dict) else {}
+            message = str(detail.get("message") or message_of(FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT))
+            return _err(
+                FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT,
+                message,
+                status_of(FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT),
+            )
         try:
             _record_failure_safely(
                 session=session,
@@ -543,6 +664,14 @@ def cancel_factory_statement(
             )
         resource_no = str(header.statement_no)
 
+        _validate_local_factory_statement_write_gate(
+            request_obj=request,
+            scenario_carriers=[payload.idempotency_key, payload.scenario_tag, payload.reason],
+        )
+        _ensure_chain_match(label="company", payload_value=payload.company, header_value=str(header.company))
+        _ensure_chain_match(label="supplier", payload_value=payload.supplier, header_value=str(header.supplier))
+        _ensure_chain_match(label="statement_no", payload_value=payload.statement_no, header_value=str(header.statement_no))
+
         permission_service.ensure_factory_statement_resource_permission(
             current_user=current_user,
             request_obj=request,
@@ -583,6 +712,14 @@ def cancel_factory_statement(
         return _ok(result.model_dump(mode="json"))
     except HTTPException as exc:
         _rollback_safely(session)
+        if _permission_error_code(exc) == FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT:
+            detail = exc.detail if isinstance(exc.detail, dict) else {}
+            message = str(detail.get("message") or message_of(FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT))
+            return _err(
+                FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT,
+                message,
+                status_of(FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT),
+            )
         try:
             _record_failure_safely(
                 session=session,

@@ -18,6 +18,7 @@ class FactoryStatementCreateRequest(BaseModel):
     from_date: date
     to_date: date
     idempotency_key: str = Field(..., min_length=1, max_length=128)
+    scenario_tag: str | None = Field(default=None, max_length=64)
 
 
 class FactoryStatementCreateData(BaseModel):
@@ -584,6 +585,10 @@ class FactoryStatementConfirmRequest(BaseModel):
 
     idempotency_key: str = Field(..., min_length=1, max_length=128)
     remark: str | None = Field(default=None, max_length=200)
+    scenario_tag: str | None = Field(default=None, max_length=64)
+    company: str | None = Field(default=None, max_length=140)
+    supplier: str | None = Field(default=None, max_length=140)
+    statement_no: str | None = Field(default=None, max_length=140)
 
 
 class FactoryStatementCancelRequest(BaseModel):
@@ -591,6 +596,10 @@ class FactoryStatementCancelRequest(BaseModel):
 
     idempotency_key: str = Field(..., min_length=1, max_length=128)
     reason: str | None = Field(default=None, max_length=200)
+    scenario_tag: str | None = Field(default=None, max_length=64)
+    company: str | None = Field(default=None, max_length=140)
+    supplier: str | None = Field(default=None, max_length=140)
+    statement_no: str | None = Field(default=None, max_length=140)
 
 
 class FactoryStatementConfirmData(BaseModel):

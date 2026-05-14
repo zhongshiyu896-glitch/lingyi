@@ -1,0 +1,88 @@
+{
+  "task_id": "TASK-Z002B-44-IMPL",
+  "source_head": "1d87c4cdceb931abab7b64efbd7e9e52bf83756e",
+  "source_subject": "chore: seal sales order write closure",
+  "APP_ENV": "development",
+  "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+  "local_test_db_confirmed": true,
+  "route_scope": [
+    "/factory-statements/list",
+    "/factory-statements/detail"
+  ],
+  "scenario_tag": "Z002-FACTORY-STMT-20260514-046",
+  "scenario_tag_carriers": [
+    "header.X-Request-ID/request_id",
+    "payload.idempotency_key",
+    "payload.company",
+    "payload.supplier",
+    "payload.statement_no",
+    "payload.reason(cancel)"
+  ],
+  "create_draft_post_triggered": true,
+  "confirm_post_triggered": true,
+  "cancel_post_triggered": true,
+  "readback_get_after_create": true,
+  "readback_get_after_cancel": true,
+  "approved_write_request_count": 3,
+  "allowed_write_requests": [
+    {
+      "method": "POST",
+      "url": "/api/factory-statements/",
+      "status": 200,
+      "case": "create_success"
+    },
+    {
+      "method": "POST",
+      "url": "/api/factory-statements/1/confirm",
+      "status": 200,
+      "case": "confirm_success"
+    },
+    {
+      "method": "POST",
+      "url": "/api/factory-statements/1/cancel",
+      "status": 200,
+      "case": "cancel_success"
+    }
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/factory-statements/",
+    "POST /api/factory-statements/{statement_id}/confirm",
+    "POST /api/factory-statements/{statement_id}/cancel"
+  ],
+  "unexpected_write_request_count": 0,
+  "payable_draft_request_count": 0,
+  "internal_worker_request_count": 0,
+  "erpnext_write_count": 0,
+  "production_write_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "fail_closed_cases": {
+    "missing_request_id_status": 409,
+    "mismatched_request_id_status": 409,
+    "mismatched_company_status": 409,
+    "mismatched_statement_no_status": 409,
+    "mismatched_reason_carrier_status": 409,
+    "failed_gate_db_write_count": 0
+  },
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_factory_statement": 0,
+    "ly_factory_statement_item": 0,
+    "ly_factory_statement_log": 0,
+    "ly_factory_statement_operation": 0,
+    "ly_factory_statement_payable_outbox": 0,
+    "ly_subcontract_inspection": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "artifacts": {
+    "regression_api_json": "/tmp/task_z002b44_regression_api.json",
+    "browser_json": "/tmp/task_z002b44_browser_result.json",
+    "cleanup_json": "/tmp/task_z002b44_cleanup.json",
+    "screenshots_dir": "/tmp/task_z002b44_screenshots",
+    "screenshots_count": 3
+  },
+  "route_open_list": true,
+  "route_open_detail": true,
+  "first_screen_visible": true
+}

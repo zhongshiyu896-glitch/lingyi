@@ -8,7 +8,8 @@
             type="primary"
             :disabled="!canCreateAction"
             data-action-type="write"
-            data-write-guard="permission:factory_statement_create+handler"
+            data-write-guard="allowed:factory-statement-create-local-only"
+            data-write-allowlist="factory-statement-create"
             :data-guard-state="canCreateAction ? 'enabled' : 'disabled'"
             @click="openCreateDialog"
           >
@@ -22,7 +23,7 @@
         :closable="false"
         show-icon
         title="款式打板下单对账表（TASK-Y22B-P1-02）"
-        description="本页补齐只读语义映射；创建/确认/取消/应付草稿/导出等写动作仅保留 guarded 语义，不触发真实写请求。"
+        description="本页允许 local-dev 受控 create/confirm/cancel 闭环写入；应付草稿与导出打印仍保持只读禁用。"
         class="reconciliation-alert"
         data-testid="factory-statement-main-alert"
       />
@@ -63,6 +64,14 @@
             placeholder="请选择结束日期"
             clearable
             data-testid="factory-statement-filter-to-date"
+          />
+        </el-form-item>
+        <el-form-item label="scenario_tag">
+          <el-input
+            v-model="localWriteForm.scenario_tag"
+            clearable
+            placeholder="Z002-FACTORY-STMT-YYYYMMDD-NNN"
+            data-testid="factory-statement-scenario-tag"
           />
         </el-form-item>
         <el-form-item label="操作">
@@ -246,20 +255,24 @@
               <el-button
                 link
                 type="success"
+                :disabled="!canConfirmAction"
                 data-action-type="write"
-                data-write-guard="readonly:confirm"
-                data-guard-state="disabled"
-                @click="showGuardedAction('确认')"
+                data-write-guard="allowed:factory-statement-confirm-local-only"
+                data-write-allowlist="factory-statement-confirm"
+                :data-guard-state="canConfirmAction ? 'enabled' : 'disabled'"
+                @click="confirmStatement(scope.row)"
               >
                 确认
               </el-button>
               <el-button
                 link
                 type="danger"
+                :disabled="!canCancelAction"
                 data-action-type="write"
-                data-write-guard="readonly:cancel"
-                data-guard-state="disabled"
-                @click="showGuardedAction('取消')"
+                data-write-guard="allowed:factory-statement-cancel-local-only"
+                data-write-allowlist="factory-statement-cancel"
+                :data-guard-state="canCancelAction ? 'enabled' : 'disabled'"
+                @click="cancelStatement(scope.row)"
               >
                 取消
               </el-button>
@@ -3305,6 +3318,13 @@
           <el-form-item label="幂等键">
           <el-input v-model="createForm.idempotency_key" placeholder="请输入幂等键" />
           </el-form-item>
+          <el-form-item label="scenario_tag">
+            <el-input
+              v-model="createForm.scenario_tag"
+              placeholder="Z002-FACTORY-STMT-YYYYMMDD-NNN"
+              data-testid="factory-statement-create-scenario-tag"
+            />
+          </el-form-item>
         </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
@@ -3386,6 +3406,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
+  cancelFactoryStatement,
+  confirmFactoryStatement,
   createFactoryStatement,
   fetchFactoryStatementBankDeposits,
   fetchFactoryStatementBankLedgers,
@@ -3403,6 +3425,8 @@ import {
   fetchFactoryStatementDetail,
   fetchFactoryStatementExpenseReimbursementPayments,
   fetchFactoryStatements,
+  type FactoryStatementCancelPayload,
+  type FactoryStatementConfirmPayload,
   type FactoryStatementBankLedgerItem,
   type FactoryStatementBankDepositItem,
   type FactoryStatementBankWithdrawalItem,
@@ -3492,8 +3516,8 @@ const supplierPayableSummaryError = ref<string>('')
 const supplierPayableSummaryRows = ref<FactoryStatementSupplierPayableSummaryItem[]>([])
 const supplierPayableSummaryTotal = ref<number>(0)
 
-const P1_READONLY_MODE = true
-const readonlyWriteHint = '当前为只读对账视图，已禁用写动作'
+const LOCAL_WRITE_MODE = true
+const readonlyWriteHint = '当前仅允许 local-dev 受控 create/confirm/cancel，其他写动作仍禁用'
 
 interface SampleOrderReconciliationRow extends FactoryStatementListItem {
   sample_order_no: string
@@ -3505,7 +3529,11 @@ interface SampleOrderReconciliationRow extends FactoryStatementListItem {
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_create)
-const canCreateAction = computed<boolean>(() => canCreate.value && !P1_READONLY_MODE)
+const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
+const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
+const canCreateAction = computed<boolean>(() => canCreate.value && LOCAL_WRITE_MODE)
+const canConfirmAction = computed<boolean>(() => canConfirm.value && LOCAL_WRITE_MODE)
+const canCancelAction = computed<boolean>(() => canCancel.value && LOCAL_WRITE_MODE)
 
 const query = reactive({
   supplier: '',
@@ -3721,12 +3749,34 @@ const sampleQuery = reactive({
 })
 const sampleFilterStatus = ref<'idle' | 'applied' | 'reset'>('idle')
 
+const buildDefaultFactoryStatementScenarioTag = (): string => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `Z002-FACTORY-STMT-${year}${month}${day}-001`
+}
+
+const extractFactoryStatementScenarioTag = (value: string): string | null => {
+  const matched = value.match(/(Z002-FACTORY-STMT-\d{8}-\d{3})/)
+  return matched?.[1] || null
+}
+
+const buildFactoryStatementRequestId = (scenarioTag: string, action: 'CREATE' | 'CONFIRM' | 'CANCEL'): string => {
+  return `${scenarioTag}-REQ-${action}`
+}
+
+const localWriteForm = reactive({
+  scenario_tag: buildDefaultFactoryStatementScenarioTag(),
+})
+
 const createForm = reactive({
   company: '',
   supplier: '',
   from_date: '',
   to_date: '',
   idempotency_key: '',
+  scenario_tag: buildDefaultFactoryStatementScenarioTag(),
 })
 
 const normalizedCreateForm = computed(() => ({
@@ -3735,6 +3785,7 @@ const normalizedCreateForm = computed(() => ({
   from_date: createForm.from_date || '',
   to_date: createForm.to_date || '',
   idempotency_key: createForm.idempotency_key.trim(),
+  scenario_tag: createForm.scenario_tag.trim(),
 }))
 
 const createFormValidationError = computed<string | null>(() => {
@@ -3756,10 +3807,13 @@ const createFormValidationError = computed<string | null>(() => {
   if (!normalizedCreateForm.value.idempotency_key) {
     return '幂等键不能为空'
   }
+  if (!extractFactoryStatementScenarioTag(normalizedCreateForm.value.scenario_tag)) {
+    return 'scenario_tag 缺失或格式非法'
+  }
   return null
 })
 
-const canSubmitCreate = computed<boolean>(() => canCreate.value && !createFormValidationError.value)
+const canSubmitCreate = computed<boolean>(() => canCreateAction.value && !createFormValidationError.value)
 
 const normalizeText = (value: string | null | undefined): string => (value || '').trim().toLowerCase()
 
@@ -4092,11 +4146,11 @@ const buildIdempotencyKey = (prefix: string): string => {
 }
 
 const openCreateDialog = (): void => {
-  if (P1_READONLY_MODE) {
+  if (!LOCAL_WRITE_MODE) {
     ElMessage.warning(readonlyWriteHint)
     return
   }
-  if (!canCreate.value) {
+  if (!canCreateAction.value) {
     ElMessage.error('无创建对账单权限')
     return
   }
@@ -4104,16 +4158,20 @@ const openCreateDialog = (): void => {
   createForm.supplier = query.supplier.trim()
   createForm.from_date = query.from_date || ''
   createForm.to_date = query.to_date || ''
-  createForm.idempotency_key = buildIdempotencyKey('factory-statement-create')
+  createForm.scenario_tag = localWriteForm.scenario_tag.trim() || buildDefaultFactoryStatementScenarioTag()
+  const scenarioTag = extractFactoryStatementScenarioTag(createForm.scenario_tag)
+  createForm.idempotency_key = scenarioTag
+    ? `IDEMP-${scenarioTag}-CREATE`
+    : buildIdempotencyKey('factory-statement-create')
   createVisible.value = true
 }
 
 const submitCreateStatement = async (): Promise<void> => {
-  if (P1_READONLY_MODE) {
+  if (!LOCAL_WRITE_MODE) {
     ElMessage.warning(readonlyWriteHint)
     return
   }
-  if (!canCreate.value) {
+  if (!canCreateAction.value) {
     ElMessage.error('无创建对账单权限')
     return
   }
@@ -4122,26 +4180,98 @@ const submitCreateStatement = async (): Promise<void> => {
     ElMessage.error(validationError)
     return
   }
+  const scenarioTag = extractFactoryStatementScenarioTag(normalizedCreateForm.value.scenario_tag)
+  if (!scenarioTag) {
+    ElMessage.error('scenario_tag 缺失或格式非法')
+    return
+  }
+  localWriteForm.scenario_tag = scenarioTag
 
   const payload: FactoryStatementCreatePayload = {
     company: normalizedCreateForm.value.company,
     supplier: normalizedCreateForm.value.supplier,
     from_date: normalizedCreateForm.value.from_date,
     to_date: normalizedCreateForm.value.to_date,
-    idempotency_key: normalizedCreateForm.value.idempotency_key,
+    idempotency_key: normalizedCreateForm.value.idempotency_key || `IDEMP-${scenarioTag}-CREATE`,
+    scenario_tag: scenarioTag,
   }
 
   creating.value = true
   try {
-    const result = await createFactoryStatement(payload)
+    const requestId = buildFactoryStatementRequestId(scenarioTag, 'CREATE')
+    const result = await createFactoryStatement(payload, { requestId })
     ElMessage.success(`创建成功：${result.data.statement_no}`)
     createVisible.value = false
-    createForm.idempotency_key = buildIdempotencyKey('factory-statement-create')
+    createForm.idempotency_key = `IDEMP-${scenarioTag}-CREATE`
     await loadRows()
   } catch (error) {
     ElMessage.error((error as Error).message)
   } finally {
     creating.value = false
+  }
+}
+
+const confirmStatement = async (row: FactoryStatementListItem): Promise<void> => {
+  if (!LOCAL_WRITE_MODE) {
+    ElMessage.warning(readonlyWriteHint)
+    return
+  }
+  if (!canConfirmAction.value) {
+    ElMessage.error('无确认对账单权限')
+    return
+  }
+  const scenarioTag = extractFactoryStatementScenarioTag(localWriteForm.scenario_tag.trim())
+  if (!scenarioTag) {
+    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z002-FACTORY-STMT-YYYYMMDD-NNN。')
+    return
+  }
+  const payload: FactoryStatementConfirmPayload = {
+    idempotency_key: `IDEMP-${scenarioTag}-CONFIRM-${row.id}`,
+    remark: `CONFIRM-${scenarioTag}`,
+    scenario_tag: scenarioTag,
+    company: row.company,
+    supplier: row.supplier,
+    statement_no: row.statement_no,
+  }
+  try {
+    const requestId = buildFactoryStatementRequestId(scenarioTag, 'CONFIRM')
+    const result = await confirmFactoryStatement(row.id, payload, { requestId })
+    ElMessage.success(`确认成功：${result.data.statement_no}`)
+    await loadRows()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
+}
+
+const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => {
+  if (!LOCAL_WRITE_MODE) {
+    ElMessage.warning(readonlyWriteHint)
+    return
+  }
+  if (!canCancelAction.value) {
+    ElMessage.error('无取消对账单权限')
+    return
+  }
+  const scenarioTag = extractFactoryStatementScenarioTag(localWriteForm.scenario_tag.trim())
+  if (!scenarioTag) {
+    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z002-FACTORY-STMT-YYYYMMDD-NNN。')
+    return
+  }
+  const payload: FactoryStatementCancelPayload = {
+    idempotency_key: `IDEMP-${scenarioTag}-CANCEL-${row.id}`,
+    reason: `CANCEL-${scenarioTag}`,
+    scenario_tag: scenarioTag,
+    company: row.company,
+    supplier: row.supplier,
+    statement_no: row.statement_no,
+  }
+  try {
+    const requestId = buildFactoryStatementRequestId(scenarioTag, 'CANCEL')
+    const result = await cancelFactoryStatement(row.id, payload, { requestId })
+    ElMessage.success(`取消成功：${result.data.statement_no}`)
+    await loadRows()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
   }
 }
 

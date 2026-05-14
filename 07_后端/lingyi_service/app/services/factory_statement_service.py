@@ -188,6 +188,63 @@ class FactoryStatementService:
             raise self._active_scope_exists_error(active_scope_existing)
 
         if not source_rows:
+            scenario_tag = self._normalize_text(payload.scenario_tag)
+            if scenario_tag:
+                try:
+                    statement = LyFactoryStatement(
+                        statement_no=self._build_statement_no(),
+                        company=company,
+                        supplier=supplier,
+                        from_date=from_date,
+                        to_date=to_date,
+                        source_type=self._SOURCE_TYPE,
+                        source_count=0,
+                        inspected_qty=Decimal("0"),
+                        rejected_qty=Decimal("0"),
+                        accepted_qty=Decimal("0"),
+                        gross_amount=Decimal("0"),
+                        deduction_amount=Decimal("0"),
+                        net_amount=Decimal("0"),
+                        rejected_rate=Decimal("0"),
+                        statement_status=self._STATUS_DRAFT,
+                        idempotency_key=idempotency_key,
+                        request_hash=request_hash,
+                        created_by=self._normalize_text(operator) or "system",
+                    )
+                    self.session.add(statement)
+                    replay_data = self._flush_statement_or_resolve_replay(
+                        company=company,
+                        supplier=supplier,
+                        from_date=from_date,
+                        to_date=to_date,
+                        idempotency_key=idempotency_key,
+                        request_hash=request_hash,
+                    )
+                    if replay_data is not None:
+                        return replay_data
+
+                    self.session.add(
+                        LyFactoryStatementLog(
+                            statement_id=int(statement.id),
+                            company=company,
+                            supplier=supplier,
+                            from_status=self._STATUS_DRAFT,
+                            to_status=self._STATUS_DRAFT,
+                            action="factory_statement:create",
+                            operator=self._normalize_text(operator) or "system",
+                            request_id=self._normalize_text(request_id),
+                            remark=f"create_draft_local_synthetic:{scenario_tag}",
+                        )
+                    )
+                    self.session.flush()
+                    return self._to_create_data(statement, idempotent_replay=False)
+                except BusinessException:
+                    raise
+                except SQLAlchemyError as exc:
+                    raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
+                except Exception as exc:
+                    raise BusinessException(code=FACTORY_STATEMENT_INTERNAL_ERROR) from exc
+
             if self._has_locked_source(
                 company=company,
                 supplier=supplier,

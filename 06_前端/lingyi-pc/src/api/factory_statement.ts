@@ -1,7 +1,7 @@
 import { request, type ApiResponse } from '@/api/request'
 
 type NumericLike = string | number
-const FACTORY_STATEMENT_READONLY_GUARD = true
+const FACTORY_STATEMENT_PAYABLE_READONLY_GUARD = true
 
 const throwReadonlyWriteError = (actionLabel: string): never => {
   throw new Error(`当前为只读对账视图，已禁用${actionLabel}写操作`)
@@ -685,6 +685,7 @@ export interface FactoryStatementCreatePayload {
   from_date: string
   to_date: string
   idempotency_key: string
+  scenario_tag?: string
 }
 
 export interface FactoryStatementCreateData {
@@ -711,6 +712,10 @@ export interface FactoryStatementCreateData {
 export interface FactoryStatementConfirmPayload {
   idempotency_key: string
   remark?: string
+  scenario_tag?: string
+  company?: string
+  supplier?: string
+  statement_no?: string
 }
 
 export interface FactoryStatementConfirmData {
@@ -725,6 +730,10 @@ export interface FactoryStatementConfirmData {
 export interface FactoryStatementCancelPayload {
   idempotency_key: string
   reason?: string
+  scenario_tag?: string
+  company?: string
+  supplier?: string
+  statement_no?: string
 }
 
 export interface FactoryStatementCancelData {
@@ -744,6 +753,10 @@ export interface FactoryStatementPayableDraftCreateData {
   outbox_id: number
   status: string
   idempotent_replay: boolean
+}
+
+export interface FactoryStatementWriteMeta {
+  requestId?: string
 }
 
 const toQuery = (params: Record<string, unknown>): string => {
@@ -1062,39 +1075,42 @@ export const fetchFactoryStatementDetail = async (
 
 export const createFactoryStatement = async (
   payload: FactoryStatementCreatePayload,
+  meta?: FactoryStatementWriteMeta,
 ): Promise<ApiResponse<FactoryStatementCreateData>> =>
-  FACTORY_STATEMENT_READONLY_GUARD
-    ? Promise.reject(throwReadonlyWriteError('创建对账单'))
-    :
   request<FactoryStatementCreateData>('/api/factory-statements/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
 export const confirmFactoryStatement = async (
   statementId: number,
   payload: FactoryStatementConfirmPayload,
+  meta?: FactoryStatementWriteMeta,
 ): Promise<ApiResponse<FactoryStatementConfirmData>> =>
-  FACTORY_STATEMENT_READONLY_GUARD
-    ? Promise.reject(throwReadonlyWriteError('确认对账单'))
-    :
   request<FactoryStatementConfirmData>(`/api/factory-statements/${statementId}/confirm`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
 export const cancelFactoryStatement = async (
   statementId: number,
   payload: FactoryStatementCancelPayload,
+  meta?: FactoryStatementWriteMeta,
 ): Promise<ApiResponse<FactoryStatementCancelData>> =>
-  FACTORY_STATEMENT_READONLY_GUARD
-    ? Promise.reject(throwReadonlyWriteError('取消对账单'))
-    :
   request<FactoryStatementCancelData>(`/api/factory-statements/${statementId}/cancel`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
@@ -1102,7 +1118,7 @@ export const createFactoryStatementPayableDraft = async (
   statementId: number,
   payload: FactoryStatementPayableDraftCreatePayload,
 ): Promise<ApiResponse<FactoryStatementPayableDraftCreateData>> =>
-  FACTORY_STATEMENT_READONLY_GUARD
+  FACTORY_STATEMENT_PAYABLE_READONLY_GUARD
     ? Promise.reject(throwReadonlyWriteError('生成应付草稿'))
     :
   request<FactoryStatementPayableDraftCreateData>(`/api/factory-statements/${statementId}/payable-draft`, {
