@@ -292,6 +292,10 @@ export interface WarehouseStockEntryDraftCreatePayload {
   idempotency_key: string
 }
 
+export interface WarehouseWriteMeta {
+  requestId?: string
+}
+
 export interface WarehouseStockEntryOutboxStatusData {
   draft_id: number
   event_id: number
@@ -441,10 +445,14 @@ export const fetchWarehouseFinishedGoodsInboundCandidates = async (
 
 export const createWarehouseStockEntryDraft = async (
   payload: WarehouseStockEntryDraftCreatePayload,
+  meta?: WarehouseWriteMeta,
 ): Promise<ApiResponse<WarehouseStockEntryDraftData>> => {
   return request<WarehouseStockEntryDraftData>('/api/warehouse/stock-entry-drafts', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 }
@@ -458,10 +466,14 @@ export const fetchWarehouseStockEntryDraft = async (
 export const cancelWarehouseStockEntryDraft = async (
   draftId: number,
   reason: string,
+  meta?: WarehouseWriteMeta,
 ): Promise<ApiResponse<WarehouseStockEntryDraftData>> => {
   return request<WarehouseStockEntryDraftData>(`/api/warehouse/stock-entry-drafts/${draftId}/cancel`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify({ reason }),
   })
 }

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from datetime import date
+from decimal import Decimal
+import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -22,6 +25,7 @@ from app.core.auth import is_internal_worker_api_enabled
 from app.core.error_codes import EXTERNAL_SERVICE_UNAVAILABLE
 from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import RESOURCE_ACCESS_DENIED
+from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import message_of
 from app.core.error_codes import status_of
 from app.core.permissions import WAREHOUSE_ALERT_READ
@@ -33,6 +37,8 @@ from app.core.permissions import WAREHOUSE_STOCK_ENTRY_CANCEL
 from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
 from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import get_permission_source
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.schemas.warehouse import ApiResponse
 from app.schemas.warehouse import WarehouseBatchDetailData
 from app.schemas.warehouse import WarehouseBatchListData
@@ -49,6 +55,10 @@ from app.schemas.warehouse import WarehouseSerialNumberDetailData
 from app.schemas.warehouse import WarehouseSerialNumberListData
 from app.schemas.warehouse import WarehouseStockEntryDraftCancelRequest
 from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
+from app.schemas.warehouse import WarehouseStockLedgerData
+from app.schemas.warehouse import WarehouseStockLedgerItem
+from app.schemas.warehouse import WarehouseStockSummaryData
+from app.schemas.warehouse import WarehouseStockSummaryItem
 from app.schemas.warehouse import WarehouseStockEntryWorkerRunOnceData
 from app.schemas.warehouse import WarehouseStockEntryWorkerRunOnceRequest
 from app.schemas.warehouse import WarehouseTraceabilityData
@@ -61,8 +71,11 @@ from app.services.warehouse_export_service import SUPPORTED_DATASETS
 from app.services.warehouse_export_service import WarehouseExportService
 from app.services.warehouse_service import WarehouseService
 from app.services.warehouse_service import WarehouseServiceError
+from app.core.request_id import get_request_id_from_request
 
 router = APIRouter(prefix="/api/warehouse", tags=["warehouse"])
+WAREHOUSE_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+WAREHOUSE_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-STOCK-\d{8}-\d{3})")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -118,6 +131,197 @@ def _read_service(request: Request) -> WarehouseService:
 def _write_service(session: Session, request: Request | None = None) -> WarehouseService:
     adapter = ERPNextWarehouseAdapter(request_obj=request) if request is not None else None
     return WarehouseService(session=session, adapter=adapter)
+
+
+def _is_local_warehouse_write_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    return app_env == "development" and db_url == WAREHOUSE_LOCAL_ALLOWED_DB_URL
+
+
+def _local_warehouse_read_fallback_enabled(exc: ERPNextAdapterException) -> bool:
+    if exc.error_code != EXTERNAL_SERVICE_UNAVAILABLE:
+        return False
+    return _is_local_warehouse_write_enabled() and get_permission_source() == "static"
+
+
+def _match_warehouse_scenario_tag(value: str) -> str | None:
+    matched = WAREHOUSE_LOCAL_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _raise_warehouse_idempotency_conflict(message: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "WAREHOUSE_IDEMPOTENCY_CONFLICT",
+            "message": message,
+            "data": {},
+        },
+    )
+
+
+def _validate_local_warehouse_write_gate(
+    *,
+    request_obj: Request,
+    carriers: list[str | None],
+) -> str:
+    if not _is_local_warehouse_write_enabled():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": AUTH_FORBIDDEN,
+                "message": "仅允许本地开发测试库执行仓库写入",
+                "data": {},
+            },
+        )
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_warehouse_idempotency_conflict("request_id 不能为空")
+
+    header_tag = _match_warehouse_scenario_tag(request_id_header)
+    if header_tag is None:
+        _raise_warehouse_idempotency_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    request_tag = _match_warehouse_scenario_tag(request_id)
+    if request_tag is None:
+        _raise_warehouse_idempotency_conflict("request_id 未包含合法 scenario_tag")
+    if request_tag != header_tag:
+        _raise_warehouse_idempotency_conflict("request_id 与 scenario_tag 不一致")
+
+    carrier_tags: list[str] = []
+    for raw_value in carriers:
+        normalized = _scope_text(raw_value)
+        if normalized is None:
+            _raise_warehouse_idempotency_conflict("scenario_tag 载体缺失")
+        scenario_tag = _match_warehouse_scenario_tag(normalized)
+        if scenario_tag is None:
+            _raise_warehouse_idempotency_conflict("scenario_tag 载体缺失或格式非法")
+        carrier_tags.append(scenario_tag)
+
+    if len(set(carrier_tags)) != 1:
+        _raise_warehouse_idempotency_conflict("scenario_tag 载体不一致")
+    if carrier_tags[0] != header_tag:
+        _raise_warehouse_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
+    return header_tag
+
+
+def _build_local_stock_ledger_fallback(
+    *,
+    session: Session,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+    page: int,
+    page_size: int,
+) -> WarehouseStockLedgerData:
+    normalized_company = _scope_text(company)
+    normalized_warehouse = _scope_text(warehouse)
+    normalized_item_code = _scope_text(item_code)
+    query = (
+        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+        .join(
+            LyWarehouseStockEntryDraftItem,
+            LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+        )
+        .filter(LyWarehouseStockEntryDraft.status != "cancelled")
+        .order_by(LyWarehouseStockEntryDraft.created_at.asc(), LyWarehouseStockEntryDraft.id.asc())
+    )
+    if normalized_company is not None:
+        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+    if normalized_warehouse is not None:
+        query = query.filter(LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
+    if normalized_item_code is not None:
+        query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
+    rows = query.all()
+
+    running_qty = Decimal("0")
+    fallback_items: list[WarehouseStockLedgerItem] = []
+    for draft_row, item_row in rows:
+        qty = Decimal(str(item_row.qty))
+        running_qty += qty
+        fallback_items.append(
+            WarehouseStockLedgerItem(
+                company=str(draft_row.company),
+                warehouse=str(item_row.target_warehouse or draft_row.target_warehouse or ""),
+                item_code=str(item_row.item_code),
+                posting_date=(draft_row.created_at.date() if draft_row.created_at else date.today()),
+                voucher_type="Stock Entry Draft",
+                voucher_no=f"DRAFT-{draft_row.id}",
+                actual_qty=qty,
+                qty_after_transaction=running_qty,
+                valuation_rate=Decimal("0"),
+            )
+        )
+
+    total = len(fallback_items)
+    start = max((page - 1) * page_size, 0)
+    end = start + page_size
+    return WarehouseStockLedgerData(items=fallback_items[start:end], total=total, page=page, page_size=page_size)
+
+
+def _build_local_stock_summary_fallback(
+    *,
+    session: Session,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+) -> WarehouseStockSummaryData:
+    normalized_company = _scope_text(company)
+    normalized_warehouse = _scope_text(warehouse)
+    normalized_item_code = _scope_text(item_code)
+    query = (
+        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+        .join(
+            LyWarehouseStockEntryDraftItem,
+            LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+        )
+        .filter(LyWarehouseStockEntryDraft.status != "cancelled")
+    )
+    if normalized_company is not None:
+        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+    if normalized_warehouse is not None:
+        query = query.filter(LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
+    if normalized_item_code is not None:
+        query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
+
+    grouped: dict[tuple[str, str, str], Decimal] = {}
+    for draft_row, item_row in query.all():
+        company_key = str(draft_row.company)
+        warehouse_key = str(item_row.target_warehouse or draft_row.target_warehouse or "")
+        item_key = str(item_row.item_code)
+        key = (company_key, warehouse_key, item_key)
+        grouped[key] = grouped.get(key, Decimal("0")) + Decimal(str(item_row.qty))
+
+    items = [
+        WarehouseStockSummaryItem(
+            company=company_key,
+            warehouse=warehouse_key,
+            item_code=item_key,
+            actual_qty=qty,
+            projected_qty=qty,
+            reserved_qty=Decimal("0"),
+            ordered_qty=Decimal("0"),
+            reorder_level=None,
+            safety_stock=None,
+            threshold_missing=True,
+            is_below_reorder=False,
+            is_below_safety=False,
+        )
+        for (company_key, warehouse_key, item_key), qty in sorted(grouped.items())
+    ]
+    return WarehouseStockSummaryData(
+        company=normalized_company,
+        warehouse=normalized_warehouse,
+        item_code=normalized_item_code,
+        items=items,
+        warehouse_management=[],
+        material_inventory=[],
+    )
 
 
 def _handle_erpnext_error(
@@ -644,14 +848,24 @@ def list_stock_ledger(
             page_size=page_size,
         )
     except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="StockLedgerEntry",
-        )
+        if _local_warehouse_read_fallback_enabled(exc):
+            data = _build_local_stock_ledger_fallback(
+                session=session,
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                page=page,
+                page_size=page_size,
+            )
+        else:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="StockLedgerEntry",
+            )
 
     filtered = [
         row
@@ -715,14 +929,22 @@ def get_stock_summary(
             item_code=_scope_text(item_code),
         )
     except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="Bin",
-        )
+        if _local_warehouse_read_fallback_enabled(exc):
+            data = _build_local_stock_summary_fallback(
+                session=session,
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+            )
+        else:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="Bin",
+            )
 
     filtered = [
         row
@@ -1735,6 +1957,10 @@ def create_stock_entry_draft(
         action=action,
         resource_type="warehouse",
     )
+    _validate_local_warehouse_write_gate(
+        request_obj=request,
+        carriers=[payload.idempotency_key, payload.source_id],
+    )
     try:
         _check_create_scope(
             permission_service=permission_service,
@@ -1791,6 +2017,15 @@ def cancel_stock_entry_draft(
         before_data = _write_service(session).get_stock_entry_draft(draft_id=draft_id).model_dump(mode="json")
     except WarehouseServiceError as exc:
         _raise_service_error(exc)
+
+    _validate_local_warehouse_write_gate(
+        request_obj=request,
+        carriers=[
+            str(before_data.get("idempotency_key") or ""),
+            str(before_data.get("source_id") or ""),
+            payload.reason,
+        ],
+    )
 
     try:
         _check_draft_scope(

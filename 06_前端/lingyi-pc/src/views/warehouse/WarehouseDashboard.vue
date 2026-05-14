@@ -94,6 +94,88 @@
         </el-tooltip>
       </div>
 
+      <div class="local-write-row" data-testid="warehouse-stock-local-write-section">
+        <el-input
+          v-model="localWriteForm.scenario_tag"
+          placeholder="scenario_tag: Z002-WAREHOUSE-STOCK-YYYYMMDD-NNN"
+          aria-label="仓库库存写入 scenario_tag"
+          data-testid="warehouse-stock-scenario-tag-input"
+          style="max-width: 360px"
+        />
+        <el-input
+          v-model="localWriteForm.item_code"
+          placeholder="库存款号"
+          aria-label="库存款号"
+          data-testid="warehouse-stock-item-code-input"
+          style="max-width: 180px"
+        />
+        <el-button
+          type="primary"
+          :loading="localWriteLoading"
+          :disabled="!canStockDraftWrite"
+          data-action-type="write"
+          data-write-guard="allowed:warehouse-stock-draft-local-only"
+          data-write-allowlist="warehouse-stock-entry-draft"
+          data-testid="warehouse-stock-create-draft-button"
+          @click="createLocalStockEntryDraft"
+        >
+          创建草稿
+        </el-button>
+        <el-button
+          :loading="localWriteLoading"
+          :disabled="!canStockDraftCancel || !localDraft"
+          data-action-type="write"
+          data-write-guard="allowed:warehouse-stock-cancel-local-only"
+          data-write-allowlist="warehouse-stock-entry-draft-cancel"
+          data-testid="warehouse-stock-cancel-draft-button"
+          @click="cancelLocalStockEntryDraft"
+        >
+          取消草稿
+        </el-button>
+        <el-button
+          :disabled="!localDraft"
+          data-testid="warehouse-stock-refresh-draft-button"
+          @click="refreshLocalStockEntryDraft"
+        >
+          回读草稿
+        </el-button>
+        <el-button
+          :disabled="!localDraft"
+          data-testid="warehouse-stock-refresh-outbox-button"
+          @click="refreshLocalStockEntryOutboxStatus"
+        >
+          回读 Outbox
+        </el-button>
+      </div>
+
+      <el-alert
+        v-if="localWriteFeedback"
+        :title="localWriteFeedback"
+        type="info"
+        :closable="false"
+        class="scope-alert"
+        data-testid="warehouse-stock-local-write-feedback"
+      />
+
+      <el-descriptions
+        v-if="localDraft"
+        :column="2"
+        border
+        class="local-write-state"
+        data-testid="warehouse-stock-local-write-state"
+      >
+        <el-descriptions-item label="草稿ID">{{ localDraft.id }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ localDraft.status }}</el-descriptions-item>
+        <el-descriptions-item label="source_id">{{ localDraft.source_id }}</el-descriptions-item>
+        <el-descriptions-item label="idempotency_key">{{ localDraft.idempotency_key }}</el-descriptions-item>
+        <el-descriptions-item label="outbox状态">
+          {{ localOutboxStatus?.status || localDraft.outbox?.status || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="outbox重试次数">
+          {{ localOutboxStatus?.retry_count ?? localDraft.outbox?.retry_count ?? '-' }}
+        </el-descriptions-item>
+      </el-descriptions>
+
       <div class="warehouse-management-section">
         <div class="management-header">
           <div class="title-wrap">
@@ -869,12 +951,18 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
+  cancelWarehouseStockEntryDraft,
+  createWarehouseStockEntryDraft,
+  fetchWarehouseStockEntryDraft,
+  fetchWarehouseStockEntryOutboxStatus,
   type WarehouseFactoryReturnMaterialReportItem,
   type WarehouseMaterialInventoryItem,
   type WarehouseManagementItem,
   type WarehouseOtherInboundItem,
   type WarehousePurchaseReturnOutboundItem,
   type WarehouseSemiFinishedOutboundItem,
+  type WarehouseStockEntryDraftData,
+  type WarehouseStockEntryOutboxStatusData,
   fetchWarehouseFactoryReturnMaterialReport,
   fetchWarehouseOtherInbound,
   fetchWarehousePurchaseReturnOutbound,
@@ -920,6 +1008,10 @@ const factoryReturnMaterialReportErrorMessage = ref<string>('')
 const semiFinishedOutboundErrorMessage = ref<string>('')
 const selectedRows = ref<DisplayRow[]>([])
 const ledgerDialogVisible = ref<boolean>(false)
+const localWriteLoading = ref<boolean>(false)
+const localWriteFeedback = ref<string>('')
+const localDraft = ref<WarehouseStockEntryDraftData | null>(null)
+const localOutboxStatus = ref<WarehouseStockEntryOutboxStatusData | null>(null)
 
 const summaryRows = ref<WarehouseStockSummaryItem[]>([])
 const managementRows = ref<WarehouseManagementItem[]>([])
@@ -966,6 +1058,31 @@ const query = reactive({
   semi_finished_outbound_status: '',
   from_date: '',
   to_date: '',
+})
+
+const WAREHOUSE_STOCK_SCENARIO_PATTERN = /(Z002-WAREHOUSE-STOCK-\d{8}-\d{3})/
+
+const buildScenarioDatePart = (): string => {
+  const now = new Date()
+  const year = String(now.getFullYear())
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}${month}${day}`
+}
+
+const buildDefaultWarehouseScenarioTag = (): string => {
+  const suffix = String(new Date().getMinutes() % 1000).padStart(3, '0')
+  return `Z002-WAREHOUSE-STOCK-${buildScenarioDatePart()}-${suffix}`
+}
+
+const localWriteForm = reactive({
+  scenario_tag: buildDefaultWarehouseScenarioTag(),
+  company: '样衣制造',
+  source_warehouse: '原料仓',
+  target_warehouse: '成品仓',
+  item_code: 'ZY240716',
+  qty: 1,
+  uom: '件',
 })
 
 const LOCAL_ERROR_TOKEN = '__error__'
@@ -1264,6 +1381,15 @@ const localSeedSemiFinishedOutboundRows: WarehouseSemiFinishedOutboundItem[] = [
 const canRead = computed<boolean>(
   () => permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('warehouse:read'),
 )
+const canStockDraftWrite = computed<boolean>(() => permissionStore.state.actions.includes('warehouse:stock_entry_draft'))
+const canStockDraftCancel = computed<boolean>(() => permissionStore.state.actions.includes('warehouse:stock_entry_cancel'))
+
+const extractWarehouseScenarioTag = (value: string): string | null => {
+  const matched = value.match(WAREHOUSE_STOCK_SCENARIO_PATTERN)
+  return matched ? matched[1] : null
+}
+
+const buildWarehouseRequestId = (scenarioTag: string): string => `${scenarioTag}-REQ-STOCK`
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
@@ -1889,6 +2015,117 @@ const applySemiFinishedOutboundFilters = (): void => {
   semiFinishedOutboundErrorMessage.value = ''
 }
 
+const refreshLocalStockEntryDraft = async (): Promise<void> => {
+  if (!localDraft.value) return
+  const result = await fetchWarehouseStockEntryDraft(localDraft.value.id)
+  localDraft.value = result.data
+}
+
+const refreshLocalStockEntryOutboxStatus = async (): Promise<void> => {
+  if (!localDraft.value) return
+  const result = await fetchWarehouseStockEntryOutboxStatus(localDraft.value.id)
+  localOutboxStatus.value = result.data
+}
+
+const createLocalStockEntryDraft = async (): Promise<void> => {
+  if (!canStockDraftWrite.value) {
+    ElMessage.warning('当前账号无草稿创建权限')
+    return
+  }
+  const scenarioTag = extractWarehouseScenarioTag(localWriteForm.scenario_tag.trim())
+  if (!scenarioTag) {
+    localWriteFeedback.value = 'scenario_tag 缺失或格式非法，请使用 Z002-WAREHOUSE-STOCK-YYYYMMDD-NNN。'
+    ElMessage.warning(localWriteFeedback.value)
+    return
+  }
+
+  localWriteLoading.value = true
+  localWriteFeedback.value = ''
+  try {
+    const requestId = buildWarehouseRequestId(scenarioTag)
+    const payload = {
+      company: localWriteForm.company.trim() || '样衣制造',
+      purpose: 'Material Receipt' as const,
+      source_type: 'local_synthetic_stock_entry',
+      source_id: `SRC-${scenarioTag}`,
+      target_warehouse: localWriteForm.target_warehouse.trim() || '成品仓',
+      items: [
+        {
+          item_code: localWriteForm.item_code.trim() || 'ZY240716',
+          qty: Number(localWriteForm.qty) > 0 ? Number(localWriteForm.qty) : 1,
+          uom: localWriteForm.uom.trim() || '件',
+          target_warehouse: localWriteForm.target_warehouse.trim() || '成品仓',
+        },
+      ],
+      idempotency_key: `IDEMP-${scenarioTag}`,
+    }
+    const created = await createWarehouseStockEntryDraft(payload, { requestId })
+    localDraft.value = created.data
+    await refreshLocalStockEntryOutboxStatus()
+    const ledgerResult = await fetchWarehouseStockLedger({
+      company: payload.company,
+      warehouse: payload.target_warehouse,
+      item_code: payload.items[0].item_code,
+      page: 1,
+      page_size: 20,
+    })
+    ledgerRows.value = ledgerResult.data.items
+    localWriteFeedback.value = `草稿创建成功：draft_id=${created.data.id}，并已触发库存台账回读。`
+    ElMessage.success('库存草稿创建成功')
+  } catch (error) {
+    localWriteFeedback.value = (error as Error).message || '草稿创建失败'
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
+const cancelLocalStockEntryDraft = async (): Promise<void> => {
+  if (!canStockDraftCancel.value) {
+    ElMessage.warning('当前账号无草稿取消权限')
+    return
+  }
+  if (!localDraft.value) {
+    ElMessage.warning('请先创建草稿')
+    return
+  }
+  const scenarioTag =
+    extractWarehouseScenarioTag(localWriteForm.scenario_tag.trim()) ||
+    extractWarehouseScenarioTag(localDraft.value.source_id || '') ||
+    extractWarehouseScenarioTag(localDraft.value.idempotency_key || '')
+  if (!scenarioTag) {
+    localWriteFeedback.value = 'scenario_tag 缺失或格式非法，无法执行取消。'
+    ElMessage.warning(localWriteFeedback.value)
+    return
+  }
+
+  localWriteLoading.value = true
+  localWriteFeedback.value = ''
+  try {
+    const requestId = buildWarehouseRequestId(scenarioTag)
+    const reason = `CANCEL-${scenarioTag}`
+    const cancelled = await cancelWarehouseStockEntryDraft(localDraft.value.id, reason, { requestId })
+    localDraft.value = cancelled.data
+    await refreshLocalStockEntryOutboxStatus()
+    await refreshLocalStockEntryDraft()
+    const ledgerResult = await fetchWarehouseStockLedger({
+      company: cancelled.data.company,
+      warehouse: cancelled.data.target_warehouse || undefined,
+      item_code: cancelled.data.items[0]?.item_code || undefined,
+      page: 1,
+      page_size: 20,
+    })
+    ledgerRows.value = ledgerResult.data.items
+    localWriteFeedback.value = `草稿取消成功：draft_id=${cancelled.data.id}，并已触发库存台账回读。`
+    ElMessage.success('库存草稿取消成功')
+  } catch (error) {
+    localWriteFeedback.value = (error as Error).message || '草稿取消失败'
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
 const guardedAction = (actionName: string): void => {
   ElMessage.warning(`${actionName} 为受控动作，本地首版保持只读`)
 }
@@ -2002,6 +2239,18 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 12px;
+}
+
+.local-write-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.local-write-state {
   margin-bottom: 12px;
 }
 

@@ -1,0 +1,71 @@
+{
+  "task_id": "TASK-Z002B-32-IMPL",
+  "source_head": "546953bcd2687db7d14d9a0ddf43ad328b1b76e2",
+  "source_subject": "chore: seal workshop batch write closure",
+  "APP_ENV": "development",
+  "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+  "local_test_db_confirmed": true,
+  "route_scope": [
+    "/warehouse",
+    "/sales-inventory/stock-ledger"
+  ],
+  "scenario_tag": "Z002-WAREHOUSE-STOCK-20260513-331",
+  "scenario_tag_carriers": [
+    "payload.idempotency_key",
+    "payload.source_id",
+    "payload.reason(cancel)",
+    "header.X-Request-ID/request_id"
+  ],
+  "create_draft_post_triggered": true,
+  "cancel_draft_post_triggered": true,
+  "readback_get_after_create": true,
+  "readback_get_after_cancel": true,
+  "stock_ledger_compute_get_triggered": true,
+  "fail_closed_cases": {
+    "missing_request_id_status": 409,
+    "mismatched_request_id_status": 409,
+    "mismatched_source_id_status": 409,
+    "db_write_on_failed_gate_count": 0
+  },
+  "approved_write_request_count": 2,
+  "allowed_write_requests": [
+    {
+      "method": "POST",
+      "url": "/api/warehouse/stock-entry-drafts",
+      "status": 201
+    },
+    {
+      "method": "POST",
+      "url": "/api/warehouse/stock-entry-drafts/4/cancel",
+      "status": 200
+    }
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/warehouse/stock-entry-drafts",
+    "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel"
+  ],
+  "unexpected_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "production_write_count": 0,
+  "unexplained_console_errors_total": 0,
+  "unexplained_network_4xx_5xx_total": 0,
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_warehouse_stock_entry_outbox_event": 0,
+    "ly_warehouse_stock_entry_draft_item": 0,
+    "ly_warehouse_stock_entry_draft": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0,
+    "ly_warehouse_inventory_count_item": 0,
+    "ly_warehouse_inventory_count": 0
+  },
+  "artifacts": {
+    "browser_json": "/tmp/task_z002b32_browser_result.json",
+    "cleanup_json": "/tmp/task_z002b32_cleanup.json",
+    "screenshots_dir": "/tmp/task_z002b32_screenshots",
+    "screenshots_count": 3
+  }
+}

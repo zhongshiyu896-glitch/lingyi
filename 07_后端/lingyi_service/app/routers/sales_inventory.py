@@ -6,6 +6,7 @@ from collections.abc import Generator
 from datetime import UTC
 from datetime import date
 from datetime import datetime
+from decimal import Decimal
 import os
 from typing import Any
 
@@ -26,6 +27,12 @@ from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
 from app.core.permissions import get_permission_source
 from app.schemas.sales_inventory import DiagnosticData
+from app.schemas.sales_inventory import StockLedgerData
+from app.schemas.sales_inventory import StockLedgerItem
+from app.schemas.sales_inventory import StockSummaryData
+from app.schemas.sales_inventory import StockSummaryItem
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
@@ -149,6 +156,120 @@ def _scope_text(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _build_local_stock_summary_fallback(
+    *,
+    session: Session,
+    item_code: str,
+    company: str | None,
+    warehouse: str | None,
+) -> StockSummaryData:
+    normalized_company = _scope_text(company)
+    normalized_warehouse = _scope_text(warehouse)
+    query = (
+        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+        .join(
+            LyWarehouseStockEntryDraftItem,
+            LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+        )
+        .filter(
+            LyWarehouseStockEntryDraft.status != "cancelled",
+            LyWarehouseStockEntryDraftItem.item_code == item_code,
+        )
+    )
+    if normalized_company is not None:
+        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+    if normalized_warehouse is not None:
+        query = query.filter(LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
+
+    grouped: dict[tuple[str, str], Decimal] = {}
+    latest_posting: dict[tuple[str, str], datetime | None] = {}
+    for draft_row, item_row in query.all():
+        company_key = str(draft_row.company)
+        warehouse_key = str(item_row.target_warehouse or draft_row.target_warehouse or "")
+        key = (company_key, warehouse_key)
+        grouped[key] = grouped.get(key, Decimal("0")) + Decimal(str(item_row.qty))
+        current_latest = latest_posting.get(key)
+        if current_latest is None or ((draft_row.created_at or datetime.min.replace(tzinfo=UTC)) > current_latest):
+            latest_posting[key] = draft_row.created_at
+
+    items: list[StockSummaryItem] = []
+    for (company_key, warehouse_key), qty in sorted(grouped.items()):
+        latest = latest_posting.get((company_key, warehouse_key))
+        items.append(
+            StockSummaryItem(
+                company=company_key,
+                item_code=item_code,
+                warehouse=warehouse_key,
+                balance_qty=qty,
+                latest_posting_date=(latest.date() if latest else None),
+                latest_posting_time=(latest.time().isoformat(timespec="seconds") if latest else None),
+            )
+        )
+
+    return StockSummaryData(
+        item_code=item_code,
+        company=normalized_company,
+        warehouse=normalized_warehouse,
+        items=items,
+        dropped_count=0,
+    )
+
+
+def _build_local_stock_ledger_fallback(
+    *,
+    session: Session,
+    item_code: str,
+    company: str | None,
+    warehouse: str | None,
+    page: int,
+    page_size: int,
+) -> StockLedgerData:
+    normalized_company = _scope_text(company)
+    normalized_warehouse = _scope_text(warehouse)
+    query = (
+        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+        .join(
+            LyWarehouseStockEntryDraftItem,
+            LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+        )
+        .filter(
+            LyWarehouseStockEntryDraft.status != "cancelled",
+            LyWarehouseStockEntryDraftItem.item_code == item_code,
+        )
+        .order_by(LyWarehouseStockEntryDraft.created_at.asc(), LyWarehouseStockEntryDraft.id.asc())
+    )
+    if normalized_company is not None:
+        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+    if normalized_warehouse is not None:
+        query = query.filter(LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
+
+    running_qty = Decimal("0")
+    ledger_items: list[StockLedgerItem] = []
+    for draft_row, item_row in query.all():
+        qty = Decimal(str(item_row.qty))
+        running_qty += qty
+        created_at = draft_row.created_at or datetime.now(UTC)
+        ledger_items.append(
+            StockLedgerItem(
+                name=f"DRAFT-{draft_row.id}-{item_row.id}",
+                company=str(draft_row.company),
+                item_code=item_code,
+                warehouse=str(item_row.target_warehouse or draft_row.target_warehouse or ""),
+                posting_date=created_at.date(),
+                posting_time=created_at.time().isoformat(timespec="seconds"),
+                actual_qty=qty,
+                qty_after_transaction=running_qty,
+                voucher_type="Stock Entry Draft",
+                voucher_no=f"DRAFT-{draft_row.id}",
+            )
+        )
+
+    total = len(ledger_items)
+    start = max((page - 1) * page_size, 0)
+    end = start + page_size
+    return StockLedgerData(items=ledger_items[start:end], total=total, page=page, page_size=page_size, dropped_count=0)
 
 
 def _parse_optional_date(value: str | None, field_name: str) -> date | None:
@@ -1299,15 +1420,23 @@ def get_stock_summary(
     try:
         data = _service(request).get_stock_summary(item_code=item_code, company=company, warehouse=warehouse)
     except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="Item",
-            resource_no=item_code,
-        )
+        if _local_read_fallback_enabled(exc):
+            data = _build_local_stock_summary_fallback(
+                session=session,
+                item_code=item_code,
+                company=company,
+                warehouse=warehouse,
+            )
+        else:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="Item",
+                resource_no=item_code,
+            )
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     data.items = filtered
     return _ok(data)
@@ -1369,15 +1498,25 @@ def list_stock_ledger(
             page_size=page_size,
         )
     except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="StockLedgerEntry",
-            resource_no=item_code,
-        )
+        if _local_read_fallback_enabled(exc):
+            data = _build_local_stock_ledger_fallback(
+                session=session,
+                item_code=item_code,
+                company=company,
+                warehouse=warehouse,
+                page=page,
+                page_size=page_size,
+            )
+        else:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="StockLedgerEntry",
+                resource_no=item_code,
+            )
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     data.items = filtered
     data.total = len(filtered)
