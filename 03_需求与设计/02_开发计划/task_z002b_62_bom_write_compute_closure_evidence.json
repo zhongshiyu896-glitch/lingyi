@@ -1,0 +1,97 @@
+{
+  "task_id": "TASK-Z002B-62-IMPL-FIX1",
+  "source_head": "d70ea9d5acb37a9cdb8a1a2117b97b9bb92d121f",
+  "source_subject": "chore: seal workshop wage write closure",
+  "route_scope": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/bom/",
+    "GET /api/bom/{bom_id}"
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/bom/",
+    "PUT /api/bom/{bom_id}",
+    "POST /api/bom/{bom_id}/set-default",
+    "POST /api/bom/{bom_id}/activate",
+    "POST /api/bom/{bom_id}/deactivate",
+    "POST /api/bom/{bom_id}/explode"
+  ],
+  "scenario_tag_policy": {
+    "prefix": "Z002-BOM-{YYYYMMDD}-{NNN}",
+    "scenario_tag": "Z002-BOM-20260514-291",
+    "request_id_pattern": "^[A-Za-z0-9_.-]{1,64}$",
+    "request_id_pattern_valid": true,
+    "request_id_examples": [
+      "Z002-BOM-20260514-291-RQ-I6A3B-B648B-R0F1B",
+      "Z002-BOM-20260514-291-RQ-I6A3B-BC307-R496C"
+    ],
+    "request_id_length": 42,
+    "carriers": [
+      "header.X-Request-ID/request_id",
+      "payload.idempotency_key",
+      "payload.bom_no_or_source_ref",
+      "payload.item_code",
+      "payload.reason(deactivate)"
+    ]
+  },
+  "local_dev_gate": {
+    "app_env": "development",
+    "db_url": "sqlite:///./lingyi_service.local.db",
+    "enabled": true
+  },
+  "approved_write_request_count": 6,
+  "unexpected_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "production_write_count": 0,
+  "fail_closed_cases": {
+    "missing_request_id_status": 409,
+    "mismatched_request_id_status": 409,
+    "mismatched_bom_no_or_source_ref_status": 409,
+    "mismatched_item_code_status": 409,
+    "mismatched_reason_status": 409
+  },
+  "db_write_on_failed_gate_count": 0,
+  "audit_log_delta_on_failed_gate": {
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0,
+    "ly_operation_audit_log_failed_create_resource_no": 0
+  },
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_apparel_bom": 0,
+    "ly_apparel_bom_item": 0,
+    "ly_bom_operation": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "browser_evidence": {
+    "browser_json": "/tmp/task_z002b62_browser_result.json",
+    "cleanup_json": "/tmp/task_z002b62_cleanup.json",
+    "regression_api_json": "/tmp/task_z002b62_regression_api.json",
+    "screenshots_dir": "/tmp/task_z002b62_screenshots",
+    "screenshots_count": 3,
+    "screenshots": [
+      "/tmp/task_z002b62_screenshots/bom_list.png",
+      "/tmp/task_z002b62_screenshots/bom_detail.png",
+      "/tmp/task_z002b62_screenshots/bom_detail_scrolled.png"
+    ]
+  },
+  "forbidden_actions": {
+    "allowlist_outside_edits": false,
+    "models_bom_py_edited": false,
+    "test_code_edited": false,
+    "erpnext_worker_sync_internal_production_writes": false,
+    "import_export_download_upload_print": false,
+    "git_add_commit_push": false,
+    "pr_merge_close_tag_release_cleanup": false,
+    "reset_restore_clean_delete": false,
+    "rollback_revert_force_push": false,
+    "parked_blockers_released": false
+  },
+  "generated_at": "2026-05-14T21:31:12+08:00"
+}

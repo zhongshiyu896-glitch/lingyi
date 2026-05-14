@@ -20,6 +20,9 @@ export interface BomOperationPayload {
 }
 
 export interface BomCreatePayload {
+  scenario_tag: string
+  idempotency_key: string
+  source_ref: string
   item_code: string
   version_no: string
   bom_items: BomItemPayload[]
@@ -27,9 +30,35 @@ export interface BomCreatePayload {
 }
 
 export interface BomUpdatePayload {
+  scenario_tag: string
+  idempotency_key: string
+  source_ref: string
+  bom_no: string
+  item_code: string
   version_no: string
   bom_items: BomItemPayload[]
   operations: BomOperationPayload[]
+}
+
+export interface BomWriteMeta {
+  requestId?: string
+}
+
+export interface BomWriteCarrierPayload {
+  scenario_tag: string
+  idempotency_key: string
+  source_ref: string
+  bom_no: string
+  item_code: string
+}
+
+export interface BomDeactivatePayload extends BomWriteCarrierPayload {
+  reason: string
+}
+
+export interface BomExplodePayload extends BomWriteCarrierPayload {
+  order_qty: number
+  size_ratio: Record<string, number>
 }
 
 export interface BomListItem {
@@ -379,10 +408,13 @@ const toQuery = (params: Record<string, string | number | undefined>): string =>
   return query.toString()
 }
 
-export const createBom = (payload: BomCreatePayload): Promise<ApiResponse<{ name: string }>> =>
+export const createBom = (payload: BomCreatePayload, meta?: BomWriteMeta): Promise<ApiResponse<{ name: string }>> =>
   request('/api/bom/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
@@ -534,34 +566,69 @@ export const fetchBomDetail = (bomId: number): Promise<ApiResponse<BomDetailData
 export const updateBomDraft = (
   bomId: number,
   payload: BomUpdatePayload,
+  meta?: BomWriteMeta,
 ): Promise<ApiResponse<{ name: string; status: string; updated_at: string }>> =>
   request(`/api/bom/${bomId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
-export const setDefaultBom = (bomId: number): Promise<ApiResponse<{ name: string; item_code: string; is_default: boolean }>> =>
-  request(`/api/bom/${bomId}/set-default`, { method: 'POST' })
+export const setDefaultBom = (
+  bomId: number,
+  payload: BomWriteCarrierPayload,
+  meta?: BomWriteMeta,
+): Promise<ApiResponse<{ name: string; item_code: string; is_default: boolean }>> =>
+  request(`/api/bom/${bomId}/set-default`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
 
 export const activateBom = (
   bomId: number,
+  payload: BomWriteCarrierPayload,
+  meta?: BomWriteMeta,
 ): Promise<ApiResponse<{ name: string; status: string; effective_date?: string | null }>> =>
-  request(`/api/bom/${bomId}/activate`, { method: 'POST' })
+  request(`/api/bom/${bomId}/activate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
 
-export const deactivateBom = (bomId: number, reason: string): Promise<ApiResponse<{ name: string; status: string }>> =>
+export const deactivateBom = (
+  bomId: number,
+  payload: BomDeactivatePayload,
+  meta?: BomWriteMeta,
+): Promise<ApiResponse<{ name: string; status: string }>> =>
   request(`/api/bom/${bomId}/deactivate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reason }),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify(payload),
   })
 
 export const explodeBom = (
   bomId: number,
-  payload: { order_qty: number; size_ratio: Record<string, number> },
+  payload: BomExplodePayload,
+  meta?: BomWriteMeta,
 ): Promise<ApiResponse<BomExplodeData>> =>
   request(`/api/bom/${bomId}/explode`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })

@@ -50,6 +50,9 @@ class BomOperationPayload(BaseModel):
 class BomCreateRequest(BaseModel):
     """Create BOM request payload."""
 
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
     item_code: str = Field(..., min_length=1, max_length=140)
     version_no: str = Field(..., min_length=1, max_length=32)
     bom_items: List[BomItemPayload] = Field(..., min_length=1)
@@ -59,6 +62,11 @@ class BomCreateRequest(BaseModel):
 class BomUpdateRequest(BaseModel):
     """Update draft BOM request payload."""
 
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    bom_no: str = Field(..., min_length=1, max_length=180)
+    item_code: str = Field(..., min_length=1, max_length=140)
     version_no: str = Field(..., min_length=1, max_length=32)
     bom_items: List[BomItemPayload] = Field(..., min_length=1)
     operations: List[BomOperationPayload] = Field(..., min_length=1)
@@ -67,7 +75,22 @@ class BomUpdateRequest(BaseModel):
 class BomDeactivateRequest(BaseModel):
     """Deactivate BOM request payload."""
 
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    bom_no: str = Field(..., min_length=1, max_length=180)
+    item_code: str = Field(..., min_length=1, max_length=140)
     reason: str = Field(..., min_length=1, max_length=300)
+
+
+class BomCarrierRequest(BaseModel):
+    """BOM write carrier payload for action endpoints."""
+
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    bom_no: str = Field(..., min_length=1, max_length=180)
+    item_code: str = Field(..., min_length=1, max_length=140)
 
 
 class BomListQuery(BaseModel):
@@ -229,6 +252,11 @@ class BomMaterialUnitQuery(BaseModel):
 class BomExplodeRequest(BaseModel):
     """BOM explode request payload."""
 
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    bom_no: str = Field(..., min_length=1, max_length=180)
+    item_code: str = Field(..., min_length=1, max_length=140)
     order_qty: Decimal = Field(..., gt=0)
     size_ratio: Dict[str, Decimal] = Field(default_factory=dict)
 

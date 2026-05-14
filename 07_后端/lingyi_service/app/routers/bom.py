@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Generator
 import logging
+import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -21,6 +23,7 @@ from app.core.auth import get_current_user
 from app.core.error_codes import BOM_DEFAULT_CONFLICT
 from app.core.error_codes import BOM_INTERNAL_ERROR
 from app.core.error_codes import DATABASE_WRITE_FAILED
+from app.core.error_codes import WORKSHOP_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import status_of
 from app.core.exceptions import AppException
 from app.core.exceptions import AuditWriteFailed
@@ -39,6 +42,7 @@ from app.core.permissions import BOM_UPDATE
 from app.schemas.bom import BomActivateData
 from app.schemas.bom import BomAccessoriesPackagingData
 from app.schemas.bom import BomAccessoriesPackagingQuery
+from app.schemas.bom import BomCarrierRequest
 from app.schemas.bom import BomCreateRequest
 from app.schemas.bom import BomDeactivateData
 from app.schemas.bom import BomDeactivateRequest
@@ -80,6 +84,155 @@ logger = logging.getLogger(__name__)
 
 BOM_ACTIVATE_ACTION = "bom:activate"
 BOM_EXPLODE_ACTION = "bom:explode"
+BOM_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+BOM_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-BOM-\d{8}-\d{3})")
+BOM_LOCAL_REQUEST_PATTERN = re.compile(
+    r"(Z002-BOM-\d{8}-\d{3})-RQ-I([0-9A-F]{4})-B([0-9A-F]{4})-R([0-9A-F]{4})"
+)
+
+
+def _is_local_bom_write_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    return app_env == "development" and db_url == BOM_LOCAL_ALLOWED_DB_URL
+
+
+def _scope_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _match_bom_scenario_tag(value: str) -> str | None:
+    matched = BOM_LOCAL_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _build_bom_carrier_code(value: Any) -> str | None:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None
+    hash_value = 2166136261
+    for byte in normalized.encode("utf-8"):
+        hash_value ^= byte
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    return f"{hash_value:08X}"[-4:]
+
+
+def _extract_bom_request_carriers(value: str) -> tuple[str | None, str | None, str | None, str | None]:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None, None, None, None
+    matched = BOM_LOCAL_REQUEST_PATTERN.fullmatch(normalized)
+    if matched is None:
+        return None, None, None, None
+    return (
+        _scope_text(matched.group(1)),
+        _scope_text(matched.group(2)),
+        _scope_text(matched.group(3)),
+        _scope_text(matched.group(4)),
+    )
+
+
+def _raise_bom_idempotency_conflict(message: str) -> None:
+    raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message=message)
+
+
+def _validate_local_bom_request_gate(
+    *,
+    request_obj: Request,
+    request_id: str,
+    carriers: list[str | None],
+    expected_item_code: Any,
+    expected_bom_ref: Any,
+    expected_reason: Any = None,
+) -> str:
+    if not _is_local_bom_write_enabled():
+        _raise_bom_idempotency_conflict("仅允许本地开发测试库执行 BOM 写入")
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_bom_idempotency_conflict("request_id 不能为空")
+
+    header_tag = _match_bom_scenario_tag(request_id_header)
+    if header_tag is None:
+        _raise_bom_idempotency_conflict("request_id 未包含合法 scenario_tag")
+
+    normalized_request_id = (request_id or "").strip()
+    request_tag = _match_bom_scenario_tag(normalized_request_id)
+    if request_tag is None:
+        _raise_bom_idempotency_conflict("request_id 未包含合法 scenario_tag")
+    if request_tag != header_tag:
+        _raise_bom_idempotency_conflict("request_id 与 scenario_tag 不一致")
+
+    header_carrier_tag, header_item_code, header_bom_ref_code, header_reason_code = _extract_bom_request_carriers(
+        request_id_header,
+    )
+    if (
+        header_carrier_tag is None
+        or header_item_code is None
+        or header_bom_ref_code is None
+        or header_reason_code is None
+    ):
+        _raise_bom_idempotency_conflict("request_id 载体缺失或格式非法")
+    if header_carrier_tag != header_tag:
+        _raise_bom_idempotency_conflict("request_id 与 scenario_tag 不一致")
+
+    (
+        request_carrier_tag,
+        request_item_code,
+        request_bom_ref_code,
+        request_reason_code,
+    ) = _extract_bom_request_carriers(normalized_request_id)
+    if (
+        request_carrier_tag is None
+        or request_item_code is None
+        or request_bom_ref_code is None
+        or request_reason_code is None
+    ):
+        _raise_bom_idempotency_conflict("request_id 载体缺失或格式非法")
+    if request_carrier_tag != header_carrier_tag:
+        _raise_bom_idempotency_conflict("request_id 与 scenario_tag 不一致")
+    if request_item_code != header_item_code or request_bom_ref_code != header_bom_ref_code:
+        _raise_bom_idempotency_conflict("request_id 载体不一致")
+    if request_reason_code != header_reason_code:
+        _raise_bom_idempotency_conflict("request_id 载体不一致")
+
+    expected_item_code_hash = _build_bom_carrier_code(expected_item_code)
+    expected_bom_ref_hash = _build_bom_carrier_code(expected_bom_ref)
+    expected_reason_hash = _build_bom_carrier_code(_scope_text(expected_reason) or "NONE")
+    if expected_item_code_hash is None:
+        _raise_bom_idempotency_conflict("item_code 载体缺失")
+    if expected_bom_ref_hash is None:
+        _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体缺失")
+    if expected_reason_hash is None:
+        _raise_bom_idempotency_conflict("reason 载体缺失")
+
+    if header_item_code != expected_item_code_hash:
+        _raise_bom_idempotency_conflict("item_code 载体与业务载体不一致")
+    if header_bom_ref_code != expected_bom_ref_hash:
+        _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+    if header_reason_code != expected_reason_hash:
+        _raise_bom_idempotency_conflict("reason 载体与业务载体不一致")
+
+    carrier_tags: list[str] = []
+    for raw_value in carriers:
+        normalized = _scope_text(raw_value)
+        if normalized is None:
+            _raise_bom_idempotency_conflict("scenario_tag 载体缺失")
+        scenario_tag = _match_bom_scenario_tag(normalized)
+        if scenario_tag is None:
+            _raise_bom_idempotency_conflict("scenario_tag 载体缺失或格式非法")
+        carrier_tags.append(scenario_tag)
+
+    if len(set(carrier_tags)) != 1:
+        _raise_bom_idempotency_conflict("scenario_tag 载体不一致")
+    if carrier_tags[0] != header_tag:
+        _raise_bom_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
+    return header_tag
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -174,6 +327,15 @@ def _resource_no(snapshot: dict[str, Any] | None) -> str | None:
     return str(value) if value else None
 
 
+def _snapshot_bom_carriers(snapshot: dict[str, Any] | None) -> tuple[str | None, str | None]:
+    if not snapshot:
+        return None, None
+    bom_info = snapshot.get("bom", {})
+    if not isinstance(bom_info, dict):
+        return None, None
+    return _scope_text(bom_info.get("item_code")), _scope_text(bom_info.get("bom_no"))
+
+
 def _record_failure_safely(
     *,
     session: Session,
@@ -221,6 +383,10 @@ def _record_failure_safely(
                 "user_id": current_user.username,
             },
         )
+
+
+def _is_local_bom_gate_failure(exc: AppException) -> bool:
+    return exc.code == WORKSHOP_IDEMPOTENCY_CONFLICT
 
 
 def _require_any_action(
@@ -289,10 +455,19 @@ def create_bom(
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
     action = BOM_CREATE
+    request_id = get_request_id_from_request(request)
     result = None
     after_data = None
 
     try:
+        _validate_local_bom_request_gate(
+            request_obj=request,
+            request_id=request_id,
+            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag],
+            expected_item_code=payload.item_code,
+            expected_bom_ref=payload.source_ref,
+            expected_reason=None,
+        )
         result = service.create_bom(payload=payload, operator=current_user.username)
         created_bom = service.get_bom_by_no(result.name)
         resource_id = int(created_bom.id) if created_bom else None
@@ -316,6 +491,8 @@ def create_bom(
         return _app_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_bom_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,
@@ -1022,11 +1199,29 @@ def update_bom_draft(
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
     action = BOM_UPDATE
+    request_id = get_request_id_from_request(request)
     before_data = None
     after_data = None
 
     try:
         before_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
+        snapshot_item_code, snapshot_bom_no = _snapshot_bom_carriers(before_data)
+        if snapshot_item_code is None or snapshot_bom_no is None:
+            _raise_bom_idempotency_conflict("业务载体缺失")
+        if payload.item_code != snapshot_item_code:
+            _raise_bom_idempotency_conflict("item_code 载体与业务载体不一致")
+        if payload.bom_no != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        if payload.source_ref != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        _validate_local_bom_request_gate(
+            request_obj=request,
+            request_id=request_id,
+            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.bom_no],
+            expected_item_code=snapshot_item_code,
+            expected_bom_ref=snapshot_bom_no,
+            expected_reason=None,
+        )
         data: BomUpdateData = service.update_bom_draft(
             bom_id=bom_id,
             payload=payload,
@@ -1052,6 +1247,8 @@ def update_bom_draft(
         return _app_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_bom_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,
@@ -1087,6 +1284,7 @@ def update_bom_draft(
 @router.post("/{bom_id}/set-default")
 def set_default_bom(
     bom_id: int,
+    payload: BomCarrierRequest,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
@@ -1105,11 +1303,29 @@ def set_default_bom(
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
     action = BOM_SET_DEFAULT
+    request_id = get_request_id_from_request(request)
     before_data = None
     after_data = None
 
     try:
         before_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
+        snapshot_item_code, snapshot_bom_no = _snapshot_bom_carriers(before_data)
+        if snapshot_item_code is None or snapshot_bom_no is None:
+            _raise_bom_idempotency_conflict("业务载体缺失")
+        if payload.item_code != snapshot_item_code:
+            _raise_bom_idempotency_conflict("item_code 载体与业务载体不一致")
+        if payload.bom_no != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        if payload.source_ref != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        _validate_local_bom_request_gate(
+            request_obj=request,
+            request_id=request_id,
+            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.bom_no],
+            expected_item_code=snapshot_item_code,
+            expected_bom_ref=snapshot_bom_no,
+            expected_reason=None,
+        )
         data: BomSetDefaultData = service.set_default(bom_id=bom_id, operator=current_user.username)
         after_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
         audit.record_success(
@@ -1131,6 +1347,8 @@ def set_default_bom(
         return _app_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_bom_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,
@@ -1166,6 +1384,7 @@ def set_default_bom(
 @router.post("/{bom_id}/activate")
 def activate_bom(
     bom_id: int,
+    payload: BomCarrierRequest,
     request: Request,
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
@@ -1186,11 +1405,29 @@ def activate_bom(
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
     action = BOM_ACTIVATE_ACTION
+    request_id = get_request_id_from_request(request)
     before_data = None
     after_data = None
 
     try:
         before_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
+        snapshot_item_code, snapshot_bom_no = _snapshot_bom_carriers(before_data)
+        if snapshot_item_code is None or snapshot_bom_no is None:
+            _raise_bom_idempotency_conflict("业务载体缺失")
+        if payload.item_code != snapshot_item_code:
+            _raise_bom_idempotency_conflict("item_code 载体与业务载体不一致")
+        if payload.bom_no != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        if payload.source_ref != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        _validate_local_bom_request_gate(
+            request_obj=request,
+            request_id=request_id,
+            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.bom_no],
+            expected_item_code=snapshot_item_code,
+            expected_bom_ref=snapshot_bom_no,
+            expected_reason=None,
+        )
         data: BomActivateData = service.activate(bom_id=bom_id, operator=current_user.username)
         after_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
         audit.record_success(
@@ -1212,6 +1449,8 @@ def activate_bom(
         return _app_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_bom_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,
@@ -1266,11 +1505,29 @@ def deactivate_bom(
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
     action = BOM_DEACTIVATE
+    request_id = get_request_id_from_request(request)
     before_data = None
     after_data = None
 
     try:
         before_data = audit.snapshot_resource(resource_type="bom", resource_id=bom_id)
+        snapshot_item_code, snapshot_bom_no = _snapshot_bom_carriers(before_data)
+        if snapshot_item_code is None or snapshot_bom_no is None:
+            _raise_bom_idempotency_conflict("业务载体缺失")
+        if payload.item_code != snapshot_item_code:
+            _raise_bom_idempotency_conflict("item_code 载体与业务载体不一致")
+        if payload.bom_no != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        if payload.source_ref != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        _validate_local_bom_request_gate(
+            request_obj=request,
+            request_id=request_id,
+            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.bom_no, payload.reason],
+            expected_item_code=snapshot_item_code,
+            expected_bom_ref=snapshot_bom_no,
+            expected_reason=payload.reason,
+        )
         data: BomDeactivateData = service.deactivate(
             bom_id=bom_id,
             reason=payload.reason,
@@ -1296,6 +1553,8 @@ def deactivate_bom(
         return _app_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_bom_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,
@@ -1348,7 +1607,27 @@ def explode_bom(
         resource_id=bom_id,
     )
     service = BomService(session=session)
+    request_id = get_request_id_from_request(request)
     try:
+        detail = service.get_bom_detail(bom_id=bom_id)
+        snapshot_item_code = _scope_text(detail.bom.item_code)
+        snapshot_bom_no = _scope_text(detail.bom.bom_no)
+        if snapshot_item_code is None or snapshot_bom_no is None:
+            _raise_bom_idempotency_conflict("业务载体缺失")
+        if payload.item_code != snapshot_item_code:
+            _raise_bom_idempotency_conflict("item_code 载体与业务载体不一致")
+        if payload.bom_no != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        if payload.source_ref != snapshot_bom_no:
+            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+        _validate_local_bom_request_gate(
+            request_obj=request,
+            request_id=request_id,
+            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.bom_no],
+            expected_item_code=snapshot_item_code,
+            expected_bom_ref=snapshot_bom_no,
+            expected_reason=None,
+        )
         data: BomExplodeData = service.explode(bom_id=bom_id, payload=payload)
         return _ok(data.model_dump())
     except AppException as exc:

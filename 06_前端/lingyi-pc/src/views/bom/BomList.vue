@@ -1674,6 +1674,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchBomAccessoriesPackaging,
@@ -1705,6 +1706,7 @@ import {
 } from '@/api/bom'
 import { usePermissionStore } from '@/stores/permission'
 
+const router = useRouter()
 const loading = ref<boolean>(false)
 const rows = ref<BomListItem[]>([])
 const total = ref<number>(0)
@@ -2545,7 +2547,7 @@ const openBomDetail = async (id: number): Promise<void> => {
 }
 
 const goDetail = (id: number): void => {
-  void openBomDetail(id)
+  void router.push({ path: '/bom/detail', query: { id: String(id) } })
 }
 
 const goCreate = (): void => {
@@ -2553,7 +2555,7 @@ const goCreate = (): void => {
     ElMessage.warning('无新建 BOM 权限')
     return
   }
-  guardedReadonlyAction('新建 BOM')
+  void router.push('/bom/detail')
 }
 
 const openFabricDetail = (row: BomFabricItem): void => {

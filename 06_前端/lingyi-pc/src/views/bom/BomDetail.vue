@@ -484,6 +484,7 @@ const explodeValidationFeedback = ref<string>('')
 const explodeActionFeedback = ref<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null)
 const explodeResult = ref<BomExplodeData | null>(null)
 const explodeTolerance = 0.000001
+const BOM_SCENARIO_PATTERN = /(Z002-BOM-\d{8}-\d{3})/
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const canDraftCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.create)
@@ -592,7 +593,7 @@ const loadDetail = async (id: number): Promise<void> => {
   if (form.item_code.includes('-Z002A')) {
     scenarioItemCode.value = form.item_code
   }
-  const matchedTag = form.version_no.match(/^Z002-BOM-(?:DRAFT|ACTIVE|EXPLODE|DEACTIVATE)-\d{8}-\d{3}/)?.[0] || ''
+  const matchedTag = form.version_no.match(BOM_SCENARIO_PATTERN)?.[0] || detail.bom.bom_no.match(BOM_SCENARIO_PATTERN)?.[0] || ''
   scenarioTag.value = matchedTag
   if (matchedTag && !scenarioTags.value.includes(matchedTag)) {
     scenarioTags.value.push(matchedTag)
@@ -616,8 +617,8 @@ const loadDetail = async (id: number): Promise<void> => {
   }))
 }
 
-const SCENARIO_TAG_PREFIX = 'Z002-BOM-DEACTIVATE'
-const SCENARIO_SEQ_STORAGE_KEY = 'z002.bom.deactivate.seq'
+const SCENARIO_TAG_PREFIX = 'Z002-BOM'
+const SCENARIO_SEQ_STORAGE_KEY = 'z002.bom.seq'
 
 const nextScenarioSeq = (): string => {
   if (typeof window === 'undefined') return '001'
@@ -634,6 +635,27 @@ const createScenarioTag = (): string => {
   const d = String(now.getDate()).padStart(2, '0')
   return `${SCENARIO_TAG_PREFIX}-${y}${m}${d}-${nextScenarioSeq()}`
 }
+
+const scopeText = (value: unknown): string => String(value ?? '').trim()
+
+const buildCarrierCode = (value: unknown): string => {
+  const normalized = scopeText(value)
+  const bytes = new TextEncoder().encode(normalized)
+  let hashValue = 2166136261
+  for (let i = 0; i < bytes.length; i += 1) {
+    hashValue ^= bytes[i]
+    hashValue = (hashValue * 16777619) >>> 0
+  }
+  return hashValue.toString(16).toUpperCase().padStart(8, '0').slice(-4)
+}
+
+const buildBomRequestId = (scenario: string, itemCode: string, bomRef: string, reason = 'NONE'): string => {
+  return `${scenario}-RQ-I${buildCarrierCode(itemCode)}-B${buildCarrierCode(bomRef)}-R${buildCarrierCode(reason)}`
+}
+
+const buildIdempotencyKey = (scenario: string, action: string): string => `IDEMP-${action}-${scenario}`
+
+const buildSourceRef = (scenario: string): string => `SRC-${scenario}`
 
 const resolveScenarioItemCode = (sourceItemCode: string): string => {
   if (scenarioItemCode.value) return scenarioItemCode.value
@@ -718,13 +740,18 @@ const handleCreateDraft = async (): Promise<void> => {
     }
     form.version_no = tag
     const createItemCode = resolveScenarioItemCode(sourceItemCode)
+    const sourceRef = buildSourceRef(tag)
+    const requestId = buildBomRequestId(tag, createItemCode, sourceRef)
 
     const createResult = await createBom({
+      scenario_tag: tag,
+      idempotency_key: buildIdempotencyKey(tag, 'CREATE'),
+      source_ref: sourceRef,
       item_code: createItemCode,
       version_no: form.version_no.trim(),
       bom_items: payloadSeed.bom_items,
       operations: payloadSeed.operations,
-    })
+    }, { requestId })
 
     const createdName = createResult.data.name
     const listResult = await fetchBomList({
@@ -791,11 +818,27 @@ const handleSaveDraft = async (): Promise<void> => {
   loadError.value = ''
 
   try {
+    const activeScenarioTag = scenarioTag.value || createScenarioTag()
+    scenarioTag.value = activeScenarioTag
+    const currentBomNo = bomNo.value.trim()
+    if (!currentBomNo || currentBomNo === '-') {
+      throw new Error('保存草稿失败：缺少 BOM 编号')
+    }
+    const currentItemCode = form.item_code.trim()
+    if (!currentItemCode) {
+      throw new Error('保存草稿失败：缺少款式编码')
+    }
+    const requestId = buildBomRequestId(activeScenarioTag, currentItemCode, currentBomNo)
     await updateBomDraft(bomId.value, {
+      scenario_tag: activeScenarioTag,
+      idempotency_key: buildIdempotencyKey(activeScenarioTag, 'UPDATE'),
+      source_ref: currentBomNo,
+      bom_no: currentBomNo,
+      item_code: currentItemCode,
       version_no: version,
       bom_items: payloadSeed.bom_items,
       operations: payloadSeed.operations,
-    })
+    }, { requestId })
     await fetchBomList({
       item_code: form.item_code.trim(),
       status: 'draft',
@@ -848,7 +891,25 @@ const handleActivateBom = async (): Promise<void> => {
   actionFeedback.value = null
   loadError.value = ''
   try {
-    await activateBom(bomId.value)
+    const activeScenarioTag = scenarioTag.value || createScenarioTag()
+    scenarioTag.value = activeScenarioTag
+    const currentBomNo = bomNo.value.trim()
+    const currentItemCode = form.item_code.trim()
+    if (!currentBomNo || currentBomNo === '-' || !currentItemCode) {
+      throw new Error('发布失败：业务载体缺失')
+    }
+    const requestId = buildBomRequestId(activeScenarioTag, currentItemCode, currentBomNo)
+    await activateBom(
+      bomId.value,
+      {
+        scenario_tag: activeScenarioTag,
+        idempotency_key: buildIdempotencyKey(activeScenarioTag, 'ACTIVATE'),
+        source_ref: currentBomNo,
+        bom_no: currentBomNo,
+        item_code: currentItemCode,
+      },
+      { requestId },
+    )
     await fetchBomList({
       item_code: form.item_code.trim(),
       status: 'active',
@@ -901,7 +962,25 @@ const handleSetDefault = async (): Promise<void> => {
   actionFeedback.value = null
   loadError.value = ''
   try {
-    await setDefaultBom(bomId.value)
+    const activeScenarioTag = scenarioTag.value || createScenarioTag()
+    scenarioTag.value = activeScenarioTag
+    const currentBomNo = bomNo.value.trim()
+    const currentItemCode = form.item_code.trim()
+    if (!currentBomNo || currentBomNo === '-' || !currentItemCode) {
+      throw new Error('设为默认失败：业务载体缺失')
+    }
+    const requestId = buildBomRequestId(activeScenarioTag, currentItemCode, currentBomNo)
+    await setDefaultBom(
+      bomId.value,
+      {
+        scenario_tag: activeScenarioTag,
+        idempotency_key: buildIdempotencyKey(activeScenarioTag, 'SETDEFAULT'),
+        source_ref: currentBomNo,
+        bom_no: currentBomNo,
+        item_code: currentItemCode,
+      },
+      { requestId },
+    )
     await fetchBomList({
       item_code: form.item_code.trim(),
       status: 'active',
@@ -954,7 +1033,27 @@ const handleDeactivateBom = async (): Promise<void> => {
   actionFeedback.value = null
   loadError.value = ''
   try {
-    await deactivateBom(bomId.value, `scenario:${scenarioTag.value || 'Z002-BOM-DEACTIVATE-NOTAG'}`)
+    const activeScenarioTag = scenarioTag.value || createScenarioTag()
+    scenarioTag.value = activeScenarioTag
+    const currentBomNo = bomNo.value.trim()
+    const currentItemCode = form.item_code.trim()
+    if (!currentBomNo || currentBomNo === '-' || !currentItemCode) {
+      throw new Error('停用失败：业务载体缺失')
+    }
+    const reason = `DEACT-${activeScenarioTag}`
+    const requestId = buildBomRequestId(activeScenarioTag, currentItemCode, currentBomNo, reason)
+    await deactivateBom(
+      bomId.value,
+      {
+        scenario_tag: activeScenarioTag,
+        idempotency_key: buildIdempotencyKey(activeScenarioTag, 'DEACT'),
+        source_ref: currentBomNo,
+        bom_no: currentBomNo,
+        item_code: currentItemCode,
+        reason,
+      },
+      { requestId },
+    )
     await Promise.all([
       fetchBomList({
         item_code: form.item_code.trim(),
@@ -1058,10 +1157,23 @@ const handleExplode = async (): Promise<void> => {
   explodeActionFeedback.value = null
   loadError.value = ''
   try {
+    const activeScenarioTag = scenarioTag.value || createScenarioTag()
+    scenarioTag.value = activeScenarioTag
+    const currentBomNo = bomNo.value.trim()
+    const currentItemCode = form.item_code.trim()
+    if (!currentBomNo || currentBomNo === '-' || !currentItemCode) {
+      throw new Error('展开计算失败：业务载体缺失')
+    }
+    const requestId = buildBomRequestId(activeScenarioTag, currentItemCode, currentBomNo)
     const response = await explodeBom(bomId.value, {
+      scenario_tag: activeScenarioTag,
+      idempotency_key: buildIdempotencyKey(activeScenarioTag, 'EXPLODE'),
+      source_ref: currentBomNo,
+      bom_no: currentBomNo,
+      item_code: currentItemCode,
       order_qty: orderQty,
       size_ratio: sizeRatio,
-    })
+    }, { requestId })
     explodeResult.value = response.data
     const summary = explodeComputed.value
     explodeActionFeedback.value = {
