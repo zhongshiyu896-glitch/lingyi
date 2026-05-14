@@ -1,0 +1,74 @@
+{
+  "task_id": "TASK-Z002B-38-IMPL",
+  "source_head": "fdee6d3f6e853596ef42fc0757fd51c18a0a2694",
+  "source_subject": "chore: seal warehouse stock write closure",
+  "APP_ENV": "development",
+  "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+  "local_test_db_confirmed": true,
+  "route_scope": [
+    "/sales-inventory/sales-orders",
+    "/sales-inventory/sales-orders/detail"
+  ],
+  "scenario_tag": "Z002-SALES-ORDER-20260514-381",
+  "scenario_tag_carriers": [
+    "payload.idempotency_key",
+    "payload.source_order_ref",
+    "payload.sales_order_no",
+    "payload.reason(cancel)",
+    "header.X-Request-ID/request_id"
+  ],
+  "create_draft_post_triggered": true,
+  "cancel_draft_post_triggered": true,
+  "readback_get_after_create": true,
+  "readback_get_after_cancel": true,
+  "fulfillment_readback_triggered": true,
+  "fail_closed_cases": {
+    "missing_request_id_status": 409,
+    "mismatched_request_id_status": 409,
+    "mismatched_source_ref_status": 409,
+    "db_write_on_failed_gate_count": 0
+  },
+  "approved_write_request_count": 2,
+  "allowed_write_requests": [
+    {
+      "method": "POST",
+      "url": "/api/sales-inventory/sales-orders/drafts",
+      "status": 201,
+      "case": "create_success"
+    },
+    {
+      "method": "POST",
+      "url": "/api/sales-inventory/sales-orders/drafts/1/cancel",
+      "status": 200,
+      "case": "cancel_success"
+    }
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/sales-inventory/sales-orders/drafts",
+    "POST /api/sales-inventory/sales-orders/drafts/{draft_id}/cancel"
+  ],
+  "unexpected_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "production_write_count": 0,
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_sales_order_write_outbox_event": 0,
+    "ly_sales_order_write_draft_item": 0,
+    "ly_sales_order_write_draft": 0,
+    "ly_sales_order_fulfillment_snapshot": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0,
+    "ly_sales_order_outbox_access_denial": 0
+  },
+  "artifacts": {
+    "browser_json": "/tmp/task_z002b38_browser_result.json",
+    "cleanup_json": "/tmp/task_z002b38_cleanup.json",
+    "screenshots_dir": "/tmp/task_z002b38_screenshots",
+    "screenshots_count": 3
+  },
+  "route_open": true,
+  "first_screen_visible": true
+}

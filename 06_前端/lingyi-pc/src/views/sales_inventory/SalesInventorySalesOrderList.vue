@@ -69,13 +69,32 @@
 
       <div class="toolbar-row" data-testid="sales-order-toolbar">
         <el-button data-testid="sales-order-guarded-filter" @click="onUnavailableAction('筛选')">筛选</el-button>
+        <el-input
+          v-model="localWriteForm.scenario_tag"
+          class="scenario-input"
+          clearable
+          placeholder="scenario_tag: Z002-SALES-ORDER-YYYYMMDD-NNN"
+          aria-label="销售订单写入 scenario_tag"
+          data-testid="sales-order-scenario-tag-input"
+        />
         <el-button
-          data-testid="sales-order-guarded-new"
+          data-testid="sales-order-local-apply-button"
           type="primary"
-          :disabled="!canRead"
-          @click="onUnavailableAction('新建')"
+          :disabled="!canRead || localWriteLoading"
+          data-write-guard="allowed:sales-order-draft-local-only"
+          data-write-allowlist="sales-order-draft-apply"
+          @click="applyLocalSalesOrderDraft"
         >
-          新建
+          本地写入
+        </el-button>
+        <el-button
+          data-testid="sales-order-local-void-button"
+          :disabled="!canRead || localWriteLoading || !localDraft"
+          data-write-guard="allowed:sales-order-draft-void-local-only"
+          data-write-allowlist="sales-order-draft-void"
+          @click="voidLocalSalesOrderDraft"
+        >
+          本地作废
         </el-button>
         <el-button data-testid="sales-order-guarded-place-order" :disabled="!canRead" @click="onUnavailableAction('下单')">
           下单
@@ -89,6 +108,17 @@
         <el-button data-testid="sales-order-guarded-export" :disabled="!canExport" @click="onUnavailableAction('导出')">
           导出
         </el-button>
+      </div>
+      <el-alert
+        v-if="localWriteFeedback"
+        data-testid="sales-order-local-write-feedback"
+        :type="localWriteFeedbackType"
+        :closable="false"
+        :title="localWriteFeedback"
+      />
+      <div v-if="localDraft" class="local-draft-summary" data-testid="sales-order-local-draft-summary">
+        <span>本地草稿: {{ localDraft.sales_order_no }}</span>
+        <el-tag effect="plain">{{ localDraft.status }}</el-tag>
       </div>
 
       <el-alert
@@ -344,8 +374,12 @@ import {
   fetchSalesInventorySalesOrderDetail,
   fetchSalesInventorySalesOrderFulfillment,
   fetchSalesInventorySalesOrders,
+  type SalesOrderDraftData,
+  type SalesOrderDraftWritePayload,
   type SalesOrderFulfillmentItem,
   type SalesOrderListItem,
+  voidSalesOrderDraft,
+  writeSalesOrderDraft,
 } from '@/api/sales_inventory'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -358,6 +392,10 @@ const lastError = ref<string>('')
 const fulfillmentLoading = ref<boolean>(false)
 const fulfillmentRows = ref<SalesOrderFulfillmentItem[]>([])
 const fulfillmentError = ref<string>('')
+const localWriteLoading = ref<boolean>(false)
+const localWriteFeedback = ref<string>('')
+const localWriteFeedbackType = ref<'success' | 'warning' | 'error'>('success')
+const localDraft = ref<SalesOrderDraftData | null>(null)
 const defaultPageSize = 20
 
 const canRead = computed<boolean>(() => {
@@ -387,6 +425,32 @@ const fulfillmentQuery = reactive({
   item_code: '',
   item_name: '',
   warehouse: '',
+})
+
+function buildDefaultSalesOrderScenarioTag(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `Z002-SALES-ORDER-${y}${m}${d}-001`
+}
+
+function extractSalesOrderScenarioTag(value: string): string | null {
+  const matched = value.match(/(Z002-SALES-ORDER-\d{8}-\d{3})/)
+  return matched?.[1] || null
+}
+
+function buildSalesOrderRequestId(scenarioTag: string): string {
+  return `${scenarioTag}-REQ-SO`
+}
+
+const localWriteForm = reactive({
+  scenario_tag: buildDefaultSalesOrderScenarioTag(),
+  company: 'LY-TEST',
+  customer: 'LOCAL-CUSTOMER',
+  item_code: 'SO-ITEM-001',
+  warehouse: 'SO-WH-001',
+  qty: '1',
 })
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -541,6 +605,95 @@ const onUnavailableAction = (actionName: string): void => {
   ElMessage.warning(`${actionName}功能在本地首版暂未接入，仅保留按钮与状态对齐`)
 }
 
+const applyLocalSalesOrderDraft = async (): Promise<void> => {
+  if (!canRead.value) {
+    return
+  }
+  const scenarioTag = extractSalesOrderScenarioTag(localWriteForm.scenario_tag.trim())
+  if (!scenarioTag) {
+    localWriteFeedbackType.value = 'warning'
+      localWriteFeedback.value = 'scenario_tag 缺失或格式非法，请使用 Z002-SALES-ORDER-YYYYMMDD-NNN。'
+    ElMessage.warning(localWriteFeedback.value)
+    return
+  }
+
+  localWriteLoading.value = true
+  localWriteFeedback.value = ''
+  try {
+    const requestId = buildSalesOrderRequestId(scenarioTag)
+    const salesOrderNo = `SO-${scenarioTag}`
+    const sourceOrderRef = `SRC-${scenarioTag}`
+    const idempotencyKey = `IDEMP-${scenarioTag}`
+    const payload: SalesOrderDraftWritePayload = {
+      company: localWriteForm.company.trim() || 'LY-TEST',
+      customer: localWriteForm.customer.trim() || 'LOCAL-CUSTOMER',
+      sales_order_no: salesOrderNo,
+      source_order_ref: sourceOrderRef,
+      idempotency_key: idempotencyKey,
+      items: [
+        {
+          item_code: localWriteForm.item_code.trim() || 'SO-ITEM-001',
+          qty: localWriteForm.qty.trim() || '1',
+          rate: '12.50',
+          uom: 'Nos',
+          warehouse: localWriteForm.warehouse.trim() || 'SO-WH-001',
+        },
+      ],
+    }
+    const draftResult = await writeSalesOrderDraft(payload, { requestId })
+    localDraft.value = draftResult.data
+    await fetchSalesInventorySalesOrderDetail(draftResult.data.sales_order_no)
+    await loadRows()
+    await loadFulfillmentRows()
+    localWriteFeedbackType.value = 'success'
+    localWriteFeedback.value = `本地草稿已写入：${draftResult.data.sales_order_no}`
+    ElMessage.success(localWriteFeedback.value)
+  } catch (error) {
+    const message = (error as Error).message || '本地草稿写入失败'
+    localWriteFeedbackType.value = 'error'
+    localWriteFeedback.value = message
+    ElMessage.error(message)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
+const voidLocalSalesOrderDraft = async (): Promise<void> => {
+  if (!canRead.value || !localDraft.value) {
+    return
+  }
+  const scenarioTag =
+    extractSalesOrderScenarioTag(localWriteForm.scenario_tag.trim()) ||
+    extractSalesOrderScenarioTag(localDraft.value.scenario_tag || '')
+  if (!scenarioTag) {
+    localWriteFeedbackType.value = 'warning'
+    localWriteFeedback.value = 'scenario_tag 缺失或格式非法，无法执行作废。'
+    ElMessage.warning(localWriteFeedback.value)
+    return
+  }
+
+  localWriteLoading.value = true
+  try {
+    const requestId = buildSalesOrderRequestId(scenarioTag)
+    const reason = `VOID-${scenarioTag}`
+    const draftResult = await voidSalesOrderDraft(localDraft.value.id, reason, { requestId })
+    localDraft.value = draftResult.data
+    await fetchSalesInventorySalesOrderDetail(draftResult.data.sales_order_no)
+    await loadRows()
+    await loadFulfillmentRows()
+    localWriteFeedbackType.value = 'success'
+    localWriteFeedback.value = `本地草稿已作废：${draftResult.data.sales_order_no}`
+    ElMessage.success(localWriteFeedback.value)
+  } catch (error) {
+    const message = (error as Error).message || '本地草稿作废失败'
+    localWriteFeedbackType.value = 'error'
+    localWriteFeedback.value = message
+    ElMessage.error(message)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
 const goDetail = async (name: string): Promise<void> => {
   if (!name) {
     ElMessage.warning('缺少订单编号，无法打开详情')
@@ -620,6 +773,17 @@ onMounted(async () => {
   gap: 8px;
   margin-bottom: 12px;
   flex-wrap: wrap;
+}
+
+.scenario-input {
+  width: 320px;
+}
+
+.local-draft-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .error-alert {

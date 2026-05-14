@@ -8,13 +8,17 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
+from fastapi import Body
 from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import Query
 from fastapi import Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.auth import CurrentUser
@@ -26,7 +30,10 @@ from app.core.error_codes import message_of
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
 from app.core.permissions import get_permission_source
+from app.core.request_id import get_request_id_from_request
 from app.schemas.sales_inventory import DiagnosticData
+from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
+from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
 from app.schemas.sales_inventory import StockLedgerData
 from app.schemas.sales_inventory import StockLedgerItem
 from app.schemas.sales_inventory import StockSummaryData
@@ -39,8 +46,11 @@ from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
 from app.services.permission_service import PermissionService
 from app.services.sales_inventory_service import SalesInventoryService
+from app.services.sales_inventory_service import SalesInventoryServiceError
 
 router = APIRouter(prefix="/api/sales-inventory", tags=["sales_inventory"])
+SALES_ORDER_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+SALES_ORDER_SCENARIO_PATTERN = re.compile(r"(Z002-SALES-ORDER-\d{8}-\d{3})")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -50,7 +60,81 @@ def get_db_session() -> Generator[Session, None, None]:
 
 
 def _ok(data: Any) -> dict[str, Any]:
-    return {"code": "0", "message": "success", "data": data}
+    return {"code": "0", "message": "success", "data": jsonable_encoder(data)}
+
+
+def _created(data: Any) -> JSONResponse:
+    return JSONResponse(status_code=201, content=_ok(data))
+
+
+def _is_local_sales_order_write_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    return app_env == "development" and db_url == SALES_ORDER_LOCAL_ALLOWED_DB_URL
+
+
+def _match_sales_order_scenario_tag(value: str) -> str | None:
+    matched = SALES_ORDER_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _raise_sales_order_idempotency_conflict(message: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+            "message": message,
+            "data": {},
+        },
+    )
+
+
+def _validate_local_sales_order_write_gate(
+    *,
+    request_obj: Request,
+    carriers: list[str | None],
+) -> str:
+    if not _is_local_sales_order_write_enabled():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": RESOURCE_ACCESS_DENIED,
+                "message": "仅允许本地开发测试库执行销售订单写入",
+                "data": {},
+            },
+        )
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_sales_order_idempotency_conflict("request_id 不能为空")
+    header_tag = _match_sales_order_scenario_tag(request_id_header)
+    if header_tag is None:
+        _raise_sales_order_idempotency_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    request_tag = _match_sales_order_scenario_tag(request_id)
+    if request_tag is None:
+        _raise_sales_order_idempotency_conflict("request_id 未包含合法 scenario_tag")
+    if request_tag != header_tag:
+        _raise_sales_order_idempotency_conflict("request_id 与 scenario_tag 不一致")
+
+    carrier_tags: list[str] = []
+    for raw_value in carriers:
+        normalized = _scope_text(raw_value)
+        if normalized is None:
+            _raise_sales_order_idempotency_conflict("scenario_tag 载体缺失")
+        scenario_tag = _match_sales_order_scenario_tag(normalized)
+        if scenario_tag is None:
+            _raise_sales_order_idempotency_conflict("scenario_tag 载体缺失或格式非法")
+        carrier_tags.append(scenario_tag)
+
+    if len(set(carrier_tags)) != 1:
+        _raise_sales_order_idempotency_conflict("scenario_tag 载体不一致")
+    if carrier_tags[0] != header_tag:
+        _raise_sales_order_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
+    return header_tag
 
 
 def _handle_erpnext_error(
@@ -105,6 +189,11 @@ def _raise_hidden_sales_order_not_found() -> None:
 
 def _service(request: Request) -> SalesInventoryService:
     return SalesInventoryService(adapter=ERPNextSalesInventoryAdapter(request_obj=request))
+
+
+def _write_service(session: Session, request: Request | None = None) -> SalesInventoryService:
+    adapter = ERPNextSalesInventoryAdapter(request_obj=request) if request is not None else None
+    return SalesInventoryService(adapter=adapter, session=session)
 
 
 def _get_read_permissions(
@@ -301,6 +390,13 @@ def _validate_date_range(*, from_date: date | None, to_date: date | None) -> Non
         )
 
 
+def _raise_sales_inventory_service_error(exc: SalesInventoryServiceError) -> None:
+    raise HTTPException(
+        status_code=exc.status_code,
+        detail={"code": exc.code, "message": exc.message, "data": None},
+    ) from exc
+
+
 @router.get("/sales-orders")
 def list_sales_orders(
     request: Request,
@@ -346,6 +442,18 @@ def list_sales_orders(
     parsed_from_date = _parse_optional_date(from_date, "from_date")
     parsed_to_date = _parse_optional_date(to_date, "to_date")
     _validate_date_range(from_date=parsed_from_date, to_date=parsed_to_date)
+    local_items: list[Any] = []
+    if _is_local_sales_order_write_enabled():
+        local_items = _write_service(session).list_local_sales_orders(
+            order_no=_scope_text(order_no),
+            keyword=_scope_text(keyword),
+            company=company,
+            customer=customer,
+            item_code=item_code,
+            item_name=_scope_text(item_name),
+            from_date=parsed_from_date,
+            to_date=parsed_to_date,
+        )
     try:
         data = _service(request).list_sales_orders(
             order_no=_scope_text(order_no),
@@ -360,8 +468,9 @@ def list_sales_orders(
             page_size=page_size,
         )
     except ERPNextAdapterException as exc:
-        if _local_read_fallback_enabled(exc):
-            return _ok({"items": [], "total": 0, "page": page, "page_size": page_size})
+        if (_local_read_fallback_enabled(exc) or _is_local_sales_order_write_enabled()) and local_items:
+            fallback_items = [item for item in local_items if _scope_allowed(item, permissions)]
+            return _ok({"items": fallback_items, "total": len(fallback_items), "page": page, "page_size": page_size})
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,
@@ -370,6 +479,12 @@ def list_sales_orders(
             action=action,
             resource_type="SalesOrder",
         )
+    if local_items:
+        merged: dict[str, Any] = {str(item.name): item for item in data.items}
+        for local_item in local_items:
+            merged[str(local_item.name)] = local_item
+        data.items = list(merged.values())
+        data.total = len(data.items)
     filtered = [item for item in data.items if _scope_allowed(item, permissions)]
     data.items = filtered
     data.total = len(filtered)
@@ -395,6 +510,10 @@ def get_sales_order_detail(
     try:
         data = _service(request).get_sales_order(name=name)
     except ERPNextAdapterException as exc:
+        if _is_local_sales_order_write_enabled():
+            local_detail = _write_service(session).get_local_sales_order(name=name)
+            if local_detail is not None:
+                return _ok(local_detail)
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,
@@ -423,6 +542,88 @@ def get_sales_order_detail(
         detail = exc.detail if isinstance(exc.detail, dict) else {}
         if detail.get("code") == RESOURCE_ACCESS_DENIED:
             _raise_hidden_sales_order_not_found()
+        raise
+    return _ok(data)
+
+
+@router.post("/sales-orders/drafts")
+def create_sales_order_draft(
+    request: Request,
+    payload: SalesOrderDraftCreateRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="sales_order",
+    )
+    scenario_tag = _validate_local_sales_order_write_gate(
+        request_obj=request,
+        carriers=[payload.idempotency_key, payload.source_order_ref, payload.sales_order_no],
+    )
+    try:
+        data = _write_service(session).create_sales_order_draft(
+            payload=payload,
+            current_user=current_user.username,
+            scenario_tag=scenario_tag,
+        )
+        session.commit()
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _created(data)
+
+
+@router.post("/sales-orders/drafts/{draft_id}/cancel")
+def cancel_sales_order_draft(
+    draft_id: int,
+    request: Request,
+    payload: SalesOrderDraftCancelRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="sales_order",
+    )
+    try:
+        gate_fields = _write_service(session).get_sales_order_draft_gate_carriers(draft_id=draft_id)
+    except SalesInventoryServiceError as exc:
+        _raise_sales_inventory_service_error(exc)
+    _validate_local_sales_order_write_gate(
+        request_obj=request,
+        carriers=[
+            gate_fields.get("idempotency_key"),
+            gate_fields.get("source_order_ref"),
+            gate_fields.get("sales_order_no"),
+            payload.reason,
+        ],
+    )
+    try:
+        data = _write_service(session).cancel_sales_order_draft(
+            draft_id=draft_id,
+            reason=payload.reason,
+            cancelled_by=current_user.username,
+        )
+        session.commit()
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
         raise
     return _ok(data)
 
@@ -1705,6 +1906,16 @@ def get_sales_order_fulfillment(
         enforce_action=False,
         user_permissions=permissions,
     )
+    local_fulfillment = (
+        _write_service(session).get_local_sales_order_fulfillment(
+            company=company,
+            item_code=_scope_text(item_code),
+            warehouse=_scope_text(warehouse),
+            item_name=_scope_text(item_name),
+        )
+        if _is_local_sales_order_write_enabled()
+        else None
+    )
     try:
         data = _service(request).get_sales_order_fulfillment(
             company=company,
@@ -1713,6 +1924,9 @@ def get_sales_order_fulfillment(
             item_name=_scope_text(item_name),
         )
     except ERPNextAdapterException as exc:
+        if (_local_read_fallback_enabled(exc) or _is_local_sales_order_write_enabled()) and local_fulfillment is not None:
+            local_fulfillment.items = [item for item in local_fulfillment.items if _scope_allowed(item, permissions)]
+            return _ok(local_fulfillment)
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,
@@ -1721,6 +1935,13 @@ def get_sales_order_fulfillment(
             action=action,
             resource_type="SalesOrder",
         )
+    if local_fulfillment is not None and local_fulfillment.items:
+        existing_keys = {(item.sales_order, item.item_code, item.warehouse or "") for item in data.items}
+        for local_item in local_fulfillment.items:
+            key = (local_item.sales_order, local_item.item_code, local_item.warehouse or "")
+            if key not in existing_keys:
+                data.items.append(local_item)
+                existing_keys.add(key)
     data.items = [item for item in data.items if _scope_allowed(item, permissions)]
     return _ok(data)
 

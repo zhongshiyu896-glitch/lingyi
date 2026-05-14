@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import datetime
+from datetime import timezone
 from decimal import Decimal
+import hashlib
 from typing import Any
 
+from sqlalchemy.orm import Session
+
+from app.models.warehouse import LyWarehouseStockEntryDraft
+from app.models.warehouse import LyWarehouseStockEntryDraftItem
+from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
 from app.schemas.sales_inventory import CustomerItem
 from app.schemas.sales_inventory import CustomerReturnApplicationData
 from app.schemas.sales_inventory import CustomerReturnApplicationItem
@@ -39,6 +47,10 @@ from app.schemas.sales_inventory import MaterialTransferData
 from app.schemas.sales_inventory import MaterialTransferItem
 from app.schemas.sales_inventory import SalesInventoryListData
 from app.schemas.sales_inventory import SalesOrderDetailData
+from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
+from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
+from app.schemas.sales_inventory import SalesOrderDraftData
+from app.schemas.sales_inventory import SalesOrderDraftLineItemData
 from app.schemas.sales_inventory import SalesOrderFulfillmentData
 from app.schemas.sales_inventory import SalesOrderFulfillmentItem
 from app.schemas.sales_inventory import SalesOrderLineItem
@@ -51,6 +63,16 @@ from app.schemas.sales_inventory import StockSummaryData
 from app.schemas.sales_inventory import StockSummaryItem
 from app.schemas.sales_inventory import WarehouseItem
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
+
+
+class SalesInventoryServiceError(Exception):
+    """Domain error for local sales-order write closure APIs."""
+
+    def __init__(self, status_code: int, code: str, message: str):
+        super().__init__(message)
+        self.status_code = int(status_code)
+        self.code = code
+        self.message = message
 
 
 class SalesInventoryService:
@@ -66,8 +88,13 @@ class SalesInventoryService:
         "reorder_level",
     ]
 
-    def __init__(self, adapter: ERPNextSalesInventoryAdapter):
+    def __init__(
+        self,
+        adapter: ERPNextSalesInventoryAdapter | None = None,
+        session: Session | None = None,
+    ):
         self.adapter = adapter
+        self.session = session
 
     def list_sales_orders(
         self,
@@ -140,6 +167,357 @@ class SalesInventoryService:
             currency=self._text(row.get("currency")),
             items=[self._sales_order_line_item(item) for item in self._list_or_empty(row.get("items"))],
         )
+
+    def create_sales_order_draft(
+        self,
+        *,
+        payload: SalesOrderDraftCreateRequest,
+        current_user: str,
+        scenario_tag: str,
+    ) -> SalesOrderDraftData:
+        session = self._require_session()
+
+        company = self._require_text(payload.company, "company")
+        sales_order_no = self._require_text(payload.sales_order_no, "sales_order_no")
+        source_order_ref = self._require_text(payload.source_order_ref, "source_order_ref")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        customer = self._text(payload.customer)
+        currency = self._text(payload.currency) or "CNY"
+        transaction_date = payload.transaction_date
+        delivery_date = payload.delivery_date
+
+        line_rows: list[dict[str, Any]] = []
+        grand_total = Decimal("0")
+        for index, line in enumerate(payload.items, start=1):
+            item_code = self._require_text(line.item_code, f"items[{index}].item_code")
+            qty = self._positive_decimal(line.qty, f"items[{index}].qty")
+            rate = self._decimal_or_none(line.rate)
+            amount = qty * rate if rate is not None else None
+            if amount is not None:
+                grand_total += amount
+            line_rows.append(
+                {
+                    "item_code": item_code,
+                    "qty": qty,
+                    "rate": rate,
+                    "amount": amount,
+                    "uom": self._require_text(line.uom, f"items[{index}].uom"),
+                    "warehouse": self._text(line.warehouse),
+                }
+            )
+
+        existing_by_idempotency = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.idempotency_key == idempotency_key,
+            )
+            .first()
+        )
+        if existing_by_idempotency is not None:
+            return self._build_sales_order_draft_data(existing_by_idempotency)
+
+        existing_by_source = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.company == company,
+                LyWarehouseStockEntryDraft.source_type == self._LOCAL_SALES_ORDER_SOURCE_TYPE,
+                LyWarehouseStockEntryDraft.source_id == source_order_ref,
+                LyWarehouseStockEntryDraft.status != "cancelled",
+            )
+            .first()
+        )
+        if existing_by_source is not None:
+            return self._build_sales_order_draft_data(existing_by_source)
+
+        now = datetime.now(timezone.utc)
+        event_key = self._build_sales_order_event_key(
+            company=company,
+            sales_order_no=sales_order_no,
+            source_order_ref=source_order_ref,
+            idempotency_key=idempotency_key,
+        )
+
+        draft = LyWarehouseStockEntryDraft(
+            company=company,
+            purpose="Material Issue",
+            source_type=self._LOCAL_SALES_ORDER_SOURCE_TYPE,
+            source_id=source_order_ref,
+            source_warehouse=None,
+            target_warehouse=None,
+            status="pending_outbox",
+            created_by=current_user,
+            created_at=now,
+            cancelled_by=None,
+            cancelled_at=None,
+            cancel_reason=None,
+            idempotency_key=idempotency_key,
+            event_key=event_key,
+        )
+        session.add(draft)
+        session.flush()
+
+        for row in line_rows:
+            session.add(
+                LyWarehouseStockEntryDraftItem(
+                    draft_id=draft.id,
+                    company=company,
+                    item_code=row["item_code"],
+                    qty=row["qty"],
+                    uom=row["uom"],
+                    batch_no=None,
+                    serial_no=None,
+                    source_warehouse=row["warehouse"],
+                    target_warehouse=None,
+                )
+            )
+
+        outbox_payload = {
+            "scenario_tag": scenario_tag,
+            "sales_order_no": sales_order_no,
+            "source_order_ref": source_order_ref,
+            "idempotency_key": idempotency_key,
+            "company": company,
+            "customer": customer,
+            "currency": currency,
+            "transaction_date": transaction_date.isoformat() if transaction_date else None,
+            "delivery_date": delivery_date.isoformat() if delivery_date else None,
+            "grand_total": str(grand_total),
+            "items": [
+                {
+                    "item_code": row["item_code"],
+                    "qty": str(row["qty"]),
+                    "rate": (str(row["rate"]) if row["rate"] is not None else None),
+                    "amount": (str(row["amount"]) if row["amount"] is not None else None),
+                    "uom": row["uom"],
+                    "warehouse": row["warehouse"],
+                }
+                for row in line_rows
+            ],
+        }
+        session.add(
+            LyWarehouseStockEntryOutboxEvent(
+                draft_id=draft.id,
+                event_type="sales_order_write_sync",
+                event_key=event_key,
+                payload=outbox_payload,
+                status="in_pending",
+                retry_count=0,
+                external_ref=None,
+                error_message=None,
+                created_at=now,
+                processed_at=None,
+            )
+        )
+        session.flush()
+        return self._build_sales_order_draft_data(draft)
+
+    def cancel_sales_order_draft(
+        self,
+        *,
+        draft_id: int,
+        reason: str,
+        cancelled_by: str,
+    ) -> SalesOrderDraftData:
+        session = self._require_session()
+        draft = self._find_sales_order_draft(draft_id=draft_id)
+        if draft is None:
+            raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
+        status = str(draft.status)
+        if status == "cancelled":
+            raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_ALREADY_CANCELLED", "草稿已取消")
+        if status not in {"draft", "pending_outbox"}:
+            raise SalesInventoryServiceError(409, "SALES_ORDER_DRAFT_INVALID_STATUS", "当前状态不允许取消")
+
+        now = datetime.now(timezone.utc)
+        draft.status = "cancelled"
+        draft.cancelled_by = cancelled_by
+        draft.cancelled_at = now
+        draft.cancel_reason = self._require_text(reason, "reason")
+
+        for event in self._list_outbox_events_for_draft(draft_id=draft_id):
+            if str(event.status) in {"in_pending", "processing", "failed"}:
+                event.status = "cancelled"
+                event.processed_at = now
+        session.flush()
+        return self._build_sales_order_draft_data(draft)
+
+    def get_sales_order_draft_gate_carriers(self, *, draft_id: int) -> dict[str, str]:
+        draft = self._find_sales_order_draft(draft_id=draft_id)
+        if draft is None:
+            raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
+        payload = self._sales_order_payload_for_draft(draft_id=draft_id)
+        sales_order_no = self._require_text(payload.get("sales_order_no"), "sales_order_no")
+        return {
+            "idempotency_key": str(draft.idempotency_key),
+            "source_order_ref": str(draft.source_id),
+            "sales_order_no": sales_order_no,
+        }
+
+    def list_local_sales_orders(
+        self,
+        *,
+        order_no: str | None,
+        keyword: str | None,
+        company: str | None,
+        customer: str | None,
+        item_code: str | None,
+        item_name: str | None,
+        from_date: date | None,
+        to_date: date | None,
+    ) -> list[SalesOrderListItem]:
+        session = self._require_session()
+        query = session.query(LyWarehouseStockEntryDraft).filter(
+            LyWarehouseStockEntryDraft.source_type == self._LOCAL_SALES_ORDER_SOURCE_TYPE
+        )
+        if company:
+            query = query.filter(LyWarehouseStockEntryDraft.company == company)
+        if customer:
+            query = query.filter(LyWarehouseStockEntryDraft.created_by == customer)
+        rows = query.order_by(LyWarehouseStockEntryDraft.id.desc()).all()
+
+        normalized_order_no = self._text(order_no)
+        normalized_keyword = self._text(keyword)
+        normalized_item_code = self._text(item_code)
+        normalized_item_name = self._text(item_name)
+
+        items: list[SalesOrderListItem] = []
+        for draft in rows:
+            payload = self._sales_order_payload_for_draft(draft_id=int(draft.id))
+            sales_order_no = self._text(payload.get("sales_order_no")) or str(draft.source_id)
+            if normalized_order_no and normalized_order_no.lower() not in sales_order_no.lower():
+                continue
+            if normalized_keyword:
+                keyword_haystack = " ".join(
+                    [
+                        sales_order_no,
+                        self._text(payload.get("customer")) or "",
+                        str(draft.company),
+                    ]
+                )
+                if not self._contains_like(keyword_haystack, normalized_keyword):
+                    continue
+            tx_date = self._parse_optional_iso_date(self._text(payload.get("transaction_date")))
+            if from_date is not None and (tx_date is None or tx_date < from_date):
+                continue
+            if to_date is not None and (tx_date is None or tx_date > to_date):
+                continue
+
+            line_items = self._sales_order_draft_items(draft_id=int(draft.id))
+            if normalized_item_code and not any(item.item_code == normalized_item_code for item in line_items):
+                continue
+            if normalized_item_name and not any(
+                self._contains_like(item.item_code, normalized_item_name) for item in line_items
+            ):
+                continue
+
+            items.append(
+                SalesOrderListItem(
+                    name=sales_order_no,
+                    company=str(draft.company),
+                    customer=self._text(payload.get("customer")),
+                    transaction_date=tx_date,
+                    delivery_date=self._parse_optional_iso_date(self._text(payload.get("delivery_date"))),
+                    status=("Cancelled" if str(draft.status) == "cancelled" else "Draft"),
+                    docstatus=(2 if str(draft.status) == "cancelled" else 0),
+                    grand_total=self._decimal_or_none(payload.get("grand_total")),
+                    currency=self._text(payload.get("currency")) or "CNY",
+                )
+            )
+        return items
+
+    def get_local_sales_order(self, *, name: str) -> SalesOrderDetailData | None:
+        session = self._require_session()
+        drafts = (
+            session.query(LyWarehouseStockEntryDraft)
+            .filter(LyWarehouseStockEntryDraft.source_type == self._LOCAL_SALES_ORDER_SOURCE_TYPE)
+            .order_by(LyWarehouseStockEntryDraft.id.desc())
+            .all()
+        )
+        selected: LyWarehouseStockEntryDraft | None = None
+        selected_payload: dict[str, Any] | None = None
+        for draft in drafts:
+            payload = self._sales_order_payload_for_draft(draft_id=int(draft.id))
+            sales_order_no = self._text(payload.get("sales_order_no")) or str(draft.source_id)
+            if sales_order_no == name or str(draft.source_id) == name:
+                selected = draft
+                selected_payload = payload
+                break
+        if selected is None or selected_payload is None:
+            return None
+
+        line_items = self._sales_order_draft_items(draft_id=int(selected.id))
+        return SalesOrderDetailData(
+            name=self._text(selected_payload.get("sales_order_no")) or str(selected.source_id),
+            company=str(selected.company),
+            customer=self._text(selected_payload.get("customer")),
+            transaction_date=self._parse_optional_iso_date(self._text(selected_payload.get("transaction_date"))),
+            delivery_date=self._parse_optional_iso_date(self._text(selected_payload.get("delivery_date"))),
+            status=("Cancelled" if str(selected.status) == "cancelled" else "Draft"),
+            docstatus=(2 if str(selected.status) == "cancelled" else 0),
+            grand_total=self._decimal_or_none(selected_payload.get("grand_total")),
+            currency=self._text(selected_payload.get("currency")) or "CNY",
+            items=[
+                SalesOrderLineItem(
+                    name=f"LOCAL-SO-ITEM-{item.id}",
+                    item_code=item.item_code,
+                    item_name=item.item_code,
+                    qty=item.qty,
+                    delivered_qty=None,
+                    rate=item.rate,
+                    amount=item.amount,
+                    warehouse=item.warehouse,
+                    delivery_date=self._parse_optional_iso_date(self._text(selected_payload.get("delivery_date"))),
+                )
+                for item in line_items
+            ],
+        )
+
+    def get_local_sales_order_fulfillment(
+        self,
+        *,
+        company: str | None,
+        item_code: str | None,
+        warehouse: str | None,
+        item_name: str | None,
+    ) -> SalesOrderFulfillmentData:
+        local_orders = self.list_local_sales_orders(
+            order_no=None,
+            keyword=None,
+            company=company,
+            customer=None,
+            item_code=item_code,
+            item_name=item_name,
+            from_date=None,
+            to_date=None,
+        )
+        rows: list[SalesOrderFulfillmentItem] = []
+        for order in local_orders:
+            detail = self.get_local_sales_order(name=order.name)
+            if detail is None:
+                continue
+            for line in detail.items:
+                if item_code and line.item_code != item_code:
+                    continue
+                if warehouse and line.warehouse != warehouse:
+                    continue
+                if item_name and not self._contains_like(line.item_name, item_name):
+                    continue
+                ordered_qty = self._decimal_or_zero(line.qty)
+                actual_qty = Decimal("0") if detail.docstatus == 2 else ordered_qty
+                rows.append(
+                    SalesOrderFulfillmentItem(
+                        company=detail.company,
+                        sales_order=detail.name,
+                        item_code=line.item_code,
+                        warehouse=line.warehouse,
+                        ordered_qty=ordered_qty,
+                        actual_qty=actual_qty,
+                        fulfillment_rate=self._fulfillment_rate(actual_qty=actual_qty, ordered_qty=ordered_qty),
+                    )
+                )
+        rows.sort(key=lambda row: (row.sales_order, row.item_code, row.warehouse or ""))
+        return SalesOrderFulfillmentData(company=company, items=rows)
 
     def get_stock_summary(
         self,
@@ -2538,6 +2916,137 @@ class SalesInventoryService:
             amount=cls._decimal_or_none(row.get("amount")),
             warehouse=cls._text(row.get("warehouse")),
             delivery_date=row.get("delivery_date"),
+        )
+
+    _LOCAL_SALES_ORDER_SOURCE_TYPE = "sales_order_local"
+
+    def _require_session(self) -> Session:
+        if self.session is None:
+            raise SalesInventoryServiceError(500, "SALES_ORDER_SESSION_UNAVAILABLE", "本地会话不可用")
+        return self.session
+
+    @classmethod
+    def _require_text(cls, value: Any, field_name: str) -> str:
+        normalized = cls._text(value)
+        if normalized is None:
+            raise SalesInventoryServiceError(409, "SALES_ORDER_IDEMPOTENCY_CONFLICT", f"{field_name} 不能为空")
+        return normalized
+
+    @classmethod
+    def _positive_decimal(cls, value: Any, field_name: str) -> Decimal:
+        numeric = cls._decimal_or_zero(value)
+        if numeric <= Decimal("0"):
+            raise SalesInventoryServiceError(400, "SALES_ORDER_INVALID_PAYLOAD", f"{field_name} 必须大于 0")
+        return numeric
+
+    @staticmethod
+    def _parse_optional_iso_date(value: str | None) -> date | None:
+        if value is None:
+            return None
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _build_sales_order_event_key(
+        *,
+        company: str,
+        sales_order_no: str,
+        source_order_ref: str,
+        idempotency_key: str,
+    ) -> str:
+        raw = "|".join([company, sales_order_no, source_order_ref, idempotency_key]).encode("utf-8")
+        return f"sow:{hashlib.sha256(raw).hexdigest()}"
+
+    def _find_sales_order_draft(self, *, draft_id: int) -> LyWarehouseStockEntryDraft | None:
+        return (
+            self._require_session()
+            .query(LyWarehouseStockEntryDraft)
+            .filter(
+                LyWarehouseStockEntryDraft.id == draft_id,
+                LyWarehouseStockEntryDraft.source_type == self._LOCAL_SALES_ORDER_SOURCE_TYPE,
+            )
+            .first()
+        )
+
+    def _sales_order_payload_for_draft(self, *, draft_id: int) -> dict[str, Any]:
+        outbox = (
+            self._require_session()
+            .query(LyWarehouseStockEntryOutboxEvent)
+            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == draft_id)
+            .order_by(LyWarehouseStockEntryOutboxEvent.id.desc())
+            .first()
+        )
+        if outbox is None or not isinstance(outbox.payload, dict):
+            return {}
+        return dict(outbox.payload)
+
+    def _sales_order_draft_items(self, *, draft_id: int) -> list[SalesOrderDraftLineItemData]:
+        rows = (
+            self._require_session()
+            .query(LyWarehouseStockEntryDraftItem)
+            .filter(LyWarehouseStockEntryDraftItem.draft_id == draft_id)
+            .order_by(LyWarehouseStockEntryDraftItem.id.asc())
+            .all()
+        )
+        payload_items = self._sales_order_payload_for_draft(draft_id=draft_id).get("items")
+        payload_rates: dict[int, Decimal | None] = {}
+        payload_amounts: dict[int, Decimal | None] = {}
+        if isinstance(payload_items, list):
+            for index, payload_item in enumerate(payload_items):
+                if not isinstance(payload_item, dict):
+                    continue
+                payload_rates[index] = self._decimal_or_none(payload_item.get("rate"))
+                payload_amounts[index] = self._decimal_or_none(payload_item.get("amount"))
+        items: list[SalesOrderDraftLineItemData] = []
+        for index, row in enumerate(rows):
+            items.append(
+                SalesOrderDraftLineItemData(
+                    id=int(row.id),
+                    draft_id=int(row.draft_id),
+                    item_code=str(row.item_code),
+                    qty=Decimal(str(row.qty)),
+                    rate=payload_rates.get(index),
+                    amount=payload_amounts.get(index),
+                    uom=str(row.uom),
+                    warehouse=self._text(row.source_warehouse),
+                )
+            )
+        return items
+
+    def _list_outbox_events_for_draft(self, *, draft_id: int) -> list[LyWarehouseStockEntryOutboxEvent]:
+        return (
+            self._require_session()
+            .query(LyWarehouseStockEntryOutboxEvent)
+            .filter(LyWarehouseStockEntryOutboxEvent.draft_id == draft_id)
+            .all()
+        )
+
+    def _build_sales_order_draft_data(self, draft: LyWarehouseStockEntryDraft) -> SalesOrderDraftData:
+        payload = self._sales_order_payload_for_draft(draft_id=int(draft.id))
+        transaction_date = self._parse_optional_iso_date(self._text(payload.get("transaction_date")))
+        delivery_date = self._parse_optional_iso_date(self._text(payload.get("delivery_date")))
+        scenario_tag = self._text(payload.get("scenario_tag")) or ""
+        return SalesOrderDraftData(
+            id=int(draft.id),
+            sales_order_no=self._text(payload.get("sales_order_no")) or str(draft.source_id),
+            source_order_ref=str(draft.source_id),
+            company=str(draft.company),
+            customer=self._text(payload.get("customer")),
+            status=str(draft.status),  # type: ignore[arg-type]
+            transaction_date=transaction_date,
+            delivery_date=delivery_date,
+            currency=self._text(payload.get("currency")) or "CNY",
+            grand_total=self._decimal_or_none(payload.get("grand_total")),
+            idempotency_key=str(draft.idempotency_key),
+            scenario_tag=scenario_tag,
+            created_by=str(draft.created_by),
+            created_at=draft.created_at,
+            cancelled_by=self._text(draft.cancelled_by),
+            cancelled_at=draft.cancelled_at,
+            cancel_reason=self._text(draft.cancel_reason),
+            items=self._sales_order_draft_items(draft_id=int(draft.id)),
         )
 
     def _allowed_warehouses(self, *, company: str | None) -> set[str] | None:

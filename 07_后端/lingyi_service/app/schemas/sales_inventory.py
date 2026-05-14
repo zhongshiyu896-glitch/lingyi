@@ -6,9 +6,11 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from typing import Generic
+from typing import Literal
 from typing import TypeVar
 
 from pydantic import BaseModel
+from pydantic import Field
 
 T = TypeVar("T")
 
@@ -71,6 +73,72 @@ class SalesOrderDetailData(BaseModel):
     grand_total: Decimal | None = None
     currency: str | None = None
     items: list[SalesOrderLineItem]
+
+
+class SalesOrderDraftLineItemCreateRequest(BaseModel):
+    """Create local sales-order draft line payload."""
+
+    item_code: str
+    qty: Decimal
+    rate: Decimal | None = None
+    uom: str = "Nos"
+    warehouse: str | None = None
+
+
+class SalesOrderDraftCreateRequest(BaseModel):
+    """Create local sales-order draft payload."""
+
+    company: str
+    customer: str | None = None
+    sales_order_no: str
+    source_order_ref: str
+    idempotency_key: str
+    transaction_date: date | None = None
+    delivery_date: date | None = None
+    currency: str | None = None
+    items: list[SalesOrderDraftLineItemCreateRequest] = Field(min_length=1)
+
+
+class SalesOrderDraftCancelRequest(BaseModel):
+    """Cancel local sales-order draft payload."""
+
+    reason: str
+
+
+class SalesOrderDraftLineItemData(BaseModel):
+    """Local sales-order draft line response."""
+
+    id: int
+    draft_id: int
+    item_code: str
+    qty: Decimal
+    rate: Decimal | None = None
+    amount: Decimal | None = None
+    uom: str
+    warehouse: str | None = None
+
+
+class SalesOrderDraftData(BaseModel):
+    """Local sales-order draft response."""
+
+    id: int
+    sales_order_no: str
+    source_order_ref: str
+    company: str
+    customer: str | None = None
+    status: Literal["draft", "pending_outbox", "cancelled"]
+    transaction_date: date | None = None
+    delivery_date: date | None = None
+    currency: str | None = None
+    grand_total: Decimal | None = None
+    idempotency_key: str
+    scenario_tag: str
+    created_by: str
+    created_at: datetime
+    cancelled_by: str | None = None
+    cancelled_at: datetime | None = None
+    cancel_reason: str | None = None
+    items: list[SalesOrderDraftLineItemData]
 
 
 class StockSummaryItem(BaseModel):

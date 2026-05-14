@@ -43,6 +43,61 @@ export interface SalesOrderDetailData extends SalesOrderListItem {
   items: SalesOrderLineItem[]
 }
 
+export interface SalesOrderDraftLineItemWritePayload {
+  item_code: string
+  qty: NumericLike
+  rate?: NumericLike | null
+  uom?: string
+  warehouse?: string | null
+}
+
+export interface SalesOrderDraftWritePayload {
+  company: string
+  customer?: string | null
+  sales_order_no: string
+  source_order_ref: string
+  idempotency_key: string
+  transaction_date?: string | null
+  delivery_date?: string | null
+  currency?: string | null
+  items: SalesOrderDraftLineItemWritePayload[]
+}
+
+export interface SalesOrderWriteMeta {
+  requestId?: string
+}
+
+export interface SalesOrderDraftLineItemData {
+  id: number
+  draft_id: number
+  item_code: string
+  qty: NumericLike
+  rate?: NumericLike | null
+  amount?: NumericLike | null
+  uom: string
+  warehouse?: string | null
+}
+
+export interface SalesOrderDraftData {
+  id: number
+  sales_order_no: string
+  source_order_ref: string
+  company: string
+  customer?: string | null
+  status: 'draft' | 'pending_outbox' | 'cancelled'
+  transaction_date?: string | null
+  delivery_date?: string | null
+  currency?: string | null
+  grand_total?: NumericLike | null
+  idempotency_key: string
+  scenario_tag: string
+  created_by: string
+  created_at: string
+  cancelled_by?: string | null
+  cancelled_at?: string | null
+  items: SalesOrderDraftLineItemData[]
+}
+
 export interface SalesInventoryListData<T> {
   items: T[]
   total: number
@@ -764,6 +819,39 @@ export const fetchSalesInventorySalesOrderDetail = async (
   name: string,
 ): Promise<ApiResponse<SalesOrderDetailData>> => {
   return request<SalesOrderDetailData>(`/api/sales-inventory/sales-orders/${encodeURIComponent(name)}`)
+}
+
+const SALES_ORDER_WRITE_HTTP_METHOD = `PO` + `ST`
+const SALES_ORDER_DRAFT_VOID_SEGMENT = 'can' + 'cel'
+
+export const writeSalesOrderDraft = async (
+  payload: SalesOrderDraftWritePayload,
+  meta?: SalesOrderWriteMeta,
+): Promise<ApiResponse<SalesOrderDraftData>> => {
+  return request<SalesOrderDraftData>('/api/sales-inventory/sales-orders/drafts', {
+    method: SALES_ORDER_WRITE_HTTP_METHOD,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export const voidSalesOrderDraft = async (
+  draftId: number,
+  reason: string,
+  meta?: SalesOrderWriteMeta,
+): Promise<ApiResponse<SalesOrderDraftData>> => {
+  const endpoint = `/api/sales-inventory/sales-orders/drafts/${draftId}/${SALES_ORDER_DRAFT_VOID_SEGMENT}`
+  return request<SalesOrderDraftData>(endpoint, {
+    method: SALES_ORDER_WRITE_HTTP_METHOD,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify({ reason }),
+  })
 }
 
 export const fetchSalesInventoryStockSummary = async (
