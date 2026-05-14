@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from decimal import Decimal
+from decimal import InvalidOperation
 import logging
 import os
 import re
@@ -99,6 +101,10 @@ logger = logging.getLogger(__name__)
 WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-TICKET-REGISTER-\d{8}-\d{3})")
 WORKSHOP_LOCAL_BATCH_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-BATCH-\d{8}-\d{3})")
+WORKSHOP_LOCAL_WAGE_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-WAGE-\d{8}-\d{3})")
+WORKSHOP_LOCAL_WAGE_REQUEST_PATTERN = re.compile(
+    r"^(Z002-WORKSHOP-WAGE-\d{8}-\d{3})-RW-C([A-F0-9]{4})-P([A-F0-9]{4})-I([A-F0-9]{4})-D(\d{8})$",
+)
 
 
 ROW_LEVEL_BATCH_APP_CODES = {
@@ -295,6 +301,214 @@ def _match_batch_scenario_tag(value: str) -> str | None:
     if matched is None:
         return None
     return matched.group(1)
+
+
+def _match_wage_scenario_tag(value: str) -> str | None:
+    matched = WORKSHOP_LOCAL_WAGE_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _scope_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _normalize_iso_date(value: Any) -> str | None:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None
+    try:
+        return normalized if len(normalized) == 10 and normalized[4] == "-" and normalized[7] == "-" else None
+    except Exception:  # pragma: no cover
+        return None
+
+
+def _build_wage_carrier_code(value: Any) -> str | None:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None
+    hash_value = 2166136261
+    for byte in normalized.encode("utf-8"):
+        hash_value ^= byte
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    return f"{hash_value:08X}"[-4:]
+
+
+def _build_wage_date_code(value: Any) -> str | None:
+    normalized = _normalize_iso_date(value)
+    if normalized is None:
+        return None
+    return normalized.replace("-", "")
+
+
+def _extract_wage_request_carriers(value: str) -> tuple[str | None, str | None, str | None, str | None, str | None]:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None, None, None, None, None
+    matched = WORKSHOP_LOCAL_WAGE_REQUEST_PATTERN.fullmatch(normalized)
+    if matched is None:
+        return None, None, None, None, None
+    return (
+        _scope_text(matched.group(1)),
+        _scope_text(matched.group(2)),
+        _scope_text(matched.group(3)),
+        _scope_text(matched.group(4)),
+        _scope_text(matched.group(5)),
+    )
+
+
+def _validate_local_wage_request_id_gate(
+    *,
+    request_obj: Request,
+    request_id: str,
+    carriers: list[str | None],
+    expected_company: Any,
+    expected_process_name: Any,
+    expected_item_scope: Any,
+    expected_effective_from: Any,
+) -> str:
+    if not _is_local_workshop_write_enabled():
+        raise BusinessException(code=AUTH_FORBIDDEN, message="仅允许本地开发测试库执行工价写入")
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 不能为空")
+
+    header_tag = _match_wage_scenario_tag(request_id_header)
+    if header_tag is None:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
+
+    normalized_tag = _match_wage_scenario_tag((request_id or "").strip())
+    if normalized_tag is None:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
+    if normalized_tag != header_tag:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+
+    (
+        header_carrier_tag,
+        header_company_code,
+        header_process_code,
+        header_item_code,
+        header_date_code,
+    ) = _extract_wage_request_carriers(request_id_header)
+    if (
+        header_carrier_tag is None
+        or header_company_code is None
+        or header_process_code is None
+        or header_item_code is None
+        or header_date_code is None
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 载体缺失或格式非法")
+    if header_carrier_tag != header_tag:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+
+    (
+        request_carrier_tag,
+        request_company_code,
+        request_process_code,
+        request_item_code,
+        request_date_code,
+    ) = _extract_wage_request_carriers(request_id)
+    if (
+        request_carrier_tag is None
+        or request_company_code is None
+        or request_process_code is None
+        or request_item_code is None
+        or request_date_code is None
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 载体缺失或格式非法")
+    if request_carrier_tag != header_carrier_tag:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+    if (
+        request_company_code != header_company_code
+        or request_process_code != header_process_code
+        or request_item_code != header_item_code
+        or request_date_code != header_date_code
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 载体不一致")
+
+    expected_company_code = _build_wage_carrier_code(expected_company)
+    expected_process_code = _build_wage_carrier_code(expected_process_name)
+    expected_item_code = _build_wage_carrier_code(expected_item_scope)
+    expected_date_code = _build_wage_date_code(expected_effective_from)
+    if (
+        expected_company_code is None
+        or expected_process_code is None
+        or expected_item_code is None
+        or expected_date_code is None
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 业务载体缺失")
+    if header_company_code != expected_company_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="company 载体与业务载体不一致")
+    if header_process_code != expected_process_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="process_name 载体与业务载体不一致")
+    if header_item_code != expected_item_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="item_scope 载体与业务载体不一致")
+    if header_date_code != expected_date_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="effective_from 载体与业务载体不一致")
+
+    carrier_tags: list[str] = []
+    for raw_value in carriers:
+        normalized = _scope_text(raw_value)
+        if normalized is None:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失")
+        scenario_tag = _match_wage_scenario_tag(normalized)
+        if scenario_tag is None:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失或格式非法")
+        carrier_tags.append(scenario_tag)
+    if len(set(carrier_tags)) != 1:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
+    if carrier_tags[0] != header_tag:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体与 request_id 不一致")
+    return header_tag
+
+
+def _assert_wage_snapshot_consistency(
+    *,
+    rate_id: int,
+    payload: OperationWageRateDeactivateRequest,
+    before_data: dict[str, Any],
+) -> None:
+    if payload.rate_id != rate_id:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="rate_id 与业务载体不一致")
+
+    before_company = _scope_text(before_data.get("company")) or "GLOBAL"
+    payload_company = _scope_text(payload.company) or "GLOBAL"
+    if payload_company != before_company:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="company 载体与业务载体不一致")
+
+    before_process_name = _scope_text(before_data.get("process_name"))
+    payload_process_name = _scope_text(payload.process_name)
+    if payload_process_name is None or payload_process_name != before_process_name:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="process_name 载体与业务载体不一致")
+
+    before_item_scope = _scope_text(before_data.get("item_code")) or "GLOBAL"
+    payload_item_scope = _scope_text(payload.item_code) or "GLOBAL"
+    if payload_item_scope != before_item_scope:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="item_scope 载体与业务载体不一致")
+
+    before_effective_from = _normalize_iso_date(before_data.get("effective_from"))
+    payload_effective_from = _normalize_iso_date(payload.effective_from)
+    if payload_effective_from is None or payload_effective_from != before_effective_from:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="effective_from 载体与业务载体不一致")
+
+    before_effective_to = _normalize_iso_date(before_data.get("effective_to"))
+    payload_effective_to = _normalize_iso_date(payload.effective_to)
+    if before_effective_to is None and payload_effective_to is not None:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="effective_to 载体与业务载体不一致")
+    if before_effective_to is not None and payload_effective_to != before_effective_to:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="effective_to 载体与业务载体不一致")
+
+    try:
+        before_wage_rate = Decimal(str(before_data.get("wage_rate")))
+    except (InvalidOperation, TypeError, ValueError):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="wage_rate 业务载体非法") from None
+    if payload.wage_rate != before_wage_rate:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="wage_rate 载体与业务载体不一致")
 
 
 def _validate_local_ticket_write_gate(
@@ -1456,9 +1670,19 @@ def create_wage_rate(
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
     action = WORKSHOP_WAGE_RATE_MANAGE
+    request_id = get_request_id_from_request(request)
 
     try:
         resource = service.resolve_wage_rate_resource(item_code=payload.item_code, company=payload.company)
+        _validate_local_wage_request_id_gate(
+            request_obj=request,
+            request_id=request_id,
+            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag],
+            expected_company=resource.company or "GLOBAL",
+            expected_process_name=payload.process_name,
+            expected_item_scope=resource.item_code or "GLOBAL",
+            expected_effective_from=payload.effective_from,
+        )
         if resource.is_global:
             permission_service.require_action(
                 current_user=current_user,
@@ -1571,9 +1795,24 @@ def deactivate_wage_rate(
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
     action = WORKSHOP_WAGE_RATE_MANAGE
+    request_id = get_request_id_from_request(request)
 
     try:
         before_data = service.get_wage_rate_snapshot(rate_id=rate_id)
+        _assert_wage_snapshot_consistency(
+            rate_id=rate_id,
+            payload=payload,
+            before_data=before_data,
+        )
+        _validate_local_wage_request_id_gate(
+            request_obj=request,
+            request_id=request_id,
+            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.reason],
+            expected_company=before_data.get("company") or "GLOBAL",
+            expected_process_name=before_data.get("process_name"),
+            expected_item_scope=before_data.get("item_code") or "GLOBAL",
+            expected_effective_from=before_data.get("effective_from"),
+        )
         target_item_code = before_data.get("item_code")
         target_company = before_data.get("company")
 

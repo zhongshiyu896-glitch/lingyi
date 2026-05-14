@@ -280,26 +280,55 @@ export const fetchWorkshopWageRates = (params: {
 }): Promise<ApiResponse<WorkshopWageRateListData>> =>
   request(`/api/workshop/wage-rates?${toQuery(params)}`)
 
-export const createWorkshopWageRate = (payload: {
+export interface WorkshopWageRateCreatePayload {
   item_code?: string
   company?: string
   process_name: string
   wage_rate: number
   effective_from: string
   effective_to?: string | null
-}): Promise<ApiResponse<{ id: number; status: string }>> =>
+  scenario_tag: string
+  idempotency_key: string
+  source_ref: string
+}
+
+export interface WorkshopWageRateDeactivatePayload {
+  reason: string
+  scenario_tag: string
+  idempotency_key: string
+  source_ref: string
+  company?: string
+  process_name: string
+  item_code?: string | null
+  wage_rate: number
+  effective_from: string
+  effective_to?: string | null
+  rate_id: number
+}
+
+export const createWorkshopWageRate = (
+  payload: WorkshopWageRateCreatePayload,
+  meta?: WorkshopWriteRequestMeta,
+): Promise<ApiResponse<{ id: number; status: string; item_code?: string | null; company?: string | null }>> =>
   request('/api/workshop/wage-rates', {
     method: 'POST',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: buildAuthHeaders({
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    }),
     body: JSON.stringify(payload),
   })
 
 export const deactivateWorkshopWageRate = (
   id: number,
-  reason: string,
+  payload: WorkshopWageRateDeactivatePayload,
+  meta?: WorkshopWriteRequestMeta,
 ): Promise<ApiResponse<{ id: number; status: string }>> =>
   request(`/api/workshop/wage-rates/${id}/deactivate`, {
     method: 'POST',
-    headers: buildAuthHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ reason }),
+    headers: buildAuthHeaders({
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    }),
+    body: JSON.stringify(payload),
   })

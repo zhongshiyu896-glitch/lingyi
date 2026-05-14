@@ -1,0 +1,70 @@
+{
+  "task_id": "TASK-Z002B-56-IMPL",
+  "source_head": "7bbc19b52eb5b66ff3f69f91e11f96173a90c3a8",
+  "source_subject": "chore: seal warehouse inventory count write closure",
+  "route_scope": [
+    "/workshop/daily-wages",
+    "/workshop/wage-rates"
+  ],
+  "request_id_gate": {
+    "pattern": "^[A-Za-z0-9_.-]{1,64}$",
+    "global_request_id_pattern_changed": false,
+    "example_request_id": "Z002-WORKSHOP-WAGE-20260514-289-RW-C6EAF-P977E-IA521-D20260514",
+    "example_request_id_length": 62,
+    "pattern_valid": true
+  },
+  "scenario_tag": "Z002-WORKSHOP-WAGE-20260514-289",
+  "allowed_write_requests": [
+    {
+      "method": "POST",
+      "path": "/api/workshop/wage-rates",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/workshop/wage-rates/1/deactivate",
+      "status": 200
+    }
+  ],
+  "approved_write_request_count": 2,
+  "unexpected_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "production_write_count": 0,
+  "forbidden_write_request_count": 0,
+  "daily_wage_readback_or_computation_triggered": true,
+  "fail_closed_cases": {
+    "missing_request_id_status": 409,
+    "mismatched_request_id_status": 409,
+    "mismatched_company_status": 409,
+    "mismatched_effective_from_status": 409,
+    "mismatched_process_name_status": 409,
+    "db_write_on_failed_gate_count": 0
+  },
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_operation_wage_rate_company_backfill_log": 0,
+    "ly_operation_wage_rate": 0,
+    "ys_workshop_daily_wage": 0,
+    "ys_workshop_job_card_sync_outbox": 0,
+    "ys_workshop_outbox_access_denial": 0,
+    "ys_workshop_job_card_sync_log": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "browser_evidence": {
+    "browser_json": "/tmp/task_z002b56_browser_result.json",
+    "cleanup_json": "/tmp/task_z002b56_cleanup.json",
+    "screenshots_dir": "/tmp/task_z002b56_screenshots",
+    "screenshots_count": 4,
+    "screenshots": [
+      "01_wage_rates_list.png",
+      "02_after_create.png",
+      "03_after_deactivate.png",
+      "04_daily_wage_linkage.png"
+    ]
+  },
+  "generated_at": "2026-05-14T19:09:00+08:00"
+}

@@ -263,12 +263,25 @@ class OperationWageRateCreateRequest(BaseModel):
     wage_rate: Decimal = Field(..., ge=0)
     effective_from: date
     effective_to: Optional[date] = None
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
 
 
 class OperationWageRateDeactivateRequest(BaseModel):
     """Deactivate wage rate request."""
 
     reason: str = Field(..., min_length=1, max_length=255)
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    company: Optional[str] = Field(default=None, max_length=140)
+    process_name: str = Field(..., min_length=1, max_length=100)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    wage_rate: Decimal = Field(..., ge=0)
+    effective_from: date
+    effective_to: Optional[date] = None
+    rate_id: int = Field(..., ge=1)
 
 
 class OperationWageRateRow(BaseModel):

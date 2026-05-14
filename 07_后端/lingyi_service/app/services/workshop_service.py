@@ -239,6 +239,13 @@ class WorkshopService:
         normalized_item_code = self._normalize_text(item_code)
         requested_company = self._normalize_company(company)
 
+        if self._is_local_synthetic_context_enabled():
+            if not normalized_item_code:
+                return WageRateResource(item_code=None, company=requested_company, is_global=True)
+            if not requested_company:
+                raise BusinessException(code=WORKSHOP_WAGE_RATE_COMPANY_REQUIRED, message="item 工价必须提供 company")
+            return WageRateResource(item_code=normalized_item_code, company=requested_company, is_global=False)
+
         if not normalized_item_code:
             if requested_company:
                 self._require_company_exists(requested_company)
