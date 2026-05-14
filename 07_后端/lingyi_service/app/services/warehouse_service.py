@@ -1052,9 +1052,19 @@ class WarehouseService:
         session = self._require_session()
         company = self._require_text(payload.company, "company")
         warehouse = self._require_text(payload.warehouse, "warehouse")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        source_ref = self._require_text(payload.source_ref, "source_ref")
         item_rows = self._normalize_inventory_count_items(items=payload.items)
-        count_no = self._build_inventory_count_no(company=company, warehouse=warehouse, count_date=payload.count_date)
+        count_no = self._build_inventory_count_no(
+            company=company,
+            warehouse=warehouse,
+            count_date=payload.count_date,
+            source_ref=source_ref,
+        )
         now = datetime.now(timezone.utc)
+        remark = self._text(payload.remark)
+        carrier_remark = f"carrier:idempotency_key={idempotency_key};source_ref={source_ref}"
+        combined_remark = carrier_remark if remark is None else f"{remark} | {carrier_remark}"
 
         inventory_count = LyWarehouseInventoryCount(
             company=company,
@@ -1064,7 +1074,7 @@ class WarehouseService:
             count_date=payload.count_date,
             created_by=current_user,
             created_at=now,
-            remark=self._text(payload.remark),
+            remark=combined_remark,
         )
         session.add(inventory_count)
         session.flush()
@@ -1195,9 +1205,7 @@ class WarehouseService:
         status = str(inventory_count.status)
         if status == "cancelled":
             raise WarehouseServiceError(409, "WAREHOUSE_INVENTORY_COUNT_ALREADY_CANCELLED", "盘点单已取消")
-        if status == "confirmed":
-            raise WarehouseServiceError(409, "WAREHOUSE_INVENTORY_COUNT_CONFIRMED", "盘点单已确认，无法取消")
-        if status not in self._INVENTORY_ACTIVE_STATUSES:
+        if status not in self._INVENTORY_ACTIVE_STATUSES and status != "confirmed":
             raise WarehouseServiceError(409, "WAREHOUSE_INVENTORY_COUNT_INVALID_STATUS", "当前状态不允许取消")
 
         inventory_count.status = "cancelled"
@@ -1489,10 +1497,15 @@ class WarehouseService:
         return normalized_rows
 
     @staticmethod
-    def _build_inventory_count_no(*, company: str, warehouse: str, count_date: date) -> str:
-        raw = f"{company}|{warehouse}|{count_date.isoformat()}|{datetime.now(timezone.utc).isoformat()}".encode("utf-8")
+    def _build_inventory_count_no(*, company: str, warehouse: str, count_date: date, source_ref: str) -> str:
+        raw = (
+            f"{company}|{warehouse}|{count_date.isoformat()}|{source_ref}|{datetime.now(timezone.utc).isoformat()}".encode(
+                "utf-8",
+            )
+        )
         digest = hashlib.sha256(raw).hexdigest()[:8].upper()
-        return f"IC-{count_date.strftime('%Y%m%d')}-{digest}"
+        normalized_ref = source_ref.strip().replace(" ", "")
+        return f"IC-{count_date.strftime('%Y%m%d')}-{digest}-{normalized_ref}"[:140]
 
     def _normalize_item_payloads(
         self,

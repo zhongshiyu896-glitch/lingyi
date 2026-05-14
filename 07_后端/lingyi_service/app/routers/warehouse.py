@@ -75,7 +75,11 @@ from app.core.request_id import get_request_id_from_request
 
 router = APIRouter(prefix="/api/warehouse", tags=["warehouse"])
 WAREHOUSE_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
-WAREHOUSE_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-STOCK-\d{8}-\d{3})")
+WAREHOUSE_LOCAL_STOCK_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-STOCK-\d{8}-\d{3})")
+WAREHOUSE_LOCAL_COUNT_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})")
+WAREHOUSE_LOCAL_COUNT_REQUEST_PATTERN = re.compile(
+    r"^(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})-REQ-COUNT-W([A-F0-9]{8})-D(\d{8})$",
+)
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -145,8 +149,15 @@ def _local_warehouse_read_fallback_enabled(exc: ERPNextAdapterException) -> bool
     return _is_local_warehouse_write_enabled() and get_permission_source() == "static"
 
 
-def _match_warehouse_scenario_tag(value: str) -> str | None:
-    matched = WAREHOUSE_LOCAL_SCENARIO_PATTERN.search(value)
+def _match_warehouse_stock_scenario_tag(value: str) -> str | None:
+    matched = WAREHOUSE_LOCAL_STOCK_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _match_warehouse_count_scenario_tag(value: str) -> str | None:
+    matched = WAREHOUSE_LOCAL_COUNT_SCENARIO_PATTERN.search(value)
     if matched is None:
         return None
     return matched.group(1)
@@ -161,6 +172,48 @@ def _raise_warehouse_idempotency_conflict(message: str) -> None:
             "data": {},
         },
     )
+
+
+def _normalize_inventory_count_date(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value.isoformat()
+    text = _scope_text(value)
+    if text is None:
+        return None
+    try:
+        return date.fromisoformat(text).isoformat()
+    except ValueError:
+        return None
+
+
+def _build_inventory_count_warehouse_carrier_code(value: str) -> str | None:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None
+    hash_value = 2166136261
+    for byte in normalized.encode("utf-8"):
+        hash_value ^= byte
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    return f"{hash_value:08X}"
+
+
+def _build_inventory_count_date_carrier_code(value: Any) -> str | None:
+    normalized = _normalize_inventory_count_date(value)
+    if normalized is None:
+        return None
+    return normalized.replace("-", "")
+
+
+def _extract_inventory_count_request_carriers(value: str) -> tuple[str | None, str | None, str | None]:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None, None, None
+    matched = WAREHOUSE_LOCAL_COUNT_REQUEST_PATTERN.fullmatch(normalized)
+    if matched is None:
+        return None, None, None
+    return matched.group(1), _scope_text(matched.group(2)), _scope_text(matched.group(3))
 
 
 def _validate_local_warehouse_write_gate(
@@ -182,12 +235,12 @@ def _validate_local_warehouse_write_gate(
     if not request_id_header:
         _raise_warehouse_idempotency_conflict("request_id 不能为空")
 
-    header_tag = _match_warehouse_scenario_tag(request_id_header)
+    header_tag = _match_warehouse_stock_scenario_tag(request_id_header)
     if header_tag is None:
         _raise_warehouse_idempotency_conflict("request_id 未包含合法 scenario_tag")
 
     request_id = get_request_id_from_request(request_obj).strip()
-    request_tag = _match_warehouse_scenario_tag(request_id)
+    request_tag = _match_warehouse_stock_scenario_tag(request_id)
     if request_tag is None:
         _raise_warehouse_idempotency_conflict("request_id 未包含合法 scenario_tag")
     if request_tag != header_tag:
@@ -198,7 +251,94 @@ def _validate_local_warehouse_write_gate(
         normalized = _scope_text(raw_value)
         if normalized is None:
             _raise_warehouse_idempotency_conflict("scenario_tag 载体缺失")
-        scenario_tag = _match_warehouse_scenario_tag(normalized)
+        scenario_tag = _match_warehouse_stock_scenario_tag(normalized)
+        if scenario_tag is None:
+            _raise_warehouse_idempotency_conflict("scenario_tag 载体缺失或格式非法")
+        carrier_tags.append(scenario_tag)
+
+    if len(set(carrier_tags)) != 1:
+        _raise_warehouse_idempotency_conflict("scenario_tag 载体不一致")
+    if carrier_tags[0] != header_tag:
+        _raise_warehouse_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
+    return header_tag
+
+
+def _validate_local_warehouse_inventory_count_gate(
+    *,
+    request_obj: Request,
+    carriers: list[str | None],
+    expected_warehouse: str | None,
+    expected_count_date: Any,
+) -> str:
+    if not _is_local_warehouse_write_enabled():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": AUTH_FORBIDDEN,
+                "message": "仅允许本地开发测试库执行仓库写入",
+                "data": {},
+            },
+        )
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_warehouse_idempotency_conflict("request_id 不能为空")
+
+    header_tag = _match_warehouse_count_scenario_tag(request_id_header)
+    if header_tag is None:
+        _raise_warehouse_idempotency_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    request_tag = _match_warehouse_count_scenario_tag(request_id)
+    if request_tag is None:
+        _raise_warehouse_idempotency_conflict("request_id 未包含合法 scenario_tag")
+    if request_tag != header_tag:
+        _raise_warehouse_idempotency_conflict("request_id 与 scenario_tag 不一致")
+
+    header_carrier_tag, header_warehouse_code, header_count_date_code = _extract_inventory_count_request_carriers(
+        request_id_header,
+    )
+    if header_warehouse_code is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失或格式非法")
+    if header_count_date_code is None:
+        _raise_warehouse_idempotency_conflict("count_date 载体缺失或格式非法")
+    if header_carrier_tag != header_tag:
+        _raise_warehouse_idempotency_conflict("request_id 与 scenario_tag 不一致")
+
+    request_carrier_tag, request_warehouse_code, request_count_date_code = _extract_inventory_count_request_carriers(
+        request_id,
+    )
+    if request_warehouse_code is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失或格式非法")
+    if request_count_date_code is None:
+        _raise_warehouse_idempotency_conflict("count_date 载体缺失或格式非法")
+    if request_carrier_tag != header_carrier_tag:
+        _raise_warehouse_idempotency_conflict("request_id 与 scenario_tag 不一致")
+    if request_warehouse_code != header_warehouse_code:
+        _raise_warehouse_idempotency_conflict("warehouse 载体与 request_id 不一致")
+    if request_count_date_code != header_count_date_code:
+        _raise_warehouse_idempotency_conflict("count_date 载体与 request_id 不一致")
+
+    normalized_expected_warehouse = _scope_text(expected_warehouse)
+    if normalized_expected_warehouse is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失")
+    normalized_expected_warehouse_code = _build_inventory_count_warehouse_carrier_code(normalized_expected_warehouse)
+    if normalized_expected_warehouse_code is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失")
+    normalized_expected_count_date_code = _build_inventory_count_date_carrier_code(expected_count_date)
+    if normalized_expected_count_date_code is None:
+        _raise_warehouse_idempotency_conflict("count_date 载体缺失")
+    if header_warehouse_code != normalized_expected_warehouse_code:
+        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+    if header_count_date_code != normalized_expected_count_date_code:
+        _raise_warehouse_idempotency_conflict("count_date 载体与业务载体不一致")
+
+    carrier_tags: list[str] = []
+    for raw_value in carriers:
+        normalized = _scope_text(raw_value)
+        if normalized is None:
+            _raise_warehouse_idempotency_conflict("scenario_tag 载体缺失")
+        scenario_tag = _match_warehouse_count_scenario_tag(normalized)
         if scenario_tag is None:
             _raise_warehouse_idempotency_conflict("scenario_tag 载体缺失或格式非法")
         carrier_tags.append(scenario_tag)
@@ -2206,6 +2346,16 @@ def create_inventory_count(
     session: Session = Depends(get_db_session),
 ):
     action = WAREHOUSE_INVENTORY_COUNT
+    _validate_local_warehouse_inventory_count_gate(
+        request_obj=request,
+        carriers=[payload.idempotency_key, payload.source_ref],
+        expected_warehouse=payload.warehouse,
+        expected_count_date=payload.count_date,
+    )
+    if _scope_text(payload.warehouse) is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失")
+    if payload.count_date is None:
+        _raise_warehouse_idempotency_conflict("count_date 载体缺失")
     permission_service = PermissionService(session=session)
     _require_warehouse_action(
         permission_service=permission_service,
@@ -2272,6 +2422,16 @@ def submit_inventory_count(
         before_data = _write_service(session).get_inventory_count(count_id=count_id).model_dump(mode="json")
     except WarehouseServiceError as exc:
         _raise_service_error(exc)
+    _validate_local_warehouse_inventory_count_gate(
+        request_obj=request,
+        carriers=[str(before_data.get("count_no") or "")],
+        expected_warehouse=str(before_data.get("warehouse") or ""),
+        expected_count_date=before_data.get("count_date"),
+    )
+    if _scope_text(str(before_data.get("warehouse") or "")) is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失")
+    if _scope_text(str(before_data.get("count_date") or "")) is None:
+        _raise_warehouse_idempotency_conflict("count_date 载体缺失")
 
     try:
         _check_inventory_count_scope(
@@ -2325,6 +2485,16 @@ def variance_review_inventory_count(
         before_data = _write_service(session).get_inventory_count(count_id=count_id).model_dump(mode="json")
     except WarehouseServiceError as exc:
         _raise_service_error(exc)
+    _validate_local_warehouse_inventory_count_gate(
+        request_obj=request,
+        carriers=[str(before_data.get("count_no") or "")],
+        expected_warehouse=str(before_data.get("warehouse") or ""),
+        expected_count_date=before_data.get("count_date"),
+    )
+    if _scope_text(str(before_data.get("warehouse") or "")) is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失")
+    if _scope_text(str(before_data.get("count_date") or "")) is None:
+        _raise_warehouse_idempotency_conflict("count_date 载体缺失")
 
     try:
         _check_inventory_count_scope(
@@ -2381,6 +2551,16 @@ def confirm_inventory_count(
         before_data = _write_service(session).get_inventory_count(count_id=count_id).model_dump(mode="json")
     except WarehouseServiceError as exc:
         _raise_service_error(exc)
+    _validate_local_warehouse_inventory_count_gate(
+        request_obj=request,
+        carriers=[str(before_data.get("count_no") or "")],
+        expected_warehouse=str(before_data.get("warehouse") or ""),
+        expected_count_date=before_data.get("count_date"),
+    )
+    if _scope_text(str(before_data.get("warehouse") or "")) is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失")
+    if _scope_text(str(before_data.get("count_date") or "")) is None:
+        _raise_warehouse_idempotency_conflict("count_date 载体缺失")
 
     try:
         _check_inventory_count_scope(
@@ -2434,6 +2614,16 @@ def cancel_inventory_count(
         before_data = _write_service(session).get_inventory_count(count_id=count_id).model_dump(mode="json")
     except WarehouseServiceError as exc:
         _raise_service_error(exc)
+    _validate_local_warehouse_inventory_count_gate(
+        request_obj=request,
+        carriers=[str(before_data.get("count_no") or ""), payload.reason],
+        expected_warehouse=str(before_data.get("warehouse") or ""),
+        expected_count_date=before_data.get("count_date"),
+    )
+    if _scope_text(str(before_data.get("warehouse") or "")) is None:
+        _raise_warehouse_idempotency_conflict("warehouse 载体缺失")
+    if _scope_text(str(before_data.get("count_date") or "")) is None:
+        _raise_warehouse_idempotency_conflict("count_date 载体缺失")
 
     try:
         _check_inventory_count_scope(

@@ -296,6 +296,86 @@ export interface WarehouseWriteMeta {
   requestId?: string
 }
 
+export interface WarehouseInventoryCountItemCreatePayload {
+  item_code: string
+  batch_no?: string | null
+  serial_no?: string | null
+  system_qty: NumericLike
+  counted_qty: NumericLike
+  variance_reason?: string | null
+}
+
+export interface WarehouseInventoryCountCreatePayload {
+  company: string
+  warehouse: string
+  count_date: string
+  idempotency_key: string
+  source_ref: string
+  items: WarehouseInventoryCountItemCreatePayload[]
+  remark?: string | null
+}
+
+export interface WarehouseInventoryCountVarianceReviewItemPayload {
+  item_id: number
+  review_status: 'accepted' | 'rejected'
+  variance_reason?: string | null
+}
+
+export interface WarehouseInventoryCountVarianceReviewPayload {
+  items: WarehouseInventoryCountVarianceReviewItemPayload[]
+}
+
+export interface WarehouseInventoryCountCancelPayload {
+  reason: string
+}
+
+export interface WarehouseInventoryCountItemData {
+  id: number
+  count_id: number
+  item_code: string
+  batch_no?: string | null
+  serial_no?: string | null
+  system_qty: NumericLike
+  counted_qty: NumericLike
+  variance_qty: NumericLike
+  variance_reason?: string | null
+  review_status: 'pending' | 'accepted' | 'rejected'
+}
+
+export interface WarehouseInventoryCountVarianceStatsData {
+  total_items: number
+  variance_items: number
+  pending_review_items: number
+  accepted_items: number
+  rejected_items: number
+}
+
+export interface WarehouseInventoryCountData {
+  id: number
+  company: string
+  warehouse: string
+  status: 'draft' | 'counted' | 'variance_review' | 'confirmed' | 'cancelled'
+  count_no: string
+  count_date: string
+  created_by: string
+  created_at: string
+  submitted_by?: string | null
+  submitted_at?: string | null
+  reviewed_by?: string | null
+  reviewed_at?: string | null
+  cancelled_by?: string | null
+  cancelled_at?: string | null
+  cancel_reason?: string | null
+  remark?: string | null
+  items: WarehouseInventoryCountItemData[]
+  variance_stats: WarehouseInventoryCountVarianceStatsData
+}
+
+export interface WarehouseInventoryCountListData {
+  total: number
+  items: WarehouseInventoryCountData[]
+}
+
 export interface WarehouseStockEntryOutboxStatusData {
   draft_id: number
   event_id: number
@@ -482,4 +562,105 @@ export const fetchWarehouseStockEntryOutboxStatus = async (
   draftId: number,
 ): Promise<ApiResponse<WarehouseStockEntryOutboxStatusData>> => {
   return request<WarehouseStockEntryOutboxStatusData>(`/api/warehouse/stock-entry-drafts/${draftId}/outbox-status`)
+}
+
+export interface WarehouseInventoryCountListQuery {
+  company?: string
+  warehouse?: string
+  status?: 'draft' | 'counted' | 'variance_review' | 'confirmed' | 'cancelled' | ''
+  from_date?: string
+  to_date?: string
+  item_code?: string
+}
+
+export const createWarehouseInventoryCount = async (
+  payload: WarehouseInventoryCountCreatePayload,
+  meta?: WarehouseWriteMeta,
+): Promise<ApiResponse<WarehouseInventoryCountData>> => {
+  return request<WarehouseInventoryCountData>('/api/warehouse/inventory-counts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export const submitWarehouseInventoryCount = async (
+  countId: number,
+  meta?: WarehouseWriteMeta,
+): Promise<ApiResponse<WarehouseInventoryCountData>> => {
+  return request<WarehouseInventoryCountData>(`/api/warehouse/inventory-counts/${countId}/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify({}),
+  })
+}
+
+export const varianceReviewWarehouseInventoryCount = async (
+  countId: number,
+  payload: WarehouseInventoryCountVarianceReviewPayload,
+  meta?: WarehouseWriteMeta,
+): Promise<ApiResponse<WarehouseInventoryCountData>> => {
+  return request<WarehouseInventoryCountData>(`/api/warehouse/inventory-counts/${countId}/variance-review`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export const confirmWarehouseInventoryCount = async (
+  countId: number,
+  meta?: WarehouseWriteMeta,
+): Promise<ApiResponse<WarehouseInventoryCountData>> => {
+  return request<WarehouseInventoryCountData>(`/api/warehouse/inventory-counts/${countId}/confirm`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify({}),
+  })
+}
+
+export const cancelWarehouseInventoryCount = async (
+  countId: number,
+  payload: WarehouseInventoryCountCancelPayload,
+  meta?: WarehouseWriteMeta,
+): Promise<ApiResponse<WarehouseInventoryCountData>> => {
+  return request<WarehouseInventoryCountData>(`/api/warehouse/inventory-counts/${countId}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export const fetchWarehouseInventoryCount = async (
+  countId: number,
+): Promise<ApiResponse<WarehouseInventoryCountData>> => {
+  return request<WarehouseInventoryCountData>(`/api/warehouse/inventory-counts/${countId}`)
+}
+
+export const fetchWarehouseInventoryCounts = async (
+  query: WarehouseInventoryCountListQuery,
+): Promise<ApiResponse<WarehouseInventoryCountListData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    warehouse: query.warehouse,
+    status: query.status,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    item_code: query.item_code,
+  })
+  return request<WarehouseInventoryCountListData>(`/api/warehouse/inventory-counts?${queryString}`)
 }

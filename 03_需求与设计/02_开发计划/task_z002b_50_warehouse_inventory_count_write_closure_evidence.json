@@ -1,0 +1,139 @@
+{
+  "task_id": "TASK-Z002B-50-IMPL-FIX2",
+  "source_head": "3841451e098d5536a907f640148a8cf4ffca2019",
+  "scenario_tag": "Z002-WAREHOUSE-COUNT-20260514-698",
+  "request_id": "Z002-WAREHOUSE-COUNT-20260514-698-REQ-COUNT-WF115D8E6-D20260514",
+  "route_scope": [
+    "/warehouse"
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/warehouse/inventory-counts",
+    "POST /api/warehouse/inventory-counts/{count_id}/submit",
+    "POST /api/warehouse/inventory-counts/{count_id}/variance-review",
+    "POST /api/warehouse/inventory-counts/{count_id}/confirm",
+    "POST /api/warehouse/inventory-counts/{count_id}/cancel"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/warehouse/inventory-counts",
+    "GET /api/warehouse/inventory-counts/{count_id}",
+    "GET /api/warehouse/stock-summary"
+  ],
+  "frontend_interaction": {
+    "route_open_warehouse": true,
+    "first_screen_visible": true,
+    "create_count_post_triggered": true,
+    "submit_post_triggered": true,
+    "variance_review_post_triggered": true,
+    "confirm_post_triggered": true,
+    "cancel_post_triggered": true,
+    "readback_get_after_create": true,
+    "readback_get_after_cancel": true,
+    "stock_summary_get_triggered": true
+  },
+  "scenario_tag_gate": {
+    "prefix": "Z002-WAREHOUSE-COUNT-{YYYYMMDD}-{NNN}",
+    "request_id_encoding": "{scenario_tag}-REQ-COUNT-W{warehouse_fnv32_hex8}-D{count_date_yyyymmdd}",
+    "request_id_pattern_compatible": true,
+    "request_id_pattern": "^[A-Za-z0-9_.-]{1,64}$",
+    "global_request_id_pattern_changed": false,
+    "carriers": [
+      "X-Request-ID/request_id",
+      "idempotency_key",
+      "warehouse",
+      "count_date",
+      "source_ref|count_no",
+      "reason(cancel)"
+    ],
+    "fail_closed": {
+      "missing_request_id_status": 409,
+      "mismatched_request_id_status": 409,
+      "mismatched_source_ref_status": 409,
+      "mismatched_warehouse_status": 409,
+      "mismatched_count_date_status": 409,
+      "mismatched_warehouse_db_write_count": 0,
+      "mismatched_count_date_db_write_count": 0,
+      "db_write_on_failed_gate_count": 0
+    }
+  },
+  "write_boundary": {
+    "approved_write_request_count": 5,
+    "allowed_write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/warehouse/inventory-counts",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/api/warehouse/inventory-counts/2/submit",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/warehouse/inventory-counts/2/variance-review",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/warehouse/inventory-counts/2/confirm",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/warehouse/inventory-counts/2/cancel",
+        "status": 200
+      }
+    ],
+    "unexpected_write_request_count": 0,
+    "stock_entry_drafts_write_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "upload_download_export_print_request_count": 0,
+    "production_write_count": 0,
+    "payable_draft_write_count": 0
+  },
+  "rollback_cleanup": {
+    "rollback_cleanup_executed": true,
+    "rollback_order": [
+      "ly_warehouse_stock_entry_outbox_event",
+      "ly_warehouse_stock_entry_draft_item",
+      "ly_warehouse_stock_entry_draft",
+      "ly_warehouse_inventory_count_item",
+      "ly_warehouse_inventory_count",
+      "ly_operation_audit_log",
+      "ly_security_audit_log"
+    ],
+    "counts_before_cleanup": {
+      "ly_warehouse_stock_entry_outbox_event": 0,
+      "ly_warehouse_stock_entry_draft_item": 0,
+      "ly_warehouse_stock_entry_draft": 0,
+      "ly_warehouse_inventory_count_item": 1,
+      "ly_warehouse_inventory_count": 1,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    },
+    "zero_residual": true,
+    "residual_counts_by_table": {
+      "ly_warehouse_stock_entry_outbox_event": 0,
+      "ly_warehouse_stock_entry_draft_item": 0,
+      "ly_warehouse_stock_entry_draft": 0,
+      "ly_warehouse_inventory_count_item": 0,
+      "ly_warehouse_inventory_count": 0,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    }
+  },
+  "artifacts": {
+    "report": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z002B-50-IMPL-FIX2_仓库盘点request_id载体编码兼容修复报告.md",
+    "browser_json": "/tmp/task_z002b50_fix2_browser_result.json",
+    "cleanup_json": "/tmp/task_z002b50_fix2_cleanup.json",
+    "screenshots_dir": "/tmp/task_z002b50_fix2_screenshots",
+    "screenshots": [
+      "01_list.png",
+      "02_after_create.png",
+      "03_after_cancel.png"
+    ],
+    "screenshots_count": 3
+  },
+  "generated_at": "2026-05-14T09:03:12.731907+00:00"
+}

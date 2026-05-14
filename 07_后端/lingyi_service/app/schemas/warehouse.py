@@ -468,6 +468,8 @@ class WarehouseInventoryCountCreateRequest(BaseModel):
     company: str
     warehouse: str
     count_date: date
+    idempotency_key: str
+    source_ref: str
     items: list[WarehouseInventoryCountItemCreateRequest] = Field(min_length=1)
     remark: str | None = None
 
