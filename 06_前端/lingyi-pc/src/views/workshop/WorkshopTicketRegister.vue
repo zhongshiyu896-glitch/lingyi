@@ -161,6 +161,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  buildWorkshopTicketRequestId,
+  ensureWorkshopTicketScenarioTag,
   fetchWorkshopTickets,
   registerWorkshopTicket,
   reverseWorkshopTicket,
@@ -171,7 +173,7 @@ import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
 const permissionStore = usePermissionStore()
-const SCENARIO_PATTERN = /(Z002-WORKSHOP-TICKET-REGISTER-\d{8}-\d{3})/
+const SCENARIO_PATTERN = /(Z003-WORKSHOP-TICKET-\d{8}-\d{3})/
 const mode = ref<'register' | 'reversal'>('register')
 const submitting = ref<boolean>(false)
 const guardedFeedback = ref<string>('')
@@ -222,12 +224,6 @@ const readonlyDraft = computed(() => ({
   reason: form.reason.trim(),
 }))
 
-const buildScenarioTag = (): string => {
-  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const sequence = `${Math.floor(Math.random() * 1000)}`.padStart(3, '0')
-  return `Z002-WORKSHOP-TICKET-REGISTER-${datePart}-${sequence}`
-}
-
 const extractScenarioTag = (value: string): string | null => {
   const matched = value.match(SCENARIO_PATTERN)
   return matched ? matched[1] : null
@@ -237,17 +233,14 @@ const resolveScenarioTag = (): string => {
   const carriers = [form.ticket_key, form.source_ref, form.reason]
   for (const carrier of carriers) {
     const tag = extractScenarioTag(carrier)
-    if (tag) return tag
+    if (tag) return ensureWorkshopTicketScenarioTag(tag)
   }
-  return buildScenarioTag()
+  return ensureWorkshopTicketScenarioTag('')
 }
 
 const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string): string => {
   const normalized = value.trim()
-  if (normalized) {
-    const existing = extractScenarioTag(normalized)
-    if (existing === tag) return normalized
-  }
+  if (normalized && extractScenarioTag(normalized) === tag) return normalized
   return `${tag}-${fallbackSuffix}`
 }
 
@@ -275,18 +268,33 @@ const submit = async (): Promise<void> => {
   }
 
   const scenarioTag = resolveScenarioTag()
-  const requestId = `${scenarioTag}-REQ`
-  form.ticket_key = withScenarioCarrier(form.ticket_key, scenarioTag, 'TK')
+  const operatorId = form.employee.trim() || 'operator-local'
+  const batchNo = `${scenarioTag}-BATCH-001`
+  const ticketKey = withScenarioCarrier(form.ticket_key, scenarioTag, mode.value === 'register' ? 'TK-REG' : 'TK-REV')
+  const sourceRef = withScenarioCarrier(form.source_ref, scenarioTag, mode.value === 'register' ? 'SRC-REG' : 'SRC-REV')
+  const idempotencyKey = ticketKey
+  const requestId = buildWorkshopTicketRequestId({
+    scenarioTag,
+    operation: mode.value,
+    idempotencyKey,
+    sourceRef,
+    ticketKey,
+    jobCard: form.job_card.trim(),
+    employeeOrOperator: operatorId,
+    batchNo,
+  })
+  form.ticket_key = ticketKey
+  form.source_ref = sourceRef
   if (mode.value === 'register') {
-    form.source_ref = withScenarioCarrier(form.source_ref, scenarioTag, 'SRC')
-  } else {
-    form.reason = withScenarioCarrier(form.reason, scenarioTag, 'REVERSAL')
+    form.source_ref = sourceRef
   }
 
   submitting.value = true
   try {
     if (mode.value === 'register') {
       const payload: WorkshopTicketRegisterPayload = {
+        scenario_tag: scenarioTag,
+        idempotency_key: idempotencyKey,
         ticket_key: form.ticket_key,
         job_card: form.job_card.trim(),
         employee: form.employee.trim(),
@@ -297,6 +305,9 @@ const submit = async (): Promise<void> => {
         work_date: form.work_date,
         source: form.source,
         source_ref: form.source_ref.trim(),
+        operation: 'register',
+        operator_id: operatorId,
+        batch_no: batchNo,
       }
       const result = await registerWorkshopTicket(payload, { requestId })
       if (!form.original_ticket_id) form.original_ticket_id = result.data.ticket_id
@@ -307,6 +318,8 @@ const submit = async (): Promise<void> => {
     }
 
     const payload: WorkshopTicketReversalPayload = {
+      scenario_tag: scenarioTag,
+      idempotency_key: idempotencyKey,
       ticket_key: form.ticket_key,
       job_card: form.job_card.trim(),
       employee: form.employee.trim(),
@@ -316,7 +329,11 @@ const submit = async (): Promise<void> => {
       qty: form.qty,
       work_date: form.work_date,
       original_ticket_id: form.original_ticket_id,
+      source_ref: form.source_ref.trim(),
       reason: form.reason.trim(),
+      operation: 'reversal',
+      operator_id: operatorId,
+      batch_no: batchNo,
     }
     const result = await reverseWorkshopTicket(payload, { requestId })
     const total = await readbackAfterWrite(payload.job_card)

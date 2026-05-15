@@ -99,8 +99,11 @@ from app.services.workshop_service import WorkshopService
 router = APIRouter(prefix="/api/workshop", tags=["workshop"])
 logger = logging.getLogger(__name__)
 WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
-WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-TICKET-REGISTER-\d{8}-\d{3})")
-WORKSHOP_LOCAL_BATCH_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-BATCH-\d{8}-\d{3})")
+WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z003-WORKSHOP-TICKET-\d{8}-\d{3})")
+WORKSHOP_LOCAL_BATCH_SCENARIO_PATTERN = re.compile(r"(Z003-WORKSHOP-TICKET-\d{8}-\d{3})")
+WORKSHOP_LOCAL_TICKET_REQUEST_PATTERN = re.compile(
+    r"^(Z003-WORKSHOP-TICKET-\d{8}-\d{3})-RW-([RVB])-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$",
+)
 WORKSHOP_LOCAL_WAGE_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-WAGE-\d{8}-\d{3})")
 WORKSHOP_LOCAL_WAGE_REQUEST_PATTERN = re.compile(
     r"^(Z002-WORKSHOP-WAGE-\d{8}-\d{3})-RW-C([A-F0-9]{4})-P([A-F0-9]{4})-I([A-F0-9]{4})-D(\d{8})$",
@@ -327,7 +330,7 @@ def _normalize_iso_date(value: Any) -> str | None:
         return None
 
 
-def _build_wage_carrier_code(value: Any) -> str | None:
+def _build_carrier_code(value: Any, *, length: int) -> str | None:
     normalized = _scope_text(value)
     if normalized is None:
         return None
@@ -335,7 +338,15 @@ def _build_wage_carrier_code(value: Any) -> str | None:
     for byte in normalized.encode("utf-8"):
         hash_value ^= byte
         hash_value = (hash_value * 16777619) & 0xFFFFFFFF
-    return f"{hash_value:08X}"[-4:]
+    return f"{hash_value:08X}"[-length:]
+
+
+def _build_ticket_carrier_code(value: Any) -> str | None:
+    return _build_carrier_code(value, length=3)
+
+
+def _build_wage_carrier_code(value: Any) -> str | None:
+    return _build_carrier_code(value, length=4)
 
 
 def _build_wage_date_code(value: Any) -> str | None:
@@ -343,6 +354,36 @@ def _build_wage_date_code(value: Any) -> str | None:
     if normalized is None:
         return None
     return normalized.replace("-", "")
+
+
+def _ticket_operation_code(operation: str) -> str | None:
+    normalized = _scope_text(operation)
+    if normalized == "register":
+        return "R"
+    if normalized == "reversal":
+        return "V"
+    if normalized == "batch":
+        return "B"
+    return None
+
+
+def _extract_ticket_request_carriers(value: str) -> tuple[str | None, str | None, str | None, str | None, str | None, str | None, str | None, str | None]:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None, None, None, None, None, None, None, None
+    matched = WORKSHOP_LOCAL_TICKET_REQUEST_PATTERN.fullmatch(normalized)
+    if matched is None:
+        return None, None, None, None, None, None, None, None
+    return (
+        _scope_text(matched.group(1)),
+        _scope_text(matched.group(2)),
+        _scope_text(matched.group(3)),
+        _scope_text(matched.group(4)),
+        _scope_text(matched.group(5)),
+        _scope_text(matched.group(6)),
+        _scope_text(matched.group(7)),
+        _scope_text(matched.group(8)),
+    )
 
 
 def _extract_wage_request_carriers(value: str) -> tuple[str | None, str | None, str | None, str | None, str | None]:
@@ -511,32 +552,19 @@ def _assert_wage_snapshot_consistency(
         raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="wage_rate 载体与业务载体不一致")
 
 
-def _validate_local_ticket_write_gate(
+def _validate_local_ticket_request_id_gate(
     *,
-    mode: str,
-    ticket_key: str,
-    secondary_carrier: str,
-    request_id: str,
     request_obj: Request,
-) -> str:
-    if not _is_local_workshop_write_enabled():
-        raise BusinessException(code=AUTH_FORBIDDEN, message="仅允许本地开发测试库执行工票写入")
-
-    carriers = [ticket_key.strip(), secondary_carrier.strip()]
-    if not all(carriers):
-        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失")
-
-    carrier_tags: list[str] = []
-    for value in carriers:
-        tag = _match_scenario_tag(value)
-        if tag is None:
-            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失或格式非法")
-        carrier_tags.append(tag)
-
-    if len(set(carrier_tags)) != 1:
-        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
-    scenario_tag = carrier_tags[0]
-
+    request_id: str,
+    scenario_tag: str,
+    operation: str,
+    idempotency_key: str,
+    source_ref: str,
+    ticket_key: str,
+    job_card: str,
+    employee_or_operator: str,
+    batch_no: str,
+) -> None:
     request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
     if not request_id_header:
         raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 不能为空")
@@ -553,9 +581,162 @@ def _validate_local_ticket_write_gate(
     if normalized_tag != scenario_tag:
         raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
 
-    if mode not in {"register", "reversal"}:
+    (
+        header_carrier_tag,
+        header_operation_code,
+        header_idempotency_code,
+        header_source_ref_code,
+        header_ticket_key_code,
+        header_job_card_code,
+        header_operator_code,
+        header_batch_code,
+    ) = _extract_ticket_request_carriers(request_id_header)
+    (
+        request_carrier_tag,
+        request_operation_code,
+        request_idempotency_code,
+        request_source_ref_code,
+        request_ticket_key_code,
+        request_job_card_code,
+        request_operator_code,
+        request_batch_code,
+    ) = _extract_ticket_request_carriers(request_id)
+
+    if (
+        header_carrier_tag is None
+        or header_operation_code is None
+        or header_idempotency_code is None
+        or header_source_ref_code is None
+        or header_ticket_key_code is None
+        or header_job_card_code is None
+        or header_operator_code is None
+        or header_batch_code is None
+        or request_carrier_tag is None
+        or request_operation_code is None
+        or request_idempotency_code is None
+        or request_source_ref_code is None
+        or request_ticket_key_code is None
+        or request_job_card_code is None
+        or request_operator_code is None
+        or request_batch_code is None
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 载体缺失或格式非法")
+
+    if header_carrier_tag != request_carrier_tag or header_carrier_tag != scenario_tag:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+
+    if (
+        header_operation_code != request_operation_code
+        or header_idempotency_code != request_idempotency_code
+        or header_source_ref_code != request_source_ref_code
+        or header_ticket_key_code != request_ticket_key_code
+        or header_job_card_code != request_job_card_code
+        or header_operator_code != request_operator_code
+        or header_batch_code != request_batch_code
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 载体不一致")
+
+    expected_operation_code = _ticket_operation_code(operation)
+    expected_idempotency_code = _build_ticket_carrier_code(idempotency_key)
+    expected_source_ref_code = _build_ticket_carrier_code(source_ref)
+    expected_ticket_key_code = _build_ticket_carrier_code(ticket_key)
+    expected_job_card_code = _build_ticket_carrier_code(job_card)
+    expected_operator_code = _build_ticket_carrier_code(employee_or_operator)
+    expected_batch_code = _build_ticket_carrier_code(batch_no)
+
+    if (
+        expected_operation_code is None
+        or expected_idempotency_code is None
+        or expected_source_ref_code is None
+        or expected_ticket_key_code is None
+        or expected_job_card_code is None
+        or expected_operator_code is None
+        or expected_batch_code is None
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 业务载体缺失")
+
+    if header_operation_code != expected_operation_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="operation 载体与业务载体不一致")
+    if header_idempotency_code != expected_idempotency_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="idempotency_key 载体与业务载体不一致")
+    if header_source_ref_code != expected_source_ref_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="source_ref 载体与业务载体不一致")
+    if header_ticket_key_code != expected_ticket_key_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="ticket_key 载体与业务载体不一致")
+    if header_job_card_code != expected_job_card_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="job_card 载体与业务载体不一致")
+    if header_operator_code != expected_operator_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="operator_id 载体与业务载体不一致")
+    if header_batch_code != expected_batch_code:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="batch_no 载体与业务载体不一致")
+
+
+def _validate_local_ticket_write_gate(
+    *,
+    mode: str,
+    scenario_tag: str,
+    idempotency_key: str,
+    ticket_key: str,
+    job_card: str,
+    source_ref: str,
+    employee_or_operator: str,
+    batch_no: str,
+    operation: str,
+    request_id: str,
+    request_obj: Request,
+) -> str:
+    if not _is_local_workshop_write_enabled():
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="仅允许本地开发测试库执行工票写入")
+
+    normalized_mode = _scope_text(mode)
+    if normalized_mode not in {"register", "reversal"}:
         raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="unsupported workshop write mode")
-    return scenario_tag
+
+    normalized_operation = _scope_text(operation)
+    if normalized_operation != normalized_mode:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="operation 载体与业务模式不一致")
+
+    normalized_scenario_tag = _scope_text(scenario_tag)
+    normalized_idempotency_key = _scope_text(idempotency_key)
+    normalized_ticket_key = _scope_text(ticket_key)
+    normalized_job_card = _scope_text(job_card)
+    normalized_source_ref = _scope_text(source_ref)
+    normalized_operator = _scope_text(employee_or_operator)
+    normalized_batch_no = _scope_text(batch_no)
+    if (
+        normalized_scenario_tag is None
+        or normalized_idempotency_key is None
+        or normalized_ticket_key is None
+        or normalized_job_card is None
+        or normalized_source_ref is None
+        or normalized_operator is None
+        or normalized_batch_no is None
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失")
+
+    scenario_tag_values = [normalized_scenario_tag, normalized_ticket_key, normalized_source_ref]
+    carrier_tags: list[str] = []
+    for value in scenario_tag_values:
+        tag = _match_scenario_tag(value)
+        if tag is None:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失或格式非法")
+        carrier_tags.append(tag)
+    if len(set(carrier_tags)) != 1:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
+
+    _validate_local_ticket_request_id_gate(
+        request_obj=request_obj,
+        request_id=request_id,
+        scenario_tag=carrier_tags[0],
+        operation=normalized_operation,
+        idempotency_key=normalized_idempotency_key,
+        source_ref=normalized_source_ref,
+        ticket_key=normalized_ticket_key,
+        job_card=normalized_job_card,
+        employee_or_operator=normalized_operator,
+        batch_no=normalized_batch_no,
+    )
+    return carrier_tags[0]
 
 
 def _validate_local_ticket_batch_gate(
@@ -565,36 +746,84 @@ def _validate_local_ticket_batch_gate(
     request_obj: Request,
 ) -> str:
     if not _is_local_workshop_write_enabled():
-        raise BusinessException(code=AUTH_FORBIDDEN, message="仅允许本地开发测试库执行工票写入")
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="仅允许本地开发测试库执行工票写入")
 
-    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
-    if not request_id_header:
-        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 不能为空")
+    normalized_operation = _scope_text(payload.operation)
+    if normalized_operation != "batch":
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="operation 载体与业务模式不一致")
 
-    header_tag = _match_batch_scenario_tag(request_id_header)
-    if header_tag is None:
-        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
+    normalized_scenario_tag = _scope_text(payload.scenario_tag)
+    normalized_idempotency_key = _scope_text(payload.idempotency_key)
+    normalized_ticket_key = _scope_text(payload.ticket_key)
+    normalized_job_card = _scope_text(payload.job_card)
+    normalized_source_ref = _scope_text(payload.source_ref)
+    normalized_batch_no = _scope_text(payload.batch_no)
+    normalized_operator = _scope_text(payload.operator_id) or _scope_text(payload.employee)
+    if payload.tickets and normalized_operator is None:
+        normalized_operator = _scope_text(payload.tickets[0].operator_id) or _scope_text(payload.tickets[0].employee)
+    if (
+        normalized_scenario_tag is None
+        or normalized_idempotency_key is None
+        or normalized_ticket_key is None
+        or normalized_job_card is None
+        or normalized_source_ref is None
+        or normalized_batch_no is None
+        or normalized_operator is None
+    ):
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失")
 
-    normalized_request_tag = _match_batch_scenario_tag((request_id or "").strip())
-    if normalized_request_tag is None:
-        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
-    if normalized_request_tag != header_tag:
-        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
+    top_carrier_tags: list[str] = []
+    for value in [normalized_scenario_tag, normalized_ticket_key, normalized_source_ref]:
+        tag = _match_batch_scenario_tag(value)
+        if tag is None:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失或格式非法")
+        top_carrier_tags.append(tag)
+    if len(set(top_carrier_tags)) != 1:
+        raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
+    scenario_tag = top_carrier_tags[0]
+
+    _validate_local_ticket_request_id_gate(
+        request_obj=request_obj,
+        request_id=request_id,
+        scenario_tag=scenario_tag,
+        operation="batch",
+        idempotency_key=normalized_idempotency_key,
+        source_ref=normalized_source_ref,
+        ticket_key=normalized_ticket_key,
+        job_card=normalized_job_card,
+        employee_or_operator=normalized_operator,
+        batch_no=normalized_batch_no,
+    )
 
     for row in payload.tickets:
-        ticket_key = row.ticket_key.strip()
-        source_ref = (row.source_ref or "").strip()
-        if not ticket_key or not source_ref:
+        row_operation_type = (_scope_text(row.operation_type) or _scope_text(row.operation) or "").lower()
+        if row_operation_type not in {"register", "reversal"}:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="operation_type 非法")
+        if (_scope_text(row.operation) or "").lower() != row_operation_type:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="operation 载体与业务模式不一致")
+        if _scope_text(row.batch_no) != normalized_batch_no:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="batch_no 载体不一致")
+        if _scope_text(row.idempotency_key) != _scope_text(row.ticket_key):
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="idempotency_key 载体与业务载体不一致")
+        row_operator = _scope_text(row.operator_id) or _scope_text(row.employee)
+        if row_operator is None:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="operator_id 载体缺失")
+
+        row_tag_values = [_scope_text(row.scenario_tag), _scope_text(row.ticket_key), _scope_text(row.source_ref)]
+        if any(value is None for value in row_tag_values):
             raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失")
-
-        ticket_tag = _match_batch_scenario_tag(ticket_key)
-        source_ref_tag = _match_batch_scenario_tag(source_ref)
-        if ticket_tag is None or source_ref_tag is None:
-            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失或格式非法")
-        if ticket_tag != source_ref_tag or ticket_tag != header_tag:
+        row_tags: list[str] = []
+        for value in row_tag_values:
+            tag = _match_batch_scenario_tag(value or "")
+            if tag is None:
+                raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体缺失或格式非法")
+            row_tags.append(tag)
+        if len(set(row_tags)) != 1 or row_tags[0] != scenario_tag:
             raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
+        if _scope_text(row.scenario_tag) != scenario_tag:
+            raise BusinessException(code=WORKSHOP_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体与 request_id 不一致")
 
-    return header_tag
+    return scenario_tag
 
 
 def _record_batch_security_denial_strict(
@@ -636,15 +865,25 @@ def register_ticket(
     action = WORKSHOP_TICKET_REGISTER
     request_id = get_request_id_from_request(request)
     resource = None
-
     try:
         local_scenario_tag = _validate_local_ticket_write_gate(
             mode="register",
+            scenario_tag=payload.scenario_tag,
+            idempotency_key=payload.idempotency_key,
             ticket_key=payload.ticket_key,
-            secondary_carrier=payload.source_ref or "",
+            job_card=payload.job_card,
+            source_ref=payload.source_ref,
+            employee_or_operator=payload.operator_id or payload.employee,
+            batch_no=payload.batch_no,
+            operation=payload.operation,
             request_id=request_id,
             request_obj=request,
         )
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+
+    try:
         resource = service.resolve_job_card_resource(
             job_card=payload.job_card,
             process_name=payload.process_name,
@@ -753,15 +992,25 @@ def reverse_ticket(
     context = AuditContext.from_request(request)
     action = WORKSHOP_TICKET_REVERSAL
     request_id = get_request_id_from_request(request)
-
     try:
         local_scenario_tag = _validate_local_ticket_write_gate(
             mode="reversal",
+            scenario_tag=payload.scenario_tag,
+            idempotency_key=payload.idempotency_key,
             ticket_key=payload.ticket_key,
-            secondary_carrier=payload.reason,
+            job_card=payload.job_card,
+            source_ref=payload.source_ref,
+            employee_or_operator=payload.operator_id or payload.employee,
+            batch_no=payload.batch_no,
+            operation=payload.operation,
             request_id=request_id,
             request_obj=request,
         )
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+
+    try:
         resource = service.resolve_job_card_resource(
             job_card=payload.job_card,
             process_name=payload.process_name,
@@ -881,13 +1130,17 @@ def batch_tickets(
     context = AuditContext.from_request(request)
     action = WORKSHOP_TICKET_BATCH
     request_id = get_request_id_from_request(request)
-
     try:
         local_scenario_tag = _validate_local_ticket_batch_gate(
             payload=payload,
             request_id=request_id,
             request_obj=request,
         )
+    except AppException as exc:
+        _rollback_safely(session=session, request=request, action=action, origin=exc)
+        return _app_err(exc)
+
+    try:
         permission_service.require_action(
             current_user=current_user,
             request_obj=request,

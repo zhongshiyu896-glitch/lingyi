@@ -134,7 +134,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { batchWorkshopTickets, fetchWorkshopTickets } from '@/api/workshop'
+import {
+  batchWorkshopTickets,
+  buildWorkshopTicketRequestId,
+  ensureWorkshopTicketScenarioTag,
+  fetchWorkshopTickets,
+  type WorkshopTicketBatchItemPayload,
+  type WorkshopTicketBatchPayload,
+} from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
@@ -165,7 +172,7 @@ const validationRows = ref<Array<{
 }>>([])
 
 const canBatch = computed<boolean>(() => permissionStore.state.buttonPermissions.ticket_batch)
-const SCENARIO_PATTERN = /(Z002-WORKSHOP-BATCH-\d{8}-\d{3})/
+const SCENARIO_PATTERN = /(Z003-WORKSHOP-TICKET-\d{8}-\d{3})/
 
 const resetParseState = (): void => {
   parseSummary.value = null
@@ -207,7 +214,7 @@ const parsePayload = (notify: boolean): boolean => {
     qty: number
   }> = []
   const invalids: Array<{ row_index: number; ticket_key: string; code: string; message: string }> = []
-  const requiredFields = ['ticket_key', 'job_card', 'employee', 'process_name', 'qty', 'work_date', 'source_ref']
+  const requiredFields = ['ticket_key', 'job_card', 'employee', 'process_name', 'qty', 'work_date']
 
   rows.forEach((row, idx) => {
     const rowIndex = idx + 1
@@ -225,12 +232,6 @@ const parsePayload = (notify: boolean): boolean => {
       if (!row.reason || String(row.reason).trim().length === 0) {
         missing.push('reason')
       }
-    }
-    if (!SCENARIO_PATTERN.test(String(row.ticket_key || ''))) {
-      missing.push('ticket_key(scenario_tag)')
-    }
-    if (!SCENARIO_PATTERN.test(String(row.source_ref || ''))) {
-      missing.push('source_ref(scenario_tag)')
     }
     if (missing.length > 0) {
       invalids.push({
@@ -271,7 +272,11 @@ const extractScenarioTag = (value: string): string | null => {
   return matched ? matched[1] : null
 }
 
-const buildRequestId = (scenarioTag: string): string => `${scenarioTag}-REQ-BATCH`
+const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string): string => {
+  const normalized = value.trim()
+  if (normalized && extractScenarioTag(normalized) === tag) return normalized
+  return `${tag}-${fallbackSuffix}`
+}
 
 const submitBatch = async (): Promise<void> => {
   const ok = parsePayload(true)
@@ -301,17 +306,12 @@ const submitBatch = async (): Promise<void> => {
   }
 
   const scenarioTags = payloadRows
-    .map((row) => [extractScenarioTag(String(row.ticket_key || '')), extractScenarioTag(String(row.source_ref || ''))])
+    .map((row) => [extractScenarioTag(String(row.ticket_key || '')), extractScenarioTag(String(row.source_ref || '')), extractScenarioTag(String(row.scenario_tag || ''))])
     .flat()
     .filter((tag): tag is string => Boolean(tag))
 
-  if (scenarioTags.length === 0) {
-    guardedFeedback.value = 'scenario_tag 缺失或格式非法，请检查 ticket_key/source_ref。'
-    ElMessage.warning(guardedFeedback.value)
-    return
-  }
-  const scenarioTag = scenarioTags[0]
-  if (!scenarioTags.every((tag) => tag === scenarioTag)) {
+  const scenarioTag = ensureWorkshopTicketScenarioTag(scenarioTags[0] || '')
+  if (scenarioTags.length > 0 && !scenarioTags.every((tag) => tag === scenarioTag)) {
     guardedFeedback.value = 'scenario_tag 载体不一致，已阻断提交。'
     ElMessage.warning(guardedFeedback.value)
     return
@@ -321,26 +321,61 @@ const submitBatch = async (): Promise<void> => {
   guardedFeedback.value = ''
   readbackHint.value = ''
   try {
-    const requestId = buildRequestId(scenarioTag)
-    const response = await batchWorkshopTickets(
-      payloadRows as Array<{
-        operation_type?: 'register' | 'reversal'
-        ticket_key: string
-        job_card: string
-        item_code?: string
-        employee: string
-        process_name: string
-        color?: string
-        size?: string
-        qty: number
-        work_date: string
-        source: string
-        source_ref?: string
-        original_ticket_id?: number
-        reason?: string
-      }>,
-      { requestId },
-    )
+    const batchNo = `${scenarioTag}-BATCH-001`
+    const normalizedRows: WorkshopTicketBatchItemPayload[] = payloadRows.map((row, index) => {
+      const operationType = String(row.operation_type || row.operation || 'register').trim().toLowerCase() === 'reversal' ? 'reversal' : 'register'
+      const jobCard = String(row.job_card || '').trim()
+      const employee = String(row.employee || '').trim()
+      const ticketKey = withScenarioCarrier(String(row.ticket_key || '').trim(), scenarioTag, `TK-${String(index + 1).padStart(3, '0')}`)
+      const sourceRef = withScenarioCarrier(String(row.source_ref || '').trim(), scenarioTag, `SRC-${String(index + 1).padStart(3, '0')}`)
+      return {
+        scenario_tag: scenarioTag,
+        idempotency_key: ticketKey,
+        source_ref: sourceRef,
+        operation: operationType,
+        operator_id: employee || undefined,
+        batch_no: batchNo,
+        operation_type: operationType,
+        ticket_key: ticketKey,
+        job_card: jobCard,
+        item_code: typeof row.item_code === 'string' ? row.item_code : undefined,
+        employee,
+        process_name: String(row.process_name || '').trim(),
+        color: typeof row.color === 'string' ? row.color : undefined,
+        size: typeof row.size === 'string' ? row.size : undefined,
+        qty: Number(row.qty || 0),
+        work_date: String(row.work_date || ''),
+        source: typeof row.source === 'string' && row.source.trim() ? row.source.trim() : 'import',
+        original_ticket_id: row.original_ticket_id ? Number(row.original_ticket_id) : undefined,
+        reason: typeof row.reason === 'string' ? row.reason.trim() : undefined,
+      }
+    })
+    const firstRow = normalizedRows[0]
+    const topTicketKey = withScenarioCarrier(firstRow.ticket_key, scenarioTag, 'TK-BATCH')
+    const topSourceRef = withScenarioCarrier(firstRow.source_ref, scenarioTag, 'SRC-BATCH')
+    const requestId = buildWorkshopTicketRequestId({
+      scenarioTag,
+      operation: 'batch',
+      idempotencyKey: topTicketKey,
+      sourceRef: topSourceRef,
+      ticketKey: topTicketKey,
+      jobCard: firstRow.job_card,
+      employeeOrOperator: firstRow.employee || firstRow.operator_id || 'operator-local',
+      batchNo,
+    })
+    const payload: WorkshopTicketBatchPayload = {
+      scenario_tag: scenarioTag,
+      idempotency_key: topTicketKey,
+      source_ref: topSourceRef,
+      operation: 'batch',
+      operator_id: firstRow.employee || undefined,
+      batch_no: batchNo,
+      ticket_key: topTicketKey,
+      job_card: firstRow.job_card,
+      employee: firstRow.employee || undefined,
+      tickets: normalizedRows,
+    }
+    const response = await batchWorkshopTickets(payload, { requestId })
     const data = response.data
     batchReceipt.value = {
       success_count: data.success_count,

@@ -27,6 +27,8 @@ class ApiResponse(BaseModel, Generic[T]):
 class WorkshopTicketRegisterRequest(BaseModel):
     """Register workshop ticket request."""
 
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
     ticket_key: str = Field(..., min_length=1, max_length=128)
     job_card: str = Field(..., min_length=1, max_length=140)
     item_code: Optional[str] = Field(default=None, max_length=140)
@@ -37,12 +39,17 @@ class WorkshopTicketRegisterRequest(BaseModel):
     qty: Decimal
     work_date: date
     source: str = Field(default="manual", min_length=1, max_length=32)
-    source_ref: Optional[str] = Field(default=None, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    operation: str = Field(default="register", min_length=1, max_length=16)
+    operator_id: Optional[str] = Field(default=None, max_length=140)
+    batch_no: str = Field(..., min_length=1, max_length=140)
 
 
 class WorkshopTicketReversalRequest(BaseModel):
     """Reverse workshop ticket request."""
 
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
     ticket_key: str = Field(..., min_length=1, max_length=128)
     job_card: str = Field(..., min_length=1, max_length=140)
     item_code: Optional[str] = Field(default=None, max_length=140)
@@ -53,12 +60,22 @@ class WorkshopTicketReversalRequest(BaseModel):
     qty: Decimal
     work_date: date
     original_ticket_id: Optional[int] = None
+    source_ref: str = Field(..., min_length=1, max_length=140)
     reason: str = Field(..., min_length=1, max_length=255)
+    operation: str = Field(default="reversal", min_length=1, max_length=16)
+    operator_id: Optional[str] = Field(default=None, max_length=140)
+    batch_no: str = Field(..., min_length=1, max_length=140)
 
 
 class WorkshopTicketBatchItem(BaseModel):
     """Batch ticket row."""
 
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    operation: str = Field(..., min_length=1, max_length=16)
+    operator_id: Optional[str] = Field(default=None, max_length=140)
+    batch_no: str = Field(..., min_length=1, max_length=140)
     operation_type: str = Field(default="register", max_length=16)
     ticket_key: str = Field(..., min_length=1, max_length=128)
     job_card: str = Field(..., min_length=1, max_length=140)
@@ -70,7 +87,6 @@ class WorkshopTicketBatchItem(BaseModel):
     qty: Decimal
     work_date: date
     source: str = Field(default="import", min_length=1, max_length=32)
-    source_ref: Optional[str] = Field(default=None, max_length=140)
     original_ticket_id: Optional[int] = None
     reason: Optional[str] = Field(default=None, max_length=255)
 
@@ -78,6 +94,15 @@ class WorkshopTicketBatchItem(BaseModel):
 class WorkshopTicketBatchRequest(BaseModel):
     """Batch import request."""
 
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    operation: str = Field(default="batch", min_length=1, max_length=16)
+    operator_id: Optional[str] = Field(default=None, max_length=140)
+    batch_no: str = Field(..., min_length=1, max_length=140)
+    ticket_key: str = Field(..., min_length=1, max_length=128)
+    job_card: str = Field(..., min_length=1, max_length=140)
+    employee: Optional[str] = Field(default=None, max_length=140)
     tickets: List[WorkshopTicketBatchItem] = Field(..., min_length=1, max_length=500)
 
 

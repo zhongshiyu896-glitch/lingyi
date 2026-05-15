@@ -323,7 +323,7 @@ const goRegister = (): void => {
   void router.push('/workshop/tickets/register')
 }
 const goBatch = (): void => {
-  guardedWriteAction('批量导入')
+  void router.push('/workshop/tickets/batch')
 }
 const goDailyWage = (): void => {
   void router.push('/workshop/daily-wages')

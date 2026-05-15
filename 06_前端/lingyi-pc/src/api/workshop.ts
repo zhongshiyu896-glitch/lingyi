@@ -6,7 +6,25 @@ export interface ApiResponse<T> {
 
 // Internal worker run-once API is intentionally not exposed to business UI.
 
-export interface WorkshopTicketRegisterPayload {
+export type WorkshopTicketOperation = 'register' | 'reversal' | 'batch'
+
+export interface WorkshopTicketCarrierPayload {
+  scenario_tag: string
+  idempotency_key: string
+  source_ref: string
+  operation: WorkshopTicketOperation
+  operator_id?: string
+  batch_no: string
+}
+
+export interface WorkshopTicketBatchItemPayload {
+  scenario_tag: string
+  idempotency_key: string
+  source_ref: string
+  operation: 'register' | 'reversal'
+  operator_id?: string
+  batch_no: string
+  operation_type?: 'register' | 'reversal'
   ticket_key: string
   job_card: string
   item_code?: string
@@ -17,10 +35,45 @@ export interface WorkshopTicketRegisterPayload {
   qty: number
   work_date: string
   source: string
-  source_ref?: string
+  original_ticket_id?: number
+  reason?: string
+}
+
+export interface WorkshopTicketBatchPayload {
+  scenario_tag: string
+  idempotency_key: string
+  source_ref: string
+  operation: 'batch'
+  operator_id?: string
+  batch_no: string
+  ticket_key: string
+  job_card: string
+  employee?: string
+  tickets: WorkshopTicketBatchItemPayload[]
+}
+
+export interface WorkshopTicketRegisterPayload {
+  scenario_tag: string
+  idempotency_key: string
+  ticket_key: string
+  job_card: string
+  item_code?: string
+  employee: string
+  process_name: string
+  color?: string
+  size?: string
+  qty: number
+  work_date: string
+  source: string
+  source_ref: string
+  operation: 'register'
+  operator_id?: string
+  batch_no: string
 }
 
 export interface WorkshopTicketReversalPayload {
+  scenario_tag: string
+  idempotency_key: string
   ticket_key: string
   job_card: string
   item_code?: string
@@ -31,11 +84,68 @@ export interface WorkshopTicketReversalPayload {
   qty: number
   work_date: string
   original_ticket_id?: number
+  source_ref: string
   reason: string
+  operation: 'reversal'
+  operator_id?: string
+  batch_no: string
 }
 
 export interface WorkshopWriteRequestMeta {
   requestId?: string
+}
+
+export interface WorkshopTicketRequestIdInput {
+  scenarioTag: string
+  operation: WorkshopTicketOperation
+  idempotencyKey: string
+  sourceRef: string
+  ticketKey: string
+  jobCard: string
+  employeeOrOperator: string
+  batchNo: string
+}
+
+const WORKSHOP_TICKET_SCENARIO_PATTERN = /^Z003-WORKSHOP-TICKET-\d{8}-\d{3}$/
+const REQUEST_ID_SAFE_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/
+
+const fnvCarrierCode = (value: string): string => {
+  let hashValue = 2166136261
+  const normalized = value.trim()
+  for (let i = 0; i < normalized.length; i += 1) {
+    hashValue ^= normalized.charCodeAt(i)
+    hashValue = Math.imul(hashValue, 16777619) >>> 0
+  }
+  return hashValue.toString(16).toUpperCase().padStart(8, '0').slice(-3)
+}
+
+const normalizeOperationCode = (operation: WorkshopTicketOperation): 'R' | 'V' | 'B' => {
+  if (operation === 'register') return 'R'
+  if (operation === 'reversal') return 'V'
+  return 'B'
+}
+
+export const buildWorkshopTicketScenarioTag = (): string => {
+  const now = new Date()
+  const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  const seq = `${Math.floor(Math.random() * 1000)}`.padStart(3, '0')
+  return `Z003-WORKSHOP-TICKET-${day}-${seq}`
+}
+
+export const ensureWorkshopTicketScenarioTag = (value: string): string => {
+  const normalized = value.trim()
+  if (WORKSHOP_TICKET_SCENARIO_PATTERN.test(normalized)) return normalized
+  return buildWorkshopTicketScenarioTag()
+}
+
+export const buildWorkshopTicketRequestId = (input: WorkshopTicketRequestIdInput): string => {
+  const scenarioTag = ensureWorkshopTicketScenarioTag(input.scenarioTag)
+  const operationCode = normalizeOperationCode(input.operation)
+  const requestId = `${scenarioTag}-RW-${operationCode}-${fnvCarrierCode(input.idempotencyKey)}-${fnvCarrierCode(input.sourceRef)}-${fnvCarrierCode(input.ticketKey)}-${fnvCarrierCode(input.jobCard)}-${fnvCarrierCode(input.employeeOrOperator)}-${fnvCarrierCode(input.batchNo)}`
+  if (!REQUEST_ID_SAFE_PATTERN.test(requestId)) {
+    throw new Error('request_id 编码非法')
+  }
+  return requestId
 }
 
 export interface WorkshopTicketData {
@@ -205,7 +315,7 @@ export const reverseWorkshopTicket = (
   })
 
 export const batchWorkshopTickets = (
-  tickets: Array<WorkshopTicketRegisterPayload & { operation_type?: 'register' | 'reversal'; reason?: string }>,
+  payload: WorkshopTicketBatchPayload,
   meta?: WorkshopWriteRequestMeta,
 ): Promise<
   ApiResponse<{
@@ -221,7 +331,7 @@ export const batchWorkshopTickets = (
       'Content-Type': 'application/json',
       ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
     }),
-    body: JSON.stringify({ tickets }),
+    body: JSON.stringify(payload),
   })
 
 export const fetchWorkshopTickets = (params: {

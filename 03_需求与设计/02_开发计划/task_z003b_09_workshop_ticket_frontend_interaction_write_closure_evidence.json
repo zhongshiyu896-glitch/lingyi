@@ -1,0 +1,132 @@
+{
+  "task_id": "TASK-Z003B-09-IMPL",
+  "source_head": "4060768989ae08ee5e071c6d7b90e838dcac072c",
+  "source_subject": "chore: seal production plan write closure",
+  "route_scope": [
+    "/workshop/tickets",
+    "/workshop/tickets/register",
+    "/workshop/tickets/batch"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/workshop.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/workshop.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/workshop.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py"
+  ],
+  "readonly_context_files_changed": false,
+  "scenario_tag": "Z003-WORKSHOP-TICKET-20260515-384",
+  "scenario_tag_policy": {
+    "prefix": "Z003-WORKSHOP-TICKET-{YYYYMMDD}-{NNN}",
+    "request_id_pattern": "^[A-Za-z0-9_.-]{1,64}$",
+    "carriers": [
+      "request_id",
+      "idempotency_key",
+      "scenario_tag",
+      "source_ref",
+      "ticket_key",
+      "job_card",
+      "operation",
+      "employee_id_or_operator_id",
+      "batch_no"
+    ]
+  },
+  "write_boundary": {
+    "allowed_write_endpoints": [
+      "POST /api/workshop/tickets/register",
+      "POST /api/workshop/tickets/reversal",
+      "POST /api/workshop/tickets/batch"
+    ],
+    "allowed_readback_endpoints": [
+      "GET /api/workshop/tickets",
+      "GET /api/workshop/job-cards/{job_card}/summary"
+    ],
+    "approved_write_request_count": 3,
+    "allowed_write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/workshop/tickets/register",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/workshop/tickets/reversal",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/workshop/tickets/batch",
+        "status": 200
+      }
+    ],
+    "unexpected_write_request_count": 0,
+    "forbidden_sync_worker_request_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0
+  },
+  "fail_closed_cases": {
+    "missing_request_id": 409,
+    "invalid_request_id_pattern": 409,
+    "mismatched_request_id": 409,
+    "missing_idempotency_key": 409,
+    "mismatched_business_carrier": 409,
+    "mismatched_ticket_key": 409,
+    "mismatched_operation": 409,
+    "non_local_dev_gate": 409,
+    "db_write_on_failed_gate_count": 0
+  },
+  "readback": {
+    "tickets_list_status": 200,
+    "tickets_total": 3,
+    "job_card_summary_status": 200,
+    "summary_sync_status": "pending",
+    "summary_outbox_status": "pending"
+  },
+  "browser_evidence": {
+    "browser_json": "/tmp/task_z003b09_browser_result.json",
+    "regression_api_json": "/tmp/task_z003b09_regression_api.json",
+    "cleanup_json": "/tmp/task_z003b09_cleanup.json",
+    "screenshots_dir": "/tmp/task_z003b09_screenshots",
+    "screenshots_count": 4,
+    "screenshots": [
+      "01_workshop_tickets_list.png",
+      "02_register_and_reversal_result.png",
+      "03_batch_result.png",
+      "04_summary_readback.png"
+    ],
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "cleanup": {
+    "rollback_cleanup_executed": true,
+    "zero_residual": true,
+    "residual_scope": "scenario-scoped by request_id/source_ref/ticket_key/job_card derived from scenario_tag",
+    "residual_counts_by_table": {
+      "ys_workshop_ticket": 0,
+      "ys_workshop_daily_wage": 0,
+      "ys_workshop_job_card_sync_outbox": 0,
+      "ys_workshop_job_card_sync_log": 0,
+      "ys_workshop_outbox_access_denial": 0,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    }
+  },
+  "forbidden_actions": {
+    "allowlist_outside_edits": false,
+    "readonly_context_edits": false,
+    "tests_models_request_id_core_erpnext_worker_dist_edits": false,
+    "production_writes": false,
+    "erpnext_worker_sync_internal_job_triggered": false,
+    "import_export_download_upload_print": false,
+    "git_add_commit_push": false,
+    "pr_merge_close_tag_release_cleanup": false,
+    "reset_restore_clean_delete_repo_files": false,
+    "rollback_revert_force_push": false,
+    "parked_blockers_released": false
+  },
+  "generated_at": "2026-05-15T06:06:00Z"
+}

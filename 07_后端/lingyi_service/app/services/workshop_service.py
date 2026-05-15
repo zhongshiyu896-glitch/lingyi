@@ -87,7 +87,7 @@ from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.workshop_outbox_service import WorkshopOutboxService
 
 logger = logging.getLogger(__name__)
-WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z002-WORKSHOP-(?:TICKET-REGISTER|BATCH)-\d{8}-\d{3})")
+WORKSHOP_LOCAL_SCENARIO_PATTERN = re.compile(r"(Z003-WORKSHOP-TICKET-\d{8}-\d{3})")
 WORKSHOP_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 WORKSHOP_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 WORKSHOP_LOCAL_DEFAULT_ITEM_CODE = "DEMO-TEE"
@@ -447,7 +447,7 @@ class WorkshopService:
             wage_amount=wage_amount,
             work_date=payload.work_date,
             source="manual",
-            source_ref=payload.reason,
+            source_ref=payload.source_ref,
             original_ticket_id=payload.original_ticket_id,
             sync_status=self.SYNC_PENDING,
             created_by=operator,
@@ -1221,6 +1221,8 @@ class WorkshopService:
         if operation_type == self.OP_REGISTER:
             return self.register_ticket(
                 payload=WorkshopTicketRegisterRequest(
+                    scenario_tag=row.scenario_tag,
+                    idempotency_key=row.idempotency_key,
                     ticket_key=row.ticket_key,
                     job_card=row.job_card,
                     item_code=row.item_code,
@@ -1232,6 +1234,9 @@ class WorkshopService:
                     work_date=row.work_date,
                     source=row.source,
                     source_ref=row.source_ref,
+                    operation=row.operation,
+                    operator_id=row.operator_id,
+                    batch_no=row.batch_no,
                 ),
                 operator=operator,
                 request_id=request_id,
@@ -1241,6 +1246,8 @@ class WorkshopService:
         if operation_type == self.OP_REVERSAL:
             reversal_result = self.reverse_ticket(
                 payload=WorkshopTicketReversalRequest(
+                    scenario_tag=row.scenario_tag,
+                    idempotency_key=row.idempotency_key,
                     ticket_key=row.ticket_key,
                     job_card=row.job_card,
                     item_code=row.item_code,
@@ -1251,7 +1258,11 @@ class WorkshopService:
                     qty=row.qty,
                     work_date=row.work_date,
                     original_ticket_id=row.original_ticket_id,
+                    source_ref=row.source_ref,
                     reason=row.reason or "batch reversal",
+                    operation=row.operation,
+                    operator_id=row.operator_id,
+                    batch_no=row.batch_no,
                 ),
                 operator=operator,
                 request_id=request_id,
@@ -1574,6 +1585,7 @@ class WorkshopService:
             and row.work_date == payload.work_date
             and row.operation_type == self.OP_REVERSAL
             and (row.original_ticket_id or 0) == (payload.original_ticket_id or 0)
+            and (row.source_ref or "") == (payload.source_ref or "")
         )
 
     def _available_reversal_qty(
