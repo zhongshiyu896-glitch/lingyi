@@ -1,0 +1,150 @@
+{
+  "task_id": "TASK-Z003B-27-IMPL",
+  "role": "B Engineer",
+  "source_head": "ceb2f9d690bfcac0cd3442ff426219b0915e896d",
+  "source_subject": "chore: seal subcontract interaction closure",
+  "route_scope": [
+    "/warehouse"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/warehouse.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/warehouse.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/warehouse.py"
+  ],
+  "readonly_context_files_changed": [],
+  "allowed_write_requests": [
+    "POST /api/warehouse/stock-entry-drafts",
+    "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel"
+  ],
+  "browser_write_evidence": {
+    "source": "/tmp/task_z003b27_browser_result.json",
+    "approved_write_request_count": 2,
+    "write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/warehouse/stock-entry-drafts",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/api/warehouse/stock-entry-drafts/1/cancel",
+        "status": 200
+      }
+    ],
+    "browser_readback_request_count": 10,
+    "readback_endpoints": [
+      "GET /api/warehouse/stock-entry-drafts/{draft_id}",
+      "GET /api/warehouse/stock-entry-drafts/{draft_id}/outbox-status",
+      "GET /api/warehouse/stock-summary"
+    ],
+    "unexpected_write_request_count": 0
+  },
+  "api_regression_evidence": {
+    "source": "/tmp/task_z003b27_regression_api.json",
+    "approved_write_request_count": 2,
+    "write_requests": [
+      "POST /api/warehouse/stock-entry-drafts",
+      "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel"
+    ],
+    "unexpected_write_request_count": 0
+  },
+  "fail_closed_cases": [
+    {
+      "case": "missing_request_id",
+      "status": 409
+    },
+    {
+      "case": "invalid_request_id_pattern",
+      "status": 409
+    },
+    {
+      "case": "mismatched_request_id_vs_scenario_tag",
+      "status": 409
+    },
+    {
+      "case": "missing_idempotency_key",
+      "status": 409
+    },
+    {
+      "case": "missing_or_invalid_scenario_tag",
+      "status": 409
+    },
+    {
+      "case": "mismatched_source_ref",
+      "status": 409
+    },
+    {
+      "case": "mismatched_warehouse",
+      "status": 409
+    },
+    {
+      "case": "mismatched_item_code_or_product_code",
+      "status": 409
+    },
+    {
+      "case": "mismatched_operation",
+      "status": 409
+    },
+    {
+      "case": "mismatched_quantity",
+      "status": 409
+    },
+    {
+      "case": "mismatched_business_date_or_count_date",
+      "status": 409
+    },
+    {
+      "case": "mismatched_status_action",
+      "status": 409
+    },
+    {
+      "case": "non_local_dev_gate_failed",
+      "status": 409
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "rollback_cleanup": {
+    "source": "/tmp/task_z003b27_cleanup.json",
+    "rollback_cleanup_executed": true,
+    "zero_residual": true,
+    "residual_counts_by_table": {
+      "ly_warehouse_stock_entry_draft": 0,
+      "ly_warehouse_stock_entry_draft_item": 0,
+      "ly_warehouse_stock_entry_outbox_event": 0,
+      "ly_warehouse_inventory_count": 0,
+      "ly_warehouse_inventory_count_item": 0,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    }
+  },
+  "counters": {
+    "approved_write_request_count": 2,
+    "unexpected_write_request_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0,
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "screenshots": {
+    "screenshots_dir": "/tmp/task_z003b27_screenshots",
+    "screenshots_count": 5,
+    "files": [
+      "01_warehouse_page_loaded.png",
+      "02_form_filled.png",
+      "03_after_create.png",
+      "04_after_readback.png",
+      "05_after_cancel.png"
+    ]
+  },
+  "outputs": {
+    "report": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z003B-27-IMPL_仓库模块真实前端交互闭环最小实现与浏览器回归报告.md",
+    "evidence_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_27_warehouse_real_interaction_write_closure_evidence.json",
+    "browser_json": "/tmp/task_z003b27_browser_result.json",
+    "cleanup_json": "/tmp/task_z003b27_cleanup.json",
+    "regression_api_json": "/tmp/task_z003b27_regression_api.json",
+    "engineer_log": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+  }
+}

@@ -385,6 +385,14 @@ class WarehouseStockEntryDraftCreateRequest(BaseModel):
     purpose: Literal["Material Issue", "Material Receipt", "Material Transfer"]
     source_type: str
     source_id: str
+    source_ref: str
+    warehouse: str
+    item_code: str
+    operation: str
+    quantity: Decimal
+    business_date: date
+    status_action: str
+    scenario_tag: str
     finished_goods_source_id: str | None = None
     source_warehouse: str | None = None
     target_warehouse: str | None = None
@@ -396,6 +404,15 @@ class WarehouseStockEntryDraftCancelRequest(BaseModel):
     """Cancel warehouse stock-entry draft payload."""
 
     reason: str
+    idempotency_key: str
+    source_ref: str
+    warehouse: str
+    item_code: str
+    operation: str
+    quantity: Decimal
+    business_date: date
+    status_action: str
+    scenario_tag: str
 
 
 class WarehouseStockEntryDraftItemData(BaseModel):

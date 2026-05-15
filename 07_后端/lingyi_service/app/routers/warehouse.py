@@ -72,11 +72,15 @@ from app.services.warehouse_export_service import WarehouseExportService
 from app.services.warehouse_service import WarehouseService
 from app.services.warehouse_service import WarehouseServiceError
 from app.core.request_id import get_request_id_from_request
+from app.core.request_id import is_request_id_valid
 
 router = APIRouter(prefix="/api/warehouse", tags=["warehouse"])
 WAREHOUSE_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
-WAREHOUSE_LOCAL_STOCK_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-STOCK-\d{8}-\d{3})")
+WAREHOUSE_LOCAL_STOCK_SCENARIO_PATTERN = re.compile(r"(Z003-WAREHOUSE-\d{8}-\d{3})")
 WAREHOUSE_LOCAL_COUNT_SCENARIO_PATTERN = re.compile(r"(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})")
+WAREHOUSE_LOCAL_STOCK_REQUEST_PATTERN = re.compile(
+    r"^(Z003-WAREHOUSE-\d{8}-\d{3})-RW-([CX])-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$",
+)
 WAREHOUSE_LOCAL_COUNT_REQUEST_PATTERN = re.compile(
     r"^(Z002-WAREHOUSE-COUNT-\d{8}-\d{3})-REQ-COUNT-W([A-F0-9]{8})-D(\d{8})$",
 )
@@ -97,6 +101,84 @@ def _scope_text(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _normalize_iso_date(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value.isoformat()
+    text = _scope_text(value)
+    if text is None:
+        return None
+    try:
+        return date.fromisoformat(text).isoformat()
+    except ValueError:
+        return None
+
+
+def _normalize_decimal_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    try:
+        numeric = Decimal(str(value))
+    except Exception:
+        return None
+    normalized = format(numeric.normalize(), "f")
+    if "." in normalized:
+        normalized = normalized.rstrip("0").rstrip(".")
+    return normalized or "0"
+
+
+def _build_carrier_code(value: Any, *, length: int = 3) -> str | None:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None
+    hash_value = 2166136261
+    for byte in normalized.encode("utf-8"):
+        hash_value ^= byte
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    return f"{hash_value:08X}"[-length:]
+
+
+def _stock_entry_operation_code(value: Any) -> str | None:
+    normalized = _scope_text(value)
+    if normalized == "create_stock_entry_draft":
+        return "C"
+    if normalized == "cancel_stock_entry_draft":
+        return "X"
+    return None
+
+
+def _stock_entry_status_action_code(value: Any) -> str | None:
+    normalized = _scope_text(value)
+    if normalized == "create":
+        return "C"
+    if normalized == "cancel":
+        return "X"
+    return None
+
+
+def _extract_stock_entry_request_carriers(
+    value: str,
+) -> tuple[str | None, str | None, str | None, str | None, str | None, str | None, str | None, str | None, str | None]:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None, None, None, None, None, None, None, None, None
+    matched = WAREHOUSE_LOCAL_STOCK_REQUEST_PATTERN.fullmatch(normalized)
+    if matched is None:
+        return None, None, None, None, None, None, None, None, None
+    return (
+        _scope_text(matched.group(1)),
+        _scope_text(matched.group(2)),
+        _scope_text(matched.group(3)),
+        _scope_text(matched.group(4)),
+        _scope_text(matched.group(5)),
+        _scope_text(matched.group(6)),
+        _scope_text(matched.group(7)),
+        _scope_text(matched.group(8)),
+        _scope_text(matched.group(9)),
+    )
 
 
 def _parse_optional_date(value: str | None, field_name: str) -> date | None:
@@ -219,32 +301,168 @@ def _extract_inventory_count_request_carriers(value: str) -> tuple[str | None, s
 def _validate_local_warehouse_write_gate(
     *,
     request_obj: Request,
+    request_id: str,
+    scenario_tag: str,
+    operation: str,
+    idempotency_key: str,
+    source_ref: str,
+    warehouse: str,
+    item_code: str,
+    quantity: Any,
+    business_date: Any,
+    status_action: str,
     carriers: list[str | None],
 ) -> str:
     if not _is_local_warehouse_write_enabled():
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": AUTH_FORBIDDEN,
-                "message": "仅允许本地开发测试库执行仓库写入",
-                "data": {},
-            },
-        )
+        _raise_warehouse_idempotency_conflict("仅允许本地开发测试库执行仓库写入")
 
     request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
     if not request_id_header:
         _raise_warehouse_idempotency_conflict("request_id 不能为空")
+    if not is_request_id_valid(request_id_header):
+        _raise_warehouse_idempotency_conflict("request_id_pattern_invalid")
 
     header_tag = _match_warehouse_stock_scenario_tag(request_id_header)
     if header_tag is None:
         _raise_warehouse_idempotency_conflict("request_id 未包含合法 scenario_tag")
 
-    request_id = get_request_id_from_request(request_obj).strip()
-    request_tag = _match_warehouse_stock_scenario_tag(request_id)
+    normalized_request_id = _scope_text(request_id)
+    if normalized_request_id is None or _match_warehouse_stock_scenario_tag(normalized_request_id) is None:
+        # Browser local-dev flow may normalize request.state.request_id to generated value.
+        # Carrier gate must anchor on explicit X-Request-ID header.
+        normalized_request_id = request_id_header
+    request_tag = _match_warehouse_stock_scenario_tag((normalized_request_id or ""))
     if request_tag is None:
         _raise_warehouse_idempotency_conflict("request_id 未包含合法 scenario_tag")
     if request_tag != header_tag:
         _raise_warehouse_idempotency_conflict("request_id 与 scenario_tag 不一致")
+    if normalized_request_id != request_id_header:
+        _raise_warehouse_idempotency_conflict("request_id 与 Header 不一致")
+
+    normalized_scenario_tag = _scope_text(scenario_tag)
+    normalized_idempotency_key = _scope_text(idempotency_key)
+    normalized_source_ref = _scope_text(source_ref)
+    normalized_warehouse = _scope_text(warehouse)
+    normalized_item_code = _scope_text(item_code)
+    normalized_business_date = _normalize_iso_date(business_date)
+    normalized_quantity = _normalize_decimal_text(quantity)
+    normalized_operation = _scope_text(operation)
+    normalized_status_action = _scope_text(status_action)
+
+    if (
+        normalized_scenario_tag is None
+        or normalized_idempotency_key is None
+        or normalized_source_ref is None
+        or normalized_warehouse is None
+        or normalized_item_code is None
+        or normalized_business_date is None
+        or normalized_quantity is None
+        or normalized_operation is None
+        or normalized_status_action is None
+    ):
+        _raise_warehouse_idempotency_conflict("scenario_tag 业务载体缺失")
+
+    if normalized_scenario_tag != header_tag:
+        _raise_warehouse_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
+
+    (
+        header_carrier_tag,
+        header_operation_code,
+        header_idempotency_code,
+        header_source_ref_code,
+        header_warehouse_code,
+        header_item_code,
+        header_quantity_code,
+        header_date_code,
+        header_status_action_code,
+    ) = _extract_stock_entry_request_carriers(request_id_header)
+    (
+        request_carrier_tag,
+        request_operation_code,
+        request_idempotency_code,
+        request_source_ref_code,
+        request_warehouse_code,
+        request_item_code,
+        request_quantity_code,
+        request_date_code,
+        request_status_action_code,
+    ) = _extract_stock_entry_request_carriers(normalized_request_id)
+
+    if (
+        header_carrier_tag is None
+        or header_operation_code is None
+        or header_idempotency_code is None
+        or header_source_ref_code is None
+        or header_warehouse_code is None
+        or header_item_code is None
+        or header_quantity_code is None
+        or header_date_code is None
+        or header_status_action_code is None
+        or request_carrier_tag is None
+        or request_operation_code is None
+        or request_idempotency_code is None
+        or request_source_ref_code is None
+        or request_warehouse_code is None
+        or request_item_code is None
+        or request_quantity_code is None
+        or request_date_code is None
+        or request_status_action_code is None
+    ):
+        _raise_warehouse_idempotency_conflict("request_id 载体缺失或格式非法")
+
+    if header_carrier_tag != request_carrier_tag or header_carrier_tag != normalized_scenario_tag:
+        _raise_warehouse_idempotency_conflict("request_id 与 scenario_tag 不一致")
+    if (
+        header_operation_code != request_operation_code
+        or header_idempotency_code != request_idempotency_code
+        or header_source_ref_code != request_source_ref_code
+        or header_warehouse_code != request_warehouse_code
+        or header_item_code != request_item_code
+        or header_quantity_code != request_quantity_code
+        or header_date_code != request_date_code
+        or header_status_action_code != request_status_action_code
+    ):
+        _raise_warehouse_idempotency_conflict("request_id 载体不一致")
+
+    expected_operation_code = _stock_entry_operation_code(normalized_operation)
+    expected_status_action_code = _stock_entry_status_action_code(normalized_status_action)
+    expected_idempotency_code = _build_carrier_code(normalized_idempotency_key)
+    expected_source_ref_code = _build_carrier_code(normalized_source_ref)
+    expected_warehouse_code = _build_carrier_code(normalized_warehouse)
+    expected_item_code = _build_carrier_code(normalized_item_code)
+    expected_quantity_code = _build_carrier_code(normalized_quantity)
+    expected_date_code = _build_carrier_code(normalized_business_date)
+    expected_status_code = _build_carrier_code(expected_status_action_code)
+
+    if (
+        expected_operation_code is None
+        or expected_status_action_code is None
+        or expected_idempotency_code is None
+        or expected_source_ref_code is None
+        or expected_warehouse_code is None
+        or expected_item_code is None
+        or expected_quantity_code is None
+        or expected_date_code is None
+        or expected_status_code is None
+    ):
+        _raise_warehouse_idempotency_conflict("scenario_tag 业务载体缺失")
+
+    if header_operation_code != expected_operation_code:
+        _raise_warehouse_idempotency_conflict("operation 载体与业务载体不一致")
+    if header_idempotency_code != expected_idempotency_code:
+        _raise_warehouse_idempotency_conflict("idempotency_key 载体与业务载体不一致")
+    if header_source_ref_code != expected_source_ref_code:
+        _raise_warehouse_idempotency_conflict("source_ref 载体与业务载体不一致")
+    if header_warehouse_code != expected_warehouse_code:
+        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+    if header_item_code != expected_item_code:
+        _raise_warehouse_idempotency_conflict("item_code 载体与业务载体不一致")
+    if header_quantity_code != expected_quantity_code:
+        _raise_warehouse_idempotency_conflict("quantity 载体与业务载体不一致")
+    if header_date_code != expected_date_code:
+        _raise_warehouse_idempotency_conflict("business_date 载体与业务载体不一致")
+    if header_status_action_code != expected_status_code:
+        _raise_warehouse_idempotency_conflict("status_action 载体与业务载体不一致")
 
     carrier_tags: list[str] = []
     for raw_value in carriers:
@@ -260,7 +478,7 @@ def _validate_local_warehouse_write_gate(
         _raise_warehouse_idempotency_conflict("scenario_tag 载体不一致")
     if carrier_tags[0] != header_tag:
         _raise_warehouse_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
-    return header_tag
+    return normalized_scenario_tag
 
 
 def _validate_local_warehouse_inventory_count_gate(
@@ -2097,10 +2315,42 @@ def create_stock_entry_draft(
         action=action,
         resource_type="warehouse",
     )
+    draft_warehouse = _scope_text(payload.warehouse) or _scope_text(payload.source_warehouse) or _scope_text(payload.target_warehouse)
+    first_item_code = _scope_text(payload.item_code) or _scope_text(payload.items[0].item_code)
+    total_qty = sum(Decimal(str(item.qty)) for item in payload.items)
+    if _scope_text(payload.source_ref) != _scope_text(payload.source_id):
+        _raise_warehouse_idempotency_conflict("source_ref 载体与业务载体不一致")
+    if _scope_text(payload.source_warehouse) and _scope_text(payload.warehouse) != _scope_text(payload.source_warehouse):
+        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+    if _scope_text(payload.target_warehouse) and _scope_text(payload.warehouse) != _scope_text(payload.target_warehouse):
+        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+    if _scope_text(payload.operation) != "create_stock_entry_draft":
+        _raise_warehouse_idempotency_conflict("operation 载体与业务模式不一致")
+    if _scope_text(payload.status_action) != "create":
+        _raise_warehouse_idempotency_conflict("status_action 载体与业务模式不一致")
     _validate_local_warehouse_write_gate(
         request_obj=request,
-        carriers=[payload.idempotency_key, payload.source_id],
+        request_id=get_request_id_from_request(request).strip(),
+        scenario_tag=payload.scenario_tag,
+        operation=payload.operation,
+        idempotency_key=payload.idempotency_key,
+        source_ref=payload.source_ref,
+        warehouse=draft_warehouse or "",
+        item_code=first_item_code or "",
+        quantity=payload.quantity,
+        business_date=payload.business_date,
+        status_action=payload.status_action,
+        carriers=[payload.scenario_tag, payload.idempotency_key, payload.source_ref, payload.source_id],
     )
+    if first_item_code is None or first_item_code != _scope_text(payload.items[0].item_code):
+        _raise_warehouse_idempotency_conflict("item_code 载体与业务载体不一致")
+    normalized_payload_qty = _normalize_decimal_text(payload.quantity)
+    normalized_total_qty = _normalize_decimal_text(total_qty)
+    if normalized_payload_qty is None or normalized_total_qty is None or normalized_payload_qty != normalized_total_qty:
+        _raise_warehouse_idempotency_conflict("quantity 载体与业务载体不一致")
+    normalized_payload_date = _normalize_iso_date(payload.business_date)
+    if normalized_payload_date is None:
+        _raise_warehouse_idempotency_conflict("business_date 载体缺失或格式非法")
     try:
         _check_create_scope(
             permission_service=permission_service,
@@ -2160,12 +2410,44 @@ def cancel_stock_entry_draft(
 
     _validate_local_warehouse_write_gate(
         request_obj=request,
-        carriers=[
-            str(before_data.get("idempotency_key") or ""),
-            str(before_data.get("source_id") or ""),
-            payload.reason,
-        ],
+        request_id=get_request_id_from_request(request).strip(),
+        scenario_tag=payload.scenario_tag,
+        operation=payload.operation,
+        idempotency_key=payload.idempotency_key,
+        source_ref=payload.source_ref,
+        warehouse=payload.warehouse,
+        item_code=payload.item_code,
+        quantity=payload.quantity,
+        business_date=payload.business_date,
+        status_action=payload.status_action,
+        carriers=[payload.scenario_tag, payload.idempotency_key, payload.source_ref],
     )
+    if _scope_text(payload.operation) != "cancel_stock_entry_draft":
+        _raise_warehouse_idempotency_conflict("operation 载体与业务模式不一致")
+    if _scope_text(payload.status_action) != "cancel":
+        _raise_warehouse_idempotency_conflict("status_action 载体与业务模式不一致")
+    before_idempotency_key = _scope_text(before_data.get("idempotency_key"))
+    before_source_ref = _scope_text(before_data.get("source_id"))
+    before_warehouse = _scope_text(before_data.get("source_warehouse")) or _scope_text(before_data.get("target_warehouse"))
+    before_items = before_data.get("items") or []
+    if not isinstance(before_items, list) or len(before_items) == 0:
+        _raise_warehouse_idempotency_conflict("item_code 载体缺失")
+    before_item_code = _scope_text(before_items[0].get("item_code")) if isinstance(before_items[0], dict) else None
+    before_total_qty = sum(Decimal(str(item.get("qty", 0))) for item in before_items if isinstance(item, dict))
+    if before_idempotency_key is None or _scope_text(payload.idempotency_key) != before_idempotency_key:
+        _raise_warehouse_idempotency_conflict("idempotency_key 载体与业务载体不一致")
+    if before_source_ref is None or _scope_text(payload.source_ref) != before_source_ref:
+        _raise_warehouse_idempotency_conflict("source_ref 载体与业务载体不一致")
+    if before_warehouse is None or _scope_text(payload.warehouse) != before_warehouse:
+        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+    if before_item_code is None or _scope_text(payload.item_code) != before_item_code:
+        _raise_warehouse_idempotency_conflict("item_code 载体与业务载体不一致")
+    normalized_payload_qty = _normalize_decimal_text(payload.quantity)
+    normalized_before_qty = _normalize_decimal_text(before_total_qty)
+    if normalized_payload_qty is None or normalized_before_qty is None or normalized_payload_qty != normalized_before_qty:
+        _raise_warehouse_idempotency_conflict("quantity 载体与业务载体不一致")
+    if _normalize_iso_date(payload.business_date) is None:
+        _raise_warehouse_idempotency_conflict("business_date 载体缺失或格式非法")
 
     try:
         _check_draft_scope(

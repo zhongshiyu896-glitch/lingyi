@@ -285,6 +285,14 @@ export interface WarehouseStockEntryDraftCreatePayload {
   purpose: 'Material Issue' | 'Material Receipt' | 'Material Transfer'
   source_type: string
   source_id: string
+  source_ref: string
+  warehouse: string
+  item_code: string
+  operation: 'create_stock_entry_draft'
+  quantity: NumericLike
+  business_date: string
+  status_action: 'create'
+  scenario_tag: string
   finished_goods_source_id?: string | null
   source_warehouse?: string | null
   target_warehouse?: string | null
@@ -292,8 +300,79 @@ export interface WarehouseStockEntryDraftCreatePayload {
   idempotency_key: string
 }
 
+export interface WarehouseStockEntryDraftCancelPayload {
+  reason: string
+  idempotency_key: string
+  source_ref: string
+  warehouse: string
+  item_code: string
+  operation: 'cancel_stock_entry_draft'
+  quantity: NumericLike
+  business_date: string
+  status_action: 'cancel'
+  scenario_tag: string
+}
+
 export interface WarehouseWriteMeta {
   requestId?: string
+}
+
+export interface WarehouseStockEntryRequestIdInput {
+  scenarioTag: string
+  operation: 'create_stock_entry_draft' | 'cancel_stock_entry_draft'
+  idempotencyKey: string
+  sourceRef: string
+  warehouse: string
+  itemCode: string
+  quantity: NumericLike
+  businessDate: string
+  statusAction: 'create' | 'cancel'
+}
+
+const WAREHOUSE_STOCK_ENTRY_SCENARIO_PATTERN = /^Z003-WAREHOUSE-\d{8}-\d{3}$/
+const REQUEST_ID_SAFE_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/
+
+const fnvCarrierCode = (value: string, length = 3): string => {
+  let hashValue = 2166136261
+  const normalized = value.trim()
+  const bytes = new TextEncoder().encode(normalized)
+  for (const byte of bytes) {
+    hashValue ^= byte
+    hashValue = Math.imul(hashValue, 16777619) >>> 0
+  }
+  return hashValue.toString(16).toUpperCase().padStart(8, '0').slice(-length)
+}
+
+const normalizeWarehouseOperationCode = (operation: 'create_stock_entry_draft' | 'cancel_stock_entry_draft'): 'C' | 'X' => (
+  operation === 'create_stock_entry_draft' ? 'C' : 'X'
+)
+
+const normalizeWarehouseStatusActionCode = (statusAction: 'create' | 'cancel'): 'C' | 'X' => (
+  statusAction === 'create' ? 'C' : 'X'
+)
+
+export const buildWarehouseScenarioTag = (): string => {
+  const now = new Date()
+  const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  const seq = `${Math.floor(Math.random() * 1000)}`.padStart(3, '0')
+  return `Z003-WAREHOUSE-${day}-${seq}`
+}
+
+export const ensureWarehouseScenarioTag = (value: string): string => {
+  const normalized = value.trim()
+  if (WAREHOUSE_STOCK_ENTRY_SCENARIO_PATTERN.test(normalized)) return normalized
+  return buildWarehouseScenarioTag()
+}
+
+export const buildWarehouseStockEntryRequestId = (input: WarehouseStockEntryRequestIdInput): string => {
+  const scenarioTag = ensureWarehouseScenarioTag(input.scenarioTag)
+  const operationCode = normalizeWarehouseOperationCode(input.operation)
+  const statusActionCode = normalizeWarehouseStatusActionCode(input.statusAction)
+  const requestId = `${scenarioTag}-RW-${operationCode}-${fnvCarrierCode(input.idempotencyKey)}-${fnvCarrierCode(input.sourceRef)}-${fnvCarrierCode(input.warehouse)}-${fnvCarrierCode(input.itemCode)}-${fnvCarrierCode(String(input.quantity))}-${fnvCarrierCode(input.businessDate)}-${fnvCarrierCode(statusActionCode)}`
+  if (!REQUEST_ID_SAFE_PATTERN.test(requestId)) {
+    throw new Error('request_id 编码非法')
+  }
+  return requestId
 }
 
 export interface WarehouseInventoryCountItemCreatePayload {
@@ -545,7 +624,7 @@ export const fetchWarehouseStockEntryDraft = async (
 
 export const cancelWarehouseStockEntryDraft = async (
   draftId: number,
-  reason: string,
+  payload: WarehouseStockEntryDraftCancelPayload,
   meta?: WarehouseWriteMeta,
 ): Promise<ApiResponse<WarehouseStockEntryDraftData>> => {
   return request<WarehouseStockEntryDraftData>(`/api/warehouse/stock-entry-drafts/${draftId}/cancel`, {
@@ -554,7 +633,7 @@ export const cancelWarehouseStockEntryDraft = async (
       'Content-Type': 'application/json',
       ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
     },
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify(payload),
   })
 }
 
