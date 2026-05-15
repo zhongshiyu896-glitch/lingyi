@@ -77,13 +77,37 @@
         style="margin-bottom: 12px"
       />
       <el-form :model="materialCheckForm" label-width="140px" data-testid="production-plan-detail-material-check-form">
+        <el-form-item label="Scenario Tag">
+          <el-input v-model="scenarioTag" readonly data-testid="production-plan-detail-material-check-scenario-tag" />
+        </el-form-item>
         <el-form-item label="仓库">
           <el-input v-model="materialCheckForm.warehouse" placeholder="WIP Warehouse - LY" data-testid="production-plan-detail-material-check-warehouse" />
         </el-form-item>
+        <el-form-item label="幂等键">
+          <el-input
+            v-model="materialCheckForm.idempotency_key"
+            placeholder="idempotency key"
+            data-testid="production-plan-detail-material-check-idempotency-key"
+          />
+        </el-form-item>
+        <el-form-item label="Request ID">
+          <el-input v-model="materialCheckForm.request_id" placeholder="request id" data-testid="production-plan-detail-material-check-request-id" />
+        </el-form-item>
       </el-form>
-      <el-button type="primary" data-action-type="write" data-write-guard="guarded:readonly" data-testid="production-plan-detail-material-check-action" @click="runMaterialCheck">
-        执行物料检查
-      </el-button>
+      <div style="display: flex; gap: 8px" data-testid="production-plan-detail-material-check-actions">
+        <el-button data-testid="production-plan-detail-material-check-reset" @click="resetMaterialCheckForm">重置</el-button>
+        <el-button
+          type="primary"
+          data-action-type="write"
+          data-write-guard="allowed:material-check"
+          data-testid="production-plan-detail-material-check-action"
+          :loading="runningMaterialCheck"
+          :disabled="runningMaterialCheck"
+          @click="runMaterialCheck"
+        >
+          执行物料检查
+        </el-button>
+      </div>
     </el-card>
 
     <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-create-work-order-card">
@@ -105,6 +129,9 @@
         style="margin-bottom: 12px"
       />
       <el-form :model="createWorkOrderForm" label-width="140px" data-testid="production-plan-detail-create-work-order-form">
+        <el-form-item label="Scenario Tag">
+          <el-input v-model="scenarioTag" readonly data-testid="production-plan-detail-create-scenario-tag" />
+        </el-form-item>
         <el-form-item label="FG Warehouse">
           <el-input v-model="createWorkOrderForm.fg_warehouse" placeholder="FG Warehouse - LY" data-testid="production-plan-detail-create-fg-warehouse" />
         </el-form-item>
@@ -212,6 +239,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  checkProductionMaterials,
   createProductionWorkOrder,
   fetchProductionPlanDetail,
   type ProductionPlanDetailData,
@@ -228,10 +256,14 @@ const loadError = ref<string>('')
 const guardedFeedback = ref<string>('')
 const loading = ref<boolean>(false)
 const creatingWorkOrder = ref<boolean>(false)
+const runningMaterialCheck = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
+const scenarioTag = ref<string>('')
 
 const materialCheckForm = reactive({
   warehouse: 'WIP Warehouse - LY',
+  idempotency_key: '',
+  request_id: '',
 })
 const createWorkOrderForm = reactive({
   fg_warehouse: 'FG Warehouse - LY',
@@ -266,6 +298,11 @@ const normalizedCreateWorkOrderForm = computed(() => ({
   idempotency_key: createWorkOrderForm.idempotency_key.trim(),
   request_id: createWorkOrderForm.request_id.trim(),
 }))
+const normalizedMaterialCheckForm = computed(() => ({
+  warehouse: materialCheckForm.warehouse.trim(),
+  idempotency_key: materialCheckForm.idempotency_key.trim(),
+  request_id: materialCheckForm.request_id.trim(),
+}))
 const createWorkOrderValidationError = computed<string | null>(() => {
   if (!normalizedCreateWorkOrderForm.value.fg_warehouse) {
     return 'fg_warehouse 不能为空'
@@ -280,6 +317,18 @@ const createWorkOrderValidationError = computed<string | null>(() => {
     return 'idempotency_key 不能为空'
   }
   if (!normalizedCreateWorkOrderForm.value.request_id) {
+    return 'request_id 不能为空'
+  }
+  return null
+})
+const materialCheckValidationError = computed<string | null>(() => {
+  if (!normalizedMaterialCheckForm.value.warehouse) {
+    return 'warehouse 不能为空'
+  }
+  if (!normalizedMaterialCheckForm.value.idempotency_key) {
+    return 'idempotency_key 不能为空'
+  }
+  if (!normalizedMaterialCheckForm.value.request_id) {
     return 'request_id 不能为空'
   }
   return null
@@ -302,9 +351,6 @@ const MATERIAL_CHECK_ALLOWED_STATUSES = new Set<string>([
 ])
 
 const isMaterialCheckStatusAllowed = computed<boolean>(() => MATERIAL_CHECK_ALLOWED_STATUSES.has(status.value))
-const normalizedMaterialCheckWarehouse = computed<string>(() => materialCheckForm.warehouse.trim())
-const isMaterialCheckFormValid = computed<boolean>(() => normalizedMaterialCheckWarehouse.value.length > 0)
-
 const materialCheckGuardReason = computed<string>(() => {
   if (!canMaterialCheck.value) {
     return '无物料检查权限'
@@ -312,8 +358,8 @@ const materialCheckGuardReason = computed<string>(() => {
   if (!isMaterialCheckStatusAllowed.value) {
     return '当前状态不允许执行物料检查'
   }
-  if (!isMaterialCheckFormValid.value) {
-    return '仓库不能为空'
+  if (materialCheckValidationError.value) {
+    return materialCheckValidationError.value
   }
   return ''
 })
@@ -350,17 +396,32 @@ const syncStatusLabel = (value?: string | null): string => {
   return labels[value] || value
 }
 
-const buildIdempotencyKey = (prefix: string): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `${prefix}-${crypto.randomUUID()}`
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+const buildScenarioTag = (): string => {
+  const now = new Date()
+  const yyyy = String(now.getFullYear())
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  const seq = String(Math.floor(Math.random() * 1000)).padStart(3, '0')
+  return `Z003-PROD-PLAN-${yyyy}${mm}${dd}-${seq}`
 }
 
-const buildRequestId = (prefix: string): string => {
-  const compact = prefix.replace(/[^A-Za-z0-9_.-]/g, '-').slice(0, 40)
-  const random = Math.random().toString(36).slice(2, 10)
-  return `${compact}-${Date.now()}-${random}`.slice(0, 64)
+const ensureScenarioTag = (): string => {
+  const value = scenarioTag.value.trim()
+  if (value) return value
+  scenarioTag.value = buildScenarioTag()
+  return scenarioTag.value
+}
+
+const buildCarrierIdempotencyKey = (operationCode: string): string => {
+  const tag = ensureScenarioTag()
+  const random = Math.random().toString(36).slice(2, 10).toUpperCase()
+  return `${tag}-ID-${operationCode}-${random}`.slice(0, 64)
+}
+
+const buildCarrierRequestId = (operationCode: string): string => {
+  const tag = ensureScenarioTag()
+  const random = Math.random().toString(36).slice(2, 8).toUpperCase()
+  return `${tag}-RQ-${operationCode}-${random}`.slice(0, 64)
 }
 
 const guardedWriteAction = (actionLabel: string, reason = '当前为只读模式，已禁用写入操作'): void => {
@@ -369,12 +430,18 @@ const guardedWriteAction = (actionLabel: string, reason = '当前为只读模式
   ElMessage.warning(message)
 }
 
+const resetMaterialCheckForm = (): void => {
+  materialCheckForm.warehouse = 'WIP Warehouse - LY'
+  materialCheckForm.idempotency_key = buildCarrierIdempotencyKey('MC')
+  materialCheckForm.request_id = buildCarrierRequestId('MC')
+}
+
 const resetCreateWorkOrderForm = (): void => {
   createWorkOrderForm.fg_warehouse = 'FG Warehouse - LY'
   createWorkOrderForm.wip_warehouse = 'WIP Warehouse - LY'
   createWorkOrderForm.start_date = ''
-  createWorkOrderForm.idempotency_key = buildIdempotencyKey('production-create-work-order')
-  createWorkOrderForm.request_id = buildRequestId('production-create-work-order')
+  createWorkOrderForm.idempotency_key = buildCarrierIdempotencyKey('CWO')
+  createWorkOrderForm.request_id = buildCarrierRequestId('CWO')
 }
 
 const ensurePlanId = (): number => {
@@ -414,7 +481,7 @@ const loadDetail = async (): Promise<void> => {
   }
 }
 
-const runMaterialCheck = (): void => {
+const runMaterialCheck = async (): Promise<void> => {
   if (!canMaterialCheck.value) {
     guardedWriteAction('执行物料检查', '无物料检查权限')
     return
@@ -423,11 +490,41 @@ const runMaterialCheck = (): void => {
     guardedWriteAction('执行物料检查', '当前状态不允许执行物料检查')
     return
   }
-  if (!isMaterialCheckFormValid.value) {
-    guardedWriteAction('执行物料检查', '仓库不能为空')
+  if (materialCheckValidationError.value) {
+    guardedWriteAction('执行物料检查', materialCheckValidationError.value)
     return
   }
-  guardedWriteAction('执行物料检查')
+  if (!detail.value) {
+    guardedWriteAction('执行物料检查', '生产计划详情不存在')
+    return
+  }
+  try {
+    runningMaterialCheck.value = true
+    await checkProductionMaterials(
+      ensurePlanId(),
+      {
+        warehouse: normalizedMaterialCheckForm.value.warehouse,
+        idempotency_key: normalizedMaterialCheckForm.value.idempotency_key,
+        scenario_tag: ensureScenarioTag(),
+        operation: 'material_check',
+        plan_id: ensurePlanId(),
+        sales_order: detail.value.sales_order,
+        sales_order_item: detail.value.sales_order_item,
+        item_code: detail.value.item_code,
+        bom_id: Number(detail.value.bom_id),
+        request_id: normalizedMaterialCheckForm.value.request_id,
+      },
+      normalizedMaterialCheckForm.value.request_id,
+    )
+    guardedFeedback.value = ''
+    ElMessage.success('物料检查已写入并回读')
+    await loadDetail()
+  } catch (error) {
+    const message = (error as Error).message || '执行物料检查失败'
+    guardedWriteAction('执行物料检查', message)
+  } finally {
+    runningMaterialCheck.value = false
+  }
 }
 
 const submitCreateWorkOrder = async (): Promise<void> => {
@@ -453,6 +550,14 @@ const submitCreateWorkOrder = async (): Promise<void> => {
         wip_warehouse: normalizedCreateWorkOrderForm.value.wip_warehouse,
         start_date: normalizedCreateWorkOrderForm.value.start_date,
         idempotency_key: normalizedCreateWorkOrderForm.value.idempotency_key,
+        scenario_tag: ensureScenarioTag(),
+        operation: 'create_work_order',
+        plan_id: ensurePlanId(),
+        sales_order: detail.value.sales_order,
+        sales_order_item: detail.value.sales_order_item,
+        item_code: detail.value.item_code,
+        bom_id: Number(detail.value.bom_id),
+        request_id: normalizedCreateWorkOrderForm.value.request_id,
       },
       normalizedCreateWorkOrderForm.value.request_id,
     )
@@ -487,6 +592,8 @@ onMounted(async () => {
   } finally {
     permissionReady.value = true
   }
+  scenarioTag.value = String(route.query.scenario || '').trim() || buildScenarioTag()
+  resetMaterialCheckForm()
   resetCreateWorkOrderForm()
   await loadDetail()
 })

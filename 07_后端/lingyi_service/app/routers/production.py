@@ -25,6 +25,7 @@ from app.core.auth import get_current_user
 from app.core.auth import is_internal_worker_principal
 from app.core.error_codes import AUTH_FORBIDDEN
 from app.core.error_codes import DATABASE_WRITE_FAILED
+from app.core.error_codes import PRODUCTION_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import PRODUCTION_INTERNAL_ERROR
 from app.core.error_codes import status_of
 from app.core.exceptions import AppException
@@ -106,6 +107,10 @@ def _http_exc_err(exc: HTTPException) -> JSONResponse:
     if isinstance(detail, str):
         return _err("HTTP_ERROR", detail, status_code=exc.status_code)
     return _err("HTTP_ERROR", "请求失败", status_code=exc.status_code)
+
+
+def _is_local_gate_failure(exc: AppException) -> bool:
+    return exc.code == PRODUCTION_IDEMPOTENCY_CONFLICT and str(exc.message).startswith("LOCAL_GATE_FAIL_CLOSED:")
 
 
 def _unknown_to_internal_error(request: Request, action: str, exc: Exception) -> ProductionInternalError:
@@ -365,6 +370,8 @@ def create_production_plan(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,
@@ -882,6 +889,7 @@ def material_check_plan(
     session: Session = Depends(get_db_session),
 ):
     action = PRODUCTION_MATERIAL_CHECK
+    raw_request_id = request.headers.get("X-Request-ID")
     permission_service = PermissionService(session=session)
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
@@ -911,7 +919,7 @@ def material_check_plan(
         )
         status = service.ensure_material_check_status_allowed(plan_id=plan_id)
         before_data = {"plan_id": plan_id, "warehouse": payload.warehouse, "status": status}
-        data = service.material_check(plan_id=plan_id, operator=current_user.username, payload=payload)
+        data = service.material_check(plan_id=plan_id, operator=current_user.username, payload=payload, request_id=raw_request_id)
         audit.record_success(
             module="production",
             action=action,
@@ -931,6 +939,8 @@ def material_check_plan(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,
@@ -978,7 +988,7 @@ def create_work_order_outbox(
     permission_service = PermissionService(session=session)
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
-    request_id = get_request_id_from_request(request)
+    raw_request_id = request.headers.get("X-Request-ID")
 
     before_data: dict[str, Any] | None = None
     try:
@@ -1014,7 +1024,7 @@ def create_work_order_outbox(
             plan_id=plan_id,
             payload=payload,
             operator=current_user.username,
-            request_id=request_id,
+            request_id=raw_request_id,
         )
         audit.record_success(
             module="production",
@@ -1035,6 +1045,8 @@ def create_work_order_outbox(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,

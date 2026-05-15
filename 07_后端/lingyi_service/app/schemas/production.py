@@ -33,6 +33,8 @@ class ProductionPlanCreateRequest(BaseModel):
     bom_id: Optional[int] = Field(default=None, ge=1)
     planned_qty: Decimal = Field(..., gt=0)
     planned_start_date: Optional[date] = None
+    scenario_tag: Optional[str] = Field(default=None, max_length=40)
+    operation: Optional[str] = Field(default=None, max_length=40)
     idempotency_key: str = Field(..., min_length=1, max_length=128)
     company: Optional[str] = Field(default=None, max_length=140)
 
@@ -436,6 +438,15 @@ class ProductionMaterialCheckRequest(BaseModel):
     """Material-check request payload."""
 
     warehouse: Optional[str] = Field(default=None, max_length=140)
+    idempotency_key: Optional[str] = Field(default=None, max_length=128)
+    scenario_tag: Optional[str] = Field(default=None, max_length=40)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    bom_id: Optional[int] = Field(default=None, ge=1)
+    request_id: Optional[str] = Field(default=None, max_length=64)
 
 
 class ProductionCreateWorkOrderRequest(BaseModel):
@@ -445,6 +456,14 @@ class ProductionCreateWorkOrderRequest(BaseModel):
     wip_warehouse: Optional[str] = Field(default=None, max_length=140)
     start_date: Optional[date] = None
     idempotency_key: Optional[str] = Field(default=None, max_length=128)
+    scenario_tag: Optional[str] = Field(default=None, max_length=40)
+    operation: Optional[str] = Field(default=None, max_length=40)
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    sales_order: Optional[str] = Field(default=None, max_length=140)
+    sales_order_item: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    bom_id: Optional[int] = Field(default=None, ge=1)
+    request_id: Optional[str] = Field(default=None, max_length=64)
 
 
 class ProductionCreateWorkOrderData(BaseModel):

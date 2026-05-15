@@ -1,0 +1,127 @@
+{
+  "task_id": "TASK-Z003B-03-IMPL",
+  "source_head": "0e1462c07a2f89356e022110f62de362a0d32ccf",
+  "source_subject": "chore: seal bom write closure",
+  "route_scope": [
+    "/production/plans",
+    "/production/plans/detail"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/production.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/production.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/production.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_service.py"
+  ],
+  "allowlist_unchanged_files": [
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_outbox_service.py"
+  ],
+  "write_boundary": {
+    "allowed_write_endpoints": [
+      "POST /api/production/plans",
+      "POST /api/production/plans/{plan_id}/material-check",
+      "POST /api/production/plans/{plan_id}/create-work-order"
+    ],
+    "allowed_read_endpoints": [
+      "GET /api/production/plans",
+      "GET /api/production/plans/{plan_id}"
+    ],
+    "approved_write_request_count": 3,
+    "unexpected_write_request_count": 0,
+    "forbidden_sync_job_cards_request_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0
+  },
+  "scenario_tag_policy": {
+    "prefix": "Z003-PROD-PLAN-{YYYYMMDD}-{NNN}",
+    "request_id_pattern": "^[A-Za-z0-9_.-]{1,64}$",
+    "carriers": [
+      "request_id",
+      "idempotency_key",
+      "scenario_tag",
+      "sales_order",
+      "sales_order_item",
+      "item_code",
+      "bom_id",
+      "plan_id",
+      "operation"
+    ]
+  },
+  "fail_closed": {
+    "missing_request_id": 409,
+    "invalid_request_id_pattern": 409,
+    "mismatched_request_id": 409,
+    "missing_idempotency_key": 409,
+    "mismatched_business_carrier": 409,
+    "mismatched_plan_id": 409,
+    "mismatched_operation": 409,
+    "non_local_dev_gate": 409,
+    "db_write_on_failed_gate_count": 0
+  },
+  "readback": {
+    "list_status": 200,
+    "detail_status_before": 200,
+    "detail_status_after": 200,
+    "detail_after_latest_outbox": {
+      "outbox_id": 1,
+      "status": "pending",
+      "erpnext_work_order": null,
+      "error_code": null
+    }
+  },
+  "browser_evidence": {
+    "browser_json": "/tmp/task_z003b03_browser_result.json",
+    "screenshots_dir": "/tmp/task_z003b03_screenshots",
+    "screenshots_count": 3,
+    "screenshots": [
+      "01_production_plans_list.png",
+      "02_after_plan_create.png",
+      "03_detail_material_and_work_order.png"
+    ],
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "regression_api_json": "/tmp/task_z003b03_regression_api.json",
+  "cleanup": {
+    "cleanup_json": "/tmp/task_z003b03_cleanup.json",
+    "rollback_cleanup_executed": true,
+    "zero_residual": true,
+    "residual_counts_by_table": {
+      "ly_production_work_order_outbox": 0,
+      "ly_production_job_card_link": 0,
+      "ly_production_work_order_link": 0,
+      "ly_production_status_log": 0,
+      "ly_production_plan_material": 0,
+      "ly_production_plan": 0,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    },
+    "rollback_order": [
+      "ly_production_work_order_outbox",
+      "ly_production_job_card_link",
+      "ly_production_work_order_link",
+      "ly_production_status_log",
+      "ly_production_plan_material",
+      "ly_production_plan",
+      "ly_operation_audit_log",
+      "ly_security_audit_log"
+    ]
+  },
+  "forbidden_actions": {
+    "allowlist_outside_edits": false,
+    "readonly_context_edits": false,
+    "tests_edits": false,
+    "core_request_id_edits": false,
+    "models_edits": false,
+    "erpnext_worker_sync_production_writes": false,
+    "import_export_download_upload_print": false,
+    "git_add_commit_push": false,
+    "pr_merge_tag_release_cleanup": false,
+    "reset_restore_clean_delete": false,
+    "parked_blockers_released": false
+  },
+  "generated_at": "2026-05-15T02:54:03.474581+00:00"
+}

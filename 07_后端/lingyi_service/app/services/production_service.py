@@ -34,6 +34,7 @@ from app.core.exceptions import BusinessException
 from app.core.exceptions import DatabaseReadFailed
 from app.core.exceptions import DatabaseWriteFailed
 from app.core.exceptions import ERPNextServiceUnavailableError
+from app.core.request_id import is_request_id_valid
 from app.models.bom import LyApparelBom
 from app.models.bom import LyApparelBomItem
 from app.models.production import LyProductionJobCardLink
@@ -90,9 +91,11 @@ PRODUCTION_MATERIAL_CHECK_ALLOWED_STATUSES = frozenset(
         "work_order_created",
     }
 )
-PRODUCTION_LOCAL_SYNTHETIC_SCENARIO_PATTERN = re.compile(r"(Z002-PRODUCTION-PLAN-LOCALCTX-\d{8}-\d{3})")
+PRODUCTION_SCENARIO_TAG_PATTERN = re.compile(r"^Z003-PROD-PLAN-\d{8}-\d{3}$")
+PRODUCTION_SCENARIO_TAG_IN_REQUEST_ID_PATTERN = re.compile(r"(Z003-PROD-PLAN-\d{8}-\d{3})")
 PRODUCTION_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 PRODUCTION_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
+PRODUCTION_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
 
 
 class ProductionService:
@@ -110,6 +113,7 @@ class ProductionService:
         operator: str,
         request_id: str | None = None,
     ) -> ProductionPlanCreateData:
+        self._validate_create_plan_gate(payload=payload, request_id=request_id)
         sales_order, target_item, company = self._load_sales_order_context(payload=payload, request_id=request_id)
 
         bom = self._resolve_bom(item_code=target_item.item_code, bom_id=payload.bom_id)
@@ -196,6 +200,7 @@ class ProductionService:
         request_id: str | None = None,
     ) -> tuple[str, str]:
         """Resolve company/item scope for create-plan permission checks."""
+        self._validate_create_plan_gate(payload=payload, request_id=request_id)
         _, target_item, company = self._load_sales_order_context(payload=payload, request_id=request_id)
         return company, str(target_item.item_code)
 
@@ -1230,8 +1235,24 @@ class ProductionService:
         plan_id: int,
         operator: str,
         payload: ProductionMaterialCheckRequest,
+        request_id: str | None = None,
     ) -> ProductionMaterialCheckData:
         plan = self._must_get_plan(plan_id=plan_id)
+        self._validate_plan_carriers(
+            request_id=request_id,
+            payload_request_id=payload.request_id,
+            scenario_tag=payload.scenario_tag,
+            idempotency_key=payload.idempotency_key,
+            expected_operation="material_check",
+            payload_operation=payload.operation,
+            plan_id=plan_id,
+            payload_plan_id=payload.plan_id,
+            plan=plan,
+            payload_sales_order=payload.sales_order,
+            payload_sales_order_item=payload.sales_order_item,
+            payload_item_code=payload.item_code,
+            payload_bom_id=payload.bom_id,
+        )
         self._ensure_material_check_status_allowed(plan=plan)
         warehouse = self._require_non_blank(
             payload.warehouse,
@@ -1318,9 +1339,24 @@ class ProductionService:
         plan_id: int,
         payload: ProductionCreateWorkOrderRequest,
         operator: str,
-        request_id: str,
+        request_id: str | None,
     ) -> ProductionCreateWorkOrderData:
         plan = self._must_get_plan(plan_id=plan_id)
+        validated_request_id = self._validate_plan_carriers(
+            request_id=request_id,
+            payload_request_id=payload.request_id,
+            scenario_tag=payload.scenario_tag,
+            idempotency_key=payload.idempotency_key,
+            expected_operation="create_work_order",
+            payload_operation=payload.operation,
+            plan_id=plan_id,
+            payload_plan_id=payload.plan_id,
+            plan=plan,
+            payload_sales_order=payload.sales_order,
+            payload_sales_order_item=payload.sales_order_item,
+            payload_item_code=payload.item_code,
+            payload_bom_id=payload.bom_id,
+        )
         fg_warehouse = self._require_non_blank(
             payload.fg_warehouse,
             code=PRODUCTION_WAREHOUSE_REQUIRED,
@@ -1423,7 +1459,7 @@ class ProductionService:
             idempotency_key=idempotency_key,
             payload_json=payload_json,
             payload_hash=payload_hash,
-            request_id=request_id,
+            request_id=validated_request_id,
             operator=operator,
         )
 
@@ -1436,7 +1472,7 @@ class ProductionService:
                 to_status="work_order_pending",
                 action="create_work_order",
                 operator=operator,
-                request_id=request_id,
+                request_id=validated_request_id,
             )
 
         return ProductionCreateWorkOrderData(
@@ -1672,35 +1708,148 @@ class ProductionService:
         payload: ProductionPlanCreateRequest,
         request_id: str | None = None,
     ) -> str | None:
-        carriers = [
-            (payload.idempotency_key or "").strip(),
-            (payload.sales_order or "").strip(),
-            (payload.sales_order_item or "").strip(),
-        ]
-        if not all(carriers):
+        scenario_tag = (payload.scenario_tag or "").strip()
+        if not scenario_tag:
             return None
-
-        matched_tags: list[str] = []
-        for value in carriers:
-            matched = PRODUCTION_LOCAL_SYNTHETIC_SCENARIO_PATTERN.search(value)
-            if matched is None:
-                return None
-            matched_tags.append(matched.group(1))
-
-        if len(set(matched_tags)) != 1:
-            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="scenario_tag 载体不一致")
-        scenario_tag = matched_tags[0]
+        if not PRODUCTION_SCENARIO_TAG_PATTERN.fullmatch(scenario_tag):
+            raise BusinessException(
+                code=PRODUCTION_IDEMPOTENCY_CONFLICT,
+                message=f"{PRODUCTION_GATE_ERROR_PREFIX}invalid_scenario_tag",
+            )
         request_id_value = (request_id or "").strip()
         if not request_id_value:
-            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="request_id 不能为空")
-
-        request_match = PRODUCTION_LOCAL_SYNTHETIC_SCENARIO_PATTERN.search(request_id_value)
-        if request_match is None:
-            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="request_id 未包含合法 scenario_tag")
-        if request_match.group(1) != scenario_tag:
-            raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="request_id 与 scenario_tag 不一致")
-
+            raise BusinessException(
+                code=PRODUCTION_IDEMPOTENCY_CONFLICT,
+                message=f"{PRODUCTION_GATE_ERROR_PREFIX}missing_request_id",
+            )
+        request_match = PRODUCTION_SCENARIO_TAG_IN_REQUEST_ID_PATTERN.search(request_id_value)
+        if request_match is None or request_match.group(1) != scenario_tag:
+            raise BusinessException(
+                code=PRODUCTION_IDEMPOTENCY_CONFLICT,
+                message=f"{PRODUCTION_GATE_ERROR_PREFIX}mismatched_request_id",
+            )
         return scenario_tag
+
+    @staticmethod
+    def _raise_gate_error(message: str) -> None:
+        raise BusinessException(
+            code=PRODUCTION_IDEMPOTENCY_CONFLICT,
+            message=f"{PRODUCTION_GATE_ERROR_PREFIX}{message}",
+        )
+
+    @staticmethod
+    def _ensure_local_dev_write_gate() -> None:
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        db_url = os.getenv("LINGYI_DB_URL", "").strip()
+        if app_env != "development" or db_url != PRODUCTION_LOCAL_ALLOWED_DB_URL:
+            ProductionService._raise_gate_error("non_local_dev_gate")
+
+    def _validate_create_plan_gate(
+        self,
+        *,
+        payload: ProductionPlanCreateRequest,
+        request_id: str | None,
+    ) -> None:
+        self._ensure_local_dev_write_gate()
+        scenario_tag = self._require_non_blank(
+            payload.scenario_tag,
+            code=PRODUCTION_IDEMPOTENCY_CONFLICT,
+            message=f"{PRODUCTION_GATE_ERROR_PREFIX}missing_scenario_tag",
+        )
+        if not PRODUCTION_SCENARIO_TAG_PATTERN.fullmatch(scenario_tag):
+            self._raise_gate_error("invalid_scenario_tag")
+
+        if not payload.bom_id:
+            self._raise_gate_error("mismatched_business_carrier")
+        if (payload.operation or "").strip() != "create":
+            self._raise_gate_error("mismatched_operation")
+        if not (payload.sales_order_item or "").strip():
+            self._raise_gate_error("mismatched_business_carrier")
+
+        idempotency_key = self._require_non_blank(
+            payload.idempotency_key,
+            code=PRODUCTION_IDEMPOTENCY_CONFLICT,
+            message=f"{PRODUCTION_GATE_ERROR_PREFIX}missing_idempotency_key",
+        )
+        if scenario_tag not in idempotency_key:
+            self._raise_gate_error("mismatched_business_carrier")
+
+        self._validate_request_id_and_scenario(
+            request_id=request_id,
+            payload_request_id=None,
+            scenario_tag=scenario_tag,
+        )
+
+    def _validate_plan_carriers(
+        self,
+        *,
+        request_id: str | None,
+        payload_request_id: str | None,
+        scenario_tag: str | None,
+        idempotency_key: str | None,
+        expected_operation: str,
+        payload_operation: str | None,
+        plan_id: int,
+        payload_plan_id: int | None,
+        plan: LyProductionPlan,
+        payload_sales_order: str | None,
+        payload_sales_order_item: str | None,
+        payload_item_code: str | None,
+        payload_bom_id: int | None,
+    ) -> str:
+        self._ensure_local_dev_write_gate()
+        normalized_scenario = (scenario_tag or "").strip()
+        if not normalized_scenario:
+            self._raise_gate_error("missing_scenario_tag")
+        if not PRODUCTION_SCENARIO_TAG_PATTERN.fullmatch(normalized_scenario):
+            self._raise_gate_error("invalid_scenario_tag")
+
+        idempotency = (idempotency_key or "").strip()
+        if not idempotency:
+            self._raise_gate_error("missing_idempotency_key")
+        if normalized_scenario not in idempotency:
+            self._raise_gate_error("mismatched_business_carrier")
+
+        if (payload_operation or "").strip() != expected_operation:
+            self._raise_gate_error("mismatched_operation")
+        if payload_plan_id is None or int(payload_plan_id) != int(plan_id):
+            self._raise_gate_error("mismatched_plan_id")
+        if int(plan.id) != int(plan_id):
+            self._raise_gate_error("mismatched_plan_id")
+        if (payload_sales_order or "").strip() != str(plan.sales_order):
+            self._raise_gate_error("mismatched_business_carrier")
+        if (payload_sales_order_item or "").strip() != str(plan.sales_order_item):
+            self._raise_gate_error("mismatched_business_carrier")
+        if (payload_item_code or "").strip() != str(plan.item_code):
+            self._raise_gate_error("mismatched_business_carrier")
+        if payload_bom_id is None or int(payload_bom_id) != int(plan.bom_id):
+            self._raise_gate_error("mismatched_business_carrier")
+
+        return self._validate_request_id_and_scenario(
+            request_id=request_id,
+            payload_request_id=payload_request_id,
+            scenario_tag=normalized_scenario,
+        )
+
+    def _validate_request_id_and_scenario(
+        self,
+        *,
+        request_id: str | None,
+        payload_request_id: str | None,
+        scenario_tag: str,
+    ) -> str:
+        normalized_request_id = (request_id or "").strip()
+        if not normalized_request_id:
+            self._raise_gate_error("missing_request_id")
+        if not is_request_id_valid(normalized_request_id):
+            self._raise_gate_error("invalid_request_id_pattern")
+        if payload_request_id is not None and payload_request_id.strip() and payload_request_id.strip() != normalized_request_id:
+            self._raise_gate_error("mismatched_request_id")
+
+        match = PRODUCTION_SCENARIO_TAG_IN_REQUEST_ID_PATTERN.search(normalized_request_id)
+        if match is None or match.group(1) != scenario_tag:
+            self._raise_gate_error("mismatched_request_id")
+        return normalized_request_id
 
     def _remaining_plannable_qty(self, *, sales_order_item: ERPNextSalesOrderItem) -> Decimal:
         try:

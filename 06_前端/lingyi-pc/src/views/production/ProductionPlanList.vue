@@ -83,6 +83,72 @@
         </el-form-item>
       </el-form>
 
+      <el-card shadow="never" class="create-plan-card" data-testid="production-plan-create-card">
+        <template #header>
+          <div class="header-row">
+            <span>生产计划创建（本地闭环）</span>
+            <el-tag type="warning" effect="plain">受控写入</el-tag>
+          </div>
+        </template>
+        <el-alert
+          v-if="createPlanFeedback"
+          type="info"
+          :closable="false"
+          :title="createPlanFeedback"
+          data-testid="production-plan-create-feedback"
+          style="margin-bottom: 12px"
+        />
+        <el-form :model="createPlanForm" label-width="120px" data-testid="production-plan-create-form">
+          <el-form-item label="Scenario Tag">
+            <el-input v-model="createPlanForm.scenario_tag" readonly data-testid="production-plan-create-scenario-tag" />
+          </el-form-item>
+          <el-form-item label="销售单">
+            <el-input v-model="createPlanForm.sales_order" data-testid="production-plan-create-sales-order" />
+          </el-form-item>
+          <el-form-item label="销售单行">
+            <el-input v-model="createPlanForm.sales_order_item" data-testid="production-plan-create-sales-order-item" />
+          </el-form-item>
+          <el-form-item label="款号">
+            <el-input v-model="createPlanForm.item_code" data-testid="production-plan-create-item-code" />
+          </el-form-item>
+          <el-form-item label="BOM ID">
+            <el-input v-model="createPlanForm.bom_id" data-testid="production-plan-create-bom-id" />
+          </el-form-item>
+          <el-form-item label="计划数量">
+            <el-input v-model="createPlanForm.planned_qty" data-testid="production-plan-create-planned-qty" />
+          </el-form-item>
+          <el-form-item label="计划开工日">
+            <el-date-picker
+              v-model="createPlanForm.planned_start_date"
+              type="date"
+              value-format="YYYY-MM-DD"
+              format="YYYY-MM-DD"
+              placeholder="选择开工日期"
+              data-testid="production-plan-create-planned-start-date"
+            />
+          </el-form-item>
+          <el-form-item label="幂等键">
+            <el-input v-model="createPlanForm.idempotency_key" data-testid="production-plan-create-idempotency-key" />
+          </el-form-item>
+          <el-form-item label="Request ID">
+            <el-input v-model="createPlanForm.request_id" data-testid="production-plan-create-request-id" />
+          </el-form-item>
+        </el-form>
+        <div class="toolbar-row" data-testid="production-plan-create-actions">
+          <el-button :disabled="creatingPlan" data-testid="production-plan-create-reset" @click="resetCreatePlanForm">取消/重置</el-button>
+          <el-button
+            type="primary"
+            :loading="creatingPlan"
+            :disabled="creatingPlan || !canWriteGuarded"
+            data-action-type="write"
+            data-testid="production-plan-create-submit"
+            @click="submitCreatePlan"
+          >
+            保存生产计划
+          </el-button>
+        </div>
+      </el-card>
+
       <div class="toolbar-row" data-testid="production-plan-toolbar">
         <el-button :disabled="!canRead" data-testid="production-plan-filter" @click="onSearch">筛选</el-button>
         <el-button :disabled="!canRead" data-testid="production-plan-clear" @click="onClearFilters">清空</el-button>
@@ -1217,6 +1283,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  createProductionPlan,
   fetchProductionFollowupTemplates,
   fetchProductionMaterialCostDetails,
   fetchProductionOrderIOQuantities,
@@ -1241,6 +1308,8 @@ const loading = ref<boolean>(false)
 const rows = ref<ProductionPlanListItem[]>([])
 const total = ref<number>(0)
 const lastError = ref<string>('')
+const creatingPlan = ref<boolean>(false)
+const createPlanFeedback = ref<string>('')
 const materialLoading = ref<boolean>(false)
 const materialRows = ref<ProductionMaterialCostListItem[]>([])
 const materialTotal = ref<number>(0)
@@ -1271,6 +1340,65 @@ const canRead = computed<boolean>(() => {
 })
 const canWriteGuarded = computed<boolean>(() => {
   return permissionStore.state.buttonPermissions.plan_create || permissionStore.state.actions.includes('production:plan_create')
+})
+
+const buildScenarioTag = (): string => {
+  const now = new Date()
+  const yyyy = String(now.getFullYear())
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  const seq = String(Math.floor(Math.random() * 1000)).padStart(3, '0')
+  return `Z003-PROD-PLAN-${yyyy}${mm}${dd}-${seq}`
+}
+
+const buildCarrierIdempotencyKey = (scenarioTag: string): string => {
+  const random = Math.random().toString(36).slice(2, 10).toUpperCase()
+  return `${scenarioTag}-ID-CR-${random}`.slice(0, 64)
+}
+
+const buildCarrierRequestId = (scenarioTag: string): string => {
+  const random = Math.random().toString(36).slice(2, 8).toUpperCase()
+  return `${scenarioTag}-RQ-CR-${random}`.slice(0, 64)
+}
+
+const createPlanForm = reactive({
+  scenario_tag: buildScenarioTag(),
+  sales_order: '',
+  sales_order_item: '',
+  item_code: '',
+  bom_id: '',
+  planned_qty: '1',
+  planned_start_date: '',
+  idempotency_key: '',
+  request_id: '',
+})
+
+const resetCreatePlanForm = (): void => {
+  createPlanForm.scenario_tag = buildScenarioTag()
+  createPlanForm.sales_order = ''
+  createPlanForm.sales_order_item = ''
+  createPlanForm.item_code = ''
+  createPlanForm.bom_id = ''
+  createPlanForm.planned_qty = '1'
+  createPlanForm.planned_start_date = ''
+  createPlanForm.idempotency_key = buildCarrierIdempotencyKey(createPlanForm.scenario_tag)
+  createPlanForm.request_id = buildCarrierRequestId(createPlanForm.scenario_tag)
+}
+
+const createPlanValidationError = computed<string | null>(() => {
+  if (!createPlanForm.sales_order.trim()) return 'sales_order 不能为空'
+  if (!createPlanForm.sales_order_item.trim()) return 'sales_order_item 不能为空'
+  if (!createPlanForm.item_code.trim()) return 'item_code 不能为空'
+  if (!createPlanForm.bom_id.trim() || Number.isNaN(Number(createPlanForm.bom_id)) || Number(createPlanForm.bom_id) <= 0) {
+    return 'bom_id 必须为正整数'
+  }
+  if (!createPlanForm.planned_qty.trim() || Number.isNaN(Number(createPlanForm.planned_qty)) || Number(createPlanForm.planned_qty) <= 0) {
+    return 'planned_qty 必须大于 0'
+  }
+  if (!createPlanForm.scenario_tag.trim()) return 'scenario_tag 不能为空'
+  if (!createPlanForm.idempotency_key.trim()) return 'idempotency_key 不能为空'
+  if (!createPlanForm.request_id.trim()) return 'request_id 不能为空'
+  return null
 })
 
 const query = reactive({
@@ -2004,6 +2132,44 @@ const onSalespersonPerformanceClearFilters = (): void => {
   salespersonPerformanceQuery.performance_status = ''
 }
 
+const submitCreatePlan = async (): Promise<void> => {
+  if (!canWriteGuarded.value) {
+    ElMessage.warning('无新增生产计划权限')
+    return
+  }
+  if (createPlanValidationError.value) {
+    ElMessage.warning(createPlanValidationError.value)
+    return
+  }
+  try {
+    creatingPlan.value = true
+    const result = await createProductionPlan(
+      {
+        sales_order: createPlanForm.sales_order.trim(),
+        sales_order_item: createPlanForm.sales_order_item.trim(),
+        item_code: createPlanForm.item_code.trim(),
+        bom_id: Number(createPlanForm.bom_id),
+        planned_qty: createPlanForm.planned_qty.trim(),
+        planned_start_date: createPlanForm.planned_start_date || undefined,
+        scenario_tag: createPlanForm.scenario_tag.trim(),
+        operation: 'create',
+        idempotency_key: createPlanForm.idempotency_key.trim(),
+      },
+      createPlanForm.request_id.trim(),
+    )
+    createPlanFeedback.value = `生产计划创建成功：${result.data.plan_no}`
+    ElMessage.success(createPlanFeedback.value)
+    query.page = 1
+    await loadRows()
+  } catch (error) {
+    const message = (error as Error).message || '生产计划创建失败'
+    createPlanFeedback.value = message
+    ElMessage.error(message)
+  } finally {
+    creatingPlan.value = false
+  }
+}
+
 const onGuardedAction = (actionName: string, isWrite: boolean): void => {
   if (isWrite && !canWriteGuarded.value) {
     ElMessage.warning(`无 ${actionName} 权限，当前保持禁用态`)
@@ -2107,6 +2273,7 @@ onMounted(async () => {
     ElMessage.error(message)
     return
   }
+  resetCreatePlanForm()
   if (canRead.value) {
     await loadRows()
     await loadMaterialRows()

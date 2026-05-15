@@ -7,6 +7,8 @@ export interface ProductionPlanCreatePayload {
   bom_id?: number
   planned_qty: number | string
   planned_start_date?: string
+  scenario_tag: string
+  operation: 'create'
   idempotency_key: string
 }
 
@@ -339,6 +341,15 @@ export interface ProductionPlanDetailData {
 
 export interface ProductionMaterialCheckPayload {
   warehouse: string
+  idempotency_key: string
+  scenario_tag: string
+  operation: 'material_check'
+  plan_id: number
+  sales_order: string
+  sales_order_item: string
+  item_code: string
+  bom_id: number
+  request_id: string
 }
 
 export interface ProductionMaterialCheckData {
@@ -352,6 +363,14 @@ export interface ProductionCreateWorkOrderPayload {
   wip_warehouse: string
   start_date: string
   idempotency_key: string
+  scenario_tag: string
+  operation: 'create_work_order'
+  plan_id: number
+  sales_order: string
+  sales_order_item: string
+  item_code: string
+  bom_id: number
+  request_id: string
 }
 
 export interface ProductionCreateWorkOrderData {
@@ -532,10 +551,14 @@ export const fetchProductionPlanDetail = async (
 export const checkProductionMaterials = async (
   planId: number,
   payload: ProductionMaterialCheckPayload,
+  requestId?: string,
 ): Promise<ApiResponse<ProductionMaterialCheckData>> =>
   request<ProductionMaterialCheckData>(`/api/production/plans/${planId}/material-check`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(requestId ? { 'X-Request-ID': requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
 
