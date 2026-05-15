@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from decimal import Decimal
 import logging
+import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -58,6 +61,7 @@ from app.core.permissions import SUBCONTRACT_STOCK_SYNC_RETRY
 from app.core.permissions import SUBCONTRACT_STOCK_SYNC_WORKER
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
+from app.core.request_id import is_request_id_valid
 from app.schemas.subcontract import IssueMaterialRequest
 from app.schemas.subcontract import InspectRequest
 from app.schemas.subcontract import ReceiveRequest
@@ -83,6 +87,21 @@ from app.services.subcontract_stock_worker_service import SubcontractStockWorker
 
 router = APIRouter(prefix="/api/subcontract", tags=["subcontract"])
 logger = logging.getLogger(__name__)
+SUBCONTRACT_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
+SUBCONTRACT_SCENARIO_TAG_PATTERN = re.compile(r"Z003-SUBCONTRACT-\d{8}-\d{3}")
+SUBCONTRACT_REQUEST_ID_CARRIER_PATTERN = re.compile(
+    r"^(Z003-SUBCONTRACT-\d{8}-\d{3})-SC-([A-Z]{2})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$"
+)
+SUBCONTRACT_LOCAL_DB_URL = "sqlite:///./lingyi_service.local.db"
+SUBCONTRACT_OPERATION_CODE_BY_NAME = {
+    "create": "CR",
+    "issue_material": "IM",
+    "receive": "RV",
+    "inspect": "IN",
+    "settlement_preview": "SP",
+    "settlement_lock": "SL",
+    "release": "RL",
+}
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -393,6 +412,317 @@ def _resolve_subcontract_worker_scope(
     )
 
 
+def _is_local_gate_failure(exc: AppException) -> bool:
+    return exc.code == SUBCONTRACT_STOCK_OUTBOX_CONFLICT and str(exc.message).startswith(SUBCONTRACT_GATE_ERROR_PREFIX)
+
+
+def _raise_subcontract_gate_error(reason: str) -> None:
+    raise BusinessException(code=SUBCONTRACT_STOCK_OUTBOX_CONFLICT, message=f"{SUBCONTRACT_GATE_ERROR_PREFIX}{reason}")
+
+
+def _ensure_local_dev_write_gate() -> None:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    if app_env != "development" or db_url != SUBCONTRACT_LOCAL_DB_URL:
+        _raise_subcontract_gate_error("non_local_dev_gate_failed")
+
+
+def _scope_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized if normalized else None
+
+
+def _match_subcontract_scenario_tag(value: str) -> str | None:
+    matched = SUBCONTRACT_SCENARIO_TAG_PATTERN.search((value or "").strip())
+    return matched.group(0) if matched else None
+
+
+def _fnv_carrier_code(value: str) -> str:
+    normalized = value.strip()
+    hash_value = 2166136261
+    for byte in normalized.encode("utf-8"):
+        hash_value ^= byte
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    return f"{hash_value:08X}"[-3:]
+
+
+def _extract_subcontract_request_carriers(request_id: str) -> tuple[str, str, str, str, str, str, str, str, str] | None:
+    matched = SUBCONTRACT_REQUEST_ID_CARRIER_PATTERN.fullmatch(request_id.strip())
+    if matched is None:
+        return None
+    return (
+        matched.group(1),
+        matched.group(2),
+        matched.group(3),
+        matched.group(4),
+        matched.group(5),
+        matched.group(6),
+        matched.group(7),
+        matched.group(8),
+        matched.group(9),
+    )
+
+
+def _require_non_blank_carrier(value: Any, reason: str) -> str:
+    normalized = _scope_text(value)
+    if normalized is None:
+        _raise_subcontract_gate_error(reason)
+    return normalized
+
+
+def _normalize_quantity(value: Any) -> str:
+    try:
+        parsed = Decimal(str(value))
+    except Exception:
+        _raise_subcontract_gate_error("mismatched_quantity")
+    if parsed <= 0:
+        _raise_subcontract_gate_error("mismatched_quantity")
+    return format(parsed.normalize(), "f")
+
+
+def _normalize_order_work_order_ref(order: Any) -> str:
+    work_order = _scope_text(getattr(order, "work_order", None))
+    if work_order is not None:
+        return work_order
+    production_plan_id = getattr(order, "production_plan_id", None)
+    if production_plan_id is not None:
+        return str(production_plan_id).strip()
+    return "NO-WORK-ORDER"
+
+
+def _validate_subcontract_request_id_gate(
+    *,
+    request_obj: Request,
+    request_id: str,
+    scenario_tag: str,
+    operation: str,
+    idempotency_key: str,
+    source_ref: str,
+    subcontract_ref: str,
+    supplier_ref: str,
+    work_order_ref: str,
+    item_code: str,
+    status_action: str,
+) -> None:
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_subcontract_gate_error("missing_request_id")
+    if not is_request_id_valid(request_id_header):
+        _raise_subcontract_gate_error("invalid_request_id_pattern")
+    if not request_id:
+        _raise_subcontract_gate_error("missing_request_id")
+    if not is_request_id_valid(request_id):
+        _raise_subcontract_gate_error("invalid_request_id_pattern")
+    if request_id_header != request_id:
+        _raise_subcontract_gate_error("mismatched_request_id")
+
+    expected_operation_code = SUBCONTRACT_OPERATION_CODE_BY_NAME.get(operation)
+    if expected_operation_code is None:
+        _raise_subcontract_gate_error("mismatched_operation")
+
+    header_carrier = _extract_subcontract_request_carriers(request_id_header)
+    request_carrier = _extract_subcontract_request_carriers(request_id)
+    if header_carrier is None or request_carrier is None:
+        _raise_subcontract_gate_error("mismatched_request_id")
+    if header_carrier != request_carrier:
+        _raise_subcontract_gate_error("mismatched_request_id")
+
+    (
+        request_tag,
+        request_operation_code,
+        request_idempotency_code,
+        request_source_ref_code,
+        request_subcontract_ref_code,
+        request_supplier_ref_code,
+        request_work_order_ref_code,
+        request_item_code_code,
+        request_status_action_code,
+    ) = request_carrier
+
+    if request_tag != scenario_tag:
+        _raise_subcontract_gate_error("mismatched_request_id")
+    if request_operation_code != expected_operation_code:
+        _raise_subcontract_gate_error("mismatched_operation")
+    if request_idempotency_code != _fnv_carrier_code(idempotency_key):
+        _raise_subcontract_gate_error("missing_idempotency_key")
+    if request_source_ref_code != _fnv_carrier_code(source_ref):
+        _raise_subcontract_gate_error("mismatched_source_ref")
+    if request_subcontract_ref_code != _fnv_carrier_code(subcontract_ref):
+        _raise_subcontract_gate_error("mismatched_subcontract_no_or_id")
+    if request_supplier_ref_code != _fnv_carrier_code(supplier_ref):
+        _raise_subcontract_gate_error("mismatched_supplier_id_or_name")
+    if request_work_order_ref_code != _fnv_carrier_code(work_order_ref):
+        _raise_subcontract_gate_error("mismatched_work_order_no_or_production_plan_id")
+    if request_item_code_code != _fnv_carrier_code(item_code):
+        _raise_subcontract_gate_error("mismatched_item_code_or_product_code")
+    if request_status_action_code != _fnv_carrier_code(status_action):
+        _raise_subcontract_gate_error("mismatched_status_action")
+
+
+def _validate_subcontract_gate_common(
+    *,
+    request_obj: Request,
+    request_id: str,
+    operation: str,
+    payload_operation: Any,
+    scenario_tag: Any,
+    idempotency_key: Any,
+    source_ref: Any,
+    subcontract_ref: Any,
+    supplier_ref: Any,
+    work_order_ref: Any,
+    item_code: Any,
+    quantity: Any,
+    status_action: Any,
+) -> tuple[str, str, str, str, str, str, str]:
+    _ensure_local_dev_write_gate()
+
+    normalized_scenario_tag = _require_non_blank_carrier(scenario_tag, "missing_or_invalid_scenario_tag")
+    if SUBCONTRACT_SCENARIO_TAG_PATTERN.fullmatch(normalized_scenario_tag) is None:
+        _raise_subcontract_gate_error("missing_or_invalid_scenario_tag")
+
+    normalized_payload_operation = _require_non_blank_carrier(payload_operation, "mismatched_operation")
+    normalized_operation = _require_non_blank_carrier(operation, "mismatched_operation")
+    normalized_idempotency_key = _require_non_blank_carrier(idempotency_key, "missing_idempotency_key")
+    normalized_source_ref = _require_non_blank_carrier(source_ref, "mismatched_source_ref")
+    normalized_subcontract_ref = _require_non_blank_carrier(subcontract_ref, "mismatched_subcontract_no_or_id")
+    normalized_supplier_ref = _require_non_blank_carrier(supplier_ref, "mismatched_supplier_id_or_name")
+    normalized_work_order_ref = _require_non_blank_carrier(
+        work_order_ref,
+        "mismatched_work_order_no_or_production_plan_id",
+    )
+    normalized_item_code = _require_non_blank_carrier(item_code, "mismatched_item_code_or_product_code")
+    _normalize_quantity(quantity)
+    normalized_status_action = _require_non_blank_carrier(status_action, "mismatched_status_action")
+
+    if normalized_operation != operation:
+        _raise_subcontract_gate_error("mismatched_operation")
+    if normalized_payload_operation != operation:
+        _raise_subcontract_gate_error("mismatched_payload_operation")
+
+    source_ref_tag = _match_subcontract_scenario_tag(normalized_source_ref)
+    if source_ref_tag is None or source_ref_tag != normalized_scenario_tag:
+        _raise_subcontract_gate_error("mismatched_source_ref")
+
+    _validate_subcontract_request_id_gate(
+        request_obj=request_obj,
+        request_id=request_id,
+        scenario_tag=normalized_scenario_tag,
+        operation=operation,
+        idempotency_key=normalized_idempotency_key,
+        source_ref=normalized_source_ref,
+        subcontract_ref=normalized_subcontract_ref,
+        supplier_ref=normalized_supplier_ref,
+        work_order_ref=normalized_work_order_ref,
+        item_code=normalized_item_code,
+        status_action=normalized_status_action,
+    )
+
+    return (
+        normalized_subcontract_ref,
+        normalized_supplier_ref,
+        normalized_work_order_ref,
+        normalized_item_code,
+        _normalize_quantity(quantity),
+        normalized_status_action,
+        normalized_source_ref,
+    )
+
+
+def _validate_subcontract_create_gate(*, request_obj: Request, payload: SubcontractCreateRequest) -> None:
+    _, normalized_supplier_ref, _, normalized_item_code, normalized_quantity, normalized_status_action, _ = _validate_subcontract_gate_common(
+        request_obj=request_obj,
+        request_id=payload.request_id,
+        operation="create",
+        payload_operation=payload.operation,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        source_ref=payload.source_ref,
+        subcontract_ref=payload.subcontract_ref,
+        supplier_ref=payload.supplier_ref,
+        work_order_ref=payload.work_order_ref,
+        item_code=payload.item_code,
+        quantity=payload.quantity,
+        status_action=payload.status_action,
+    )
+    if normalized_supplier_ref != _require_non_blank_carrier(payload.supplier, "mismatched_supplier_id_or_name"):
+        _raise_subcontract_gate_error("mismatched_supplier_id_or_name")
+    if normalized_item_code != _require_non_blank_carrier(payload.item_code, "mismatched_item_code_or_product_code"):
+        _raise_subcontract_gate_error("mismatched_item_code_or_product_code")
+    if normalized_quantity != _normalize_quantity(payload.planned_qty):
+        _raise_subcontract_gate_error("mismatched_quantity")
+    if normalized_status_action != "create":
+        _raise_subcontract_gate_error("mismatched_status_action")
+
+
+def _validate_subcontract_order_write_gate(
+    *,
+    request_obj: Request,
+    order: Any,
+    payload: Any,
+    operation: str,
+    quantity: Any,
+    status_action: str,
+) -> None:
+    normalized_subcontract_ref, normalized_supplier_ref, normalized_work_order_ref, normalized_item_code, normalized_quantity, normalized_status_action, _ = _validate_subcontract_gate_common(
+        request_obj=request_obj,
+        request_id=getattr(payload, "request_id"),
+        operation=operation,
+        payload_operation=getattr(payload, "operation", None),
+        scenario_tag=getattr(payload, "scenario_tag", None),
+        idempotency_key=getattr(payload, "idempotency_key", None),
+        source_ref=getattr(payload, "source_ref", None),
+        subcontract_ref=getattr(payload, "subcontract_ref", None),
+        supplier_ref=getattr(payload, "supplier_ref", None),
+        work_order_ref=getattr(payload, "work_order_ref", None),
+        item_code=getattr(payload, "item_code", None),
+        quantity=quantity,
+        status_action=getattr(payload, "status_action", None),
+    )
+    order_ref_candidates = {str(order.id), str(order.subcontract_no)}
+    if normalized_subcontract_ref not in order_ref_candidates:
+        _raise_subcontract_gate_error("mismatched_subcontract_no_or_id")
+    if normalized_supplier_ref != _require_non_blank_carrier(order.supplier, "mismatched_supplier_id_or_name"):
+        _raise_subcontract_gate_error("mismatched_supplier_id_or_name")
+    if normalized_work_order_ref != _normalize_order_work_order_ref(order):
+        _raise_subcontract_gate_error("mismatched_work_order_no_or_production_plan_id")
+    if normalized_item_code != _require_non_blank_carrier(order.item_code, "mismatched_item_code_or_product_code"):
+        _raise_subcontract_gate_error("mismatched_item_code_or_product_code")
+    if normalized_quantity != _normalize_quantity(quantity):
+        _raise_subcontract_gate_error("mismatched_quantity")
+    if normalized_status_action != status_action:
+        _raise_subcontract_gate_error("mismatched_status_action")
+
+
+def _validate_subcontract_settlement_gate(
+    *,
+    request_obj: Request,
+    payload: Any,
+    operation: str,
+    quantity: Any,
+    status_action: str,
+) -> None:
+    _validate_subcontract_gate_common(
+        request_obj=request_obj,
+        request_id=getattr(payload, "request_id"),
+        operation=operation,
+        payload_operation=getattr(payload, "operation", None),
+        scenario_tag=getattr(payload, "scenario_tag", None),
+        idempotency_key=getattr(payload, "idempotency_key", None),
+        source_ref=getattr(payload, "source_ref", None),
+        subcontract_ref=getattr(payload, "subcontract_ref", None),
+        supplier_ref=getattr(payload, "supplier_ref", None),
+        work_order_ref=getattr(payload, "work_order_ref", None),
+        item_code=getattr(payload, "item_code", None),
+        quantity=quantity,
+        status_action=getattr(payload, "status_action", None),
+    )
+    if _scope_text(getattr(payload, "status_action", None)) != status_action:
+        _raise_subcontract_gate_error("mismatched_status_action")
+
+
 @router.post("/")
 def create_subcontract_order(
     payload: SubcontractCreateRequest,
@@ -410,6 +740,7 @@ def create_subcontract_order(
     resolved_company: str | None = None
 
     try:
+        _validate_subcontract_create_gate(request_obj=request, payload=payload)
         user_permissions = permission_service.get_subcontract_user_permissions(
             current_user=current_user,
             request_obj=request,
@@ -460,6 +791,8 @@ def create_subcontract_order(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         try:
             _record_failure_safely(
                 session=session,
@@ -633,6 +966,13 @@ def preview_subcontract_settlement(
     settlement_service = SubcontractSettlementService(session=session)
     action = SUBCONTRACT_SETTLEMENT_READ
     try:
+        _validate_subcontract_settlement_gate(
+            request_obj=request,
+            payload=payload,
+            operation="settlement_preview",
+            quantity=payload.quantity,
+            status_action="settlement_preview",
+        )
         permission_service.require_action(
             current_user=current_user,
             request_obj=request,
@@ -678,7 +1018,7 @@ def preview_subcontract_settlement(
             supplier=payload.supplier,
             from_date=payload.from_date,
             to_date=payload.to_date,
-            item_code=payload.item_code,
+            item_code=payload.filter_item_code,
             process_name=payload.process_name,
             readable_item_codes=readable_item_codes,
             readable_companies=readable_companies,
@@ -707,6 +1047,13 @@ def lock_subcontract_settlement(
     context = AuditContext.from_request(request)
     action = SUBCONTRACT_SETTLEMENT_LOCK
     try:
+        _validate_subcontract_settlement_gate(
+            request_obj=request,
+            payload=payload,
+            operation="settlement_lock",
+            quantity=payload.quantity,
+            status_action="settlement_lock",
+        )
         permission_service.require_action(
             current_user=current_user,
             request_obj=request,
@@ -772,6 +1119,8 @@ def lock_subcontract_settlement(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         return _app_err(exc)
     except Exception as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
@@ -792,6 +1141,13 @@ def release_subcontract_settlement_locks(
     context = AuditContext.from_request(request)
     action = SUBCONTRACT_SETTLEMENT_RELEASE
     try:
+        _validate_subcontract_settlement_gate(
+            request_obj=request,
+            payload=payload,
+            operation="release",
+            quantity=payload.quantity,
+            status_action="release",
+        )
         permission_service.require_action(
             current_user=current_user,
             request_obj=request,
@@ -858,6 +1214,8 @@ def release_subcontract_settlement_locks(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         return _app_err(exc)
     except Exception as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
@@ -970,6 +1328,14 @@ def issue_material(
 
     try:
         order = service.get_order_or_raise(order_id)
+        _validate_subcontract_order_write_gate(
+            request_obj=request,
+            order=order,
+            payload=payload,
+            operation="issue_material",
+            quantity=payload.quantity,
+            status_action="issue_material",
+        )
         user_permissions = permission_service.get_subcontract_user_permissions(
             current_user=current_user,
             request_obj=request,
@@ -1020,6 +1386,8 @@ def issue_material(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         try:
             _record_failure_safely(
                 session=session,
@@ -1372,6 +1740,15 @@ def receive_subcontract(
 
     try:
         order = service.get_order_or_raise(order_id)
+        receive_payload = _parse_receive_payload(payload)
+        _validate_subcontract_order_write_gate(
+            request_obj=request,
+            order=order,
+            payload=receive_payload,
+            operation="receive",
+            quantity=receive_payload.received_qty,
+            status_action="receive",
+        )
         user_permissions = permission_service.get_subcontract_user_permissions(
             current_user=current_user,
             request_obj=request,
@@ -1394,7 +1771,7 @@ def receive_subcontract(
         )
         if str(getattr(order, "resource_scope_status", "") or "").strip().lower() == "blocked_scope":
             raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message="外发单缺少 company 资源范围")
-        receipt_warehouse = _extract_required_warehouse(payload)
+        receipt_warehouse = receive_payload.receipt_warehouse.strip()
         permission_service.ensure_subcontract_resource_permission(
             current_user=current_user,
             request_obj=request,
@@ -1409,7 +1786,6 @@ def receive_subcontract(
             enforce_action=False,
             user_permissions=user_permissions,
         )
-        receive_payload = _parse_receive_payload(payload)
         result = service.receive(
             order_id=order_id,
             payload=receive_payload,
@@ -1439,6 +1815,8 @@ def receive_subcontract(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         try:
             _record_failure_safely(
                 session=session,
@@ -1496,6 +1874,15 @@ def inspect_subcontract(
 
     try:
         order = service.get_order_or_raise(order_id)
+        inspect_payload = _parse_inspect_payload(payload)
+        _validate_subcontract_order_write_gate(
+            request_obj=request,
+            order=order,
+            payload=inspect_payload,
+            operation="inspect",
+            quantity=inspect_payload.inspected_qty,
+            status_action="inspect",
+        )
         user_permissions = permission_service.get_subcontract_user_permissions(
             current_user=current_user,
             request_obj=request,
@@ -1518,7 +1905,6 @@ def inspect_subcontract(
         )
         if str(getattr(order, "resource_scope_status", "") or "").strip().lower() == "blocked_scope":
             raise BusinessException(code=SUBCONTRACT_SCOPE_BLOCKED, message="外发单缺少 company 资源范围")
-        inspect_payload = _parse_inspect_payload(payload)
         receipt_scope = service.get_receipt_batch_scope(
             order_id=order_id,
             receipt_batch_no=inspect_payload.receipt_batch_no,
@@ -1581,6 +1967,8 @@ def inspect_subcontract(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         try:
             _record_failure_safely(
                 session=session,

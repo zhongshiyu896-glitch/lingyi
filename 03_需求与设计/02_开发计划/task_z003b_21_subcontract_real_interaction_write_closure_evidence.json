@@ -1,0 +1,427 @@
+{
+  "task_id": "TASK-Z003B-21-IMPL-FIX1",
+  "source_head": "4f921559e8e6d703c79c1d7e8b8a9c20a14f224d",
+  "route_scope": [
+    "/subcontract/list",
+    "/subcontract/detail"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/subcontract.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/subcontract.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/subcontract.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py"
+  ],
+  "readonly_context_files_changed": [],
+  "allowed_write_endpoints": [
+    "POST /api/subcontract/",
+    "POST /api/subcontract/{order_id}/issue-material",
+    "POST /api/subcontract/{order_id}/receive",
+    "POST /api/subcontract/{order_id}/inspect",
+    "POST /api/subcontract/settlement-preview",
+    "POST /api/subcontract/settlement-locks",
+    "POST /api/subcontract/settlement-locks/release"
+  ],
+  "allowed_write_requests": [
+    {
+      "method": "POST",
+      "path": "/api/subcontract/",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/subcontract/19/issue-material",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/subcontract/19/receive",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/subcontract/19/inspect",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/subcontract/settlement-preview",
+      "status": 200
+    }
+  ],
+  "approved_write_request_count": 5,
+  "unexpected_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "fail_closed_cases": [
+    {
+      "case": "missing_request_id",
+      "status": 409
+    },
+    {
+      "case": "invalid_request_id_pattern",
+      "status": 409
+    },
+    {
+      "case": "mismatched_source_ref_from_request_id_probe",
+      "status": 409
+    },
+    {
+      "case": "missing_idempotency_key",
+      "status": 409
+    },
+    {
+      "case": "missing_or_invalid_scenario_tag",
+      "status": 409
+    },
+    {
+      "case": "mismatched_source_ref",
+      "status": 409
+    },
+    {
+      "case": "mismatched_subcontract_no_or_id",
+      "status": 409
+    },
+    {
+      "case": "mismatched_supplier_id_or_name",
+      "status": 409
+    },
+    {
+      "case": "mismatched_work_order_no_or_production_plan_id",
+      "status": 409
+    },
+    {
+      "case": "mismatched_operation",
+      "status": 409
+    },
+    {
+      "case": "mismatched_item_code_or_product_code",
+      "status": 409
+    },
+    {
+      "case": "mismatched_quantity",
+      "status": 409
+    },
+    {
+      "case": "mismatched_status_action",
+      "status": 409
+    },
+    {
+      "case": "non_local_dev_gate_failed",
+      "status": 409
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_subcontract_order": 0,
+    "ly_subcontract_material": 0,
+    "ly_subcontract_receipt": 0,
+    "ly_subcontract_status_log": 0,
+    "ly_subcontract_inspection": 0,
+    "ly_subcontract_stock_outbox": 0,
+    "ly_subcontract_settlement_operation": 0,
+    "ly_subcontract_stock_sync_log": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "screenshots_dir": "/tmp/task_z003b21_screenshots",
+  "screenshots_count": 5,
+  "browser_counters": {
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "scenario_tags": {
+    "success_scenario_tag": "Z003-SUBCONTRACT-20260515-897",
+    "fail_probe_scenario_tag": "Z003-SUBCONTRACT-20260515-672"
+  },
+  "generated_at": "2026-05-16T01:11:36+08:00",
+  "browser_write_evidence": {
+    "source_file": "/tmp/task_z003b21_browser_result.json",
+    "approved_write_request_count": 5,
+    "browser_write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/subcontract/",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/19/issue-material",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/19/receive",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/19/inspect",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/settlement-preview",
+        "status": 200
+      }
+    ],
+    "browser_readback_requests": [
+      {
+        "method": "GET",
+        "path": "/api/subcontract/",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/19",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/settlement-candidates",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/19",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/settlement-candidates",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/19",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/settlement-candidates",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/19",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/settlement-candidates",
+        "status": 200
+      }
+    ],
+    "all_subcontract_requests": [
+      {
+        "method": "GET",
+        "path": "/api/subcontract/",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/19",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/settlement-candidates",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/19/issue-material",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/19",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/settlement-candidates",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/19/receive",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/19",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/settlement-candidates",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/19/inspect",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/19",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/subcontract/settlement-candidates",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/settlement-preview",
+        "status": 200
+      }
+    ],
+    "unexpected_write_request_count": 0,
+    "unexpected_write_requests": [],
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0,
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "api_regression_evidence": {
+    "source_file": "/tmp/task_z003b21_regression_api.json",
+    "approved_write_request_count": 7,
+    "allowed_write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/subcontract/",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/21/issue-material",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/21/receive",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/21/inspect",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/settlement-preview",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/settlement-locks",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/subcontract/settlement-locks/release",
+        "status": 200
+      }
+    ],
+    "unexpected_write_request_count": 0,
+    "unexpected_write_requests": [],
+    "fail_closed_cases": [
+      {
+        "case": "missing_request_id",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:missing_request_id\",\"data\":{}}"
+      },
+      {
+        "case": "invalid_request_id_pattern",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:invalid_request_id_pattern\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_source_ref_from_request_id_probe",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_source_ref\",\"data\":{}}"
+      },
+      {
+        "case": "missing_idempotency_key",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:missing_idempotency_key\",\"data\":{}}"
+      },
+      {
+        "case": "missing_or_invalid_scenario_tag",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:missing_or_invalid_scenario_tag\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_source_ref",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_source_ref\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_subcontract_no_or_id",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_subcontract_no_or_id\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_supplier_id_or_name",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_supplier_id_or_name\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_work_order_no_or_production_plan_id",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_work_order_no_or_production_plan_id\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_operation",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_payload_operation\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_item_code_or_product_code",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_item_code_or_product_code\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_quantity",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_quantity\",\"data\":{}}"
+      },
+      {
+        "case": "mismatched_status_action",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:mismatched_status_action\",\"data\":{}}"
+      },
+      {
+        "case": "non_local_dev_gate_failed",
+        "status": 409,
+        "body": "{\"code\":\"SUBCONTRACT_STOCK_OUTBOX_CONFLICT\",\"message\":\"LOCAL_GATE_FAIL_CLOSED:non_local_dev_gate_failed\",\"data\":{}}"
+      }
+    ],
+    "db_write_on_failed_gate_count": 0
+  }
+}

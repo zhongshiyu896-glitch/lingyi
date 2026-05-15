@@ -24,7 +24,23 @@ class ApiResponse(BaseModel, Generic[T]):
     data: T
 
 
-class SubcontractCreateRequest(BaseModel):
+class SubcontractWriteCarrierBase(BaseModel):
+    """Common write carrier fields for Z003 subcontract scenario gate."""
+
+    request_id: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=128)
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    subcontract_ref: str = Field(..., min_length=1, max_length=140)
+    supplier_ref: str = Field(..., min_length=1, max_length=140)
+    work_order_ref: str = Field(..., min_length=1, max_length=140)
+    operation: str = Field(..., min_length=1, max_length=64)
+    item_code: str = Field(..., min_length=1, max_length=140)
+    quantity: Decimal = Field(..., gt=0)
+    status_action: str = Field(..., min_length=1, max_length=64)
+
+
+class SubcontractCreateRequest(SubcontractWriteCarrierBase):
     """Request payload of creating subcontract order."""
 
     supplier: str = Field(..., min_length=1, max_length=140)
@@ -156,7 +172,7 @@ class SubcontractSettlementCandidatesData(BaseModel):
     summary: SubcontractSettlementSummary
 
 
-class SubcontractSettlementPreviewRequest(BaseModel):
+class SubcontractSettlementPreviewRequest(SubcontractWriteCarrierBase):
     """Settlement preview request."""
 
     inspection_ids: Optional[List[int]] = None
@@ -164,7 +180,7 @@ class SubcontractSettlementPreviewRequest(BaseModel):
     supplier: Optional[str] = Field(default=None, max_length=140)
     from_date: Optional[str] = None
     to_date: Optional[str] = None
-    item_code: Optional[str] = Field(default=None, max_length=140)
+    filter_item_code: Optional[str] = Field(default=None, max_length=140)
     process_name: Optional[str] = Field(default=None, max_length=100)
 
 
@@ -181,13 +197,12 @@ class SubcontractSettlementPreviewData(BaseModel):
     items: List[SubcontractSettlementCandidateItem]
 
 
-class SubcontractSettlementLockRequest(BaseModel):
+class SubcontractSettlementLockRequest(SubcontractWriteCarrierBase):
     """Settlement lock request."""
 
     statement_id: Optional[int] = Field(default=None, ge=1)
     statement_no: Optional[str] = Field(default=None, max_length=64)
     inspection_ids: List[int] = Field(default_factory=list)
-    idempotency_key: str = Field(..., min_length=1, max_length=128)
     remark: Optional[str] = Field(default=None, max_length=200)
 
 
@@ -204,13 +219,12 @@ class SubcontractSettlementLockData(BaseModel):
     locked_items: List[SubcontractSettlementCandidateItem]
 
 
-class SubcontractSettlementReleaseRequest(BaseModel):
+class SubcontractSettlementReleaseRequest(SubcontractWriteCarrierBase):
     """Settlement lock release request."""
 
     statement_id: Optional[int] = Field(default=None, ge=1)
     statement_no: Optional[str] = Field(default=None, max_length=64)
     inspection_ids: List[int] = Field(default_factory=list)
-    idempotency_key: str = Field(..., min_length=1, max_length=128)
     reason: str = Field(..., min_length=1, max_length=200)
 
 
@@ -305,10 +319,9 @@ class IssueMaterialItem(BaseModel):
         return value
 
 
-class IssueMaterialRequest(BaseModel):
+class IssueMaterialRequest(SubcontractWriteCarrierBase):
     """Issue material request."""
 
-    idempotency_key: str = Field(..., min_length=1, max_length=128)
     warehouse: str = Field(..., min_length=1, max_length=140)
     materials: List[IssueMaterialItem] | None = None
 
@@ -329,13 +342,11 @@ class IssueMaterialData(BaseModel):
     stock_entry_name: Optional[str] = None
 
 
-class ReceiveRequest(BaseModel):
+class ReceiveRequest(SubcontractWriteCarrierBase):
     """Receive subcontract goods request."""
 
-    idempotency_key: str = Field(..., min_length=1, max_length=128)
     receipt_warehouse: str = Field(..., min_length=1, max_length=140)
     received_qty: Decimal = Field(..., gt=0)
-    item_code: Optional[str] = Field(default=None, max_length=140)
     color: Optional[str] = Field(default=None, max_length=64)
     size: Optional[str] = Field(default=None, max_length=64)
     batch_no: Optional[str] = Field(default=None, max_length=140)
@@ -351,11 +362,10 @@ class ReceiveData(BaseModel):
     stock_entry_name: Optional[str] = None
 
 
-class InspectRequest(BaseModel):
+class InspectRequest(SubcontractWriteCarrierBase):
     """Inspect subcontract goods request."""
 
     receipt_batch_no: str = Field(..., min_length=1, max_length=64)
-    idempotency_key: str = Field(..., min_length=1, max_length=128)
     inspected_qty: Decimal = Field(..., gt=0)
     rejected_qty: Decimal = Field(..., ge=0)
     deduction_amount_per_piece: Decimal = Field(default=Decimal("0"), ge=0)

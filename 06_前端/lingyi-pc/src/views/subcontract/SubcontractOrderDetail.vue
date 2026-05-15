@@ -74,32 +74,32 @@
             <el-button
               data-testid="subcontract-detail-action-issue"
               data-action-type="write"
-              data-write-guard="guarded:readonly"
-              @click="guardedWriteAction('发料')"
+              :disabled="!detail"
+              @click="openIssueDialog"
             >
               发料
             </el-button>
             <el-button
               data-testid="subcontract-detail-action-receipt"
               data-action-type="write"
-              data-write-guard="guarded:readonly"
-              @click="guardedWriteAction('回料')"
+              :disabled="!detail"
+              @click="openReceiveDialog"
             >
               回料
             </el-button>
             <el-button
               data-testid="subcontract-detail-action-inspection"
               data-action-type="write"
-              data-write-guard="guarded:readonly"
-              @click="guardedWriteAction('验货')"
+              :disabled="!detail"
+              @click="openInspectDialog"
             >
               验货
             </el-button>
             <el-button
               data-testid="subcontract-detail-action-settlement"
               data-action-type="write"
-              data-write-guard="guarded:readonly"
-              @click="guardedWriteAction('结算')"
+              :disabled="!detail"
+              @click="openSettlementDialog"
             >
               结算
             </el-button>
@@ -139,7 +139,7 @@
           />
 
           <p class="permission-tip" data-testid="subcontract-detail-permission-or-disabled-state">
-            当前页面为只读模式，写动作及导出/打印入口已禁用。
+            写动作已启用 Z003 本地闭环门禁，所有请求携带 scenario_tag 与业务载体一致性校验。
           </p>
         </template>
       </template>
@@ -196,14 +196,187 @@
         <el-table-column prop="inspected_at" label="验货时间" min-width="180" />
       </el-table>
     </el-card>
+
+    <el-card v-if="canRead && detail" shadow="never" data-testid="subcontract-detail-settlement-section">
+      <template #header><span>结算候选</span></template>
+      <div class="settlement-toolbar">
+        <el-button size="small" :loading="settlementLoading" data-testid="subcontract-settlement-candidates-refresh" @click="loadSettlementCandidates">刷新候选</el-button>
+        <el-button size="small" :loading="settlementLoading" data-testid="subcontract-settlement-preview-button" @click="runSettlementPreview">预览结算</el-button>
+      </div>
+      <el-table
+        :data="settlementCandidates"
+        border
+        empty-text="暂无可结算候选"
+        data-testid="subcontract-settlement-candidates-table"
+      >
+        <el-table-column prop="inspection_id" label="验货ID" width="100" />
+        <el-table-column prop="subcontract_no" label="外发单号" min-width="180" />
+        <el-table-column prop="receipt_batch_no" label="回料批次" min-width="160" />
+        <el-table-column prop="inspected_qty" label="验货数量" width="110" />
+        <el-table-column prop="gross_amount" label="总金额" width="120" />
+        <el-table-column prop="net_amount" label="净金额" width="120" />
+      </el-table>
+      <el-descriptions v-if="settlementPreview" :column="3" border class="settlement-preview" data-testid="subcontract-settlement-preview-summary">
+        <el-descriptions-item label="行数">{{ settlementPreview.line_count }}</el-descriptions-item>
+        <el-descriptions-item label="总数量">{{ settlementPreview.total_qty }}</el-descriptions-item>
+        <el-descriptions-item label="净金额">{{ settlementPreview.net_amount }}</el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
+    <el-dialog
+      v-model="issueDialogVisible"
+      title="发料"
+      width="560px"
+      destroy-on-close
+      append-to-body
+      data-testid="subcontract-issue-dialog"
+    >
+      <el-form :model="issueForm" label-width="120px">
+        <el-form-item label="发料仓">
+          <el-input v-model="issueForm.warehouse" data-testid="subcontract-issue-warehouse-input" />
+        </el-form-item>
+        <el-form-item label="物料编码">
+          <el-input v-model="issueForm.material_item_code" data-testid="subcontract-issue-material-input" />
+        </el-form-item>
+        <el-form-item label="需求数量">
+          <el-input-number v-model="issueForm.required_qty" :min="0.001" :step="1" :precision="3" data-testid="subcontract-issue-required-qty-input" />
+        </el-form-item>
+        <el-form-item label="本次发料">
+          <el-input-number v-model="issueForm.issued_qty" :min="0.001" :step="1" :precision="3" data-testid="subcontract-issue-issued-qty-input" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button data-testid="subcontract-issue-cancel-button" @click="issueDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="issueSubmitting" data-testid="subcontract-issue-submit-button" @click="submitIssue">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="receiveDialogVisible"
+      title="回料"
+      width="560px"
+      destroy-on-close
+      append-to-body
+      data-testid="subcontract-receive-dialog"
+    >
+      <el-form :model="receiveForm" label-width="120px">
+        <el-form-item label="回料仓">
+          <el-input v-model="receiveForm.receipt_warehouse" data-testid="subcontract-receive-warehouse-input" />
+        </el-form-item>
+        <el-form-item label="回料数量">
+          <el-input-number v-model="receiveForm.received_qty" :min="0.001" :step="1" :precision="3" data-testid="subcontract-receive-qty-input" />
+        </el-form-item>
+        <el-form-item label="批次号">
+          <el-input v-model="receiveForm.batch_no" data-testid="subcontract-receive-batch-input" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button data-testid="subcontract-receive-cancel-button" @click="receiveDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="receiveSubmitting" data-testid="subcontract-receive-submit-button" @click="submitReceive">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="inspectDialogVisible"
+      title="验货"
+      width="560px"
+      destroy-on-close
+      append-to-body
+      data-testid="subcontract-inspect-dialog"
+    >
+      <el-form :model="inspectForm" label-width="120px">
+        <el-form-item label="回料批次">
+          <el-input v-model="inspectForm.receipt_batch_no" data-testid="subcontract-inspect-batch-input" />
+        </el-form-item>
+        <el-form-item label="验货数量">
+          <el-input-number v-model="inspectForm.inspected_qty" :min="0.001" :step="1" :precision="3" data-testid="subcontract-inspect-inspected-qty-input" />
+        </el-form-item>
+        <el-form-item label="不合格数量">
+          <el-input-number v-model="inspectForm.rejected_qty" :min="0" :step="1" :precision="3" data-testid="subcontract-inspect-rejected-qty-input" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button data-testid="subcontract-inspect-cancel-button" @click="inspectDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="inspectSubmitting" data-testid="subcontract-inspect-submit-button" @click="submitInspect">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="settlementDialogVisible"
+      title="结算锁定 / 释放"
+      width="620px"
+      destroy-on-close
+      append-to-body
+      data-testid="subcontract-settlement-dialog"
+    >
+      <el-form :model="settlementForm" label-width="120px">
+        <el-form-item label="结算单号">
+          <el-input v-model="settlementForm.statement_no" data-testid="subcontract-settlement-statement-no-input" />
+        </el-form-item>
+        <el-form-item label="选择验货ID">
+          <el-select
+            v-model="settlementForm.inspection_ids"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            style="width: 100%"
+            data-testid="subcontract-settlement-inspection-ids-select"
+          >
+            <el-option
+              v-for="candidate in settlementCandidates"
+              :key="candidate.inspection_id"
+              :label="`${candidate.inspection_id} / ${candidate.subcontract_no}`"
+              :value="candidate.inspection_id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="释放原因">
+          <el-input v-model="settlementForm.reason" data-testid="subcontract-settlement-reason-input" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button data-testid="subcontract-settlement-cancel-button" @click="settlementDialogVisible = false">取消</el-button>
+        <el-button
+          :loading="settlementSubmitting"
+          data-testid="subcontract-settlement-lock-button"
+          type="primary"
+          @click="submitSettlementLock"
+        >
+          锁定
+        </el-button>
+        <el-button
+          :loading="settlementSubmitting"
+          data-testid="subcontract-settlement-release-button"
+          type="warning"
+          @click="submitSettlementRelease"
+        >
+          释放
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { fetchSubcontractOrderDetail, type SubcontractOrderDetailData } from '@/api/subcontract'
+import {
+  buildSubcontractRequestId,
+  buildSubcontractScenarioTag,
+  fetchSubcontractOrderDetail,
+  fetchSubcontractSettlementCandidates,
+  inspectSubcontractOrder,
+  issueSubcontractMaterial,
+  lockSubcontractSettlement,
+  previewSubcontractSettlement,
+  receiveSubcontractOrder,
+  releaseSubcontractSettlement,
+  type SubcontractOrderDetailData,
+  type SubcontractSettlementCandidateListItem,
+  type SubcontractSettlementPreviewData,
+  type SubcontractWriteOperation,
+} from '@/api/subcontract'
 import { usePermissionStore } from '@/stores/permission'
 
 const route = useRoute()
@@ -215,6 +388,17 @@ const loading = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
 const guardedFeedback = ref<string>('')
+const issueDialogVisible = ref<boolean>(false)
+const receiveDialogVisible = ref<boolean>(false)
+const inspectDialogVisible = ref<boolean>(false)
+const settlementDialogVisible = ref<boolean>(false)
+const issueSubmitting = ref<boolean>(false)
+const receiveSubmitting = ref<boolean>(false)
+const inspectSubmitting = ref<boolean>(false)
+const settlementSubmitting = ref<boolean>(false)
+const settlementLoading = ref<boolean>(false)
+const settlementCandidates = ref<SubcontractSettlementCandidateListItem[]>([])
+const settlementPreview = ref<SubcontractSettlementPreviewData | null>(null)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const orderId = computed<number>(() => Number(route.query.id || '0'))
@@ -247,6 +431,113 @@ const statusLabel = (value: string): string => {
   return labels[value] || value
 }
 
+const issueForm = reactive({
+  warehouse: '原材料仓',
+  material_item_code: 'RM-DEMO-001',
+  required_qty: 10,
+  issued_qty: 10,
+})
+
+const receiveForm = reactive({
+  receipt_warehouse: '成品待验仓',
+  received_qty: 10,
+  batch_no: '',
+  color: 'BLACK',
+  size: 'L',
+  uom: 'PCS',
+})
+
+const inspectForm = reactive({
+  receipt_batch_no: '',
+  inspected_qty: 10,
+  rejected_qty: 0,
+  deduction_amount_per_piece: 0,
+  remark: '',
+})
+
+const settlementForm = reactive({
+  statement_no: '',
+  inspection_ids: [] as number[],
+  reason: 'release-for-local-cleanup',
+})
+
+const buildWriteCarrier = <T extends SubcontractWriteOperation>(
+  operation: T,
+  statusAction: string,
+  quantity: number,
+  sourceSuffix: string,
+) => {
+  if (!detail.value) {
+    throw new Error('外发单详情未加载')
+  }
+  const scenarioTag = buildSubcontractScenarioTag()
+  const sourceRef = `${scenarioTag}-${sourceSuffix}`
+  const subcontractRef = detail.value.subcontract_no
+  const supplierRef = detail.value.supplier
+  const workOrderRef = (detail.value.work_order || String(detail.value.production_plan_id || '')).trim() || 'NO-WORK-ORDER'
+  const itemCode = detail.value.item_code
+  const idempotencyKey = `${scenarioTag}-${operation}-${Date.now()}`
+  const requestId = buildSubcontractRequestId({
+    scenarioTag,
+      operation,
+    idempotencyKey,
+    sourceRef,
+    subcontractRef,
+    supplierRef,
+    workOrderRef,
+    itemCode,
+    statusAction,
+  })
+  return {
+    request_id: requestId,
+    idempotency_key: idempotencyKey,
+    scenario_tag: scenarioTag,
+    source_ref: sourceRef,
+    subcontract_ref: subcontractRef,
+    supplier_ref: supplierRef,
+    work_order_ref: workOrderRef,
+      operation,
+    item_code: itemCode,
+    quantity,
+    status_action: statusAction,
+  }
+}
+
+const setDefaultReceiptBatch = (): void => {
+  if (!inspectForm.receipt_batch_no && detail.value?.receipts?.length) {
+    inspectForm.receipt_batch_no = detail.value.receipts[0].receipt_batch_no
+  }
+}
+
+const loadSettlementCandidates = async (): Promise<void> => {
+  if (!detail.value) {
+    settlementCandidates.value = []
+    settlementPreview.value = null
+    return
+  }
+  settlementLoading.value = true
+  try {
+    const result = await fetchSubcontractSettlementCandidates({
+      supplier: detail.value.supplier,
+      item_code: detail.value.item_code,
+      page: 1,
+      page_size: 100,
+    })
+    settlementCandidates.value = result.data.items.filter(
+      (item) => item.subcontract_no === detail.value?.subcontract_no,
+    )
+    if (!settlementForm.inspection_ids.length) {
+      settlementForm.inspection_ids = settlementCandidates.value.slice(0, 10).map((item) => item.inspection_id)
+    }
+  } catch (error) {
+    settlementCandidates.value = []
+    settlementPreview.value = null
+    ElMessage.warning((error as Error).message || '结算候选加载失败')
+  } finally {
+    settlementLoading.value = false
+  }
+}
+
 const loadDetail = async (): Promise<void> => {
   guardedFeedback.value = ''
   loadError.value = ''
@@ -265,8 +556,12 @@ const loadDetail = async (): Promise<void> => {
   try {
     const result = await fetchSubcontractOrderDetail(orderId.value)
     detail.value = result.data
+    setDefaultReceiptBatch()
+    await loadSettlementCandidates()
   } catch (error) {
     detail.value = null
+    settlementCandidates.value = []
+    settlementPreview.value = null
     const message = (error as Error).message || '详情加载失败'
     loadError.value = `外发单详情加载失败：${message}`
     ElMessage.error(loadError.value)
@@ -278,6 +573,216 @@ const loadDetail = async (): Promise<void> => {
 const guardedWriteAction = (actionName: string): void => {
   guardedFeedback.value = `当前为只读模式，${actionName}已禁用。`
   ElMessage.warning(guardedFeedback.value)
+}
+
+const openIssueDialog = (): void => {
+  if (!detail.value) return
+  issueForm.warehouse = detail.value.receipts?.[0]?.receipt_warehouse || '原材料仓'
+  issueForm.material_item_code = detail.value.item_code
+  issueForm.required_qty = Number(detail.value.planned_qty || 0) || 1
+  issueForm.issued_qty = Number(detail.value.planned_qty || 0) || 1
+  issueDialogVisible.value = true
+}
+
+const openReceiveDialog = (): void => {
+  if (!detail.value) return
+  receiveForm.receipt_warehouse = detail.value.receipts?.[0]?.receipt_warehouse || '成品待验仓'
+  receiveForm.received_qty = Number(detail.value.planned_qty || 0) || 1
+  receiveForm.batch_no = ''
+  receiveDialogVisible.value = true
+}
+
+const openInspectDialog = (): void => {
+  if (!detail.value) return
+  setDefaultReceiptBatch()
+  inspectForm.inspected_qty = Number(detail.value.received_qty || 0) || Number(detail.value.planned_qty || 0) || 1
+  inspectForm.rejected_qty = 0
+  inspectForm.deduction_amount_per_piece = 0
+  inspectDialogVisible.value = true
+}
+
+const openSettlementDialog = async (): Promise<void> => {
+  if (!detail.value) return
+  await loadSettlementCandidates()
+  settlementDialogVisible.value = true
+}
+
+const submitIssue = async (): Promise<void> => {
+  if (!detail.value || issueSubmitting.value) return
+  if (!issueForm.warehouse.trim() || !issueForm.material_item_code.trim()) {
+    ElMessage.warning('请填写发料仓和物料编码')
+    return
+  }
+  issueSubmitting.value = true
+  try {
+    const carrier = buildWriteCarrier('issue_material', 'issue_material', Number(issueForm.issued_qty), 'SRC-ISSUE')
+    await issueSubcontractMaterial(orderId.value, {
+      ...carrier,
+      warehouse: issueForm.warehouse.trim(),
+      materials: [
+        {
+          material_item_code: issueForm.material_item_code.trim(),
+          required_qty: issueForm.required_qty,
+          issued_qty: issueForm.issued_qty,
+        },
+      ],
+    })
+    issueDialogVisible.value = false
+    await loadDetail()
+    ElMessage.success('发料成功')
+  } catch (error) {
+    ElMessage.error((error as Error).message || '发料失败')
+  } finally {
+    issueSubmitting.value = false
+  }
+}
+
+const submitReceive = async (): Promise<void> => {
+  if (!detail.value || receiveSubmitting.value) return
+  if (!receiveForm.receipt_warehouse.trim()) {
+    ElMessage.warning('请填写回料仓')
+    return
+  }
+  receiveSubmitting.value = true
+  try {
+    const carrier = buildWriteCarrier('receive', 'receive', Number(receiveForm.received_qty), 'SRC-RECEIVE')
+    await receiveSubcontractOrder(orderId.value, {
+      ...carrier,
+      receipt_warehouse: receiveForm.receipt_warehouse.trim(),
+      received_qty: receiveForm.received_qty,
+      item_code: detail.value.item_code,
+      batch_no: receiveForm.batch_no.trim() || null,
+      color: receiveForm.color.trim() || null,
+      size: receiveForm.size.trim() || null,
+      uom: receiveForm.uom.trim() || null,
+    })
+    receiveDialogVisible.value = false
+    await loadDetail()
+    ElMessage.success('回料成功')
+  } catch (error) {
+    ElMessage.error((error as Error).message || '回料失败')
+  } finally {
+    receiveSubmitting.value = false
+  }
+}
+
+const submitInspect = async (): Promise<void> => {
+  if (!detail.value || inspectSubmitting.value) return
+  if (!inspectForm.receipt_batch_no.trim()) {
+    ElMessage.warning('请填写回料批次')
+    return
+  }
+  inspectSubmitting.value = true
+  try {
+    const carrier = buildWriteCarrier('inspect', 'inspect', Number(inspectForm.inspected_qty), 'SRC-INSPECT')
+    await inspectSubcontractOrder(orderId.value, {
+      ...carrier,
+      receipt_batch_no: inspectForm.receipt_batch_no.trim(),
+      inspected_qty: inspectForm.inspected_qty,
+      rejected_qty: inspectForm.rejected_qty,
+      deduction_amount_per_piece: inspectForm.deduction_amount_per_piece,
+      remark: inspectForm.remark.trim() || null,
+    })
+    inspectDialogVisible.value = false
+    await loadDetail()
+    ElMessage.success('验货成功')
+  } catch (error) {
+    ElMessage.error((error as Error).message || '验货失败')
+  } finally {
+    inspectSubmitting.value = false
+  }
+}
+
+const runSettlementPreview = async (): Promise<void> => {
+  if (!detail.value || settlementLoading.value) return
+  settlementLoading.value = true
+  try {
+    const inspectionIds = settlementForm.inspection_ids.length
+      ? settlementForm.inspection_ids
+      : settlementCandidates.value.map((item) => item.inspection_id)
+    const carrier = buildWriteCarrier(
+      'settlement_preview',
+      'settlement_preview',
+      Math.max(inspectionIds.length, 1),
+      'SRC-SETTLE-PREVIEW',
+    )
+    const result = await previewSubcontractSettlement({
+      ...carrier,
+      inspection_ids: inspectionIds,
+      company: detail.value.company || null,
+      supplier: detail.value.supplier,
+      filter_item_code: detail.value.item_code,
+      process_name: detail.value.process_name,
+    })
+    settlementPreview.value = result.data
+    ElMessage.success('结算预览已更新')
+  } catch (error) {
+    ElMessage.error((error as Error).message || '结算预览失败')
+  } finally {
+    settlementLoading.value = false
+  }
+}
+
+const submitSettlementLock = async (): Promise<void> => {
+  if (!detail.value || settlementSubmitting.value) return
+  if (!settlementForm.inspection_ids.length) {
+    ElMessage.warning('请至少选择一个验货ID')
+    return
+  }
+  settlementSubmitting.value = true
+  try {
+    const carrier = buildWriteCarrier(
+      'settlement_lock',
+      'settlement_lock',
+      settlementForm.inspection_ids.length,
+      'SRC-SETTLE-LOCK',
+    )
+    await lockSubcontractSettlement({
+      ...carrier,
+      statement_no: settlementForm.statement_no.trim() || `${carrier.scenario_tag}-STMT`,
+      statement_id: null,
+      inspection_ids: settlementForm.inspection_ids,
+      remark: `locked-by-${carrier.scenario_tag}`,
+    })
+    await loadDetail()
+    await runSettlementPreview()
+    ElMessage.success('结算锁定成功')
+  } catch (error) {
+    ElMessage.error((error as Error).message || '结算锁定失败')
+  } finally {
+    settlementSubmitting.value = false
+  }
+}
+
+const submitSettlementRelease = async (): Promise<void> => {
+  if (!detail.value || settlementSubmitting.value) return
+  if (!settlementForm.inspection_ids.length) {
+    ElMessage.warning('请至少选择一个验货ID')
+    return
+  }
+  settlementSubmitting.value = true
+  try {
+    const carrier = buildWriteCarrier(
+      'release',
+      'release',
+      settlementForm.inspection_ids.length,
+      'SRC-SETTLE-RELEASE',
+    )
+    await releaseSubcontractSettlement({
+      ...carrier,
+      statement_no: settlementForm.statement_no.trim() || `${carrier.scenario_tag}-STMT`,
+      statement_id: null,
+      inspection_ids: settlementForm.inspection_ids,
+      reason: settlementForm.reason.trim() || 'release-for-local-cleanup',
+    })
+    await loadDetail()
+    await runSettlementPreview()
+    ElMessage.success('结算释放成功')
+  } catch (error) {
+    ElMessage.error((error as Error).message || '结算释放失败')
+  } finally {
+    settlementSubmitting.value = false
+  }
 }
 
 const goBack = (): void => {
@@ -333,5 +838,15 @@ onMounted(async () => {
 
 .scope-tag {
   margin-left: 8px;
+}
+
+.settlement-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settlement-preview {
+  margin-top: 12px;
 }
 </style>

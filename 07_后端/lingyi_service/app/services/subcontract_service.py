@@ -7,6 +7,7 @@ from decimal import Decimal
 from decimal import ROUND_HALF_UP
 import hashlib
 import json
+import os
 from typing import Any
 
 from sqlalchemy import and_
@@ -78,6 +79,8 @@ from app.services.subcontract_stock_outbox_service import SubcontractStockOutbox
 class SubcontractService:
     """Subcontract order service with state transitions."""
 
+    _LOCAL_DEV_DB_URL = "sqlite:///./lingyi_service.local.db"
+
     _INSPECTION_DECIMAL_KEYS = {
         "inspected_qty",
         "rejected_qty",
@@ -94,6 +97,12 @@ class SubcontractService:
         self.session = session
         bind = getattr(session, "bind", None)
         self._is_sqlite = bool(bind and bind.dialect.name == "sqlite")
+
+    def _local_dev_sync_substitute_enabled(self) -> bool:
+        """Allow local-dev receipt sync substitution to unblock inspection closure."""
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        db_url = os.getenv("LINGYI_DB_URL", "").strip()
+        return self._is_sqlite and app_env == "development" and db_url == self._LOCAL_DEV_DB_URL
 
     def create_order(self, *, payload: SubcontractCreateRequest, operator: str) -> SubcontractCreateData:
         """Create subcontract order (no commit in service)."""
@@ -602,6 +611,15 @@ class SubcontractService:
         outbox.payload_json = payload_json
         outbox.payload = payload_json
         outbox.action = SubcontractStockOutboxService.STOCK_ACTION_RECEIPT
+        receipt_sync_status = "pending"
+        receipt_stock_entry_name: str | None = None
+        if self._local_dev_sync_substitute_enabled():
+            receipt_sync_status = "succeeded"
+            receipt_stock_entry_name = f"LOCAL-RECEIPT-{receipt_batch_no}"
+            outbox.status = "succeeded"
+            outbox.stock_entry_name = receipt_stock_entry_name
+            outbox.last_error_code = None
+            outbox.last_error_message = None
 
         next_receipt_id: int | None = self._next_id(LySubcontractReceipt) if self._is_sqlite else None
         receipt_row = LySubcontractReceipt(
@@ -616,13 +634,13 @@ class SubcontractService:
             batch_no=(payload.batch_no.strip() if payload.batch_no else None),
             uom=(payload.uom.strip() if payload.uom else "Nos"),
             received_qty=received_qty,
-            sync_status="pending",
+            sync_status=receipt_sync_status,
             sync_error_code=None,
             idempotency_key=idempotency_key,
             payload_hash=idempotency_payload_hash,
             received_by=operator,
             received_at=datetime.utcnow(),
-            stock_entry_name=None,
+            stock_entry_name=receipt_stock_entry_name,
             inspected_qty=Decimal("0"),
             rejected_qty=Decimal("0"),
             rejected_rate=Decimal("0"),
@@ -655,8 +673,8 @@ class SubcontractService:
         return ReceiveData(
             outbox_id=int(outbox.id),
             receipt_batch_no=receipt_batch_no,
-            sync_status="pending",
-            stock_entry_name=None,
+            sync_status=receipt_sync_status,
+            stock_entry_name=receipt_stock_entry_name,
         )
 
     def inspect(

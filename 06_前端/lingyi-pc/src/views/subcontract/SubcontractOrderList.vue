@@ -5,11 +5,18 @@
         <div class="header-row">
           <span>外发单列表</span>
           <div class="header-actions" data-testid="subcontract-guarded-actions">
-            <el-button size="small" @click="guardedAction('新建外发单')">新建外发单</el-button>
-            <el-button size="small" @click="guardedAction('发料')">发料</el-button>
-            <el-button size="small" @click="guardedAction('回料')">回料</el-button>
-            <el-button size="small" @click="guardedAction('验货')">验货</el-button>
-            <el-button size="small" @click="guardedAction('同步重试')">同步重试</el-button>
+            <el-button
+              size="small"
+              type="primary"
+              :disabled="!canRead"
+              data-testid="subcontract-create-open-button"
+              @click="openCreateDialog"
+            >
+              新建外发单
+            </el-button>
+            <el-button size="small" :disabled="!canRead" data-testid="subcontract-refresh-button" @click="loadOrders">
+              刷新
+            </el-button>
           </div>
         </div>
       </template>
@@ -116,6 +123,55 @@
         </div>
       </template>
     </el-card>
+
+    <el-dialog
+      v-model="createDialogVisible"
+      title="新建外发单"
+      width="640px"
+      destroy-on-close
+      append-to-body
+      data-testid="subcontract-create-dialog"
+    >
+      <el-form :model="createForm" label-width="120px">
+        <el-form-item label="加工厂">
+          <el-input v-model="createForm.supplier" data-testid="subcontract-create-supplier-input" />
+        </el-form-item>
+        <el-form-item label="款号">
+          <el-input v-model="createForm.item_code" data-testid="subcontract-create-item-code-input" />
+        </el-form-item>
+        <el-form-item label="BOM ID">
+          <el-input-number v-model="createForm.bom_id" :min="1" data-testid="subcontract-create-bom-id-input" />
+        </el-form-item>
+        <el-form-item label="工序">
+          <el-input v-model="createForm.process_name" data-testid="subcontract-create-process-input" />
+        </el-form-item>
+        <el-form-item label="计划数量">
+          <el-input-number
+            v-model="createForm.planned_qty"
+            :min="1"
+            :step="1"
+            data-testid="subcontract-create-planned-qty-input"
+          />
+        </el-form-item>
+        <el-form-item label="销售单">
+          <el-input v-model="createForm.sales_order" data-testid="subcontract-create-sales-order-input" />
+        </el-form-item>
+        <el-form-item label="工单">
+          <el-input v-model="createForm.work_order" data-testid="subcontract-create-work-order-input" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button data-testid="subcontract-create-cancel-button" @click="createDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="createSubmitting"
+          data-testid="subcontract-create-submit-button"
+          @click="submitCreate"
+        >
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -124,6 +180,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  buildSubcontractRequestId,
+  buildSubcontractScenarioTag,
+  createSubcontractOrder,
   fetchSubcontractOrders,
   type SubcontractOrderListItem,
 } from '@/api/subcontract'
@@ -135,6 +194,8 @@ const loading = ref<boolean>(false)
 const rows = ref<SubcontractOrderListItem[]>([])
 const total = ref<number>(0)
 const errorMessage = ref<string>('')
+const createDialogVisible = ref<boolean>(false)
+const createSubmitting = ref<boolean>(false)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 
@@ -188,6 +249,110 @@ const syncStatusLabel = (row: SubcontractOrderListItem): string => {
 
 const guardedAction = (actionLabel: string): void => {
   ElMessage.warning(`${actionLabel} 仅可在授权流程中执行，当前为只读模式`)
+}
+
+const createForm = reactive({
+  supplier: '示例加工厂',
+  item_code: 'DEMO-TEE',
+  bom_id: 1,
+  process_name: '缝制',
+  planned_qty: 10,
+  sales_order: '',
+  sales_order_item: '',
+  production_plan_id: undefined as number | undefined,
+  work_order: '',
+  job_card: '',
+})
+
+const resetCreateForm = (): void => {
+  createForm.supplier = '示例加工厂'
+  createForm.item_code = 'DEMO-TEE'
+  createForm.bom_id = 1
+  createForm.process_name = '缝制'
+  createForm.planned_qty = 10
+  createForm.sales_order = ''
+  createForm.sales_order_item = ''
+  createForm.production_plan_id = undefined
+  createForm.work_order = ''
+  createForm.job_card = ''
+}
+
+const openCreateDialog = (): void => {
+  if (!canRead.value) {
+    guardedAction('新建外发单')
+    return
+  }
+  resetCreateForm()
+  createDialogVisible.value = true
+}
+
+const submitCreate = async (): Promise<void> => {
+  if (createSubmitting.value) return
+  const supplier = createForm.supplier.trim()
+  const itemCode = createForm.item_code.trim()
+  const processName = createForm.process_name.trim()
+  const workOrderRef = (createForm.work_order || String(createForm.production_plan_id || '')).trim() || 'NO-WORK-ORDER'
+  if (!supplier || !itemCode || !processName || !createForm.bom_id || !createForm.planned_qty) {
+    ElMessage.warning('请先填写完整的外发单信息')
+    return
+  }
+
+  createSubmitting.value = true
+  try {
+    const scenarioTag = buildSubcontractScenarioTag()
+    const idempotencyKey = `${scenarioTag}-CREATE-${Date.now()}`
+    const sourceRef = `${scenarioTag}-SRC-CREATE`
+    const subcontractRef = `${scenarioTag}-SC-NEW`
+    const statusAction = 'create'
+    const requestId = buildSubcontractRequestId({
+      scenarioTag,
+      operation: 'create',
+      idempotencyKey,
+      sourceRef,
+      subcontractRef,
+      supplierRef: supplier,
+      workOrderRef,
+      itemCode,
+      statusAction,
+    })
+
+    const created = await createSubcontractOrder({
+      request_id: requestId,
+      idempotency_key: idempotencyKey,
+      scenario_tag: scenarioTag,
+      source_ref: sourceRef,
+      subcontract_ref: subcontractRef,
+      supplier_ref: supplier,
+      work_order_ref: workOrderRef,
+      operation: 'create',
+      quantity: createForm.planned_qty,
+      status_action: statusAction,
+      supplier,
+      item_code: itemCode,
+      bom_id: createForm.bom_id,
+      planned_qty: createForm.planned_qty,
+      process_name: processName,
+      sales_order: createForm.sales_order.trim() || null,
+      sales_order_item: createForm.sales_order_item.trim() || null,
+      production_plan_id: createForm.production_plan_id ?? null,
+      work_order: createForm.work_order.trim() || null,
+      job_card: createForm.job_card.trim() || null,
+      company: '示例公司',
+    })
+
+    query.page = 1
+    await loadOrders()
+    const createdRow = rows.value.find((row) => row.subcontract_no === created.data.name)
+    if (createdRow) {
+      goDetail(createdRow.id)
+    }
+    createDialogVisible.value = false
+    ElMessage.success(`外发单已创建：${created.data.name}`)
+  } catch (error) {
+    ElMessage.error((error as Error).message || '新建外发单失败')
+  } finally {
+    createSubmitting.value = false
+  }
 }
 
 const loadOrders = async (): Promise<void> => {
