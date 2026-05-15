@@ -9,12 +9,12 @@
       </template>
 
       <el-alert
-        v-if="guardedFeedback"
-        :title="guardedFeedback"
+        v-if="actionFeedback"
+        :title="actionFeedback"
         type="warning"
         :closable="false"
         show-icon
-        data-testid="quality-inspection-detail-guarded-feedback"
+        data-testid="quality-inspection-detail-action-feedback"
       />
 
       <el-empty
@@ -71,15 +71,24 @@
             <el-descriptions-item label="备注">{{ detail.remark || '-' }}</el-descriptions-item>
           </el-descriptions>
 
-          <div class="action-row" data-testid="quality-inspection-detail-guarded-actions">
+          <el-alert
+            v-if="outboxStatus"
+            class="outbox-alert"
+            type="info"
+            :closable="false"
+            :title="`Outbox 状态：${outboxStatus.status}（尝试 ${outboxStatus.attempts}/${outboxStatus.max_attempts}）`"
+            data-testid="quality-inspection-detail-outbox-status"
+          />
+
+          <div class="action-row" data-testid="quality-inspection-detail-actions">
             <el-button
               v-if="canUpdate"
               type="primary"
               :disabled="!canUpdate"
+              :loading="actionSubmitting && activeAction === 'update'"
               data-testid="quality-inspection-detail-action-edit"
               data-action-type="write"
-              data-write-guard="guarded:readonly"
-              @click="submitUpdate"
+              @click="openUpdateDialog"
             >
               编辑草稿
             </el-button>
@@ -87,10 +96,10 @@
               v-if="canUpdate"
               type="warning"
               :disabled="!canUpdate"
+              :loading="actionSubmitting && activeAction === 'defects'"
               data-testid="quality-inspection-detail-action-defect"
               data-action-type="write"
-              data-write-guard="guarded:readonly"
-              @click="submitDefect"
+              @click="openDefectDialog"
             >
               录入缺陷
             </el-button>
@@ -98,10 +107,10 @@
               v-if="canConfirm"
               type="success"
               :disabled="!canConfirm"
+              :loading="actionSubmitting && activeAction === 'confirm'"
               data-testid="quality-inspection-detail-action-confirm"
               data-action-type="write"
-              data-write-guard="guarded:readonly"
-              @click="submitConfirm"
+              @click="openConfirmDialog"
             >
               确认检验单
             </el-button>
@@ -109,10 +118,10 @@
               v-if="canCancel"
               type="danger"
               :disabled="!canCancel"
+              :loading="actionSubmitting && activeAction === 'cancel'"
               data-testid="quality-inspection-detail-action-cancel"
               data-action-type="write"
-              data-write-guard="guarded:readonly"
-              @click="submitCancel"
+              @click="openCancelDialog"
             >
               取消检验单
             </el-button>
@@ -193,14 +202,153 @@
         <el-table-column prop="operated_at" label="时间" min-width="180" />
       </el-table>
     </el-card>
+
+    <el-dialog v-model="updateDialogVisible" title="编辑草稿" width="560px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="scenario_tag">
+          <el-input v-model="updateForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="idempotency_key">
+          <el-input v-model="updateForm.idempotency_key" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input v-model="updateForm.request_id" readonly />
+        </el-form-item>
+        <el-form-item label="检验日期">
+          <el-date-picker v-model="updateForm.inspection_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="检验数量">
+          <el-input v-model="updateForm.inspected_qty" />
+        </el-form-item>
+        <el-form-item label="合格数量">
+          <el-input v-model="updateForm.accepted_qty" />
+        </el-form-item>
+        <el-form-item label="不合格数量">
+          <el-input v-model="updateForm.rejected_qty" />
+        </el-form-item>
+        <el-form-item label="缺陷数量">
+          <el-input v-model="updateForm.defect_qty" />
+        </el-form-item>
+        <el-form-item label="结果">
+          <el-select v-model="updateForm.result" style="width: 100%">
+            <el-option label="待定" value="pending" />
+            <el-option label="合格" value="pass" />
+            <el-option label="不合格" value="fail" />
+            <el-option label="部分合格" value="partial" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="updateForm.remark" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="updateDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="actionSubmitting && activeAction === 'update'" @click="submitUpdate">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="defectDialogVisible" title="录入缺陷" width="560px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="scenario_tag">
+          <el-input v-model="defectForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="idempotency_key">
+          <el-input v-model="defectForm.idempotency_key" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input v-model="defectForm.request_id" readonly />
+        </el-form-item>
+        <el-form-item label="缺陷编码">
+          <el-input v-model="defectForm.defect_code" />
+        </el-form-item>
+        <el-form-item label="缺陷名称">
+          <el-input v-model="defectForm.defect_name" />
+        </el-form-item>
+        <el-form-item label="缺陷数量">
+          <el-input v-model="defectForm.defect_qty" />
+        </el-form-item>
+        <el-form-item label="严重度">
+          <el-select v-model="defectForm.severity" style="width: 100%">
+            <el-option label="轻微" value="minor" />
+            <el-option label="主要" value="major" />
+            <el-option label="严重" value="critical" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="defectForm.remark" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="defectDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="actionSubmitting && activeAction === 'defects'" @click="submitDefect">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="confirmDialogVisible" title="确认检验单" width="520px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="scenario_tag">
+          <el-input v-model="confirmForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="idempotency_key">
+          <el-input v-model="confirmForm.idempotency_key" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input v-model="confirmForm.request_id" readonly />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="confirmForm.remark" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="confirmDialogVisible = false">取消</el-button>
+        <el-button type="success" :loading="actionSubmitting && activeAction === 'confirm'" @click="submitConfirm">确认</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="cancelDialogVisible" title="取消检验单" width="520px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="scenario_tag">
+          <el-input v-model="cancelForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="idempotency_key">
+          <el-input v-model="cancelForm.idempotency_key" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input v-model="cancelForm.request_id" readonly />
+        </el-form-item>
+        <el-form-item label="取消原因">
+          <el-input v-model="cancelForm.reason" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="cancelDialogVisible = false">返回</el-button>
+        <el-button type="danger" :loading="actionSubmitting && activeAction === 'cancel'" @click="submitCancel">确认取消</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { fetchQualityInspectionDetail, type QualityInspectionDetailData } from '@/api/quality'
+import {
+  addDefectRecord,
+  buildQualityInspectionRequestId,
+  cancelQualityInspection,
+  confirmQualityInspection,
+  ensureQualityInspectionScenarioTag,
+  extractQualityInspectionScenarioTag,
+  fetchQualityInspectionDetail,
+  fetchQualityInspectionOutboxStatus,
+  updateDraftInspection,
+  type QualityInspectionCancelPayload,
+  type QualityInspectionConfirmPayload,
+  type QualityInspectionDefectCreatePayload,
+  type QualityInspectionDetailData,
+  type QualityInspectionUpdatePayload,
+  type QualityOutboxStatusData,
+} from '@/api/quality'
 import { usePermissionStore } from '@/stores/permission'
 
 const route = useRoute()
@@ -209,8 +357,96 @@ const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
 const detail = ref<QualityInspectionDetailData | null>(null)
+const outboxStatus = ref<QualityOutboxStatusData | null>(null)
 const loadError = ref<string>('')
-const guardedFeedback = ref<string>('')
+const actionFeedback = ref<string>('')
+const actionSubmitting = ref<boolean>(false)
+const activeAction = ref<'update' | 'defects' | 'confirm' | 'cancel' | null>(null)
+const updateDialogVisible = ref<boolean>(false)
+const defectDialogVisible = ref<boolean>(false)
+const confirmDialogVisible = ref<boolean>(false)
+const cancelDialogVisible = ref<boolean>(false)
+
+interface QualityCarrierForm {
+  scenario_tag: string
+  idempotency_key: string
+  request_id: string
+  source_ref: string
+  inspection_ref: string
+  source_type: string
+  item_code: string
+  result: string
+}
+
+const updateForm = reactive<QualityCarrierForm & {
+  inspection_date: string
+  inspected_qty: string
+  accepted_qty: string
+  rejected_qty: string
+  defect_qty: string
+  remark: string
+}>({
+  scenario_tag: '',
+  idempotency_key: '',
+  request_id: '',
+  source_ref: '',
+  inspection_ref: '',
+  source_type: '',
+  item_code: '',
+  result: '',
+  inspection_date: '',
+  inspected_qty: '',
+  accepted_qty: '',
+  rejected_qty: '',
+  defect_qty: '',
+  remark: '',
+})
+
+const defectForm = reactive<QualityCarrierForm & {
+  defect_code: string
+  defect_name: string
+  defect_qty: string
+  severity: 'minor' | 'major' | 'critical'
+  remark: string
+}>({
+  scenario_tag: '',
+  idempotency_key: '',
+  request_id: '',
+  source_ref: '',
+  inspection_ref: '',
+  source_type: '',
+  item_code: '',
+  result: '',
+  defect_code: 'DEFECT-Z003',
+  defect_name: '样例缺陷',
+  defect_qty: '1',
+  severity: 'minor',
+  remark: '',
+})
+
+const confirmForm = reactive<QualityCarrierForm & { remark: string }>({
+  scenario_tag: '',
+  idempotency_key: '',
+  request_id: '',
+  source_ref: '',
+  inspection_ref: '',
+  source_type: '',
+  item_code: '',
+  result: '',
+  remark: '',
+})
+
+const cancelForm = reactive<QualityCarrierForm & { reason: string }>({
+  scenario_tag: '',
+  idempotency_key: '',
+  request_id: '',
+  source_ref: '',
+  inspection_ref: '',
+  source_type: '',
+  item_code: '',
+  result: '',
+  reason: '',
+})
 
 const inspectionId = computed<number>(() => Number(route.query.id || '0'))
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_read)
@@ -227,7 +463,7 @@ const permissionStateText = computed<string>(() => {
   if (!canUpdate.value && !canConfirm.value && !canCancel.value) {
     return '写操作入口已禁用（权限或状态不满足）。'
   }
-  return '写操作入口处于受控只读模式。'
+  return '写操作入口可用，所有写请求将按 Z003 受控门禁发送。'
 })
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -279,19 +515,97 @@ const statusTag = (value: string): 'success' | 'danger' | 'warning' | 'info' => 
   return 'info'
 }
 
+const cleanText = (value: string | null | undefined): string | null => {
+  const normalized = (value || '').trim()
+  return normalized ? normalized : null
+}
+
+const toFiniteNumber = (value: string, fieldLabel: string): number => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) {
+    throw new Error(`${fieldLabel}格式非法`)
+  }
+  return numeric
+}
+
+const buildActionIdempotencyKey = (scenarioTag: string, operation: string): string => {
+  const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase()
+  return `${scenarioTag}-${operation.toUpperCase()}-${randomPart}`
+}
+
+const buildCarrierForm = (
+  operation: 'update' | 'defects' | 'confirm' | 'cancel',
+  result: string,
+): QualityCarrierForm => {
+  if (!detail.value) {
+    throw new Error('检验单详情不存在')
+  }
+  const sourceRef = (detail.value.source_id || '').trim()
+  if (!sourceRef) {
+    throw new Error('source_ref 缺失，无法构造受控写请求')
+  }
+  const extractedScenarioTag = extractQualityInspectionScenarioTag(sourceRef)
+  if (!extractedScenarioTag) {
+    throw new Error('source_ref 未包含 Z003 scenario_tag，无法构造受控写请求')
+  }
+  const scenarioTag = ensureQualityInspectionScenarioTag(extractedScenarioTag)
+  const idempotencyKey = buildActionIdempotencyKey(scenarioTag, operation)
+  const inspectionRef = String(detail.value.id || detail.value.inspection_no)
+  const sourceType = String(detail.value.source_type || '').trim()
+  const itemCode = String(detail.value.item_code || '').trim()
+  if (!sourceType || !itemCode) {
+    throw new Error('source_type 或 item_code 缺失，无法构造受控写请求')
+  }
+  const requestId = buildQualityInspectionRequestId({
+    scenarioTag,
+    operation,
+    idempotencyKey,
+    sourceRef,
+    inspectionRef,
+    itemCode,
+    result,
+  })
+  return {
+    scenario_tag: scenarioTag,
+    idempotency_key: idempotencyKey,
+    request_id: requestId,
+    source_ref: sourceRef,
+    inspection_ref: inspectionRef,
+    source_type: sourceType,
+    item_code: itemCode,
+    result,
+  }
+}
+
+const loadOutboxStatus = async (): Promise<void> => {
+  if (!detail.value || detail.value.status !== 'confirmed') {
+    outboxStatus.value = null
+    return
+  }
+  try {
+    const result = await fetchQualityInspectionOutboxStatus(detail.value.id)
+    outboxStatus.value = result.data
+  } catch {
+    outboxStatus.value = null
+  }
+}
+
 const loadDetail = async (): Promise<void> => {
-  guardedFeedback.value = ''
+  actionFeedback.value = ''
   loadError.value = ''
   if (!canRead.value || !inspectionId.value) {
     detail.value = null
+    outboxStatus.value = null
     return
   }
   loading.value = true
   try {
     const result = await fetchQualityInspectionDetail(inspectionId.value)
     detail.value = result.data
+    await loadOutboxStatus()
   } catch (error) {
     detail.value = null
+    outboxStatus.value = null
     const message = (error as Error).message || '详情加载失败'
     loadError.value = `检验详情加载失败：${message}`
     ElMessage.error(loadError.value)
@@ -300,22 +614,254 @@ const loadDetail = async (): Promise<void> => {
   }
 }
 
-const guardedWriteAction = (actionName: string): void => {
-  if (!detail.value) return
-  guardedFeedback.value = `当前为只读模式，${actionName}已禁用。`
-  ElMessage.warning(guardedFeedback.value)
+const openUpdateDialog = (): void => {
+  if (!canUpdate.value || !detail.value) {
+    return
+  }
+  try {
+    const carrier = buildCarrierForm('update', String(detail.value.result || 'pending'))
+    Object.assign(updateForm, carrier, {
+      inspection_date: String(detail.value.inspection_date || ''),
+      inspected_qty: String(detail.value.inspected_qty ?? ''),
+      accepted_qty: String(detail.value.accepted_qty ?? ''),
+      rejected_qty: String(detail.value.rejected_qty ?? ''),
+      defect_qty: String(detail.value.defect_qty ?? ''),
+      remark: detail.value.remark || '',
+    })
+    updateDialogVisible.value = true
+  } catch (error) {
+    actionFeedback.value = (error as Error).message
+    ElMessage.error(actionFeedback.value)
+  }
 }
 
-const submitUpdate = (): void => guardedWriteAction('编辑草稿')
-const submitDefect = (): void => guardedWriteAction('录入缺陷')
-const submitConfirm = (): void => guardedWriteAction('确认检验单')
-const submitCancel = (): void => guardedWriteAction('取消检验单')
+const openDefectDialog = (): void => {
+  if (!canUpdate.value || !detail.value) {
+    return
+  }
+  try {
+    const carrier = buildCarrierForm('defects', String(detail.value.result || 'pending'))
+    Object.assign(defectForm, carrier, {
+      defect_code: 'DEFECT-Z003',
+      defect_name: '样例缺陷',
+      defect_qty: '1',
+      severity: 'minor',
+      remark: '',
+    })
+    defectDialogVisible.value = true
+  } catch (error) {
+    actionFeedback.value = (error as Error).message
+    ElMessage.error(actionFeedback.value)
+  }
+}
+
+const openConfirmDialog = (): void => {
+  if (!canConfirm.value || !detail.value) {
+    return
+  }
+  try {
+    const carrier = buildCarrierForm('confirm', String(detail.value.result || 'pending'))
+    Object.assign(confirmForm, carrier, { remark: '' })
+    confirmDialogVisible.value = true
+  } catch (error) {
+    actionFeedback.value = (error as Error).message
+    ElMessage.error(actionFeedback.value)
+  }
+}
+
+const openCancelDialog = (): void => {
+  if (!canCancel.value || !detail.value) {
+    return
+  }
+  try {
+    const carrier = buildCarrierForm('cancel', String(detail.value.result || 'pending'))
+    Object.assign(cancelForm, carrier, { reason: '' })
+    cancelDialogVisible.value = true
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
+}
+
+const submitUpdate = async (): Promise<void> => {
+  if (!detail.value || !inspectionId.value) {
+    return
+  }
+  const inspectedQty = toFiniteNumber(updateForm.inspected_qty, '检验数量')
+  const acceptedQty = toFiniteNumber(updateForm.accepted_qty, '合格数量')
+  const rejectedQty = toFiniteNumber(updateForm.rejected_qty, '不合格数量')
+  const defectQty = toFiniteNumber(updateForm.defect_qty, '缺陷数量')
+  if (inspectedQty <= 0) {
+    ElMessage.error('检验数量必须大于 0')
+    return
+  }
+  if (Math.abs(acceptedQty + rejectedQty - inspectedQty) > 0.000001) {
+    ElMessage.error('合格数量 + 不合格数量必须等于检验数量')
+    return
+  }
+  if (defectQty > inspectedQty) {
+    ElMessage.error('缺陷数量不能超过检验数量')
+    return
+  }
+  actionSubmitting.value = true
+  activeAction.value = 'update'
+  try {
+    const payload: QualityInspectionUpdatePayload = {
+      request_id: updateForm.request_id,
+      idempotency_key: updateForm.idempotency_key,
+      scenario_tag: updateForm.scenario_tag,
+      source_ref: updateForm.source_ref,
+      inspection_ref: updateForm.inspection_ref,
+      source_type: updateForm.source_type,
+      source_doc: updateForm.source_ref,
+      item_code: updateForm.item_code,
+      operation: 'update',
+      result: updateForm.result,
+      supplier: cleanText(detail.value.supplier),
+      warehouse: cleanText(detail.value.warehouse),
+      work_order: cleanText(detail.value.work_order),
+      sales_order: cleanText(detail.value.sales_order),
+      inspection_date: updateForm.inspection_date,
+      inspected_qty: inspectedQty,
+      accepted_qty: acceptedQty,
+      rejected_qty: rejectedQty,
+      defect_qty: defectQty,
+      remark: cleanText(updateForm.remark),
+    }
+    await updateDraftInspection(inspectionId.value, payload)
+    updateDialogVisible.value = false
+    ElMessage.success('草稿更新成功')
+    await loadDetail()
+  } catch (error) {
+    actionFeedback.value = (error as Error).message
+    ElMessage.error(actionFeedback.value)
+  } finally {
+    actionSubmitting.value = false
+    activeAction.value = null
+  }
+}
+
+const submitDefect = async (): Promise<void> => {
+  if (!detail.value || !inspectionId.value) {
+    return
+  }
+  const defectQty = toFiniteNumber(defectForm.defect_qty, '缺陷数量')
+  if (defectQty <= 0) {
+    ElMessage.error('缺陷数量必须大于 0')
+    return
+  }
+  if (!defectForm.defect_code.trim() || !defectForm.defect_name.trim()) {
+    ElMessage.error('缺陷编码与缺陷名称不能为空')
+    return
+  }
+  actionSubmitting.value = true
+  activeAction.value = 'defects'
+  try {
+    const payload: QualityInspectionDefectCreatePayload = {
+      request_id: defectForm.request_id,
+      idempotency_key: defectForm.idempotency_key,
+      scenario_tag: defectForm.scenario_tag,
+      source_ref: defectForm.source_ref,
+      inspection_ref: defectForm.inspection_ref,
+      source_type: defectForm.source_type,
+      source_doc: defectForm.source_ref,
+      item_code: defectForm.item_code,
+      operation: 'defects',
+      result: defectForm.result,
+      defects: [
+        {
+          defect_code: defectForm.defect_code.trim(),
+          defect_name: defectForm.defect_name.trim(),
+          defect_qty: defectQty,
+          severity: defectForm.severity,
+          remark: cleanText(defectForm.remark),
+        },
+      ],
+    }
+    await addDefectRecord(inspectionId.value, payload)
+    defectDialogVisible.value = false
+    ElMessage.success('缺陷录入成功')
+    await loadDetail()
+  } catch (error) {
+    actionFeedback.value = (error as Error).message
+    ElMessage.error(actionFeedback.value)
+  } finally {
+    actionSubmitting.value = false
+    activeAction.value = null
+  }
+}
+
+const submitConfirm = async (): Promise<void> => {
+  if (!detail.value || !inspectionId.value) {
+    return
+  }
+  actionSubmitting.value = true
+  activeAction.value = 'confirm'
+  try {
+    const payload: QualityInspectionConfirmPayload = {
+      request_id: confirmForm.request_id,
+      idempotency_key: confirmForm.idempotency_key,
+      scenario_tag: confirmForm.scenario_tag,
+      source_ref: confirmForm.source_ref,
+      inspection_ref: confirmForm.inspection_ref,
+      source_type: confirmForm.source_type,
+      source_doc: confirmForm.source_ref,
+      item_code: confirmForm.item_code,
+      operation: 'confirm',
+      result: confirmForm.result,
+      remark: cleanText(confirmForm.remark),
+    }
+    await confirmQualityInspection(inspectionId.value, payload)
+    confirmDialogVisible.value = false
+    ElMessage.success('检验单已确认')
+    await loadDetail()
+  } catch (error) {
+    actionFeedback.value = (error as Error).message
+    ElMessage.error(actionFeedback.value)
+  } finally {
+    actionSubmitting.value = false
+    activeAction.value = null
+  }
+}
+
+const submitCancel = async (): Promise<void> => {
+  if (!detail.value || !inspectionId.value) {
+    return
+  }
+  actionSubmitting.value = true
+  activeAction.value = 'cancel'
+  try {
+    const payload: QualityInspectionCancelPayload = {
+      request_id: cancelForm.request_id,
+      idempotency_key: cancelForm.idempotency_key,
+      scenario_tag: cancelForm.scenario_tag,
+      source_ref: cancelForm.source_ref,
+      inspection_ref: cancelForm.inspection_ref,
+      source_type: cancelForm.source_type,
+      source_doc: cancelForm.source_ref,
+      item_code: cancelForm.item_code,
+      operation: 'cancel',
+      result: cancelForm.result,
+      reason: cleanText(cancelForm.reason),
+    }
+    await cancelQualityInspection(inspectionId.value, payload)
+    cancelDialogVisible.value = false
+    ElMessage.success('检验单已取消')
+    await loadDetail()
+  } catch (error) {
+    actionFeedback.value = (error as Error).message
+    ElMessage.error(actionFeedback.value)
+  } finally {
+    actionSubmitting.value = false
+    activeAction.value = null
+  }
+}
 
 const backToList = (): void => {
   router.push({ path: '/quality/inspections' })
 }
 
 onMounted(async () => {
+  actionFeedback.value = ''
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('quality')
@@ -346,6 +892,10 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.outbox-alert {
+  margin-top: 12px;
 }
 
 .permission-tip {

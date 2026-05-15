@@ -1,6 +1,7 @@
 import { request, requestFile } from '@/api/request'
 
 export type NumericLike = string | number
+export type QualityWriteOperation = 'create' | 'update' | 'confirm' | 'cancel' | 'defects'
 
 export interface QualityInspectionItemInput {
   item_code: string
@@ -22,6 +23,13 @@ export interface QualityDefectInput {
 }
 
 export interface QualityInspectionCreatePayload {
+  request_id: string
+  idempotency_key: string
+  scenario_tag: string
+  source_ref: string
+  inspection_ref: string
+  source_doc?: string | null
+  operation: 'create'
   company: string
   source_type: string
   source_id?: string | null
@@ -42,6 +50,16 @@ export interface QualityInspectionCreatePayload {
 }
 
 export interface QualityInspectionUpdatePayload {
+  request_id: string
+  idempotency_key: string
+  scenario_tag: string
+  source_ref: string
+  inspection_ref: string
+  source_type: string
+  source_doc?: string | null
+  item_code: string
+  operation: 'update'
+  result: string
   supplier?: string | null
   warehouse?: string | null
   work_order?: string | null
@@ -51,17 +69,50 @@ export interface QualityInspectionUpdatePayload {
   accepted_qty?: NumericLike | null
   rejected_qty?: NumericLike | null
   defect_qty?: NumericLike | null
-  result?: string | null
   remark?: string | null
   items?: QualityInspectionItemInput[] | null
   defects?: QualityDefectInput[] | null
 }
 
 export interface QualityInspectionDefectCreatePayload {
+  request_id: string
+  idempotency_key: string
+  scenario_tag: string
+  source_ref: string
+  inspection_ref: string
+  source_type: string
+  source_doc?: string | null
+  item_code: string
+  operation: 'defects'
+  result: string
   defects: QualityDefectInput[]
 }
 
+export interface QualityInspectionConfirmPayload {
+  request_id: string
+  idempotency_key: string
+  scenario_tag: string
+  source_ref: string
+  inspection_ref: string
+  source_type: string
+  source_doc?: string | null
+  item_code: string
+  operation: 'confirm'
+  result: string
+  remark?: string | null
+}
+
 export interface QualityInspectionCancelPayload {
+  request_id: string
+  idempotency_key: string
+  scenario_tag: string
+  source_ref: string
+  inspection_ref: string
+  source_type: string
+  source_doc?: string | null
+  item_code: string
+  operation: 'cancel'
+  result: string
   reason?: string | null
 }
 
@@ -173,6 +224,17 @@ export interface QualityInspectionActionData {
   operated_at: string
 }
 
+export interface QualityOutboxStatusData {
+  inspection_id: number
+  status: string
+  attempts: number
+  max_attempts: number
+  next_retry_at?: string | null
+  last_error_code?: string | null
+  last_error_message?: string | null
+  stock_entry_name?: string | null
+}
+
 export interface QualityStatisticsData {
   total_count: number
   total_inspected_qty: NumericLike
@@ -252,6 +314,9 @@ export interface QualityExportData {
 }
 
 export type QualityExportFormat = 'csv' | 'xlsx' | 'pdf'
+const QUALITY_SCENARIO_PATTERN = /^Z003-QUALITY-INSPECTION-\d{8}-\d{3}$/
+const QUALITY_SCENARIO_EXTRACT_PATTERN = /Z003-QUALITY-INSPECTION-\d{8}-\d{3}/
+const QUALITY_REQUEST_ID_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/
 
 const buildQuery = (params: object): string => {
   const query = new URLSearchParams()
@@ -263,23 +328,89 @@ const buildQuery = (params: object): string => {
   return queryString ? `?${queryString}` : ''
 }
 
+const fnvCarrierCode = (value: string): string => {
+  const normalized = value.trim()
+  let hashValue = 2166136261
+  for (let index = 0; index < normalized.length; index += 1) {
+    hashValue ^= normalized.charCodeAt(index)
+    hashValue = Math.imul(hashValue, 16777619) >>> 0
+  }
+  return hashValue.toString(16).toUpperCase().padStart(8, '0').slice(-3)
+}
+
+const qualityOperationCode = (operation: QualityWriteOperation): 'C' | 'U' | 'F' | 'X' | 'D' => {
+  if (operation === 'create') return 'C'
+  if (operation === 'update') return 'U'
+  if (operation === 'confirm') return 'F'
+  if (operation === 'cancel') return 'X'
+  return 'D'
+}
+
+export const buildQualityInspectionScenarioTag = (): string => {
+  const now = new Date()
+  const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  const seq = String(Math.floor(Math.random() * 1000)).padStart(3, '0')
+  return `Z003-QUALITY-INSPECTION-${day}-${seq}`
+}
+
+export const extractQualityInspectionScenarioTag = (value: string): string | null => {
+  const matched = value.trim().match(QUALITY_SCENARIO_EXTRACT_PATTERN)
+  return matched ? matched[0] : null
+}
+
+export const ensureQualityInspectionScenarioTag = (value: string): string => {
+  const normalized = value.trim()
+  if (QUALITY_SCENARIO_PATTERN.test(normalized)) {
+    return normalized
+  }
+  return buildQualityInspectionScenarioTag()
+}
+
+export const buildQualityInspectionRequestId = ({
+  scenarioTag,
+  operation,
+  idempotencyKey,
+  sourceRef,
+  inspectionRef,
+  itemCode,
+  result,
+}: {
+  scenarioTag: string
+  operation: QualityWriteOperation
+  idempotencyKey: string
+  sourceRef: string
+  inspectionRef: string
+  itemCode: string
+  result: string
+}): string => {
+  const normalizedScenarioTag = ensureQualityInspectionScenarioTag(scenarioTag)
+  const requestId = `${normalizedScenarioTag}-QI-${qualityOperationCode(operation)}-${fnvCarrierCode(idempotencyKey)}-${fnvCarrierCode(sourceRef)}-${fnvCarrierCode(inspectionRef)}-${fnvCarrierCode(itemCode)}-${fnvCarrierCode(result)}`
+  if (!QUALITY_REQUEST_ID_PATTERN.test(requestId)) {
+    throw new Error('request_id 编码非法')
+  }
+  return requestId
+}
+
 export const fetchQualityInspections = (query: QualityInspectionListQuery = {}) =>
   request<QualityInspectionListData>(`/api/quality/inspections${buildQuery(query)}`)
 
 export const fetchQualityInspectionDetail = (inspectionId: number) =>
   request<QualityInspectionDetailData>(`/api/quality/inspections/${inspectionId}`)
 
+export const fetchQualityInspectionOutboxStatus = (inspectionId: number) =>
+  request<QualityOutboxStatusData>(`/api/quality/inspections/${inspectionId}/outbox-status`)
+
 export const createQualityInspection = (payload: QualityInspectionCreatePayload) =>
   request<QualityInspectionDetailData>('/api/quality/inspections', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Request-ID': payload.request_id },
     body: JSON.stringify(payload),
   })
 
 export const updateQualityInspection = (inspectionId: number, payload: QualityInspectionUpdatePayload) =>
   request<QualityInspectionDetailData>(`/api/quality/inspections/${inspectionId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Request-ID': payload.request_id },
     body: JSON.stringify(payload),
   })
 
@@ -289,21 +420,21 @@ export const updateDraftInspection = (inspectionId: number, payload: QualityInsp
 export const addDefectRecord = (inspectionId: number, payload: QualityInspectionDefectCreatePayload) =>
   request<QualityInspectionDetailData>(`/api/quality/inspections/${inspectionId}/defects`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Request-ID': payload.request_id },
     body: JSON.stringify(payload),
   })
 
-export const confirmQualityInspection = (inspectionId: number, remark?: string | null) =>
+export const confirmQualityInspection = (inspectionId: number, payload: QualityInspectionConfirmPayload) =>
   request<QualityInspectionDetailData>(`/api/quality/inspections/${inspectionId}/confirm`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ remark: remark || null }),
+    headers: { 'Content-Type': 'application/json', 'X-Request-ID': payload.request_id },
+    body: JSON.stringify(payload),
   })
 
-export const cancelQualityInspection = (inspectionId: number, payload: QualityInspectionCancelPayload = {}) =>
+export const cancelQualityInspection = (inspectionId: number, payload: QualityInspectionCancelPayload) =>
   request<QualityInspectionDetailData>(`/api/quality/inspections/${inspectionId}/cancel`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Request-ID': payload.request_id },
     body: JSON.stringify(payload),
   })
 

@@ -38,6 +38,13 @@ class QualityDefectInput(BaseModel):
 class QualityInspectionCreateRequest(BaseModel):
     """Create draft quality inspection request."""
 
+    request_id: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    inspection_ref: str = Field(..., min_length=1, max_length=140)
+    source_doc: str | None = Field(default=None, max_length=140)
+    operation: str = Field(..., min_length=1, max_length=32)
     company: str = Field(..., min_length=1, max_length=140)
     source_type: str = Field(..., min_length=1, max_length=64)
     source_id: str | None = Field(default=None, max_length=140)
@@ -60,6 +67,15 @@ class QualityInspectionCreateRequest(BaseModel):
 class QualityInspectionUpdateRequest(BaseModel):
     """Update draft quality inspection request."""
 
+    request_id: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    inspection_ref: str = Field(..., min_length=1, max_length=140)
+    source_type: str = Field(..., min_length=1, max_length=64)
+    source_doc: str | None = Field(default=None, max_length=140)
+    item_code: str = Field(..., min_length=1, max_length=140)
+    operation: str = Field(..., min_length=1, max_length=32)
     supplier: str | None = Field(default=None, max_length=140)
     warehouse: str | None = Field(default=None, max_length=140)
     work_order: str | None = Field(default=None, max_length=140)
@@ -78,18 +94,48 @@ class QualityInspectionUpdateRequest(BaseModel):
 class QualityInspectionConfirmRequest(BaseModel):
     """Confirm quality inspection request."""
 
+    request_id: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    inspection_ref: str = Field(..., min_length=1, max_length=140)
+    source_type: str = Field(..., min_length=1, max_length=64)
+    source_doc: str | None = Field(default=None, max_length=140)
+    item_code: str = Field(..., min_length=1, max_length=140)
+    operation: str = Field(..., min_length=1, max_length=32)
+    result: str = Field(..., min_length=1, max_length=32)
     remark: str | None = Field(default=None, max_length=200)
 
 
 class QualityInspectionCancelRequest(BaseModel):
     """Cancel quality inspection request."""
 
+    request_id: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    inspection_ref: str = Field(..., min_length=1, max_length=140)
+    source_type: str = Field(..., min_length=1, max_length=64)
+    source_doc: str | None = Field(default=None, max_length=140)
+    item_code: str = Field(..., min_length=1, max_length=140)
+    operation: str = Field(..., min_length=1, max_length=32)
+    result: str = Field(..., min_length=1, max_length=32)
     reason: str | None = Field(default=None, max_length=200)
 
 
 class QualityInspectionDefectCreateRequest(BaseModel):
     """Add defects for a draft inspection request."""
 
+    request_id: str = Field(..., min_length=1, max_length=64)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str = Field(..., min_length=1, max_length=64)
+    source_ref: str = Field(..., min_length=1, max_length=140)
+    inspection_ref: str = Field(..., min_length=1, max_length=140)
+    source_type: str = Field(..., min_length=1, max_length=64)
+    source_doc: str | None = Field(default=None, max_length=140)
+    item_code: str = Field(..., min_length=1, max_length=140)
+    operation: str = Field(..., min_length=1, max_length=32)
+    result: str = Field(..., min_length=1, max_length=32)
     defects: list[QualityDefectInput] = Field(default_factory=list, min_length=1)
 
 

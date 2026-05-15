@@ -348,26 +348,87 @@
       title="创建质量检验单"
       width="560px"
       destroy-on-close
-      data-testid="quality-create-guard-dialog"
+      data-testid="quality-create-dialog"
     >
-      <el-alert
-        type="warning"
-        :closable="false"
-        title="当前任务为只读交互阶段，创建检验单动作已禁用。"
-        data-testid="quality-create-guard-message"
-      />
+      <el-form label-width="120px" data-testid="quality-create-form">
+        <el-form-item label="scenario_tag">
+          <el-input v-model="createForm.scenario_tag" data-testid="quality-create-scenario-tag" />
+        </el-form-item>
+        <el-form-item label="idempotency_key">
+          <el-input v-model="createForm.idempotency_key" data-testid="quality-create-idempotency-key" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input v-model="createForm.request_id" readonly data-testid="quality-create-request-id" />
+        </el-form-item>
+        <el-form-item label="公司">
+          <el-input v-model="createForm.company" data-testid="quality-create-company" />
+        </el-form-item>
+        <el-form-item label="来源类型">
+          <el-select v-model="createForm.source_type" style="width: 100%" data-testid="quality-create-source-type">
+            <el-option label="手工检验" value="manual" />
+            <el-option label="来料检验" value="incoming_material" />
+            <el-option label="外发收货检验" value="subcontract_receipt" />
+            <el-option label="成品检验" value="finished_goods" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="source_ref">
+          <el-input v-model="createForm.source_ref" data-testid="quality-create-source-ref" />
+        </el-form-item>
+        <el-form-item label="inspection_ref">
+          <el-input v-model="createForm.inspection_ref" data-testid="quality-create-inspection-ref" />
+        </el-form-item>
+        <el-form-item label="物料编码">
+          <el-input v-model="createForm.item_code" data-testid="quality-create-item-code" />
+        </el-form-item>
+        <el-form-item label="检验日期">
+          <el-date-picker
+            v-model="createForm.inspection_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+            data-testid="quality-create-inspection-date"
+          />
+        </el-form-item>
+        <el-form-item label="检验数量">
+          <el-input v-model="createForm.inspected_qty" data-testid="quality-create-inspected-qty" />
+        </el-form-item>
+        <el-form-item label="合格数量">
+          <el-input v-model="createForm.accepted_qty" data-testid="quality-create-accepted-qty" />
+        </el-form-item>
+        <el-form-item label="不合格数量">
+          <el-input v-model="createForm.rejected_qty" data-testid="quality-create-rejected-qty" />
+        </el-form-item>
+        <el-form-item label="缺陷数量">
+          <el-input v-model="createForm.defect_qty" data-testid="quality-create-defect-qty" />
+        </el-form-item>
+        <el-form-item label="结果">
+          <el-select v-model="createForm.result" style="width: 100%" data-testid="quality-create-result">
+            <el-option label="待定" value="pending" />
+            <el-option label="合格" value="pass" />
+            <el-option label="不合格" value="fail" />
+            <el-option label="部分合格" value="partial" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input
+            v-model="createForm.remark"
+            type="textarea"
+            :rows="2"
+            data-testid="quality-create-remark"
+          />
+        </el-form-item>
+      </el-form>
       <template #footer>
-        <el-button data-testid="quality-create-guard-cancel" @click="createDialogVisible = false">关闭</el-button>
+        <el-button data-testid="quality-create-cancel" @click="closeCreateDialog">取消</el-button>
         <el-button
           type="primary"
+          :loading="createSubmitting"
           :disabled="!canCreate"
-          data-testid="quality-create-guard-submit"
+          data-testid="quality-create-submit"
           data-action-type="write"
-          data-write-guard="guarded:readonly_mode"
-          data-guard-state="guarded"
           @click="submitCreate"
         >
-          提交
+          保存
         </el-button>
       </template>
     </el-dialog>
@@ -376,14 +437,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  buildQualityInspectionRequestId,
+  buildQualityInspectionScenarioTag,
+  createQualityInspection,
+  ensureQualityInspectionScenarioTag,
   fetchQualityInspectionDetail,
   fetchQualityInspections,
   fetchQualityStatistics,
   fetchQualityStatisticsTrend,
+  type QualityInspectionCreatePayload,
   type QualityInspectionListItem,
   type QualityStatisticsData,
   type QualityStatisticsTrendData,
@@ -403,6 +469,72 @@ const total = ref<number>(0)
 const statistics = ref<QualityStatisticsData | null>(null)
 const statisticsTrend = ref<QualityStatisticsTrendData | null>(null)
 const listError = ref<string>('')
+const createSubmitting = ref<boolean>(false)
+
+interface QualityCreateFormState {
+  scenario_tag: string
+  idempotency_key: string
+  request_id: string
+  company: string
+  source_type: string
+  source_ref: string
+  inspection_ref: string
+  item_code: string
+  inspection_date: string
+  inspected_qty: string
+  accepted_qty: string
+  rejected_qty: string
+  defect_qty: string
+  result: string
+  remark: string
+}
+
+const nowDate = (): string => {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+const buildCreateIdempotencyKey = (scenarioTag: string): string => {
+  const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase()
+  return `${scenarioTag}-CREATE-${randomPart}`
+}
+
+const buildCreateFormState = (): QualityCreateFormState => {
+  const scenarioTag = buildQualityInspectionScenarioTag()
+  const sourceRef = `${scenarioTag}-SRC`
+  const inspectionRef = `${scenarioTag}-NEW`
+  const idempotencyKey = buildCreateIdempotencyKey(scenarioTag)
+  const requestId = buildQualityInspectionRequestId({
+    scenarioTag,
+    operation: 'create',
+    idempotencyKey,
+    sourceRef,
+    inspectionRef,
+    itemCode: 'ITEM-Z003-QUALITY',
+    result: 'pending',
+  })
+  return {
+    scenario_tag: scenarioTag,
+    idempotency_key: idempotencyKey,
+    request_id: requestId,
+    company: 'LQAPP',
+    source_type: 'manual',
+    source_ref: sourceRef,
+    inspection_ref: inspectionRef,
+    item_code: 'ITEM-Z003-QUALITY',
+    inspection_date: nowDate(),
+    inspected_qty: '10',
+    accepted_qty: '8',
+    rejected_qty: '2',
+    defect_qty: '2',
+    result: 'pending',
+    remark: '',
+  }
+}
+
+const createForm = reactive<QualityCreateFormState>(buildCreateFormState())
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_read)
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_create)
@@ -435,6 +567,41 @@ const buildFilterQuery = () => ({
   from_date: clean(query.from_date),
   to_date: clean(query.to_date),
 })
+
+const toFiniteNumber = (value: string, fallback: number): number => {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : fallback
+}
+
+const refreshCreateRequestId = (): void => {
+  const scenarioTag = ensureQualityInspectionScenarioTag(createForm.scenario_tag)
+  createForm.scenario_tag = scenarioTag
+  if (!createForm.source_ref.includes(scenarioTag)) {
+    createForm.source_ref = `${scenarioTag}-SRC`
+  }
+  if (!createForm.inspection_ref.trim()) {
+    createForm.inspection_ref = `${scenarioTag}-NEW`
+  }
+  if (!createForm.idempotency_key.trim()) {
+    createForm.idempotency_key = buildCreateIdempotencyKey(scenarioTag)
+  }
+  createForm.request_id = buildQualityInspectionRequestId({
+    scenarioTag,
+    operation: 'create',
+    idempotencyKey: createForm.idempotency_key.trim(),
+    sourceRef: createForm.source_ref.trim(),
+    inspectionRef: createForm.inspection_ref.trim(),
+    itemCode: createForm.item_code.trim() || 'ITEM-Z003-QUALITY',
+    result: createForm.result.trim() || 'pending',
+  })
+}
+
+const resetCreateForm = (): void => {
+  Object.assign(createForm, buildCreateFormState())
+  if (query.company.trim()) {
+    createForm.company = query.company.trim()
+  }
+}
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') return '-'
@@ -566,11 +733,96 @@ const openCreateDialog = (): void => {
     ElMessage.error('无创建检验单权限')
     return
   }
+  resetCreateForm()
+  refreshCreateRequestId()
   createDialogVisible.value = true
 }
 
-const submitCreate = (): void => {
-  showGuardedAction('创建检验单')
+const closeCreateDialog = (): void => {
+  createDialogVisible.value = false
+}
+
+const submitCreate = async (): Promise<void> => {
+  if (!canCreate.value) {
+    ElMessage.error('无创建检验单权限')
+    return
+  }
+  const company = createForm.company.trim()
+  const itemCode = createForm.item_code.trim()
+  const sourceType = createForm.source_type.trim()
+  const sourceRef = createForm.source_ref.trim()
+  const inspectionRef = createForm.inspection_ref.trim()
+  const result = createForm.result.trim()
+  if (!company || !itemCode || !sourceType || !sourceRef || !inspectionRef || !result) {
+    ElMessage.error('请完整填写创建检验单所需字段')
+    return
+  }
+
+  const inspectedQty = toFiniteNumber(createForm.inspected_qty, 0)
+  const acceptedQty = toFiniteNumber(createForm.accepted_qty, 0)
+  const rejectedQty = toFiniteNumber(createForm.rejected_qty, 0)
+  const defectQty = toFiniteNumber(createForm.defect_qty, 0)
+  if (inspectedQty <= 0) {
+    ElMessage.error('检验数量必须大于 0')
+    return
+  }
+  if (Number((acceptedQty + rejectedQty).toFixed(6)) !== Number(inspectedQty.toFixed(6))) {
+    ElMessage.error('合格数量 + 不合格数量必须等于检验数量')
+    return
+  }
+  if (defectQty > inspectedQty) {
+    ElMessage.error('缺陷数量不能超过检验数量')
+    return
+  }
+
+  createSubmitting.value = true
+  try {
+    refreshCreateRequestId()
+    const payload: QualityInspectionCreatePayload = {
+      request_id: createForm.request_id,
+      idempotency_key: createForm.idempotency_key.trim(),
+      scenario_tag: createForm.scenario_tag.trim(),
+      source_ref: sourceRef,
+      inspection_ref: inspectionRef,
+      source_doc: sourceRef,
+      operation: 'create',
+      company,
+      source_type: sourceType,
+      source_id: sourceRef,
+      item_code: itemCode,
+      inspection_date: createForm.inspection_date || nowDate(),
+      inspected_qty: inspectedQty,
+      accepted_qty: acceptedQty,
+      rejected_qty: rejectedQty,
+      defect_qty: defectQty,
+      result,
+      remark: clean(createForm.remark) ?? null,
+      items: [
+        {
+          item_code: itemCode,
+          sample_qty: inspectedQty,
+          accepted_qty: acceptedQty,
+          rejected_qty: rejectedQty,
+          defect_qty: defectQty,
+          result,
+          remark: clean(createForm.remark) ?? null,
+        },
+      ],
+    }
+    const created = await createQualityInspection(payload)
+    ElMessage.success('创建质量检验单成功')
+    closeCreateDialog()
+    query.page = 1
+    await loadRows()
+    await router.push({
+      path: '/quality/inspections/detail',
+      query: { id: String(created.data.id) },
+    })
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  } finally {
+    createSubmitting.value = false
+  }
 }
 
 const goDetail = async (id: number): Promise<void> => {
@@ -597,6 +849,23 @@ const onSizeChange = (size: number): void => {
   query.page = 1
   void loadRows()
 }
+
+watch(
+  () => [
+    createForm.scenario_tag,
+    createForm.idempotency_key,
+    createForm.source_ref,
+    createForm.inspection_ref,
+    createForm.item_code,
+    createForm.result,
+  ],
+  () => {
+    if (!createDialogVisible.value) {
+      return
+    }
+    refreshCreateRequestId()
+  },
+)
 
 onMounted(async () => {
   try {

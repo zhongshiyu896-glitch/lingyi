@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Generator
 from datetime import date
 import logging
+import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -30,6 +32,7 @@ from app.core.error_codes import INTERNAL_API_DISABLED
 from app.core.error_codes import PERMISSION_SOURCE_UNAVAILABLE
 from app.core.error_codes import QUALITY_DATABASE_WRITE_FAILED
 from app.core.error_codes import QUALITY_INTERNAL_ERROR
+from app.core.error_codes import QUALITY_INVALID_SOURCE
 from app.core.error_codes import QUALITY_INVALID_STATUS
 from app.core.error_codes import QUALITY_NOT_FOUND
 from app.core.error_codes import message_of
@@ -47,6 +50,7 @@ from app.core.permissions import QUALITY_READ
 from app.core.permissions import QUALITY_UPDATE
 from app.core.permissions import QUALITY_WORKER
 from app.core.request_id import get_request_id_from_request
+from app.core.request_id import is_request_id_valid
 from app.models.quality import LyQualityInspection
 from app.schemas.quality import QualityInspectionCancelRequest
 from app.schemas.quality import QualityInspectionConfirmRequest
@@ -71,6 +75,19 @@ router = APIRouter(prefix="/api/quality", tags=["quality"])
 logger = logging.getLogger(__name__)
 QUALITY_WRITE_FROZEN_CODE = "QUALITY_WRITE_FROZEN"
 QUALITY_WRITE_FROZEN_MESSAGE = "质量写操作已冻结（Phase 1 只读基线）"
+QUALITY_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
+QUALITY_SCENARIO_TAG_PATTERN = re.compile(r"Z003-QUALITY-INSPECTION-\d{8}-\d{3}")
+QUALITY_REQUEST_ID_CARRIER_PATTERN = re.compile(
+    r"^(Z003-QUALITY-INSPECTION-\d{8}-\d{3})-QI-([A-Z])-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})-([A-F0-9]{3})$"
+)
+QUALITY_LOCAL_DB_URL = "sqlite:///./lingyi_service.local.db"
+QUALITY_OPERATION_CODE_BY_NAME = {
+    "create": "C",
+    "update": "U",
+    "confirm": "F",
+    "cancel": "X",
+    "defects": "D",
+}
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -270,6 +287,8 @@ def _handle_write_exception(
             return _app_err(audit_exc)
         return _map_permission_error(exc)
     if isinstance(exc, AppException):
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         try:
             _record_failure_safely(
                 session=session,
@@ -306,6 +325,251 @@ def _handle_write_exception(
     except AuditWriteFailed as audit_exc:
         return _app_err(audit_exc)
     return _app_err(error)
+
+
+def _is_local_gate_failure(exc: AppException) -> bool:
+    return exc.code == QUALITY_INVALID_SOURCE and str(exc.message).startswith(QUALITY_GATE_ERROR_PREFIX)
+
+
+def _raise_quality_gate_error(reason: str) -> None:
+    raise BusinessException(code=QUALITY_INVALID_SOURCE, message=f"{QUALITY_GATE_ERROR_PREFIX}{reason}")
+
+
+def _ensure_local_dev_write_gate() -> None:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    if app_env != "development" or db_url != QUALITY_LOCAL_DB_URL:
+        _raise_quality_gate_error("non_local_dev")
+
+
+def _match_quality_scenario_tag(value: str) -> str | None:
+    matched = QUALITY_SCENARIO_TAG_PATTERN.search((value or "").strip())
+    return matched.group(0) if matched else None
+
+
+def _fnv_carrier_code(value: str) -> str:
+    normalized = value.strip()
+    hash_value = 2166136261
+    for byte in normalized.encode("utf-8"):
+        hash_value ^= byte
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    return f"{hash_value:08X}"[-3:]
+
+
+def _extract_quality_request_carriers(request_id: str) -> tuple[str, str, str, str, str, str, str] | None:
+    matched = QUALITY_REQUEST_ID_CARRIER_PATTERN.fullmatch(request_id.strip())
+    if matched is None:
+        return None
+    return (
+        matched.group(1),
+        matched.group(2),
+        matched.group(3),
+        matched.group(4),
+        matched.group(5),
+        matched.group(6),
+        matched.group(7),
+    )
+
+
+def _require_non_blank_carrier(value: str | None, reason: str) -> str:
+    normalized = _scope_text(value)
+    if normalized is None:
+        _raise_quality_gate_error(reason)
+    return normalized
+
+
+def _validate_quality_request_id_gate(
+    *,
+    request_obj: Request,
+    request_id: str,
+    scenario_tag: str,
+    operation: str,
+    idempotency_key: str,
+    source_ref: str,
+    inspection_ref: str,
+    item_code: str,
+    result: str,
+) -> None:
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_quality_gate_error("missing_request_id")
+    if not is_request_id_valid(request_id_header):
+        _raise_quality_gate_error("invalid_request_id_pattern")
+    if not request_id:
+        _raise_quality_gate_error("missing_request_id")
+    if not is_request_id_valid(request_id):
+        _raise_quality_gate_error("invalid_request_id_pattern")
+    if request_id_header != request_id:
+        _raise_quality_gate_error("mismatched_request_id")
+
+    expected_operation_code = QUALITY_OPERATION_CODE_BY_NAME.get(operation)
+    if expected_operation_code is None:
+        _raise_quality_gate_error("mismatched_operation")
+
+    header_carrier = _extract_quality_request_carriers(request_id_header)
+    request_carrier = _extract_quality_request_carriers(request_id)
+    if header_carrier is None or request_carrier is None:
+        _raise_quality_gate_error("mismatched_request_id")
+    if header_carrier != request_carrier:
+        _raise_quality_gate_error("mismatched_request_id")
+    (
+        request_tag,
+        request_operation_code,
+        request_idempotency_code,
+        request_source_ref_code,
+        request_inspection_ref_code,
+        request_item_code,
+        request_result_code,
+    ) = request_carrier
+
+    if request_tag != scenario_tag:
+        _raise_quality_gate_error("mismatched_request_id")
+    if request_operation_code != expected_operation_code:
+        _raise_quality_gate_error("mismatched_operation")
+    if request_idempotency_code != _fnv_carrier_code(idempotency_key):
+        _raise_quality_gate_error("missing_idempotency_key")
+    if request_source_ref_code != _fnv_carrier_code(source_ref):
+        _raise_quality_gate_error("mismatched_source_ref")
+    if request_inspection_ref_code != _fnv_carrier_code(inspection_ref):
+        _raise_quality_gate_error("mismatched_inspection_ref")
+    if request_item_code != _fnv_carrier_code(item_code):
+        _raise_quality_gate_error("mismatched_item_code")
+    if request_result_code != _fnv_carrier_code(result):
+        _raise_quality_gate_error("mismatched_result")
+
+
+def _validate_quality_gate_common(
+    *,
+    request_obj: Request,
+    request_id: str,
+    operation: str,
+    payload_operation: str | None,
+    scenario_tag: str | None,
+    idempotency_key: str | None,
+    source_ref: str | None,
+    inspection_ref: str | None,
+    source_type: str | None,
+    source_doc: str | None,
+    item_code: str | None,
+    result: str | None,
+) -> tuple[str, str, str, str, str]:
+    _ensure_local_dev_write_gate()
+
+    normalized_scenario_tag = _require_non_blank_carrier(scenario_tag, "missing_scenario_tag")
+    if QUALITY_SCENARIO_TAG_PATTERN.fullmatch(normalized_scenario_tag) is None:
+        _raise_quality_gate_error("invalid_scenario_tag")
+
+    normalized_idempotency_key = _require_non_blank_carrier(idempotency_key, "missing_idempotency_key")
+    normalized_source_ref = _require_non_blank_carrier(source_ref, "mismatched_source_ref")
+    normalized_inspection_ref = _require_non_blank_carrier(inspection_ref, "mismatched_inspection_ref")
+    normalized_source_type = _require_non_blank_carrier(source_type, "mismatched_source_type")
+    normalized_item_code = _require_non_blank_carrier(item_code, "mismatched_item_code")
+    normalized_result = _require_non_blank_carrier(result, "mismatched_result")
+    normalized_payload_operation = _require_non_blank_carrier(payload_operation, "mismatched_operation")
+    normalized_operation = _require_non_blank_carrier(operation, "mismatched_operation")
+    normalized_source_doc = _require_non_blank_carrier(source_doc, "missing_source_doc")
+
+    if normalized_operation != operation:
+        _raise_quality_gate_error("mismatched_operation")
+    if normalized_payload_operation != operation:
+        _raise_quality_gate_error("mismatched_payload_operation")
+    if normalized_source_doc != normalized_source_ref:
+        _raise_quality_gate_error("mismatched_source_doc")
+
+    carrier_tags = [normalized_scenario_tag]
+    source_ref_tag = _match_quality_scenario_tag(normalized_source_ref)
+    if source_ref_tag is None:
+        _raise_quality_gate_error("mismatched_source_ref")
+    carrier_tags.append(source_ref_tag)
+    source_doc_tag = _match_quality_scenario_tag(normalized_source_doc)
+    if source_doc_tag is None:
+        _raise_quality_gate_error("mismatched_source_doc")
+    carrier_tags.append(source_doc_tag)
+    if len(set(carrier_tags)) != 1:
+        _raise_quality_gate_error("mismatched_source_ref")
+
+    _validate_quality_request_id_gate(
+        request_obj=request_obj,
+        request_id=request_id,
+        scenario_tag=normalized_scenario_tag,
+        operation=operation,
+        idempotency_key=normalized_idempotency_key,
+        source_ref=normalized_source_ref,
+        inspection_ref=normalized_inspection_ref,
+        item_code=normalized_item_code,
+        result=normalized_result,
+    )
+
+    return (
+        normalized_source_ref,
+        normalized_inspection_ref,
+        normalized_source_type,
+        normalized_item_code,
+        normalized_result,
+    )
+
+
+def _validate_quality_create_gate(
+    *,
+    request_obj: Request,
+    request_id: str,
+    payload: QualityInspectionCreateRequest,
+) -> None:
+    _validate_quality_gate_common(
+        request_obj=request_obj,
+        request_id=request_id,
+        operation="create",
+        payload_operation=payload.operation,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        source_ref=payload.source_ref,
+        inspection_ref=payload.inspection_ref,
+        source_type=payload.source_type,
+        source_doc=payload.source_doc,
+        item_code=payload.item_code,
+        result=payload.result,
+    )
+
+
+def _validate_quality_existing_gate(
+    *,
+    request_obj: Request,
+    request_id: str,
+    payload: Any,
+    operation: str,
+    inspection_row: LyQualityInspection,
+) -> None:
+    normalized_source_ref, normalized_inspection_ref, normalized_source_type, normalized_item_code, normalized_result = _validate_quality_gate_common(
+        request_obj=request_obj,
+        request_id=request_id,
+        operation=operation,
+        payload_operation=getattr(payload, "operation", None),
+        scenario_tag=getattr(payload, "scenario_tag", None),
+        idempotency_key=getattr(payload, "idempotency_key", None),
+        source_ref=getattr(payload, "source_ref", None),
+        inspection_ref=getattr(payload, "inspection_ref", None),
+        source_type=getattr(payload, "source_type", None),
+        source_doc=getattr(payload, "source_doc", None),
+        item_code=getattr(payload, "item_code", None),
+        result=getattr(payload, "result", None),
+    )
+
+    expected_ref_values = {str(inspection_row.id), str(inspection_row.inspection_no)}
+    if normalized_inspection_ref not in expected_ref_values:
+        _raise_quality_gate_error("mismatched_inspection_ref")
+    row_source_type = _scope_text(inspection_row.source_type)
+    if row_source_type is not None and normalized_source_type != row_source_type:
+        _raise_quality_gate_error("mismatched_source_type")
+    row_source_id = _scope_text(inspection_row.source_id)
+    if row_source_id is not None and normalized_source_ref != row_source_id:
+        _raise_quality_gate_error("mismatched_source_ref")
+    row_item_code = _scope_text(inspection_row.item_code)
+    if row_item_code is not None and normalized_item_code != row_item_code:
+        _raise_quality_gate_error("mismatched_item_code")
+    if operation in {"confirm", "cancel", "defects"}:
+        row_result = _scope_text(inspection_row.result)
+        if row_result is not None and normalized_result != row_result:
+            _raise_quality_gate_error("mismatched_result")
 
 
 def _hide_not_found() -> None:
@@ -350,10 +614,15 @@ def create_quality_inspection(
             row_or_scope=payload.model_dump(),
             enforce_action=False,
         )
+        _validate_quality_create_gate(
+            request_obj=request,
+            request_id=payload.request_id,
+            payload=payload,
+        )
         data = _quality_service(session, request).create_inspection(
             payload=payload,
             operator=current_user.username,
-            request_id=get_request_id_from_request(request),
+            request_id=payload.request_id,
         )
         _record_success(
             session=session,
@@ -571,7 +840,7 @@ def add_quality_inspection_defects(
         current_user=current_user,
         session=session,
         action=QUALITY_UPDATE,
-        operation="add_defect",
+        operation="defects",
     )
 
 
@@ -612,6 +881,13 @@ def _write_existing(
             resource_no=resource_no,
             enforce_action=False,
         )
+        _validate_quality_existing_gate(
+            request_obj=request,
+            request_id=payload.request_id,
+            payload=payload,
+            operation=operation,
+            inspection_row=row,
+        )
         service = _quality_service(session, request)
         if operation == "update":
             if row.status == "confirmed":
@@ -624,7 +900,7 @@ def _write_existing(
                 inspection_id=inspection_id,
                 payload=payload,
                 operator=current_user.username,
-                request_id=get_request_id_from_request(request),
+                request_id=payload.request_id,
             )
             after_data = {"inspection_id": data.id, "inspection_no": data.inspection_no, "status": data.status}
             _record_success(
@@ -638,7 +914,7 @@ def _write_existing(
                 after_data=after_data,
             )
             return _ok(data.model_dump(mode="json"))
-        if operation == "add_defect":
+        if operation == "defects":
             if row.status == "confirmed":
                 return _err(QUALITY_INVALID_STATUS, "已确认状态不可录入缺陷", status_code=403)
             if row.status == "cancelled":
@@ -649,7 +925,7 @@ def _write_existing(
                 inspection_id=inspection_id,
                 payload=payload,
                 operator=current_user.username,
-                request_id=get_request_id_from_request(request),
+                request_id=payload.request_id,
             )
             after_data = {"inspection_id": data.id, "inspection_no": data.inspection_no, "status": data.status}
             _record_success(
@@ -667,7 +943,7 @@ def _write_existing(
             service.confirm_inspection(
                 inspection_id=inspection_id,
                 operator=current_user.username,
-                request_id=get_request_id_from_request(request),
+                request_id=payload.request_id,
                 remark=getattr(payload, "remark", None),
             )
             data = service.get_detail_data(inspection_id)
@@ -687,7 +963,7 @@ def _write_existing(
             service.cancel_inspection(
                 inspection_id=inspection_id,
                 operator=current_user.username,
-                request_id=get_request_id_from_request(request),
+                request_id=payload.request_id,
                 reason=getattr(payload, "reason", None),
             )
             data = service.get_detail_data(inspection_id)
@@ -715,7 +991,7 @@ def _write_existing(
             resource_no=resource_no,
             exc=exc,
             request=request,
-    )
+        )
 
 
 @router.post("/internal/outbox-sync/run-once")

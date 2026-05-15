@@ -63,6 +63,7 @@ SOURCE_TYPE_LABELS = {
 RESULT_VALUES = {"pending", "pass", "fail", "partial"}
 FINAL_STATUSES = {"confirmed", "cancelled"}
 _RATE_QUANT = Decimal("0.000001")
+QUALITY_LOCAL_DB_URL = "sqlite:///./lingyi_service.local.db"
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,9 @@ class QualitySourceValidator:
     def __init__(self, request_obj: Request | None = None):
         self.request_obj = request_obj
         self.base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        db_url = os.getenv("LINGYI_DB_URL", "").strip()
+        self.local_dev_mode = app_env == "development" and db_url == QUALITY_LOCAL_DB_URL
         self.adapter = ERPNextQualityAdapter(request_obj=request_obj, base_url=self.base_url)
 
     def validate_for_payload(
@@ -92,6 +96,15 @@ class QualitySourceValidator:
         source_id: str | None,
     ) -> QualitySourceValidationSnapshot:
         """Validate ERPNext master data and optional external source."""
+        if self.local_dev_mode:
+            return self._validate_for_local_dev(
+                company=company,
+                item_code=item_code,
+                supplier=supplier,
+                warehouse=warehouse,
+                source_type=source_type,
+                source_id=source_id,
+            )
         master_data: dict[str, Any] = {
             "company": self._require_resource("Company", company, require_submitted=False),
             "item": self._require_resource("Item", item_code, require_submitted=False),
@@ -112,6 +125,42 @@ class QualitySourceValidator:
         elif source_type == "finished_goods" and source_id:
             source_snapshot = self._require_resource("Stock Entry", source_id, require_submitted=True)
             _validate_source_ownership(source_snapshot, company=company, item_code=item_code, supplier=None, source_doctype="Stock Entry")
+        return QualitySourceValidationSnapshot(master_data=master_data, source=source_snapshot)
+
+    def _validate_for_local_dev(
+        self,
+        *,
+        company: str,
+        item_code: str,
+        supplier: str | None,
+        warehouse: str | None,
+        source_type: str,
+        source_id: str | None,
+    ) -> QualitySourceValidationSnapshot:
+        if source_type not in SOURCE_TYPES:
+            raise BusinessException(code=QUALITY_INVALID_SOURCE_TYPE)
+        if source_type != "manual" and not _text(source_id):
+            raise BusinessException(code=QUALITY_INVALID_SOURCE, message="source_id 不能为空")
+        master_data: dict[str, Any] = {
+            "company": {"name": company, "company": company},
+            "item": {"name": item_code, "item_code": item_code},
+        }
+        if supplier:
+            master_data["supplier"] = {"name": supplier, "supplier_name": supplier}
+        if warehouse:
+            master_data["warehouse"] = {"name": warehouse, "warehouse_name": warehouse, "company": company}
+        source_snapshot: dict[str, Any] | None = None
+        if source_type != "manual":
+            source_snapshot = {
+                "name": source_id,
+                "company": company,
+                "item_code": item_code,
+                "supplier": supplier,
+                "source_type": source_type,
+                "docstatus": 1,
+                "status": "submitted",
+                "items": [{"item_code": item_code}],
+            }
         return QualitySourceValidationSnapshot(master_data=master_data, source=source_snapshot)
 
     def _require_resource(self, doctype: str, name: str, *, require_submitted: bool) -> dict[str, Any]:

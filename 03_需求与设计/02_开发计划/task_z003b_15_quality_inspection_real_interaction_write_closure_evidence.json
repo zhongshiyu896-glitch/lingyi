@@ -1,0 +1,112 @@
+{
+  "task_id": "TASK-Z003B-15-IMPL-FIX2",
+  "source_head": "5aba61959654891a74a11369f7ee971c4d97e5f4",
+  "route_scope": [
+    "/quality/inspections",
+    "/quality/inspections/detail"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/quality.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/quality.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/quality.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/quality_service.py"
+  ],
+  "readonly_context_files_changed": [],
+  "allowed_write_requests": [
+    "POST /api/quality/inspections",
+    "PATCH /api/quality/inspections/{inspection_id}",
+    "POST /api/quality/inspections/{inspection_id}/defects",
+    "POST /api/quality/inspections/{inspection_id}/confirm",
+    "POST /api/quality/inspections/{inspection_id}/cancel"
+  ],
+  "approved_write_request_count": 5,
+  "unexpected_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "upload_download_export_print_request_count": 0,
+  "fail_closed_cases": [
+    {
+      "case": "missing_request_id",
+      "status": 409
+    },
+    {
+      "case": "invalid_request_id_pattern",
+      "status": 409
+    },
+    {
+      "case": "mismatched_request_id",
+      "status": 409
+    },
+    {
+      "case": "missing_idempotency_key",
+      "status": 409
+    },
+    {
+      "case": "missing_or_invalid_scenario_tag",
+      "status": 409
+    },
+    {
+      "case": "mismatched_source_ref",
+      "status": 409
+    },
+    {
+      "case": "mismatched_inspection_no_or_id",
+      "status": 409
+    },
+    {
+      "case": "mismatched_item_code_or_product_code",
+      "status": 409
+    },
+    {
+      "case": "mismatched_payload_operation",
+      "status": 409
+    },
+    {
+      "case": "missing_source_doc",
+      "status": 409
+    },
+    {
+      "case": "mismatched_source_doc",
+      "status": 409
+    },
+    {
+      "case": "mismatched_source_type",
+      "status": 409
+    },
+    {
+      "case": "mismatched_result",
+      "status": 409
+    },
+    {
+      "case": "non_local_dev_gate",
+      "status": 409
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "rollback_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_counts_by_table": {
+    "ly_quality_inspection": 0,
+    "ly_quality_inspection_item": 0,
+    "ly_quality_defect": 0,
+    "ly_quality_operation_log": 0,
+    "ly_quality_outbox": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "screenshots_dir": "/tmp/task_z003b15_screenshots",
+  "screenshots_count": 5,
+  "browser_counters": {
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "scenario_tags": {
+    "success_flow": "Z003-QUALITY-INSPECTION-20260515-816",
+    "fail_closed_probe": "Z003-QUALITY-INSPECTION-20260515-952",
+    "cleanup_scope_prefix": "Z003-QUALITY-INSPECTION-"
+  },
+  "generated_at": "2026-05-15T11:13:24.770093Z"
+}
