@@ -52,11 +52,42 @@
             <el-option label="待复核" value="incomplete" />
           </el-select>
         </el-form-item>
+        <el-form-item label="收入口径">
+          <el-select
+            v-model="archiveParams.revenue_mode"
+            placeholder="收入口径"
+            style="width: 140px"
+            data-testid="style-profit-write-revenue-mode"
+          >
+            <el-option label="实际优先" value="actual_first" />
+            <el-option label="仅实际" value="actual_only" />
+            <el-option label="仅预估" value="estimated_only" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="公式版本">
+          <el-select
+            v-model="archiveParams.formula_version"
+            placeholder="公式版本"
+            style="width: 160px"
+            data-testid="style-profit-write-formula-version"
+          >
+            <el-option label="STYLE_PROFIT_V1" value="STYLE_PROFIT_V1" />
+          </el-select>
+        </el-form-item>
 
         <el-form-item class="button-group">
           <el-button type="primary" :disabled="!canRead || loading" data-testid="style-profit-filter-button" @click="loadRows">筛选</el-button>
           <el-button :disabled="!canRead || loading" data-testid="style-profit-reset-button" @click="resetQuery">重置</el-button>
           <el-button :disabled="!canRead || loading" data-testid="style-profit-search-button" @click="loadRows">搜索</el-button>
+          <el-button
+            type="primary"
+            :loading="archiveBusy"
+            :disabled="!canRead || loading"
+            data-testid="style-profit-archive-button"
+            @click="runArchiveAction"
+          >
+            留档
+          </el-button>
           <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-clear" @click="guardedAction('清空')">清空</el-button>
           <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-confirm" @click="guardedAction('确定')">确定</el-button>
           <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-export" @click="guardedAction('导出')">导出</el-button>
@@ -69,6 +100,15 @@
           <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-cancel" @click="guardedAction('取消')">取消</el-button>
         </el-form-item>
       </el-form>
+      <el-alert
+        v-if="archiveFeedback"
+        :type="archiveFeedbackType"
+        :title="archiveFeedback"
+        :closable="false"
+        show-icon
+        class="feedback-alert"
+        data-testid="style-profit-archive-feedback"
+      />
 
       <el-empty v-if="!canRead" description="无款式利润查看权限" data-testid="style-profit-no-permission" />
       <template v-else>
@@ -212,15 +252,23 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { fetchStyleProfitSnapshots, type StyleProfitSnapshotListItem } from '@/api/style_profit'
+import {
+  fetchStyleProfitSnapshots,
+  writeStyleProfitSnapshot,
+  type StyleProfitSnapshotListItem,
+  type StyleProfitSnapshotWritePayload,
+} from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
+const archiveBusy = ref<boolean>(false)
 const rows = ref<StyleProfitSnapshotListItem[]>([])
 const total = ref<number>(0)
 const errorMessage = ref<string>('')
+const archiveFeedback = ref<string>('')
+const archiveFeedbackType = ref<'success' | 'warning'>('success')
 const weekColumns = ['日', '一', '二', '三', '四', '五', '六']
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
@@ -234,6 +282,11 @@ const query = reactive({
   snapshot_status: '',
   page: 1,
   page_size: 20,
+})
+
+const archiveParams = reactive({
+  revenue_mode: 'actual_first',
+  formula_version: 'STYLE_PROFIT_V1',
 })
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -299,11 +352,96 @@ const resetQuery = (): void => {
   query.page = 1
   query.page_size = 20
   errorMessage.value = ''
+  archiveFeedback.value = ''
   resetRows()
 }
 
 const guardedAction = (action: string): void => {
   ElMessage.info(`${action}仅保留展示入口，当前为本地只读验证模式`)
+}
+
+const buildDateTag = (): string => {
+  const now = new Date()
+  const yyyy = String(now.getFullYear())
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${yyyy}${mm}${dd}`
+}
+
+const buildScenarioTag = (): string => {
+  const sequence = String(Date.now() % 1000).padStart(3, '0')
+  return `Z003-STYLE-PROFIT-${buildDateTag()}-${sequence}`
+}
+
+const runArchiveAction = async (): Promise<void> => {
+  if (!canRead.value || loading.value || archiveBusy.value) {
+    return
+  }
+  if (!hasRequiredScope()) {
+    archiveFeedbackType.value = 'warning'
+    archiveFeedback.value = '请先输入加工厂与款号/款名'
+    ElMessage.warning(archiveFeedback.value)
+    return
+  }
+  if (!query.sales_order.trim()) {
+    archiveFeedbackType.value = 'warning'
+    archiveFeedback.value = '请先输入设计号'
+    ElMessage.warning(archiveFeedback.value)
+    return
+  }
+  if (!query.from_date || !query.to_date) {
+    archiveFeedbackType.value = 'warning'
+    archiveFeedback.value = '请先选择开始与结束时间'
+    ElMessage.warning(archiveFeedback.value)
+    return
+  }
+
+  archiveBusy.value = true
+  archiveFeedback.value = ''
+  try {
+    const scenarioTag = buildScenarioTag()
+    const requestId = `RQ-${scenarioTag}`
+    const statusAction = 'snapshot_archive'
+    const company = query.company.trim()
+    const itemCode = query.item_code.trim()
+    const salesOrder = query.sales_order.trim()
+    const sourceRef = [
+      scenarioTag,
+      company,
+      itemCode,
+      salesOrder,
+      archiveParams.revenue_mode,
+      archiveParams.formula_version,
+      statusAction,
+    ].join('|')
+    const nonce = `${scenarioTag}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`
+    const payload: StyleProfitSnapshotWritePayload = {
+      company,
+      item_code: itemCode,
+      sales_order: salesOrder,
+      from_date: query.from_date,
+      to_date: query.to_date,
+      revenue_mode: archiveParams.revenue_mode,
+      formula_version: archiveParams.formula_version,
+      scenario_tag: scenarioTag,
+      source_ref: sourceRef,
+      status_action: statusAction,
+      nonce,
+    }
+
+    const result = await writeStyleProfitSnapshot(payload, { request_id: requestId })
+    archiveFeedbackType.value = 'success'
+    archiveFeedback.value = `留档完成：${result.data.snapshot_no}`
+    ElMessage.success(archiveFeedback.value)
+    await loadRows()
+  } catch (error) {
+    const message = (error as Error).message || '留档失败'
+    archiveFeedbackType.value = 'warning'
+    archiveFeedback.value = message
+    ElMessage.error(message)
+  } finally {
+    archiveBusy.value = false
+  }
 }
 
 const loadRows = async (): Promise<void> => {
@@ -412,6 +550,10 @@ onMounted(async () => {
 }
 
 .error-alert {
+  margin-bottom: 12px;
+}
+
+.feedback-alert {
   margin-bottom: 12px;
 }
 

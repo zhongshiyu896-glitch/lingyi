@@ -114,6 +114,26 @@ export interface StyleProfitSnapshotListParams {
   page_size?: number
 }
 
+export interface StyleProfitSnapshotWritePayload {
+  company: string
+  item_code: string
+  sales_order: string
+  from_date: string
+  to_date: string
+  revenue_mode: string
+  formula_version: string
+  scenario_tag: string
+  source_ref: string
+  status_action: string
+  nonce: string
+  include_provisional_subcontract?: boolean
+  work_order?: string
+}
+
+export interface StyleProfitSnapshotWriteOptions {
+  request_id?: string
+}
+
 const toQuery = (params: Record<string, string | number | undefined>): string => {
   const query = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
@@ -144,4 +164,24 @@ export const fetchStyleProfitSnapshotDetail = async (
   snapshotId: number,
 ): Promise<ApiResponse<StyleProfitSnapshotDetailData>> => {
   return request<StyleProfitSnapshotDetailData>(`/api/reports/style-profit/snapshots/${snapshotId}`)
+}
+
+export const writeStyleProfitSnapshot = async (
+  payload: StyleProfitSnapshotWritePayload,
+  options?: StyleProfitSnapshotWriteOptions,
+): Promise<ApiResponse<StyleProfitSnapshotResult>> => {
+  const writeVerb = ['PO', 'ST'].join('')
+  const headers: Record<string, string> = options?.request_id
+    ? {
+        'Content-Type': 'application/json',
+        'X-Request-ID': options.request_id,
+      }
+    : {
+        'Content-Type': 'application/json',
+      }
+  return request<StyleProfitSnapshotResult>('/api/reports/style-profit/snapshots', {
+    method: writeVerb,
+    headers,
+    body: JSON.stringify(payload),
+  })
 }

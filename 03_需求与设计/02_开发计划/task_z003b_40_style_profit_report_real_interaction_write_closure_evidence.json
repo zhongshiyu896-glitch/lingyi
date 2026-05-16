@@ -1,0 +1,155 @@
+{
+  "task_id": "TASK-Z003B-40-IMPL",
+  "role": "B Engineer",
+  "source_head": "5d8a53a0be2f37656234b0f2da3b1c196b4693ec",
+  "source_subject": "chore: seal factory statement interaction closure",
+  "route_scope": [
+    "/reports/style-profit",
+    "/reports/style-profit/detail"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/style_profit.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/style_profit.py"
+  ],
+  "readonly_context_changed": [],
+  "allowed_write_requests": [
+    "POST /api/reports/style-profit/snapshots"
+  ],
+  "browser_write_evidence": {
+    "source": "/tmp/task_z003b40_browser_result.json",
+    "approved_write_request_count": 1,
+    "write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/reports/style-profit/snapshots",
+        "status": 200
+      }
+    ],
+    "browser_readback_request_count": 4,
+    "readback_endpoints": [
+      "GET /api/reports/style-profit/snapshots",
+      "GET /api/reports/style-profit/snapshots/{snapshot_id}"
+    ],
+    "unexpected_write_request_count": 0
+  },
+  "api_regression_evidence": {
+    "source": "/tmp/task_z003b40_regression_api.json",
+    "approved_write_request_count": 1,
+    "write_requests": [
+      "POST /api/reports/style-profit/snapshots"
+    ],
+    "unexpected_write_request_count": 0
+  },
+  "fail_closed_cases": [
+    {
+      "case": "missing_request_id",
+      "status": 409
+    },
+    {
+      "case": "invalid_request_id_pattern",
+      "status": 409
+    },
+    {
+      "case": "mismatched_request_id_vs_scenario_tag",
+      "status": 409
+    },
+    {
+      "case": "missing_idempotency_key",
+      "status": 409
+    },
+    {
+      "case": "invalid_idempotency_key",
+      "status": 409
+    },
+    {
+      "case": "missing_scenario_tag",
+      "status": 409
+    },
+    {
+      "case": "invalid_scenario_tag",
+      "status": 409
+    },
+    {
+      "case": "mismatched_source_ref",
+      "status": 409
+    },
+    {
+      "case": "mismatched_company",
+      "status": 409
+    },
+    {
+      "case": "mismatched_item_code",
+      "status": 409
+    },
+    {
+      "case": "mismatched_sales_order",
+      "status": 409
+    },
+    {
+      "case": "mismatched_revenue_mode",
+      "status": 409
+    },
+    {
+      "case": "mismatched_formula_version",
+      "status": 409
+    },
+    {
+      "case": "non_local_dev_gate",
+      "status": 409
+    },
+    {
+      "case": "non_local_sqlite_gate",
+      "status": 409
+    },
+    {
+      "case": "db_write_on_failed_gate_count_zero",
+      "status": 409
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "rollback_cleanup": {
+    "source": "/tmp/task_z003b40_cleanup.json",
+    "rollback_cleanup_executed": true,
+    "zero_residual": true,
+    "residual_counts_by_table": {
+      "ly_style_profit_snapshot": 0,
+      "ly_style_profit_detail": 0,
+      "ly_style_profit_source_map": 0,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    }
+  },
+  "counters": {
+    "approved_write_request_count": 1,
+    "browser_approved_write_request_count": 1,
+    "api_regression_approved_write_request_count": 1,
+    "unexpected_write_request_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0,
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "screenshots": {
+    "screenshots_dir": "/tmp/task_z003b40_screenshots",
+    "screenshots_count": 6,
+    "files": [
+      "01_list_page_loaded.png",
+      "02_filters_filled.png",
+      "03_query_readback.png",
+      "04_after_snapshot_write.png",
+      "05_list_readback_after_write.png",
+      "06_detail_readback.png"
+    ]
+  },
+  "outputs": {
+    "report": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z003B-40-IMPL_款式利润报表真实前端交互闭环最小实现与浏览器回归报告.md",
+    "evidence_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_40_style_profit_report_real_interaction_write_closure_evidence.json",
+    "browser_json": "/tmp/task_z003b40_browser_result.json",
+    "cleanup_json": "/tmp/task_z003b40_cleanup.json",
+    "regression_api_json": "/tmp/task_z003b40_regression_api.json",
+    "engineer_log": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+  }
+}

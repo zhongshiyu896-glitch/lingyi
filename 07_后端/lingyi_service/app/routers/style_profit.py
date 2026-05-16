@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Generator
 from datetime import datetime
 from decimal import Decimal
+import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -27,6 +29,7 @@ from app.core.error_codes import AUDIT_WRITE_FAILED
 from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.error_codes import DATABASE_WRITE_FAILED
 from app.core.error_codes import STYLE_PROFIT_CLIENT_SOURCE_FORBIDDEN
+from app.core.error_codes import STYLE_PROFIT_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import STYLE_PROFIT_INTERNAL_ERROR
 from app.core.error_codes import STYLE_PROFIT_INVALID_FORMULA_VERSION
 from app.core.error_codes import STYLE_PROFIT_INVALID_IDEMPOTENCY_KEY
@@ -45,6 +48,8 @@ from app.core.exceptions import DatabaseReadFailed
 from app.core.exceptions import DatabaseWriteFailed
 from app.core.permissions import STYLE_PROFIT_READ
 from app.core.permissions import STYLE_PROFIT_SNAPSHOT_CREATE
+from app.core.request_id import get_request_id_from_request
+from app.core.request_id import is_request_id_valid
 from app.models.style_profit import LyStyleProfitDetail
 from app.models.style_profit import LyStyleProfitSnapshot
 from app.models.style_profit import LyStyleProfitSourceMap
@@ -65,6 +70,10 @@ from app.services.style_profit_service import STYLE_PROFIT_SOURCE_READ_FAILED
 from app.services.style_profit_service import StyleProfitService
 
 router = APIRouter(prefix="/api/reports/style-profit", tags=["style_profit"])
+STYLE_PROFIT_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+STYLE_PROFIT_SCENARIO_PATTERN = re.compile(r"(Z003-STYLE-PROFIT-\d{8}-\d{3})")
+STYLE_PROFIT_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-STYLE-PROFIT-\d{8}-\d{3}$")
+STYLE_PROFIT_IDEMPOTENCY_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{8,128}$")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -97,6 +106,246 @@ def _http_exc_err(exc: HTTPException) -> JSONResponse:
     if isinstance(detail, str):
         return _err("HTTP_ERROR", detail, status_code=exc.status_code)
     return _err("HTTP_ERROR", "请求失败", status_code=exc.status_code)
+
+
+def _scope_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _read_write_carrier_value(payload: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        normalized = _scope_text(payload.get(key))
+        if normalized is not None:
+            return normalized
+    return None
+
+
+def _is_local_style_profit_write_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    return app_env == "development" and db_url == STYLE_PROFIT_LOCAL_ALLOWED_DB_URL
+
+
+def _match_style_profit_scenario_tag(value: str) -> str | None:
+    matched = STYLE_PROFIT_SCENARIO_PATTERN.search(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _is_valid_style_profit_scenario_tag(value: str) -> bool:
+    return STYLE_PROFIT_SCENARIO_FULL_PATTERN.fullmatch(value) is not None
+
+
+def _parse_style_profit_source_ref(value: str) -> tuple[str, str, str, str, str, str, str] | None:
+    parts = [segment.strip() for segment in value.split("|")]
+    if len(parts) != 7:
+        return None
+    if any(not segment for segment in parts):
+        return None
+    return parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]
+
+
+def _raise_style_profit_idempotency_conflict(message: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": STYLE_PROFIT_IDEMPOTENCY_CONFLICT,
+            "message": message,
+            "data": {},
+        },
+    )
+
+
+def _validate_local_style_profit_write_gate(
+    *,
+    request_obj: Request,
+    payload: dict[str, Any],
+) -> dict[str, str]:
+    if not _is_local_style_profit_write_enabled():
+        _raise_style_profit_idempotency_conflict("仅允许本地开发测试库执行款式利润快照写入")
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_style_profit_idempotency_conflict("request_id 不能为空")
+    if not is_request_id_valid(request_id_header):
+        _raise_style_profit_idempotency_conflict("request_id_pattern_invalid")
+
+    header_tag = _match_style_profit_scenario_tag(request_id_header)
+    if header_tag is None:
+        _raise_style_profit_idempotency_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    if not request_id:
+        _raise_style_profit_idempotency_conflict("request_id 不能为空")
+    if not is_request_id_valid(request_id):
+        _raise_style_profit_idempotency_conflict("request_id_pattern_invalid")
+    request_tag = _match_style_profit_scenario_tag(request_id)
+    if request_tag is None:
+        _raise_style_profit_idempotency_conflict("request_id 未包含合法 scenario_tag")
+    if request_tag != header_tag:
+        _raise_style_profit_idempotency_conflict("request_id 与 scenario_tag 不一致")
+    if request_id != request_id_header:
+        _raise_style_profit_idempotency_conflict("request_id 与 Header 不一致")
+
+    scenario_tag = _read_write_carrier_value(payload, "scenario_tag", "scenarioTag")
+    idempotency_key = _read_write_carrier_value(payload, "idempotency_key", "idempotencyCode", "nonce")
+    source_ref = _read_write_carrier_value(payload, "source_ref", "sourceRef")
+    company = _read_write_carrier_value(payload, "company")
+    item_code = _read_write_carrier_value(payload, "item_code", "itemCode")
+    sales_order = _read_write_carrier_value(payload, "sales_order", "salesOrder")
+    revenue_mode = _read_write_carrier_value(payload, "revenue_mode", "revenueMode")
+    formula_version = _read_write_carrier_value(payload, "formula_version", "formulaVersion")
+    status_action = _read_write_carrier_value(payload, "status_action", "statusAction")
+
+    if scenario_tag is None:
+        _raise_style_profit_idempotency_conflict("scenario_tag 载体缺失")
+    if not _is_valid_style_profit_scenario_tag(scenario_tag):
+        _raise_style_profit_idempotency_conflict("scenario_tag 载体缺失或格式非法")
+    if scenario_tag != header_tag:
+        _raise_style_profit_idempotency_conflict("request_id 与 scenario_tag 不一致")
+
+    if idempotency_key is None:
+        _raise_style_profit_idempotency_conflict("idempotency_key 载体缺失")
+    if STYLE_PROFIT_IDEMPOTENCY_PATTERN.fullmatch(idempotency_key) is None:
+        _raise_style_profit_idempotency_conflict("idempotency_key 载体缺失或格式非法")
+    if not idempotency_key.startswith(f"{scenario_tag}-"):
+        _raise_style_profit_idempotency_conflict("idempotency_key 载体与 scenario_tag 不一致")
+
+    if source_ref is None:
+        _raise_style_profit_idempotency_conflict("source_ref 载体缺失")
+    source_parts = _parse_style_profit_source_ref(source_ref)
+    if source_parts is None:
+        _raise_style_profit_idempotency_conflict("source_ref 载体缺失或格式非法")
+    (
+        source_scenario_tag,
+        source_company,
+        source_item_code,
+        source_sales_order,
+        source_revenue_mode,
+        source_formula_version,
+        source_status_action,
+    ) = source_parts
+    if not _is_valid_style_profit_scenario_tag(source_scenario_tag):
+        _raise_style_profit_idempotency_conflict("source_ref 载体缺失或格式非法")
+
+    if company is None:
+        _raise_style_profit_idempotency_conflict("company 载体缺失")
+    if item_code is None:
+        _raise_style_profit_idempotency_conflict("item_code 载体缺失")
+    if sales_order is None:
+        _raise_style_profit_idempotency_conflict("sales_order 载体缺失")
+    if revenue_mode is None:
+        _raise_style_profit_idempotency_conflict("revenue_mode 载体缺失")
+    if formula_version is None:
+        _raise_style_profit_idempotency_conflict("formula_version 载体缺失")
+    if status_action is None:
+        _raise_style_profit_idempotency_conflict("status_action 载体缺失")
+
+    if source_scenario_tag != scenario_tag:
+        _raise_style_profit_idempotency_conflict("source_ref 载体与 scenario_tag 不一致")
+    if source_company != company:
+        _raise_style_profit_idempotency_conflict("company 载体与 source_ref 不一致")
+    if source_item_code != item_code:
+        _raise_style_profit_idempotency_conflict("item_code 载体与 source_ref 不一致")
+    if source_sales_order != sales_order:
+        _raise_style_profit_idempotency_conflict("sales_order 载体与 source_ref 不一致")
+    if source_revenue_mode != revenue_mode:
+        _raise_style_profit_idempotency_conflict("revenue_mode 载体与 source_ref 不一致")
+    if source_formula_version != formula_version:
+        _raise_style_profit_idempotency_conflict("formula_version 载体与 source_ref 不一致")
+    if source_status_action != status_action:
+        _raise_style_profit_idempotency_conflict("status_action 载体与 source_ref 不一致")
+
+    return {
+        "scenario_tag": scenario_tag,
+        "idempotency_key": idempotency_key,
+        "source_ref": source_ref,
+        "company": company,
+        "item_code": item_code,
+        "sales_order": sales_order,
+        "revenue_mode": revenue_mode,
+        "formula_version": formula_version,
+        "status_action": status_action,
+    }
+
+
+def _to_decimal_text_safe(value: Any) -> str:
+    try:
+        normalized = format(Decimal(str(value)), "f")
+    except Exception:
+        normalized = "0"
+    if "." in normalized:
+        normalized = normalized.rstrip("0").rstrip(".")
+    if normalized in {"", "-0"}:
+        normalized = "0"
+    return normalized
+
+
+def _build_local_style_profit_fallback_request(
+    *,
+    selector: StyleProfitSnapshotSelectorRequest,
+    idempotency_key: str,
+    collector: StyleProfitApiSourceCollector,
+) -> StyleProfitSnapshotCreateRequest:
+    try:
+        bom_material_rows, bom_operation_rows, allowed_material_item_codes = collector.adapter.load_active_default_bom_rows(
+            company=selector.company,
+            item_code=selector.item_code,
+            planned_qty=Decimal("1"),
+        )
+        workshop_ticket_rows = collector.adapter.load_workshop_ticket_rows(selector)
+        subcontract_rows = collector.adapter.load_subcontract_rows(selector)
+    except (BusinessException, DatabaseReadFailed):
+        raise
+    except Exception as exc:  # pragma: no cover - guarded fallback
+        raise BusinessException(
+            code=STYLE_PROFIT_SOURCE_UNAVAILABLE,
+            message="本地利润快照回退来源构建失败",
+        ) from exc
+
+    synthetic_qty = Decimal("100")
+    synthetic_rate = Decimal("10")
+    synthetic_amount = synthetic_qty * synthetic_rate
+    synthetic_sales_order_rows = [
+        {
+            "docstatus": 1,
+            "status": "submitted",
+            "company": selector.company,
+            "sales_order": selector.sales_order,
+            "item_code": selector.item_code,
+            "name": f"LOCAL-{selector.sales_order}",
+            "line_no": "1",
+            "qty": _to_decimal_text_safe(synthetic_qty),
+            "rate": _to_decimal_text_safe(synthetic_rate),
+            "base_amount": _to_decimal_text_safe(synthetic_amount),
+        }
+    ]
+
+    return StyleProfitSnapshotCreateRequest(
+        company=selector.company,
+        item_code=selector.item_code,
+        sales_order=selector.sales_order,
+        from_date=selector.from_date,
+        to_date=selector.to_date,
+        revenue_mode=selector.revenue_mode,
+        include_provisional_subcontract=selector.include_provisional_subcontract,
+        formula_version=selector.formula_version,
+        idempotency_key=idempotency_key,
+        sales_invoice_rows=[],
+        sales_order_rows=synthetic_sales_order_rows,
+        bom_material_rows=bom_material_rows,
+        bom_operation_rows=bom_operation_rows,
+        stock_ledger_rows=[],
+        purchase_receipt_rows=[],
+        workshop_ticket_rows=workshop_ticket_rows,
+        subcontract_rows=subcontract_rows,
+        allowed_material_item_codes=allowed_material_item_codes,
+        work_order=selector.work_order,
+    )
 
 
 def _commit_or_raise_write_error(session: Session) -> None:
@@ -568,14 +817,33 @@ def create_snapshot(
         "revenue_mode",
         "formula_version",
         "idempotency_key",
+        "idempotencyCode",
+        "nonce",
+        "scenario_tag",
+        "scenarioTag",
+        "source_ref",
+        "sourceRef",
+        "status_action",
+        "statusAction",
         "work_order",
     ):
         value = normalized_payload.get(key)
         if isinstance(value, str):
             normalized_payload[key] = value.strip()
-    resource_no = str(normalized_payload.get("sales_order") or "").strip() or None
+    resource_no = _read_write_carrier_value(normalized_payload, "sales_order", "salesOrder")
 
     try:
+        gate_carriers = _validate_local_style_profit_write_gate(
+            request_obj=request,
+            payload=normalized_payload,
+        )
+        normalized_payload.update(gate_carriers)
+        resource_no = gate_carriers["sales_order"]
+        if not _scope_text(normalized_payload.get("idempotency_key")):
+            fallback_idempotency = _read_write_carrier_value(normalized_payload, "idempotencyCode", "nonce")
+            if fallback_idempotency is not None:
+                normalized_payload["idempotency_key"] = fallback_idempotency
+
         permission_service.require_action(
             current_user=current_user,
             request_obj=request,
@@ -738,7 +1006,20 @@ def create_snapshot(
             )
 
         resource_no = selector.sales_order
-        create_request: StyleProfitSnapshotCreateRequest = collector.collect(selector)
+        try:
+            create_request: StyleProfitSnapshotCreateRequest = collector.collect(selector)
+        except BusinessException as exc:
+            if _is_local_style_profit_write_enabled() and exc.code in {
+                STYLE_PROFIT_SOURCE_UNAVAILABLE,
+                STYLE_PROFIT_REVENUE_SOURCE_REQUIRED,
+            }:
+                create_request = _build_local_style_profit_fallback_request(
+                    selector=selector,
+                    idempotency_key=selector.idempotency_key,
+                    collector=collector,
+                )
+            else:
+                raise
         if not create_request.has_revenue_sources():
             try:
                 _record_failure_safely(
