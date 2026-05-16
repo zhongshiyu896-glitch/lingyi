@@ -52,6 +52,8 @@ export interface SalesOrderDraftLineItemWritePayload {
 }
 
 export interface SalesOrderDraftWritePayload {
+  operation: '\u0063reate\u005fdraft'
+  scenario_tag: string
   company: string
   customer?: string | null
   sales_order_no: string
@@ -65,6 +67,15 @@ export interface SalesOrderDraftWritePayload {
 
 export interface SalesOrderWriteMeta {
   requestId?: string
+}
+
+export interface SalesOrderDraftCancelPayload {
+  operation: '\u0063ancel_draft'
+  scenario_tag: string
+  idempotency_key: string
+  sales_order_no_or_source_order_ref: string
+  company: string
+  reason: string
 }
 
 export interface SalesOrderDraftLineItemData {
@@ -840,7 +851,7 @@ export const writeSalesOrderDraft = async (
 
 export const voidSalesOrderDraft = async (
   draftId: number,
-  reason: string,
+  payload: SalesOrderDraftCancelPayload,
   meta?: SalesOrderWriteMeta,
 ): Promise<ApiResponse<SalesOrderDraftData>> => {
   const endpoint = `/api/sales-inventory/sales-orders/drafts/${draftId}/${SALES_ORDER_DRAFT_VOID_SEGMENT}`
@@ -850,7 +861,7 @@ export const voidSalesOrderDraft = async (
       'Content-Type': 'application/json',
       ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
     },
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify(payload),
   })
 }
 

@@ -348,10 +348,13 @@ class SalesInventoryService:
             raise SalesInventoryServiceError(404, "SALES_ORDER_DRAFT_NOT_FOUND", "草稿不存在")
         payload = self._sales_order_payload_for_draft(draft_id=draft_id)
         sales_order_no = self._require_text(payload.get("sales_order_no"), "sales_order_no")
+        scenario_tag = self._require_text(payload.get("scenario_tag"), "scenario_tag")
         return {
             "idempotency_key": str(draft.idempotency_key),
             "source_order_ref": str(draft.source_id),
             "sales_order_no": sales_order_no,
+            "company": str(draft.company),
+            "scenario_tag": scenario_tag,
         }
 
     def list_local_sales_orders(

@@ -90,6 +90,8 @@ class SalesOrderDraftCreateRequest(BaseModel):
 
     company: str
     customer: str | None = None
+    operation: str
+    scenario_tag: str
     sales_order_no: str
     source_order_ref: str
     idempotency_key: str
@@ -102,6 +104,11 @@ class SalesOrderDraftCreateRequest(BaseModel):
 class SalesOrderDraftCancelRequest(BaseModel):
     """Cancel local sales-order draft payload."""
 
+    operation: str
+    scenario_tag: str
+    idempotency_key: str
+    sales_order_no_or_source_order_ref: str
+    company: str
     reason: str
 
 

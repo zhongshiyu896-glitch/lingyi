@@ -31,6 +31,7 @@ from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
 from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
+from app.core.request_id import is_request_id_valid
 from app.schemas.sales_inventory import DiagnosticData
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
@@ -50,7 +51,12 @@ from app.services.sales_inventory_service import SalesInventoryServiceError
 
 router = APIRouter(prefix="/api/sales-inventory", tags=["sales_inventory"])
 SALES_ORDER_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
-SALES_ORDER_SCENARIO_PATTERN = re.compile(r"(Z002-SALES-ORDER-\d{8}-\d{3})")
+SALES_ORDER_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-ORDER-\d{8}-\d{3}$")
+SALES_ORDER_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-ORDER-\d{8}-\d{3})(?:$|[-_.].*)$")
+SALES_ORDER_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-ORDER-\d{8}-\d{3})$")
+SALES_ORDER_SOURCE_REF_PATTERN = re.compile(r"^SRC-(Z003-SALES-ORDER-\d{8}-\d{3})$")
+SALES_ORDER_NO_PATTERN = re.compile(r"^SO-(Z003-SALES-ORDER-\d{8}-\d{3})$")
+SALES_ORDER_CANCEL_REASON_PATTERN = re.compile(r"^VOID-(Z003-SALES-ORDER-\d{8}-\d{3})$")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -73,8 +79,18 @@ def _is_local_sales_order_write_enabled() -> bool:
     return app_env == "development" and db_url == SALES_ORDER_LOCAL_ALLOWED_DB_URL
 
 
-def _match_sales_order_scenario_tag(value: str) -> str | None:
-    matched = SALES_ORDER_SCENARIO_PATTERN.search(value)
+def _extract_sales_order_request_tag(value: str) -> str | None:
+    matched = SALES_ORDER_REQUEST_TAG_PATTERN.fullmatch(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _match_sales_order_prefixed_carrier(value: str | None, pattern: re.Pattern[str]) -> str | None:
+    normalized = _scope_text(value)
+    if normalized is None:
+        return None
+    matched = pattern.fullmatch(normalized)
     if matched is None:
         return None
     return matched.group(1)
@@ -94,47 +110,89 @@ def _raise_sales_order_idempotency_conflict(message: str) -> None:
 def _validate_local_sales_order_write_gate(
     *,
     request_obj: Request,
-    carriers: list[str | None],
+    scenario_tag: str | None,
+    idempotency_key: str | None,
+    source_order_ref: str | None,
+    sales_order_no: str | None,
+    company: str | None,
+    operation: str | None,
+    expected_operation: str,
+    draft_id: int | None = None,
+    cancel_reason: str | None = None,
 ) -> str:
     if not _is_local_sales_order_write_enabled():
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": RESOURCE_ACCESS_DENIED,
-                "message": "仅允许本地开发测试库执行销售订单写入",
-                "data": {},
-            },
-        )
+        _raise_sales_order_idempotency_conflict("仅允许本地开发测试库执行销售订单写入")
 
     request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
     if not request_id_header:
         _raise_sales_order_idempotency_conflict("request_id 不能为空")
-    header_tag = _match_sales_order_scenario_tag(request_id_header)
-    if header_tag is None:
+    if not is_request_id_valid(request_id_header):
+        _raise_sales_order_idempotency_conflict("request_id_pattern_invalid")
+    header_tag = _extract_sales_order_request_tag(request_id_header)
+    if header_tag is None or SALES_ORDER_SCENARIO_FULL_PATTERN.fullmatch(header_tag) is None:
         _raise_sales_order_idempotency_conflict("request_id 未包含合法 scenario_tag")
 
     request_id = get_request_id_from_request(request_obj).strip()
-    request_tag = _match_sales_order_scenario_tag(request_id)
+    if not request_id:
+        _raise_sales_order_idempotency_conflict("request_id 不能为空")
+    if not is_request_id_valid(request_id):
+        _raise_sales_order_idempotency_conflict("request_id_pattern_invalid")
+    request_tag = _extract_sales_order_request_tag(request_id)
     if request_tag is None:
         _raise_sales_order_idempotency_conflict("request_id 未包含合法 scenario_tag")
     if request_tag != header_tag:
         _raise_sales_order_idempotency_conflict("request_id 与 scenario_tag 不一致")
+    if request_id != request_id_header:
+        _raise_sales_order_idempotency_conflict("request_id 与 Header 不一致")
 
-    carrier_tags: list[str] = []
-    for raw_value in carriers:
-        normalized = _scope_text(raw_value)
-        if normalized is None:
-            _raise_sales_order_idempotency_conflict("scenario_tag 载体缺失")
-        scenario_tag = _match_sales_order_scenario_tag(normalized)
-        if scenario_tag is None:
-            _raise_sales_order_idempotency_conflict("scenario_tag 载体缺失或格式非法")
-        carrier_tags.append(scenario_tag)
-
-    if len(set(carrier_tags)) != 1:
-        _raise_sales_order_idempotency_conflict("scenario_tag 载体不一致")
-    if carrier_tags[0] != header_tag:
+    normalized_scenario_tag = _scope_text(scenario_tag)
+    if normalized_scenario_tag is None:
+        _raise_sales_order_idempotency_conflict("scenario_tag 载体缺失")
+    if SALES_ORDER_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag) is None:
+        _raise_sales_order_idempotency_conflict("scenario_tag 载体缺失或格式非法")
+    if normalized_scenario_tag != header_tag:
         _raise_sales_order_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
-    return header_tag
+
+    idempotency_tag = _match_sales_order_prefixed_carrier(idempotency_key, SALES_ORDER_IDEMPOTENCY_PATTERN)
+    if idempotency_tag is None:
+        _raise_sales_order_idempotency_conflict("idempotency_key 载体缺失或格式非法")
+    if idempotency_tag != normalized_scenario_tag:
+        _raise_sales_order_idempotency_conflict("idempotency_key 载体与 scenario_tag 不一致")
+
+    source_tag = _match_sales_order_prefixed_carrier(source_order_ref, SALES_ORDER_SOURCE_REF_PATTERN)
+    if source_tag is None:
+        _raise_sales_order_idempotency_conflict("source_order_ref 载体缺失或格式非法")
+    if source_tag != normalized_scenario_tag:
+        _raise_sales_order_idempotency_conflict("source_order_ref 载体与 scenario_tag 不一致")
+
+    order_tag = _match_sales_order_prefixed_carrier(sales_order_no, SALES_ORDER_NO_PATTERN)
+    if order_tag is None:
+        _raise_sales_order_idempotency_conflict("sales_order_no 载体缺失或格式非法")
+    if order_tag != normalized_scenario_tag:
+        _raise_sales_order_idempotency_conflict("sales_order_no 载体与 scenario_tag 不一致")
+
+    normalized_company = _scope_text(company)
+    if normalized_company is None:
+        _raise_sales_order_idempotency_conflict("company 载体缺失")
+
+    normalized_operation = _scope_text(operation)
+    if normalized_operation is None:
+        _raise_sales_order_idempotency_conflict("operation 载体缺失")
+    if normalized_operation not in {"create_draft", "cancel_draft"}:
+        _raise_sales_order_idempotency_conflict("operation 载体缺失或格式非法")
+    if normalized_operation != expected_operation:
+        _raise_sales_order_idempotency_conflict("operation 载体与路由动作不一致")
+
+    if expected_operation == "cancel_draft":
+        if draft_id is None or draft_id <= 0:
+            _raise_sales_order_idempotency_conflict("draft_id 载体缺失或格式非法")
+        cancel_reason_tag = _match_sales_order_prefixed_carrier(cancel_reason, SALES_ORDER_CANCEL_REASON_PATTERN)
+        if cancel_reason_tag is None:
+            _raise_sales_order_idempotency_conflict("operation 载体与路由动作不一致")
+        if cancel_reason_tag != normalized_scenario_tag:
+            _raise_sales_order_idempotency_conflict("operation 载体与 scenario_tag 不一致")
+
+    return normalized_scenario_tag
 
 
 def _handle_erpnext_error(
@@ -564,7 +622,13 @@ def create_sales_order_draft(
     )
     scenario_tag = _validate_local_sales_order_write_gate(
         request_obj=request,
-        carriers=[payload.idempotency_key, payload.source_order_ref, payload.sales_order_no],
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        source_order_ref=payload.source_order_ref,
+        sales_order_no=payload.sales_order_no,
+        company=payload.company,
+        operation=payload.operation,
+        expected_operation="create_draft",
     )
     try:
         data = _write_service(session).create_sales_order_draft(
@@ -590,6 +654,8 @@ def cancel_sales_order_draft(
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
+    if draft_id <= 0:
+        _raise_sales_order_idempotency_conflict("draft_id 载体缺失或格式非法")
     action = SALES_INVENTORY_READ
     permission_service = PermissionService(session=session)
     permission_service.require_action(
@@ -605,13 +671,25 @@ def cancel_sales_order_draft(
         _raise_sales_inventory_service_error(exc)
     _validate_local_sales_order_write_gate(
         request_obj=request,
-        carriers=[
-            gate_fields.get("idempotency_key"),
-            gate_fields.get("source_order_ref"),
-            gate_fields.get("sales_order_no"),
-            payload.reason,
-        ],
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        source_order_ref=gate_fields.get("source_order_ref"),
+        sales_order_no=gate_fields.get("sales_order_no"),
+        company=payload.company,
+        operation=payload.operation,
+        expected_operation="cancel_draft",
+        draft_id=draft_id,
+        cancel_reason=payload.reason,
     )
+    if payload.company.strip() != gate_fields.get("company", ""):
+        _raise_sales_order_idempotency_conflict("company 载体与草稿上下文不一致")
+    if payload.scenario_tag.strip() != gate_fields.get("scenario_tag", ""):
+        _raise_sales_order_idempotency_conflict("scenario_tag 载体与草稿上下文不一致")
+    if payload.sales_order_no_or_source_order_ref.strip() not in {
+        gate_fields.get("sales_order_no", ""),
+        gate_fields.get("source_order_ref", ""),
+    }:
+        _raise_sales_order_idempotency_conflict("sales_order_no_or_source_order_ref 载体与草稿上下文不一致")
     try:
         data = _write_service(session).cancel_sales_order_draft(
             draft_id=draft_id,

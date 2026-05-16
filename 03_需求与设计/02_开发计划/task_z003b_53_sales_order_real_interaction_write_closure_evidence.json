@@ -1,0 +1,168 @@
+{
+  "task_id": "TASK-Z003B-53-IMPL",
+  "source_head": "d3987703c735a930cf80a6454b5e360f405f7151",
+  "route_scope": [
+    "/sales-inventory/sales-orders",
+    "/sales-inventory/sales-orders/detail"
+  ],
+  "selected_candidate_id": "TASK-Z003B-CAND-09",
+  "scenario_tag_prefix": "Z003-SALES-ORDER-{YYYYMMDD}-{NNN}",
+  "sales_order_draft_storage_reuse_explanation": {
+    "explained": true,
+    "summary": "sales-order draft 在后端服务中复用仓库草稿模型存储，这是已核验设计，不属于跨模块写入漂移。",
+    "service_file": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/sales_inventory_service.py",
+    "model_references": [
+      "LyWarehouseStockEntryDraft",
+      "LyWarehouseStockEntryDraftItem"
+    ],
+    "residual_table_mapping_note": "ly_warehouse_stock_entry_draft* 在本任务 residual 中出现，语义为销售订单草稿复用存储。"
+  },
+  "browser_write_evidence": {
+    "approved_write_request_count": 2,
+    "browser_approved_write_request_count": 2,
+    "create_draft_request_count": 1,
+    "cancel_draft_request_count": 1,
+    "browser_write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/sales-inventory/sales-orders/drafts",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/api/sales-inventory/sales-orders/drafts/8/cancel",
+        "status": 200
+      }
+    ],
+    "browser_readback_request_count": 14,
+    "browser_readback_requests": [
+      {
+        "method": "GET",
+        "path": "/api/sales-inventory/sales-orders",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/sales-inventory/sales-orders/SO-Z003-SALES-ORDER-20260516-308",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/sales-inventory/sales-order-fulfillment",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/sales-inventory/items/SO-ITEM-001/stock-summary",
+        "status": 200
+      }
+    ],
+    "unexpected_write_request_count": 0
+  },
+  "api_regression_evidence": {
+    "approved_write_request_count": 4,
+    "api_regression_approved_write_request_count": 4,
+    "approved_write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/sales-inventory/sales-orders/drafts",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/api/sales-inventory/sales-orders/drafts",
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/api/sales-inventory/sales-orders/drafts/11/cancel",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/sales-inventory/sales-orders/drafts/12/cancel",
+        "status": 200
+      }
+    ],
+    "approved_readback_request_count": 4,
+    "approved_readback_requests": [
+      {
+        "method": "GET",
+        "path": "/api/sales-inventory/sales-orders",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/sales-inventory/sales-orders/SO-Z003-SALES-ORDER-20260516-805",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/sales-inventory/sales-order-fulfillment",
+        "status": 200
+      },
+      {
+        "method": "GET",
+        "path": "/api/sales-inventory/items/SO-ITEM-001/stock-summary",
+        "status": 200
+      }
+    ],
+    "unexpected_write_request_count": 0,
+    "fail_closed_case_count": 15,
+    "invalid_scenario_tag_status": 409,
+    "db_write_on_failed_gate_count": 0
+  },
+  "cleanup_evidence": {
+    "rollback_cleanup_executed": true,
+    "zero_residual": true,
+    "residual_counts_by_table_before_cleanup": {
+      "ly_warehouse_stock_entry_draft": 2,
+      "ly_warehouse_stock_entry_draft_item": 2,
+      "ly_warehouse_stock_entry_outbox_event": 2,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    },
+    "residual_counts_by_table": {
+      "ly_warehouse_stock_entry_draft": 0,
+      "ly_warehouse_stock_entry_draft_item": 0,
+      "ly_warehouse_stock_entry_outbox_event": 0,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    }
+  },
+  "forbidden_counters": {
+    "unexpected_write_request_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0,
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "screenshots": {
+    "screenshots_dir": "/tmp/task_z003b53_screenshots",
+    "screenshots_count": 7,
+    "files": [
+      "01_list_initial.png",
+      "02_filter_query.png",
+      "03_after_create_readback.png",
+      "04_stock_summary_readback.png",
+      "05_after_cancel_readback.png",
+      "06_detail_readback.png",
+      "07_back_to_list.png"
+    ]
+  },
+  "tmp_artifacts": {
+    "browser_json": "/tmp/task_z003b53_browser_result.json",
+    "regression_api_json": "/tmp/task_z003b53_regression_api.json",
+    "cleanup_json": "/tmp/task_z003b53_cleanup.json"
+  },
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/sales_inventory.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/sales_inventory.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/sales_inventory.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/sales_inventory_service.py"
+  ],
+  "readonly_context_changed": false
+}

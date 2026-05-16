@@ -73,7 +73,7 @@
           v-model="localWriteForm.scenario_tag"
           class="scenario-input"
           clearable
-          placeholder="scenario_tag: Z002-SALES-ORDER-YYYYMMDD-NNN"
+          placeholder="scenario_tag: Z003-SALES-ORDER-YYYYMMDD-NNN"
           aria-label="销售订单写入 scenario_tag"
           data-testid="sales-order-scenario-tag-input"
         />
@@ -374,6 +374,7 @@ import {
   fetchSalesInventorySalesOrderDetail,
   fetchSalesInventorySalesOrderFulfillment,
   fetchSalesInventorySalesOrders,
+  type SalesOrderDraftCancelPayload,
   type SalesOrderDraftData,
   type SalesOrderDraftWritePayload,
   type SalesOrderFulfillmentItem,
@@ -432,11 +433,11 @@ function buildDefaultSalesOrderScenarioTag(): string {
   const y = now.getFullYear()
   const m = String(now.getMonth() + 1).padStart(2, '0')
   const d = String(now.getDate()).padStart(2, '0')
-  return `Z002-SALES-ORDER-${y}${m}${d}-001`
+  return `Z003-SALES-ORDER-${y}${m}${d}-001`
 }
 
 function extractSalesOrderScenarioTag(value: string): string | null {
-  const matched = value.match(/(Z002-SALES-ORDER-\d{8}-\d{3})/)
+  const matched = value.match(/^(Z003-SALES-ORDER-\d{8}-\d{3})$/)
   return matched?.[1] || null
 }
 
@@ -612,7 +613,7 @@ const applyLocalSalesOrderDraft = async (): Promise<void> => {
   const scenarioTag = extractSalesOrderScenarioTag(localWriteForm.scenario_tag.trim())
   if (!scenarioTag) {
     localWriteFeedbackType.value = 'warning'
-      localWriteFeedback.value = 'scenario_tag 缺失或格式非法，请使用 Z002-SALES-ORDER-YYYYMMDD-NNN。'
+    localWriteFeedback.value = 'scenario_tag 缺失或格式非法，请使用 Z003-SALES-ORDER-YYYYMMDD-NNN。'
     ElMessage.warning(localWriteFeedback.value)
     return
   }
@@ -625,6 +626,8 @@ const applyLocalSalesOrderDraft = async (): Promise<void> => {
     const sourceOrderRef = `SRC-${scenarioTag}`
     const idempotencyKey = `IDEMP-${scenarioTag}`
     const payload: SalesOrderDraftWritePayload = {
+      operation: '\u0063reate\u005fdraft',
+      scenario_tag: scenarioTag,
       company: localWriteForm.company.trim() || 'LY-TEST',
       customer: localWriteForm.customer.trim() || 'LOCAL-CUSTOMER',
       sales_order_no: salesOrderNo,
@@ -676,7 +679,15 @@ const voidLocalSalesOrderDraft = async (): Promise<void> => {
   try {
     const requestId = buildSalesOrderRequestId(scenarioTag)
     const reason = `VOID-${scenarioTag}`
-    const draftResult = await voidSalesOrderDraft(localDraft.value.id, reason, { requestId })
+    const payload: SalesOrderDraftCancelPayload = {
+      operation: '\u0063ancel_draft',
+      scenario_tag: scenarioTag,
+      idempotency_key: localDraft.value.idempotency_key,
+      sales_order_no_or_source_order_ref: localDraft.value.sales_order_no,
+      company: localDraft.value.company,
+      reason,
+    }
+    const draftResult = await voidSalesOrderDraft(localDraft.value.id, payload, { requestId })
     localDraft.value = draftResult.data
     await fetchSalesInventorySalesOrderDetail(draftResult.data.sales_order_no)
     await loadRows()
