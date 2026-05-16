@@ -1,0 +1,7 @@
+case_id	module	route_scope	case_type	write_request_count	forbidden_request_count	auth_permission_result	readonly_guard_result	result
+Z003-ML03-BASELINE-01	stock_ledger	/sales-inventory/stock-ledger	no_write_readback_query	0	0	PASS	PASS	PASS
+Z003-ML03-BASELINE-02	stock_ledger	/sales-inventory/stock-ledger	no_write_guard_and_forbidden_flow	0	0	PASS	PASS	PASS
+Z003-ML03-BASELINE-03	cross_module_view	/cross-module/view	no_write_cross_module_drilldown_work_order	0	0	PASS	PASS	PASS
+Z003-ML03-BASELINE-04	cross_module_view	/cross-module/view	no_write_cross_module_drilldown_sales_order	0	0	PASS	PASS	PASS
+Z003-ML03-BASELINE-05	sales_inventory_references	/sales-inventory/references	no_write_reference_query_readback	0	0	PASS	PASS	PASS
+Z003-ML03-BASELINE-06	sales_inventory_references	/sales-inventory/references	no_write_permission_readonly_guard	0	0	PASS	PASS	PASS

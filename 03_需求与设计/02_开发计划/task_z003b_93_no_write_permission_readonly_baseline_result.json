@@ -1,0 +1,193 @@
+{
+  "task_id": "TASK-Z003B-93",
+  "source_head": "76a8adfa7554ce265e71a78080279a9d0e55560a",
+  "source_subject": "chore: seal z003 evidence acceptance ledger",
+  "baseline_source_task": "TASK-Z003B-92-PREP",
+  "selected_mainline_id": "TASK-Z003B-NEXT-ML-03",
+  "remote_lifecycle_parked": true,
+  "baseline_case_count": 6,
+  "executed_case_count": 6,
+  "passed_case_count": 6,
+  "fix_case_count": 0,
+  "blocked_case_count": 0,
+  "allowed_read_endpoint_count": 10,
+  "allowed_read_endpoint_passed_count": 10,
+  "auth_permission_check_count": 2,
+  "auth_permission_passed_count": 2,
+  "readonly_guard_check_count": 2,
+  "readonly_guard_passed_count": 2,
+  "write_request_count": 0,
+  "browser_approved_write_request_count": 0,
+  "api_regression_approved_write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "zero_side_effect": true,
+  "residual_scan_result": "no_new_residual",
+  "screenshots_count": 12,
+  "cases": [
+    {
+      "case_id": "Z003-ML03-BASELINE-01",
+      "module": "stock_ledger",
+      "route_scope": [
+        "/sales-inventory/stock-ledger"
+      ],
+      "case_type": "no_write_readback_query",
+      "browser_steps_executed": true,
+      "read_requests_seen": [
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/sales-inventory/items/{item_code}/stock-summary",
+        "GET /api/sales-inventory/items/{item_code}/stock-ledger",
+        "GET /api/sales-inventory/material-transfers",
+        "GET /api/sales-inventory/aggregation"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "auth_permission_result": "PASS",
+      "readonly_guard_result": "PASS",
+      "zero_side_effect_result": "PASS",
+      "screenshots": [
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-01_a_filters.png",
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-01_b_query_readback.png"
+      ],
+      "result": "PASS",
+      "finding": "读取链路完整命中且无写请求，满足 no-write 查询与回读闭环。",
+      "residual_risk": "LOW"
+    },
+    {
+      "case_id": "Z003-ML03-BASELINE-02",
+      "module": "stock_ledger",
+      "route_scope": [
+        "/sales-inventory/stock-ledger"
+      ],
+      "case_type": "no_write_guard_and_forbidden_flow",
+      "browser_steps_executed": true,
+      "read_requests_seen": [
+        "GET /api/auth/me",
+        "GET /api/auth/actions"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "auth_permission_result": "PASS",
+      "readonly_guard_result": "PASS",
+      "zero_side_effect_result": "PASS",
+      "screenshots": [
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-02_a_guarded_actions.png",
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-02_b_second_readback.png"
+      ],
+      "result": "PASS",
+      "finding": "guard 场景命中后无额外副作用，禁止流量计数为 0。",
+      "residual_risk": "LOW"
+    },
+    {
+      "case_id": "Z003-ML03-BASELINE-03",
+      "module": "cross_module_view",
+      "route_scope": [
+        "/cross-module/view"
+      ],
+      "case_type": "no_write_cross_module_drilldown_work_order",
+      "browser_steps_executed": true,
+      "read_requests_seen": [
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/cross-module/work-order-trail/{work_order_id}"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "auth_permission_result": "PASS",
+      "readonly_guard_result": "PASS",
+      "zero_side_effect_result": "PASS",
+      "screenshots": [
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-03_a_workorder_filters.png",
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-03_b_workorder_readback.png"
+      ],
+      "result": "PASS",
+      "finding": "工单链路只读钻取成功，写请求计数保持 0。",
+      "residual_risk": "LOW"
+    },
+    {
+      "case_id": "Z003-ML03-BASELINE-04",
+      "module": "cross_module_view",
+      "route_scope": [
+        "/cross-module/view"
+      ],
+      "case_type": "no_write_cross_module_drilldown_sales_order",
+      "browser_steps_executed": true,
+      "read_requests_seen": [
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/cross-module/sales-order-trail/{sales_order_id}"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "auth_permission_result": "PASS",
+      "readonly_guard_result": "PASS",
+      "zero_side_effect_result": "PASS",
+      "screenshots": [
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-04_a_salesorder_readback.png",
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-04_b_guard_case.png"
+      ],
+      "result": "PASS",
+      "finding": "销售链路钻取与 guard 验证通过，未出现 non-GET 请求。",
+      "residual_risk": "LOW"
+    },
+    {
+      "case_id": "Z003-ML03-BASELINE-05",
+      "module": "sales_inventory_references",
+      "route_scope": [
+        "/sales-inventory/references"
+      ],
+      "case_type": "no_write_reference_query_readback",
+      "browser_steps_executed": true,
+      "read_requests_seen": [
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/sales-inventory/customers",
+        "GET /api/sales-inventory/warehouses"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "auth_permission_result": "PASS",
+      "readonly_guard_result": "PASS",
+      "zero_side_effect_result": "PASS",
+      "screenshots": [
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-05_a_customers_query.png",
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-05_b_warehouses_query.png"
+      ],
+      "result": "PASS",
+      "finding": "references 查询/筛选/回读完成，无写请求。",
+      "residual_risk": "LOW"
+    },
+    {
+      "case_id": "Z003-ML03-BASELINE-06",
+      "module": "sales_inventory_references",
+      "route_scope": [
+        "/sales-inventory/references"
+      ],
+      "case_type": "no_write_permission_readonly_guard",
+      "browser_steps_executed": true,
+      "read_requests_seen": [
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/sales-inventory/customers",
+        "GET /api/sales-inventory/warehouses"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "auth_permission_result": "PASS",
+      "readonly_guard_result": "PASS",
+      "zero_side_effect_result": "PASS",
+      "screenshots": [
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-06_a_permission_refresh.png",
+        "/tmp/task_z003b93_screenshots/Z003-ML03-BASELINE-06_b_final_state.png"
+      ],
+      "result": "PASS",
+      "finding": "权限刷新与只读 guard 验证通过，零副作用保持成立。",
+      "residual_risk": "LOW"
+    }
+  ]
+}
