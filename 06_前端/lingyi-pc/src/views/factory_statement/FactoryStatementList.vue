@@ -23,7 +23,7 @@
         :closable="false"
         show-icon
         title="款式打板下单对账表（TASK-Y22B-P1-02）"
-        description="本页允许 local-dev 受控 create/confirm/cancel 闭环写入；应付草稿与导出打印仍保持只读禁用。"
+        description="本页允许 local-dev 受控 create/confirm/cancel/payable-draft 闭环写入；导出打印保持只读禁用。"
         class="reconciliation-alert"
         data-testid="factory-statement-main-alert"
       />
@@ -70,7 +70,7 @@
           <el-input
             v-model="localWriteForm.scenario_tag"
             clearable
-            placeholder="Z002-FACTORY-STMT-YYYYMMDD-NNN"
+            placeholder="Z003-FACTORY-STMT-YYYYMMDD-NNN"
             data-testid="factory-statement-scenario-tag"
           />
         </el-form-item>
@@ -245,10 +245,12 @@
               <el-button
                 link
                 type="warning"
+                :disabled="!canPayableAction"
                 data-action-type="write"
-                data-write-guard="readonly:payable-draft"
-                data-guard-state="disabled"
-                @click="showGuardedAction('生成应付')"
+                data-write-guard="allowed:factory-statement-payable-draft-local-only"
+                data-write-allowlist="factory-statement-payable-draft"
+                :data-guard-state="canPayableAction ? 'enabled' : 'disabled'"
+                @click="createPayableDraft(scope.row)"
               >
                 生成应付
               </el-button>
@@ -3321,7 +3323,7 @@
           <el-form-item label="scenario_tag">
             <el-input
               v-model="createForm.scenario_tag"
-              placeholder="Z002-FACTORY-STMT-YYYYMMDD-NNN"
+              placeholder="Z003-FACTORY-STMT-YYYYMMDD-NNN"
               data-testid="factory-statement-create-scenario-tag"
             />
           </el-form-item>
@@ -3409,6 +3411,7 @@ import {
   cancelFactoryStatement,
   confirmFactoryStatement,
   createFactoryStatement,
+  createFactoryStatementPayableDraft,
   fetchFactoryStatementBankDeposits,
   fetchFactoryStatementBankLedgers,
   fetchFactoryStatementBankWithdrawals,
@@ -3442,6 +3445,7 @@ import {
   type FactoryStatementCustomerUnpaidReportItem,
   type FactoryStatementDetailData,
   type FactoryStatementCreatePayload,
+  type FactoryStatementPayableDraftCreatePayload,
   type FactoryStatementExpenseReimbursementPaymentItem,
   type FactoryStatementListItem,
 } from '@/api/factory_statement'
@@ -3517,7 +3521,9 @@ const supplierPayableSummaryRows = ref<FactoryStatementSupplierPayableSummaryIte
 const supplierPayableSummaryTotal = ref<number>(0)
 
 const LOCAL_WRITE_MODE = true
-const readonlyWriteHint = '当前仅允许 local-dev 受控 create/confirm/cancel，其他写动作仍禁用'
+const FACTORY_STATEMENT_SOURCE_TYPE = 'subcontract_inspection'
+const FACTORY_STATEMENT_PAYABLE_STATUS_ACTION = 'payable_draft'
+const readonlyWriteHint = '当前仅允许 local-dev 受控 create/confirm/cancel/payable-draft，导出打印等动作仍禁用'
 
 interface SampleOrderReconciliationRow extends FactoryStatementListItem {
   sample_order_no: string
@@ -3531,9 +3537,11 @@ const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_create)
 const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
 const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
+const canPayableDraft = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_payable_draft_create)
 const canCreateAction = computed<boolean>(() => canCreate.value && LOCAL_WRITE_MODE)
 const canConfirmAction = computed<boolean>(() => canConfirm.value && LOCAL_WRITE_MODE)
 const canCancelAction = computed<boolean>(() => canCancel.value && LOCAL_WRITE_MODE)
+const canPayableAction = computed<boolean>(() => canPayableDraft.value && LOCAL_WRITE_MODE)
 
 const query = reactive({
   supplier: '',
@@ -3754,15 +3762,18 @@ const buildDefaultFactoryStatementScenarioTag = (): string => {
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')
-  return `Z002-FACTORY-STMT-${year}${month}${day}-001`
+  return `Z003-FACTORY-STMT-${year}${month}${day}-001`
 }
 
 const extractFactoryStatementScenarioTag = (value: string): string | null => {
-  const matched = value.match(/(Z002-FACTORY-STMT-\d{8}-\d{3})/)
+  const matched = value.match(/(Z003-FACTORY-STMT-\d{8}-\d{3})/)
   return matched?.[1] || null
 }
 
-const buildFactoryStatementRequestId = (scenarioTag: string, action: 'CREATE' | 'CONFIRM' | 'CANCEL'): string => {
+const buildFactoryStatementRequestId = (
+  scenarioTag: string,
+  action: 'CREATE' | 'CONFIRM' | 'CANCEL' | 'PAYABLE',
+): string => {
   return `${scenarioTag}-REQ-${action}`
 }
 
@@ -4222,7 +4233,7 @@ const confirmStatement = async (row: FactoryStatementListItem): Promise<void> =>
   }
   const scenarioTag = extractFactoryStatementScenarioTag(localWriteForm.scenario_tag.trim())
   if (!scenarioTag) {
-    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z002-FACTORY-STMT-YYYYMMDD-NNN。')
+    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z003-FACTORY-STMT-YYYYMMDD-NNN。')
     return
   }
   const payload: FactoryStatementConfirmPayload = {
@@ -4254,7 +4265,7 @@ const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => 
   }
   const scenarioTag = extractFactoryStatementScenarioTag(localWriteForm.scenario_tag.trim())
   if (!scenarioTag) {
-    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z002-FACTORY-STMT-YYYYMMDD-NNN。')
+    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z003-FACTORY-STMT-YYYYMMDD-NNN。')
     return
   }
   const payload: FactoryStatementCancelPayload = {
@@ -4269,6 +4280,49 @@ const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => 
     const requestId = buildFactoryStatementRequestId(scenarioTag, 'CANCEL')
     const result = await cancelFactoryStatement(row.id, payload, { requestId })
     ElMessage.success(`取消成功：${result.data.statement_no}`)
+    await loadRows()
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
+}
+
+const createPayableDraft = async (row: FactoryStatementListItem): Promise<void> => {
+  if (!LOCAL_WRITE_MODE) {
+    ElMessage.warning(readonlyWriteHint)
+    return
+  }
+  if (!canPayableAction.value) {
+    ElMessage.error('无生成应付草稿权限')
+    return
+  }
+  if (row.statement_status !== 'confirmed') {
+    ElMessage.warning('仅已确认对账单可生成应付草稿')
+    return
+  }
+  const scenarioTag = extractFactoryStatementScenarioTag(localWriteForm.scenario_tag.trim())
+  if (!scenarioTag) {
+    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z003-FACTORY-STMT-YYYYMMDD-NNN。')
+    return
+  }
+  const postingDate = row.to_date || new Date().toISOString().slice(0, 10)
+  const payload: FactoryStatementPayableDraftCreatePayload = {
+    idempotency_key: `IDEMP-${scenarioTag}-PAYABLE-${row.id}`,
+    payable_account: '应付账款-本地',
+    cost_center: '主成本中心-本地',
+    posting_date: postingDate,
+    remark: `PAYABLE-${scenarioTag}`,
+    scenario_tag: scenarioTag,
+    company: row.company,
+    supplier: row.supplier,
+    statement_no: row.statement_no,
+    source_type: FACTORY_STATEMENT_SOURCE_TYPE,
+    status_action: FACTORY_STATEMENT_PAYABLE_STATUS_ACTION,
+    source_ref: row.statement_no,
+  }
+  try {
+    const requestId = buildFactoryStatementRequestId(scenarioTag, 'PAYABLE')
+    const result = await createFactoryStatementPayableDraft(row.id, payload, { requestId })
+    ElMessage.success(`应付草稿生成成功：${result.data.statement_no}`)
     await loadRows()
   } catch (error) {
     ElMessage.error((error as Error).message)

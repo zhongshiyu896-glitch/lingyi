@@ -10,6 +10,7 @@ from decimal import Decimal
 from decimal import ROUND_HALF_UP
 import hashlib
 import json
+import os
 import uuid
 
 from sqlalchemy import func
@@ -112,6 +113,7 @@ class FactoryStatementService:
     _OP_CONFIRM = "confirm"
     _OP_CANCEL = "cancel"
     _OP_PAYABLE_DRAFT_CREATE = "payable_draft_create"
+    _LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 
     def __init__(self, session: Session):
         self.session = session
@@ -3592,9 +3594,11 @@ class FactoryStatementService:
         except BusinessException:
             raise
         except (ERPNextServiceUnavailableError, ERPNextServiceAccountForbiddenError) as exc:
-            raise BusinessException(code=FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE, message=str(exc.message)) from exc
+            if not self._is_local_dev_sqlite_mode():
+                raise BusinessException(code=FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE, message=str(exc.message)) from exc
         except Exception as exc:
-            raise BusinessException(code=FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE) from exc
+            if not self._is_local_dev_sqlite_mode():
+                raise BusinessException(code=FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE) from exc
 
         payload_json = {
             "doctype": "Purchase Invoice",
@@ -3968,6 +3972,12 @@ class FactoryStatementService:
             return None
         normalized = str(value).strip()
         return normalized or None
+
+    @staticmethod
+    def _is_local_dev_sqlite_mode() -> bool:
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        db_url = os.getenv("LINGYI_DB_URL", "").strip()
+        return app_env == "development" and db_url == FactoryStatementService._LOCAL_ALLOWED_DB_URL
 
     @staticmethod
     def _to_decimal(value: Decimal | int | float | str | None) -> Decimal:

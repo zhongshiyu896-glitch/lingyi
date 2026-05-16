@@ -77,7 +77,7 @@ from app.services.permission_service import PermissionService
 router = APIRouter(prefix="/api/factory-statements", tags=["factory_statement"])
 logger = logging.getLogger(__name__)
 FACTORY_STATEMENT_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
-FACTORY_STATEMENT_SCENARIO_PATTERN = re.compile(r"(Z002-FACTORY-STMT-\d{8}-\d{3})")
+FACTORY_STATEMENT_SCENARIO_PATTERN = re.compile(r"(Z003-FACTORY-STMT-\d{8}-\d{3})")
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -189,14 +189,7 @@ def _validate_local_factory_statement_write_gate(
     scenario_carriers: list[str | None],
 ) -> str:
     if not _is_local_factory_statement_write_enabled():
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": AUTH_FORBIDDEN,
-                "message": "仅允许本地开发测试库执行加工厂对账写入",
-                "data": {},
-            },
-        )
+        _raise_factory_statement_idempotency_conflict("仅允许本地开发测试库执行加工厂对账写入")
 
     request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
     if not request_id_header:
@@ -819,6 +812,17 @@ def create_factory_statement_payable_draft(
                 status_of(FACTORY_STATEMENT_SOURCE_NOT_FOUND),
             )
         resource_no = str(header.statement_no)
+
+        _validate_local_factory_statement_write_gate(
+            request_obj=request,
+            scenario_carriers=[payload.idempotency_key, payload.scenario_tag],
+        )
+        _ensure_chain_match(label="company", payload_value=payload.company, header_value=str(header.company))
+        _ensure_chain_match(label="supplier", payload_value=payload.supplier, header_value=str(header.supplier))
+        _ensure_chain_match(label="statement_no", payload_value=payload.statement_no, header_value=str(header.statement_no))
+        _ensure_chain_match(label="source_ref_or_source_doc", payload_value=payload.source_ref, header_value=str(header.statement_no))
+        _ensure_chain_match(label="source_type", payload_value=payload.source_type, header_value=str(header.source_type))
+        _ensure_chain_match(label="status_action", payload_value=payload.status_action, header_value="payable_draft")
 
         permission_service.ensure_factory_statement_resource_permission(
             current_user=current_user,

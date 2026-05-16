@@ -628,6 +628,13 @@ class FactoryStatementPayableDraftRequest(BaseModel):
     """Create payable-draft outbox request."""
 
     idempotency_key: str = Field(..., min_length=1, max_length=128)
+    scenario_tag: str | None = Field(default=None, max_length=64)
+    company: str | None = Field(default=None, max_length=140)
+    supplier: str | None = Field(default=None, max_length=140)
+    statement_no: str | None = Field(default=None, max_length=140)
+    source_type: str | None = Field(default=None, max_length=64)
+    status_action: str | None = Field(default=None, max_length=64)
+    source_ref: str | None = Field(default=None, max_length=140)
     payable_account: str = Field(..., min_length=1, max_length=140)
     cost_center: str = Field(..., min_length=1, max_length=140)
     posting_date: date

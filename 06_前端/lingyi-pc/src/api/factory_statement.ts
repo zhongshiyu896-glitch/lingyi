@@ -1,7 +1,7 @@
 import { request, type ApiResponse } from '@/api/request'
 
 type NumericLike = string | number
-const FACTORY_STATEMENT_PAYABLE_READONLY_GUARD = true
+const FACTORY_STATEMENT_PAYABLE_READONLY_GUARD = false
 
 const throwReadonlyWriteError = (actionLabel: string): never => {
   throw new Error(`当前为只读对账视图，已禁用${actionLabel}写操作`)
@@ -747,11 +747,27 @@ export interface FactoryStatementCancelData {
 
 export interface FactoryStatementPayableDraftCreatePayload {
   idempotency_key: string
+  payable_account: string
+  cost_center: string
+  posting_date: string
+  remark?: string
+  scenario_tag?: string
+  company?: string
+  supplier?: string
+  statement_no?: string
+  source_type?: string
+  status_action?: string
+  source_ref?: string
 }
 
 export interface FactoryStatementPayableDraftCreateData {
-  outbox_id: number
+  statement_id: number
+  statement_no: string
   status: string
+  payable_outbox_id: number
+  payable_outbox_status: string
+  purchase_invoice_name?: string | null
+  net_amount: NumericLike
   idempotent_replay: boolean
 }
 
@@ -1117,12 +1133,16 @@ export const cancelFactoryStatement = async (
 export const createFactoryStatementPayableDraft = async (
   statementId: number,
   payload: FactoryStatementPayableDraftCreatePayload,
+  meta?: FactoryStatementWriteMeta,
 ): Promise<ApiResponse<FactoryStatementPayableDraftCreateData>> =>
   FACTORY_STATEMENT_PAYABLE_READONLY_GUARD
     ? Promise.reject(throwReadonlyWriteError('生成应付草稿'))
     :
   request<FactoryStatementPayableDraftCreateData>(`/api/factory-statements/${statementId}/payable-draft`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
     body: JSON.stringify(payload),
   })
