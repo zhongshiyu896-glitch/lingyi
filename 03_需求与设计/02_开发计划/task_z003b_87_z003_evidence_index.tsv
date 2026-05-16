@@ -1,0 +1,14 @@
+module_id	module_name	route_scope	closure_type	commit_hash	indexing_status	missing_evidence_items	risk_level
+Z003-M01	production_plans	"[""/production/plans"", ""/production/plans/detail""]"	write_closure	4060768989ae08ee5e071c6d7b90e838dcac072c	VERIFIED	[]	low
+Z003-M02	workshop_tickets	"[""/workshop/tickets"", ""/workshop/tickets/register"", ""/workshop/tickets/batch""]"	write_closure	5aba61959654891a74a11369f7ee971c4d97e5f4	VERIFIED	[]	low
+Z003-M03	quality_inspections	"[""/quality/inspections"", ""/quality/inspections/detail""]"	write_closure	4f921559e8e6d703c79c1d7e8b8a9c20a14f224d	VERIFIED	[]	low
+Z003-M04	subcontract	"[""/subcontract/list"", ""/subcontract/detail""]"	write_closure	ceb2f9d690bfcac0cd3442ff426219b0915e896d	VERIFIED	[]	low
+Z003-M05	warehouse	"[""/warehouse""]"	write_closure	6fd91880b440f62fddf7e26fc1a9a42300b47e64	VERIFIED	[]	low
+Z003-M06	factory_statements	"[""/factory-statements/list"", ""/factory-statements/detail""]"	write_closure	5d8a53a0be2f37656234b0f2da3b1c196b4693ec	VERIFIED	[]	low
+Z003-M07	style_profit	"[""/reports/style-profit"", ""/reports/style-profit/detail""]"	write_closure	cab6195201f07155302415f9b0d3e92d1c035262	VERIFIED	[]	low
+Z003-M08	production_detail_sync_job_cards	"[""/production/plans/detail""]"	local_only_write_closure	d3987703c735a930cf80a6454b5e360f405f7151	VERIFIED	[]	low
+Z003-M09	sales_orders	"[""/sales-inventory/sales-orders"", ""/sales-inventory/sales-orders/detail""]"	local_only_write_closure	76645147ba9ea0b5b70a976f0f3de54cea06aade	VERIFIED	[]	low
+Z003-M10	stock_ledger	"[""/sales-inventory/stock-ledger""]"	no_write_closure	586c1fdc0f6428bd3d4a2461fcd30c9bcd034341	VERIFIED	[]	low
+Z003-M11	cross_module_view	"[""/cross-module/view""]"	no_write_closure	620d4cd383f06a444c726e0bba29317ee28ecc2a	VERIFIED	[]	low
+Z003-M12	sales_inventory_references	"[""/sales-inventory/references""]"	no_write_closure	452e9d9daef72723aad12486b4bb45aa75c82734	VERIFIED	[]	low
+Z003-M13	z003_browser_regression_suite_bundle	"[""Z003-SUITE-01..12""]"	evidence_only_browser_regression_suite	13bdd79154245f7d94b4e65897220a6890e4ca67	VERIFIED	[]	low
