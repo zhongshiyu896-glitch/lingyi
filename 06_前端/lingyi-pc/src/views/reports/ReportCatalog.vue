@@ -810,16 +810,32 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.header-row > .el-button {
+  flex-shrink: 0;
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .query-form {
   margin-bottom: 12px;
+}
+
+.query-form :deep(.el-form-item) {
+  margin-bottom: 10px;
+}
+
+.query-form :deep(.el-input),
+.query-form :deep(.el-select),
+.query-form :deep(.el-date-editor) {
+  max-width: 260px;
 }
 
 .detail-card {
@@ -836,5 +852,36 @@ onMounted(() => {
 
 .approval-report-card {
   margin-top: 12px;
+}
+
+:deep(.el-card__header) {
+  padding: 14px 16px;
+}
+
+:deep(.el-card__body) {
+  padding: 14px 16px;
+}
+
+@media (max-width: 768px) {
+  .header-row {
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .query-form :deep(.el-form-item) {
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .query-form :deep(.el-input),
+  .query-form :deep(.el-select),
+  .query-form :deep(.el-date-editor) {
+    width: 100% !important;
+    max-width: 100%;
+  }
 }
 </style>

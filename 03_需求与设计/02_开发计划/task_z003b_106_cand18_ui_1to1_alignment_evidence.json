@@ -1,0 +1,127 @@
+{
+  "task_id": "TASK-Z003B-106-IMPL",
+  "source_head": "cf0955906aaff67b5898f25e3cb71ac061cfe7a5",
+  "source_subject": "chore: seal browser regression refresh",
+  "selected_candidate_id": "TASK-Z003B-CAND-18",
+  "boundary_source_task": "TASK-Z003B-105-PREP",
+  "route_scope": [
+    "/reports/catalog",
+    "/system/management",
+    "/permissions/governance"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/system/SystemManagement.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/system/PermissionGovernance.vue"
+  ],
+  "readonly_context_changed": false,
+  "ui_alignment_summary": [
+    "ReportCatalog 页补齐 header/actions/query/card 的间距与移动端宽度约束。",
+    "PermissionGovernance 页统一 header/query/card 密度并补齐窄屏布局防溢出。",
+    "SystemManagement 页沿用同口径样式基线，实现三页视觉一致。"
+  ],
+  "before_after_screenshot_pairs": [
+    {
+      "route": "/permissions/governance",
+      "viewport": "desktop",
+      "before_screenshot": "/tmp/task_z003b106_screenshots/before_permissions_governance_desktop_before.png",
+      "after_screenshot": "/tmp/task_z003b106_screenshots/after_permissions_governance_desktop_after.png",
+      "before_interaction_screenshot": "/tmp/task_z003b106_screenshots/before_permissions_governance_desktop_after.png",
+      "after_interaction_screenshot": "/tmp/task_z003b106_screenshots/after_permissions_governance_desktop_before.png"
+    },
+    {
+      "route": "/permissions/governance",
+      "viewport": "mobile",
+      "before_screenshot": "/tmp/task_z003b106_screenshots/before_permissions_governance_mobile_before.png",
+      "after_screenshot": "/tmp/task_z003b106_screenshots/after_permissions_governance_mobile_after.png",
+      "before_interaction_screenshot": "/tmp/task_z003b106_screenshots/before_permissions_governance_mobile_after.png",
+      "after_interaction_screenshot": "/tmp/task_z003b106_screenshots/after_permissions_governance_mobile_before.png"
+    },
+    {
+      "route": "/reports/catalog",
+      "viewport": "desktop",
+      "before_screenshot": "/tmp/task_z003b106_screenshots/before_reports_catalog_desktop_before.png",
+      "after_screenshot": "/tmp/task_z003b106_screenshots/after_reports_catalog_desktop_after.png",
+      "before_interaction_screenshot": "/tmp/task_z003b106_screenshots/before_reports_catalog_desktop_after.png",
+      "after_interaction_screenshot": "/tmp/task_z003b106_screenshots/after_reports_catalog_desktop_before.png"
+    },
+    {
+      "route": "/reports/catalog",
+      "viewport": "mobile",
+      "before_screenshot": "/tmp/task_z003b106_screenshots/before_reports_catalog_mobile_before.png",
+      "after_screenshot": "/tmp/task_z003b106_screenshots/after_reports_catalog_mobile_after.png",
+      "before_interaction_screenshot": "/tmp/task_z003b106_screenshots/before_reports_catalog_mobile_after.png",
+      "after_interaction_screenshot": "/tmp/task_z003b106_screenshots/after_reports_catalog_mobile_before.png"
+    },
+    {
+      "route": "/system/management",
+      "viewport": "desktop",
+      "before_screenshot": "/tmp/task_z003b106_screenshots/before_system_management_desktop_before.png",
+      "after_screenshot": "/tmp/task_z003b106_screenshots/after_system_management_desktop_after.png",
+      "before_interaction_screenshot": "/tmp/task_z003b106_screenshots/before_system_management_desktop_after.png",
+      "after_interaction_screenshot": "/tmp/task_z003b106_screenshots/after_system_management_desktop_before.png"
+    },
+    {
+      "route": "/system/management",
+      "viewport": "mobile",
+      "before_screenshot": "/tmp/task_z003b106_screenshots/before_system_management_mobile_before.png",
+      "after_screenshot": "/tmp/task_z003b106_screenshots/after_system_management_mobile_after.png",
+      "before_interaction_screenshot": "/tmp/task_z003b106_screenshots/before_system_management_mobile_after.png",
+      "after_interaction_screenshot": "/tmp/task_z003b106_screenshots/after_system_management_mobile_before.png"
+    }
+  ],
+  "desktop_viewport_result": {
+    "passed": true,
+    "cases": [
+      "reports_catalog_desktop",
+      "system_management_desktop",
+      "permissions_governance_desktop"
+    ]
+  },
+  "mobile_viewport_result": {
+    "passed": true,
+    "cases": [
+      "reports_catalog_mobile",
+      "system_management_mobile",
+      "permissions_governance_mobile"
+    ]
+  },
+  "guarded_or_disabled_state_result": {
+    "passed": true,
+    "details": [
+      {
+        "case_id": "permissions_governance_desktop",
+        "guarded_or_disabled_state_visible": true
+      },
+      {
+        "case_id": "permissions_governance_mobile",
+        "guarded_or_disabled_state_visible": true
+      },
+      {
+        "case_id": "reports_catalog_desktop",
+        "guarded_or_disabled_state_visible": true
+      },
+      {
+        "case_id": "reports_catalog_mobile",
+        "guarded_or_disabled_state_visible": true
+      },
+      {
+        "case_id": "system_management_desktop",
+        "guarded_or_disabled_state_visible": true
+      },
+      {
+        "case_id": "system_management_mobile",
+        "guarded_or_disabled_state_visible": true
+      }
+    ]
+  },
+  "write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "zero_side_effect": true,
+  "screenshots_count": 24,
+  "remote_lifecycle_parked": true
+}

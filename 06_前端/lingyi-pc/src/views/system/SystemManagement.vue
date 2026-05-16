@@ -1,5 +1,5 @@
 <template>
-  <div class="system-management-page">
+  <div class="system-management-page" data-testid="system-management-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -2491,15 +2491,32 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.header-row > .el-button {
+  flex-shrink: 0;
 }
 
 .query-form {
   margin-bottom: 12px;
 }
 
+.query-form :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.query-form :deep(.el-input),
+.query-form :deep(.el-select),
+.query-form :deep(.el-date-editor) {
+  max-width: 260px;
+}
+
 .meta-row {
   display: flex;
   gap: 24px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
   color: var(--el-text-color-secondary);
   font-size: 13px;
@@ -2509,5 +2526,31 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+:deep(.el-card__header) {
+  padding: 14px 16px;
+}
+
+:deep(.el-card__body) {
+  padding: 14px 16px;
+}
+
+@media (max-width: 768px) {
+  .header-row {
+    align-items: flex-start;
+  }
+
+  .query-form :deep(.el-form-item) {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .query-form :deep(.el-input),
+  .query-form :deep(.el-select),
+  .query-form :deep(.el-date-editor) {
+    width: 100% !important;
+    max-width: 100%;
+  }
 }
 </style>
