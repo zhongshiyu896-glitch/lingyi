@@ -33,6 +33,7 @@ from app.core.permissions import get_permission_source
 from app.core.request_id import get_request_id_from_request
 from app.core.request_id import is_request_id_valid
 from app.schemas.sales_inventory import DiagnosticData
+from app.schemas.sales_inventory import InventoryAggregationData
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
 from app.schemas.sales_inventory import StockLedgerData
@@ -1935,15 +1936,23 @@ def get_inventory_aggregation(
     try:
         data = _service(request).get_inventory_aggregation(company=company, item_code=item_code, warehouse=warehouse)
     except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="Bin",
-            resource_no=item_code,
-        )
+        if _local_read_fallback_enabled(exc):
+            data = InventoryAggregationData(
+                company=company,
+                item_code=item_code,
+                warehouse=warehouse,
+                items=[],
+            )
+        else:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="Bin",
+                resource_no=item_code,
+            )
     data.items = [item for item in data.items if _scope_allowed(item, permissions)]
     return _ok(data)
 

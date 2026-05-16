@@ -99,6 +99,12 @@
             <el-tag type="info" effect="plain">台账记录：{{ total }}</el-tag>
             <el-tag type="success" effect="plain">变动数量合计：{{ totalQty }}</el-tag>
             <el-tag type="warning" effect="plain">在库结存合计：{{ stockSummaryBalanceQty }}</el-tag>
+            <el-tag type="primary" effect="plain" data-testid="stock-ledger-aggregation-count">
+              聚合项：{{ inventoryAggregationTotal }}
+            </el-tag>
+            <el-tag type="danger" effect="plain" data-testid="stock-ledger-aggregation-below-safety">
+              低于安全库存：{{ inventoryAggregationBelowSafety }}
+            </el-tag>
             <el-tag v-if="stockSummaryDroppedCount > 0" type="danger" effect="plain">
               过滤丢弃：{{ stockSummaryDroppedCount }}
             </el-tag>
@@ -3169,6 +3175,7 @@ import {
   fetchSalesInventoryFinishedGoodsOtherInbound,
   fetchSalesInventoryFinishedGoodsReservedInbound,
   fetchSalesInventoryFinishedGoodsShippingNotices,
+  fetchSalesInventoryAggregation,
   fetchSalesInventoryInventoryMaterialRetentionReport,
   fetchSalesInventoryMaterialCounts,
   fetchSalesInventoryMaterialInventoryReport,
@@ -3185,6 +3192,7 @@ import {
   type FinishedGoodsOtherInboundItem,
   type FinishedGoodsReservedInboundItem,
   type FinishedGoodsShippingNoticeItem,
+  type SalesInventoryAggregationItem,
   type InventoryMaterialRetentionReportItem,
   type MaterialCountItem,
   type MaterialInventoryReportItem,
@@ -3203,6 +3211,7 @@ const lastError = ref<string>('')
 const requiredItemCodeGuarded = ref<boolean>(false)
 const stockSummaryRows = ref<StockSummaryItem[]>([])
 const stockSummaryDroppedCount = ref<number>(0)
+const inventoryAggregationRows = ref<SalesInventoryAggregationItem[]>([])
 const ledgerDetailVisible = ref<boolean>(false)
 const ledgerDetailRow = ref<StockLedgerItem | null>(null)
 const materialTransferLoading = ref<boolean>(false)
@@ -3290,6 +3299,12 @@ const stockSummaryBalanceQty = computed<string>(() => {
     return Number.isFinite(current) ? sum + current : sum
   }, 0)
   return qty.toFixed(2)
+})
+
+const inventoryAggregationTotal = computed<number>(() => inventoryAggregationRows.value.length)
+
+const inventoryAggregationBelowSafety = computed<number>(() => {
+  return inventoryAggregationRows.value.filter((row) => row.is_below_safety).length
 })
 
 const materialTransferQtyTotal = computed<string>(() => {
@@ -3796,6 +3811,7 @@ const resetRows = (): void => {
   total.value = 0
   stockSummaryRows.value = []
   stockSummaryDroppedCount.value = 0
+  inventoryAggregationRows.value = []
   ledgerDetailVisible.value = false
   ledgerDetailRow.value = null
 }
@@ -3892,7 +3908,7 @@ const loadRows = async ({ silentGuard = false }: { silentGuard?: boolean } = {})
   loading.value = true
   lastError.value = ''
   try {
-    const [summaryResult, ledgerResult] = await Promise.all([
+    const [summaryResult, ledgerResult, aggregationResult] = await Promise.all([
       fetchSalesInventoryStockSummary(itemCode, {
         company: query.company.trim() || undefined,
         warehouse: query.warehouse.trim() || undefined,
@@ -3905,11 +3921,17 @@ const loadRows = async ({ silentGuard = false }: { silentGuard?: boolean } = {})
         page: query.page,
         page_size: query.page_size,
       }),
+      fetchSalesInventoryAggregation({
+        company: query.company.trim() || undefined,
+        item_code: itemCode,
+        warehouse: query.warehouse.trim() || undefined,
+      }),
     ])
     stockSummaryRows.value = summaryResult.data.items
     stockSummaryDroppedCount.value = summaryResult.data.dropped_count
     rows.value = ledgerResult.data.items
     total.value = ledgerResult.data.total
+    inventoryAggregationRows.value = aggregationResult.data.items
     if (ledgerDetailRow.value) {
       const latest = ledgerResult.data.items.find((item) => item.name === ledgerDetailRow.value?.name)
       if (latest) {
@@ -5187,19 +5209,6 @@ onMounted(async () => {
   if (canRead.value) {
     await loadRows({ silentGuard: true })
     await loadMaterialTransfers()
-    await loadMaterialCounts()
-    await loadMaterialInventoryReport()
-    await loadInventoryMaterialRetentionReport()
-    await loadSemiFinishedInventory()
-    await loadFinishedGoodsReservedInbound()
-    await loadFinishedGoodsShippingNotices()
-    await loadFinishedGoodsOtherInbound()
-    await loadCustomerReturnApplications()
-    await loadCustomerReturnInbound()
-    await loadFinishedGoodsOtherOutbound()
-    await loadFinishedGoodsCount()
-    await loadFinishedGoodsAdjustment()
-    await loadFinishedGoodsTransfer()
   }
 })
 </script>
