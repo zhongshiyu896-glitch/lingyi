@@ -1,0 +1,156 @@
+{
+  "task_id": "TASK-Z003B-73-IMPL",
+  "source_head": "620d4cd383f06a444c726e0bba29317ee28ecc2a",
+  "route_scope": [
+    "/sales-inventory/references"
+  ],
+  "selected_candidate_id": "TASK-Z003B-CAND-13",
+  "module": "sales_inventory_reference_readonly_query_closure",
+  "no_write_real_interaction": true,
+  "rollback_cleanup_executed": true,
+  "write_request_count": 0,
+  "allowed_write_endpoints": [],
+  "allowed_read_endpoints": [
+    "GET /api/sales-inventory/customers",
+    "GET /api/sales-inventory/warehouses",
+    "GET /api/auth/me",
+    "GET /api/auth/actions"
+  ],
+  "allowed_read_endpoints_covered": [
+    "GET /api/sales-inventory/customers",
+    "GET /api/sales-inventory/warehouses",
+    "GET /api/auth/me",
+    "GET /api/auth/actions"
+  ],
+  "browser_evidence": {
+    "write_request_count": 0,
+    "approved_write_request_count": 0,
+    "browser_approved_write_request_count": 0,
+    "allowed_read_hit_counts": {
+      "customers": 4,
+      "warehouses": 4,
+      "auth_me": 2,
+      "auth_actions": 2
+    },
+    "all_allowed_read_endpoints_hit": true,
+    "guard_case_triggered": true,
+    "guard_case_no_extra_request": true,
+    "unexpected_write_request_count": 0,
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0,
+    "degraded_reason": "本地上下文 ERPNext 只读依赖不可用，customers/warehouses 返回 503；auth 端点正常。"
+  },
+  "api_regression_evidence": {
+    "write_request_count": 0,
+    "approved_write_request_count": 0,
+    "api_regression_approved_write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "readback_endpoints_covered": [
+      "GET /api/sales-inventory/customers",
+      "GET /api/sales-inventory/warehouses",
+      "GET /api/auth/me",
+      "GET /api/auth/actions"
+    ],
+    "readback_results": [
+      {
+        "path": "/api/sales-inventory/customers?page=1&page_size=20",
+        "url": "http://127.0.0.1:5174/api/sales-inventory/customers?page=1&page_size=20",
+        "method": "GET",
+        "status": 503,
+        "ok": false,
+        "payload_code": "EXTERNAL_SERVICE_UNAVAILABLE"
+      },
+      {
+        "path": "/api/sales-inventory/warehouses?page=1&page_size=20",
+        "url": "http://127.0.0.1:5174/api/sales-inventory/warehouses?page=1&page_size=20",
+        "method": "GET",
+        "status": 503,
+        "ok": false,
+        "payload_code": "EXTERNAL_SERVICE_UNAVAILABLE"
+      },
+      {
+        "path": "/api/auth/me",
+        "url": "http://127.0.0.1:5174/api/auth/me",
+        "method": "GET",
+        "status": 200,
+        "ok": true,
+        "payload_code": "0"
+      },
+      {
+        "path": "/api/auth/actions?module=sales_inventory",
+        "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+        "method": "GET",
+        "status": 200,
+        "ok": true,
+        "payload_code": "0"
+      }
+    ],
+    "all_allowed_read_endpoints_hit": true,
+    "degraded_reason": "ERPNext 只读依赖不可用，customers/warehouses 在本地上下文返回 503；auth/me 与 auth/actions 正常。"
+  },
+  "zero_side_effect_evidence": {
+    "rollback_cleanup_executed": true,
+    "write_request_count": 0,
+    "zero_side_effect": true,
+    "residual_scan_result": "no_new_residual",
+    "residual_tables": [
+      "ly_operation_audit_log",
+      "ly_security_audit_log",
+      "ly_warehouse_stock_entry_outbox_event",
+      "ly_warehouse_stock_entry_draft",
+      "ly_warehouse_stock_entry_draft_item"
+    ],
+    "before_counts": {
+      "ly_operation_audit_log": 846,
+      "ly_security_audit_log": 12165,
+      "ly_warehouse_stock_entry_outbox_event": 9,
+      "ly_warehouse_stock_entry_draft": 9,
+      "ly_warehouse_stock_entry_draft_item": 9
+    },
+    "after_counts": {
+      "ly_operation_audit_log": 846,
+      "ly_security_audit_log": 12165,
+      "ly_warehouse_stock_entry_outbox_event": 9,
+      "ly_warehouse_stock_entry_draft": 9,
+      "ly_warehouse_stock_entry_draft_item": 9
+    },
+    "delta_counts": {
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0,
+      "ly_warehouse_stock_entry_outbox_event": 0,
+      "ly_warehouse_stock_entry_draft": 0,
+      "ly_warehouse_stock_entry_draft_item": 0
+    },
+    "db_write_on_failed_gate_count": 0
+  },
+  "forbidden_counters": {
+    "unexpected_write_request_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0,
+    "import_export_download_upload_print_request_count": 0
+  },
+  "screenshots": {
+    "screenshots_dir": "/tmp/task_z003b73_screenshots",
+    "screenshots_count": 7,
+    "files": [
+      "01_route_loaded.png",
+      "02_customers_query.png",
+      "03_warehouses_query.png",
+      "04_warehouses_reset.png",
+      "05_permission_refresh.png",
+      "06_readonly_guide.png",
+      "07_final_state.png"
+    ]
+  },
+  "tmp_artifacts": {
+    "browser_json": "/tmp/task_z003b73_browser_result.json",
+    "regression_api_json": "/tmp/task_z003b73_regression_api.json",
+    "zero_side_effect_json": "/tmp/task_z003b73_zero_side_effect.json"
+  },
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue"
+  ],
+  "readonly_context_changed": false
+}

@@ -248,7 +248,11 @@ const detailVisible = ref<boolean>(false)
 const detailType = ref<DetailType>('customer')
 const detailRow = ref<CustomerItem | WarehouseItem | null>(null)
 
-const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.sales_inventory_read)
+const canRead = computed<boolean>(
+  () =>
+    permissionStore.state.buttonPermissions.sales_inventory_read ||
+    permissionStore.state.actions.includes('sales_inventory:read'),
+)
 
 const customerQuery = reactive({
   page: 1,
