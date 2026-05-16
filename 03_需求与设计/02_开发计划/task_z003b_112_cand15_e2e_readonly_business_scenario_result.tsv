@@ -1,0 +1,6 @@
+step_id	route	business_context	readonly_actions_executed	write_request_count	forbidden_request_count	result
+STEP-01-DASHBOARD-OVERVIEW	/dashboard/overview	仪表盘概览只读入口与权限态检查	click_search | click_reset | click_refresh_metrics | click_detail | capture_mobile_viewport_390x844	0	0	PASS
+STEP-02-SALES-ORDERS	/sales-inventory/sales-orders	销售订单列表与履约只读查询链路	click_query | click_reset | click_fulfillment_query | click_order_detail | capture_mobile_viewport_390x844	0	0	PASS
+STEP-03-STOCK-LEDGER	/sales-inventory/stock-ledger	库存台账只读查询、汇总与详情抽屉检查	click_query | click_reset | capture_mobile_viewport_390x844	0	0	PASS
+STEP-04-CROSS-MODULE-VIEW	/cross-module/view	跨模块工单/销售单追踪只读串联	click_work_order_query | capture_mobile_viewport_390x844	0	0	PASS
+STEP-05-REFERENCES	/sales-inventory/references	引用资料（客户/仓库）只读查询与详情查看	click_customers_query | click_customers_reset | switch_warehouse_tab | capture_mobile_viewport_390x844	0	0	PASS

@@ -1,0 +1,1080 @@
+{
+  "task_id": "TASK-Z003B-112",
+  "source_head": "3fa416cb619f027afe19e4b05568ed2ad028d21b",
+  "source_subject": "chore: seal cand18 ui alignment",
+  "candidate_source_task": "TASK-Z003B-110",
+  "boundary_source_task": "TASK-Z003B-111-PREP",
+  "selected_candidate_id": "TASK-Z003B-CAND-15",
+  "candidate_type": "e2e_business_scenario_gap",
+  "route_scope": [
+    "/dashboard/overview",
+    "/sales-inventory/sales-orders",
+    "/sales-inventory/stock-ledger",
+    "/cross-module/view",
+    "/sales-inventory/references"
+  ],
+  "executed_route_count": 5,
+  "passed_route_count": 5,
+  "blocked_route_count": 0,
+  "allowed_read_endpoint_count": 13,
+  "allowed_read_endpoint_hit_count": 8,
+  "allowed_read_endpoint_missed_count": 5,
+  "allowed_read_endpoint_hits": [
+    "GET /api/auth/actions",
+    "GET /api/auth/me",
+    "GET /api/dashboard/overview",
+    "GET /api/sales-inventory/customers",
+    "GET /api/sales-inventory/sales-order-fulfillment",
+    "GET /api/sales-inventory/sales-orders",
+    "GET /api/sales-inventory/sales-orders/{name}",
+    "GET /api/sales-inventory/warehouses"
+  ],
+  "allowed_read_endpoint_missed_reasons": {
+    "GET /api/sales-inventory/items/{item_code}/stock-summary": "依赖有效业务编号或记录数据，本次只读回归在空态/无匹配数据下未命中",
+    "GET /api/sales-inventory/items/{item_code}/stock-ledger": "依赖有效业务编号或记录数据，本次只读回归在空态/无匹配数据下未命中",
+    "GET /api/sales-inventory/aggregation": "本地只读场景未触发该读取端点（可能由空态、无记录或权限态导致）",
+    "GET /api/cross-module/work-order-trail/{work_order_id}": "依赖有效业务编号或记录数据，本次只读回归在空态/无匹配数据下未命中",
+    "GET /api/cross-module/sales-order-trail/{sales_order_id}": "依赖有效业务编号或记录数据，本次只读回归在空态/无匹配数据下未命中"
+  },
+  "scenario_steps": [
+    {
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW",
+      "route": "/dashboard/overview",
+      "business_context": "仪表盘概览只读入口与权限态检查",
+      "readonly_actions_executed": [
+        "click_search",
+        "click_reset",
+        "click_refresh_metrics",
+        "click_detail",
+        "capture_mobile_viewport_390x844"
+      ],
+      "read_requests_seen": [
+        "GET /dashboard/overview",
+        "GET /@vite/client",
+        "GET /src/main.ts",
+        "GET /node_modules/.vite/deps/vue.js",
+        "GET /node_modules/.vite/deps/element-plus.js",
+        "GET /node_modules/element-plus/dist/index.css",
+        "GET /src/App.vue",
+        "GET /src/router/index.ts",
+        "GET /node_modules/vite/dist/client/env.mjs",
+        "GET /node_modules/.vite/deps/chunk-6X6RLDOS.js",
+        "GET /@id/__x00__plugin-vue:export-helper",
+        "GET /node_modules/.vite/deps/vue-router.js",
+        "GET /src/views/dashboard/DashboardOverview.vue",
+        "GET /src/api/dashboard.ts",
+        "GET /src/stores/permission.ts",
+        "GET /src/api/request.ts",
+        "GET /src/api/auth.ts",
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/dashboard/overview"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_01_before.png",
+        "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_02_after.png",
+        "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_03_guard_state.png",
+        "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_04_mobile.png"
+      ],
+      "result": "PASS",
+      "finding": "只读链路通过，未发现写入/禁用动作请求",
+      "residual_risk": "低风险，读请求与页面行为一致"
+    },
+    {
+      "step_id": "STEP-02-SALES-ORDERS",
+      "route": "/sales-inventory/sales-orders",
+      "business_context": "销售订单列表与履约只读查询链路",
+      "readonly_actions_executed": [
+        "click_query",
+        "click_reset",
+        "click_fulfillment_query",
+        "click_order_detail",
+        "capture_mobile_viewport_390x844"
+      ],
+      "read_requests_seen": [
+        "GET /sales-inventory/sales-orders",
+        "GET /@vite/client",
+        "GET /src/main.ts",
+        "GET /node_modules/.vite/deps/vue.js",
+        "GET /node_modules/.vite/deps/element-plus.js",
+        "GET /node_modules/element-plus/dist/index.css",
+        "GET /src/App.vue",
+        "GET /src/router/index.ts",
+        "GET /node_modules/.vite/deps/chunk-6X6RLDOS.js",
+        "GET /node_modules/vite/dist/client/env.mjs",
+        "GET /@id/__x00__plugin-vue:export-helper",
+        "GET /node_modules/.vite/deps/vue-router.js",
+        "GET /src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+        "GET /src/api/sales_inventory.ts",
+        "GET /src/stores/permission.ts",
+        "GET /src/api/request.ts",
+        "GET /src/api/auth.ts",
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/sales-inventory/sales-orders",
+        "GET /api/sales-inventory/sales-order-fulfillment",
+        "GET /api/sales-inventory/sales-orders/SO-Z003-SALES-ORDER-20260516-010",
+        "GET /src/views/sales_inventory/SalesInventorySalesOrderDetail.vue"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b112_screenshots/STEP-02-SALES-ORDERS_01_before.png",
+        "/tmp/task_z003b112_screenshots/STEP-02-SALES-ORDERS_02_after.png",
+        "/tmp/task_z003b112_screenshots/STEP-02-SALES-ORDERS_03_guard_state.png",
+        "/tmp/task_z003b112_screenshots/STEP-02-SALES-ORDERS_04_mobile.png"
+      ],
+      "result": "PASS",
+      "finding": "只读链路通过，未发现写入/禁用动作请求",
+      "residual_risk": "低风险，读请求与页面行为一致"
+    },
+    {
+      "step_id": "STEP-03-STOCK-LEDGER",
+      "route": "/sales-inventory/stock-ledger",
+      "business_context": "库存台账只读查询、汇总与详情抽屉检查",
+      "readonly_actions_executed": [
+        "click_query",
+        "click_reset",
+        "capture_mobile_viewport_390x844"
+      ],
+      "read_requests_seen": [
+        "GET /sales-inventory/stock-ledger",
+        "GET /@vite/client",
+        "GET /src/main.ts",
+        "GET /node_modules/vite/dist/client/env.mjs",
+        "GET /node_modules/.vite/deps/vue.js",
+        "GET /node_modules/.vite/deps/element-plus.js",
+        "GET /node_modules/element-plus/dist/index.css",
+        "GET /src/App.vue",
+        "GET /src/router/index.ts",
+        "GET /node_modules/.vite/deps/chunk-6X6RLDOS.js",
+        "GET /@id/__x00__plugin-vue:export-helper",
+        "GET /node_modules/.vite/deps/vue-router.js",
+        "GET /src/views/sales_inventory/SalesInventoryStockLedger.vue",
+        "GET /src/api/sales_inventory.ts",
+        "GET /src/stores/permission.ts",
+        "GET /src/api/request.ts",
+        "GET /src/api/auth.ts",
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/sales-inventory/material-transfers"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b112_screenshots/STEP-03-STOCK-LEDGER_01_before.png",
+        "/tmp/task_z003b112_screenshots/STEP-03-STOCK-LEDGER_02_after.png",
+        "/tmp/task_z003b112_screenshots/STEP-03-STOCK-LEDGER_03_guard_state.png",
+        "/tmp/task_z003b112_screenshots/STEP-03-STOCK-LEDGER_04_mobile.png"
+      ],
+      "result": "PASS",
+      "finding": "只读链路通过，未发现写入/禁用动作请求",
+      "residual_risk": "低风险，读请求与页面行为一致"
+    },
+    {
+      "step_id": "STEP-04-CROSS-MODULE-VIEW",
+      "route": "/cross-module/view",
+      "business_context": "跨模块工单/销售单追踪只读串联",
+      "readonly_actions_executed": [
+        "click_work_order_query",
+        "capture_mobile_viewport_390x844"
+      ],
+      "read_requests_seen": [
+        "GET /cross-module/view",
+        "GET /@vite/client",
+        "GET /src/main.ts",
+        "GET /node_modules/vite/dist/client/env.mjs",
+        "GET /node_modules/.vite/deps/vue.js",
+        "GET /node_modules/.vite/deps/element-plus.js",
+        "GET /node_modules/element-plus/dist/index.css",
+        "GET /src/App.vue",
+        "GET /src/router/index.ts",
+        "GET /node_modules/.vite/deps/chunk-6X6RLDOS.js",
+        "GET /@id/__x00__plugin-vue:export-helper",
+        "GET /node_modules/.vite/deps/vue-router.js",
+        "GET /src/views/cross_module/CrossModuleView.vue",
+        "GET /src/api/cross_module.ts",
+        "GET /src/api/auth.ts",
+        "GET /src/stores/permission.ts",
+        "GET /src/api/request.ts",
+        "GET /api/auth/me",
+        "GET /api/auth/actions"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b112_screenshots/STEP-04-CROSS-MODULE-VIEW_01_before.png",
+        "/tmp/task_z003b112_screenshots/STEP-04-CROSS-MODULE-VIEW_02_after.png",
+        "/tmp/task_z003b112_screenshots/STEP-04-CROSS-MODULE-VIEW_03_guard_state.png",
+        "/tmp/task_z003b112_screenshots/STEP-04-CROSS-MODULE-VIEW_04_mobile.png"
+      ],
+      "result": "PASS",
+      "finding": "只读链路通过，未发现写入/禁用动作请求",
+      "residual_risk": "低风险，读请求与页面行为一致"
+    },
+    {
+      "step_id": "STEP-05-REFERENCES",
+      "route": "/sales-inventory/references",
+      "business_context": "引用资料（客户/仓库）只读查询与详情查看",
+      "readonly_actions_executed": [
+        "click_customers_query",
+        "click_customers_reset",
+        "switch_warehouse_tab",
+        "capture_mobile_viewport_390x844"
+      ],
+      "read_requests_seen": [
+        "GET /sales-inventory/references",
+        "GET /@vite/client",
+        "GET /src/main.ts",
+        "GET /node_modules/vite/dist/client/env.mjs",
+        "GET /node_modules/.vite/deps/vue.js",
+        "GET /node_modules/.vite/deps/element-plus.js",
+        "GET /node_modules/element-plus/dist/index.css",
+        "GET /src/App.vue",
+        "GET /src/router/index.ts",
+        "GET /node_modules/.vite/deps/chunk-6X6RLDOS.js",
+        "GET /@id/__x00__plugin-vue:export-helper",
+        "GET /node_modules/.vite/deps/vue-router.js",
+        "GET /src/views/sales_inventory/SalesInventoryReferenceList.vue",
+        "GET /src/api/sales_inventory.ts",
+        "GET /src/stores/permission.ts",
+        "GET /src/api/request.ts",
+        "GET /src/api/auth.ts",
+        "GET /api/auth/me",
+        "GET /api/auth/actions",
+        "GET /api/sales-inventory/customers",
+        "GET /api/sales-inventory/warehouses"
+      ],
+      "write_request_count": 0,
+      "forbidden_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b112_screenshots/STEP-05-REFERENCES_01_before.png",
+        "/tmp/task_z003b112_screenshots/STEP-05-REFERENCES_02_after.png",
+        "/tmp/task_z003b112_screenshots/STEP-05-REFERENCES_03_guard_state.png",
+        "/tmp/task_z003b112_screenshots/STEP-05-REFERENCES_04_mobile.png"
+      ],
+      "result": "PASS",
+      "finding": "只读链路通过，未发现写入/禁用动作请求",
+      "residual_risk": "低风险，读请求与页面行为一致"
+    }
+  ],
+  "write_request_count": 0,
+  "browser_approved_write_request_count": 0,
+  "api_regression_approved_write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "zero_side_effect": true,
+  "residual_scan_result": "no_new_residual",
+  "residual_audit_delta": 0,
+  "screenshots_count": 20,
+  "screenshots_dir": "/tmp/task_z003b112_screenshots",
+  "screenshots": [
+    "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_01_before.png",
+    "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_02_after.png",
+    "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_03_guard_state.png",
+    "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_04_mobile.png",
+    "/tmp/task_z003b112_screenshots/STEP-02-SALES-ORDERS_01_before.png",
+    "/tmp/task_z003b112_screenshots/STEP-02-SALES-ORDERS_02_after.png",
+    "/tmp/task_z003b112_screenshots/STEP-02-SALES-ORDERS_03_guard_state.png",
+    "/tmp/task_z003b112_screenshots/STEP-02-SALES-ORDERS_04_mobile.png",
+    "/tmp/task_z003b112_screenshots/STEP-03-STOCK-LEDGER_01_before.png",
+    "/tmp/task_z003b112_screenshots/STEP-03-STOCK-LEDGER_02_after.png",
+    "/tmp/task_z003b112_screenshots/STEP-03-STOCK-LEDGER_03_guard_state.png",
+    "/tmp/task_z003b112_screenshots/STEP-03-STOCK-LEDGER_04_mobile.png",
+    "/tmp/task_z003b112_screenshots/STEP-04-CROSS-MODULE-VIEW_01_before.png",
+    "/tmp/task_z003b112_screenshots/STEP-04-CROSS-MODULE-VIEW_02_after.png",
+    "/tmp/task_z003b112_screenshots/STEP-04-CROSS-MODULE-VIEW_03_guard_state.png",
+    "/tmp/task_z003b112_screenshots/STEP-04-CROSS-MODULE-VIEW_04_mobile.png",
+    "/tmp/task_z003b112_screenshots/STEP-05-REFERENCES_01_before.png",
+    "/tmp/task_z003b112_screenshots/STEP-05-REFERENCES_02_after.png",
+    "/tmp/task_z003b112_screenshots/STEP-05-REFERENCES_03_guard_state.png",
+    "/tmp/task_z003b112_screenshots/STEP-05-REFERENCES_04_mobile.png"
+  ],
+  "request_log_sample": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/dashboard/overview",
+      "path": "/dashboard/overview",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "path": "/@vite/client",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts?t=1778968983342",
+      "path": "/src/main.ts",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue.js",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/element-plus.js",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "path": "/node_modules/element-plus/dist/index.css",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "path": "/src/App.vue",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts?t=1778968983342",
+      "path": "/src/router/index.ts",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "path": "/node_modules/vite/dist/client/env.mjs",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/chunk-6X6RLDOS.js",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "path": "/@id/__x00__plugin-vue:export-helper",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue-router.js",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/dashboard/DashboardOverview.vue",
+      "path": "/src/views/dashboard/DashboardOverview.vue",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/dashboard.ts",
+      "path": "/src/api/dashboard.ts",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "path": "/src/stores/permission.ts",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/dashboard/DashboardOverview.vue?vue&type=style&index=0&scoped=5508e14f&lang.css",
+      "path": "/src/views/dashboard/DashboardOverview.vue",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/request.ts",
+      "path": "/src/api/request.ts",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "path": "/src/api/auth.ts",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "path": "/api/auth/me",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/actions?module=dashboard",
+      "path": "/api/auth/actions",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/dashboard/overview?company=%E6%A0%B7%E8%A1%A3%E5%88%B6%E9%80%A0",
+      "path": "/api/dashboard/overview",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/dashboard/overview?company=%E6%A0%B7%E8%A1%A3%E5%88%B6%E9%80%A0",
+      "path": "/api/dashboard/overview",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/dashboard/overview?company=%E6%A0%B7%E8%A1%A3%E5%88%B6%E9%80%A0",
+      "path": "/api/dashboard/overview",
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/sales-inventory/sales-orders",
+      "path": "/sales-inventory/sales-orders",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "path": "/@vite/client",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts?t=1778968983342",
+      "path": "/src/main.ts",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue.js",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/element-plus.js",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "path": "/node_modules/element-plus/dist/index.css",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "path": "/src/App.vue",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts?t=1778968983342",
+      "path": "/src/router/index.ts",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/chunk-6X6RLDOS.js",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "path": "/node_modules/vite/dist/client/env.mjs",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "path": "/@id/__x00__plugin-vue:export-helper",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue-router.js",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderList.vue?t=1778930937740",
+      "path": "/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/sales_inventory.ts?t=1778930932589",
+      "path": "/src/api/sales_inventory.ts",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "path": "/src/stores/permission.ts",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderList.vue?vue&type=style&index=0&scoped=5db14912&lang.css",
+      "path": "/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/request.ts",
+      "path": "/src/api/request.ts",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "path": "/src/api/auth.ts",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "path": "/api/auth/me",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/sales-orders?page=1&page_size=20",
+      "path": "/api/sales-inventory/sales-orders",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/sales-order-fulfillment?",
+      "path": "/api/sales-inventory/sales-order-fulfillment",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/sales-orders?page=1&page_size=20",
+      "path": "/api/sales-inventory/sales-orders",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/sales-order-fulfillment?",
+      "path": "/api/sales-inventory/sales-order-fulfillment",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/sales-orders?page=1&page_size=20",
+      "path": "/api/sales-inventory/sales-orders",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/sales-order-fulfillment?",
+      "path": "/api/sales-inventory/sales-order-fulfillment",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/sales-order-fulfillment?",
+      "path": "/api/sales-inventory/sales-order-fulfillment",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/sales-orders/SO-Z003-SALES-ORDER-20260516-010",
+      "path": "/api/sales-inventory/sales-orders/SO-Z003-SALES-ORDER-20260516-010",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue?t=1778930932589",
+      "path": "/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue?vue&type=style&index=0&scoped=1e7c30c3&lang.css",
+      "path": "/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "path": "/api/auth/me",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "step_id": "STEP-02-SALES-ORDERS"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/sales-inventory/stock-ledger",
+      "path": "/sales-inventory/stock-ledger",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "path": "/@vite/client",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts?t=1778968983342",
+      "path": "/src/main.ts",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "path": "/node_modules/vite/dist/client/env.mjs",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue.js",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/element-plus.js",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "path": "/node_modules/element-plus/dist/index.css",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "path": "/src/App.vue",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts?t=1778968983342",
+      "path": "/src/router/index.ts",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/chunk-6X6RLDOS.js",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "path": "/@id/__x00__plugin-vue:export-helper",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue-router.js",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventoryStockLedger.vue?t=1778937171645",
+      "path": "/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/sales_inventory.ts?t=1778930932589",
+      "path": "/src/api/sales_inventory.ts",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "path": "/src/stores/permission.ts",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventoryStockLedger.vue?vue&type=style&index=0&scoped=32ce1aa5&lang.css",
+      "path": "/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/request.ts",
+      "path": "/src/api/request.ts",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "path": "/src/api/auth.ts",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "path": "/api/auth/me",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/material-transfers?page=1&page_size=20",
+      "path": "/api/sales-inventory/material-transfers",
+      "step_id": "STEP-03-STOCK-LEDGER"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/cross-module/view",
+      "path": "/cross-module/view",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "path": "/@vite/client",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts?t=1778968983342",
+      "path": "/src/main.ts",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "path": "/node_modules/vite/dist/client/env.mjs",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue.js",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/element-plus.js",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "path": "/node_modules/element-plus/dist/index.css",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "path": "/src/App.vue",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts?t=1778968983342",
+      "path": "/src/router/index.ts",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/chunk-6X6RLDOS.js",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "path": "/@id/__x00__plugin-vue:export-helper",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue-router.js",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/cross_module/CrossModuleView.vue?t=1778945319348",
+      "path": "/src/views/cross_module/CrossModuleView.vue",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/cross_module.ts",
+      "path": "/src/api/cross_module.ts",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "path": "/src/api/auth.ts",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "path": "/src/stores/permission.ts",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/cross_module/CrossModuleView.vue?vue&type=style&index=0&scoped=b82cea2e&lang.css",
+      "path": "/src/views/cross_module/CrossModuleView.vue",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/request.ts",
+      "path": "/src/api/request.ts",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "path": "/api/auth/me",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/actions?module=quality",
+      "path": "/api/auth/actions",
+      "step_id": "STEP-04-CROSS-MODULE-VIEW"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/sales-inventory/references",
+      "path": "/sales-inventory/references",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "path": "/@vite/client",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts?t=1778968983342",
+      "path": "/src/main.ts",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "path": "/node_modules/vite/dist/client/env.mjs",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue.js",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/element-plus.js",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "path": "/node_modules/element-plus/dist/index.css",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "path": "/src/App.vue",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts?t=1778968983342",
+      "path": "/src/router/index.ts",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/chunk-6X6RLDOS.js",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "path": "/@id/__x00__plugin-vue:export-helper",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "path": "/node_modules/.vite/deps/vue-router.js",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventoryReferenceList.vue?t=1778950719870",
+      "path": "/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/sales_inventory.ts?t=1778930932589",
+      "path": "/src/api/sales_inventory.ts",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "path": "/src/stores/permission.ts",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventoryReferenceList.vue?vue&type=style&index=0&scoped=e5496e25&lang.css",
+      "path": "/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/request.ts",
+      "path": "/src/api/request.ts",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "path": "/src/api/auth.ts",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "path": "/api/auth/me",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/customers?page=1&page_size=20",
+      "path": "/api/sales-inventory/customers",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/warehouses?page=1&page_size=20",
+      "path": "/api/sales-inventory/warehouses",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/customers?page=1&page_size=20",
+      "path": "/api/sales-inventory/customers",
+      "step_id": "STEP-05-REFERENCES"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/sales-inventory/customers?page=1&page_size=20",
+      "path": "/api/sales-inventory/customers",
+      "step_id": "STEP-05-REFERENCES"
+    }
+  ],
+  "remote_lifecycle_parked": true,
+  "generated_at": "2026-05-16T23:28:53.298Z",
+  "base_url": "http://127.0.0.1:5174",
+  "desktop_screenshot_count": 15,
+  "mobile_screenshot_count": 5,
+  "mobile_viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "route_viewport_coverage": [
+    {
+      "step_id": "STEP-01-DASHBOARD-OVERVIEW",
+      "route": "/dashboard/overview",
+      "desktop_count": 3,
+      "mobile_count": 1,
+      "desktop_covered": true,
+      "mobile_covered": true
+    },
+    {
+      "step_id": "STEP-02-SALES-ORDERS",
+      "route": "/sales-inventory/sales-orders",
+      "desktop_count": 3,
+      "mobile_count": 1,
+      "desktop_covered": true,
+      "mobile_covered": true
+    },
+    {
+      "step_id": "STEP-03-STOCK-LEDGER",
+      "route": "/sales-inventory/stock-ledger",
+      "desktop_count": 3,
+      "mobile_count": 1,
+      "desktop_covered": true,
+      "mobile_covered": true
+    },
+    {
+      "step_id": "STEP-04-CROSS-MODULE-VIEW",
+      "route": "/cross-module/view",
+      "desktop_count": 3,
+      "mobile_count": 1,
+      "desktop_covered": true,
+      "mobile_covered": true
+    },
+    {
+      "step_id": "STEP-05-REFERENCES",
+      "route": "/sales-inventory/references",
+      "desktop_count": 3,
+      "mobile_count": 1,
+      "desktop_covered": true,
+      "mobile_covered": true
+    }
+  ],
+  "fix_task_id": "TASK-Z003B-112-FIX1",
+  "fix_summary": "补齐每条 route 的 mobile 视口截图证据，并保持 no-write 结果为 0"
+}
