@@ -1,0 +1,127 @@
+{
+  "task_id": "TASK-Z003B-100",
+  "source_head": "3b4f3a1c7b24f1751266c2b96d10221bae029ae2",
+  "source_subject": "chore: seal no-write readonly regression baseline",
+  "candidate_source_task": "TASK-Z003B-98-PREP",
+  "boundary_source_task": "TASK-Z003B-99-PREP",
+  "selected_candidate_id": "TASK-Z003B-CAND-14",
+  "browser_regression_refresh_only": true,
+  "remote_lifecycle_parked": true,
+  "refresh_case_count": 4,
+  "executed_case_count": 4,
+  "passed_case_count": 4,
+  "fix_case_count": 0,
+  "blocked_case_count": 0,
+  "total_write_request_count": 0,
+  "total_forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "zero_side_effect": true,
+  "residual_scan_result": "no_new_residual",
+  "screenshots_count": 12,
+  "cases": [
+    {
+      "case_id": "Z003-REFRESH-01",
+      "module": "reports_catalog_shared_readonly",
+      "route_scope": [
+        "/reports/catalog"
+      ],
+      "browser_route_opened": "/reports/catalog",
+      "readonly_actions_executed": [
+        "filter_or_query_input",
+        "click:查询",
+        "click:查看"
+      ],
+      "read_request_count": 13,
+      "write_request_count": 0,
+      "forbidden_write_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-01_01_open.png",
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-01_02_action.png",
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-01_03_guard.png"
+      ],
+      "zero_side_effect_result": true,
+      "result": "PASS",
+      "finding": "只读打开、查询与查看动作执行成功，未捕获写请求与禁用请求。",
+      "residual_risk": "LOW"
+    },
+    {
+      "case_id": "Z003-REFRESH-02",
+      "module": "permissions_governance_shared_readonly",
+      "route_scope": [
+        "/permissions/governance"
+      ],
+      "browser_route_opened": "/permissions/governance",
+      "readonly_actions_executed": [
+        "filter_or_query_input",
+        "click:刷新",
+        "click:查看详情"
+      ],
+      "read_request_count": 12,
+      "write_request_count": 0,
+      "forbidden_write_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-02_01_open.png",
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-02_02_action.png",
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-02_03_guard.png"
+      ],
+      "zero_side_effect_result": true,
+      "result": "PASS",
+      "finding": "权限治理页面只读审计视图可用，guard 态可见，未出现写入类请求。",
+      "residual_risk": "LOW"
+    },
+    {
+      "case_id": "Z003-REFRESH-03",
+      "module": "system_management_shared_readonly",
+      "route_scope": [
+        "/system/management"
+      ],
+      "browser_route_opened": "/system/management",
+      "readonly_actions_executed": [
+        "filter_or_query_input",
+        "click:查询",
+        "click:查看"
+      ],
+      "read_request_count": 18,
+      "write_request_count": 0,
+      "forbidden_write_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-03_01_open.png",
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-03_02_action.png",
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-03_03_guard.png"
+      ],
+      "zero_side_effect_result": true,
+      "result": "PASS",
+      "finding": "系统管理共享只读模块加载与检索动作正常，无写请求与禁用流量。",
+      "residual_risk": "LOW"
+    },
+    {
+      "case_id": "Z003-REFRESH-04",
+      "module": "dashboard_overview_shared_readonly",
+      "route_scope": [
+        "/dashboard/overview"
+      ],
+      "browser_route_opened": "/dashboard/overview",
+      "readonly_actions_executed": [
+        "filter_or_query_input",
+        "click:搜索",
+        "click:刷新指标",
+        "click:查看动态"
+      ],
+      "read_request_count": 7,
+      "write_request_count": 0,
+      "forbidden_write_request_count": 0,
+      "screenshots": [
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-04_01_open.png",
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-04_02_action.png",
+        "/tmp/task_z003b100_screenshots/Z003-REFRESH-04_03_guard.png"
+      ],
+      "zero_side_effect_result": true,
+      "result": "PASS",
+      "finding": "仪表盘总览刷新与查看行为均为只读请求，未出现写入副作用。",
+      "residual_risk": "LOW"
+    }
+  ]
+}

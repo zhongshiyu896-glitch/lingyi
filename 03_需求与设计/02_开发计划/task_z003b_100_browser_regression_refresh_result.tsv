@@ -1,0 +1,5 @@
+case_id	module	route_scope	readonly_actions_executed	write_request_count	forbidden_write_request_count	result
+Z003-REFRESH-01	reports_catalog_shared_readonly	/reports/catalog	filter_or_query_input|click:查询|click:查看	0	0	PASS
+Z003-REFRESH-02	permissions_governance_shared_readonly	/permissions/governance	filter_or_query_input|click:刷新|click:查看详情	0	0	PASS
+Z003-REFRESH-03	system_management_shared_readonly	/system/management	filter_or_query_input|click:查询|click:查看	0	0	PASS
+Z003-REFRESH-04	dashboard_overview_shared_readonly	/dashboard/overview	filter_or_query_input|click:搜索|click:刷新指标|click:查看动态	0	0	PASS
