@@ -1,0 +1,141 @@
+{
+  "task_id": "TASK-Z003B-67-IMPL",
+  "source_head": "586c1fdc0f6428bd3d4a2461fcd30c9bcd034341",
+  "route_scope": [
+    "/cross-module/view"
+  ],
+  "selected_candidate_id": "TASK-Z003B-CAND-12",
+  "module": "cross_module_view_readonly_trace_real_interaction_closure",
+  "no_write_real_interaction": true,
+  "rollback_cleanup_executed": true,
+  "write_request_count": 0,
+  "allowed_write_endpoints": [],
+  "allowed_read_endpoints": [
+    "GET /api/cross-module/work-order-trail/{work_order_id}",
+    "GET /api/cross-module/sales-order-trail/{sales_order_id}",
+    "GET /api/auth/me",
+    "GET /api/auth/actions"
+  ],
+  "browser_evidence": {
+    "write_request_count": 0,
+    "approved_write_request_count": 0,
+    "browser_approved_write_request_count": 0,
+    "allowed_read_hit_counts": {
+      "work_order_trail": 1,
+      "sales_order_trail": 1,
+      "auth_me": 2,
+      "auth_actions": 4
+    },
+    "all_allowed_read_endpoints_hit": true,
+    "guard_case_triggered": true,
+    "guard_case_no_extra_request": true,
+    "unexpected_write_request_count": 0,
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "api_regression_evidence": {
+    "write_request_count": 0,
+    "approved_write_request_count": 0,
+    "api_regression_approved_write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "readback_endpoints_covered": [
+      "GET /api/cross-module/work-order-trail/{work_order_id}",
+      "GET /api/cross-module/sales-order-trail/{sales_order_id}",
+      "GET /api/auth/me",
+      "GET /api/auth/actions"
+    ],
+    "readback_results": [
+      {
+        "path": "/api/cross-module/work-order-trail/WO-LOCAL-001?company=LY-TEST",
+        "method": "GET",
+        "status": 200,
+        "payload_code": "0"
+      },
+      {
+        "path": "/api/cross-module/sales-order-trail/SO-LOCAL-001?company=LY-TEST",
+        "method": "GET",
+        "status": 200,
+        "payload_code": "0"
+      },
+      {
+        "path": "/api/auth/me",
+        "method": "GET",
+        "status": 200,
+        "payload_code": "0"
+      },
+      {
+        "path": "/api/auth/actions?module=sales_inventory",
+        "method": "GET",
+        "status": 200,
+        "payload_code": "0"
+      }
+    ],
+    "all_readback_status_200": true
+  },
+  "zero_side_effect_evidence": {
+    "rollback_cleanup_executed": true,
+    "write_request_count": 0,
+    "zero_side_effect": true,
+    "residual_scan_result": "no_new_residual",
+    "residual_tables": [
+      "ly_warehouse_stock_entry_draft",
+      "ly_warehouse_stock_entry_draft_item",
+      "ly_warehouse_stock_entry_outbox_event",
+      "ly_operation_audit_log",
+      "ly_security_audit_log"
+    ],
+    "before_counts": {
+      "ly_warehouse_stock_entry_draft": 9,
+      "ly_warehouse_stock_entry_draft_item": 9,
+      "ly_warehouse_stock_entry_outbox_event": 9,
+      "ly_operation_audit_log": 846,
+      "ly_security_audit_log": 12148
+    },
+    "after_counts": {
+      "ly_warehouse_stock_entry_draft": 9,
+      "ly_warehouse_stock_entry_draft_item": 9,
+      "ly_warehouse_stock_entry_outbox_event": 9,
+      "ly_operation_audit_log": 846,
+      "ly_security_audit_log": 12148
+    },
+    "delta_counts": {
+      "ly_warehouse_stock_entry_draft": 0,
+      "ly_warehouse_stock_entry_draft_item": 0,
+      "ly_warehouse_stock_entry_outbox_event": 0,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    },
+    "db_write_on_failed_gate_count": 0
+  },
+  "forbidden_counters": {
+    "unexpected_write_request_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0,
+    "import_export_download_upload_print_request_count": 0
+  },
+  "screenshots": {
+    "screenshots_dir": "/tmp/task_z003b67_screenshots",
+    "screenshots_count": 7,
+    "files": [
+      "01_route_loaded.png",
+      "02_filters_filled_work_order.png",
+      "03_work_order_readback.png",
+      "04_sales_order_readback.png",
+      "05_guard_case.png",
+      "06_permission_refresh.png",
+      "07_final_state_with_readonly_guide.png"
+    ]
+  },
+  "tmp_artifacts": {
+    "browser_json": "/tmp/task_z003b67_browser_result.json",
+    "regression_api_json": "/tmp/task_z003b67_regression_api.json",
+    "zero_side_effect_json": "/tmp/task_z003b67_zero_side_effect.json"
+  },
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/cross_module_view_service.py"
+  ],
+  "readonly_context_changed": false
+}

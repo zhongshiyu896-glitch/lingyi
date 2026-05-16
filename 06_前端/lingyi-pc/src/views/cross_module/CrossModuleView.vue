@@ -248,6 +248,7 @@ import {
   type CrossModuleSalesOrderTrailData,
   type CrossModuleWorkOrderTrailData,
 } from '@/api/cross_module'
+import { fetchModuleActions } from '@/api/auth'
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
@@ -264,6 +265,8 @@ const salesOrderErrorMessage = ref<string>('')
 const salesOrderQueried = ref<boolean>(false)
 const showReadonlyGuide = ref<boolean>(false)
 const permissionLoading = ref<boolean>(false)
+const salesInventoryReadAllowed = ref<boolean>(false)
+const qualityReadAllowed = ref<boolean>(false)
 
 const workOrderQuery = reactive({
   work_order_id: '',
@@ -275,9 +278,7 @@ const salesOrderQuery = reactive({
   company: '',
 })
 
-const canRead = computed<boolean>(
-  () => permissionStore.state.buttonPermissions.sales_inventory_read && permissionStore.state.buttonPermissions.quality_read,
-)
+const canRead = computed<boolean>(() => salesInventoryReadAllowed.value && qualityReadAllowed.value)
 const workOrderShowEmptyState = computed<boolean>(
   () => workOrderQueried.value && !workOrderLoading.value && !workOrderErrorMessage.value && !workOrderTrail.value,
 )
@@ -355,11 +356,38 @@ const toggleReadonlyGuide = (): void => {
   showReadonlyGuide.value = !showReadonlyGuide.value
 }
 
+const resolveModuleReadAllowed = (
+  moduleName: string,
+  payload: {
+    actions?: string[]
+    button_permissions?: Record<string, unknown>
+  },
+): boolean => {
+  const actionKey = `${moduleName}:read`
+  const actions = Array.isArray(payload.actions) ? payload.actions : []
+  if (actions.includes(actionKey)) return true
+
+  const buttonPermissions = payload.button_permissions || {}
+  const readFlagByModule = buttonPermissions[`${moduleName}_read`]
+  if (typeof readFlagByModule === 'boolean' && readFlagByModule) return true
+  const genericRead = buttonPermissions.read
+  return typeof genericRead === 'boolean' ? genericRead : false
+}
+
+const loadReadonlyPermissions = async (): Promise<void> => {
+  const [salesResult, qualityResult] = await Promise.all([
+    fetchModuleActions({ module: 'sales_inventory' }),
+    fetchModuleActions({ module: 'quality' }),
+  ])
+  salesInventoryReadAllowed.value = resolveModuleReadAllowed('sales_inventory', salesResult.data)
+  qualityReadAllowed.value = resolveModuleReadAllowed('quality', qualityResult.data)
+}
+
 const refreshReadonlyStatus = async (): Promise<void> => {
   permissionLoading.value = true
   try {
     await permissionStore.loadCurrentUser()
-    await Promise.all([permissionStore.loadModuleActions('sales_inventory'), permissionStore.loadModuleActions('quality')])
+    await loadReadonlyPermissions()
     if (!canRead.value) {
       workOrderTrail.value = null
       salesOrderTrail.value = null
@@ -380,7 +408,7 @@ const refreshReadonlyStatus = async (): Promise<void> => {
 onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
-    await Promise.all([permissionStore.loadModuleActions('sales_inventory'), permissionStore.loadModuleActions('quality')])
+    await loadReadonlyPermissions()
   } catch (error) {
     ElMessage.error((error as Error).message)
   }

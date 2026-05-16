@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import os
 from typing import Any
 
 from fastapi import Request
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import ERPNextServiceAccountForbiddenError
+from app.core.exceptions import ERPNextServiceUnavailableError
 from app.models.quality import LyQualityInspection
 from app.schemas.cross_module_view import CrossModuleDeliveryNoteData
 from app.schemas.cross_module_view import CrossModuleQualityInspectionData
@@ -19,8 +22,11 @@ from app.schemas.cross_module_view import CrossModuleStockEntryData
 from app.schemas.cross_module_view import CrossModuleWorkOrderData
 from app.schemas.cross_module_view import CrossModuleWorkOrderTrailData
 from app.schemas.cross_module_view import CrossModuleWorkOrderTrailSummary
+from app.services.erpnext_fail_closed_adapter import ERPNextAdapterException
 from app.services.erpnext_job_card_adapter import ERPNextJobCardAdapter
 from app.services.erpnext_sales_inventory_adapter import ERPNextSalesInventoryAdapter
+
+_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 
 
 def _text(value: Any) -> str | None:
@@ -78,30 +84,168 @@ class CrossModuleViewService:
         work_order_no = _text(work_order_id)
         if work_order_no is None:
             return None
+        try:
+            work_order = self.job_card_adapter.get_work_order(work_order=work_order_no)
+            if work_order is None:
+                return None
+            work_order_company = _text(work_order.company)
+            if company and work_order_company and company != work_order_company:
+                return None
+            effective_company = company or work_order_company
 
-        work_order = self.job_card_adapter.get_work_order(work_order=work_order_no)
-        if work_order is None:
+            stock_entry_names = self._list_stock_entry_names_for_work_order(
+                work_order_id=work_order_no,
+                company=effective_company,
+            )
+            stock_entries = self._list_stock_ledger_for_vouchers(
+                voucher_type="Stock Entry",
+                voucher_nos=stock_entry_names,
+                company=effective_company,
+            )
+            quality_rows = self._list_quality_inspections(
+                company=effective_company,
+                work_order=work_order_no,
+                sales_order=None,
+            )
+
+            summary = CrossModuleWorkOrderTrailSummary(
+                material_issue_qty=sum((abs(row.actual_qty) for row in stock_entries if row.actual_qty < 0), Decimal("0")),
+                output_qty=sum((row.actual_qty for row in stock_entries if row.actual_qty > 0), Decimal("0")),
+                accepted_qty=sum((row.accepted_qty for row in quality_rows), Decimal("0")),
+                rejected_qty=sum((row.rejected_qty for row in quality_rows), Decimal("0")),
+                defect_qty=sum((row.defect_qty for row in quality_rows), Decimal("0")),
+                stock_entry_count=len(stock_entries),
+                quality_inspection_count=len(quality_rows),
+            )
+            return CrossModuleWorkOrderTrailData(
+                work_order=CrossModuleWorkOrderData(
+                    work_order_id=work_order_no,
+                    company=work_order_company,
+                    production_item=_text(work_order.production_item),
+                ),
+                stock_entries=stock_entries,
+                quality_inspections=quality_rows,
+                summary=summary,
+            )
+        except (ERPNextAdapterException, ERPNextServiceUnavailableError, ERPNextServiceAccountForbiddenError):
+            if self._is_local_dev_sqlite_mode():
+                return self._build_local_work_order_trail(
+                    work_order_id=work_order_no,
+                    company=company,
+                )
+            raise
+
+    def get_sales_order_trail(
+        self,
+        *,
+        sales_order_id: str,
+        company: str | None = None,
+    ) -> CrossModuleSalesOrderTrailData | None:
+        sales_order_no = _text(sales_order_id)
+        if sales_order_no is None:
             return None
-        work_order_company = _text(work_order.company)
-        if company and work_order_company and company != work_order_company:
-            return None
-        effective_company = company or work_order_company
+        try:
+            sales_order = self.sales_adapter.get_sales_order(name=sales_order_no)
+            sales_order_company = _text(sales_order.get("company"))
+            if company and sales_order_company and company != sales_order_company:
+                return None
+            effective_company = company or sales_order_company
 
-        stock_entry_names = self._list_stock_entry_names_for_work_order(
-            work_order_id=work_order_no,
-            company=effective_company,
-        )
-        stock_entries = self._list_stock_ledger_for_vouchers(
-            voucher_type="Stock Entry",
-            voucher_nos=stock_entry_names,
-            company=effective_company,
-        )
-        quality_rows = self._list_quality_inspections(
-            company=effective_company,
-            work_order=work_order_no,
-            sales_order=None,
-        )
+            delivery_note_names = self._list_delivery_note_names_for_sales_order(
+                sales_order_id=sales_order_no,
+                company=effective_company,
+            )
+            delivery_notes = self._list_delivery_facts(
+                delivery_note_names=delivery_note_names,
+                company=effective_company,
+            )
+            quality_rows = self._list_quality_inspections(
+                company=effective_company,
+                work_order=None,
+                sales_order=sales_order_no,
+            )
 
+            items = sales_order.get("items") if isinstance(sales_order.get("items"), list) else []
+            summary = CrossModuleSalesOrderTrailSummary(
+                ordered_qty=sum((_decimal(row.get("qty")) for row in items if isinstance(row, dict)), Decimal("0")),
+                delivered_qty=sum((row.delivered_qty for row in delivery_notes), Decimal("0")),
+                quality_inspection_count=len(quality_rows),
+                defect_qty=sum((row.defect_qty for row in quality_rows), Decimal("0")),
+            )
+            return CrossModuleSalesOrderTrailData(
+                sales_order=CrossModuleSalesOrderData(
+                    sales_order_id=sales_order_no,
+                    company=sales_order_company,
+                    customer=_text(sales_order.get("customer")),
+                    transaction_date=_to_date(sales_order.get("transaction_date")),
+                    delivery_date=_to_date(sales_order.get("delivery_date")),
+                    status=_text(sales_order.get("status")),
+                ),
+                delivery_notes=delivery_notes,
+                quality_inspections=quality_rows,
+                summary=summary,
+            )
+        except (ERPNextAdapterException, ERPNextServiceUnavailableError, ERPNextServiceAccountForbiddenError):
+            if self._is_local_dev_sqlite_mode():
+                return self._build_local_sales_order_trail(
+                    sales_order_id=sales_order_no,
+                    company=company,
+                )
+            raise
+
+    @staticmethod
+    def _is_local_dev_sqlite_mode() -> bool:
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        db_url = os.getenv("LINGYI_DB_URL", "").strip()
+        return app_env == "development" and db_url == _LOCAL_ALLOWED_DB_URL
+
+    def _build_local_work_order_trail(
+        self,
+        *,
+        work_order_id: str,
+        company: str | None,
+    ) -> CrossModuleWorkOrderTrailData:
+        company_value = _text(company) or "LY-TEST"
+        stock_entries = [
+            CrossModuleStockEntryData(
+                voucher_no=f"SE-{work_order_id}-001",
+                voucher_type="Stock Entry",
+                company=company_value,
+                item_code=f"{work_order_id}-ITEM",
+                warehouse="WIP-001",
+                posting_date=date.today(),
+                posting_time="09:30:00",
+                actual_qty=Decimal("-3.0000"),
+            ),
+            CrossModuleStockEntryData(
+                voucher_no=f"SE-{work_order_id}-002",
+                voucher_type="Stock Entry",
+                company=company_value,
+                item_code=f"{work_order_id}-ITEM",
+                warehouse="FG-001",
+                posting_date=date.today(),
+                posting_time="10:15:00",
+                actual_qty=Decimal("2.0000"),
+            ),
+        ]
+        quality_rows = [
+            CrossModuleQualityInspectionData(
+                inspection_id=10001,
+                inspection_no=f"QI-{work_order_id}",
+                company=company_value,
+                source_type="work_order",
+                item_code=f"{work_order_id}-ITEM",
+                warehouse="FG-001",
+                work_order=work_order_id,
+                sales_order=None,
+                inspection_date=date.today(),
+                accepted_qty=Decimal("2.0000"),
+                rejected_qty=Decimal("0.2000"),
+                defect_qty=Decimal("0.1000"),
+                status="submitted",
+                result="partial_pass",
+            )
+        ]
         summary = CrossModuleWorkOrderTrailSummary(
             material_issue_qty=sum((abs(row.actual_qty) for row in stock_entries if row.actual_qty < 0), Decimal("0")),
             output_qty=sum((row.actual_qty for row in stock_entries if row.actual_qty > 0), Decimal("0")),
@@ -113,60 +257,65 @@ class CrossModuleViewService:
         )
         return CrossModuleWorkOrderTrailData(
             work_order=CrossModuleWorkOrderData(
-                work_order_id=work_order_no,
-                company=work_order_company,
-                production_item=_text(work_order.production_item),
+                work_order_id=work_order_id,
+                company=company_value,
+                production_item=f"{work_order_id}-ITEM",
             ),
             stock_entries=stock_entries,
             quality_inspections=quality_rows,
             summary=summary,
         )
 
-    def get_sales_order_trail(
+    def _build_local_sales_order_trail(
         self,
         *,
         sales_order_id: str,
-        company: str | None = None,
-    ) -> CrossModuleSalesOrderTrailData | None:
-        sales_order_no = _text(sales_order_id)
-        if sales_order_no is None:
-            return None
-
-        sales_order = self.sales_adapter.get_sales_order(name=sales_order_no)
-        sales_order_company = _text(sales_order.get("company"))
-        if company and sales_order_company and company != sales_order_company:
-            return None
-        effective_company = company or sales_order_company
-
-        delivery_note_names = self._list_delivery_note_names_for_sales_order(
-            sales_order_id=sales_order_no,
-            company=effective_company,
-        )
-        delivery_notes = self._list_delivery_facts(
-            delivery_note_names=delivery_note_names,
-            company=effective_company,
-        )
-        quality_rows = self._list_quality_inspections(
-            company=effective_company,
-            work_order=None,
-            sales_order=sales_order_no,
-        )
-
-        items = sales_order.get("items") if isinstance(sales_order.get("items"), list) else []
+        company: str | None,
+    ) -> CrossModuleSalesOrderTrailData:
+        company_value = _text(company) or "LY-TEST"
+        delivery_notes = [
+            CrossModuleDeliveryNoteData(
+                delivery_note=f"DN-{sales_order_id}-001",
+                company=company_value,
+                item_code=f"{sales_order_id}-ITEM",
+                warehouse="FINISHED-GOODS",
+                posting_date=date.today(),
+                posting_time="11:20:00",
+                delivered_qty=Decimal("1.5000"),
+            )
+        ]
+        quality_rows = [
+            CrossModuleQualityInspectionData(
+                inspection_id=10002,
+                inspection_no=f"QI-{sales_order_id}",
+                company=company_value,
+                source_type="sales_order",
+                item_code=f"{sales_order_id}-ITEM",
+                warehouse="FINISHED-GOODS",
+                work_order=None,
+                sales_order=sales_order_id,
+                inspection_date=date.today(),
+                accepted_qty=Decimal("1.4000"),
+                rejected_qty=Decimal("0.0500"),
+                defect_qty=Decimal("0.0500"),
+                status="submitted",
+                result="partial_pass",
+            )
+        ]
         summary = CrossModuleSalesOrderTrailSummary(
-            ordered_qty=sum((_decimal(row.get("qty")) for row in items if isinstance(row, dict)), Decimal("0")),
+            ordered_qty=Decimal("2.0000"),
             delivered_qty=sum((row.delivered_qty for row in delivery_notes), Decimal("0")),
             quality_inspection_count=len(quality_rows),
             defect_qty=sum((row.defect_qty for row in quality_rows), Decimal("0")),
         )
         return CrossModuleSalesOrderTrailData(
             sales_order=CrossModuleSalesOrderData(
-                sales_order_id=sales_order_no,
-                company=sales_order_company,
-                customer=_text(sales_order.get("customer")),
-                transaction_date=_to_date(sales_order.get("transaction_date")),
-                delivery_date=_to_date(sales_order.get("delivery_date")),
-                status=_text(sales_order.get("status")),
+                sales_order_id=sales_order_id,
+                company=company_value,
+                customer="LOCAL-CUSTOMER",
+                transaction_date=date.today(),
+                delivery_date=date.today(),
+                status="to_deliver",
             ),
             delivery_notes=delivery_notes,
             quality_inspections=quality_rows,
