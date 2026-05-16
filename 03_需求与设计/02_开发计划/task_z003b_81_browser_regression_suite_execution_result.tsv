@@ -1,0 +1,13 @@
+case_id	module	route_scope	case_type	browser_readonly_replay_executed	write_request_count	forbidden_request_count	result
+Z003-SUITE-01	production_plans	/production/plans,/production/plans/detail	write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-02	workshop_tickets	/workshop/tickets,/workshop/tickets/register,/workshop/tickets/batch	write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-03	quality_inspections	/quality/inspections,/quality/inspections/detail	write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-04	subcontract	/subcontract/list,/subcontract/detail	write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-05	warehouse	/warehouse	write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-06	factory_statements	/factory-statements/list,/factory-statements/detail	write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-07	style_profit	/reports/style-profit,/reports/style-profit/detail	write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-08	production_detail_sync_job_cards	/production/plans/detail	local_only_write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-09	sales_orders	/sales-inventory/sales-orders,/sales-inventory/sales-orders/detail	local_only_write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-10	stock_ledger	/sales-inventory/stock-ledger	no_write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-11	cross_module_view	/cross-module/view	no_write_closure_evidence_only_replay	true	0	0	PASS
+Z003-SUITE-12	sales_inventory_references	/sales-inventory/references	no_write_closure_evidence_only_replay	true	0	0	PASS
