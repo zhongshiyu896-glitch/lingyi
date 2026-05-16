@@ -73,6 +73,7 @@ from app.schemas.production import ProductionSalespersonPerformanceListData
 from app.schemas.production import ProductionSalespersonPerformanceListItem
 from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
+from app.schemas.production import ProductionSyncJobCardsRequest
 from app.schemas.production import ProductionWorkOrderOutboxSummary
 from app.services.erpnext_production_adapter import ERPNextProductionAdapter
 from app.services.erpnext_production_adapter import ERPNextSalesOrder
@@ -80,8 +81,7 @@ from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 from app.services.production_work_order_outbox_service import ProductionWorkOrderOutboxService
 
 PRODUCTION_WRITE_ENTRY_FROZEN_REASON = (
-    "TASK-015E 局部解冻后仍保留受控写门禁：create-work-order 仅允许本地 outbox 候选入口，"
-    "sync-job-cards 继续冻结在普通前端之外（internal worker 路径不变）。"
+    "受控写门禁：create-work-order 与 sync-job-cards 仅允许 local-dev + local sqlite + scenario carrier 完整校验。"
 )
 PRODUCTION_MATERIAL_CHECK_ALLOWED_STATUSES = frozenset(
     {
@@ -91,8 +91,8 @@ PRODUCTION_MATERIAL_CHECK_ALLOWED_STATUSES = frozenset(
         "work_order_created",
     }
 )
-PRODUCTION_SCENARIO_TAG_PATTERN = re.compile(r"^Z003-PROD-PLAN-\d{8}-\d{3}$")
-PRODUCTION_SCENARIO_TAG_IN_REQUEST_ID_PATTERN = re.compile(r"(Z003-PROD-PLAN-\d{8}-\d{3})")
+PRODUCTION_PLAN_SCENARIO_TAG_PATTERN = re.compile(r"^Z003-PROD-PLAN-\d{8}-\d{3}$")
+PRODUCTION_PLAN_DETAIL_SCENARIO_TAG_PATTERN = re.compile(r"^Z003-PROD-PLAN-DETAIL-\d{8}-\d{3}$")
 PRODUCTION_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 PRODUCTION_LOCAL_DEFAULT_COMPANY = "LY-LOCAL-TEST"
 PRODUCTION_GATE_ERROR_PREFIX = "LOCAL_GATE_FAIL_CLOSED:"
@@ -1380,7 +1380,7 @@ class ProductionService:
             .filter(LyProductionWorkOrderLink.plan_id == int(plan.id))
             .first()
         )
-        if link is not None and str(link.sync_status) == "succeeded" and link.work_order:
+        if link is not None and link.work_order:
             existing = self.outbox_service.find_existing(
                 plan_id=int(plan.id),
                 action=ProductionWorkOrderOutboxService.ACTION_CREATE_WORK_ORDER,
@@ -1390,14 +1390,14 @@ class ProductionService:
                     plan_id=int(plan.id),
                     outbox_id=int(existing.id),
                     event_key=str(existing.event_key),
-                    sync_status=str(existing.status),
-                    work_order=(str(existing.erpnext_work_order) if existing.erpnext_work_order else str(link.work_order)),
+                    sync_status=str(link.sync_status or existing.status),
+                    work_order=str(link.work_order),
                 )
             return ProductionCreateWorkOrderData(
                 plan_id=int(plan.id),
                 outbox_id=0,
                 event_key="",
-                sync_status="succeeded",
+                sync_status=str(link.sync_status or "pending"),
                 work_order=str(link.work_order),
             )
 
@@ -1430,12 +1430,21 @@ class ProductionService:
             existing_hash = str(existing_by_idempotency.payload_hash or "")
             if existing_hash != payload_hash:
                 raise BusinessException(code=PRODUCTION_IDEMPOTENCY_CONFLICT, message="幂等键冲突且请求内容不一致")
+            link = (
+                self.session.query(LyProductionWorkOrderLink)
+                .filter(LyProductionWorkOrderLink.plan_id == int(plan.id))
+                .first()
+            )
             return ProductionCreateWorkOrderData(
                 plan_id=int(plan.id),
                 outbox_id=int(existing_by_idempotency.id),
                 event_key=str(existing_by_idempotency.event_key),
                 sync_status=str(existing_by_idempotency.status),
-                work_order=(str(existing_by_idempotency.erpnext_work_order) if existing_by_idempotency.erpnext_work_order else None),
+                work_order=(
+                    str(existing_by_idempotency.erpnext_work_order)
+                    if existing_by_idempotency.erpnext_work_order
+                    else (str(link.work_order) if link and link.work_order else None)
+                ),
             )
 
         existing_active = self.outbox_service.find_existing(
@@ -1444,12 +1453,21 @@ class ProductionService:
             statuses=["pending", "processing"],
         )
         if existing_active is not None:
+            link = (
+                self.session.query(LyProductionWorkOrderLink)
+                .filter(LyProductionWorkOrderLink.plan_id == int(plan.id))
+                .first()
+            )
             return ProductionCreateWorkOrderData(
                 plan_id=int(plan.id),
                 outbox_id=int(existing_active.id),
                 event_key=str(existing_active.event_key),
                 sync_status=str(existing_active.status),
-                work_order=(str(existing_active.erpnext_work_order) if existing_active.erpnext_work_order else None),
+                work_order=(
+                    str(existing_active.erpnext_work_order)
+                    if existing_active.erpnext_work_order
+                    else (str(link.work_order) if link and link.work_order else None)
+                ),
             )
 
         outbox = self.outbox_service.create_outbox(
@@ -1461,6 +1479,15 @@ class ProductionService:
             payload_hash=payload_hash,
             request_id=validated_request_id,
             operator=operator,
+        )
+        local_work_order = self._build_local_work_order(plan_no=str(plan.plan_no), plan_id=int(plan.id))
+        outbox.erpnext_work_order = local_work_order
+        self._upsert_work_order_link(
+            plan=plan,
+            work_order=local_work_order,
+            operator=operator,
+            sync_status="pending",
+            request_id=validated_request_id,
         )
 
         previous = str(plan.status)
@@ -1480,7 +1507,7 @@ class ProductionService:
             outbox_id=int(outbox.id),
             event_key=str(outbox.event_key),
             sync_status=str(outbox.status),
-            work_order=(str(outbox.erpnext_work_order) if outbox.erpnext_work_order else None),
+            work_order=local_work_order,
         )
 
     def sync_job_cards(
@@ -1488,7 +1515,8 @@ class ProductionService:
         *,
         work_order: str,
         operator: str,
-        request_id: str,
+        payload: ProductionSyncJobCardsRequest,
+        request_id: str | None,
     ) -> ProductionSyncJobCardsData:
         link = (
             self.session.query(LyProductionWorkOrderLink)
@@ -1498,21 +1526,34 @@ class ProductionService:
         if link is None:
             raise BusinessException(code=PRODUCTION_WORK_ORDER_SYNC_FAILED, message="Work Order 映射不存在")
 
-        cards = self.erp_adapter.list_job_cards(work_order=work_order)
         plan = self._must_get_plan(plan_id=int(link.plan_id))
+        validated_request_id = self._validate_sync_job_cards_carriers(
+            request_id=request_id,
+            payload=payload,
+            work_order=work_order,
+            plan=plan,
+        )
+        now = datetime.utcnow()
+        expected_qty = Decimal(str(plan.planned_qty))
+        operation_specs = [
+            ("CUT", "裁剪", 10),
+            ("SEW", "车缝", 20),
+            ("FIN", "后整", 30),
+        ]
 
         upserted: list[ProductionJobCardLinkItem] = []
-        for card in cards:
+        for code, operation_name, sequence in operation_specs:
+            job_card_no = self._build_local_job_card_no(work_order=work_order, operation_code=code)
             row = (
                 self.session.query(LyProductionJobCardLink)
-                .filter(LyProductionJobCardLink.job_card == card.name)
+                .filter(LyProductionJobCardLink.job_card == job_card_no)
                 .first()
             )
             if row is None:
                 row = LyProductionJobCardLink(
                     plan_id=int(plan.id),
                     work_order=work_order,
-                    job_card=card.name,
+                    job_card=job_card_no,
                     company=str(plan.company),
                     item_code=str(plan.item_code),
                 )
@@ -1522,34 +1563,53 @@ class ProductionService:
             row.work_order = work_order
             row.company = str(plan.company)
             row.item_code = str(plan.item_code)
-            row.operation = card.operation
-            row.operation_sequence = card.operation_sequence
-            row.expected_qty = card.expected_qty
-            row.completed_qty = card.completed_qty
-            row.erpnext_status = card.status
-            row.synced_at = datetime.utcnow()
+            row.operation = operation_name
+            row.operation_sequence = sequence
+            row.expected_qty = expected_qty
+            row.completed_qty = Decimal("0")
+            row.erpnext_status = "LocalSynced"
+            row.synced_at = now
 
             upserted.append(
                 ProductionJobCardLinkItem(
-                    job_card=card.name,
-                    operation=card.operation,
-                    operation_sequence=card.operation_sequence,
+                    job_card=job_card_no,
+                    operation=operation_name,
+                    operation_sequence=sequence,
                     company=str(plan.company),
                     item_code=str(plan.item_code),
-                    expected_qty=card.expected_qty,
-                    completed_qty=card.completed_qty,
-                    erpnext_status=card.status,
+                    expected_qty=expected_qty,
+                    completed_qty=Decimal("0"),
+                    erpnext_status="LocalSynced",
                     synced_at=row.synced_at,
                 )
             )
 
+        link.erpnext_docstatus = 1
+        link.erpnext_status = "LocalSynced"
+        link.sync_status = "succeeded"
+        link.last_synced_at = now
+
+        latest_outbox = self.outbox_service.latest_by_plan_ids(plan_ids=[int(plan.id)]).get(int(plan.id))
+        if latest_outbox is not None:
+            latest_outbox.status = "succeeded"
+            latest_outbox.erpnext_work_order = work_order
+            latest_outbox.last_error_code = None
+            latest_outbox.last_error_message = None
+            latest_outbox.locked_by = None
+            latest_outbox.locked_at = None
+            latest_outbox.lease_until = None
+
+        previous = str(plan.status)
+        next_status = "job_cards_synced"
+        if previous != next_status:
+            plan.status = next_status
         self._log_status(
             plan_id=int(plan.id),
-            from_status=str(plan.status),
+            from_status=previous,
             to_status=str(plan.status),
             action="sync_job_cards",
             operator=operator,
-            request_id=request_id,
+            request_id=validated_request_id,
         )
 
         return ProductionSyncJobCardsData(
@@ -1711,7 +1771,7 @@ class ProductionService:
         scenario_tag = (payload.scenario_tag or "").strip()
         if not scenario_tag:
             return None
-        if not PRODUCTION_SCENARIO_TAG_PATTERN.fullmatch(scenario_tag):
+        if not PRODUCTION_PLAN_SCENARIO_TAG_PATTERN.fullmatch(scenario_tag):
             raise BusinessException(
                 code=PRODUCTION_IDEMPOTENCY_CONFLICT,
                 message=f"{PRODUCTION_GATE_ERROR_PREFIX}invalid_scenario_tag",
@@ -1722,8 +1782,7 @@ class ProductionService:
                 code=PRODUCTION_IDEMPOTENCY_CONFLICT,
                 message=f"{PRODUCTION_GATE_ERROR_PREFIX}missing_request_id",
             )
-        request_match = PRODUCTION_SCENARIO_TAG_IN_REQUEST_ID_PATTERN.search(request_id_value)
-        if request_match is None or request_match.group(1) != scenario_tag:
+        if scenario_tag not in request_id_value:
             raise BusinessException(
                 code=PRODUCTION_IDEMPOTENCY_CONFLICT,
                 message=f"{PRODUCTION_GATE_ERROR_PREFIX}mismatched_request_id",
@@ -1756,7 +1815,7 @@ class ProductionService:
             code=PRODUCTION_IDEMPOTENCY_CONFLICT,
             message=f"{PRODUCTION_GATE_ERROR_PREFIX}missing_scenario_tag",
         )
-        if not PRODUCTION_SCENARIO_TAG_PATTERN.fullmatch(scenario_tag):
+        if not PRODUCTION_PLAN_SCENARIO_TAG_PATTERN.fullmatch(scenario_tag):
             self._raise_gate_error("invalid_scenario_tag")
 
         if not payload.bom_id:
@@ -1801,7 +1860,7 @@ class ProductionService:
         normalized_scenario = (scenario_tag or "").strip()
         if not normalized_scenario:
             self._raise_gate_error("missing_scenario_tag")
-        if not PRODUCTION_SCENARIO_TAG_PATTERN.fullmatch(normalized_scenario):
+        if not PRODUCTION_PLAN_DETAIL_SCENARIO_TAG_PATTERN.fullmatch(normalized_scenario):
             self._raise_gate_error("invalid_scenario_tag")
 
         idempotency = (idempotency_key or "").strip()
@@ -1831,6 +1890,83 @@ class ProductionService:
             scenario_tag=normalized_scenario,
         )
 
+    def _validate_sync_job_cards_carriers(
+        self,
+        *,
+        request_id: str | None,
+        payload: ProductionSyncJobCardsRequest,
+        work_order: str,
+        plan: LyProductionPlan,
+    ) -> str:
+        self._ensure_local_dev_write_gate()
+
+        scenario_tag = (payload.scenario_tag or "").strip()
+        if not scenario_tag:
+            self._raise_gate_error("missing_scenario_tag")
+        if not PRODUCTION_PLAN_DETAIL_SCENARIO_TAG_PATTERN.fullmatch(scenario_tag):
+            self._raise_gate_error("invalid_scenario_tag")
+
+        idempotency_key = (payload.idempotency_key or "").strip()
+        if not idempotency_key:
+            self._raise_gate_error("missing_idempotency_key")
+        if scenario_tag not in idempotency_key:
+            self._raise_gate_error("mismatched_business_carrier")
+
+        if (payload.operation or "").strip() != "sync_job_cards":
+            self._raise_gate_error("mismatched_operation")
+        if payload.plan_id is None or int(payload.plan_id) != int(plan.id):
+            self._raise_gate_error("mismatched_plan_id")
+
+        plan_no_or_work_order = (payload.plan_no_or_work_order or "").strip()
+        if not plan_no_or_work_order:
+            self._raise_gate_error("mismatched_plan_no_or_work_order")
+        allowed_plan_markers = {str(plan.plan_no), work_order}
+        if plan_no_or_work_order not in allowed_plan_markers:
+            self._raise_gate_error("mismatched_plan_no_or_work_order")
+
+        company = (payload.company or "").strip()
+        if company != str(plan.company):
+            self._raise_gate_error("mismatched_company")
+
+        item_code = (payload.item_code or "").strip()
+        if item_code != str(plan.item_code):
+            self._raise_gate_error("mismatched_item_code")
+
+        source_ref = (payload.source_ref or "").strip()
+        if not source_ref:
+            self._raise_gate_error("mismatched_source_ref")
+        source_parts = [part.strip() for part in source_ref.split("|")]
+        if len(source_parts) != 6:
+            self._raise_gate_error("mismatched_source_ref")
+        (
+            source_scenario_tag,
+            source_company,
+            source_plan_id,
+            source_plan_no_or_work_order,
+            source_item_code,
+            source_operation,
+        ) = source_parts
+        if not PRODUCTION_PLAN_DETAIL_SCENARIO_TAG_PATTERN.fullmatch(source_scenario_tag):
+            self._raise_gate_error("mismatched_source_ref")
+        if source_scenario_tag != scenario_tag:
+            self._raise_gate_error("mismatched_source_ref")
+        if source_company != company:
+            self._raise_gate_error("mismatched_company")
+        if source_plan_id != str(plan.id):
+            self._raise_gate_error("mismatched_plan_id")
+        if source_plan_no_or_work_order != plan_no_or_work_order:
+            self._raise_gate_error("mismatched_plan_no_or_work_order")
+        if source_item_code != item_code:
+            self._raise_gate_error("mismatched_item_code")
+        if source_operation != "sync_job_cards":
+            self._raise_gate_error("mismatched_operation")
+
+        return self._validate_request_id_and_scenario(
+            request_id=request_id,
+            payload_request_id=payload.request_id,
+            scenario_tag=scenario_tag,
+        )
+
     def _validate_request_id_and_scenario(
         self,
         *,
@@ -1846,10 +1982,71 @@ class ProductionService:
         if payload_request_id is not None and payload_request_id.strip() and payload_request_id.strip() != normalized_request_id:
             self._raise_gate_error("mismatched_request_id")
 
-        match = PRODUCTION_SCENARIO_TAG_IN_REQUEST_ID_PATTERN.search(normalized_request_id)
-        if match is None or match.group(1) != scenario_tag:
+        if scenario_tag not in normalized_request_id:
             self._raise_gate_error("mismatched_request_id")
         return normalized_request_id
+
+    @staticmethod
+    def _build_local_work_order(*, plan_no: str, plan_id: int) -> str:
+        normalized_plan_no = re.sub(r"[^A-Za-z0-9-]", "", str(plan_no).upper())[:64] or f"PLAN{plan_id}"
+        digest = hashlib.sha1(f"{plan_id}:{plan_no}".encode("utf-8")).hexdigest()[:8].upper()
+        return f"WO-{normalized_plan_no}-{digest}"[:140]
+
+    @staticmethod
+    def _build_local_job_card_no(*, work_order: str, operation_code: str) -> str:
+        normalized_work_order = re.sub(r"[^A-Za-z0-9-]", "", str(work_order).upper())[:80] or "WO"
+        normalized_operation = re.sub(r"[^A-Za-z0-9-]", "", str(operation_code).upper())[:12] or "OP"
+        digest = hashlib.sha1(f"{normalized_work_order}:{normalized_operation}".encode("utf-8")).hexdigest()[:8].upper()
+        return f"JC-{normalized_work_order}-{normalized_operation}-{digest}"[:140]
+
+    def _upsert_work_order_link(
+        self,
+        *,
+        plan: LyProductionPlan,
+        work_order: str,
+        operator: str,
+        sync_status: str,
+        request_id: str,
+    ) -> LyProductionWorkOrderLink:
+        link = (
+            self.session.query(LyProductionWorkOrderLink)
+            .filter(LyProductionWorkOrderLink.plan_id == int(plan.id))
+            .first()
+        )
+        if link is None:
+            link = LyProductionWorkOrderLink(
+                plan_id=int(plan.id),
+                work_order=work_order,
+                erpnext_docstatus=None,
+                erpnext_status="LocalPending",
+                sync_status=sync_status,
+                last_synced_at=None,
+                created_by=operator,
+            )
+            self.session.add(link)
+        else:
+            link.work_order = work_order
+            link.sync_status = sync_status
+            if not (link.created_by or "").strip():
+                link.created_by = operator
+
+        if sync_status == "succeeded":
+            link.erpnext_docstatus = 1
+            link.erpnext_status = "LocalSynced"
+            link.last_synced_at = datetime.utcnow()
+        else:
+            link.erpnext_docstatus = None
+            link.erpnext_status = "LocalPending"
+
+        self._log_status(
+            plan_id=int(plan.id),
+            from_status=str(plan.status),
+            to_status=str(plan.status),
+            action="local_work_order_link_upsert",
+            operator=operator,
+            request_id=request_id,
+        )
+        return link
 
     def _remaining_plannable_qty(self, *, sales_order_item: ERPNextSalesOrderItem) -> Decimal:
         try:

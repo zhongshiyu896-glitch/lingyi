@@ -1,0 +1,90 @@
+{
+  "task_id": "TASK-Z003B-46-IMPL-FIX1",
+  "source_head": "cab6195201f07155302415f9b0d3e92d1c035262",
+  "route_scope": [
+    "/production/plans/detail"
+  ],
+  "selected_candidate_id": "TASK-Z003B-CAND-08",
+  "browser_write_evidence": {
+    "source_file": "/tmp/task_z003b46_browser_result.json",
+    "approved_write_request_count": 2,
+    "create_work_order_request_count": 1,
+    "sync_job_cards_request_count": 1,
+    "browser_write_requests": [
+      {
+        "method": "POST",
+        "path": "/api/production/plans/1/create-work-order",
+        "status": 200
+      },
+      {
+        "method": "POST",
+        "path": "/api/production/work-orders/WO-PP-Z003B46-001-7FABD456/sync-job-cards",
+        "status": 200
+      }
+    ],
+    "browser_readback_request_count": 4,
+    "screenshots_dir": "/tmp/task_z003b46_screenshots",
+    "screenshots_count": 6
+  },
+  "api_regression_evidence": {
+    "source_file": "/tmp/task_z003b46_regression_api.json",
+    "approved_write_request_count": 3,
+    "allowed_write_endpoints_covered": [
+      "POST /api/production/plans",
+      "POST /api/production/plans/{plan_id}/create-work-order",
+      "POST /api/production/work-orders/{work_order}/sync-job-cards"
+    ],
+    "allowed_read_endpoints_covered": [
+      "GET /api/production/plans/{plan_id}",
+      "GET /api/production/plans"
+    ],
+    "fail_closed_case_count": 15,
+    "invalid_scenario_tag_status": 409
+  },
+  "cross_scope_regression_check": {
+    "production_plan_create_prefix_preserved": {
+      "scenario_tag_prefix": "Z003-PROD-PLAN-{YYYYMMDD}-{NNN}",
+      "status": 200,
+      "path": "/api/production/plans",
+      "case": "create_plan_with_old_prefix_success"
+    },
+    "detail_sync_prefix_isolated": {
+      "scenario_tag_prefix": "Z003-PROD-PLAN-DETAIL-{YYYYMMDD}-{NNN}",
+      "create_work_order_status": 200,
+      "sync_job_cards_status": 200
+    }
+  },
+  "cleanup_evidence": {
+    "source_file": "/tmp/task_z003b46_cleanup.json",
+    "rollback_cleanup_executed": true,
+    "zero_residual": true,
+    "residual_counts_by_table": {
+      "ly_production_plan": 0,
+      "ly_production_plan_material": 0,
+      "ly_production_status_log": 0,
+      "ly_production_work_order_link": 0,
+      "ly_production_job_card_link": 0,
+      "ly_production_work_order_outbox": 0,
+      "ly_operation_audit_log": 0,
+      "ly_security_audit_log": 0
+    }
+  },
+  "forbidden_counters": {
+    "unexpected_write_request_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "erpnext_write_count": 0,
+    "production_write_count": 0,
+    "upload_download_export_print_request_count": 0,
+    "db_write_on_failed_gate_count": 0,
+    "unexplained_console_errors_total": 0,
+    "unexplained_network_4xx_5xx_total": 0
+  },
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/production.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/production.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/production.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_service.py"
+  ],
+  "readonly_context_changed": false
+}

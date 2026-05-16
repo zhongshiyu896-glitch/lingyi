@@ -388,6 +388,18 @@ export interface ProductionSyncJobCardsData {
   items: ProductionJobCardLinkItem[]
 }
 
+export interface ProductionSyncJobCardsPayload {
+  idempotency_key: string
+  scenario_tag: string
+  operation: 'sync_job_cards'
+  plan_id: number
+  plan_no_or_work_order: string
+  company: string
+  item_code: string
+  source_ref: string
+  request_id: string
+}
+
 const toQuery = (params: Record<string, unknown>): string => {
   const query = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
@@ -578,8 +590,14 @@ export const createProductionWorkOrder = async (
 
 export const syncProductionJobCards = async (
   workOrder: string,
+  payload: ProductionSyncJobCardsPayload,
+  requestId?: string,
 ): Promise<ApiResponse<ProductionSyncJobCardsData>> =>
   request<ProductionSyncJobCardsData>(`/api/production/work-orders/${encodeURIComponent(workOrder)}/sync-job-cards`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(requestId ? { 'X-Request-ID': requestId } : {}),
+    },
+    body: JSON.stringify(payload),
   })

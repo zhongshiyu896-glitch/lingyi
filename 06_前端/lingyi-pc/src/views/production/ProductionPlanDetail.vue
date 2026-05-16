@@ -116,7 +116,7 @@
         type="info"
         :closable="false"
         show-icon
-        title="当前为 local synthetic context + outbox-only 验证入口；sync-job-cards 继续冻结，internal worker 路径保持不变。"
+        title="当前为 local synthetic context：create-work-order 与 sync-job-cards 仅走 local-only 受控写入口，internal worker 路径保持禁用。"
         data-testid="production-plan-detail-local-context-mode"
         style="margin-bottom: 12px"
       />
@@ -168,6 +168,50 @@
           @click="submitCreateWorkOrder"
         >
           创建 Work Order（候选）
+        </el-button>
+      </div>
+    </el-card>
+
+    <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-sync-job-cards-card">
+      <template #header><span>sync-job-cards 主入口</span></template>
+      <el-alert
+        v-if="syncJobCardsGuardReason"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="syncJobCardsGuardReason"
+        style="margin-bottom: 12px"
+      />
+      <el-form :model="syncJobCardsForm" label-width="140px" data-testid="production-plan-detail-sync-job-cards-form">
+        <el-form-item label="Scenario Tag">
+          <el-input v-model="scenarioTag" readonly data-testid="production-plan-detail-sync-scenario-tag" />
+        </el-form-item>
+        <el-form-item label="Work Order">
+          <el-input :model-value="currentWorkOrder || '-'" readonly data-testid="production-plan-detail-sync-work-order" />
+        </el-form-item>
+        <el-form-item label="幂等键">
+          <el-input v-model="syncJobCardsForm.idempotency_key" placeholder="idempotency key" data-testid="production-plan-detail-sync-idempotency-key" />
+        </el-form-item>
+        <el-form-item label="Request ID">
+          <el-input v-model="syncJobCardsForm.request_id" placeholder="request id" data-testid="production-plan-detail-sync-request-id" />
+        </el-form-item>
+        <el-form-item label="Source Ref">
+          <el-input v-model="syncJobCardsForm.source_ref" placeholder="scenario|company|plan_id|plan_no_or_work_order|item_code|operation" data-testid="production-plan-detail-sync-source-ref" />
+        </el-form-item>
+      </el-form>
+      <div style="display: flex; gap: 8px" data-testid="production-plan-detail-sync-job-cards-actions">
+        <el-button data-testid="production-plan-detail-sync-job-cards-reset" @click="resetSyncJobCardsForm">重置</el-button>
+        <el-button
+          type="primary"
+          data-action-type="write"
+          data-write-guard="allowed:sync-job-cards-local-only"
+          data-write-allowlist="sync-job-cards"
+          data-testid="production-plan-detail-sync-job-cards-action"
+          :loading="syncingJobCards"
+          :disabled="syncingJobCards"
+          @click="submitSyncJobCards"
+        >
+          执行 sync-job-cards
         </el-button>
       </div>
     </el-card>
@@ -242,6 +286,7 @@ import {
   checkProductionMaterials,
   createProductionWorkOrder,
   fetchProductionPlanDetail,
+  syncProductionJobCards,
   type ProductionPlanDetailData,
 } from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
@@ -256,6 +301,7 @@ const loadError = ref<string>('')
 const guardedFeedback = ref<string>('')
 const loading = ref<boolean>(false)
 const creatingWorkOrder = ref<boolean>(false)
+const syncingJobCards = ref<boolean>(false)
 const runningMaterialCheck = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const scenarioTag = ref<string>('')
@@ -272,10 +318,16 @@ const createWorkOrderForm = reactive({
   idempotency_key: '',
   request_id: '',
 })
+const syncJobCardsForm = reactive({
+  idempotency_key: '',
+  request_id: '',
+  source_ref: '',
+})
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const canMaterialCheck = computed<boolean>(() => permissionStore.state.buttonPermissions.material_check)
 const canWorkOrderCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.work_order_create)
+const canJobCardSync = computed<boolean>(() => permissionStore.state.buttonPermissions.job_card_sync)
 
 const planId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidPlanId = computed<boolean>(() => Number.isInteger(planId.value) && planId.value > 0)
@@ -289,7 +341,7 @@ const workOrderSyncStatusLabel = computed<string>(() =>
 const writeEntryFrozenMessage = computed<string>(
   () =>
     detail.value?.write_entry_frozen_reason ||
-    '当前仅冻结 sync-job-cards；create-work-order 走本地 outbox 候选入口，internal worker 路径保持不变。',
+    '当前写入口仅允许 local-dev + local sqlite + carrier 完整校验；internal worker 与 ERPNext 路径保持禁用。',
 )
 const normalizedCreateWorkOrderForm = computed(() => ({
   fg_warehouse: createWorkOrderForm.fg_warehouse.trim(),
@@ -302,6 +354,11 @@ const normalizedMaterialCheckForm = computed(() => ({
   warehouse: materialCheckForm.warehouse.trim(),
   idempotency_key: materialCheckForm.idempotency_key.trim(),
   request_id: materialCheckForm.request_id.trim(),
+}))
+const normalizedSyncJobCardsForm = computed(() => ({
+  idempotency_key: syncJobCardsForm.idempotency_key.trim(),
+  request_id: syncJobCardsForm.request_id.trim(),
+  source_ref: syncJobCardsForm.source_ref.trim(),
 }))
 const createWorkOrderValidationError = computed<string | null>(() => {
   if (!normalizedCreateWorkOrderForm.value.fg_warehouse) {
@@ -333,6 +390,21 @@ const materialCheckValidationError = computed<string | null>(() => {
   }
   return null
 })
+const syncJobCardsValidationError = computed<string | null>(() => {
+  if (!currentWorkOrder.value) {
+    return '当前无可同步的 Work Order'
+  }
+  if (!normalizedSyncJobCardsForm.value.idempotency_key) {
+    return 'idempotency_key 不能为空'
+  }
+  if (!normalizedSyncJobCardsForm.value.request_id) {
+    return 'request_id 不能为空'
+  }
+  if (!normalizedSyncJobCardsForm.value.source_ref) {
+    return 'source_ref 不能为空'
+  }
+  return null
+})
 const createWorkOrderGuardReason = computed<string>(() => {
   if (!canWorkOrderCreate.value) {
     return '无创建工单权限'
@@ -341,6 +413,15 @@ const createWorkOrderGuardReason = computed<string>(() => {
     return '生产计划详情不存在'
   }
   return createWorkOrderValidationError.value || ''
+})
+const syncJobCardsGuardReason = computed<string>(() => {
+  if (!canJobCardSync.value) {
+    return '无同步工序卡权限'
+  }
+  if (!detail.value) {
+    return '生产计划详情不存在'
+  }
+  return syncJobCardsValidationError.value || ''
 })
 
 const MATERIAL_CHECK_ALLOWED_STATUSES = new Set<string>([
@@ -402,7 +483,7 @@ const buildScenarioTag = (): string => {
   const mm = String(now.getMonth() + 1).padStart(2, '0')
   const dd = String(now.getDate()).padStart(2, '0')
   const seq = String(Math.floor(Math.random() * 1000)).padStart(3, '0')
-  return `Z003-PROD-PLAN-${yyyy}${mm}${dd}-${seq}`
+  return `Z003-PROD-PLAN-DETAIL-${yyyy}${mm}${dd}-${seq}`
 }
 
 const ensureScenarioTag = (): string => {
@@ -442,6 +523,22 @@ const resetCreateWorkOrderForm = (): void => {
   createWorkOrderForm.start_date = ''
   createWorkOrderForm.idempotency_key = buildCarrierIdempotencyKey('CWO')
   createWorkOrderForm.request_id = buildCarrierRequestId('CWO')
+}
+
+const buildSyncSourceRef = (workOrder: string): string => {
+  const scenario = ensureScenarioTag()
+  const company = detail.value?.company || ''
+  const planIdToken = detail.value ? String(detail.value.id) : ''
+  const planMarker = workOrder || detail.value?.plan_no || ''
+  const itemCode = detail.value?.item_code || ''
+  return [scenario, company, planIdToken, planMarker, itemCode, 'sync_job_cards'].join('|')
+}
+
+const resetSyncJobCardsForm = (): void => {
+  const workOrder = currentWorkOrder.value
+  syncJobCardsForm.idempotency_key = buildCarrierIdempotencyKey('SJC')
+  syncJobCardsForm.request_id = buildCarrierRequestId('SJC')
+  syncJobCardsForm.source_ref = buildSyncSourceRef(workOrder)
 }
 
 const ensurePlanId = (): number => {
@@ -564,11 +661,61 @@ const submitCreateWorkOrder = async (): Promise<void> => {
     guardedFeedback.value = ''
     ElMessage.success('create-work-order 已写入本地 outbox')
     await loadDetail()
+    resetSyncJobCardsForm()
   } catch (error) {
     const message = (error as Error).message || '创建 Work Order 失败'
     guardedWriteAction('创建 Work Order', message)
   } finally {
     creatingWorkOrder.value = false
+  }
+}
+
+const submitSyncJobCards = async (): Promise<void> => {
+  if (!canJobCardSync.value) {
+    guardedWriteAction('执行 sync-job-cards', '无同步工序卡权限')
+    return
+  }
+  if (!detail.value) {
+    guardedWriteAction('执行 sync-job-cards', '生产计划详情不存在')
+    return
+  }
+  const workOrder = currentWorkOrder.value
+  if (!workOrder) {
+    guardedWriteAction('执行 sync-job-cards', '当前无可同步的 Work Order')
+    return
+  }
+  const validationError = syncJobCardsValidationError.value
+  if (validationError) {
+    guardedWriteAction('执行 sync-job-cards', validationError)
+    return
+  }
+
+  try {
+    syncingJobCards.value = true
+    await syncProductionJobCards(
+      workOrder,
+      {
+        idempotency_key: normalizedSyncJobCardsForm.value.idempotency_key,
+        scenario_tag: ensureScenarioTag(),
+        operation: 'sync_job_cards',
+        plan_id: ensurePlanId(),
+        plan_no_or_work_order: workOrder,
+        company: detail.value.company,
+        item_code: detail.value.item_code,
+        source_ref: normalizedSyncJobCardsForm.value.source_ref,
+        request_id: normalizedSyncJobCardsForm.value.request_id,
+      },
+      normalizedSyncJobCardsForm.value.request_id,
+    )
+    guardedFeedback.value = ''
+    ElMessage.success('sync-job-cards 已完成并回读')
+    await loadDetail()
+    resetSyncJobCardsForm()
+  } catch (error) {
+    const message = (error as Error).message || '执行 sync-job-cards 失败'
+    guardedWriteAction('执行 sync-job-cards', message)
+  } finally {
+    syncingJobCards.value = false
   }
 }
 
@@ -596,7 +743,32 @@ onMounted(async () => {
   resetMaterialCheckForm()
   resetCreateWorkOrderForm()
   await loadDetail()
+  resetSyncJobCardsForm()
 })
+
+watch(
+  () => detail.value,
+  (current) => {
+    if (!current) {
+      return
+    }
+    const currentSourceRef = normalizedSyncJobCardsForm.value.source_ref
+    if (!currentSourceRef) {
+      resetSyncJobCardsForm()
+      return
+    }
+    const parts = currentSourceRef.split('|')
+    if (parts.length !== 6) {
+      syncJobCardsForm.source_ref = buildSyncSourceRef(currentWorkOrder.value)
+      return
+    }
+    const marker = currentWorkOrder.value || current.plan_no
+    if (marker && parts[3] !== marker) {
+      syncJobCardsForm.source_ref = buildSyncSourceRef(currentWorkOrder.value)
+    }
+  },
+  { deep: false },
+)
 </script>
 
 <style scoped>

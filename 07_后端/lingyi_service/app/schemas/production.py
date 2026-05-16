@@ -476,6 +476,20 @@ class ProductionCreateWorkOrderData(BaseModel):
     work_order: Optional[str] = None
 
 
+class ProductionSyncJobCardsRequest(BaseModel):
+    """Sync-job-cards request payload."""
+
+    idempotency_key: Optional[str] = Field(default=None, max_length=128)
+    scenario_tag: Optional[str] = Field(default=None, max_length=64)
+    operation: Optional[str] = Field(default=None, max_length=64)
+    plan_id: Optional[int] = Field(default=None, ge=1)
+    plan_no_or_work_order: Optional[str] = Field(default=None, max_length=140)
+    company: Optional[str] = Field(default=None, max_length=140)
+    item_code: Optional[str] = Field(default=None, max_length=140)
+    source_ref: Optional[str] = Field(default=None, max_length=255)
+    request_id: Optional[str] = Field(default=None, max_length=64)
+
+
 class ProductionSyncJobCardsData(BaseModel):
     """Manual Job Card sync result."""
 

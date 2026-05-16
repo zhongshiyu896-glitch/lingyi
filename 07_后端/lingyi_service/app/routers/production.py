@@ -64,6 +64,7 @@ from app.schemas.production import ProductionSalesForecastQuery
 from app.schemas.production import ProductionSalespersonPerformanceListData
 from app.schemas.production import ProductionSalespersonPerformanceQuery
 from app.schemas.production import ProductionSyncJobCardsData
+from app.schemas.production import ProductionSyncJobCardsRequest
 from app.schemas.production import ProductionWorkerRunOnceData
 from app.schemas.production import ProductionWorkerRunOnceRequest
 from app.services.audit_service import AuditContext
@@ -1086,6 +1087,7 @@ def create_work_order_outbox(
 def sync_job_cards(
     work_order: str,
     request: Request,
+    payload: ProductionSyncJobCardsRequest = Body(default=ProductionSyncJobCardsRequest()),
     current_user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
@@ -1093,7 +1095,7 @@ def sync_job_cards(
     permission_service = PermissionService(session=session)
     audit = AuditService(session=session)
     context = AuditContext.from_request(request)
-    request_id = get_request_id_from_request(request)
+    raw_request_id = request.headers.get("X-Request-ID")
 
     before_data: dict[str, Any] | None = None
     try:
@@ -1107,7 +1109,14 @@ def sync_job_cards(
         )
         service = _service(session=session, request=request)
         plan_id, company, item = service.get_work_order_resource(work_order=work_order)
-        before_data = {"plan_id": plan_id, "work_order": work_order}
+        before_data = {
+            "plan_id": plan_id,
+            "work_order": work_order,
+            "scenario_tag": payload.scenario_tag,
+            "idempotency_key": payload.idempotency_key,
+            "operation": payload.operation,
+            "source_ref": payload.source_ref,
+        }
         permission_service.ensure_production_resource_permission(
             current_user=current_user,
             request_obj=request,
@@ -1122,7 +1131,8 @@ def sync_job_cards(
         data = service.sync_job_cards(
             work_order=work_order,
             operator=current_user.username,
-            request_id=request_id,
+            payload=payload,
+            request_id=raw_request_id,
         )
         audit.record_success(
             module="production",
@@ -1143,6 +1153,8 @@ def sync_job_cards(
         return _http_exc_err(exc)
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
+        if _is_local_gate_failure(exc):
+            return _app_err(exc)
         _record_failure_safely(
             session=session,
             audit=audit,
