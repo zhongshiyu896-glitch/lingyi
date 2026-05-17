@@ -745,6 +745,7 @@ const submitCreate = async (): Promise<void> => {
     ElMessage.error('无创建检验单权限')
     return
   }
+  refreshCreateRequestId()
   const company = createForm.company.trim()
   const itemCode = createForm.item_code.trim()
   const sourceType = createForm.source_type.trim()
@@ -775,7 +776,6 @@ const submitCreate = async (): Promise<void> => {
 
   createSubmitting.value = true
   try {
-    refreshCreateRequestId()
     const payload: QualityInspectionCreatePayload = {
       request_id: createForm.request_id,
       idempotency_key: createForm.idempotency_key.trim(),

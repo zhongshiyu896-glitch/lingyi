@@ -577,6 +577,31 @@ const buildCarrierForm = (
   }
 }
 
+const refreshCarrierRequestId = (
+  form: QualityCarrierForm,
+  operation: 'update' | 'defects' | 'confirm' | 'cancel',
+): void => {
+  const scenarioTag = ensureQualityInspectionScenarioTag(form.scenario_tag)
+  const idempotencyKey = form.idempotency_key.trim()
+  const sourceRef = form.source_ref.trim()
+  const inspectionRef = form.inspection_ref.trim()
+  const itemCode = form.item_code.trim()
+  const result = form.result.trim()
+  if (!idempotencyKey || !sourceRef || !inspectionRef || !itemCode || !result) {
+    throw new Error('carrier 字段缺失，无法刷新 request_id')
+  }
+  form.scenario_tag = scenarioTag
+  form.request_id = buildQualityInspectionRequestId({
+    scenarioTag,
+    operation,
+    idempotencyKey,
+    sourceRef,
+    inspectionRef,
+    itemCode,
+    result,
+  })
+}
+
 const loadOutboxStatus = async (): Promise<void> => {
   if (!detail.value || detail.value.status !== 'confirmed') {
     outboxStatus.value = null
@@ -705,6 +730,7 @@ const submitUpdate = async (): Promise<void> => {
   actionSubmitting.value = true
   activeAction.value = 'update'
   try {
+    refreshCarrierRequestId(updateForm, 'update')
     const payload: QualityInspectionUpdatePayload = {
       request_id: updateForm.request_id,
       idempotency_key: updateForm.idempotency_key,
@@ -756,6 +782,7 @@ const submitDefect = async (): Promise<void> => {
   actionSubmitting.value = true
   activeAction.value = 'defects'
   try {
+    refreshCarrierRequestId(defectForm, 'defects')
     const payload: QualityInspectionDefectCreatePayload = {
       request_id: defectForm.request_id,
       idempotency_key: defectForm.idempotency_key,
@@ -797,6 +824,7 @@ const submitConfirm = async (): Promise<void> => {
   actionSubmitting.value = true
   activeAction.value = 'confirm'
   try {
+    refreshCarrierRequestId(confirmForm, 'confirm')
     const payload: QualityInspectionConfirmPayload = {
       request_id: confirmForm.request_id,
       idempotency_key: confirmForm.idempotency_key,
@@ -830,6 +858,7 @@ const submitCancel = async (): Promise<void> => {
   actionSubmitting.value = true
   activeAction.value = 'cancel'
   try {
+    refreshCarrierRequestId(cancelForm, 'cancel')
     const payload: QualityInspectionCancelPayload = {
       request_id: cancelForm.request_id,
       idempotency_key: cancelForm.idempotency_key,

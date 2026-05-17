@@ -1,0 +1,88 @@
+{
+  "task_id": "TASK-Z004B-84-IMPL",
+  "role": "B Engineer",
+  "source_head": "337b506663f58fa766c713d8fdfe33b1bb8c70a4",
+  "source_subject": "chore: seal cand10 sales warehouse guarded reopen",
+  "selected_candidate_id": "TASK-Z004B-CAND-10-S3",
+  "parent_candidate_id": "TASK-Z004B-CAND-10",
+  "module": "quality",
+  "route_scope": [
+    "/quality/inspections"
+  ],
+  "remote_lifecycle_parked": true,
+  "readback_business_closed": false,
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue"
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/quality/inspections",
+    "PATCH /api/quality/inspections/{inspection_id}",
+    "POST /api/quality/inspections/{inspection_id}/defects",
+    "POST /api/quality/inspections/{inspection_id}/confirm",
+    "POST /api/quality/inspections/{inspection_id}/cancel"
+  ],
+  "approved_write_request_count": 5,
+  "allowed_write_endpoint_hit_set": [
+    "POST /api/quality/inspections",
+    "PATCH /api/quality/inspections/{inspection_id}",
+    "POST /api/quality/inspections/{inspection_id}/defects",
+    "POST /api/quality/inspections/{inspection_id}/confirm",
+    "POST /api/quality/inspections/{inspection_id}/cancel"
+  ],
+  "allowed_write_endpoint_missing_set": [],
+  "allowed_write_endpoint_extra_set": [],
+  "allowed_read_endpoint_hit_set": [
+    "GET /api/quality/inspections",
+    "GET /api/quality/inspections/{inspection_id}",
+    "GET /api/quality/inspections/{inspection_id}/outbox-status",
+    "GET /api/quality/statistics",
+    "GET /api/quality/statistics/trend",
+    "GET /api/quality/diagnostic"
+  ],
+  "fail_closed_case_count": 4,
+  "db_write_on_failed_gate_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "baseline_total": 0,
+  "after_write_total": 9,
+  "after_cleanup_total": 0,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "cancel_cleanup_executed": true,
+  "browser_evidence": {
+    "route_coverage": [
+      "/quality/inspections"
+    ],
+    "desktop_screenshot_count": 1,
+    "mobile_screenshot_count": 1,
+    "screenshots_count": 2,
+    "screenshot_paths": [
+      "/tmp/task_z004b84_screenshots/z004b84_quality_inspections_desktop.png",
+      "/tmp/task_z004b84_screenshots/z004b84_quality_inspections_mobile.png"
+    ],
+    "browser_request_methods": [
+      "GET"
+    ],
+    "browser_write_request_count": 0,
+    "browser_forbidden_request_count": 0,
+    "browser_unexpected_write_request_count": 0
+  },
+  "npm_validation": {
+    "precheck_dev_runtime": "PASS",
+    "typecheck": "PASS",
+    "verify": "PASS"
+  },
+  "api_regression_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_84_cand10_s3_quality_guarded_to_real_api_regression.json",
+  "zero_residual_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_84_cand10_s3_quality_guarded_to_real_zero_residual.json",
+  "browser_result_file": "/tmp/task_z004b84_browser_result.json",
+  "notes": [
+    "实现范围仅 quality 双页面 allowlist。",
+    "S4/S5 未进入本任务实现，保持后续拆分候选。"
+  ]
+}

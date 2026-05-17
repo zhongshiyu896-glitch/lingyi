@@ -1,0 +1,158 @@
+{
+  "task_id": "TASK-Z004B-84-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-10-S3",
+  "module": "quality",
+  "scenario_tag": "Z003-QUALITY-INSPECTION-20260518-429",
+  "source_ref": "Z003-QUALITY-INSPECTION-20260518-429-SRC-API84",
+  "allowed_write_endpoints": [
+    "POST /api/quality/inspections",
+    "PATCH /api/quality/inspections/{inspection_id}",
+    "POST /api/quality/inspections/{inspection_id}/defects",
+    "POST /api/quality/inspections/{inspection_id}/confirm",
+    "POST /api/quality/inspections/{inspection_id}/cancel"
+  ],
+  "allowed_write_case_count": 5,
+  "successful_write_cases": [
+    {
+      "case_id": "ALLOW-01-CREATE",
+      "status": 201,
+      "code": "0",
+      "inspection_id": 1,
+      "inspection_no": "QI-20260517195112-0001",
+      "request_id": "Z003-QUALITY-INSPECTION-20260518-429-QI-C-487-E5C-C3C-03A-F3C",
+      "idempotency_key": "Z003-QUALITY-INSPECTION-20260518-429-API84-CREATE-OK",
+      "scenario_tag": "Z003-QUALITY-INSPECTION-20260518-429",
+      "source_ref": "Z003-QUALITY-INSPECTION-20260518-429-SRC-API84"
+    },
+    {
+      "case_id": "ALLOW-02-UPDATE",
+      "status": 200,
+      "code": "0",
+      "inspection_id": 1,
+      "inspection_no": "QI-20260517195112-0001",
+      "request_id": "Z003-QUALITY-INSPECTION-20260518-429-QI-U-160-E5C-71C-03A-F3C",
+      "idempotency_key": "Z003-QUALITY-INSPECTION-20260518-429-API84-UPDATE-OK",
+      "scenario_tag": "Z003-QUALITY-INSPECTION-20260518-429",
+      "source_ref": "Z003-QUALITY-INSPECTION-20260518-429-SRC-API84"
+    },
+    {
+      "case_id": "ALLOW-03-DEFECTS",
+      "status": 201,
+      "code": "0",
+      "inspection_id": 1,
+      "inspection_no": "QI-20260517195112-0001",
+      "request_id": "Z003-QUALITY-INSPECTION-20260518-429-QI-D-B55-E5C-71C-03A-F3C",
+      "idempotency_key": "Z003-QUALITY-INSPECTION-20260518-429-API84-DEFECTS-OK",
+      "scenario_tag": "Z003-QUALITY-INSPECTION-20260518-429",
+      "source_ref": "Z003-QUALITY-INSPECTION-20260518-429-SRC-API84"
+    },
+    {
+      "case_id": "ALLOW-04-CONFIRM",
+      "status": 200,
+      "code": "0",
+      "inspection_id": 1,
+      "inspection_no": "QI-20260517195112-0001",
+      "request_id": "Z003-QUALITY-INSPECTION-20260518-429-QI-F-FE3-E5C-71C-03A-F3C",
+      "idempotency_key": "Z003-QUALITY-INSPECTION-20260518-429-API84-CONFIRM-OK",
+      "scenario_tag": "Z003-QUALITY-INSPECTION-20260518-429",
+      "source_ref": "Z003-QUALITY-INSPECTION-20260518-429-SRC-API84"
+    },
+    {
+      "case_id": "ALLOW-05-CANCEL",
+      "status": 200,
+      "code": "0",
+      "inspection_id": 1,
+      "inspection_no": "QI-20260517195112-0001",
+      "request_id": "Z003-QUALITY-INSPECTION-20260518-429-QI-X-69D-E5C-71C-03A-F3C",
+      "idempotency_key": "Z003-QUALITY-INSPECTION-20260518-429-API84-CANCEL-OK",
+      "scenario_tag": "Z003-QUALITY-INSPECTION-20260518-429",
+      "source_ref": "Z003-QUALITY-INSPECTION-20260518-429-SRC-API84"
+    }
+  ],
+  "api_regression_approved_write_request_count": 5,
+  "allowed_write_endpoint_hit_set": [
+    "POST /api/quality/inspections",
+    "PATCH /api/quality/inspections/{inspection_id}",
+    "POST /api/quality/inspections/{inspection_id}/defects",
+    "POST /api/quality/inspections/{inspection_id}/confirm",
+    "POST /api/quality/inspections/{inspection_id}/cancel"
+  ],
+  "allowed_write_endpoint_missing_set": [],
+  "allowed_write_endpoint_extra_set": [],
+  "allowed_read_endpoints": [
+    "GET /api/quality/inspections",
+    "GET /api/quality/inspections/{inspection_id}",
+    "GET /api/quality/inspections/{inspection_id}/outbox-status",
+    "GET /api/quality/statistics",
+    "GET /api/quality/statistics/trend",
+    "GET /api/quality/diagnostic"
+  ],
+  "allowed_read_endpoint_hit_set": [
+    "GET /api/quality/inspections",
+    "GET /api/quality/statistics",
+    "GET /api/quality/statistics/trend",
+    "GET /api/quality/diagnostic",
+    "GET /api/quality/inspections/{inspection_id}",
+    "GET /api/quality/inspections/{inspection_id}/outbox-status"
+  ],
+  "allowed_read_endpoint_missing_set": [],
+  "fail_closed_case_count": 4,
+  "fail_closed_cases": [
+    {
+      "case_id": "FC-01-MISSING-REQUEST-ID-HEADER",
+      "status": 409,
+      "code": "QUALITY_INVALID_SOURCE",
+      "message": "LOCAL_GATE_FAIL_CLOSED:missing_request_id"
+    },
+    {
+      "case_id": "FC-02-MISMATCHED-SCENARIO-TAG",
+      "status": 409,
+      "code": "QUALITY_INVALID_SOURCE",
+      "message": "LOCAL_GATE_FAIL_CLOSED:mismatched_source_ref"
+    },
+    {
+      "case_id": "FC-03-MISMATCHED-SOURCE-DOC",
+      "status": 409,
+      "code": "QUALITY_INVALID_SOURCE",
+      "message": "LOCAL_GATE_FAIL_CLOSED:mismatched_source_doc"
+    },
+    {
+      "case_id": "FC-04-NON-LOCAL-DEV-GATE-SIMULATION",
+      "status": 409,
+      "code": "QUALITY_INVALID_SOURCE",
+      "message": "LOCAL_GATE_FAIL_CLOSED:non_local_dev (simulated_static_predicate)"
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "fail_closed_assertions_pass": true,
+  "success_chain_summary": {
+    "scenario_tag": "Z003-QUALITY-INSPECTION-20260518-429",
+    "source_ref": "Z003-QUALITY-INSPECTION-20260518-429-SRC-API84",
+    "inspection_id": 1,
+    "inspection_no": "QI-20260517195112-0001"
+  },
+  "cancel_cleanup_executed": true,
+  "cleanup_deleted_rows": {
+    "ly_quality_outbox": 1,
+    "ly_quality_defect": 1,
+    "ly_quality_inspection_item": 1,
+    "ly_quality_operation_log": 5,
+    "ly_quality_inspection": 1
+  },
+  "residual_table_counts_after_cleanup": {
+    "ly_quality_inspection": 0,
+    "ly_quality_inspection_item": 0,
+    "ly_quality_defect": 0,
+    "ly_quality_operation_log": 0,
+    "ly_quality_outbox": 0
+  },
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual"
+}
