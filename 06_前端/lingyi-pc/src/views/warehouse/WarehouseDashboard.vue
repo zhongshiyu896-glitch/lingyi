@@ -78,6 +78,39 @@
         </el-form-item>
       </el-form>
 
+      <div class="warehouse-kpi-grid" data-testid="warehouse-kpi-grid">
+        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-sku-count">
+          <span class="kpi-label">SKU 记录</span>
+          <strong class="kpi-value">{{ warehouseKpis.skuCount }}</strong>
+          <small class="kpi-subtext">库存台账可视条数</small>
+        </div>
+        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-stock-total">
+          <span class="kpi-label">库存总量</span>
+          <strong class="kpi-value">{{ formatAmount(warehouseKpis.stockQtyTotal) }}</strong>
+          <small class="kpi-subtext">成品库存数量合计</small>
+        </div>
+        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-warning-count">
+          <span class="kpi-label">库存预警</span>
+          <strong class="kpi-value">{{ warehouseKpis.warningSkuCount }}</strong>
+          <small class="kpi-subtext">低于安全/补货阈值</small>
+        </div>
+        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-management-warning">
+          <span class="kpi-label">仓库目录预警</span>
+          <strong class="kpi-value">{{ warehouseKpis.managementWarningCount }}</strong>
+          <small class="kpi-subtext">仓位利用率异常</small>
+        </div>
+        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-other-inbound-pending">
+          <span class="kpi-label">其他入仓待处理</span>
+          <strong class="kpi-value">{{ warehouseKpis.otherInboundPendingCount }}</strong>
+          <small class="kpi-subtext">待入仓单据</small>
+        </div>
+        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-return-outbound-pending">
+          <span class="kpi-label">退料待出仓</span>
+          <strong class="kpi-value">{{ warehouseKpis.purchaseReturnPendingCount }}</strong>
+          <small class="kpi-subtext">待出仓单据</small>
+        </div>
+      </div>
+
       <div class="action-row">
         <el-button
           type="primary"
@@ -1685,6 +1718,27 @@ const semiFinishedOutboundDisplayRows = computed<WarehouseSemiFinishedOutboundIt
   })
 })
 
+const warehouseKpis = computed(() => {
+  const stockQtyTotal = summaryRows.value.reduce((sum, row) => sum + Number(row.actual_qty || 0), 0)
+  const warningSkuCount = summaryRows.value.filter(
+    (row) => row.threshold_missing || row.is_below_reorder || row.is_below_safety,
+  ).length
+  const managementWarningCount = managementDisplayRows.value.filter((row) => row.status === 'warning').length
+  const otherInboundPendingCount = otherInboundDisplayRows.value.filter((row) => row.status === 'pending').length
+  const purchaseReturnPendingCount = purchaseReturnOutboundDisplayRows.value.filter(
+    (row) => row.status === 'pending',
+  ).length
+
+  return {
+    skuCount: displayRows.value.length,
+    stockQtyTotal,
+    warningSkuCount,
+    managementWarningCount,
+    otherInboundPendingCount,
+    purchaseReturnPendingCount,
+  }
+})
+
 const managementStatusText = (value: WarehouseManagementItem['status']): string => {
   if (value === 'warning') return '预警'
   if (value === 'disabled') return '停用'
@@ -2344,6 +2398,39 @@ onMounted(async () => {
 
 .advanced-form {
   margin-top: -4px;
+}
+
+.warehouse-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.warehouse-kpi-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kpi-label {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.kpi-value {
+  color: #111827;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.kpi-subtext {
+  color: #9ca3af;
+  font-size: 11px;
 }
 
 .action-row {

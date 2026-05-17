@@ -1,0 +1,106 @@
+{
+  "task_id": "TASK-Z004B-27-IMPL",
+  "source_head": "a1b4674f7906acb2386ab79e510a2e115456f680",
+  "source_subject": "chore: seal cand04 bom real write",
+  "selected_candidate_id": "TASK-Z004B-CAND-05",
+  "candidate_type": "ui_1to1_alignment_gap",
+  "module": "factory_statement_and_warehouse_ui",
+  "boundary_source_task": "TASK-Z004B-26-PREP",
+  "route_scope": [
+    "/factory-statements/list",
+    "/factory-statements/detail",
+    "/factory-statements/print",
+    "/warehouse"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementDetail.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementPrint.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue"
+  ],
+  "allowed_write_endpoints_count": 0,
+  "allowed_write_endpoints": [],
+  "allowed_read_actions_count": 8,
+  "allowed_read_actions": [
+    "打开 /factory-statements/list 页面并执行只读查询、筛选、分页与查看按钮导航",
+    "打开 /factory-statements/detail 页面并执行详情只读字段浏览、明细/日志查看",
+    "打开 /factory-statements/print 页面并执行只读打印预览浏览（不触发真实打印）",
+    "打开 /warehouse 页面并执行只读查询、筛选、分页、台账切换、详情查看",
+    "校验 guarded/disabled 按钮状态与提示文案（打印、导出、写动作）",
+    "采集 before/after desktop 与 mobile 截图",
+    "读取浏览器网络请求并统计 write_request_count 与 forbidden_request_count",
+    "执行 npm precheck/typecheck/verify 与 no-write 审核"
+  ],
+  "browser_route_coverage": {
+    "/factory-statements/list": {
+      "before": {
+        "desktop": true,
+        "mobile": true
+      },
+      "after": {
+        "desktop": true,
+        "mobile": true
+      }
+    },
+    "/factory-statements/detail": {
+      "before": {
+        "desktop": true,
+        "mobile": true
+      },
+      "after": {
+        "desktop": true,
+        "mobile": true
+      }
+    },
+    "/factory-statements/print": {
+      "before": {
+        "desktop": true,
+        "mobile": true
+      },
+      "after": {
+        "desktop": true,
+        "mobile": true
+      }
+    },
+    "/warehouse": {
+      "before": {
+        "desktop": true,
+        "mobile": true
+      },
+      "after": {
+        "desktop": true,
+        "mobile": true
+      }
+    }
+  },
+  "before_screenshots_count": 8,
+  "after_screenshots_count": 8,
+  "screenshots_count": 16,
+  "screenshots_png_count": 16,
+  "desktop_screenshots_count": 8,
+  "mobile_screenshots_count": 8,
+  "screenshots_dir": "/tmp/task_z004b27_screenshots",
+  "browser_result_json": "/tmp/task_z004b27_browser_result.json",
+  "write_request_count": 0,
+  "forbidden_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "zero_side_effect": true,
+  "npm_validation": {
+    "precheck_dev_runtime": "PASS",
+    "typecheck": "PASS",
+    "verify": "PASS",
+    "workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc"
+  },
+  "formal_output_paths": [
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z004B-27-IMPL_CAND05_UI1比1对齐最小实现与浏览器回归报告.md",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_27_cand05_ui_1to1_alignment_evidence.json",
+    "/tmp/task_z004b27_browser_result.json",
+    "/tmp/task_z004b27_screenshots/",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+  ],
+  "remote_lifecycle_parked": true
+}

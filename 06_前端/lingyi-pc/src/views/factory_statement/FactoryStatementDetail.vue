@@ -51,6 +51,40 @@
           <el-descriptions-item label="次品率">{{ formatRate(detail.rejected_rate) }}</el-descriptions-item>
         </el-descriptions>
 
+        <div class="detail-kpi-grid" data-testid="factory-statement-detail-kpi-grid">
+          <div class="detail-kpi-card" data-testid="factory-statement-detail-kpi-items">
+            <span class="kpi-label">对账明细行</span>
+            <strong class="kpi-value">{{ detailKpis.itemCount }}</strong>
+            <small class="kpi-subtext">用于复核加工费拆分</small>
+          </div>
+          <div class="detail-kpi-card" data-testid="factory-statement-detail-kpi-logs">
+            <span class="kpi-label">操作日志行</span>
+            <strong class="kpi-value">{{ detailKpis.logCount }}</strong>
+            <small class="kpi-subtext">状态变更追踪</small>
+          </div>
+          <div class="detail-kpi-card" data-testid="factory-statement-detail-kpi-defect-rate">
+            <span class="kpi-label">次品率</span>
+            <strong class="kpi-value">{{ detailKpis.rejectedRate }}</strong>
+            <small class="kpi-subtext">质量风险观察</small>
+          </div>
+          <div class="detail-kpi-card" data-testid="factory-statement-detail-kpi-payable-readiness">
+            <span class="kpi-label">应付同步态</span>
+            <strong class="kpi-value">{{ detailKpis.payableSyncState }}</strong>
+            <small class="kpi-subtext">仅支持只读跟踪</small>
+          </div>
+        </div>
+
+        <div class="detail-status-strip" data-testid="factory-statement-detail-status-strip">
+          <el-tag :type="statusTag(detail.statement_status)" effect="plain">单据 {{ statementStatusLabel(detail.statement_status) }}</el-tag>
+          <el-tag :type="hasActivePayableOutbox ? 'warning' : 'success'" effect="plain">
+            Outbox {{ hasActivePayableOutbox ? '同步中/待同步' : '已闭合' }}
+          </el-tag>
+          <el-tag :type="summaryMissing ? 'danger' : 'info'" effect="plain">
+            摘要{{ summaryMissing ? '缺失' : '完整' }}
+          </el-tag>
+          <el-tag type="info" effect="plain">模式 只读</el-tag>
+        </div>
+
         <el-card shadow="never" class="outbox-card" data-testid="factory-statement-detail-outbox-section">
           <template #header>
             <span>应付 / Outbox 同步状态</span>
@@ -255,6 +289,17 @@ const showEmptyState = computed<boolean>(
   () => detailLoaded.value && !!detail.value && items.value.length === 0 && logs.value.length === 0,
 )
 
+const detailKpis = computed(() => {
+  const rejectedRate = formatRate(detail.value?.rejected_rate)
+  const payableSyncState = hasActivePayableOutbox.value ? '同步中/待同步' : '已闭合'
+  return {
+    itemCount: items.value.length,
+    logCount: logs.value.length,
+    rejectedRate,
+    payableSyncState,
+  }
+})
+
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') return '-'
   const numeric = Number(value)
@@ -389,6 +434,46 @@ onMounted(async () => {
 
 .outbox-card {
   margin-top: 12px;
+}
+
+.detail-kpi-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.detail-kpi-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-status-strip {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kpi-label {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.kpi-value {
+  color: #111827;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.kpi-subtext {
+  color: #9ca3af;
+  font-size: 11px;
 }
 
 .state-tip {

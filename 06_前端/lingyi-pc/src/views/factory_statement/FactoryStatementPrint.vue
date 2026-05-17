@@ -66,6 +66,25 @@
         <div><span>实付金额：</span>{{ showText(detail.net_amount) }}</div>
       </section>
 
+      <section class="print-kpi-strip" data-testid="factory-statement-print-kpi-strip">
+        <article class="print-kpi-card">
+          <span class="kpi-label">来源条数</span>
+          <strong class="kpi-value">{{ showText(detail.source_count) }}</strong>
+        </article>
+        <article class="print-kpi-card">
+          <span class="kpi-label">验货总数</span>
+          <strong class="kpi-value">{{ showText(detail.inspected_qty) }}</strong>
+        </article>
+        <article class="print-kpi-card">
+          <span class="kpi-label">次品总数</span>
+          <strong class="kpi-value">{{ showText(detail.rejected_qty) }}</strong>
+        </article>
+        <article class="print-kpi-card">
+          <span class="kpi-label">次品率</span>
+          <strong class="kpi-value">{{ showText(detail.rejected_rate) }}</strong>
+        </article>
+      </section>
+
       <el-alert
         v-if="guardedFeedback"
         type="warning"
@@ -356,6 +375,34 @@ onMounted(async () => {
   font-weight: 600;
 }
 
+.print-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.print-kpi-card {
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #f8fbff;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kpi-label {
+  color: #526071;
+  font-size: 12px;
+}
+
+.kpi-value {
+  color: #111827;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
 .print-section {
   margin-top: 16px;
 }
@@ -412,6 +459,10 @@ onMounted(async () => {
   .print-sheet {
     border: none;
     padding: 0;
+  }
+
+  .print-kpi-card {
+    background: #fff;
   }
 }
 </style>

@@ -28,6 +28,34 @@
         data-testid="factory-statement-main-alert"
       />
 
+      <div class="statement-kpi-grid" data-testid="factory-statement-kpi-grid">
+        <div class="statement-kpi-card" data-testid="factory-statement-kpi-total">
+          <span class="kpi-label">当前记录</span>
+          <strong class="kpi-value">{{ statementKpis.totalCount }}</strong>
+          <small class="kpi-subtext">列表筛选结果</small>
+        </div>
+        <div class="statement-kpi-card" data-testid="factory-statement-kpi-draft">
+          <span class="kpi-label">草稿单</span>
+          <strong class="kpi-value">{{ statementKpis.draftCount }}</strong>
+          <small class="kpi-subtext">待确认/待取消处理</small>
+        </div>
+        <div class="statement-kpi-card" data-testid="factory-statement-kpi-payable-sync">
+          <span class="kpi-label">应付待同步</span>
+          <strong class="kpi-value">{{ statementKpis.payableSyncCount }}</strong>
+          <small class="kpi-subtext">Outbox pending/processing</small>
+        </div>
+        <div class="statement-kpi-card" data-testid="factory-statement-kpi-net-total">
+          <span class="kpi-label">实付金额汇总</span>
+          <strong class="kpi-value">{{ formatAmount(statementKpis.netAmountTotal) }}</strong>
+          <small class="kpi-subtext">当前页业务金额</small>
+        </div>
+        <div class="statement-kpi-card" data-testid="factory-statement-kpi-source-total">
+          <span class="kpi-label">来源条数汇总</span>
+          <strong class="kpi-value">{{ formatAmount(statementKpis.sourceCountTotal) }}</strong>
+          <small class="kpi-subtext">对账明细覆盖规模</small>
+        </div>
+      </div>
+
       <el-form :inline="true" :model="query" data-testid="factory-statement-query-form">
         <el-form-item label="供应商">
           <el-input v-model="query.supplier" clearable placeholder="请输入供应商" data-testid="factory-statement-filter-supplier" />
@@ -3924,6 +3952,32 @@ const sampleFilterStateText = computed<string>(() => {
   return '样品筛选待操作'
 })
 
+const statementKpis = computed(() => {
+  let payableSyncCount = 0
+  let draftCount = 0
+  let netAmountTotal = 0
+  let sourceCountTotal = 0
+
+  for (const row of displayRows.value) {
+    if (row.statement_status === 'draft') {
+      draftCount += 1
+    }
+    if (row.payable_outbox_status === 'pending' || row.payable_outbox_status === 'processing') {
+      payableSyncCount += 1
+    }
+    netAmountTotal += toNumeric(row.net_amount) || 0
+    sourceCountTotal += toNumeric(row.source_count) || 0
+  }
+
+  return {
+    totalCount: displayRows.value.length,
+    draftCount,
+    payableSyncCount,
+    netAmountTotal,
+    sourceCountTotal,
+  }
+})
+
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
     return '-'
@@ -5370,6 +5424,39 @@ onMounted(async () => {
 
 .reconciliation-alert {
   margin-bottom: 12px;
+}
+
+.statement-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.statement-kpi-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kpi-label {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.kpi-value {
+  color: #111827;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.kpi-subtext {
+  color: #9ca3af;
+  font-size: 11px;
 }
 
 .sample-filter-form {
