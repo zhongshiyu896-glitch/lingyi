@@ -1,0 +1,95 @@
+{
+  "task_id": "TASK-Z004B-46",
+  "source_head": "fbbf3ee31482c2d65a19d8e9ca77e15b967cef65",
+  "source_subject": "chore: seal cand07 rollback residual dry run",
+  "selected_candidate_id": "TASK-Z004B-CAND-06-READBACK",
+  "candidate_type": "readback_acceptance_gap",
+  "target_read_endpoints": [
+    "GET /api/factory-statements/{statement_id}",
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_read_endpoint_hit_set": [
+    "GET /api/factory-statements/",
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_read_endpoint_missing_set": [
+    "GET /api/factory-statements/{statement_id}"
+  ],
+  "readback_status_by_endpoint": {
+    "GET /api/factory-statements/": {
+      "status": "hit_empty_state",
+      "http_status": 200,
+      "response_code": "0",
+      "message": "success",
+      "items_count": 0,
+      "total": 0,
+      "note": "命中列表端点，但无可用 statement_id。"
+    },
+    "GET /api/factory-statements/{statement_id}": {
+      "status": "blocked_no_statement_id",
+      "http_status": null,
+      "response_code": null,
+      "message": null,
+      "note": "列表为空，按边界规则不得伪造 statement_id。"
+    },
+    "GET /api/warehouse/alerts": {
+      "status": "hit_service_unavailable",
+      "http_status": 503,
+      "response_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "message": "外部服务暂时不可用",
+      "empty_state": false,
+      "note": "端点已命中，但不是业务闭合。"
+    },
+    "GET /api/warehouse/batches": {
+      "status": "hit_service_unavailable",
+      "http_status": 503,
+      "response_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "message": "外部服务暂时不可用",
+      "empty_state": false,
+      "note": "端点已命中，但不是业务闭合。"
+    }
+  },
+  "empty_state_endpoints": [
+    "GET /api/factory-statements/"
+  ],
+  "blocked_endpoints": [
+    "GET /api/factory-statements/{statement_id}"
+  ],
+  "write_request_count": 0,
+  "forbidden_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "zero_side_effect": true,
+  "route_coverage": [
+    "/factory-statements/list",
+    "/warehouse"
+  ],
+  "browser_request_methods": [
+    "GET"
+  ],
+  "screenshots_count": 8,
+  "desktop_screenshot_count": 4,
+  "mobile_screenshot_count": 4,
+  "screenshot_refs": [
+    "/tmp/task_z004b46_readback_screenshots/desktop_factory-statements_list_before.png",
+    "/tmp/task_z004b46_readback_screenshots/desktop_factory-statements_list_after.png",
+    "/tmp/task_z004b46_readback_screenshots/desktop_warehouse_before.png",
+    "/tmp/task_z004b46_readback_screenshots/desktop_warehouse_after.png",
+    "/tmp/task_z004b46_readback_screenshots/mobile_factory-statements_list_before.png",
+    "/tmp/task_z004b46_readback_screenshots/mobile_factory-statements_list_after.png",
+    "/tmp/task_z004b46_readback_screenshots/mobile_warehouse_before.png",
+    "/tmp/task_z004b46_readback_screenshots/mobile_warehouse_after.png"
+  ],
+  "screenshot_dir": "/tmp/task_z004b46_readback_screenshots",
+  "browser_result_json": "/tmp/task_z004b46_readback_browser_result.json",
+  "residual_risk": [
+    "factory statement detail 仍缺可用 statement_id，未形成 detail 闭合。",
+    "warehouse alerts/batches 当前为 503 外部服务不可用，只能记为命中受阻。"
+  ],
+  "generated_at": "2026-05-17T22:00:00+08:00"
+}
