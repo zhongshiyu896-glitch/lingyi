@@ -8,7 +8,8 @@
             <el-button
               size="small"
               type="primary"
-              :disabled="!canRead"
+              data-action-type="write"
+              data-write-guard="guarded:readonly"
               data-testid="subcontract-create-open-button"
               @click="openCreateDialog"
             >
@@ -264,26 +265,8 @@ const createForm = reactive({
   job_card: '',
 })
 
-const resetCreateForm = (): void => {
-  createForm.supplier = '示例加工厂'
-  createForm.item_code = 'DEMO-TEE'
-  createForm.bom_id = 1
-  createForm.process_name = '缝制'
-  createForm.planned_qty = 10
-  createForm.sales_order = ''
-  createForm.sales_order_item = ''
-  createForm.production_plan_id = undefined
-  createForm.work_order = ''
-  createForm.job_card = ''
-}
-
 const openCreateDialog = (): void => {
-  if (!canRead.value) {
-    guardedAction('新建外发单')
-    return
-  }
-  resetCreateForm()
-  createDialogVisible.value = true
+  guardedAction('新建外发单')
 }
 
 const submitCreate = async (): Promise<void> => {

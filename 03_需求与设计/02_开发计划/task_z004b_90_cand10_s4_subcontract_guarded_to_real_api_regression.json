@@ -1,0 +1,60 @@
+{
+  "task_id": "TASK-Z004B-90-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-10-S4",
+  "module": "subcontract",
+  "route_scope": [
+    "/subcontract/list"
+  ],
+  "blocked_precondition": true,
+  "blocked_reason": "blocked_no_settlement_candidates",
+  "candidate_count": 0,
+  "allowed_write_endpoints": [
+    "POST /api/subcontract/settlement-locks",
+    "POST /api/subcontract/settlement-locks/release"
+  ],
+  "allowed_write_case_count": 2,
+  "successful_write_cases": [],
+  "api_regression_approved_write_request_count": 0,
+  "allowed_write_endpoint_hit_set": [],
+  "allowed_write_endpoint_missing_set": [
+    "POST /api/subcontract/settlement-locks",
+    "POST /api/subcontract/settlement-locks/release"
+  ],
+  "allowed_write_endpoint_extra_set": [],
+  "allowed_read_endpoints": [
+    "GET /api/subcontract/",
+    "GET /api/subcontract/{order_id}",
+    "GET /api/subcontract/settlement-candidates"
+  ],
+  "allowed_read_endpoint_hit_set": [
+    "GET /api/subcontract/",
+    "GET /api/subcontract/settlement-candidates"
+  ],
+  "allowed_read_endpoint_missing_set": [
+    "GET /api/subcontract/{order_id}"
+  ],
+  "fail_closed_case_count": 0,
+  "fail_closed_cases": [],
+  "db_write_on_failed_gate_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "fail_closed_assertions_pass": true,
+  "success_chain_summary": {
+    "blocked": true,
+    "reason": "blocked_no_settlement_candidates",
+    "order_id": null
+  },
+  "cancel_cleanup_executed": false,
+  "cleanup_deleted_rows": {},
+  "residual_table_counts_after_cleanup": {
+    "ly_subcontract_inspection_statement_locked": 0
+  },
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "task_status": "BLOCKED"
+}

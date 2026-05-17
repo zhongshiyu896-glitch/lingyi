@@ -1,0 +1,24 @@
+{
+  "task_id": "TASK-Z004B-90-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-10-S4",
+  "blocked_precondition": true,
+  "blocked_reason": "blocked_no_settlement_candidates",
+  "baseline_counts": {
+    "ly_subcontract_inspection_statement_locked": 0
+  },
+  "baseline_total": 0,
+  "after_lock_counts": {
+    "ly_subcontract_inspection_statement_locked": 0
+  },
+  "after_lock_total": 0,
+  "after_release_counts": {
+    "ly_subcontract_inspection_statement_locked": 0
+  },
+  "after_release_total": 0,
+  "cancel_cleanup_executed": false,
+  "cleanup_scope_note": "blocked_no_settlement_candidates; no lock/release executed",
+  "cleanup_deleted_rows": {},
+  "residual_scan_result": "no_new_residual",
+  "zero_residual": true,
+  "task_status": "BLOCKED"
+}

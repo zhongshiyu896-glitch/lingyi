@@ -74,6 +74,7 @@
             <el-button
               data-testid="subcontract-detail-action-issue"
               data-action-type="write"
+              data-write-guard="guarded:readonly"
               :disabled="!detail"
               @click="openIssueDialog"
             >
@@ -82,6 +83,7 @@
             <el-button
               data-testid="subcontract-detail-action-receipt"
               data-action-type="write"
+              data-write-guard="guarded:readonly"
               :disabled="!detail"
               @click="openReceiveDialog"
             >
@@ -90,6 +92,7 @@
             <el-button
               data-testid="subcontract-detail-action-inspection"
               data-action-type="write"
+              data-write-guard="guarded:readonly"
               :disabled="!detail"
               @click="openInspectDialog"
             >
@@ -139,7 +142,7 @@
           />
 
           <p class="permission-tip" data-testid="subcontract-detail-permission-or-disabled-state">
-            写动作已启用 Z003 本地闭环门禁，所有请求携带 scenario_tag 与业务载体一致性校验。
+            当前仅开放结算锁定/释放最小子链路，发料/回料/验货/结算预览保持 guarded。
           </p>
         </template>
       </template>
@@ -201,7 +204,15 @@
       <template #header><span>结算候选</span></template>
       <div class="settlement-toolbar">
         <el-button size="small" :loading="settlementLoading" data-testid="subcontract-settlement-candidates-refresh" @click="loadSettlementCandidates">刷新候选</el-button>
-        <el-button size="small" :loading="settlementLoading" data-testid="subcontract-settlement-preview-button" @click="runSettlementPreview">预览结算</el-button>
+        <el-button
+          size="small"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
+          data-testid="subcontract-settlement-preview-button"
+          @click="runSettlementPreview"
+        >
+          预览结算
+        </el-button>
       </div>
       <el-table
         :data="settlementCandidates"
@@ -369,7 +380,6 @@ import {
   inspectSubcontractOrder,
   issueSubcontractMaterial,
   lockSubcontractSettlement,
-  previewSubcontractSettlement,
   receiveSubcontractOrder,
   releaseSubcontractSettlement,
   type SubcontractOrderDetailData,
@@ -576,29 +586,15 @@ const guardedWriteAction = (actionName: string): void => {
 }
 
 const openIssueDialog = (): void => {
-  if (!detail.value) return
-  issueForm.warehouse = detail.value.receipts?.[0]?.receipt_warehouse || '原材料仓'
-  issueForm.material_item_code = detail.value.item_code
-  issueForm.required_qty = Number(detail.value.planned_qty || 0) || 1
-  issueForm.issued_qty = Number(detail.value.planned_qty || 0) || 1
-  issueDialogVisible.value = true
+  guardedWriteAction('发料')
 }
 
 const openReceiveDialog = (): void => {
-  if (!detail.value) return
-  receiveForm.receipt_warehouse = detail.value.receipts?.[0]?.receipt_warehouse || '成品待验仓'
-  receiveForm.received_qty = Number(detail.value.planned_qty || 0) || 1
-  receiveForm.batch_no = ''
-  receiveDialogVisible.value = true
+  guardedWriteAction('回料')
 }
 
 const openInspectDialog = (): void => {
-  if (!detail.value) return
-  setDefaultReceiptBatch()
-  inspectForm.inspected_qty = Number(detail.value.received_qty || 0) || Number(detail.value.planned_qty || 0) || 1
-  inspectForm.rejected_qty = 0
-  inspectForm.deduction_amount_per_piece = 0
-  inspectDialogVisible.value = true
+  guardedWriteAction('验货')
 }
 
 const openSettlementDialog = async (): Promise<void> => {
@@ -694,33 +690,8 @@ const submitInspect = async (): Promise<void> => {
 }
 
 const runSettlementPreview = async (): Promise<void> => {
-  if (!detail.value || settlementLoading.value) return
-  settlementLoading.value = true
-  try {
-    const inspectionIds = settlementForm.inspection_ids.length
-      ? settlementForm.inspection_ids
-      : settlementCandidates.value.map((item) => item.inspection_id)
-    const carrier = buildWriteCarrier(
-      'settlement_preview',
-      'settlement_preview',
-      Math.max(inspectionIds.length, 1),
-      'SRC-SETTLE-PREVIEW',
-    )
-    const result = await previewSubcontractSettlement({
-      ...carrier,
-      inspection_ids: inspectionIds,
-      company: detail.value.company || null,
-      supplier: detail.value.supplier,
-      filter_item_code: detail.value.item_code,
-      process_name: detail.value.process_name,
-    })
-    settlementPreview.value = result.data
-    ElMessage.success('结算预览已更新')
-  } catch (error) {
-    ElMessage.error((error as Error).message || '结算预览失败')
-  } finally {
-    settlementLoading.value = false
-  }
+  settlementPreview.value = null
+  guardedWriteAction('结算预览')
 }
 
 const submitSettlementLock = async (): Promise<void> => {
@@ -745,7 +716,7 @@ const submitSettlementLock = async (): Promise<void> => {
       remark: `locked-by-${carrier.scenario_tag}`,
     })
     await loadDetail()
-    await runSettlementPreview()
+    settlementPreview.value = null
     ElMessage.success('结算锁定成功')
   } catch (error) {
     ElMessage.error((error as Error).message || '结算锁定失败')
@@ -776,7 +747,7 @@ const submitSettlementRelease = async (): Promise<void> => {
       reason: settlementForm.reason.trim() || 'release-for-local-cleanup',
     })
     await loadDetail()
-    await runSettlementPreview()
+    settlementPreview.value = null
     ElMessage.success('结算释放成功')
   } catch (error) {
     ElMessage.error((error as Error).message || '结算释放失败')

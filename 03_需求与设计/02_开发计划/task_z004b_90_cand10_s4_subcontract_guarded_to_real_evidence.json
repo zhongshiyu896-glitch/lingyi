@@ -1,0 +1,81 @@
+{
+  "task_id": "TASK-Z004B-90-IMPL",
+  "role": "B Engineer",
+  "source_head": "17ef4e55be960e94690f5e3ae118029db3ebb719",
+  "source_subject": "chore: seal cand10 quality guarded reopen",
+  "selected_candidate_id": "TASK-Z004B-CAND-10-S4",
+  "parent_candidate_id": "TASK-Z004B-CAND-10",
+  "module": "subcontract",
+  "route_scope": [
+    "/subcontract/list"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "task_status": "BLOCKED",
+  "blocked_precondition": true,
+  "blocked_reason": "blocked_no_settlement_candidates",
+  "api_regression_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_90_cand10_s4_subcontract_guarded_to_real_api_regression.json",
+  "zero_residual_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_90_cand10_s4_subcontract_guarded_to_real_zero_residual.json",
+  "browser_result_file": "/tmp/task_z004b90_browser_result.json",
+  "browser_evidence": {
+    "route_coverage": {
+      "/subcontract/list": {
+        "desktop": true,
+        "mobile": true
+      }
+    },
+    "screenshots": [
+      "/tmp/task_z004b90_screenshots/z004b90_subcontract_list_desktop.png",
+      "/tmp/task_z004b90_screenshots/z004b90_subcontract_list_mobile.png"
+    ],
+    "screenshots_count": 2,
+    "desktop_screenshot_count": 1,
+    "mobile_screenshot_count": 1
+  },
+  "allowed_write_endpoints": [
+    "POST /api/subcontract/settlement-locks",
+    "POST /api/subcontract/settlement-locks/release"
+  ],
+  "allowed_write_endpoint_hit_set": [],
+  "allowed_write_endpoint_missing_set": [
+    "POST /api/subcontract/settlement-locks",
+    "POST /api/subcontract/settlement-locks/release"
+  ],
+  "allowed_write_endpoint_extra_set": [],
+  "allowed_read_endpoint_hit_set": [
+    "GET /api/subcontract/",
+    "GET /api/subcontract/settlement-candidates"
+  ],
+  "allowed_read_endpoint_missing_set": [
+    "GET /api/subcontract/{order_id}"
+  ],
+  "approved_write_request_count": 0,
+  "fail_closed_case_count": 0,
+  "db_write_on_failed_gate_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "baseline_total": 0,
+  "after_lock_total": 0,
+  "after_release_total": 0,
+  "npm_validation": {
+    "precheck_dev_runtime": "PASS",
+    "typecheck": "PASS",
+    "verify": "PASS"
+  },
+  "readback_business_closed": false,
+  "remote_lifecycle_parked": true,
+  "notes": [
+    "settlement-candidates 为空，按任务门禁未执行 lock/release 写链路。",
+    "未创建测试数据，未触发白名单外写请求。",
+    "create/issue/receive/inspect/settlement_preview 仍保持 guarded。"
+  ]
+}
