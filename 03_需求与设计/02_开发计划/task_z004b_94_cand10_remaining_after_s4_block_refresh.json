@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-Z004B-94",
+  "role": "B Engineer",
+  "source_head": "ee240132ec6420d1cf0a9502df74a05866ecdfdc",
+  "parent": "17ef4e55be960e94690f5e3ae118029db3ebb719",
+  "source_subject": "chore: seal cand10 subcontract blocked evidence",
+  "completed_or_blocked_candidate_id": "TASK-Z004B-CAND-10-S4",
+  "parent_candidate_id": "TASK-Z004B-CAND-10",
+  "commit_verification": {
+    "ledger_source": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_91_commit_candidate_ledger.json",
+    "committed_count": 7,
+    "missing": [],
+    "extra": [],
+    "committed_no_intersection": []
+  },
+  "s4_archive_result": {
+    "candidate_id": "TASK-Z004B-CAND-10-S4",
+    "module": "subcontract",
+    "route_scope": [
+      "/subcontract/list"
+    ],
+    "task_status": "BLOCKED",
+    "blocked_reason": "blocked_no_settlement_candidates",
+    "lock_release_chain_closed": false,
+    "recommended_next_task_id": null,
+    "recommended_next_task_type": null,
+    "notes": "无可用 settlement candidate，在“不造数”约束下无法闭合 lock/release 写链路。"
+  },
+  "candidate_count": 1,
+  "candidates": [
+    {
+      "candidate_id": "TASK-Z004B-CAND-10-S5",
+      "parent_candidate_id": "TASK-Z004B-CAND-10",
+      "candidate_type": "guarded_to_real_interaction_split_gap",
+      "module": "factory_statement_detail",
+      "route_scope": [
+        "/factory-statements/detail"
+      ],
+      "current_gap": "factory statement detail 写链路仍依赖 readback 闭合；当前 statement_id 缺失阻断未解除，不能进入实现。",
+      "blocked_reason": "blocked_precondition: readback_business_closed_false_and_blocked_no_statement_id",
+      "blocked_precondition": true,
+      "risk_level": "high",
+      "recommended_priority": "P1",
+      "recommended_next_task_id": null,
+      "recommended_next_task_type": null,
+      "impl_ready": false
+    }
+  ],
+  "recommended_next_candidate_id": null,
+  "recommended_next_task_id": null,
+  "recommended_next_task_type": null,
+  "next_action_state": "WAIT_FOR_A_OR_USER_DECISION",
+  "z004_local_candidate_pool_cleared": true,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "no_remote_lifecycle_actions": true,
+  "readback_business_closed": false,
+  "residual_readback_risks": [
+    "GET /api/factory-statements/{statement_id} = blocked_no_statement_id",
+    "GET /api/warehouse/alerts = 503 / EXTERNAL_SERVICE_UNAVAILABLE",
+    "GET /api/warehouse/batches = 503 / EXTERNAL_SERVICE_UNAVAILABLE"
+  ],
+  "notes": [
+    "S4 已归档为合法阻断，且不再推荐进入实现。",
+    "当前仅剩 S5，且仍为 blocked_precondition，不推荐直接实现。",
+    "无可推进候选时，下一状态回到 WAIT_FOR_A_OR_USER_DECISION。"
+  ]
+}

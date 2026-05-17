@@ -1,0 +1,2 @@
+entry_id	candidate_count	candidate_id	parent_candidate_id	candidate_type	module	route_scope	current_gap	blocked_reason	blocked_precondition	risk_level	recommended_priority	recommended_next_task_id	recommended_next_task_type	impl_ready
+C01	1	TASK-Z004B-CAND-10-S5	TASK-Z004B-CAND-10	guarded_to_real_interaction_split_gap	factory_statement_detail	/factory-statements/detail	factory statement detail 写链路仍依赖 readback 闭合；当前 statement_id 缺失阻断未解除，不能进入实现。	blocked_precondition: readback_business_closed_false_and_blocked_no_statement_id	true	high	P1	null	null	false
