@@ -1,0 +1,134 @@
+{
+  "task_id": "TASK-Z003B-118",
+  "source_head": "c4dad44c80435043d593b043495486c397f206a8",
+  "source_subject": "chore: seal cand15 readonly e2e scenario",
+  "boundary_source_task": "TASK-Z003B-117-PREP",
+  "selected_candidate_id": "TASK-Z003B-CAND-16",
+  "candidate_type": "evidence_or_acceptance_gap",
+  "artifact_scope": "post_z003_shared_routes_evidence_index_extension",
+  "route_scope": [
+    "/reports/catalog",
+    "/permissions/governance",
+    "/system/management",
+    "/dashboard/overview"
+  ],
+  "route_count": 4,
+  "indexed_route_count": 4,
+  "missing_evidence_route_count": 0,
+  "stale_or_unverified_route_count": 0,
+  "extension_result_passed": true,
+  "remote_lifecycle_parked": true,
+  "missing_evidence_policy": "缺失证据必须标记 missing/unverified；禁止伪造路径、禁止补造历史截图或历史 JSON。",
+  "stale_evidence_policy": "task_id、commit_hash、artifact_path 任一不匹配即标记 stale/unverified，并在台账保留原始引用。",
+  "readonly_context_files": [
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_116_next_local_development_candidate_refresh.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z003B-116_CAND15_跨路由只读E2E提交后归档与下一本地开发候选刷新报告.md",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_87_z003_evidence_index.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_87_z003_acceptance_ledger.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_100_browser_regression_refresh_result.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_106_cand18_ui_1to1_alignment_evidence.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z003B-112_CAND15_跨路由只读E2E业务剧本执行报告.md",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_112_cand15_e2e_readonly_business_scenario_result.json"
+  ],
+  "route_extensions": [
+    {
+      "route_entry_id": "ROUTE-EXT-01",
+      "route_path": "/reports/catalog",
+      "source_task_id": "TASK-Z003B-106-IMPL",
+      "source_commit_hash": "cf0955906aaff67b5898f25e3cb71ac061cfe7a5",
+      "evidence_artifact_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_106_cand18_ui_1to1_alignment_evidence.json",
+      "acceptance_artifact_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_87_z003_acceptance_ledger.json",
+      "acceptance_source_task_id": "TASK-Z003B-87",
+      "acceptance_source_commit_hash": "13bdd79154245f7d94b4e65897220a6890e4ca67",
+      "screenshot_or_result_reference": [
+        {
+          "viewport": "desktop",
+          "before_screenshot": "/tmp/task_z003b106_screenshots/before_reports_catalog_desktop_before.png",
+          "after_screenshot": "/tmp/task_z003b106_screenshots/after_reports_catalog_desktop_after.png"
+        },
+        {
+          "viewport": "mobile",
+          "before_screenshot": "/tmp/task_z003b106_screenshots/before_reports_catalog_mobile_before.png",
+          "after_screenshot": "/tmp/task_z003b106_screenshots/after_reports_catalog_mobile_after.png"
+        }
+      ],
+      "verification_status": "verified",
+      "missing_flag": false,
+      "stale_flag": false,
+      "notes": "主证据来自 TASK-Z003B-106-IMPL；TASK-Z003B-100 对应路由回归为 PASS，用于验证共享路由在 no-write 场景下已闭环。"
+    },
+    {
+      "route_entry_id": "ROUTE-EXT-02",
+      "route_path": "/permissions/governance",
+      "source_task_id": "TASK-Z003B-106-IMPL",
+      "source_commit_hash": "cf0955906aaff67b5898f25e3cb71ac061cfe7a5",
+      "evidence_artifact_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_106_cand18_ui_1to1_alignment_evidence.json",
+      "acceptance_artifact_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_87_z003_acceptance_ledger.json",
+      "acceptance_source_task_id": "TASK-Z003B-87",
+      "acceptance_source_commit_hash": "13bdd79154245f7d94b4e65897220a6890e4ca67",
+      "screenshot_or_result_reference": [
+        {
+          "viewport": "desktop",
+          "before_screenshot": "/tmp/task_z003b106_screenshots/before_permissions_governance_desktop_before.png",
+          "after_screenshot": "/tmp/task_z003b106_screenshots/after_permissions_governance_desktop_after.png"
+        },
+        {
+          "viewport": "mobile",
+          "before_screenshot": "/tmp/task_z003b106_screenshots/before_permissions_governance_mobile_before.png",
+          "after_screenshot": "/tmp/task_z003b106_screenshots/after_permissions_governance_mobile_after.png"
+        }
+      ],
+      "verification_status": "verified",
+      "missing_flag": false,
+      "stale_flag": false,
+      "notes": "主证据来自 TASK-Z003B-106-IMPL；TASK-Z003B-100 对应路由回归为 PASS，用于验证共享路由在 no-write 场景下已闭环。"
+    },
+    {
+      "route_entry_id": "ROUTE-EXT-03",
+      "route_path": "/system/management",
+      "source_task_id": "TASK-Z003B-106-IMPL",
+      "source_commit_hash": "cf0955906aaff67b5898f25e3cb71ac061cfe7a5",
+      "evidence_artifact_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_106_cand18_ui_1to1_alignment_evidence.json",
+      "acceptance_artifact_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_87_z003_acceptance_ledger.json",
+      "acceptance_source_task_id": "TASK-Z003B-87",
+      "acceptance_source_commit_hash": "13bdd79154245f7d94b4e65897220a6890e4ca67",
+      "screenshot_or_result_reference": [
+        {
+          "viewport": "desktop",
+          "before_screenshot": "/tmp/task_z003b106_screenshots/before_system_management_desktop_before.png",
+          "after_screenshot": "/tmp/task_z003b106_screenshots/after_system_management_desktop_after.png"
+        },
+        {
+          "viewport": "mobile",
+          "before_screenshot": "/tmp/task_z003b106_screenshots/before_system_management_mobile_before.png",
+          "after_screenshot": "/tmp/task_z003b106_screenshots/after_system_management_mobile_after.png"
+        }
+      ],
+      "verification_status": "verified",
+      "missing_flag": false,
+      "stale_flag": false,
+      "notes": "主证据来自 TASK-Z003B-106-IMPL；TASK-Z003B-100 对应路由回归为 PASS，用于验证共享路由在 no-write 场景下已闭环。"
+    },
+    {
+      "route_entry_id": "ROUTE-EXT-04",
+      "route_path": "/dashboard/overview",
+      "source_task_id": "TASK-Z003B-112",
+      "source_commit_hash": "3fa416cb619f027afe19e4b05568ed2ad028d21b",
+      "evidence_artifact_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_112_cand15_e2e_readonly_business_scenario_result.json",
+      "acceptance_artifact_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z003b_87_z003_acceptance_ledger.json",
+      "acceptance_source_task_id": "TASK-Z003B-87",
+      "acceptance_source_commit_hash": "13bdd79154245f7d94b4e65897220a6890e4ca67",
+      "screenshot_or_result_reference": [
+        "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_01_before.png",
+        "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_02_after.png",
+        "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_03_guard_state.png",
+        "/tmp/task_z003b112_screenshots/STEP-01-DASHBOARD-OVERVIEW_04_mobile.png"
+      ],
+      "verification_status": "verified",
+      "missing_flag": false,
+      "stale_flag": false,
+      "notes": "主证据来自 TASK-Z003B-112-FIX1（desktop+mobile 补齐后通过）；TASK-Z003B-100 同路由回归 PASS 可作为对照。"
+    }
+  ],
+  "generated_at": "2026-05-17T08:20:40.960350"
+}
