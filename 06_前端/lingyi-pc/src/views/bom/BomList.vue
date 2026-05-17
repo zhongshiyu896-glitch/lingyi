@@ -2555,7 +2555,12 @@ const goCreate = (): void => {
     ElMessage.warning('无新建 BOM 权限')
     return
   }
-  void router.push('/bom/detail')
+  const templateId = rows.value.find((row) => Number.isFinite(row.id))?.id
+  if (!templateId) {
+    ElMessage.warning('当前无可复用 BOM 模板，请先准备基础 BOM 后再新建')
+    return
+  }
+  void router.push({ path: '/bom/detail', query: { id: String(templateId), from: 'create' } })
 }
 
 const openFabricDetail = (row: BomFabricItem): void => {

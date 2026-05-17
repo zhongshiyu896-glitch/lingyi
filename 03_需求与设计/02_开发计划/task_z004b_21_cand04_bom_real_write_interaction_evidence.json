@@ -1,0 +1,159 @@
+{
+  "task_id": "TASK-Z004B-21-IMPL",
+  "source_head": "658a1f7ce2c6b0c7571c72ef29a1d0465a24058c",
+  "source_subject": "chore: seal cand03 quality guarded real",
+  "selected_candidate_id": "TASK-Z004B-CAND-04",
+  "candidate_type": "real_write_interaction_gap",
+  "module": "bom",
+  "boundary_source_task": "TASK-Z004B-20-PREP-FIX1",
+  "route_scope": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/bom/BomList.vue"
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/bom/",
+    "PUT /api/bom/{bom_id}",
+    "POST /api/bom/{bom_id}/set-default",
+    "POST /api/bom/{bom_id}/activate",
+    "POST /api/bom/{bom_id}/deactivate",
+    "POST /api/bom/{bom_id}/explode"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/bom/",
+    "GET /api/bom/{bom_id}",
+    "GET /api/bom/material-processing",
+    "GET /api/bom/material-processing-inbound",
+    "GET /api/bom/material-deduction",
+    "GET /api/bom/material-sales-outbound",
+    "GET /api/bom/material-types",
+    "GET /api/bom/material-units",
+    "GET /api/auth/me",
+    "GET /api/auth/actions?module=bom"
+  ],
+  "allowed_read_endpoint_count": 10,
+  "allowed_read_endpoint_hit_count": 10,
+  "allowed_read_endpoint_hits": [
+    "GET /api/auth/actions?module=bom",
+    "GET /api/auth/me",
+    "GET /api/bom/",
+    "GET /api/bom/material-deduction",
+    "GET /api/bom/material-processing",
+    "GET /api/bom/material-processing-inbound",
+    "GET /api/bom/material-sales-outbound",
+    "GET /api/bom/material-types",
+    "GET /api/bom/material-units",
+    "GET /api/bom/{bom_id}"
+  ],
+  "allowed_read_endpoint_missed": [],
+  "scenario_tag_prefix": "Z002-BOM-{YYYYMMDD}-{NNN}",
+  "carrier_gate_summary": {
+    "scenario_tag_pattern": "^Z002-BOM-\\d{8}-\\d{3}$",
+    "request_id_pattern": "^Z002-BOM-\\d{8}-\\d{3}-RQ-I[0-9A-F]{4}-B[0-9A-F]{4}-R[0-9A-F]{4}$",
+    "local_dev_db_gate_rule": "APP_ENV=development 且 LINGYI_DB_URL=sqlite:///./lingyi_service.local.db"
+  },
+  "browser_route_coverage": {
+    "/bom/list": {
+      "desktop": true,
+      "mobile": true
+    },
+    "/bom/detail": {
+      "desktop": true,
+      "mobile": true
+    }
+  },
+  "browser_approved_write_request_count": 6,
+  "api_regression_approved_write_request_count": 6,
+  "write_request_count_total": 12,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "business_import_export_download_upload_print_count": 0,
+  "fail_closed_case_count": 3,
+  "fail_closed_cases": [
+    {
+      "case_id": "missing_request_id",
+      "status": 409,
+      "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+      "message": "request_id 不能为空"
+    },
+    {
+      "case_id": "illegal_scenario_tag",
+      "status": 409,
+      "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+      "message": "request_id 未包含合法 scenario_tag"
+    },
+    {
+      "case_id": "source_ref_mismatch",
+      "status": 409,
+      "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+      "message": "bom_no_or_source_ref 载体与业务载体不一致"
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "cancel_cleanup_executed": true,
+  "zero_residual_check_executed": true,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "residual_table_counts": {
+    "ly_apparel_bom": 0,
+    "ly_apparel_bom_item": 0,
+    "ly_bom_operation": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "residual_snapshot_context": {
+    "baseline_before": {
+      "ly_apparel_bom": 2,
+      "ly_apparel_bom_item": 2,
+      "ly_bom_operation": 2,
+      "ly_operation_audit_log": 10,
+      "ly_security_audit_log": 0
+    },
+    "db_path": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/lingyi_service.local.db"
+  },
+  "screenshots_dir": "/tmp/task_z004b21_screenshots",
+  "screenshots_count": 8,
+  "screenshots_png_count": 8,
+  "screenshots": [
+    "/tmp/task_z004b21_screenshots/01_bom_list_desktop_before.png",
+    "/tmp/task_z004b21_screenshots/02_bom_list_mobile_before.png",
+    "/tmp/task_z004b21_screenshots/03_bom_detail_desktop_after_write.png",
+    "/tmp/task_z004b21_screenshots/04_bom_detail_mobile_after_write.png",
+    "/tmp/task_z004b21_screenshots/05_bom_list_desktop_after_write.png",
+    "/tmp/task_z004b21_screenshots/06_bom_list_mobile_after_write.png",
+    "/tmp/task_z004b21_screenshots/07_bom_detail_desktop_final.png",
+    "/tmp/task_z004b21_screenshots/08_bom_detail_mobile_final.png"
+  ],
+  "desktop_screenshot_count": 4,
+  "mobile_screenshot_count": 4,
+  "browser_result_json": "/tmp/task_z004b21_browser_result.json",
+  "api_regression_result_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_21_cand04_bom_api_regression_result.json",
+  "zero_residual_result_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_21_cand04_bom_zero_residual_result.json",
+  "remote_lifecycle_parked": true,
+  "npm_validation": {
+    "precheck_dev_runtime": "PASS",
+    "typecheck": "PASS",
+    "verify": "PASS",
+    "workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc"
+  },
+  "desktop_mobile_coverage": {
+    "desktop": 4,
+    "mobile": 4,
+    "routes": {
+      "/bom/list": {
+        "desktop": true,
+        "mobile": true
+      },
+      "/bom/detail": {
+        "desktop": true,
+        "mobile": true
+      }
+    }
+  }
+}

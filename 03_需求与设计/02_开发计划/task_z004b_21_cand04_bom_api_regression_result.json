@@ -1,0 +1,158 @@
+{
+  "task_id": "TASK-Z004B-21-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-04",
+  "allowed_write_endpoints": [
+    "POST /api/bom/",
+    "PUT /api/bom/{bom_id}",
+    "POST /api/bom/{bom_id}/set-default",
+    "POST /api/bom/{bom_id}/activate",
+    "POST /api/bom/{bom_id}/deactivate",
+    "POST /api/bom/{bom_id}/explode"
+  ],
+  "allowed_write_case_count": 6,
+  "successful_write_cases": [
+    {
+      "endpoint": "POST /api/bom/",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "name": "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571"
+        }
+      }
+    },
+    {
+      "endpoint": "PUT /api/bom/{bom_id}",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "name": "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571",
+          "status": "draft",
+          "updated_at": "2026-05-17T07:09:49.575276"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/bom/{bom_id}/activate",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "name": "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571",
+          "status": "active",
+          "effective_date": "2026-05-17"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/bom/{bom_id}/set-default",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "name": "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571",
+          "item_code": "ITEM-Z004B21-A-782",
+          "is_default": true
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/bom/{bom_id}/deactivate",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "name": "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571",
+          "status": "inactive"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/bom/{bom_id}/explode",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "material_requirements": [
+            {
+              "material_item_code": "MAT-Z004B21-001",
+              "color": "BLACK",
+              "size": null,
+              "uom": "M",
+              "qty": 148.32
+            }
+          ],
+          "operation_costs": [
+            {
+              "process_name": "CUTTING",
+              "is_subcontract": false,
+              "unit_cost": 3.5,
+              "total_cost": 420.0
+            }
+          ],
+          "total_material_qty": 148.32,
+          "total_operation_cost": 420.0
+        }
+      }
+    }
+  ],
+  "api_regression_approved_write_request_count": 6,
+  "fail_closed_case_count": 3,
+  "fail_closed_cases": [
+    {
+      "case_id": "missing_request_id",
+      "status": 409,
+      "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+      "message": "request_id 不能为空"
+    },
+    {
+      "case_id": "illegal_scenario_tag",
+      "status": 409,
+      "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+      "message": "request_id 未包含合法 scenario_tag"
+    },
+    {
+      "case_id": "source_ref_mismatch",
+      "status": 409,
+      "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+      "message": "bom_no_or_source_ref 载体与业务载体不一致"
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "business_import_export_download_upload_print_count": 0,
+  "success_chain_summary": {
+    "created_bom_id": 10,
+    "created_bom_no": "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571",
+    "scenario_tag": "Z002-BOM-20260517-782",
+    "source_ref": "SRC-Z002-BOM-20260517-782"
+  },
+  "cancel_cleanup_executed": true,
+  "residual_table_counts": {
+    "ly_apparel_bom": 0,
+    "ly_apparel_bom_item": 0,
+    "ly_bom_operation": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "extra_residual_by_source_ref": {
+    "SRC-Z002-BOM-20260517-804": 0,
+    "SRC-Z002-BOM-20260517-782": 0,
+    "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571": 0
+  },
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual"
+}

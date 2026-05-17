@@ -1,0 +1,42 @@
+{
+  "task_id": "TASK-Z004B-21-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-04",
+  "scenario_tag": {
+    "browser": "Z002-BOM-20260517-804",
+    "api": "Z002-BOM-20260517-782"
+  },
+  "source_ref": {
+    "browser": "SRC-Z002-BOM-20260517-804",
+    "api": "SRC-Z002-BOM-20260517-782",
+    "api_bom_no": "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571"
+  },
+  "bom_ids": [
+    9,
+    10
+  ],
+  "cancel_cleanup_executed": true,
+  "zero_residual_check_executed": true,
+  "residual_scan_result": "no_new_residual",
+  "residual_table_counts": {
+    "ly_apparel_bom": 0,
+    "ly_apparel_bom_item": 0,
+    "ly_bom_operation": 0,
+    "ly_operation_audit_log": 0,
+    "ly_security_audit_log": 0
+  },
+  "extra_residual_by_source_ref": {
+    "SRC-Z002-BOM-20260517-804": 0,
+    "SRC-Z002-BOM-20260517-782": 0,
+    "BOM-ITEM-Z004B21-A-782-Z002-BOM-20260517-782-20260517070949564571": 0
+  },
+  "cleanup_scope_note": "仅清理本轮 browser/api 场景生成的 BOM 测试数据，不涉及其他业务数据。",
+  "zero_residual": true,
+  "baseline_before": {
+    "ly_apparel_bom": 2,
+    "ly_apparel_bom_item": 2,
+    "ly_bom_operation": 2,
+    "ly_operation_audit_log": 10,
+    "ly_security_audit_log": 0
+  },
+  "db_path": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/lingyi_service.local.db"
+}
