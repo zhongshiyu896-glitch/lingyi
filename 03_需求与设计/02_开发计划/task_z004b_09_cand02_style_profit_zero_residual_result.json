@@ -1,0 +1,22 @@
+{
+  "task_id": "TASK-Z004B-09-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-02",
+  "scenario_tag": "Z003-STYLE-PROFIT-20260517-195",
+  "source_order_ref": {
+    "api_sales_order": "SO-Z004B09-API-120644",
+    "browser_sales_order": "SO-Z004B09-696744"
+  },
+  "cancel_cleanup_executed": true,
+  "zero_residual_check_executed": true,
+  "residual_scan_result": "no_new_residual",
+  "residual_table_counts": {
+    "ly_style_profit_snapshot": 0,
+    "ly_style_profit_detail": 0,
+    "ly_style_profit_source_map": 0
+  },
+  "extra_residual_by_idempotency_key": {
+    "api_nonce": 0,
+    "browser_nonce": 0
+  },
+  "zero_residual": true
+}

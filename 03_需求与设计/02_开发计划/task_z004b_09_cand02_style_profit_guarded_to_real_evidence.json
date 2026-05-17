@@ -1,0 +1,99 @@
+{
+  "task_id": "TASK-Z004B-09-IMPL",
+  "source_head": "ba4453cbc513d3c5ed3849c529929117c90b516b",
+  "source_subject": "chore: seal cand01 sales inventory guarded real",
+  "selected_candidate_id": "TASK-Z004B-CAND-02",
+  "candidate_type": "guarded_to_real_interaction_gap",
+  "module": "style_profit",
+  "boundary_source_task": "TASK-Z004B-08-PREP",
+  "route_scope": [
+    "/reports/style-profit",
+    "/reports/style-profit/detail"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue"
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/reports/style-profit/snapshots"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/reports/style-profit/snapshots",
+    "GET /api/reports/style-profit/snapshots/{snapshot_id}",
+    "GET /api/auth/me",
+    "GET /api/auth/actions?module=style_profit"
+  ],
+  "allowed_read_endpoint_count": 4,
+  "allowed_read_endpoint_hit_count": 4,
+  "allowed_read_endpoint_missed": [],
+  "browser_route_coverage": {
+    "/reports/style-profit": {
+      "desktop": true,
+      "mobile": true
+    },
+    "/reports/style-profit/detail": {
+      "desktop": true,
+      "mobile": true
+    }
+  },
+  "browser_approved_write_request_count": 1,
+  "api_regression_approved_write_request_count": 1,
+  "write_request_count_total": 2,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "fail_closed_case_count": 3,
+  "fail_closed_cases": [
+    {
+      "case_id": "FC-01-MISSING-REQUEST-ID",
+      "status": 409,
+      "code": "STYLE_PROFIT_IDEMPOTENCY_CONFLICT",
+      "message": "request_id 不能为空"
+    },
+    {
+      "case_id": "FC-02-INVALID-SCENARIO-TAG",
+      "status": 409,
+      "code": "STYLE_PROFIT_IDEMPOTENCY_CONFLICT",
+      "message": "request_id 未包含合法 scenario_tag"
+    },
+    {
+      "case_id": "FC-03-MISMATCHED-SOURCE-REF",
+      "status": 409,
+      "code": "STYLE_PROFIT_IDEMPOTENCY_CONFLICT",
+      "message": "source_ref 载体与 scenario_tag 不一致"
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "cancel_cleanup_executed": true,
+  "zero_residual_check_executed": true,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "residual_table_counts": {
+    "ly_style_profit_snapshot": 0,
+    "ly_style_profit_detail": 0,
+    "ly_style_profit_source_map": 0
+  },
+  "residual_snapshot_context": {
+    "api_scenario_tag": "Z003-STYLE-PROFIT-20260517-195",
+    "browser_snapshot_id": 6
+  },
+  "screenshots_dir": "/tmp/task_z004b09_screenshots",
+  "screenshots_count": 8,
+  "screenshots_png_count": 8,
+  "browser_result_json": "/tmp/task_z004b09_browser_result.json",
+  "api_regression_result_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_09_cand02_style_profit_api_regression_result.json",
+  "zero_residual_result_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_09_cand02_style_profit_zero_residual_result.json",
+  "remote_lifecycle_parked": true,
+  "npm_validation": {
+    "precheck_dev_runtime": "PASS",
+    "typecheck": "PASS",
+    "verify": "PASS"
+  },
+  "business_import_export_download_upload_print_count": 0,
+  "dev_runtime_export_helper_count": 3,
+  "dev_runtime_false_positive_request_count": 3,
+  "dev_runtime_false_positive_note": "GET /@id/__x00__plugin-vue:export-helper 来自 Vite dev runtime helper，不属于业务导入/导出/下载/上传/打印动作。"
+}

@@ -109,6 +109,26 @@
         class="feedback-alert"
         data-testid="style-profit-archive-feedback"
       />
+      <el-alert
+        v-if="latestArchiveSnapshotId > 0"
+        type="success"
+        :closable="false"
+        show-icon
+        class="feedback-alert"
+        data-testid="style-profit-archive-readback-ready"
+      >
+        <template #title>
+          留档已完成，可回读快照：
+          <el-button
+            link
+            type="primary"
+            data-testid="style-profit-open-latest-detail"
+            @click="openLatestArchiveDetail"
+          >
+            {{ latestArchiveSnapshotNo || `ID ${latestArchiveSnapshotId}` }}
+          </el-button>
+        </template>
+      </el-alert>
 
       <el-empty v-if="!canRead" description="无款式利润查看权限" data-testid="style-profit-no-permission" />
       <template v-else>
@@ -269,6 +289,8 @@ const total = ref<number>(0)
 const errorMessage = ref<string>('')
 const archiveFeedback = ref<string>('')
 const archiveFeedbackType = ref<'success' | 'warning'>('success')
+const latestArchiveSnapshotId = ref<number>(0)
+const latestArchiveSnapshotNo = ref<string>('')
 const weekColumns = ['日', '一', '二', '三', '四', '五', '六']
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
@@ -353,6 +375,8 @@ const resetQuery = (): void => {
   query.page_size = 20
   errorMessage.value = ''
   archiveFeedback.value = ''
+  latestArchiveSnapshotId.value = 0
+  latestArchiveSnapshotNo.value = ''
   resetRows()
 }
 
@@ -430,6 +454,8 @@ const runArchiveAction = async (): Promise<void> => {
     }
 
     const result = await writeStyleProfitSnapshot(payload, { request_id: requestId })
+    latestArchiveSnapshotId.value = Number(result.data.snapshot_id || 0)
+    latestArchiveSnapshotNo.value = String(result.data.snapshot_no || '')
     archiveFeedbackType.value = 'success'
     archiveFeedback.value = `留档完成：${result.data.snapshot_no}`
     ElMessage.success(archiveFeedback.value)
@@ -484,6 +510,16 @@ const loadRows = async (): Promise<void> => {
 
 const goDetail = (snapshotId: number): void => {
   router.push({ path: '/reports/style-profit/detail', query: { id: String(snapshotId) } })
+}
+
+const openLatestArchiveDetail = (): void => {
+  if (latestArchiveSnapshotId.value <= 0) {
+    return
+  }
+  router.push({
+    path: '/reports/style-profit/detail',
+    query: { id: String(latestArchiveSnapshotId.value), from: 'archive' },
+  })
 }
 
 const onPageChange = (page: number): void => {

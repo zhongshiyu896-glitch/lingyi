@@ -17,7 +17,16 @@
           data-testid="style-profit-detail-missing-id-state"
         />
         <el-alert
-          v-else-if="loadError"
+          v-else-if="fromArchiveEntry"
+          type="success"
+          :closable="false"
+          show-icon
+          title="已进入留档快照详情，可进行读回验证。"
+          class="warn-alert"
+          data-testid="style-profit-detail-readback-alert"
+        />
+        <el-alert
+          v-if="loadError"
           :title="`订单款式利润预测明细详情加载失败：${loadError}`"
           type="error"
           show-icon
@@ -224,6 +233,7 @@ const guardedFeedback = ref<string>('')
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const snapshotId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidSnapshotId = computed<boolean>(() => Number.isInteger(snapshotId.value) && snapshotId.value > 0)
+const fromArchiveEntry = computed<boolean>(() => String(route.query.from || '').trim() === 'archive')
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
