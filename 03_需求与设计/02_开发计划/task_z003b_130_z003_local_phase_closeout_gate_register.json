@@ -1,0 +1,180 @@
+{
+  "task_id": "TASK-Z003B-130-PREP",
+  "source_head": "714cac2b821a6e27b5463a2b7983492a75f116cb",
+  "source_subject": "chore: seal cand17 rollback tooling dry run",
+  "staged_empty": true,
+  "product_diff_empty": true,
+  "previous_task_id": "TASK-Z003B-129-PREP",
+  "local_candidate_pool_cleared": true,
+  "candidate_count": 0,
+  "candidates": [],
+  "duplicate_or_already_closed_count": 5,
+  "project_completion_claimed": false,
+  "completed_mainline_summary": [
+    {
+      "mainline": "frontend real-interaction closure",
+      "status": "completed",
+      "evidence_ref": "Z003 前端真实交互闭环链路已归档"
+    },
+    {
+      "mainline": "browser regression refresh",
+      "status": "completed",
+      "evidence_ref": "TASK-Z003B-100 / TASK-Z003B-101 / TASK-Z003B-103 / TASK-Z003B-104"
+    },
+    {
+      "mainline": "UI 1:1 alignment",
+      "status": "completed",
+      "evidence_ref": "TASK-Z003B-106-IMPL / TASK-Z003B-107 / TASK-Z003B-109 / TASK-Z003B-110"
+    },
+    {
+      "mainline": "readonly E2E scenario",
+      "status": "completed",
+      "evidence_ref": "TASK-Z003B-112-FIX1 / TASK-Z003B-113 / TASK-Z003B-115 / TASK-Z003B-116"
+    },
+    {
+      "mainline": "evidence / acceptance extension",
+      "status": "completed",
+      "evidence_ref": "TASK-Z003B-118 / TASK-Z003B-119 / TASK-Z003B-121 / TASK-Z003B-122"
+    },
+    {
+      "mainline": "local test data / rollback tooling dry-run",
+      "status": "completed",
+      "evidence_ref": "TASK-Z003B-124 / TASK-Z003B-125 / TASK-Z003B-127 / TASK-Z003B-128"
+    }
+  ],
+  "hard_gates": {
+    "remote_lifecycle_parked": true,
+    "push_allowed": false,
+    "pr_allowed": false,
+    "tag_allowed": false,
+    "release_allowed": false,
+    "cleanup_allowed": false,
+    "reset_restore_clean_allowed": false,
+    "requires_user_authorization_for_remote_lifecycle": true
+  },
+  "recommended_next_candidate_id": null,
+  "recommended_next_task_id": null,
+  "recommended_next_task_type": null,
+  "next_action_state": "WAIT_FOR_A_OR_USER_DECISION",
+  "next_action_note": "本地候选池清零不等于项目整体完成；后续需由 A 基于新的用户方向或新的代码真值重新建池，或等待用户明确授权远端生命周期。",
+  "remote_lifecycle_parked": true,
+  "entries": [
+    {
+      "entry_id": "E001",
+      "category": "source_head",
+      "scope": "git",
+      "item": "source_head",
+      "requirement": "HEAD must stay at 714cac2b821a6e27b5463a2b7983492a75f116cb",
+      "validation": "PASS",
+      "notes": "HEAD 已核对"
+    },
+    {
+      "entry_id": "E002",
+      "category": "source_head",
+      "scope": "git",
+      "item": "source_subject",
+      "requirement": "latest subject must be chore: seal cand17 rollback tooling dry run",
+      "validation": "PASS",
+      "notes": "subject 已核对"
+    },
+    {
+      "entry_id": "E003",
+      "category": "candidate_pool",
+      "scope": "local",
+      "item": "local_candidate_pool_cleared",
+      "requirement": "candidate pool should remain cleared after TASK-Z003B-129",
+      "validation": "PASS",
+      "notes": "candidate_count=0"
+    },
+    {
+      "entry_id": "E004",
+      "category": "candidate_pool",
+      "scope": "local",
+      "item": "duplicate_or_already_closed_count",
+      "requirement": "closed candidates should remain duplicate/already_closed",
+      "validation": "PASS",
+      "notes": "count=5"
+    },
+    {
+      "entry_id": "E005",
+      "category": "completed_mainlines",
+      "scope": "z003_local",
+      "item": "frontend_real_interaction",
+      "requirement": "frontend real-interaction closure archived",
+      "validation": "PASS",
+      "notes": "已闭环"
+    },
+    {
+      "entry_id": "E006",
+      "category": "completed_mainlines",
+      "scope": "z003_local",
+      "item": "browser_regression_refresh",
+      "requirement": "browser regression refresh archived",
+      "validation": "PASS",
+      "notes": "CAND-14 已闭环"
+    },
+    {
+      "entry_id": "E007",
+      "category": "completed_mainlines",
+      "scope": "z003_local",
+      "item": "ui_1to1_alignment",
+      "requirement": "UI 1:1 alignment archived",
+      "validation": "PASS",
+      "notes": "CAND-18 已闭环"
+    },
+    {
+      "entry_id": "E008",
+      "category": "completed_mainlines",
+      "scope": "z003_local",
+      "item": "readonly_e2e_scenario",
+      "requirement": "readonly E2E scenario archived",
+      "validation": "PASS",
+      "notes": "CAND-15 已闭环"
+    },
+    {
+      "entry_id": "E009",
+      "category": "completed_mainlines",
+      "scope": "z003_local",
+      "item": "evidence_acceptance_extension",
+      "requirement": "evidence/acceptance extension archived",
+      "validation": "PASS",
+      "notes": "CAND-16 已闭环"
+    },
+    {
+      "entry_id": "E010",
+      "category": "completed_mainlines",
+      "scope": "z003_local",
+      "item": "rollback_tooling_dry_run",
+      "requirement": "local test data/rollback tooling dry-run archived",
+      "validation": "PASS",
+      "notes": "CAND-17 已闭环"
+    },
+    {
+      "entry_id": "E011",
+      "category": "hard_gates",
+      "scope": "remote_lifecycle",
+      "item": "remote_gates",
+      "requirement": "push/pr/tag/release/cleanup/reset_restore_clean should stay forbidden",
+      "validation": "PASS",
+      "notes": "全部 false"
+    },
+    {
+      "entry_id": "E012",
+      "category": "next_action",
+      "scope": "dispatch",
+      "item": "next_action_state",
+      "requirement": "set WAIT_FOR_A_OR_USER_DECISION with null recommended next task",
+      "validation": "PASS",
+      "notes": "等待 A 或用户下一步决策"
+    },
+    {
+      "entry_id": "E013",
+      "category": "remote_lifecycle",
+      "scope": "gate",
+      "item": "remote_lifecycle_parked",
+      "requirement": "remote lifecycle remains parked",
+      "validation": "PASS",
+      "notes": "true"
+    }
+  ]
+}

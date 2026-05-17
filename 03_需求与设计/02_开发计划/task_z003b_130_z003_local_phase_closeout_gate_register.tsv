@@ -1,0 +1,14 @@
+entry_id	category	scope	item	requirement	validation	notes
+E001	source_head	git	source_head	HEAD must stay at 714cac2b821a6e27b5463a2b7983492a75f116cb	PASS	HEAD 已核对
+E002	source_head	git	source_subject	latest subject must be chore: seal cand17 rollback tooling dry run	PASS	subject 已核对
+E003	candidate_pool	local	local_candidate_pool_cleared	candidate pool should remain cleared after TASK-Z003B-129	PASS	candidate_count=0
+E004	candidate_pool	local	duplicate_or_already_closed_count	closed candidates should remain duplicate/already_closed	PASS	count=5
+E005	completed_mainlines	z003_local	frontend_real_interaction	frontend real-interaction closure archived	PASS	已闭环
+E006	completed_mainlines	z003_local	browser_regression_refresh	browser regression refresh archived	PASS	CAND-14 已闭环
+E007	completed_mainlines	z003_local	ui_1to1_alignment	UI 1:1 alignment archived	PASS	CAND-18 已闭环
+E008	completed_mainlines	z003_local	readonly_e2e_scenario	readonly E2E scenario archived	PASS	CAND-15 已闭环
+E009	completed_mainlines	z003_local	evidence_acceptance_extension	evidence/acceptance extension archived	PASS	CAND-16 已闭环
+E010	completed_mainlines	z003_local	rollback_tooling_dry_run	local test data/rollback tooling dry-run archived	PASS	CAND-17 已闭环
+E011	hard_gates	remote_lifecycle	remote_gates	push/pr/tag/release/cleanup/reset_restore_clean should stay forbidden	PASS	全部 false
+E012	next_action	dispatch	next_action_state	set WAIT_FOR_A_OR_USER_DECISION with null recommended next task	PASS	等待 A 或用户下一步决策
+E013	remote_lifecycle	gate	remote_lifecycle_parked	remote lifecycle remains parked	PASS	true
