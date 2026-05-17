@@ -1,0 +1,17 @@
+{
+  "task_id": "TASK-Z004B-03-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-01",
+  "scenario_tag": "Z003-SALES-ORDER-20260517-902",
+  "source_order_ref": "SRC-Z003-SALES-ORDER-20260517-902",
+  "zero_residual_check_executed": true,
+  "cancel_cleanup_executed": true,
+  "residual_scan_result": "no_new_residual",
+  "zero_residual": true,
+  "residual_table_counts": {
+    "source_row_count": 1,
+    "non_cancelled_count": 0,
+    "pending_outbox_count": 0,
+    "cancelled_count": 1,
+    "active_outbox_count": 0
+  }
+}

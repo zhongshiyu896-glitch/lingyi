@@ -96,11 +96,17 @@
         >
           本地作废
         </el-button>
-        <el-button data-testid="sales-order-guarded-place-order" :disabled="!canRead" @click="onUnavailableAction('下单')">
-          下单
+        <el-button data-testid="sales-order-place-order" type="success" :disabled="!canRead || localWriteLoading" @click="applyLocalSalesOrderDraft">
+          下单（本地草稿）
         </el-button>
-        <el-button data-testid="sales-order-guarded-fetch" :disabled="!canRead" @click="onUnavailableAction('获取订单')">
+        <el-button data-testid="sales-order-fetch-orders" :disabled="!canRead || localWriteLoading" @click="applyPrimaryQuery">
           获取订单
+        </el-button>
+        <el-button data-testid="sales-order-open-stock-ledger" :disabled="!canRead || localWriteLoading" @click="openStockLedgerReadback">
+          库存台账回读
+        </el-button>
+        <el-button data-testid="sales-order-open-references" :disabled="!canRead || localWriteLoading" @click="openReferencesReadback">
+          参考资料回读
         </el-button>
         <el-button data-testid="sales-order-guarded-import" :disabled="!canRead" @click="onUnavailableAction('导入')">
           导入
@@ -604,6 +610,40 @@ const onFulfillmentReset = (): void => {
 
 const onUnavailableAction = (actionName: string): void => {
   ElMessage.warning(`${actionName}功能在本地首版暂未接入，仅保留按钮与状态对齐`)
+}
+
+const resolveReadbackItemCode = (): string => {
+  if (localDraft.value?.items?.length) {
+    const firstItemCode = localDraft.value.items[0]?.item_code?.trim()
+    if (firstItemCode) {
+      return firstItemCode
+    }
+  }
+  return localWriteForm.item_code.trim() || 'SO-ITEM-001'
+}
+
+const openStockLedgerReadback = (): void => {
+  const itemCode = resolveReadbackItemCode()
+  void router.push({
+    path: '/sales-inventory/stock-ledger',
+    query: {
+      item_code: itemCode,
+      company: localWriteForm.company.trim() || 'LY-TEST',
+      warehouse: localWriteForm.warehouse.trim() || 'SO-WH-001',
+      source: 'sales-order-readback',
+    },
+  })
+}
+
+const openReferencesReadback = (): void => {
+  void router.push({
+    path: '/sales-inventory/references',
+    query: {
+      tab: 'warehouses',
+      company: localWriteForm.company.trim() || 'LY-TEST',
+      source: 'sales-order-readback',
+    },
+  })
 }
 
 const applyLocalSalesOrderDraft = async (): Promise<void> => {

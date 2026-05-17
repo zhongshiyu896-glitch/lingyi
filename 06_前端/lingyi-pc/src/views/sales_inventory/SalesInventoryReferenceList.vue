@@ -221,6 +221,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchSalesInventoryCustomers,
@@ -233,6 +234,7 @@ import { usePermissionStore } from '@/stores/permission'
 type DetailType = 'customer' | 'warehouse'
 
 const permissionStore = usePermissionStore()
+const route = useRoute()
 const activeTab = ref<'customers' | 'warehouses'>('customers')
 const customerLoading = ref<boolean>(false)
 const warehouseLoading = ref<boolean>(false)
@@ -264,6 +266,17 @@ const warehouseQuery = reactive({
   page: 1,
   page_size: 20,
 })
+
+const applyRoutePrefill = (): void => {
+  const tab = typeof route.query.tab === 'string' ? route.query.tab.trim() : ''
+  const company = typeof route.query.company === 'string' ? route.query.company.trim() : ''
+  if (tab === 'customers' || tab === 'warehouses') {
+    activeTab.value = tab
+  }
+  if (company) {
+    warehouseQuery.company = company
+  }
+}
 
 const loadCustomers = async (): Promise<void> => {
   if (!canRead.value) {
@@ -411,6 +424,7 @@ onMounted(async () => {
     return
   }
   if (canRead.value) {
+    applyRoutePrefill()
     await loadCustomers()
     await loadWarehouses()
   }

@@ -1,0 +1,129 @@
+{
+  "task_id": "TASK-Z004B-03-IMPL",
+  "source_head": "b83e708d99c83e4f5259f55d42cdb1e24715effe",
+  "source_subject": "chore: seal z003 local phase closeout gates",
+  "selected_candidate_id": "TASK-Z004B-CAND-01",
+  "candidate_type": "guarded_to_real_interaction_gap",
+  "module": "sales_inventory",
+  "boundary_source_task": "TASK-Z004B-02-PREP",
+  "route_scope": [
+    "/sales-inventory/sales-orders",
+    "/sales-inventory/stock-ledger",
+    "/sales-inventory/references"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue"
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/sales-inventory/sales-orders/drafts",
+    "POST /api/sales-inventory/sales-orders/drafts/{draft_id}/cancel"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/sales-inventory/sales-orders",
+    "GET /api/sales-inventory/sales-orders/{name}",
+    "GET /api/sales-inventory/sales-order-fulfillment",
+    "GET /api/sales-inventory/items/{item_code}/stock-summary",
+    "GET /api/sales-inventory/items/{item_code}/stock-ledger",
+    "GET /api/sales-inventory/aggregation",
+    "GET /api/sales-inventory/customers",
+    "GET /api/sales-inventory/warehouses",
+    "GET /api/sales-inventory/material-transfers",
+    "GET /api/sales-inventory/material-counts"
+  ],
+  "browser_route_coverage": {
+    "/sales-inventory/sales-orders": {
+      "desktop": true,
+      "mobile": true
+    },
+    "/sales-inventory/stock-ledger": {
+      "desktop": true,
+      "mobile": true
+    },
+    "/sales-inventory/references": {
+      "desktop": true,
+      "mobile": true
+    }
+  },
+  "browser_approved_write_request_count": 2,
+  "api_regression_approved_write_request_count": 2,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "write_request_count_total": 4,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "fail_closed_case_count": 3,
+  "db_write_on_failed_gate_count": 0,
+  "fail_closed_cases": [
+    {
+      "case_id": "FC-01-IDEMPOTENCY-MISMATCH",
+      "request_path": "/api/sales-inventory/sales-orders/drafts",
+      "expected_status": 409,
+      "actual_status": 409,
+      "response_code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+      "db_changed": false
+    },
+    {
+      "case_id": "FC-02-OPERATION-MISMATCH",
+      "request_path": "/api/sales-inventory/sales-orders/drafts",
+      "expected_status": 409,
+      "actual_status": 409,
+      "response_code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+      "db_changed": false
+    },
+    {
+      "case_id": "FC-03-COMPANY-MISMATCH",
+      "request_path": "/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+      "expected_status": 409,
+      "actual_status": 409,
+      "response_code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+      "db_changed": false
+    }
+  ],
+  "draft_create_cancel_evidence": {
+    "browser_scenario_tag": "Z003-SALES-ORDER-20260517-901",
+    "browser_create_status": 201,
+    "browser_cancel_status": 200,
+    "browser_cancel_after_status": "cancelled",
+    "browser_readback_status": "Cancelled",
+    "browser_readback_docstatus": 2,
+    "api_scenario_tag": "Z003-SALES-ORDER-20260517-902",
+    "api_create_status": 201,
+    "api_cancel_status": 200
+  },
+  "cancel_cleanup_executed": true,
+  "zero_residual_check_executed": true,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "residual_table_counts": {
+    "non_cancelled_draft_count": 0,
+    "pending_outbox_count": 0,
+    "active_outbox_event_count": 0,
+    "uncancelled_source_row_count": 0
+  },
+  "residual_snapshot_context": {
+    "source_row_count": 1,
+    "cancelled_count": 1
+  },
+  "allowed_read_endpoint_count": 10,
+  "allowed_read_endpoint_hit_count": 9,
+  "allowed_read_endpoint_missed": [
+    "GET /api/sales-inventory/material-counts"
+  ],
+  "allowed_read_endpoint_missed_reason": "本次 CAND-01 仅覆盖 sales orders -> stock ledger -> references 最小闭环，未触发盘点页查询。",
+  "screenshots_count": 8,
+  "screenshots_dir": "/tmp/task_z004b03_screenshots",
+  "screenshots_png_count": 8,
+  "browser_result_json": "/tmp/task_z004b03_browser_result.json",
+  "api_regression_result_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_03_cand01_api_regression_result.json",
+  "zero_residual_result_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_03_cand01_zero_residual_result.json",
+  "npm_validation": {
+    "precheck_dev_runtime": "PASS",
+    "typecheck": "PASS",
+    "verify": "PASS"
+  },
+  "remote_lifecycle_parked": true
+}

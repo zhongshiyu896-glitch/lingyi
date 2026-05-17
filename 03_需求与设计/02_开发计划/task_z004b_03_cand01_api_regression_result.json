@@ -1,0 +1,217 @@
+{
+  "task_id": "TASK-Z004B-03-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-01",
+  "allowed_write_endpoints": [
+    "POST /api/sales-inventory/sales-orders/drafts",
+    "POST /api/sales-inventory/sales-orders/drafts/{draft_id}/cancel"
+  ],
+  "allowed_write_case_count": 2,
+  "successful_write_cases": [
+    {
+      "case_id": "AW-01-CREATE-DRAFT",
+      "status": 201,
+      "draft_id": 12,
+      "scenario_tag": "Z003-SALES-ORDER-20260517-902",
+      "request_id": "Z003-SALES-ORDER-20260517-902-api-success-create-1778986616"
+    },
+    {
+      "case_id": "AW-02-CANCEL-DRAFT",
+      "status": 200,
+      "draft_id": 12,
+      "scenario_tag": "Z003-SALES-ORDER-20260517-902",
+      "request_id": "Z003-SALES-ORDER-20260517-902-api-success-cancel"
+    }
+  ],
+  "fail_closed_cases": [
+    {
+      "case_id": "FC-01-IDEMPOTENCY-MISMATCH",
+      "request_path": "/api/sales-inventory/sales-orders/drafts",
+      "expected_status": 409,
+      "actual_status": 409,
+      "response_code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+      "db_changed": false
+    },
+    {
+      "case_id": "FC-02-OPERATION-MISMATCH",
+      "request_path": "/api/sales-inventory/sales-orders/drafts",
+      "expected_status": 409,
+      "actual_status": 409,
+      "response_code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+      "db_changed": false
+    },
+    {
+      "case_id": "FC-03-COMPANY-MISMATCH",
+      "request_path": "/api/sales-inventory/sales-orders/drafts/12/cancel",
+      "expected_status": 409,
+      "actual_status": 409,
+      "response_code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+      "db_changed": false
+    }
+  ],
+  "fail_closed_case_count": 3,
+  "db_write_on_failed_gate_count": 0,
+  "api_regression_approved_write_request_count": 2,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "cancel_cleanup_executed": true,
+  "zero_residual": true,
+  "residual_table_counts": {
+    "source_row_count": 1,
+    "non_cancelled_count": 0,
+    "pending_outbox_count": 0,
+    "cancelled_count": 1,
+    "active_outbox_count": 0
+  },
+  "baseline_before": {
+    "row_count": 0,
+    "draft_ids": [],
+    "status_counts": {
+      "non_cancelled": 0,
+      "pending_outbox": 0,
+      "cancelled": 0
+    },
+    "active_outbox_count": 0,
+    "outbox_status_counts": {}
+  },
+  "snapshot_after_create": {
+    "row_count": 1,
+    "draft_ids": [
+      12
+    ],
+    "status_counts": {
+      "non_cancelled": 1,
+      "pending_outbox": 1,
+      "cancelled": 0
+    },
+    "active_outbox_count": 1,
+    "outbox_status_counts": {
+      "in_pending": 1
+    }
+  },
+  "final_snapshot": {
+    "row_count": 1,
+    "draft_ids": [
+      12
+    ],
+    "status_counts": {
+      "non_cancelled": 0,
+      "pending_outbox": 0,
+      "cancelled": 1
+    },
+    "active_outbox_count": 0,
+    "outbox_status_counts": {
+      "cancelled": 1
+    }
+  },
+  "responses": {
+    "create": {
+      "status": 201,
+      "body": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 12,
+          "sales_order_no": "SO-Z003-SALES-ORDER-20260517-902",
+          "source_order_ref": "SRC-Z003-SALES-ORDER-20260517-902",
+          "company": "LY-TEST",
+          "customer": "LOCAL-CUSTOMER",
+          "status": "pending_outbox",
+          "transaction_date": null,
+          "delivery_date": null,
+          "currency": "CNY",
+          "grand_total": "12.50",
+          "idempotency_key": "IDEMP-Z003-SALES-ORDER-20260517-902",
+          "scenario_tag": "Z003-SALES-ORDER-20260517-902",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T02:56:56.443782Z",
+          "cancelled_by": null,
+          "cancelled_at": null,
+          "cancel_reason": null,
+          "items": [
+            {
+              "id": 12,
+              "draft_id": 12,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "rate": "12.50",
+              "amount": "12.50",
+              "uom": "Nos",
+              "warehouse": "SO-WH-001"
+            }
+          ]
+        }
+      },
+      "raw": "{\"code\":\"0\",\"message\":\"success\",\"data\":{\"id\":12,\"sales_order_no\":\"SO-Z003-SALES-ORDER-20260517-902\",\"source_order_ref\":\"SRC-Z003-SALES-ORDER-20260517-902\",\"company\":\"LY-TEST\",\"customer\":\"LOCAL-CUSTOMER\",\"status\":\"pending_outbox\",\"transaction_date\":null,\"delivery_date\":null,\"currency\":\"CNY\",\"grand_total\":\"12.50\",\"idempotency_key\":\"IDEMP-Z003-SALES-ORDER-20260517-902\",\"scenario_tag\":\"Z003-SALES-ORDER-20260517-902\",\"created_by\":\"local.dev\",\"created_at\":\"2026-05-17T02:56:56.443782Z\",\"cancelled_by\":null,\"cancelled_at\":null,\"cancel_reason\":null,\"items\":[{\"id\":12,\"draft_id\":12,\"item_code\":\"SO-ITEM-001\",\"qty\":\"1.000000\",\"rate\":\"12.50\",\"amount\":\"12.50\",\"uom\":\"Nos\",\"warehouse\":\"SO-WH-001\"}]}}"
+    },
+    "cancel": {
+      "status": 200,
+      "body": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 12,
+          "sales_order_no": "SO-Z003-SALES-ORDER-20260517-902",
+          "source_order_ref": "SRC-Z003-SALES-ORDER-20260517-902",
+          "company": "LY-TEST",
+          "customer": "LOCAL-CUSTOMER",
+          "status": "cancelled",
+          "transaction_date": null,
+          "delivery_date": null,
+          "currency": "CNY",
+          "grand_total": "12.50",
+          "idempotency_key": "IDEMP-Z003-SALES-ORDER-20260517-902",
+          "scenario_tag": "Z003-SALES-ORDER-20260517-902",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T02:56:56.443782",
+          "cancelled_by": "local.dev",
+          "cancelled_at": "2026-05-17T02:56:56.469779Z",
+          "cancel_reason": "VOID-Z003-SALES-ORDER-20260517-902",
+          "items": [
+            {
+              "id": 12,
+              "draft_id": 12,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "rate": "12.50",
+              "amount": "12.50",
+              "uom": "Nos",
+              "warehouse": "SO-WH-001"
+            }
+          ]
+        }
+      },
+      "raw": "{\"code\":\"0\",\"message\":\"success\",\"data\":{\"id\":12,\"sales_order_no\":\"SO-Z003-SALES-ORDER-20260517-902\",\"source_order_ref\":\"SRC-Z003-SALES-ORDER-20260517-902\",\"company\":\"LY-TEST\",\"customer\":\"LOCAL-CUSTOMER\",\"status\":\"cancelled\",\"transaction_date\":null,\"delivery_date\":null,\"currency\":\"CNY\",\"grand_total\":\"12.50\",\"idempotency_key\":\"IDEMP-Z003-SALES-ORDER-20260517-902\",\"scenario_tag\":\"Z003-SALES-ORDER-20260517-902\",\"created_by\":\"local.dev\",\"created_at\":\"2026-05-17T02:56:56.443782\",\"cancelled_by\":\"local.dev\",\"cancelled_at\":\"2026-05-17T02:56:56.469779Z\",\"cancel_reason\":\"VOID-Z003-SALES-ORDER-20260517-902\",\"items\":[{\"id\":12,\"draft_id\":12,\"item_code\":\"SO-ITEM-001\",\"qty\":\"1.000000\",\"rate\":\"12.50\",\"amount\":\"12.50\",\"uom\":\"Nos\",\"warehouse\":\"SO-WH-001\"}]}}"
+    },
+    "fail_idempotency": {
+      "status": 409,
+      "body": {
+        "code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+        "message": "idempotency_key 载体与 scenario_tag 不一致",
+        "data": {}
+      },
+      "raw": "{\"code\":\"SALES_ORDER_IDEMPOTENCY_CONFLICT\",\"message\":\"idempotency_key 载体与 scenario_tag 不一致\",\"data\":{}}"
+    },
+    "fail_operation": {
+      "status": 409,
+      "body": {
+        "code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+        "message": "operation 载体与路由动作不一致",
+        "data": {}
+      },
+      "raw": "{\"code\":\"SALES_ORDER_IDEMPOTENCY_CONFLICT\",\"message\":\"operation 载体与路由动作不一致\",\"data\":{}}"
+    },
+    "fail_company": {
+      "status": 409,
+      "body": {
+        "code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+        "message": "company 载体与草稿上下文不一致",
+        "data": {}
+      },
+      "raw": "{\"code\":\"SALES_ORDER_IDEMPOTENCY_CONFLICT\",\"message\":\"company 载体与草稿上下文不一致\",\"data\":{}}"
+    }
+  }
+}

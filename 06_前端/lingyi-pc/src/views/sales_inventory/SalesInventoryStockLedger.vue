@@ -3164,6 +3164,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchSalesInventoryCustomerReturnInbound,
@@ -3204,6 +3205,7 @@ import {
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
+const route = useRoute()
 const loading = ref<boolean>(false)
 const rows = ref<StockLedgerItem[]>([])
 const total = ref<number>(0)
@@ -3615,6 +3617,21 @@ const query = reactive({
   page: 1,
   page_size: 20,
 })
+
+const applyRoutePrefill = (): void => {
+  const itemCode = typeof route.query.item_code === 'string' ? route.query.item_code.trim() : ''
+  const company = typeof route.query.company === 'string' ? route.query.company.trim() : ''
+  const warehouse = typeof route.query.warehouse === 'string' ? route.query.warehouse.trim() : ''
+  if (itemCode) {
+    query.item_code = itemCode
+  }
+  if (company) {
+    query.company = company
+  }
+  if (warehouse) {
+    query.warehouse = warehouse
+  }
+}
 
 const materialTransferQuery = reactive({
   item_code: '',
@@ -5207,6 +5224,7 @@ onMounted(async () => {
     return
   }
   if (canRead.value) {
+    applyRoutePrefill()
     await loadRows({ silentGuard: true })
     await loadMaterialTransfers()
   }
