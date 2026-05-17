@@ -1,0 +1,120 @@
+{
+  "task_id": "TASK-Z004B-76-IMPL",
+  "source_head": "8da4f718525d53fe3ec58111768e10e3fe2ecbbf",
+  "source_subject": "chore: seal z004 post archive anchor",
+  "selected_candidate_id": "TASK-Z004B-CAND-10",
+  "candidate_type": "guarded_to_real_interaction_reopen_gap",
+  "module": "sales_inventory_warehouse",
+  "route_scope": [
+    "/sales-inventory/sales-orders",
+    "/sales-inventory/stock-ledger",
+    "/warehouse"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue"
+  ],
+  "changed_product_file_count": 1,
+  "master_chain_id": "Z004-CAND10-20260518-578",
+  "carriers": {
+    "scenario_sales": "Z003-SALES-ORDER-20260518-578",
+    "scenario_warehouse": "Z003-WAREHOUSE-20260518-578",
+    "sales_request_id": "Z003-SALES-ORDER-20260518-578-REQ-SL",
+    "warehouse_create_request_id": "Z003-WAREHOUSE-20260518-578-RW-C-88B-AD7-8E6-428-71C-385-9F2",
+    "warehouse_cancel_request_id": "Z003-WAREHOUSE-20260518-578-RW-X-88B-AD7-8E6-7C3-BD5-385-E27",
+    "sales_idempotency_key": "IDEMP-Z003-SALES-ORDER-20260518-578",
+    "warehouse_idempotency_key": "Z003-WAREHOUSE-20260518-578-IDEMP-DRF",
+    "sales_source_ref": "SRC-Z003-SALES-ORDER-20260518-578",
+    "warehouse_source_ref": "Z003-WAREHOUSE-20260518-578-SRC-WH"
+  },
+  "approved_write_request_count": 4,
+  "allowed_write_endpoint_hit_set": [
+    "POST /api/sales-inventory/sales-orders/drafts",
+    "POST /api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+    "POST /api/warehouse/stock-entry-drafts",
+    "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel"
+  ],
+  "allowed_read_endpoint_hit_set": [
+    "GET /api/sales-inventory/items/{item_code}/stock-ledger",
+    "GET /api/sales-inventory/items/{item_code}/stock-summary",
+    "GET /api/sales-inventory/sales-orders",
+    "GET /api/sales-inventory/sales-orders/{name}",
+    "GET /api/warehouse/stock-entry-drafts/{draft_id}",
+    "GET /api/warehouse/stock-entry-drafts/{draft_id}/outbox-status",
+    "GET /api/warehouse/stock-ledger",
+    "GET /api/warehouse/stock-summary"
+  ],
+  "fail_closed_case_count": 4,
+  "db_write_on_failed_gate_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "rollback_cleanup_executed": true,
+  "residual_scan": {
+    "baseline": {
+      "sales_total": 0,
+      "sales_active": 0,
+      "warehouse_total": 0,
+      "warehouse_active": 0,
+      "outbox_active": 0,
+      "total": 0
+    },
+    "after_write": {
+      "sales_total": 1,
+      "sales_active": 1,
+      "warehouse_total": 1,
+      "warehouse_active": 1,
+      "outbox_active": 4,
+      "total": 6
+    },
+    "after_cleanup": {
+      "sales_total": 1,
+      "sales_active": 0,
+      "warehouse_total": 1,
+      "warehouse_active": 0,
+      "outbox_active": 0,
+      "total": 0
+    }
+  },
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "browser_result_json": "/tmp/task_z004b76_browser_result.json",
+  "browser_request_methods": [
+    "GET"
+  ],
+  "browser_write_request_count": 0,
+  "browser_forbidden_request_count": 0,
+  "browser_unexpected_write_request_count": 0,
+  "screenshots_count": 12,
+  "desktop_screenshot_count": 6,
+  "mobile_screenshot_count": 6,
+  "before_screenshot_count": 6,
+  "after_screenshot_count": 6,
+  "screenshot_refs": [
+    "/tmp/task_z004b76_screenshots/desktop_sales-inventory_sales-orders_before.png",
+    "/tmp/task_z004b76_screenshots/desktop_sales-inventory_sales-orders_after.png",
+    "/tmp/task_z004b76_screenshots/desktop_sales-inventory_stock-ledger_item_code_SO-ITEM-001_company_LY-TEST_warehouse_SO-WH-001_before.png",
+    "/tmp/task_z004b76_screenshots/desktop_sales-inventory_stock-ledger_item_code_SO-ITEM-001_company_LY-TEST_warehouse_SO-WH-001_after.png",
+    "/tmp/task_z004b76_screenshots/desktop_warehouse_before.png",
+    "/tmp/task_z004b76_screenshots/desktop_warehouse_after.png",
+    "/tmp/task_z004b76_screenshots/mobile_sales-inventory_sales-orders_before.png",
+    "/tmp/task_z004b76_screenshots/mobile_sales-inventory_sales-orders_after.png",
+    "/tmp/task_z004b76_screenshots/mobile_sales-inventory_stock-ledger_item_code_SO-ITEM-001_company_LY-TEST_warehouse_SO-WH-001_before.png",
+    "/tmp/task_z004b76_screenshots/mobile_sales-inventory_stock-ledger_item_code_SO-ITEM-001_company_LY-TEST_warehouse_SO-WH-001_after.png",
+    "/tmp/task_z004b76_screenshots/mobile_warehouse_before.png",
+    "/tmp/task_z004b76_screenshots/mobile_warehouse_after.png"
+  ],
+  "screenshot_png_count": 12,
+  "screenshot_count_match": true,
+  "npm_results": {
+    "precheck_dev_runtime": "PASS",
+    "typecheck": "PASS",
+    "verify": "PASS"
+  },
+  "remote_lifecycle_parked": true,
+  "readback_business_closed": false,
+  "project_completion_claimed": false,
+  "generated_at": "2026-05-17T18:20:19.506Z"
+}

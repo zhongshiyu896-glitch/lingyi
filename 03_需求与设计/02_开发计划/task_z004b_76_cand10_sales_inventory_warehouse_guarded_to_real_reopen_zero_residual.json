@@ -1,0 +1,46 @@
+{
+  "task_id": "TASK-Z004B-76-IMPL",
+  "source_head": "8da4f718525d53fe3ec58111768e10e3fe2ecbbf",
+  "selected_candidate_id": "TASK-Z004B-CAND-10",
+  "master_chain_id": "Z004-CAND10-20260518-578",
+  "scenario_sales": "Z003-SALES-ORDER-20260518-578",
+  "scenario_warehouse": "Z003-WAREHOUSE-20260518-578",
+  "residual_scan": {
+    "baseline": {
+      "sales_total": 0,
+      "sales_active": 0,
+      "warehouse_total": 0,
+      "warehouse_active": 0,
+      "outbox_active": 0,
+      "total": 0
+    },
+    "after_write": {
+      "sales_total": 1,
+      "sales_active": 1,
+      "warehouse_total": 1,
+      "warehouse_active": 1,
+      "outbox_active": 4,
+      "total": 6
+    },
+    "after_cleanup": {
+      "sales_total": 1,
+      "sales_active": 0,
+      "warehouse_total": 1,
+      "warehouse_active": 0,
+      "outbox_active": 0,
+      "total": 0
+    }
+  },
+  "rollback_cleanup_executed": true,
+  "cleanup_actions": [
+    "POST /api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+    "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel"
+  ],
+  "zero_residual": true,
+  "baseline_total": 0,
+  "after_write_total": 6,
+  "after_cleanup_total": 0,
+  "residual_scan_result": "no_new_residual",
+  "note": "以 active+outbox_active 计数作为本任务最小 zero-residual 口径。",
+  "generated_at": "2026-05-17T18:18:03.252Z"
+}

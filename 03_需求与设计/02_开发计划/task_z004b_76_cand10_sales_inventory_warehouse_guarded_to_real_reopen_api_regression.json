@@ -1,0 +1,573 @@
+{
+  "task_id": "TASK-Z004B-76-IMPL",
+  "source_head": "8da4f718525d53fe3ec58111768e10e3fe2ecbbf",
+  "source_subject": "chore: seal z004 post archive anchor",
+  "selected_candidate_id": "TASK-Z004B-CAND-10",
+  "candidate_type": "guarded_to_real_interaction_reopen_gap",
+  "module": "sales_inventory_warehouse",
+  "master_chain_id": "Z004-CAND10-20260518-578",
+  "carriers": {
+    "scenario_sales": "Z003-SALES-ORDER-20260518-578",
+    "scenario_warehouse": "Z003-WAREHOUSE-20260518-578",
+    "sales_request_id": "Z003-SALES-ORDER-20260518-578-REQ-SL",
+    "warehouse_create_request_id": "Z003-WAREHOUSE-20260518-578-RW-C-88B-AD7-8E6-428-71C-385-9F2",
+    "warehouse_cancel_request_id": "Z003-WAREHOUSE-20260518-578-RW-X-88B-AD7-8E6-7C3-BD5-385-E27",
+    "sales_idempotency_key": "IDEMP-Z003-SALES-ORDER-20260518-578",
+    "warehouse_idempotency_key": "Z003-WAREHOUSE-20260518-578-IDEMP-DRF",
+    "sales_source_ref": "SRC-Z003-SALES-ORDER-20260518-578",
+    "warehouse_source_ref": "Z003-WAREHOUSE-20260518-578-SRC-WH"
+  },
+  "allowed_write_endpoints": [
+    "POST /api/sales-inventory/sales-orders/drafts",
+    "POST /api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+    "POST /api/warehouse/stock-entry-drafts",
+    "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel"
+  ],
+  "allowed_write_endpoint_hit_set": [
+    "POST /api/sales-inventory/sales-orders/drafts",
+    "POST /api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+    "POST /api/warehouse/stock-entry-drafts",
+    "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel"
+  ],
+  "approved_write_request_count": 4,
+  "write_responses": [
+    {
+      "endpoint": "/api/sales-inventory/sales-orders/drafts",
+      "status": 201,
+      "ok": true,
+      "method": "POST",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 9,
+          "sales_order_no": "SO-Z003-SALES-ORDER-20260518-578",
+          "source_order_ref": "SRC-Z003-SALES-ORDER-20260518-578",
+          "company": "LY-TEST",
+          "customer": "LOCAL-CUSTOMER",
+          "status": "pending_outbox",
+          "transaction_date": null,
+          "delivery_date": null,
+          "currency": "CNY",
+          "grand_total": "12.50",
+          "idempotency_key": "IDEMP-Z003-SALES-ORDER-20260518-578",
+          "scenario_tag": "Z003-SALES-ORDER-20260518-578",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T18:18:03.099718Z",
+          "cancelled_by": null,
+          "cancelled_at": null,
+          "cancel_reason": null,
+          "items": [
+            {
+              "id": 9,
+              "draft_id": 9,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "rate": "12.50",
+              "amount": "12.50",
+              "uom": "Nos",
+              "warehouse": "SO-WH-001"
+            },
+            {
+              "id": 28,
+              "draft_id": 9,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "rate": null,
+              "amount": null,
+              "uom": "Nos",
+              "warehouse": "SO-WH-001"
+            }
+          ]
+        }
+      },
+      "endpoint_label": "POST /api/sales-inventory/sales-orders/drafts",
+      "actual_endpoint": "/api/sales-inventory/sales-orders/drafts"
+    },
+    {
+      "endpoint": "/api/warehouse/stock-entry-drafts",
+      "status": 201,
+      "ok": true,
+      "method": "POST",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 10,
+          "company": "LY-LOCAL-DEV",
+          "purpose": "Material Issue",
+          "source_type": "warehouse_local",
+          "source_id": "Z003-WAREHOUSE-20260518-578-SRC-WH",
+          "source_warehouse": "样衣仓",
+          "target_warehouse": null,
+          "status": "pending_outbox",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T18:18:03.110160Z",
+          "cancelled_by": null,
+          "cancelled_at": null,
+          "cancel_reason": null,
+          "idempotency_key": "Z003-WAREHOUSE-20260518-578-IDEMP-DRF",
+          "event_key": "wse:cbe3818c0d6969a19282f30ada838178b721b6703e709d5b908467a844016e51",
+          "allocation_mode": null,
+          "strict_failure_reason": null,
+          "show_completed_forced": null,
+          "items": [
+            {
+              "id": 10,
+              "draft_id": 10,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "SO-WH-001",
+              "target_warehouse": null
+            },
+            {
+              "id": 29,
+              "draft_id": 10,
+              "item_code": "ZY240716",
+              "qty": "1.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "样衣仓",
+              "target_warehouse": null
+            }
+          ],
+          "outbox": {
+            "draft_id": 10,
+            "event_id": 29,
+            "event_type": "warehouse_stock_entry_sync",
+            "status": "in_pending",
+            "retry_count": 0,
+            "external_ref": null,
+            "error_message": null,
+            "created_at": "2026-05-17T18:18:03.110160",
+            "processed_at": null
+          }
+        }
+      },
+      "endpoint_label": "POST /api/warehouse/stock-entry-drafts",
+      "actual_endpoint": "/api/warehouse/stock-entry-drafts"
+    },
+    {
+      "endpoint": "/api/sales-inventory/sales-orders/drafts/9/cancel",
+      "status": 200,
+      "ok": true,
+      "method": "POST",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 9,
+          "sales_order_no": "SO-Z003-SALES-ORDER-20260518-578",
+          "source_order_ref": "SRC-Z003-SALES-ORDER-20260518-578",
+          "company": "LY-TEST",
+          "customer": "LOCAL-CUSTOMER",
+          "status": "cancelled",
+          "transaction_date": null,
+          "delivery_date": null,
+          "currency": "CNY",
+          "grand_total": "12.50",
+          "idempotency_key": "IDEMP-Z003-SALES-ORDER-20260518-578",
+          "scenario_tag": "Z003-SALES-ORDER-20260518-578",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T18:18:03.099718",
+          "cancelled_by": "local.dev",
+          "cancelled_at": "2026-05-17T18:18:03.158266Z",
+          "cancel_reason": "VOID-Z003-SALES-ORDER-20260518-578",
+          "items": [
+            {
+              "id": 9,
+              "draft_id": 9,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "rate": "12.50",
+              "amount": "12.50",
+              "uom": "Nos",
+              "warehouse": "SO-WH-001"
+            },
+            {
+              "id": 28,
+              "draft_id": 9,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "rate": null,
+              "amount": null,
+              "uom": "Nos",
+              "warehouse": "SO-WH-001"
+            }
+          ]
+        }
+      },
+      "endpoint_label": "POST /api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+      "actual_endpoint": "/api/sales-inventory/sales-orders/drafts/9/cancel"
+    },
+    {
+      "endpoint": "/api/warehouse/stock-entry-drafts/10/cancel",
+      "status": 200,
+      "ok": true,
+      "method": "POST",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 10,
+          "company": "LY-LOCAL-DEV",
+          "purpose": "Material Issue",
+          "source_type": "warehouse_local",
+          "source_id": "Z003-WAREHOUSE-20260518-578-SRC-WH",
+          "source_warehouse": "样衣仓",
+          "target_warehouse": null,
+          "status": "cancelled",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T18:18:03.110160",
+          "cancelled_by": "local.dev",
+          "cancelled_at": "2026-05-17T18:18:03.164350Z",
+          "cancel_reason": "CANCEL-Z003-WAREHOUSE-20260518-578",
+          "idempotency_key": "Z003-WAREHOUSE-20260518-578-IDEMP-DRF",
+          "event_key": "wse:cbe3818c0d6969a19282f30ada838178b721b6703e709d5b908467a844016e51",
+          "allocation_mode": null,
+          "strict_failure_reason": null,
+          "show_completed_forced": null,
+          "items": [
+            {
+              "id": 10,
+              "draft_id": 10,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "SO-WH-001",
+              "target_warehouse": null
+            },
+            {
+              "id": 29,
+              "draft_id": 10,
+              "item_code": "ZY240716",
+              "qty": "1.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "样衣仓",
+              "target_warehouse": null
+            }
+          ],
+          "outbox": {
+            "draft_id": 10,
+            "event_id": 29,
+            "event_type": "warehouse_stock_entry_sync",
+            "status": "cancelled",
+            "retry_count": 0,
+            "external_ref": null,
+            "error_message": null,
+            "created_at": "2026-05-17T18:18:03.110160",
+            "processed_at": "2026-05-17T18:18:03.164350Z"
+          }
+        }
+      },
+      "endpoint_label": "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+      "actual_endpoint": "/api/warehouse/stock-entry-drafts/10/cancel"
+    }
+  ],
+  "allowed_read_endpoint_hit_set": [
+    "GET /api/sales-inventory/items/{item_code}/stock-ledger",
+    "GET /api/sales-inventory/items/{item_code}/stock-summary",
+    "GET /api/sales-inventory/sales-orders",
+    "GET /api/sales-inventory/sales-orders/{name}",
+    "GET /api/warehouse/stock-entry-drafts/{draft_id}",
+    "GET /api/warehouse/stock-entry-drafts/{draft_id}/outbox-status",
+    "GET /api/warehouse/stock-ledger",
+    "GET /api/warehouse/stock-summary"
+  ],
+  "read_responses": [
+    {
+      "endpoint": "/api/sales-inventory/sales-orders?order_no=SO-Z003-SALES-ORDER-20260518-578&page=1&page_size=20",
+      "status": 200,
+      "ok": true,
+      "method": "GET",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "name": "SO-Z003-SALES-ORDER-20260518-578",
+              "company": "LY-TEST",
+              "customer": "LOCAL-CUSTOMER",
+              "transaction_date": null,
+              "delivery_date": null,
+              "status": "Cancelled",
+              "docstatus": 2,
+              "grand_total": "12.50",
+              "currency": "CNY"
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "endpoint": "/api/sales-inventory/sales-orders/SO-Z003-SALES-ORDER-20260518-578",
+      "status": 200,
+      "ok": true,
+      "method": "GET",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "name": "SO-Z003-SALES-ORDER-20260518-578",
+          "company": "LY-TEST",
+          "customer": "LOCAL-CUSTOMER",
+          "transaction_date": null,
+          "delivery_date": null,
+          "status": "Cancelled",
+          "docstatus": 2,
+          "grand_total": "12.50",
+          "currency": "CNY",
+          "items": [
+            {
+              "name": "LOCAL-SO-ITEM-9",
+              "item_code": "SO-ITEM-001",
+              "item_name": "SO-ITEM-001",
+              "qty": "1.000000",
+              "delivered_qty": null,
+              "rate": "12.50",
+              "amount": "12.50",
+              "warehouse": "SO-WH-001",
+              "delivery_date": null
+            },
+            {
+              "name": "LOCAL-SO-ITEM-28",
+              "item_code": "SO-ITEM-001",
+              "item_name": "SO-ITEM-001",
+              "qty": "1.000000",
+              "delivered_qty": null,
+              "rate": null,
+              "amount": null,
+              "warehouse": "SO-WH-001",
+              "delivery_date": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "/api/sales-inventory/items/SO-ITEM-001/stock-ledger?company=LY-TEST&warehouse=SO-WH-001&page=1&page_size=20",
+      "status": 200,
+      "ok": true,
+      "method": "GET",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [],
+          "total": 0,
+          "page": 1,
+          "page_size": 20,
+          "dropped_count": 0
+        }
+      }
+    },
+    {
+      "endpoint": "/api/sales-inventory/items/SO-ITEM-001/stock-summary?company=LY-TEST&warehouse=SO-WH-001",
+      "status": 200,
+      "ok": true,
+      "method": "GET",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "item_code": "SO-ITEM-001",
+          "company": "LY-TEST",
+          "warehouse": "SO-WH-001",
+          "items": [],
+          "dropped_count": 0
+        }
+      }
+    },
+    {
+      "endpoint": "/api/warehouse/stock-ledger?item_code=ZY240716&warehouse=%E6%A0%B7%E8%A1%A3%E4%BB%93&page=1&page_size=20",
+      "status": 200,
+      "ok": true,
+      "method": "GET",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [],
+          "total": 0,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "endpoint": "/api/warehouse/stock-summary?item_code=ZY240716&warehouse=%E6%A0%B7%E8%A1%A3%E4%BB%93",
+      "status": 200,
+      "ok": true,
+      "method": "GET",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "company": null,
+          "warehouse": "样衣仓",
+          "item_code": "ZY240716",
+          "items": [],
+          "warehouse_management": [],
+          "material_inventory": []
+        }
+      }
+    },
+    {
+      "endpoint": "/api/warehouse/stock-entry-drafts/10",
+      "status": 200,
+      "ok": true,
+      "method": "GET",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 10,
+          "company": "LY-LOCAL-DEV",
+          "purpose": "Material Issue",
+          "source_type": "warehouse_local",
+          "source_id": "Z003-WAREHOUSE-20260518-578-SRC-WH",
+          "source_warehouse": "样衣仓",
+          "target_warehouse": null,
+          "status": "cancelled",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T18:18:03.110160",
+          "cancelled_by": "local.dev",
+          "cancelled_at": "2026-05-17T18:18:03.164350",
+          "cancel_reason": "CANCEL-Z003-WAREHOUSE-20260518-578",
+          "idempotency_key": "Z003-WAREHOUSE-20260518-578-IDEMP-DRF",
+          "event_key": "wse:cbe3818c0d6969a19282f30ada838178b721b6703e709d5b908467a844016e51",
+          "allocation_mode": null,
+          "strict_failure_reason": null,
+          "show_completed_forced": null,
+          "items": [
+            {
+              "id": 10,
+              "draft_id": 10,
+              "item_code": "SO-ITEM-001",
+              "qty": "1.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "SO-WH-001",
+              "target_warehouse": null
+            },
+            {
+              "id": 29,
+              "draft_id": 10,
+              "item_code": "ZY240716",
+              "qty": "1.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "样衣仓",
+              "target_warehouse": null
+            }
+          ],
+          "outbox": {
+            "draft_id": 10,
+            "event_id": 29,
+            "event_type": "warehouse_stock_entry_sync",
+            "status": "cancelled",
+            "retry_count": 0,
+            "external_ref": null,
+            "error_message": null,
+            "created_at": "2026-05-17T18:18:03.110160",
+            "processed_at": "2026-05-17T18:18:03.164350"
+          }
+        }
+      }
+    },
+    {
+      "endpoint": "/api/warehouse/stock-entry-drafts/10/outbox-status",
+      "status": 200,
+      "ok": true,
+      "method": "GET",
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "draft_id": 10,
+          "event_id": 29,
+          "event_type": "warehouse_stock_entry_sync",
+          "status": "cancelled",
+          "retry_count": 0,
+          "external_ref": null,
+          "error_message": null,
+          "created_at": "2026-05-17T18:18:03.110160",
+          "processed_at": "2026-05-17T18:18:03.164350"
+        }
+      }
+    }
+  ],
+  "fail_closed_case_count": 4,
+  "fail_closed_cases": [
+    {
+      "case_id": "missing_request_id",
+      "status": 409,
+      "ok": false,
+      "endpoint": "/api/sales-inventory/sales-orders/drafts",
+      "method": "POST",
+      "response": {
+        "code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+        "message": "request_id 不能为空",
+        "data": {}
+      }
+    },
+    {
+      "case_id": "scenario_tag_request_mismatch",
+      "status": 409,
+      "ok": false,
+      "endpoint": "/api/sales-inventory/sales-orders/drafts",
+      "method": "POST",
+      "response": {
+        "code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+        "message": "scenario_tag 载体与 request_id 不一致",
+        "data": {}
+      }
+    },
+    {
+      "case_id": "source_ref_mismatch",
+      "status": 409,
+      "ok": false,
+      "endpoint": "/api/warehouse/stock-entry-drafts",
+      "method": "POST",
+      "response": {
+        "code": "WAREHOUSE_IDEMPOTENCY_CONFLICT",
+        "message": "source_ref 载体与业务载体不一致",
+        "data": {}
+      }
+    },
+    {
+      "case_id": "non_local_dev_db_gate",
+      "status": 401,
+      "ok": false,
+      "endpoint": "/api/sales-inventory/sales-orders/drafts",
+      "method": "POST",
+      "response": {
+        "code": "AUTH_UNAUTHORIZED",
+        "message": "未登录或 Token 无效",
+        "data": {}
+      }
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "generated_at": "2026-05-17T18:18:03.251Z"
+}
