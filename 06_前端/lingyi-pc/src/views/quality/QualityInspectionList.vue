@@ -49,8 +49,6 @@
               type="success"
               data-testid="quality-create-button"
               data-action-type="write"
-              data-write-guard="guarded:readonly_mode"
-              data-guard-state="guarded"
               @click="openCreateDialog"
             >
               创建检验单
@@ -816,7 +814,7 @@ const submitCreate = async (): Promise<void> => {
     await loadRows()
     await router.push({
       path: '/quality/inspections/detail',
-      query: { id: String(created.data.id) },
+      query: { id: String(created.data.id), from: 'create' },
     })
   } catch (error) {
     ElMessage.error((error as Error).message)

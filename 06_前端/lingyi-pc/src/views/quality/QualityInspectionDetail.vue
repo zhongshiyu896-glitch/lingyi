@@ -463,7 +463,7 @@ const permissionStateText = computed<string>(() => {
   if (!canUpdate.value && !canConfirm.value && !canCancel.value) {
     return '写操作入口已禁用（权限或状态不满足）。'
   }
-  return '写操作入口可用，所有写请求将按 Z003 受控门禁发送。'
+  return '写操作入口可用，所有写请求将按 Z004 受控门禁发送。'
 })
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -871,6 +871,9 @@ onMounted(async () => {
     return
   }
   await loadDetail()
+  if (String(route.query.from || '') === 'create' && detail.value) {
+    actionFeedback.value = '已从创建入口进入详情页，请继续执行缺陷录入、确认与取消闭环。'
+  }
 })
 </script>
 

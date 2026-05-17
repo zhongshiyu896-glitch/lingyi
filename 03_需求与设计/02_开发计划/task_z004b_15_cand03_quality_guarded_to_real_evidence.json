@@ -1,0 +1,141 @@
+{
+  "task_id": "TASK-Z004B-15-IMPL",
+  "source_head": "74e29077a106f76a7213ed679d6cf42f0aa49c19",
+  "source_subject": "chore: seal cand02 style profit guarded real",
+  "selected_candidate_id": "TASK-Z004B-CAND-03",
+  "candidate_type": "guarded_to_real_interaction_gap",
+  "module": "quality",
+  "boundary_source_task": "TASK-Z004B-14-PREP",
+  "route_scope": [
+    "/quality/inspections",
+    "/quality/inspections/detail"
+  ],
+  "changed_product_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue"
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/quality/inspections",
+    "POST /api/quality/inspections/{inspection_id}/defects",
+    "POST /api/quality/inspections/{inspection_id}/confirm",
+    "POST /api/quality/inspections/{inspection_id}/cancel"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/quality/inspections",
+    "GET /api/quality/inspections/{inspection_id}",
+    "GET /api/quality/inspections/{inspection_id}/outbox-status",
+    "GET /api/quality/statistics",
+    "GET /api/quality/statistics/trend",
+    "GET /api/auth/me",
+    "GET /api/auth/actions?module=quality"
+  ],
+  "allowed_read_endpoint_count": 7,
+  "allowed_read_endpoint_hit_count": 7,
+  "allowed_read_endpoint_hits": [
+    "GET /api/auth/me",
+    "GET /api/auth/actions?module=quality",
+    "GET /api/quality/inspections",
+    "GET /api/quality/statistics",
+    "GET /api/quality/statistics/trend",
+    "GET /api/quality/inspections/{inspection_id}",
+    "GET /api/quality/inspections/{inspection_id}/outbox-status"
+  ],
+  "allowed_read_endpoint_missed": [],
+  "browser_route_coverage": {
+    "/quality/inspections": {
+      "desktop": true,
+      "mobile": true
+    },
+    "/quality/inspections/detail": {
+      "desktop": true,
+      "mobile": true
+    }
+  },
+  "browser_approved_write_request_count": 4,
+  "api_regression_approved_write_request_count": 4,
+  "write_request_count_total": 8,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "business_import_export_download_upload_print_count": 0,
+  "dev_runtime_export_helper_count": 3,
+  "dev_runtime_false_positive_request_count": 3,
+  "fail_closed_case_count": 3,
+  "fail_closed_cases": [
+    {
+      "case_id": "FC-01-MISSING-REQUEST-ID-HEADER",
+      "status": 409,
+      "code": "QUALITY_INVALID_SOURCE",
+      "message": "LOCAL_GATE_FAIL_CLOSED:missing_request_id"
+    },
+    {
+      "case_id": "FC-02-INVALID-SCENARIO-TAG",
+      "status": 409,
+      "code": "QUALITY_INVALID_SOURCE",
+      "message": "LOCAL_GATE_FAIL_CLOSED:invalid_scenario_tag"
+    },
+    {
+      "case_id": "FC-03-MISMATCHED-SOURCE-REF",
+      "status": 409,
+      "code": "QUALITY_INVALID_SOURCE",
+      "message": "LOCAL_GATE_FAIL_CLOSED:mismatched_source_ref"
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "cancel_cleanup_executed": true,
+  "zero_residual_check_executed": true,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "residual_table_counts": {
+    "ly_quality_inspection": 0,
+    "ly_quality_inspection_item": 0,
+    "ly_quality_defect": 0,
+    "ly_quality_operation_log": 0,
+    "ly_quality_outbox": 0
+  },
+  "residual_snapshot_context": {
+    "browser_scenario_tag": "Z003-QUALITY-INSPECTION-20260517-358",
+    "api_scenario_tag": "Z003-QUALITY-INSPECTION-20260517-931",
+    "inspection_ids": [
+      1,
+      2
+    ]
+  },
+  "screenshots_dir": "/tmp/task_z004b15_screenshots",
+  "screenshots_count": 8,
+  "screenshots_png_count": 8,
+  "screenshots": [
+    "/tmp/task_z004b15_screenshots/01-quality-list-desktop.png",
+    "/tmp/task_z004b15_screenshots/02-quality-create-dialog-desktop.png",
+    "/tmp/task_z004b15_screenshots/03-quality-detail-after-create-desktop.png",
+    "/tmp/task_z004b15_screenshots/04-quality-detail-after-defects-desktop.png",
+    "/tmp/task_z004b15_screenshots/05-quality-detail-after-confirm-desktop.png",
+    "/tmp/task_z004b15_screenshots/06-quality-detail-after-cancel-desktop.png",
+    "/tmp/task_z004b15_screenshots/07-quality-list-mobile.png",
+    "/tmp/task_z004b15_screenshots/08-quality-detail-mobile.png"
+  ],
+  "desktop_screenshot_count": 6,
+  "mobile_screenshot_count": 2,
+  "browser_result_json": "/tmp/task_z004b15_browser_result.json",
+  "api_regression_result_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_15_cand03_quality_api_regression_result.json",
+  "zero_residual_result_json": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_15_cand03_quality_zero_residual_result.json",
+  "remote_lifecycle_parked": true,
+  "npm_validation": {
+    "precheck_dev_runtime": "PASS",
+    "typecheck": "PASS",
+    "verify": "PASS"
+  },
+  "desktop_mobile_coverage": {
+    "/quality/inspections": {
+      "desktop": true,
+      "mobile": true
+    },
+    "/quality/inspections/detail": {
+      "desktop": true,
+      "mobile": true
+    }
+  }
+}

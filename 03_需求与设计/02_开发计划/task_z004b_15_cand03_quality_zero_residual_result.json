@@ -1,0 +1,40 @@
+{
+  "task_id": "TASK-Z004B-15-IMPL",
+  "selected_candidate_id": "TASK-Z004B-CAND-03",
+  "scenario_tag": {
+    "browser": "Z003-QUALITY-INSPECTION-20260517-358",
+    "api": "Z003-QUALITY-INSPECTION-20260517-931"
+  },
+  "source_ref": {
+    "browser": "Z003-QUALITY-INSPECTION-20260517-358-SRC",
+    "api": "Z003-QUALITY-INSPECTION-20260517-931-SRC-API"
+  },
+  "inspection_ids": [
+    1,
+    2
+  ],
+  "cancel_cleanup_executed": true,
+  "zero_residual_check_executed": true,
+  "residual_scan_result": "no_new_residual",
+  "residual_table_counts": {
+    "ly_quality_inspection": 0,
+    "ly_quality_inspection_item": 0,
+    "ly_quality_defect": 0,
+    "ly_quality_operation_log": 0,
+    "ly_quality_outbox": 0
+  },
+  "extra_residual_by_source_ref": {
+    "Z003-QUALITY-INSPECTION-20260517-358-SRC": 0,
+    "Z003-QUALITY-INSPECTION-20260517-931-SRC-API": 0
+  },
+  "cleanup_scope_note": "仅清理本轮 browser/api 场景生成的 quality inspection 测试数据，不涉及其他业务数据。",
+  "zero_residual": true,
+  "baseline_before": {
+    "ly_quality_inspection": 2,
+    "ly_quality_inspection_item": 2,
+    "ly_quality_defect": 2,
+    "ly_quality_operation_log": 8,
+    "ly_quality_outbox": 2
+  },
+  "db_path": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/lingyi_service.local.db"
+}
