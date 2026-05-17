@@ -1,0 +1,1592 @@
+{
+  "task_id": "TASK-Z004B-33",
+  "source_head": "cb4cd4f98d094825e80b174e238f9df00d29dc53",
+  "source_subject": "chore: seal cand05 factory warehouse ui alignment",
+  "selected_candidate_id": "TASK-Z004B-CAND-06",
+  "master_chain_id": "Z004-CROSS-E2E-20260517-001",
+  "allowed_write_endpoints": [
+    "POST /api/production/plans",
+    "POST /api/production/plans/{plan_id}/material-check",
+    "POST /api/production/plans/{plan_id}/create-work-order",
+    "POST /api/production/work-orders/{work_order}/sync-job-cards",
+    "POST /api/workshop/tickets/register",
+    "POST /api/workshop/tickets/batch",
+    "POST /api/workshop/tickets/reversal",
+    "POST /api/warehouse/stock-entry-drafts",
+    "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+    "POST /api/subcontract/",
+    "POST /api/subcontract/{order_id}/issue-material",
+    "POST /api/subcontract/{order_id}/receive",
+    "POST /api/subcontract/{order_id}/inspect",
+    "POST /api/subcontract/settlement-preview",
+    "POST /api/subcontract/settlement-locks",
+    "POST /api/subcontract/settlement-locks/release"
+  ],
+  "allowed_write_endpoint_hit_set": [
+    "POST /api/production/plans",
+    "POST /api/production/plans/{plan_id}/create-work-order",
+    "POST /api/production/plans/{plan_id}/material-check",
+    "POST /api/production/work-orders/{work_order}/sync-job-cards",
+    "POST /api/subcontract/",
+    "POST /api/subcontract/settlement-locks",
+    "POST /api/subcontract/settlement-locks/release",
+    "POST /api/subcontract/settlement-preview",
+    "POST /api/subcontract/{order_id}/inspect",
+    "POST /api/subcontract/{order_id}/issue-material",
+    "POST /api/subcontract/{order_id}/receive",
+    "POST /api/warehouse/stock-entry-drafts",
+    "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+    "POST /api/workshop/tickets/batch",
+    "POST /api/workshop/tickets/register",
+    "POST /api/workshop/tickets/reversal"
+  ],
+  "approved_write_request_count": 16,
+  "write_responses": [
+    {
+      "endpoint": "POST /api/production/plans",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "plan_id": 1,
+          "plan_no": "PP-20260517121533070568",
+          "status": "planned",
+          "company": "LY-LOCAL-TEST"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/production/plans/{plan_id}/material-check",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "plan_id": 1,
+          "snapshot_count": 2,
+          "items": [
+            {
+              "bom_item_id": 1,
+              "material_item_code": "FABRIC-COTTON",
+              "warehouse": "LY-WH-LOCAL-1",
+              "qty_per_piece": "1.200000",
+              "loss_rate": "0.030000",
+              "required_qty": "12.360000",
+              "available_qty": "0",
+              "shortage_qty": "12.360000",
+              "checked_at": "2026-05-17T12:15:33.078102"
+            },
+            {
+              "bom_item_id": 2,
+              "material_item_code": "TRIM-BUTTON",
+              "warehouse": "LY-WH-LOCAL-1",
+              "qty_per_piece": "5.000000",
+              "loss_rate": "0",
+              "required_qty": "50.000000",
+              "available_qty": "0",
+              "shortage_qty": "50.000000",
+              "checked_at": "2026-05-17T12:15:33.078102"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/production/plans/{plan_id}/create-work-order",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "plan_id": 1,
+          "outbox_id": 0,
+          "event_key": "",
+          "sync_status": "succeeded",
+          "work_order": "WO-PP-20260517114719792587-D17BA017"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/production/work-orders/{work_order}/sync-job-cards",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "work_order": "WO-PP-20260517114719792587-D17BA017",
+          "plan_id": 1,
+          "synced_count": 3,
+          "items": [
+            {
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-CUT-E989CF38",
+              "operation": "裁剪",
+              "operation_sequence": 10,
+              "company": "LY-LOCAL-TEST",
+              "item_code": "DEMO-TEE",
+              "expected_qty": "10.000000",
+              "completed_qty": "0",
+              "erpnext_status": "LocalSynced",
+              "synced_at": "2026-05-17T12:15:33.088085"
+            },
+            {
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-SEW-CA67F14A",
+              "operation": "车缝",
+              "operation_sequence": 20,
+              "company": "LY-LOCAL-TEST",
+              "item_code": "DEMO-TEE",
+              "expected_qty": "10.000000",
+              "completed_qty": "0",
+              "erpnext_status": "LocalSynced",
+              "synced_at": "2026-05-17T12:15:33.088085"
+            },
+            {
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-FIN-F87F0AFF",
+              "operation": "后整",
+              "operation_sequence": 30,
+              "company": "LY-LOCAL-TEST",
+              "item_code": "DEMO-TEE",
+              "expected_qty": "10.000000",
+              "completed_qty": "0",
+              "erpnext_status": "LocalSynced",
+              "synced_at": "2026-05-17T12:15:33.088085"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/workshop/tickets/register",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "ticket_no": "TICKET-20260517121533094342",
+          "ticket_id": 1,
+          "unit_wage": 1.0,
+          "wage_amount": 6.0,
+          "sync_status": "pending",
+          "sync_outbox_id": 7
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/workshop/tickets/batch",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "success_count": 0,
+          "failed_count": 1,
+          "success_items": [],
+          "failed_items": [
+            {
+              "row_index": 1,
+              "index": 1,
+              "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+              "error_code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+              "message": "幂等键冲突，且请求内容不一致",
+              "ticket_key": "Z003-WORKSHOP-TICKET-20260517-001|TK"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/warehouse/stock-entry-drafts",
+      "status": 201,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 2,
+          "company": "LY-LOCAL-TEST",
+          "purpose": "Material Receipt",
+          "source_type": "workshop_ticket",
+          "source_id": "Z003-WAREHOUSE-20260517-001|SRC|Z004-CROSS-E2E-20260517-001",
+          "source_warehouse": null,
+          "target_warehouse": "LY-WH-LOCAL-1",
+          "status": "pending_outbox",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T12:15:33.106671Z",
+          "cancelled_by": null,
+          "cancelled_at": null,
+          "cancel_reason": null,
+          "idempotency_key": "Z003-WAREHOUSE-20260517-001|IDEMP|create",
+          "event_key": "wse:9694165faf68964dbca834de8453795464dde5292a88cc848036d31121312a80",
+          "allocation_mode": null,
+          "strict_failure_reason": null,
+          "show_completed_forced": null,
+          "items": [
+            {
+              "id": 2,
+              "draft_id": 2,
+              "item_code": "ZY240716",
+              "qty": "3.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "样衣仓",
+              "target_warehouse": null
+            },
+            {
+              "id": 20,
+              "draft_id": 2,
+              "item_code": "DEMO-TEE",
+              "qty": "12.000000",
+              "uom": "PCS",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": null,
+              "target_warehouse": "LY-WH-LOCAL-1"
+            }
+          ],
+          "outbox": {
+            "draft_id": 2,
+            "event_id": 20,
+            "event_type": "warehouse_stock_entry_sync",
+            "status": "in_pending",
+            "retry_count": 0,
+            "external_ref": null,
+            "error_message": null,
+            "created_at": "2026-05-17T12:15:33.106671",
+            "processed_at": null
+          }
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/subcontract/",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "name": "SC-20260517121533113787",
+          "company": "LY-LOCAL-TEST"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/subcontract/{order_id}/issue-material",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "outbox_id": 1,
+          "issue_batch_no": "SIB-1-20260517121533133878",
+          "sync_status": "pending",
+          "stock_entry_name": null
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/subcontract/{order_id}/receive",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "outbox_id": 2,
+          "receipt_batch_no": "SRB-1-20260517121533141155",
+          "sync_status": "succeeded",
+          "stock_entry_name": "LOCAL-RECEIPT-SRB-1-20260517121533141155"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/subcontract/{order_id}/inspect",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "inspection_no": "SIN-1-20260517121533150637",
+          "receipt_batch_no": "SRB-1-20260517121533141155",
+          "inspected_qty": 10.0,
+          "accepted_qty": 9.0,
+          "rejected_qty": 1,
+          "rejected_rate": 0.1,
+          "gross_amount": 60.0,
+          "deduction_amount": 0.5,
+          "net_amount": 59.5,
+          "status": "completed"
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/subcontract/settlement-preview",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "company": "LY-LOCAL-TEST",
+          "supplier": "LY-LOCAL-SUPPLIER",
+          "line_count": 1,
+          "total_qty": 10.0,
+          "gross_amount": 60.0,
+          "deduction_amount": 0.5,
+          "net_amount": 59.5,
+          "items": [
+            {
+              "inspection_id": 1,
+              "settlement_line_key": "subcontract_inspection:1",
+              "subcontract_id": 1,
+              "subcontract_no": "SC-20260517121533113787",
+              "company": "LY-LOCAL-TEST",
+              "supplier": "LY-LOCAL-SUPPLIER",
+              "item_code": "DEMO-TEE",
+              "process_name": "缝制",
+              "receipt_batch_no": "SRB-1-20260517121533141155",
+              "inspected_at": "2026-05-17T12:15:33.150661",
+              "inspected_by": "local.dev",
+              "inspected_qty": 10.0,
+              "accepted_qty": 9.0,
+              "rejected_qty": 1.0,
+              "rejected_rate": 0.1,
+              "subcontract_rate": 6.0,
+              "gross_amount": 60.0,
+              "deduction_amount": 0.5,
+              "net_amount": 59.5,
+              "settlement_status": "unsettled",
+              "statement_id": null,
+              "statement_no": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/subcontract/settlement-locks",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "operation_id": 1,
+          "idempotency_key": "Z003-SUBCONTRACT-20260517-001|IDEMP|lock",
+          "idempotent_replay": false,
+          "locked_count": 1,
+          "gross_amount": 60.0,
+          "deduction_amount": 0.5,
+          "net_amount": 59.5,
+          "locked_items": [
+            {
+              "inspection_id": 1,
+              "settlement_line_key": "subcontract_inspection:1",
+              "subcontract_id": 1,
+              "subcontract_no": "SC-20260517121533113787",
+              "company": "LY-LOCAL-TEST",
+              "supplier": "LY-LOCAL-SUPPLIER",
+              "item_code": "DEMO-TEE",
+              "process_name": "缝制",
+              "receipt_batch_no": "SRB-1-20260517121533141155",
+              "inspected_at": "2026-05-17T12:15:33.150661",
+              "inspected_by": "local.dev",
+              "inspected_qty": 10.0,
+              "accepted_qty": 9.0,
+              "rejected_qty": 1.0,
+              "rejected_rate": 0.1,
+              "subcontract_rate": 6.0,
+              "gross_amount": 60.0,
+              "deduction_amount": 0.5,
+              "net_amount": 59.5,
+              "settlement_status": "statement_locked",
+              "statement_id": null,
+              "statement_no": "FS-001"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/subcontract/settlement-locks/release",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "operation_id": 2,
+          "idempotency_key": "Z003-SUBCONTRACT-20260517-001|IDEMP|release",
+          "idempotent_replay": false,
+          "released_count": 1,
+          "released_items": [
+            {
+              "inspection_id": 1,
+              "settlement_line_key": "subcontract_inspection:1",
+              "subcontract_id": 1,
+              "subcontract_no": "SC-20260517121533113787",
+              "company": "LY-LOCAL-TEST",
+              "supplier": "LY-LOCAL-SUPPLIER",
+              "item_code": "DEMO-TEE",
+              "process_name": "缝制",
+              "receipt_batch_no": "SRB-1-20260517121533141155",
+              "inspected_at": "2026-05-17T12:15:33.150661",
+              "inspected_by": "local.dev",
+              "inspected_qty": 10.0,
+              "accepted_qty": 9.0,
+              "rejected_qty": 1.0,
+              "rejected_rate": 0.1,
+              "subcontract_rate": 6.0,
+              "gross_amount": 60.0,
+              "deduction_amount": 0.5,
+              "net_amount": 59.5,
+              "settlement_status": "unsettled",
+              "statement_id": null,
+              "statement_no": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/workshop/tickets/reversal",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "ticket_no": "TICKET-20260517121535280665",
+          "ticket_id": 2,
+          "net_qty": 0.0,
+          "wage_amount": 6.0,
+          "sync_status": "pending",
+          "sync_outbox_id": 8
+        }
+      }
+    },
+    {
+      "endpoint": "POST /api/warehouse/stock-entry-drafts/{draft_id}/cancel",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 2,
+          "company": "LY-LOCAL-TEST",
+          "purpose": "Material Receipt",
+          "source_type": "workshop_ticket",
+          "source_id": "Z003-WAREHOUSE-20260517-001|SRC|Z004-CROSS-E2E-20260517-001",
+          "source_warehouse": null,
+          "target_warehouse": "LY-WH-LOCAL-1",
+          "status": "cancelled",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T12:15:33.106671",
+          "cancelled_by": "local.dev",
+          "cancelled_at": "2026-05-17T12:15:35.294021Z",
+          "cancel_reason": "local rollback cancel",
+          "idempotency_key": "Z003-WAREHOUSE-20260517-001|IDEMP|create",
+          "event_key": "wse:9694165faf68964dbca834de8453795464dde5292a88cc848036d31121312a80",
+          "allocation_mode": null,
+          "strict_failure_reason": null,
+          "show_completed_forced": null,
+          "items": [
+            {
+              "id": 2,
+              "draft_id": 2,
+              "item_code": "ZY240716",
+              "qty": "3.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "样衣仓",
+              "target_warehouse": null
+            },
+            {
+              "id": 20,
+              "draft_id": 2,
+              "item_code": "DEMO-TEE",
+              "qty": "12.000000",
+              "uom": "PCS",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": null,
+              "target_warehouse": "LY-WH-LOCAL-1"
+            }
+          ],
+          "outbox": {
+            "draft_id": 2,
+            "event_id": 20,
+            "event_type": "warehouse_stock_entry_sync",
+            "status": "cancelled",
+            "retry_count": 0,
+            "external_ref": null,
+            "error_message": null,
+            "created_at": "2026-05-17T12:15:33.106671",
+            "processed_at": "2026-05-17T12:15:35.294021Z"
+          }
+        }
+      }
+    }
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/production/plans",
+    "GET /api/production/plans/{plan_id}",
+    "GET /api/workshop/tickets",
+    "GET /api/workshop/job-cards/{job_card}/summary",
+    "GET /api/workshop/daily-wages",
+    "GET /api/warehouse/stock-ledger",
+    "GET /api/warehouse/stock-summary",
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches",
+    "GET /api/warehouse/stock-entry-drafts/{draft_id}",
+    "GET /api/warehouse/stock-entry-drafts/{draft_id}/outbox-status",
+    "GET /api/subcontract/",
+    "GET /api/subcontract/settlement-candidates",
+    "GET /api/subcontract/{order_id}",
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}"
+  ],
+  "allowed_read_endpoint_hit_set": [
+    "GET /api/factory-statements/",
+    "GET /api/production/plans",
+    "GET /api/production/plans/{plan_id}",
+    "GET /api/subcontract/",
+    "GET /api/subcontract/settlement-candidates",
+    "GET /api/subcontract/{order_id}",
+    "GET /api/warehouse/stock-entry-drafts/{draft_id}",
+    "GET /api/warehouse/stock-entry-drafts/{draft_id}/outbox-status",
+    "GET /api/warehouse/stock-ledger",
+    "GET /api/warehouse/stock-summary",
+    "GET /api/workshop/daily-wages",
+    "GET /api/workshop/job-cards/{job_card}/summary",
+    "GET /api/workshop/tickets"
+  ],
+  "allowed_read_endpoint_miss_set": [
+    "GET /api/factory-statements/{statement_id}",
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_read_endpoint_miss_reasons": {
+    "GET /api/factory-statements/{statement_id}": "factory statement detail requires concrete statement_id in local chain; list read verified.",
+    "GET /api/warehouse/alerts": "not hit in this chain sample.",
+    "GET /api/warehouse/batches": "not hit in this chain sample."
+  },
+  "read_responses": [
+    {
+      "endpoint": "GET /api/subcontract/",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "id": 1,
+              "subcontract_no": "SC-20260517121533113787",
+              "supplier": "LY-LOCAL-SUPPLIER",
+              "item_code": "DEMO-TEE",
+              "company": "LY-LOCAL-TEST",
+              "bom_id": 1,
+              "process_name": "缝制",
+              "planned_qty": 10.0,
+              "subcontract_rate": 6.0,
+              "issued_qty": 0,
+              "received_qty": 0,
+              "inspected_qty": 0,
+              "rejected_qty": 0,
+              "accepted_qty": 0,
+              "gross_amount": 0,
+              "deduction_amount": 0,
+              "net_amount": 0,
+              "status": "draft",
+              "resource_scope_status": "ready",
+              "profit_scope_status": "ready",
+              "profit_scope_error_code": null,
+              "sales_order": "SO-Z004-CROSS-E2E-20260517-001",
+              "sales_order_item": "SOI-Z004-CROSS-E2E-20260517-001",
+              "production_plan_id": 1,
+              "work_order": "WO-PP-20260517114719792587-D17BA017",
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-CUT-E989CF38",
+              "latest_issue_outbox_id": null,
+              "latest_issue_sync_status": null,
+              "latest_issue_stock_entry_name": null,
+              "latest_issue_idempotency_key": null,
+              "latest_issue_error_code": null,
+              "latest_receipt_outbox_id": null,
+              "latest_receipt_sync_status": null,
+              "latest_receipt_stock_entry_name": null,
+              "latest_receipt_idempotency_key": null,
+              "latest_receipt_error_code": null,
+              "created_at": "2026-05-17T12:15:33"
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 200
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/subcontract/{order_id}",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 1,
+          "subcontract_no": "SC-20260517121533113787",
+          "supplier": "LY-LOCAL-SUPPLIER",
+          "item_code": "DEMO-TEE",
+          "company": "LY-LOCAL-TEST",
+          "bom_id": 1,
+          "process_name": "缝制",
+          "planned_qty": 10.0,
+          "subcontract_rate": 6.0,
+          "issued_qty": 0.0,
+          "received_qty": 0.0,
+          "inspected_qty": 0.0,
+          "rejected_qty": 0.0,
+          "accepted_qty": 0.0,
+          "gross_amount": 0.0,
+          "deduction_amount": 0.0,
+          "net_amount": 0.0,
+          "status": "draft",
+          "settlement_status": "unsettled",
+          "resource_scope_status": "ready",
+          "scope_error_code": null,
+          "profit_scope_status": "unresolved",
+          "profit_scope_error_code": null,
+          "sales_order": null,
+          "sales_order_item": null,
+          "production_plan_id": null,
+          "work_order": null,
+          "job_card": null,
+          "latest_issue_outbox_id": null,
+          "latest_issue_sync_status": null,
+          "latest_issue_stock_entry_name": null,
+          "latest_issue_idempotency_key": null,
+          "latest_receipt_outbox_id": null,
+          "latest_receipt_sync_status": null,
+          "latest_receipt_stock_entry_name": null,
+          "latest_receipt_idempotency_key": null,
+          "receipts": [],
+          "inspections": [],
+          "created_at": "2026-05-17T12:15:33",
+          "updated_at": "2026-05-17T12:15:33"
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/subcontract/{order_id}",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 1,
+          "subcontract_no": "SC-20260517121533113787",
+          "supplier": "LY-LOCAL-SUPPLIER",
+          "item_code": "DEMO-TEE",
+          "company": "LY-LOCAL-TEST",
+          "bom_id": 1,
+          "process_name": "缝制",
+          "planned_qty": 10.0,
+          "subcontract_rate": 6.0,
+          "issued_qty": 0.0,
+          "received_qty": 0.0,
+          "inspected_qty": 0.0,
+          "rejected_qty": 0.0,
+          "accepted_qty": 0.0,
+          "gross_amount": 0.0,
+          "deduction_amount": 0.0,
+          "net_amount": 0.0,
+          "status": "draft",
+          "settlement_status": "unsettled",
+          "resource_scope_status": "ready",
+          "scope_error_code": null,
+          "profit_scope_status": "unresolved",
+          "profit_scope_error_code": null,
+          "sales_order": null,
+          "sales_order_item": null,
+          "production_plan_id": null,
+          "work_order": null,
+          "job_card": null,
+          "latest_issue_outbox_id": null,
+          "latest_issue_sync_status": null,
+          "latest_issue_stock_entry_name": null,
+          "latest_issue_idempotency_key": null,
+          "latest_receipt_outbox_id": null,
+          "latest_receipt_sync_status": null,
+          "latest_receipt_stock_entry_name": null,
+          "latest_receipt_idempotency_key": null,
+          "receipts": [],
+          "inspections": [],
+          "created_at": "2026-05-17T12:15:33",
+          "updated_at": "2026-05-17T12:15:33"
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/subcontract/settlement-candidates",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "inspection_id": 1,
+              "settlement_line_key": "subcontract_inspection:1",
+              "subcontract_id": 1,
+              "subcontract_no": "SC-20260517121533113787",
+              "company": "LY-LOCAL-TEST",
+              "supplier": "LY-LOCAL-SUPPLIER",
+              "item_code": "DEMO-TEE",
+              "process_name": "缝制",
+              "receipt_batch_no": "SRB-1-20260517121533141155",
+              "inspected_at": "2026-05-17T12:15:33.150661",
+              "inspected_by": "local.dev",
+              "inspected_qty": 10.0,
+              "accepted_qty": 9.0,
+              "rejected_qty": 1.0,
+              "rejected_rate": 0.1,
+              "subcontract_rate": 6.0,
+              "gross_amount": 60.0,
+              "deduction_amount": 0.5,
+              "net_amount": 59.5,
+              "settlement_status": "unsettled",
+              "statement_id": null,
+              "statement_no": null
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 200,
+          "summary": {
+            "line_count": 1,
+            "total_qty": 10.0,
+            "gross_amount": 60.0,
+            "deduction_amount": 0.5,
+            "net_amount": 59.5
+          }
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/production/plans",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "id": 1,
+              "plan_no": "PP-20260517121533070568",
+              "company": "LY-LOCAL-TEST",
+              "sales_order": "SO-Z004-CROSS-E2E-20260517-001",
+              "sales_order_item": "SOI-Z004-CROSS-E2E-20260517-001",
+              "customer": "LOCAL_SYNTHETIC_Z003-PROD-PLAN-20260517-001",
+              "item_code": "DEMO-TEE",
+              "bom_id": 1,
+              "bom_version": "V1",
+              "planned_qty": "10.000000",
+              "planned_start_date": "2026-05-17",
+              "status": "job_cards_synced",
+              "latest_work_order_outbox": null,
+              "created_at": "2026-05-17T12:15:33"
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/production/plans/{plan_id}",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 1,
+          "plan_no": "PP-20260517121533070568",
+          "company": "LY-LOCAL-TEST",
+          "sales_order": "SO-Z004-CROSS-E2E-20260517-001",
+          "sales_order_item": "SOI-Z004-CROSS-E2E-20260517-001",
+          "customer": "LOCAL_SYNTHETIC_Z003-PROD-PLAN-20260517-001",
+          "item_code": "DEMO-TEE",
+          "bom_id": 1,
+          "bom_version": "V1",
+          "planned_qty": "10.000000",
+          "planned_start_date": "2026-05-17",
+          "status": "job_cards_synced",
+          "work_order": "WO-PP-20260517114719792587-D17BA017",
+          "erpnext_docstatus": 1,
+          "erpnext_status": "LocalSynced",
+          "sync_status": "succeeded",
+          "last_synced_at": "2026-05-17T12:15:33.088085",
+          "latest_work_order_outbox": null,
+          "write_entry_frozen": true,
+          "write_entry_frozen_reason": "受控写门禁：create-work-order 与 sync-job-cards 仅允许 local-dev + local sqlite + scenario carrier 完整校验。",
+          "material_snapshots": [
+            {
+              "bom_item_id": 1,
+              "material_item_code": "FABRIC-COTTON",
+              "warehouse": "LY-WH-LOCAL-1",
+              "qty_per_piece": "1.200000",
+              "loss_rate": "0.030000",
+              "required_qty": "12.360000",
+              "available_qty": "0.000000",
+              "shortage_qty": "12.360000",
+              "checked_at": "2026-05-17T12:15:33.078102"
+            },
+            {
+              "bom_item_id": 2,
+              "material_item_code": "TRIM-BUTTON",
+              "warehouse": "LY-WH-LOCAL-1",
+              "qty_per_piece": "5.000000",
+              "loss_rate": "0.000000",
+              "required_qty": "50.000000",
+              "available_qty": "0.000000",
+              "shortage_qty": "50.000000",
+              "checked_at": "2026-05-17T12:15:33.078102"
+            }
+          ],
+          "job_cards": [
+            {
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-SEW-CA67F14A",
+              "operation": "车缝",
+              "operation_sequence": 20,
+              "company": "LY-LOCAL-TEST",
+              "item_code": "DEMO-TEE",
+              "expected_qty": "10.000000",
+              "completed_qty": "0.000000",
+              "erpnext_status": "LocalSynced",
+              "synced_at": "2026-05-17T12:15:33.088085"
+            },
+            {
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-FIN-F87F0AFF",
+              "operation": "后整",
+              "operation_sequence": 30,
+              "company": "LY-LOCAL-TEST",
+              "item_code": "DEMO-TEE",
+              "expected_qty": "10.000000",
+              "completed_qty": "0.000000",
+              "erpnext_status": "LocalSynced",
+              "synced_at": "2026-05-17T12:15:33.088085"
+            },
+            {
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-CUT-E989CF38",
+              "operation": "裁剪",
+              "operation_sequence": 10,
+              "company": "LY-LOCAL-TEST",
+              "item_code": "DEMO-TEE",
+              "expected_qty": "10.000000",
+              "completed_qty": "0.000000",
+              "erpnext_status": "LocalSynced",
+              "synced_at": "2026-05-17T12:15:33.088085"
+            }
+          ],
+          "created_at": "2026-05-17T12:15:33",
+          "updated_at": "2026-05-17T12:15:33"
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/workshop/tickets",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "id": 1,
+              "ticket_no": "TICKET-20260517121533094342",
+              "ticket_key": "Z003-WORKSHOP-TICKET-20260517-001|TK",
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-CUT-E989CF38",
+              "work_order": "WO-Z003-WORKSHOP-TICKET-20260517-001",
+              "bom_id": null,
+              "item_code": "DEMO-TEE",
+              "employee": "local.worker",
+              "process_name": "裁剪",
+              "color": "WHITE",
+              "size": "M",
+              "operation_type": "register",
+              "qty": 6.0,
+              "unit_wage": 1.0,
+              "wage_amount": 6.0,
+              "work_date": "2026-05-17",
+              "source": "manual",
+              "source_ref": "Z003-WORKSHOP-TICKET-20260517-001|SRC|Z004-CROSS-E2E-20260517-001",
+              "sync_status": "pending",
+              "created_by": "local.dev",
+              "created_at": "2026-05-17T12:15:33"
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/workshop/job-cards/{job_card}/summary",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "job_card": "JC-WO-PP-20260517114719792587-D17BA017-CUT-E989CF38",
+          "register_qty": 6.0,
+          "reversal_qty": 0.0,
+          "net_qty": 6.0,
+          "local_completed_qty": 6.0,
+          "sync_status": "pending",
+          "outbox_status": "pending",
+          "last_sync_at": null,
+          "last_error_code": null,
+          "last_error_message": null
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/workshop/daily-wages",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "employee": "local.worker",
+              "work_date": "2026-05-17",
+              "process_name": "裁剪",
+              "item_code": "DEMO-TEE",
+              "register_qty": 6.0,
+              "reversal_qty": 0.0,
+              "net_qty": 6.0,
+              "wage_amount": 6.0
+            },
+            {
+              "employee": "EMP-988",
+              "work_date": "2026-05-15",
+              "process_name": "SEWING",
+              "item_code": "DEMO-TEE",
+              "register_qty": 5.0,
+              "reversal_qty": 1.0,
+              "net_qty": 4.0,
+              "wage_amount": 4.0
+            },
+            {
+              "employee": "EMP-Z002-WORKSHOP-BATCH-20260513-026",
+              "work_date": "2026-05-13",
+              "process_name": "sew",
+              "item_code": "DEMO-TEE",
+              "register_qty": 2.0,
+              "reversal_qty": 0.0,
+              "net_qty": 2.0,
+              "wage_amount": 2.0
+            }
+          ],
+          "total": 3,
+          "total_amount": 12.0,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/warehouse/stock-ledger",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "ZY240716",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-1",
+              "actual_qty": "3.000000",
+              "qty_after_transaction": "3.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-1",
+              "actual_qty": "12.000000",
+              "qty_after_transaction": "15.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-1",
+              "actual_qty": "12.000000",
+              "qty_after_transaction": "27.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-1",
+              "actual_qty": "12.000000",
+              "qty_after_transaction": "39.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-1",
+              "actual_qty": "12.000000",
+              "qty_after_transaction": "51.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-1",
+              "actual_qty": "12.000000",
+              "qty_after_transaction": "63.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-1",
+              "actual_qty": "12.000000",
+              "qty_after_transaction": "75.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-1",
+              "actual_qty": "12.000000",
+              "qty_after_transaction": "87.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "ZY240716",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-2",
+              "actual_qty": "3.000000",
+              "qty_after_transaction": "90.000000",
+              "valuation_rate": "0"
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "posting_date": "2026-05-17",
+              "voucher_type": "Stock Entry Draft",
+              "voucher_no": "DRAFT-2",
+              "actual_qty": "12.000000",
+              "qty_after_transaction": "102.000000",
+              "valuation_rate": "0"
+            }
+          ],
+          "total": 10,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/warehouse/stock-summary",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "company": null,
+          "warehouse": null,
+          "item_code": null,
+          "items": [
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "DEMO-TEE",
+              "actual_qty": "96.000000",
+              "projected_qty": "96.000000",
+              "reserved_qty": "0",
+              "ordered_qty": "0",
+              "reorder_level": null,
+              "safety_stock": null,
+              "threshold_missing": true,
+              "is_below_reorder": false,
+              "is_below_safety": false
+            },
+            {
+              "company": "LY-LOCAL-TEST",
+              "warehouse": "LY-WH-LOCAL-1",
+              "item_code": "ZY240716",
+              "actual_qty": "6.000000",
+              "projected_qty": "6.000000",
+              "reserved_qty": "0",
+              "ordered_qty": "0",
+              "reorder_level": null,
+              "safety_stock": null,
+              "threshold_missing": true,
+              "is_below_reorder": false,
+              "is_below_safety": false
+            }
+          ],
+          "warehouse_management": [],
+          "material_inventory": []
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/warehouse/alerts",
+      "status": 503,
+      "response": {
+        "code": "EXTERNAL_SERVICE_UNAVAILABLE",
+        "message": "外部服务暂时不可用",
+        "data": null
+      }
+    },
+    {
+      "endpoint": "GET /api/warehouse/batches",
+      "status": 503,
+      "response": {
+        "code": "EXTERNAL_SERVICE_UNAVAILABLE",
+        "message": "外部服务暂时不可用",
+        "data": null
+      }
+    },
+    {
+      "endpoint": "GET /api/warehouse/stock-entry-drafts/{draft_id}",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 2,
+          "company": "LY-LOCAL-TEST",
+          "purpose": "Material Receipt",
+          "source_type": "workshop_ticket",
+          "source_id": "Z003-WAREHOUSE-20260517-001|SRC|Z004-CROSS-E2E-20260517-001",
+          "source_warehouse": null,
+          "target_warehouse": "LY-WH-LOCAL-1",
+          "status": "pending_outbox",
+          "created_by": "local.dev",
+          "created_at": "2026-05-17T12:15:33.106671",
+          "cancelled_by": null,
+          "cancelled_at": null,
+          "cancel_reason": null,
+          "idempotency_key": "Z003-WAREHOUSE-20260517-001|IDEMP|create",
+          "event_key": "wse:9694165faf68964dbca834de8453795464dde5292a88cc848036d31121312a80",
+          "allocation_mode": null,
+          "strict_failure_reason": null,
+          "show_completed_forced": null,
+          "items": [
+            {
+              "id": 2,
+              "draft_id": 2,
+              "item_code": "ZY240716",
+              "qty": "3.000000",
+              "uom": "Nos",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": "样衣仓",
+              "target_warehouse": null
+            },
+            {
+              "id": 20,
+              "draft_id": 2,
+              "item_code": "DEMO-TEE",
+              "qty": "12.000000",
+              "uom": "PCS",
+              "batch_no": null,
+              "serial_no": null,
+              "source_warehouse": null,
+              "target_warehouse": "LY-WH-LOCAL-1"
+            }
+          ],
+          "outbox": {
+            "draft_id": 2,
+            "event_id": 20,
+            "event_type": "warehouse_stock_entry_sync",
+            "status": "in_pending",
+            "retry_count": 0,
+            "external_ref": null,
+            "error_message": null,
+            "created_at": "2026-05-17T12:15:33.106671",
+            "processed_at": null
+          }
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/warehouse/stock-entry-drafts/{draft_id}/outbox-status",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "draft_id": 2,
+          "event_id": 20,
+          "event_type": "warehouse_stock_entry_sync",
+          "status": "in_pending",
+          "retry_count": 0,
+          "external_ref": null,
+          "error_message": null,
+          "created_at": "2026-05-17T12:15:33.106671",
+          "processed_at": null
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/subcontract/",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "id": 1,
+              "subcontract_no": "SC-20260517121533113787",
+              "supplier": "LY-LOCAL-SUPPLIER",
+              "item_code": "DEMO-TEE",
+              "company": "LY-LOCAL-TEST",
+              "bom_id": 1,
+              "process_name": "缝制",
+              "planned_qty": 10.0,
+              "subcontract_rate": 6.0,
+              "issued_qty": 62.36,
+              "received_qty": 10.0,
+              "inspected_qty": 10.0,
+              "rejected_qty": 1.0,
+              "accepted_qty": 9.0,
+              "gross_amount": 60.0,
+              "deduction_amount": 0.5,
+              "net_amount": 59.5,
+              "status": "completed",
+              "resource_scope_status": "ready",
+              "profit_scope_status": "ready",
+              "profit_scope_error_code": null,
+              "sales_order": "SO-Z004-CROSS-E2E-20260517-001",
+              "sales_order_item": "SOI-Z004-CROSS-E2E-20260517-001",
+              "production_plan_id": 1,
+              "work_order": "WO-PP-20260517114719792587-D17BA017",
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-CUT-E989CF38",
+              "latest_issue_outbox_id": 1,
+              "latest_issue_sync_status": "pending",
+              "latest_issue_stock_entry_name": null,
+              "latest_issue_idempotency_key": "Z003-SUBCONTRACT-20260517-001|IDEMP|issue",
+              "latest_issue_error_code": null,
+              "latest_receipt_outbox_id": 2,
+              "latest_receipt_sync_status": "succeeded",
+              "latest_receipt_stock_entry_name": "LOCAL-RECEIPT-SRB-1-20260517121533141155",
+              "latest_receipt_idempotency_key": "Z003-SUBCONTRACT-20260517-001|IDEMP|receive",
+              "latest_receipt_error_code": null,
+              "created_at": "2026-05-17T12:15:33"
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/subcontract/settlement-candidates",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "inspection_id": 1,
+              "settlement_line_key": "subcontract_inspection:1",
+              "subcontract_id": 1,
+              "subcontract_no": "SC-20260517121533113787",
+              "company": "LY-LOCAL-TEST",
+              "supplier": "LY-LOCAL-SUPPLIER",
+              "item_code": "DEMO-TEE",
+              "process_name": "缝制",
+              "receipt_batch_no": "SRB-1-20260517121533141155",
+              "inspected_at": "2026-05-17T12:15:33.150661",
+              "inspected_by": "local.dev",
+              "inspected_qty": 10.0,
+              "accepted_qty": 9.0,
+              "rejected_qty": 1.0,
+              "rejected_rate": 0.1,
+              "subcontract_rate": 6.0,
+              "gross_amount": 60.0,
+              "deduction_amount": 0.5,
+              "net_amount": 59.5,
+              "settlement_status": "unsettled",
+              "statement_id": null,
+              "statement_no": null
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 20,
+          "summary": {
+            "line_count": 1,
+            "total_qty": 10.0,
+            "gross_amount": 60.0,
+            "deduction_amount": 0.5,
+            "net_amount": 59.5
+          }
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/subcontract/{order_id}",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 1,
+          "subcontract_no": "SC-20260517121533113787",
+          "supplier": "LY-LOCAL-SUPPLIER",
+          "item_code": "DEMO-TEE",
+          "company": "LY-LOCAL-TEST",
+          "bom_id": 1,
+          "process_name": "缝制",
+          "planned_qty": 10.0,
+          "subcontract_rate": 6.0,
+          "issued_qty": 62.36,
+          "received_qty": 10.0,
+          "inspected_qty": 10.0,
+          "rejected_qty": 1.0,
+          "accepted_qty": 9.0,
+          "gross_amount": 60.0,
+          "deduction_amount": 0.5,
+          "net_amount": 59.5,
+          "status": "completed",
+          "settlement_status": "unsettled",
+          "resource_scope_status": "ready",
+          "scope_error_code": null,
+          "profit_scope_status": "unresolved",
+          "profit_scope_error_code": null,
+          "sales_order": null,
+          "sales_order_item": null,
+          "production_plan_id": null,
+          "work_order": null,
+          "job_card": null,
+          "latest_issue_outbox_id": 1,
+          "latest_issue_sync_status": "pending",
+          "latest_issue_stock_entry_name": null,
+          "latest_issue_idempotency_key": "Z003-SUBCONTRACT-20260517-001|IDEMP|issue",
+          "latest_receipt_outbox_id": 2,
+          "latest_receipt_sync_status": "succeeded",
+          "latest_receipt_stock_entry_name": "LOCAL-RECEIPT-SRB-1-20260517121533141155",
+          "latest_receipt_idempotency_key": "Z003-SUBCONTRACT-20260517-001|IDEMP|receive",
+          "receipts": [
+            {
+              "receipt_batch_no": "SRB-1-20260517121533141155",
+              "receipt_warehouse": "LY-WH-FG-1",
+              "item_code": "DEMO-TEE",
+              "color": "WHITE",
+              "size": "M",
+              "batch_no": "RCV-201533",
+              "uom": "PCS",
+              "received_qty": 10.0,
+              "sync_status": "succeeded",
+              "stock_entry_name": "LOCAL-RECEIPT-SRB-1-20260517121533141155",
+              "inspect_status": "inspected",
+              "idempotency_key": "Z003-SUBCONTRACT-20260517-001|IDEMP|receive",
+              "received_by": "local.dev",
+              "received_at": "2026-05-17T12:15:33.142353"
+            }
+          ],
+          "inspections": [
+            {
+              "inspection_no": "SIN-1-20260517121533150637",
+              "receipt_batch_no": "SRB-1-20260517121533141155",
+              "inspected_qty": 10.0,
+              "accepted_qty": 9.0,
+              "rejected_qty": 1.0,
+              "rejected_rate": 0.1,
+              "subcontract_rate": 6.0,
+              "gross_amount": 60.0,
+              "deduction_amount_per_piece": 0.5,
+              "deduction_amount": 0.5,
+              "net_amount": 59.5,
+              "sales_order": "SO-Z004-CROSS-E2E-20260517-001",
+              "sales_order_item": "SOI-Z004-CROSS-E2E-20260517-001",
+              "production_plan_id": 1,
+              "work_order": "WO-PP-20260517114719792587-D17BA017",
+              "job_card": "JC-WO-PP-20260517114719792587-D17BA017-CUT-E989CF38",
+              "profit_scope_status": "ready",
+              "profit_scope_error_code": null,
+              "inspected_by": "local.dev",
+              "inspected_at": "2026-05-17T12:15:33.150661",
+              "remark": "local e2e inspect"
+            }
+          ],
+          "created_at": "2026-05-17T12:15:33",
+          "updated_at": "2026-05-17T12:15:33.150855"
+        }
+      }
+    },
+    {
+      "endpoint": "GET /api/factory-statements/",
+      "status": 200,
+      "response": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [],
+          "total": 0,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    }
+  ],
+  "fail_closed_case_count": 4,
+  "fail_closed_cases": [
+    {
+      "case_id": "missing_request_id",
+      "status": 409,
+      "response": {
+        "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+        "message": "request_id 不能为空",
+        "data": {}
+      }
+    },
+    {
+      "case_id": "scenario_tag_request_mismatch",
+      "status": 409,
+      "response": {
+        "code": "WORKSHOP_IDEMPOTENCY_CONFLICT",
+        "message": "scenario_tag 载体缺失或格式非法",
+        "data": {}
+      }
+    },
+    {
+      "case_id": "source_ref_mismatch",
+      "status": 409,
+      "response": {
+        "code": "SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+        "message": "LOCAL_GATE_FAIL_CLOSED:mismatched_source_ref",
+        "data": {}
+      }
+    },
+    {
+      "case_id": "non_local_dev_db_gate",
+      "status": 401,
+      "response": {
+        "code": "AUTH_UNAUTHORIZED",
+        "message": "未登录或 Token 无效",
+        "data": {}
+      }
+    }
+  ],
+  "db_write_on_failed_gate_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "rollback_cleanup_executed": true,
+  "production_sql_cleanup_plan": {
+    "tables": [
+      "ly_production_job_card_link",
+      "ly_production_work_order_link",
+      "ly_production_work_order_outbox",
+      "ly_production_plan_material",
+      "ly_production_status_log",
+      "ly_production_plan"
+    ],
+    "where_tokens": [
+      "Z003-PROD-PLAN-20260517-001",
+      "Z003-PROD-PLAN-DETAIL-20260517-001",
+      "Z004-CROSS-E2E-20260517-001"
+    ],
+    "carrier_columns": [
+      "scenario_tag",
+      "idempotency_key",
+      "request_id",
+      "source_ref",
+      "plan_no",
+      "work_order",
+      "sales_order",
+      "sales_order_item"
+    ]
+  },
+  "production_sql_cleanup_counts": {
+    "ly_production_job_card_link": 0,
+    "ly_production_work_order_link": 0,
+    "ly_production_work_order_outbox": 0,
+    "ly_production_plan_material": 0,
+    "ly_production_status_log": 1,
+    "ly_production_plan": 1
+  },
+  "scoped_cleanup_counts": {
+    "ly_factory_statement_payable_outbox": 0,
+    "ly_factory_statement_item": 0,
+    "ly_factory_statement": 0,
+    "ly_subcontract_settlement_operation": 2,
+    "ly_subcontract_inspection": 1,
+    "ly_subcontract_receipt": 1,
+    "ly_subcontract_material": 0,
+    "ly_subcontract_stock_outbox": 2,
+    "ly_subcontract_order": 1,
+    "ly_warehouse_stock_entry_outbox_event": 0,
+    "ly_warehouse_stock_entry_draft": 1,
+    "ys_workshop_daily_wage": 0,
+    "ys_workshop_ticket": 2,
+    "ly_production_job_card_link": 1,
+    "ly_production_work_order_link": 0,
+    "ly_production_work_order_outbox": 0,
+    "ly_production_plan": 0,
+    "ly_operation_audit_log": 13,
+    "ly_security_audit_log": 1
+  },
+  "local_dev_db_gate": {
+    "app_env_expected": "development",
+    "db_url_expected": "sqlite:///./lingyi_service.local.db",
+    "auth_me_status": 200,
+    "auth_me_payload": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "username": "local.dev",
+        "roles": [
+          "System Manager"
+        ],
+        "is_service_account": false,
+        "source": "dev_header"
+      }
+    },
+    "result": "pass"
+  },
+  "generated_at": "2026-05-17T12:16:22Z"
+}

@@ -1,0 +1,566 @@
+{
+  "task_id": "TASK-Z004B-33",
+  "selected_candidate_id": "TASK-Z004B-CAND-06",
+  "master_chain_id": "Z004-CROSS-E2E-20260517-001",
+  "baseline_scan": {
+    "ly_production_plan": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "plan_no",
+        "sales_order",
+        "sales_order_item",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_production_work_order_link": {
+      "count": 0,
+      "used_columns": [
+        "work_order"
+      ],
+      "sample_ids": []
+    },
+    "ly_production_work_order_outbox": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_production_job_card_link": {
+      "count": 0,
+      "used_columns": [
+        "work_order",
+        "job_card",
+        "item_code",
+        "operation"
+      ],
+      "sample_ids": []
+    },
+    "ys_workshop_ticket": {
+      "count": 0,
+      "used_columns": [
+        "source_ref",
+        "ticket_key",
+        "work_order",
+        "job_card",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ys_workshop_daily_wage": {
+      "count": 0,
+      "used_columns": [
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_warehouse_stock_entry_draft": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "source_id"
+      ],
+      "sample_ids": []
+    },
+    "ly_warehouse_stock_entry_outbox_event": {
+      "count": 0,
+      "used_columns": [],
+      "sample_ids": []
+    },
+    "ly_subcontract_order": {
+      "count": 0,
+      "used_columns": [
+        "work_order",
+        "job_card",
+        "sales_order",
+        "sales_order_item",
+        "item_code",
+        "subcontract_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_subcontract_material": {
+      "count": 0,
+      "used_columns": [],
+      "sample_ids": []
+    },
+    "ly_subcontract_receipt": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "batch_no",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_subcontract_inspection": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "work_order",
+        "job_card",
+        "sales_order",
+        "sales_order_item",
+        "item_code",
+        "statement_no",
+        "remark"
+      ],
+      "sample_ids": []
+    },
+    "ly_subcontract_stock_outbox": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_subcontract_settlement_operation": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_factory_statement": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_factory_statement_item": {
+      "count": 0,
+      "used_columns": [
+        "item_code",
+        "subcontract_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_factory_statement_payable_outbox": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_operation_audit_log": {
+      "count": 0,
+      "used_columns": [
+        "request_id"
+      ],
+      "sample_ids": []
+    },
+    "ly_security_audit_log": {
+      "count": 0,
+      "used_columns": [
+        "request_id"
+      ],
+      "sample_ids": []
+    }
+  },
+  "after_write_scan": {
+    "ly_production_plan": {
+      "count": 1,
+      "used_columns": [
+        "idempotency_key",
+        "plan_no",
+        "sales_order",
+        "sales_order_item",
+        "item_code"
+      ],
+      "sample_ids": [
+        1
+      ]
+    },
+    "ly_production_work_order_link": {
+      "count": 0,
+      "used_columns": [
+        "work_order"
+      ],
+      "sample_ids": []
+    },
+    "ly_production_work_order_outbox": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_production_job_card_link": {
+      "count": 0,
+      "used_columns": [
+        "work_order",
+        "job_card",
+        "item_code",
+        "operation"
+      ],
+      "sample_ids": []
+    },
+    "ys_workshop_ticket": {
+      "count": 1,
+      "used_columns": [
+        "source_ref",
+        "ticket_key",
+        "work_order",
+        "job_card",
+        "item_code"
+      ],
+      "sample_ids": [
+        1
+      ]
+    },
+    "ys_workshop_daily_wage": {
+      "count": 0,
+      "used_columns": [
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_warehouse_stock_entry_draft": {
+      "count": 1,
+      "used_columns": [
+        "idempotency_key",
+        "source_id"
+      ],
+      "sample_ids": [
+        2
+      ]
+    },
+    "ly_warehouse_stock_entry_outbox_event": {
+      "count": 0,
+      "used_columns": [],
+      "sample_ids": []
+    },
+    "ly_subcontract_order": {
+      "count": 1,
+      "used_columns": [
+        "work_order",
+        "job_card",
+        "sales_order",
+        "sales_order_item",
+        "item_code",
+        "subcontract_no"
+      ],
+      "sample_ids": [
+        1
+      ]
+    },
+    "ly_subcontract_material": {
+      "count": 0,
+      "used_columns": [],
+      "sample_ids": []
+    },
+    "ly_subcontract_receipt": {
+      "count": 1,
+      "used_columns": [
+        "idempotency_key",
+        "batch_no",
+        "item_code"
+      ],
+      "sample_ids": [
+        1
+      ]
+    },
+    "ly_subcontract_inspection": {
+      "count": 1,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "work_order",
+        "job_card",
+        "sales_order",
+        "sales_order_item",
+        "item_code",
+        "statement_no",
+        "remark"
+      ],
+      "sample_ids": [
+        1
+      ]
+    },
+    "ly_subcontract_stock_outbox": {
+      "count": 2,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "item_code"
+      ],
+      "sample_ids": [
+        1,
+        2
+      ]
+    },
+    "ly_subcontract_settlement_operation": {
+      "count": 2,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": [
+        1,
+        2
+      ]
+    },
+    "ly_factory_statement": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_factory_statement_item": {
+      "count": 0,
+      "used_columns": [
+        "item_code",
+        "subcontract_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_factory_statement_payable_outbox": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_operation_audit_log": {
+      "count": 12,
+      "used_columns": [
+        "request_id"
+      ],
+      "sample_ids": [
+        1950,
+        1951,
+        1952,
+        1953,
+        1956
+      ]
+    },
+    "ly_security_audit_log": {
+      "count": 0,
+      "used_columns": [
+        "request_id"
+      ],
+      "sample_ids": []
+    }
+  },
+  "after_cleanup_scan": {
+    "ly_production_plan": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "plan_no",
+        "sales_order",
+        "sales_order_item",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_production_work_order_link": {
+      "count": 0,
+      "used_columns": [
+        "work_order"
+      ],
+      "sample_ids": []
+    },
+    "ly_production_work_order_outbox": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_production_job_card_link": {
+      "count": 0,
+      "used_columns": [
+        "work_order",
+        "job_card",
+        "item_code",
+        "operation"
+      ],
+      "sample_ids": []
+    },
+    "ys_workshop_ticket": {
+      "count": 0,
+      "used_columns": [
+        "source_ref",
+        "ticket_key",
+        "work_order",
+        "job_card",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ys_workshop_daily_wage": {
+      "count": 0,
+      "used_columns": [
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_warehouse_stock_entry_draft": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "source_id"
+      ],
+      "sample_ids": []
+    },
+    "ly_warehouse_stock_entry_outbox_event": {
+      "count": 0,
+      "used_columns": [],
+      "sample_ids": []
+    },
+    "ly_subcontract_order": {
+      "count": 0,
+      "used_columns": [
+        "work_order",
+        "job_card",
+        "sales_order",
+        "sales_order_item",
+        "item_code",
+        "subcontract_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_subcontract_material": {
+      "count": 0,
+      "used_columns": [],
+      "sample_ids": []
+    },
+    "ly_subcontract_receipt": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "batch_no",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_subcontract_inspection": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "work_order",
+        "job_card",
+        "sales_order",
+        "sales_order_item",
+        "item_code",
+        "statement_no",
+        "remark"
+      ],
+      "sample_ids": []
+    },
+    "ly_subcontract_stock_outbox": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "item_code"
+      ],
+      "sample_ids": []
+    },
+    "ly_subcontract_settlement_operation": {
+      "count": 0,
+      "used_columns": [
+        "request_id",
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_factory_statement": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_factory_statement_item": {
+      "count": 0,
+      "used_columns": [
+        "item_code",
+        "subcontract_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_factory_statement_payable_outbox": {
+      "count": 0,
+      "used_columns": [
+        "idempotency_key",
+        "statement_no"
+      ],
+      "sample_ids": []
+    },
+    "ly_operation_audit_log": {
+      "count": 0,
+      "used_columns": [
+        "request_id"
+      ],
+      "sample_ids": []
+    },
+    "ly_security_audit_log": {
+      "count": 0,
+      "used_columns": [
+        "request_id"
+      ],
+      "sample_ids": []
+    }
+  },
+  "baseline_total": 0,
+  "after_write_total": 22,
+  "after_cleanup_total": 0,
+  "residual_scan_result": "no_new_residual",
+  "zero_residual": true,
+  "rollback_cleanup_executed": true,
+  "production_sql_cleanup_counts": {
+    "ly_production_job_card_link": 0,
+    "ly_production_work_order_link": 0,
+    "ly_production_work_order_outbox": 0,
+    "ly_production_plan_material": 0,
+    "ly_production_status_log": 1,
+    "ly_production_plan": 1
+  },
+  "scoped_cleanup_counts": {
+    "ly_factory_statement_payable_outbox": 0,
+    "ly_factory_statement_item": 0,
+    "ly_factory_statement": 0,
+    "ly_subcontract_settlement_operation": 2,
+    "ly_subcontract_inspection": 1,
+    "ly_subcontract_receipt": 1,
+    "ly_subcontract_material": 0,
+    "ly_subcontract_stock_outbox": 2,
+    "ly_subcontract_order": 1,
+    "ly_warehouse_stock_entry_outbox_event": 0,
+    "ly_warehouse_stock_entry_draft": 1,
+    "ys_workshop_daily_wage": 0,
+    "ys_workshop_ticket": 2,
+    "ly_production_job_card_link": 1,
+    "ly_production_work_order_link": 0,
+    "ly_production_work_order_outbox": 0,
+    "ly_production_plan": 0,
+    "ly_operation_audit_log": 13,
+    "ly_security_audit_log": 1
+  },
+  "generated_at": "2026-05-17T12:16:22Z"
+}
