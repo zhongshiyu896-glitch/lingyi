@@ -1,0 +1,188 @@
+{
+  "task_id": "TASK-Z004B-39",
+  "source_head": "3f7486f6af2fba659350cc366393893b0e3297e7",
+  "source_subject": "chore: seal cand06 cross module e2e acceptance",
+  "schema_source_task": "TASK-Z004B-38-PREP",
+  "selected_candidate_id": "TASK-Z004B-CAND-07",
+  "candidate_type": "test_data_rollback_zero_residual_gap",
+  "module": "test_data_rollback_zero_residual",
+  "dry_run_executed": true,
+  "default_dry_run": true,
+  "local_only_tooling": true,
+  "no_real_cleanup": true,
+  "no_db_write": true,
+  "real_cleanup_executed": false,
+  "sql_cleanup_executed": false,
+  "db_write_count": 0,
+  "business_data_delete_count": 0,
+  "test_data_tagging_schema_summary": {
+    "master_chain_id_pattern": "Z004-{DOMAIN}-{YYYYMMDD}-{NNN}",
+    "scenario_tag_pattern": "Z004-{MODULE}-{SCENARIO}-{YYYYMMDD}-{NNN}",
+    "request_id_pattern": "{scenario_tag}-RID-{STEP}-{HEX}",
+    "source_ref_pattern": "{master_chain_id}|SRC|{MODULE}|{STEP}",
+    "idempotency_key_pattern": "{scenario_tag}|{STEP}|{SEQ}"
+  },
+  "sample_tagging_payload": {
+    "master_chain_id": "Z004-TOOLING-20260517-001",
+    "scenario_tags": {
+      "production": "Z004-PRODUCTION-ROLLBACK-20260517-001",
+      "workshop": "Z004-WORKSHOP-ROLLBACK-20260517-001",
+      "warehouse": "Z004-WAREHOUSE-ROLLBACK-20260517-001",
+      "subcontract": "Z004-SUBCONTRACT-ROLLBACK-20260517-001",
+      "factory_statement": "Z004-FACTORY_STATEMENT-ROLLBACK-20260517-001"
+    },
+    "request_ids": {
+      "production": "Z004-PRODUCTION-ROLLBACK-20260517-001-RID-CREATE-A1B2",
+      "workshop": "Z004-WORKSHOP-ROLLBACK-20260517-001-RID-REGISTER-C3D4",
+      "warehouse": "Z004-WAREHOUSE-ROLLBACK-20260517-001-RID-DRAFT-E5F6",
+      "subcontract": "Z004-SUBCONTRACT-ROLLBACK-20260517-001-RID-SETTLE-A7B8",
+      "factory_statement": "Z004-FACTORY_STATEMENT-ROLLBACK-20260517-001-RID-READ-C9D0"
+    },
+    "source_refs": {
+      "production": "Z004-TOOLING-20260517-001|SRC|PRODUCTION|CREATE",
+      "workshop": "Z004-TOOLING-20260517-001|SRC|WORKSHOP|REGISTER",
+      "warehouse": "Z004-TOOLING-20260517-001|SRC|WAREHOUSE|DRAFT",
+      "subcontract": "Z004-TOOLING-20260517-001|SRC|SUBCONTRACT|SETTLE",
+      "factory_statement": "Z004-TOOLING-20260517-001|SRC|FACTORY_STATEMENT|READ"
+    },
+    "idempotency_keys": {
+      "production": "Z004-PRODUCTION-ROLLBACK-20260517-001|CREATE|001",
+      "workshop": "Z004-WORKSHOP-ROLLBACK-20260517-001|REGISTER|001",
+      "warehouse": "Z004-WAREHOUSE-ROLLBACK-20260517-001|DRAFT|001",
+      "subcontract": "Z004-SUBCONTRACT-ROLLBACK-20260517-001|SETTLE|001",
+      "factory_statement": "Z004-FACTORY_STATEMENT-ROLLBACK-20260517-001|READ|001"
+    }
+  },
+  "rollback_template_schema_fields": [
+    "module",
+    "endpoint_or_sql",
+    "scenario_tag_filter",
+    "affected_tables",
+    "before_count",
+    "after_write_count",
+    "after_cleanup_count",
+    "sample_primary_keys",
+    "cleanup_action",
+    "cleanup_result"
+  ],
+  "rollback_templates": [
+    {
+      "module": "production",
+      "endpoint_or_sql": "POST /api/production/plans + SQL(local-dev, scenario scoped)",
+      "scenario_tag_filter": "Z004-PRODUCTION-ROLLBACK-20260517-001",
+      "affected_tables": [
+        "ly_production_plan",
+        "ly_production_work_order_link",
+        "ly_production_work_order_outbox",
+        "ly_production_job_card_link"
+      ],
+      "before_count": 0,
+      "after_write_count": 2,
+      "after_cleanup_count": 0,
+      "sample_primary_keys": [
+        "plan_no:SIM-PROD-001",
+        "work_order:SIM-WO-001"
+      ],
+      "cleanup_action": "dry-run only, no execution",
+      "cleanup_result": "skipped_due_to_no_auth",
+      "dry_run_only": true
+    },
+    {
+      "module": "workshop",
+      "endpoint_or_sql": "POST /api/workshop/tickets/register + /batch + /reversal (plan only)",
+      "scenario_tag_filter": "Z004-WORKSHOP-ROLLBACK-20260517-001",
+      "affected_tables": [
+        "ys_workshop_ticket",
+        "ys_workshop_daily_wage"
+      ],
+      "before_count": 0,
+      "after_write_count": 3,
+      "after_cleanup_count": 0,
+      "sample_primary_keys": [
+        "ticket_no:SIM-TICKET-001"
+      ],
+      "cleanup_action": "dry-run reversal plan only",
+      "cleanup_result": "skipped_due_to_no_auth",
+      "dry_run_only": true
+    },
+    {
+      "module": "warehouse",
+      "endpoint_or_sql": "POST /api/warehouse/stock-entry-drafts + /cancel (plan only)",
+      "scenario_tag_filter": "Z004-WAREHOUSE-ROLLBACK-20260517-001",
+      "affected_tables": [
+        "ly_warehouse_stock_entry_draft",
+        "ly_warehouse_stock_entry_outbox_event"
+      ],
+      "before_count": 0,
+      "after_write_count": 2,
+      "after_cleanup_count": 0,
+      "sample_primary_keys": [
+        "draft_id:SIM-DRAFT-001"
+      ],
+      "cleanup_action": "dry-run cancel plan only",
+      "cleanup_result": "skipped_due_to_no_auth",
+      "dry_run_only": true
+    },
+    {
+      "module": "subcontract",
+      "endpoint_or_sql": "POST /api/subcontract/* + /settlement-locks/release (plan only)",
+      "scenario_tag_filter": "Z004-SUBCONTRACT-ROLLBACK-20260517-001",
+      "affected_tables": [
+        "ly_subcontract_order",
+        "ly_subcontract_material",
+        "ly_subcontract_receipt",
+        "ly_subcontract_inspection",
+        "ly_subcontract_stock_outbox",
+        "ly_subcontract_settlement_operation"
+      ],
+      "before_count": 0,
+      "after_write_count": 6,
+      "after_cleanup_count": 0,
+      "sample_primary_keys": [
+        "order_id:SIM-SUB-001"
+      ],
+      "cleanup_action": "dry-run release/cleanup plan only",
+      "cleanup_result": "skipped_due_to_no_auth",
+      "dry_run_only": true
+    },
+    {
+      "module": "factory_statement",
+      "endpoint_or_sql": "GET /api/factory-statements/* readback only (no write)",
+      "scenario_tag_filter": "Z004-FACTORY_STATEMENT-ROLLBACK-20260517-001",
+      "affected_tables": [
+        "ly_factory_statement",
+        "ly_factory_statement_item",
+        "ly_factory_statement_payable_outbox"
+      ],
+      "before_count": 0,
+      "after_write_count": 0,
+      "after_cleanup_count": 0,
+      "sample_primary_keys": [
+        "statement_id:SIM-STMT-001"
+      ],
+      "cleanup_action": "not_applicable_readonly",
+      "cleanup_result": "not_required",
+      "dry_run_only": true
+    }
+  ],
+  "rollback_template_count": 5,
+  "zero_residual_counters": {
+    "baseline_total": 0,
+    "after_write_total": 0,
+    "after_cleanup_total": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_write_request_count": 0,
+    "db_write_on_failed_gate_count": 0,
+    "residual_scan_result": "no_new_residual",
+    "zero_residual_model_valid": true
+  },
+  "known_residual_risks": [
+    "CAND06 allowed read endpoint 命中为 13/16，仍有 3 个未命中（GET /api/factory-statements/{statement_id}, GET /api/warehouse/alerts, GET /api/warehouse/batches）；后续若做上线准入需补齐对应 readback 证据。"
+  ],
+  "recommended_next_task_id": "TASK-Z004B-40",
+  "recommended_next_task_type": "test_data_rollback_zero_residual_dry_run_result_freeze",
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "no_remote_lifecycle_actions": true,
+  "generated_at": "2026-05-17T21:05:00+08:00"
+}
