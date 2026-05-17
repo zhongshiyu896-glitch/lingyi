@@ -1,0 +1,45 @@
+{
+  "task_id": "TASK-Z004B-50",
+  "source_head": "556269bef27b7d6900d18157dfee05c4ba675409",
+  "source_parent": "fbbf3ee31482c2d65a19d8e9ca77e15b967cef65",
+  "source_subject": "chore: seal cand06 readback evidence",
+  "completed_candidate_id": "TASK-Z004B-CAND-06-READBACK",
+  "completed_commit_hash": "556269bef27b7d6900d18157dfee05c4ba675409",
+  "previous_mainline_candidates_source": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_44_z004_phase_closeout_next_mainline_candidates.json",
+  "commit_ledger_source": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_47_commit_candidate_ledger.json",
+  "committed_count": 3,
+  "committed_set_check": {
+    "missing": [],
+    "extra": []
+  },
+  "z004_local_candidate_pool_cleared": true,
+  "readback_business_closed": false,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "no_remote_lifecycle_actions": true,
+  "residual_readback_risks": [
+    {
+      "endpoint": "GET /api/factory-statements/{statement_id}",
+      "status": "blocked_no_statement_id",
+      "detail": "列表端点空态，无法获取合法 statement_id；按边界规则不得伪造。"
+    },
+    {
+      "endpoint": "GET /api/warehouse/alerts",
+      "status": "hit_service_unavailable",
+      "http_status": 503,
+      "response_code": "EXTERNAL_SERVICE_UNAVAILABLE"
+    },
+    {
+      "endpoint": "GET /api/warehouse/batches",
+      "status": "hit_service_unavailable",
+      "http_status": 503,
+      "response_code": "EXTERNAL_SERVICE_UNAVAILABLE"
+    }
+  ],
+  "next_local_candidate_count": 0,
+  "next_local_candidates": [],
+  "recommended_next_task_id": null,
+  "recommended_next_task_type": null,
+  "next_action_state": "WAIT_FOR_A_OR_USER_DECISION",
+  "note": "本次仅完成 CAND-06-READBACK 提交后归档与本地状态刷新。本地候选收口不等于项目整体完成，远端生命周期继续 PARKED。"
+}
