@@ -1,0 +1,129 @@
+{
+  "task_id": "TASK-Z006B-09-IMPL",
+  "generated_at": "2026-05-18T17:00:00+0800",
+  "api_regression_cases": [
+    {
+      "case_id": "M01_alerts_local_dev_static_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 200,
+      "expected_result": "local_dev_static_empty_state",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M01_batches_local_dev_static_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 200,
+      "expected_result": "local_dev_static_empty_state",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M02_alerts_local_dev_static_invalid_response",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 502,
+      "expected_code": "ERPNEXT_RESPONSE_INVALID",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M02_batches_local_dev_static_invalid_response",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 502,
+      "expected_code": "ERPNEXT_RESPONSE_INVALID",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M03_alerts_local_dev_static_non_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 503,
+      "expected_code": "ERPNEXT_TIMEOUT",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M03_batches_local_dev_static_non_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 503,
+      "expected_code": "ERPNEXT_TIMEOUT",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M04_alerts_local_dev_non_static_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 503,
+      "expected_code": "PERMISSION_SOURCE_UNAVAILABLE",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M04_batches_local_dev_non_static_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 503,
+      "expected_code": "PERMISSION_SOURCE_UNAVAILABLE",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M05_alerts_non_local_dev_static_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 503,
+      "expected_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M05_batches_non_local_dev_static_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 503,
+      "expected_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M06_alerts_non_local_dev_non_static_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 503,
+      "expected_code": "PERMISSION_SOURCE_UNAVAILABLE",
+      "result": "PASS"
+    },
+    {
+      "case_id": "M06_batches_non_local_dev_non_static_external_service_unavailable",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 503,
+      "expected_code": "PERMISSION_SOURCE_UNAVAILABLE",
+      "result": "PASS"
+    }
+  ],
+  "method_summary": {
+    "get": 12,
+    "post": 0,
+    "put": 0,
+    "patch": 0,
+    "delete": 0
+  },
+  "permission_mode_matrix_passed": "6/6",
+  "alerts_matrix_status": "PASS",
+  "batches_matrix_status": "PASS",
+  "fallback_allowed_modes": [
+    "M01"
+  ],
+  "fail_closed_modes": [
+    "M02",
+    "M03",
+    "M04",
+    "M05",
+    "M06"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_write_endpoints": [],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0
+}

@@ -1,0 +1,69 @@
+{
+  "task_id": "TASK-Z006B-09-IMPL",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z006A-PRODUCTION-READBACK-READINESS-MAINLINE",
+  "generated_at": "2026-05-18T17:00:00+0800",
+  "source_head": "5236ec2cb3924baf742b8dd946fae7320e3ba5c6",
+  "source_subject": "chore: seal z006 warehouse adapter contract fixture",
+  "selected_candidate_id": "Z006-CAND-003",
+  "boundary_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_08_warehouse_permission_mode_readback_boundary.json",
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_warehouse_permission_mode_readback_matrix.py",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-09-IMPL_warehouse_permission_mode_readback_matrix最小实现与回归报告.md",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_09_warehouse_permission_mode_readback_matrix_evidence.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_09_warehouse_permission_mode_readback_matrix_api_regression.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+  ],
+  "permission_mode_matrix_passed": "6/6",
+  "alerts_matrix_status": "PASS",
+  "batches_matrix_status": "PASS",
+  "fallback_allowed_modes": [
+    "M01"
+  ],
+  "fail_closed_modes": [
+    "M02",
+    "M03",
+    "M04",
+    "M05",
+    "M06"
+  ],
+  "test_runs": {
+    "permission_mode_matrix": {
+      "runner": ".venv/bin/python -m unittest tests.test_warehouse_permission_mode_readback_matrix -v",
+      "result": "PASS",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "errors": 0
+    },
+    "adapter_contract_fixture": {
+      "runner": ".venv/bin/python -m unittest tests.test_warehouse_adapter_contract_fixture -v",
+      "result": "PASS",
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "errors": 0
+    },
+    "python_compile": {
+      "runner": ".venv/bin/python -m py_compile app/routers/warehouse.py app/services/warehouse_service.py tests/test_warehouse_permission_mode_readback_matrix.py tests/test_warehouse_adapter_contract_fixture.py",
+      "result": "PASS"
+    }
+  },
+  "allowed_read_hit": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_write_endpoints": [],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "production_erpnext_non_fallback_readback_closed": false,
+  "readback_business_closed": true,
+  "readback_business_closed_scope": "local_dev_static_fallback_only",
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true
+}
