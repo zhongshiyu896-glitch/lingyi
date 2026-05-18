@@ -1,0 +1,183 @@
+{
+  "task_id": "TASK-Z005B-20",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z005A-READBACK-PRECONDITION-MAINLINE",
+  "generated_at": "2026-05-18T14:04:32+0800",
+  "source_head": "c1f0ee849868f03b658e4c0c43ba511e774c2706",
+  "parent": "1adab5edb083b7466a7eff4d63fb70dc820ee850",
+  "source_subject": "chore: seal z005 readback local status",
+  "committed_task": "TASK-Z005B-19",
+  "archive_status": "PASS",
+  "entries": [
+    {
+      "entry_id": "Z001",
+      "key": "source_head",
+      "value": "c1f0ee849868f03b658e4c0c43ba511e774c2706"
+    },
+    {
+      "entry_id": "Z002",
+      "key": "parent",
+      "value": "1adab5edb083b7466a7eff4d63fb70dc820ee850"
+    },
+    {
+      "entry_id": "Z003",
+      "key": "source_subject",
+      "value": "chore: seal z005 readback local status"
+    },
+    {
+      "entry_id": "Z004",
+      "key": "committed_task",
+      "value": "TASK-Z005B-19"
+    },
+    {
+      "entry_id": "Z005",
+      "key": "committed_count",
+      "value": "4"
+    },
+    {
+      "entry_id": "Z006",
+      "key": "missing",
+      "value": "[]"
+    },
+    {
+      "entry_id": "Z007",
+      "key": "extra",
+      "value": "[]"
+    },
+    {
+      "entry_id": "Z008",
+      "key": "committed_no_intersection",
+      "value": "[]"
+    },
+    {
+      "entry_id": "Z009",
+      "key": "readback_business_closed",
+      "value": "true"
+    },
+    {
+      "entry_id": "Z010",
+      "key": "readback_business_closed_scope",
+      "value": "local_dev_static_fallback_only"
+    },
+    {
+      "entry_id": "Z011",
+      "key": "project_completion_claimed",
+      "value": "false"
+    },
+    {
+      "entry_id": "Z012",
+      "key": "remote_lifecycle_parked",
+      "value": "true"
+    },
+    {
+      "entry_id": "Z013",
+      "key": "recommended_next_task_id",
+      "value": "null"
+    },
+    {
+      "entry_id": "Z014",
+      "key": "recommended_next_task_type",
+      "value": "null"
+    },
+    {
+      "entry_id": "Z015",
+      "key": "next_action_state",
+      "value": "WAIT_FOR_A_OR_USER_DECISION"
+    },
+    {
+      "entry_id": "Z016",
+      "key": "factory_statement_scenario_carrier_compatibility_fix",
+      "value": "closed"
+    },
+    {
+      "entry_id": "Z017",
+      "key": "legal_statement_id_generation",
+      "value": "closed"
+    },
+    {
+      "entry_id": "Z018",
+      "key": "factory_statement_list_detail_readback",
+      "value": "closed"
+    },
+    {
+      "entry_id": "Z019",
+      "key": "cancel_zero_residual",
+      "value": "closed"
+    },
+    {
+      "entry_id": "Z020",
+      "key": "warehouse_alerts_local_dev_static_empty_state_readback",
+      "value": "closed"
+    },
+    {
+      "entry_id": "Z021",
+      "key": "warehouse_batches_local_dev_static_empty_state_readback",
+      "value": "closed"
+    },
+    {
+      "entry_id": "Z022",
+      "key": "unauthorized_push_pr_tag_release_cleanup",
+      "value": "true"
+    },
+    {
+      "entry_id": "Z023",
+      "key": "unauthorized_production_write",
+      "value": "true"
+    },
+    {
+      "entry_id": "Z024",
+      "key": "unauthorized_erpnext_write",
+      "value": "true"
+    },
+    {
+      "entry_id": "Z025",
+      "key": "unauthorized_worker_internal_sync_job",
+      "value": "true"
+    },
+    {
+      "entry_id": "Z026",
+      "key": "new_impl_candidate_generated",
+      "value": "false"
+    },
+    {
+      "entry_id": "Z027",
+      "key": "remote_lifecycle_action_executed",
+      "value": "false"
+    },
+    {
+      "entry_id": "Z028",
+      "key": "project_completion_declared",
+      "value": "false"
+    }
+  ],
+  "closed_readback_items": [
+    "factory_statement_scenario_carrier_compatibility_fix",
+    "legal_statement_id_generation",
+    "factory_statement_list_detail_readback",
+    "cancel_zero_residual",
+    "warehouse_alerts_local_dev_static_empty_state_readback",
+    "warehouse_batches_local_dev_static_empty_state_readback"
+  ],
+  "state_anchor": {
+    "readback_business_closed": true,
+    "readback_business_closed_scope": "local_dev_static_fallback_only",
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "recommended_next_task_id": null,
+    "recommended_next_task_type": null,
+    "next_action_state": "WAIT_FOR_A_OR_USER_DECISION"
+  },
+  "non_authorized_actions": [
+    "push_pr_tag_release_cleanup",
+    "production_write",
+    "erpnext_write",
+    "worker_internal_sync_job"
+  ],
+  "evidence_sources": [
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_17_commit_candidate_ledger.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_17_z005_readback_local_status_freeze.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_16_z005_readback_local_status_anchor.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_16_z005_readback_local_status_anchor.tsv",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+  ]
+}
