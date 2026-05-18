@@ -593,6 +593,7 @@ class FactoryStatementService:
                     company=str(row.company),
                     supplier=str(row.supplier),
                     item_code=self._normalize_text(row.item_code),
+                    style_code=self._normalize_text(row.item_code),
                     inspected_at=row.inspected_at,
                     inspected_qty=self._to_decimal(row.inspected_qty),
                     rejected_qty=self._to_decimal(row.rejected_qty),

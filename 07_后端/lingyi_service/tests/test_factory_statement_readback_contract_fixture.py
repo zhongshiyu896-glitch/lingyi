@@ -175,7 +175,6 @@ class FactoryStatementReadbackContractFixtureTest(unittest.TestCase):
                     self.assertIn(field, self.warehouse_field_pool, f"{anchor}:{field}")
                 for field in factory_fields:
                     self.assertIn(field, self.factory_field_pool, f"{anchor}:{field}")
-            else:
-                self.assertEqual(anchor, "style")
-                self.assertEqual(warehouse_fields, [])
-                self.assertEqual(factory_fields, [])
+                if anchor == "style":
+                    self.assertEqual(row.get("derived_from"), "item_code")
+                    self.assertIn("style_code", factory_fields)

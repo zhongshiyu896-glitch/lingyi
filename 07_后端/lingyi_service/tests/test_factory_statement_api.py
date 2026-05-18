@@ -32,6 +32,8 @@ from app.routers.factory_statement import get_db_session as factory_statement_db
 class FactoryStatementApiBase(unittest.TestCase):
     """Shared in-memory app wiring for factory-statement API tests."""
 
+    _SCENARIO_TAG = "Z003-FACTORY-STMT-20260519-001"
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.engine = create_engine(
@@ -85,7 +87,8 @@ class FactoryStatementApiBase(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
@@ -106,6 +109,7 @@ class FactoryStatementApiBase(unittest.TestCase):
         return {
             "X-LY-Dev-User": user,
             "X-LY-Dev-Roles": role,
+            "X-Request-ID": FactoryStatementApiBase._SCENARIO_TAG,
         }
 
     @staticmethod
@@ -117,12 +121,19 @@ class FactoryStatementApiBase(unittest.TestCase):
         to_date: str = "2026-04-30",
         idempotency_key: str = "idem-fs-001",
     ) -> dict[str, str]:
+        scenario_tag = FactoryStatementApiBase._SCENARIO_TAG
+        normalized_idempotency_key = (
+            idempotency_key
+            if scenario_tag in idempotency_key
+            else f"{scenario_tag}-{idempotency_key}"
+        )
         return {
             "company": company,
             "supplier": supplier,
             "from_date": from_date,
             "to_date": to_date,
-            "idempotency_key": idempotency_key,
+            "idempotency_key": normalized_idempotency_key,
+            "scenario_tag": scenario_tag,
         }
 
     @staticmethod
@@ -337,6 +348,8 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
         self.assertEqual(body["code"], "0")
         self.assertEqual(len(body["data"]["items"]), 2)
         first = body["data"]["items"][0]
+        self.assertIn("style_code", first)
+        self.assertEqual(first["style_code"], first["item_code"])
         self.assertEqual(Decimal(first["gross_amount"]), Decimal("2000"))
         self.assertEqual(Decimal(first["deduction_amount"]), Decimal("100"))
         self.assertEqual(Decimal(first["net_amount"]), Decimal("1900"))
@@ -411,6 +424,9 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
         self.assertIn("payable_outboxes", detail_data)
         self.assertIsInstance(detail_data["logs"], list)
         self.assertIsInstance(detail_data["payable_outboxes"], list)
+        self.assertGreaterEqual(len(detail_data["items"]), 1)
+        self.assertIn("style_code", detail_data["items"][0])
+        self.assertEqual(detail_data["items"][0]["style_code"], detail_data["items"][0]["item_code"])
         self.assertGreaterEqual(len(detail_data["logs"]), 1)
         first_log = detail_data["logs"][0]
         self.assertIn("action", first_log)

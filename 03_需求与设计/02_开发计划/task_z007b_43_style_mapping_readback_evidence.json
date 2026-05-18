@@ -1,0 +1,65 @@
+{
+  "task_id": "TASK-Z007B-43-IMPL",
+  "role": "B Engineer",
+  "generated_at": "2026-05-19T04:26:23+08:00",
+  "source_head": "fa5b8b036fd421ea8fe70af04dc7610def8b659f",
+  "selected_candidate_id": "Z007-CAND-004-S1",
+  "parent_candidate_id": "Z007-CAND-004",
+  "style_mapping_status": "PASS",
+  "style_source": "derived_from_item_code",
+  "recommended_fix_option": "OPTION_B_READONLY_MAPPING",
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/schemas/factory_statement.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/fixtures/factory_statement_readback_contract_fixture.json",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_factory_statement_api.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_factory_statement_readback_contract_fixture.py",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-43-IMPL_style字段readback映射最小实现与回归报告.md",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_43_style_mapping_readback_evidence.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_43_style_mapping_readback_api_regression.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_43_style_mapping_readback_zero_side_effect.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+  ],
+  "contract_gap_matrix_result": {
+    "style_anchor": {
+      "before_status": "blocked_no_style_field_in_current_readback_contract",
+      "after_status": "mapped_derived_from_item_code",
+      "warehouse_contract_fields": [
+        "item_code"
+      ],
+      "factory_statement_contract_fields": [
+        "style_code"
+      ],
+      "derived_from": "item_code"
+    }
+  },
+  "test_results": [
+    {
+      "command": "./.venv/bin/python -m pytest tests/test_factory_statement_readback_contract_fixture.py -q",
+      "status": "PASS",
+      "summary": "6 passed"
+    },
+    {
+      "command": "./.venv/bin/python -m pytest tests/test_warehouse_adapter_contract_fixture.py -q",
+      "status": "PASS",
+      "summary": "10 passed"
+    },
+    {
+      "command": "./.venv/bin/python -m pytest tests/test_warehouse_permission_mode_readback_matrix.py -q",
+      "status": "PASS",
+      "summary": "6 passed"
+    },
+    {
+      "command": "./.venv/bin/python -m pytest tests/test_factory_statement_api.py -q -k 'list or detail or evaluations'",
+      "status": "PASS",
+      "summary": "2 passed, 8 deselected"
+    }
+  ],
+  "allowed_write_hit": [],
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "production_write_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "zero_side_effect": true
+}

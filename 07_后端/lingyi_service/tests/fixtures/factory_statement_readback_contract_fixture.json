@@ -87,6 +87,7 @@
     "item_optional_fields": [
       "inspection_no",
       "item_code",
+      "style_code",
       "inspected_at"
     ],
     "log_required_fields": [
@@ -472,9 +473,14 @@
     },
     {
       "anchor": "style",
-      "warehouse_contract_fields": [],
-      "factory_statement_contract_fields": [],
-      "status": "blocked_no_style_field_in_current_readback_contract"
+      "warehouse_contract_fields": [
+        "item_code"
+      ],
+      "factory_statement_contract_fields": [
+        "style_code"
+      ],
+      "status": "mapped_derived_from_item_code",
+      "derived_from": "item_code"
     }
   ]
 }

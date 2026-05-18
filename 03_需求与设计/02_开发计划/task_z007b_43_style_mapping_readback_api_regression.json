@@ -1,0 +1,38 @@
+{
+  "task_id": "TASK-Z007B-43-IMPL",
+  "generated_at": "2026-05-19T04:26:23+08:00",
+  "scope": "local fixture/contract/schema/service regression",
+  "allowed_read_endpoints": [
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}",
+    "GET /api/factory-statements/supplier-evaluations",
+    "GET /api/factory-statements/factory-evaluations",
+    "GET /api/factory-statements/customer-evaluations",
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_read_endpoint_extra": [],
+  "allowed_write_hit": [],
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "production_write_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "assertions": [
+    "FactoryStatementItemData exposes style_code as readonly field",
+    "factory statement detail runtime asserts style_code equals item_code",
+    "cross-module style mapping fixture status is mapped_derived_from_item_code"
+  ],
+  "test_commands": [
+    "./.venv/bin/python -m pytest tests/test_factory_statement_readback_contract_fixture.py -q",
+    "./.venv/bin/python -m pytest tests/test_warehouse_adapter_contract_fixture.py -q",
+    "./.venv/bin/python -m pytest tests/test_warehouse_permission_mode_readback_matrix.py -q",
+    "./.venv/bin/python -m pytest tests/test_factory_statement_api.py -q -k 'list or detail or evaluations'"
+  ],
+  "test_result_summary": {
+    "factory_statement_contract_fixture": "6 passed",
+    "warehouse_adapter_contract_fixture": "10 passed",
+    "warehouse_permission_mode_readback_matrix": "6 passed",
+    "factory_statement_api_list_detail_evaluations": "2 passed, 8 deselected"
+  }
+}

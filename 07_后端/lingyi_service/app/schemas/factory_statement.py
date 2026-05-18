@@ -513,6 +513,7 @@ class FactoryStatementItemData(BaseModel):
     company: str
     supplier: str
     item_code: str | None = None
+    style_code: str | None = None
     inspected_at: datetime | None = None
     inspected_qty: Decimal
     rejected_qty: Decimal
