@@ -1,0 +1,70 @@
+{
+  "task_id": "TASK-Z007B-58-IMPL",
+  "role": "B Engineer",
+  "generated_at": "2026-05-19T22:03:13+08:00",
+  "source_head": "75e07d216d5bcb4e30fcc3fb3e91aa1ba3ec3ba7",
+  "selected_candidate_id": "Z007-CAND-010-PROPOSED",
+  "runtime_request_count": 0,
+  "write_request_count": 0,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "blocker_matrix_entries": [
+    {
+      "order": 1,
+      "blocker_domain": "production_readonly",
+      "related_candidate_ids": [
+        "Z007-CAND-005",
+        "Z007-CAND-006",
+        "Z007-CAND-007"
+      ],
+      "blocker_status": "BLOCKED_EXTERNAL_DEPENDENCY",
+      "local_substitute_possible": "partial",
+      "unique_unblock_condition": "获得生产只读账号最小权限集并在受控窗口完成只读取证。",
+      "go_live_impact": "high"
+    },
+    {
+      "order": 2,
+      "blocker_domain": "real_dataset",
+      "related_candidate_ids": [
+        "Z007-CAND-005",
+        "Z007-CAND-006",
+        "Z007-CAND-007"
+      ],
+      "blocker_status": "BLOCKED_EXTERNAL_DEPENDENCY",
+      "local_substitute_possible": "no",
+      "unique_unblock_condition": "提供受控真实样本并完成 request_id/source_trace/replay_consistency 与字段链路一致性审计。",
+      "go_live_impact": "high"
+    },
+    {
+      "order": 3,
+      "blocker_domain": "remote_authorization",
+      "related_candidate_ids": [
+        "Z007-CAND-008"
+      ],
+      "blocker_status": "BLOCKED_REMOTE_LIFECYCLE",
+      "local_substitute_possible": "no",
+      "unique_unblock_condition": "用户显式授权 push/PR/tag/release 四项最小动作及审批条件。",
+      "go_live_impact": "high"
+    },
+    {
+      "order": 4,
+      "blocker_domain": "go_live_readiness",
+      "related_candidate_ids": [
+        "Z007-CAND-005",
+        "Z007-CAND-006",
+        "Z007-CAND-007",
+        "Z007-CAND-008"
+      ],
+      "blocker_status": "BLOCKED_NOT_GO_LIVE_READY",
+      "local_substitute_possible": "partial",
+      "unique_unblock_condition": "同时满足生产只读非fallback取证、真实样本审计、远端生命周期授权，并通过最终门禁复核。",
+      "go_live_impact": "critical"
+    }
+  ],
+  "state_anchor": {
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

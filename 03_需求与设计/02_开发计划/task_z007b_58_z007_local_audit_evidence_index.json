@@ -1,0 +1,135 @@
+{
+  "task_id": "TASK-Z007B-58-IMPL",
+  "role": "B Engineer",
+  "mainline": "TASK-Z007A-YISUAN-1TO1-LOCAL-PARITY-MAINLINE",
+  "generated_at": "2026-05-19T22:03:13+08:00",
+  "source_head": "75e07d216d5bcb4e30fcc3fb3e91aa1ba3ec3ba7",
+  "selected_candidate_id": "Z007-CAND-010-PROPOSED",
+  "audit_packet_generated": true,
+  "runtime_request_count": 0,
+  "write_request_count": 0,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "evidence_index_entries": [
+    {
+      "order": 1,
+      "task_id": "TASK-Z006B-03-IMPL",
+      "candidate_id": "Z006-CAND-002",
+      "evidence_type": "warehouse_adapter_contract_fixture",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-03-IMPL_warehouse_adapter_contract_fixture最小实现与回归报告.md",
+      "commit_hash": "5236ec2cb3924baf742b8dd946fae7320e3ba5c6",
+      "status": "LOCAL_CLOSED",
+      "residual_risk": "not_equal_to_production_erpnext_non_fallback_readback"
+    },
+    {
+      "order": 2,
+      "task_id": "TASK-Z006B-09-IMPL",
+      "candidate_id": "Z006-CAND-003",
+      "evidence_type": "warehouse_permission_mode_readback_matrix",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-09-IMPL_warehouse_permission_mode_readback_matrix最小实现与回归报告.md",
+      "commit_hash": "ec2205b47d5ea180719bcd19c279e06871f172e8",
+      "status": "LOCAL_CLOSED",
+      "residual_risk": "depends_on_local_static_fallback_scope"
+    },
+    {
+      "order": 3,
+      "task_id": "TASK-Z006B-21-IMPL",
+      "candidate_id": "Z006-CAND-005",
+      "evidence_type": "ui_business_evidence_readonly_capture",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-21-IMPL_ui_business_evidence_readonly_capture执行与回归报告.md",
+      "commit_hash": "7ae7867bb62e846d644dab556df08f8bd4268611",
+      "status": "LOCAL_CLOSED_WITH_RESIDUAL_RISKS",
+      "residual_risk": "not_equal_to_production_readback_or_go_live"
+    },
+    {
+      "order": 4,
+      "task_id": "TASK-Z007B-05-IMPL",
+      "candidate_id": "Z007-CAND-001",
+      "evidence_type": "bom_draft_residual_rollback",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-05-IMPL_BOM草稿残留回滚最小执行与回归报告.md",
+      "commit_hash": "48892f2fa01622587b931ef58117654505575478",
+      "status": "LOCAL_CLOSED",
+      "residual_risk": "zero_residual_scope_is_no_new_active_or_draft_only"
+    },
+    {
+      "order": 5,
+      "task_id": "TASK-Z007B-11-IMPL",
+      "candidate_id": "Z007-CAND-001-S1",
+      "evidence_type": "g1_full_base_objects_chain",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-11-IMPL_G1完整基础对象前置链路最小实现与回归报告.md",
+      "commit_hash": "d8bfad7aaed847f324de9bbda131d701b28f124e",
+      "status": "LOCAL_CLOSED_WITH_RESIDUAL_RISKS",
+      "residual_risk": "customer_endpoint_503_risk_recorded"
+    },
+    {
+      "order": 6,
+      "task_id": "TASK-Z007B-21-IMPL",
+      "candidate_id": "Z007-CAND-002",
+      "evidence_type": "route_parity_readonly_endpoint_expansion",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-21-IMPL_路由1比1readonly端点扩边复测与回归报告.md",
+      "commit_hash": "52febae283660b643153ff65aef81eef6723092e",
+      "status": "LOCAL_CLOSED_WITH_RESIDUAL_RISKS",
+      "residual_risk": "allowed_read_not_hit_runtime_partial"
+    },
+    {
+      "order": 7,
+      "task_id": "TASK-Z007B-31-IMPL",
+      "candidate_id": "Z007-CAND-003",
+      "evidence_type": "ui_business_evidence_second_readonly_expansion",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-31-IMPL_UI业务证据第二轮readonly扩边复测执行与回归报告.md",
+      "commit_hash": "0792e2972b9d4229392b3164462b03fd3e5bb12b",
+      "status": "LOCAL_CLOSED_WITH_RESIDUAL_RISKS",
+      "residual_risk": "detail_pages_need_list_discovered_id_and_fallback_not_closed"
+    },
+    {
+      "order": 8,
+      "task_id": "TASK-Z007B-37-IMPL",
+      "candidate_id": "Z007-CAND-004",
+      "evidence_type": "adapter_fixture_contract_extension",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-37-IMPL_本地adapter_fixture_contract扩展最小实现与回归报告.md",
+      "commit_hash": "fa5b8b036fd421ea8fe70af04dc7610def8b659f",
+      "status": "LOCAL_CLOSED_WITH_RESIDUAL_RISKS",
+      "residual_risk": "not_equal_to_production_erpnext_non_fallback_readback"
+    },
+    {
+      "order": 9,
+      "task_id": "TASK-Z007B-43-IMPL",
+      "candidate_id": "Z007-CAND-004-S1",
+      "evidence_type": "style_mapping_readback",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-43-IMPL_style字段readback映射最小实现与回归报告.md",
+      "commit_hash": "e8ddb2a93b90f333a91435b811d6c1c5a408e8d9",
+      "status": "LOCAL_CLOSED",
+      "residual_risk": "style_mapping_only_local_readonly_contract_scope"
+    },
+    {
+      "order": 10,
+      "task_id": "TASK-Z007B-49-IMPL",
+      "candidate_id": "Z007-CAND-009-PROPOSED",
+      "evidence_type": "production_blocker_local_evidence_matrix",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-49-IMPL_Z007生产阻断项本地证据矩阵执行与回归报告.md",
+      "commit_hash": "e8ddb2a93b90f333a91435b811d6c1c5a408e8d9",
+      "status": "LOCAL_EVIDENCE_REDUCED",
+      "residual_risk": "hard_external_dependencies_remain_for_005_006_007_008"
+    },
+    {
+      "order": 11,
+      "task_id": "TASK-Z007B-52-IMPL",
+      "candidate_id": "Z007-CAND-009-PROPOSED",
+      "evidence_type": "production_readonly_access_packet_template",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-52-IMPL_生产只读访问包与远端授权清单模板生成报告.md",
+      "commit_hash": "75e07d216d5bcb4e30fcc3fb3e91aa1ba3ec3ba7",
+      "status": "LOCAL_CLOSED_WITH_EXTERNAL_BLOCKERS",
+      "residual_risk": "requires_production_readonly_and_remote_authorization_to_finalize"
+    },
+    {
+      "order": 12,
+      "task_id": "TASK-Z007B-56",
+      "candidate_id": "Z007-CAND-010-PROPOSED",
+      "evidence_type": "remaining_candidate_refresh_anchor",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-56_Z007生产访问包提交后归档与候选刷新报告.md",
+      "commit_hash": "75e07d216d5bcb4e30fcc3fb3e91aa1ba3ec3ba7",
+      "status": "READY_LOCAL_ACTIONABLE",
+      "residual_risk": "pre_go_live_audit_packet_not_yet_compiled"
+    }
+  ]
+}

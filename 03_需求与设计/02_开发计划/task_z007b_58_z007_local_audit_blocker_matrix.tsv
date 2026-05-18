@@ -1,0 +1,5 @@
+source_head	selected_candidate_id	order	blocker_domain	related_candidate_ids	blocker_status	local_substitute_possible	unique_unblock_condition	go_live_impact
+75e07d216d5bcb4e30fcc3fb3e91aa1ba3ec3ba7	Z007-CAND-010-PROPOSED	1	production_readonly	Z007-CAND-005;Z007-CAND-006;Z007-CAND-007	BLOCKED_EXTERNAL_DEPENDENCY	partial	获得生产只读账号最小权限集并在受控窗口完成只读取证。	high
+75e07d216d5bcb4e30fcc3fb3e91aa1ba3ec3ba7	Z007-CAND-010-PROPOSED	2	real_dataset	Z007-CAND-005;Z007-CAND-006;Z007-CAND-007	BLOCKED_EXTERNAL_DEPENDENCY	no	提供受控真实样本并完成 request_id/source_trace/replay_consistency 与字段链路一致性审计。	high
+75e07d216d5bcb4e30fcc3fb3e91aa1ba3ec3ba7	Z007-CAND-010-PROPOSED	3	remote_authorization	Z007-CAND-008	BLOCKED_REMOTE_LIFECYCLE	no	用户显式授权 push/PR/tag/release 四项最小动作及审批条件。	high
+75e07d216d5bcb4e30fcc3fb3e91aa1ba3ec3ba7	Z007-CAND-010-PROPOSED	4	go_live_readiness	Z007-CAND-005;Z007-CAND-006;Z007-CAND-007;Z007-CAND-008	BLOCKED_NOT_GO_LIVE_READY	partial	同时满足生产只读非fallback取证、真实样本审计、远端生命周期授权，并通过最终门禁复核。	critical
