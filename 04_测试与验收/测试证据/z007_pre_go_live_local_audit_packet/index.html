@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Z007 上线前本地审计包可读化导航</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px; color: #1f2937; }
+    h1, h2 { margin: 0 0 12px; }
+    .banner { background: #fff7ed; border: 1px solid #fdba74; padding: 12px 14px; border-radius: 8px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 12px; margin: 16px 0; }
+    .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; font-size: 13px; }
+    code { background: #f3f4f6; padding: 1px 4px; border-radius: 4px; }
+    ul { margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Z007 上线前本地审计包可读化导航</h1>
+  <p>生成时间：2026-05-19T06:47:46+08:00</p>
+  <p>source_head：<code>14fad50ee9c6602bc417ae5692aa0a24bf525433</code></p>
+  <p>selected_candidate_id：<code>Z007-CAND-011-PROPOSED</code></p>
+
+  <div class="banner">
+    <strong>状态锚定</strong>
+    <ul>
+      <li>本地审计包已生成（仅使用本地既有证据）。</li>
+      <li><code>production_readback_ready=false</code></li>
+      <li><code>go_live_ready=false</code></li>
+      <li><code>project_completion_claimed=false</code></li>
+      <li><code>remote_lifecycle_parked=true</code></li>
+      <li>外部阻断（生产只读与远端授权）仍未解除。</li>
+    </ul>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>证据索引</h2>
+      <p>条目数：12</p>
+      <p><a href="z007_local_audit_packet_readable_evidence_index.json">JSON</a> | <a href="z007_local_audit_packet_readable_evidence_index.tsv">TSV</a></p>
+    </div>
+    <div class="card">
+      <h2>覆盖矩阵汇总</h2>
+      <p>条目数：7</p>
+      <p><a href="z007_local_audit_packet_readable_coverage_summary.json">JSON</a> | <a href="z007_local_audit_packet_readable_coverage_summary.tsv">TSV</a></p>
+    </div>
+    <div class="card">
+      <h2>阻断矩阵汇总</h2>
+      <p>条目数：4</p>
+      <p><a href="z007_local_audit_packet_readable_blocker_summary.json">JSON</a> | <a href="z007_local_audit_packet_readable_blocker_summary.tsv">TSV</a></p>
+    </div>
+    <div class="card">
+      <h2>门禁命令清单</h2>
+      <p>条目数：16</p>
+      <p><a href="z007_local_audit_packet_readable_gate_command_checklist.json">JSON</a> | <a href="z007_local_audit_packet_readable_gate_command_checklist.tsv">TSV</a></p>
+    </div>
+  </div>
+
+  <h2>关键外部阻断（CAND-005/006/007/008）</h2>
+  <table>
+    <thead><tr><th>候选</th><th>状态</th><th>唯一解阻条件</th></tr></thead>
+    <tbody>
+      <tr><td>Z007-CAND-005</td><td>BLOCKED_EXTERNAL_DEPENDENCY</td><td>生产只读账号 + 受控样本窗口，完成 warehouse non-fallback 取证（含 request_id/source trace/replay consistency）。</td></tr>
+      <tr><td>Z007-CAND-006</td><td>BLOCKED_EXTERNAL_DEPENDENCY</td><td>生产只读账号 + 真实应付样本，证明 factory statement -> payable_outbox -> purchase_invoice 非 fallback 链路一致。</td></tr>
+      <tr><td>Z007-CAND-007</td><td>BLOCKED_EXTERNAL_DEPENDENCY</td><td>生产只读账号 + 受控主数据样本，完成 customer/supplier/factory/fabric/style 五类对象 parity 审计。</td></tr>
+      <tr><td>Z007-CAND-008</td><td>BLOCKED_REMOTE_LIFECYCLE</td><td>用户显式授权 push/PR/tag/release（default_granted=false）并满足审批条件。</td></tr>
+    </tbody>
+  </table>
+
+  <h2>约束声明</h2>
+  <ul>
+    <li>本导航页与配套 JSON/TSV 不包含敏感凭据或真实业务样本值。</li>
+    <li>本导航页仅汇编既有本地证据，不触发任何运行时请求。</li>
+    <li>本导航页不构成 production 或 go-live 就绪声明。</li>
+  </ul>
+</body>
+</html>

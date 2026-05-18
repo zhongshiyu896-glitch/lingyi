@@ -1,0 +1,77 @@
+{
+  "task_id": "TASK-Z007B-64-IMPL",
+  "role": "B Engineer",
+  "mainline": "TASK-Z007A-YISUAN-1TO1-LOCAL-PARITY-MAINLINE",
+  "generated_at": "2026-05-19T06:47:46+08:00",
+  "source_head": "14fad50ee9c6602bc417ae5692aa0a24bf525433",
+  "source_subject": "chore: seal z007 local audit packet",
+  "selected_candidate_id": "Z007-CAND-011-PROPOSED",
+  "runtime_request_count": 0,
+  "write_request_count": 0,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "readability_packet_generated": true,
+  "readable_section": "coverage_summary",
+  "readable_coverage_summary_entries": [
+    {
+      "order": 1,
+      "coverage_domain": "route_ui",
+      "coverage_status": "LOCAL_CLOSED_WITH_RESIDUAL_RISKS",
+      "key_evidence_task_ids": "TASK-Z007B-21-IMPL,TASK-Z007B-31-IMPL",
+      "coverage_statement": "路由1比1与UI只读采样主链路已闭合，并有多轮GET-only取证。",
+      "residual_gap": "详情页依赖list-discovered id与fallback场景仍有边界风险。"
+    },
+    {
+      "order": 2,
+      "coverage_domain": "readback",
+      "coverage_status": "LOCAL_CLOSED_WITH_EXTERNAL_BLOCKERS",
+      "key_evidence_task_ids": "TASK-Z006B-09-IMPL,TASK-Z007B-49-IMPL",
+      "coverage_statement": "本地readback contract与只读证据矩阵齐备，零写请求门禁可复验。",
+      "residual_gap": "生产ERPNext non-fallback readback未验证。"
+    },
+    {
+      "order": 3,
+      "coverage_domain": "warehouse",
+      "coverage_status": "LOCAL_CLOSED_WITH_EXTERNAL_BLOCKERS",
+      "key_evidence_task_ids": "TASK-Z006B-03-IMPL,TASK-Z006B-09-IMPL,TASK-Z007B-49-IMPL",
+      "coverage_statement": "warehouse adapter/permission/readback本地证据闭环。",
+      "residual_gap": "CAND-005生产只读与真实样本链路阻断未解除。"
+    },
+    {
+      "order": 4,
+      "coverage_domain": "factory_statement",
+      "coverage_status": "LOCAL_CLOSED_WITH_EXTERNAL_BLOCKERS",
+      "key_evidence_task_ids": "TASK-Z007B-37-IMPL,TASK-Z007B-43-IMPL,TASK-Z007B-49-IMPL",
+      "coverage_statement": "factory statement只读contract与style映射本地闭合。",
+      "residual_gap": "CAND-006真实应付联动（payable_outbox->purchase_invoice）仍需生产只读取证。"
+    },
+    {
+      "order": 5,
+      "coverage_domain": "master_data",
+      "coverage_status": "PARTIAL_LOCAL_CLOSED_WITH_EXTERNAL_BLOCKERS",
+      "key_evidence_task_ids": "TASK-Z007B-11-IMPL,TASK-Z007B-43-IMPL,TASK-Z007B-49-IMPL",
+      "coverage_statement": "基础对象本地前置与style字段映射已给出可审计证据。",
+      "residual_gap": "CAND-007生产真实主数据parity未完成。"
+    },
+    {
+      "order": 6,
+      "coverage_domain": "bom",
+      "coverage_status": "LOCAL_CLOSED_WITH_RESIDUAL_RISKS",
+      "key_evidence_task_ids": "TASK-Z007B-05-IMPL,TASK-Z007B-11-IMPL",
+      "coverage_statement": "BOM残留回滚与G1载体链路已本地闭合，zero residual口径可复验。",
+      "residual_gap": "仅证明未新增active/draft残留，不等于清空历史baseline残留。"
+    },
+    {
+      "order": 7,
+      "coverage_domain": "production_access_packet",
+      "coverage_status": "LOCAL_CLOSED_WITH_EXTERNAL_BLOCKERS",
+      "key_evidence_task_ids": "TASK-Z007B-50-PREP,TASK-Z007B-51-PREP,TASK-Z007B-52-IMPL,TASK-Z007B-56",
+      "coverage_statement": "生产只读访问包与远端授权清单模板已提交并可复用。",
+      "residual_gap": "CAND-005/006/007生产只读准入与CAND-008远端授权仍为外部依赖。"
+    }
+  ]
+}
