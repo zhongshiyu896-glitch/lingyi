@@ -1,0 +1,43 @@
+{
+  "task_id": "TASK-Z005B-05-IMPL",
+  "browser_scope": "direct_allowed_read_endpoint_json_screenshots",
+  "browser_url": "http://127.0.0.1:8000/api/factory-statements/1",
+  "screenshot_dir": "/tmp/task_z005b05_screenshots",
+  "screenshot_count": 2,
+  "screenshots": [
+    "/tmp/task_z005b05_screenshots/factory_statement_detail_real_statement_id.png",
+    "/tmp/task_z005b05_screenshots/factory_statement_list_filtered_real_statement_id.png"
+  ],
+  "results": [
+    {
+      "label": "factory_statement_detail_real_statement_id",
+      "endpoint": "GET /api/factory-statements/1",
+      "url": "http://127.0.0.1:8000/api/factory-statements/1",
+      "status": 200,
+      "screenshot": "/tmp/task_z005b05_screenshots/factory_statement_detail_real_statement_id.png",
+      "body_has_statement_id": true,
+      "body_has_statement_no": true,
+      "response_code": "0"
+    },
+    {
+      "label": "factory_statement_list_filtered_real_statement_id",
+      "endpoint": "GET /api/factory-statements/",
+      "url": "http://127.0.0.1:8000/api/factory-statements/?company=Z005%20Local%20Company%20005&supplier=Z005%20Local%20Supplier%20005&from_date=2026-05-18&to_date=2026-05-18&page=1&page_size=20",
+      "status": 200,
+      "screenshot": "/tmp/task_z005b05_screenshots/factory_statement_list_filtered_real_statement_id.png",
+      "body_has_statement_id": true,
+      "body_has_statement_no": true,
+      "response_code": "0"
+    }
+  ],
+  "expected_read_endpoints": [
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "console_errors": [],
+  "request_failed": []
+}

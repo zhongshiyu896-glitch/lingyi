@@ -23,7 +23,7 @@
         :closable="false"
         show-icon
         title="款式打板下单对账表（TASK-Y22B-P1-02）"
-        description="本页允许 local-dev 受控 create/confirm/cancel/payable-draft 闭环写入；导出打印保持只读禁用。"
+        description="本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。"
         class="reconciliation-alert"
         data-testid="factory-statement-main-alert"
       />
@@ -98,7 +98,7 @@
           <el-input
             v-model="localWriteForm.scenario_tag"
             clearable
-            placeholder="Z003-FACTORY-STMT-YYYYMMDD-NNN"
+            placeholder="Z005-READBACK-PRECONDITION-YYYYMMDD-NNN"
             data-testid="factory-statement-scenario-tag"
           />
         </el-form-item>
@@ -287,8 +287,7 @@
                 type="success"
                 :disabled="!canConfirmAction"
                 data-action-type="write"
-                data-write-guard="allowed:factory-statement-confirm-local-only"
-                data-write-allowlist="factory-statement-confirm"
+                data-write-guard="readonly:factory-statement-confirm-not-in-z005-boundary"
                 :data-guard-state="canConfirmAction ? 'enabled' : 'disabled'"
                 @click="confirmStatement(scope.row)"
               >
@@ -3351,7 +3350,7 @@
           <el-form-item label="scenario_tag">
             <el-input
               v-model="createForm.scenario_tag"
-              placeholder="Z003-FACTORY-STMT-YYYYMMDD-NNN"
+              placeholder="Z005-READBACK-PRECONDITION-YYYYMMDD-NNN"
               data-testid="factory-statement-create-scenario-tag"
             />
           </el-form-item>
@@ -3549,9 +3548,12 @@ const supplierPayableSummaryRows = ref<FactoryStatementSupplierPayableSummaryIte
 const supplierPayableSummaryTotal = ref<number>(0)
 
 const LOCAL_WRITE_MODE = true
+const LOCAL_CONFIRM_WRITE_MODE = false
 const FACTORY_STATEMENT_SOURCE_TYPE = 'subcontract_inspection'
 const FACTORY_STATEMENT_PAYABLE_STATUS_ACTION = 'payable_draft'
-const readonlyWriteHint = '当前仅允许 local-dev 受控 create/confirm/cancel/payable-draft，导出打印等动作仍禁用'
+const readonlyWriteHint = '当前仅允许 local-dev 受控 create/cancel/payable-draft，confirm、导出、打印等动作仍禁用'
+const readbackPreconditionMode =
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('z005_readback') === '1'
 
 interface SampleOrderReconciliationRow extends FactoryStatementListItem {
   sample_order_no: string
@@ -3567,7 +3569,7 @@ const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissio
 const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
 const canPayableDraft = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_payable_draft_create)
 const canCreateAction = computed<boolean>(() => canCreate.value && LOCAL_WRITE_MODE)
-const canConfirmAction = computed<boolean>(() => canConfirm.value && LOCAL_WRITE_MODE)
+const canConfirmAction = computed<boolean>(() => canConfirm.value && LOCAL_WRITE_MODE && LOCAL_CONFIRM_WRITE_MODE)
 const canCancelAction = computed<boolean>(() => canCancel.value && LOCAL_WRITE_MODE)
 const canPayableAction = computed<boolean>(() => canPayableDraft.value && LOCAL_WRITE_MODE)
 
@@ -3790,11 +3792,11 @@ const buildDefaultFactoryStatementScenarioTag = (): string => {
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')
-  return `Z003-FACTORY-STMT-${year}${month}${day}-001`
+  return `Z005-READBACK-PRECONDITION-${year}${month}${day}-001`
 }
 
 const extractFactoryStatementScenarioTag = (value: string): string | null => {
-  const matched = value.match(/(Z003-FACTORY-STMT-\d{8}-\d{3})/)
+  const matched = value.match(/(Z005-READBACK-PRECONDITION-\d{8}-\d{3})/)
   return matched?.[1] || null
 }
 
@@ -4287,7 +4289,7 @@ const confirmStatement = async (row: FactoryStatementListItem): Promise<void> =>
   }
   const scenarioTag = extractFactoryStatementScenarioTag(localWriteForm.scenario_tag.trim())
   if (!scenarioTag) {
-    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z003-FACTORY-STMT-YYYYMMDD-NNN。')
+    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z005-READBACK-PRECONDITION-YYYYMMDD-NNN。')
     return
   }
   const payload: FactoryStatementConfirmPayload = {
@@ -4319,7 +4321,7 @@ const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => 
   }
   const scenarioTag = extractFactoryStatementScenarioTag(localWriteForm.scenario_tag.trim())
   if (!scenarioTag) {
-    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z003-FACTORY-STMT-YYYYMMDD-NNN。')
+    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z005-READBACK-PRECONDITION-YYYYMMDD-NNN。')
     return
   }
   const payload: FactoryStatementCancelPayload = {
@@ -4355,7 +4357,7 @@ const createPayableDraft = async (row: FactoryStatementListItem): Promise<void> 
   }
   const scenarioTag = extractFactoryStatementScenarioTag(localWriteForm.scenario_tag.trim())
   if (!scenarioTag) {
-    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z003-FACTORY-STMT-YYYYMMDD-NNN。')
+    ElMessage.warning('scenario_tag 缺失或格式非法，请使用 Z005-READBACK-PRECONDITION-YYYYMMDD-NNN。')
     return
   }
   const postingDate = row.to_date || new Date().toISOString().slice(0, 10)
@@ -4515,6 +4517,29 @@ const loadRows = async (): Promise<void> => {
     return
   }
 
+  loading.value = true
+  readError.value = ''
+  try {
+    const result = await fetchFactoryStatements({
+      supplier: query.supplier.trim() || undefined,
+      statement_status: query.statement_status || undefined,
+      from_date: query.from_date || undefined,
+      to_date: query.to_date || undefined,
+      page: query.page,
+      page_size: query.page_size,
+    })
+    rows.value = result.data.items
+    total.value = result.data.total
+  } catch (error) {
+    const message = (error as Error).message
+    readError.value = message
+    ElMessage.error(message)
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadReadbackPreconditionRows = async (): Promise<void> => {
   loading.value = true
   readError.value = ''
   try {
@@ -5382,6 +5407,10 @@ const onSupplierPayableSummarySizeChange = (size: number): void => {
 }
 
 onMounted(async () => {
+  if (readbackPreconditionMode) {
+    await loadReadbackPreconditionRows()
+    return
+  }
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('factory_statement')

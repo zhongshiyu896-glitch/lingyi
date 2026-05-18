@@ -77,7 +77,7 @@ from app.services.permission_service import PermissionService
 router = APIRouter(prefix="/api/factory-statements", tags=["factory_statement"])
 logger = logging.getLogger(__name__)
 FACTORY_STATEMENT_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
-FACTORY_STATEMENT_SCENARIO_PATTERN = re.compile(r"(Z003-FACTORY-STMT-\d{8}-\d{3})")
+FACTORY_STATEMENT_SCENARIO_PATTERN = re.compile(r"((?:Z003-FACTORY-STMT|Z005-READBACK-PRECONDITION)-\d{8}-\d{3})")
 
 
 def get_db_session() -> Generator[Session, None, None]:

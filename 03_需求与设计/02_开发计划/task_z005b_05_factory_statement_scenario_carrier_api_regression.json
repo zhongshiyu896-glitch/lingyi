@@ -1,0 +1,613 @@
+{
+  "task_id": "TASK-Z005B-05-IMPL",
+  "generated_at": "2026-05-18T03:43:20.538336+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "local_dev_gate": {
+    "status": "verified_before_write",
+    "process": "bash scripts/run_local_dev_runtime.sh -> app.local_dev:app",
+    "cwd": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+    "db_path": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/lingyi_service.local.db",
+    "db_url_expected": "sqlite:///./lingyi_service.local.db",
+    "app_env_expected": "development"
+  },
+  "carrier": {
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CREATE",
+    "scenario_tag": "Z005-READBACK-PRECONDITION-20260518-005",
+    "idempotency_key": "IDEMP-Z005-READBACK-PRECONDITION-20260518-005-CREATE",
+    "source_ref": null
+  },
+  "pattern_compatibility": {
+    "pattern_before": "re.compile(r\"(Z003-FACTORY-STMT-\\d{8}-\\d{3})\")",
+    "pattern_after": "re.compile(r\"((?:Z003-FACTORY-STMT|Z005-READBACK-PRECONDITION)-\\d{8}-\\d{3})\")",
+    "z003": "PASS",
+    "z005": "PASS",
+    "outer_capture_group": "preserved_group_1_full_tag"
+  },
+  "list_before": {
+    "method": "GET",
+    "path": "/api/factory-statements/?company=Z005+Local+Company+005&supplier=Z005+Local+Supplier+005&from_date=2026-05-18&to_date=2026-05-18&page=1&page_size=20",
+    "endpoint_class": "GET /api/factory-statements/",
+    "status": 200,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-LIST-BEFORE",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-LIST-BEFORE",
+    "json": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "items": [],
+        "total": 0,
+        "page": 1,
+        "page_size": 20
+      }
+    }
+  },
+  "create_statement": {
+    "method": "POST",
+    "path": "/api/factory-statements/",
+    "endpoint_class": "POST /api/factory-statements/",
+    "status": 200,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CREATE",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CREATE",
+    "json": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "statement_id": 1,
+        "statement_no": "FS-20260518034320486596-00DACD",
+        "statement_status": "draft",
+        "company": "Z005 Local Company 005",
+        "supplier": "Z005 Local Supplier 005",
+        "from_date": "2026-05-18",
+        "to_date": "2026-05-18",
+        "source_count": 0,
+        "inspected_qty": "0",
+        "rejected_qty": "0",
+        "accepted_qty": "0",
+        "gross_amount": "0",
+        "deduction_amount": "0",
+        "net_amount": "0",
+        "rejected_rate": "0",
+        "idempotency_key": "IDEMP-Z005-READBACK-PRECONDITION-20260518-005-CREATE",
+        "request_hash": "b8f470533dc30edf35eade7e1b56962556528bed14c86d8ffce461e5a520a9f7",
+        "idempotent_replay": false
+      }
+    }
+  },
+  "list_after": {
+    "method": "GET",
+    "path": "/api/factory-statements/?company=Z005+Local+Company+005&supplier=Z005+Local+Supplier+005&from_date=2026-05-18&to_date=2026-05-18&page=1&page_size=20",
+    "endpoint_class": "GET /api/factory-statements/",
+    "status": 200,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-LIST-AFTER-WRITE",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-LIST-AFTER-WRITE",
+    "json": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "items": [
+          {
+            "id": 1,
+            "statement_no": "FS-20260518034320486596-00DACD",
+            "company": "Z005 Local Company 005",
+            "supplier": "Z005 Local Supplier 005",
+            "from_date": "2026-05-18",
+            "to_date": "2026-05-18",
+            "source_count": 0,
+            "gross_amount": "0.000000",
+            "deduction_amount": "0.000000",
+            "net_amount": "0.000000",
+            "rejected_rate": "0.000000",
+            "statement_status": "draft",
+            "payable_outbox_id": null,
+            "payable_outbox_status": null,
+            "purchase_invoice_name": null,
+            "payable_error_code": null,
+            "payable_error_message": null,
+            "created_by": "local.dev",
+            "created_at": "2026-05-18T03:43:20"
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "page_size": 20
+      }
+    }
+  },
+  "statement_detail": {
+    "method": "GET",
+    "path": "/api/factory-statements/1",
+    "endpoint_class": "GET /api/factory-statements/{statement_id}",
+    "status": 200,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-DETAIL",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-DETAIL",
+    "json": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "statement_id": 1,
+        "statement_no": "FS-20260518034320486596-00DACD",
+        "statement_status": "draft",
+        "company": "Z005 Local Company 005",
+        "supplier": "Z005 Local Supplier 005",
+        "from_date": "2026-05-18",
+        "to_date": "2026-05-18",
+        "source_count": 0,
+        "inspected_qty": "0.000000",
+        "rejected_qty": "0.000000",
+        "accepted_qty": "0.000000",
+        "gross_amount": "0.000000",
+        "deduction_amount": "0.000000",
+        "net_amount": "0.000000",
+        "rejected_rate": "0.000000",
+        "idempotency_key": "IDEMP-Z005-READBACK-PRECONDITION-20260518-005-CREATE",
+        "created_by": "local.dev",
+        "created_at": "2026-05-18T03:43:20",
+        "payable_outbox_id": null,
+        "payable_outbox_status": null,
+        "purchase_invoice_name": null,
+        "payable_error_code": null,
+        "payable_error_message": null,
+        "items": [],
+        "logs": [
+          {
+            "action": "factory_statement:create",
+            "operator": "local.dev",
+            "operated_at": "2026-05-18T03:43:20",
+            "remark": "create_draft_local_synthetic:Z005-READBACK-PRECONDITION-20260518-005",
+            "from_status": "draft",
+            "to_status": "draft"
+          },
+          {
+            "action": "factory_statement:confirm",
+            "operator": "local.dev",
+            "operated_at": "2026-05-15T23:45:59",
+            "remark": "CONFIRM-Z002-FACTORY-STMT-20260516-777",
+            "from_status": "draft",
+            "to_status": "confirmed"
+          },
+          {
+            "action": "factory_statement:create",
+            "operator": "local.dev",
+            "operated_at": "2026-05-15T23:45:59",
+            "remark": "create_draft_local_synthetic:Z002-FACTORY-STMT-20260516-777",
+            "from_status": "draft",
+            "to_status": "draft"
+          }
+        ],
+        "payable_outboxes": []
+      }
+    }
+  },
+  "warehouse_alerts": {
+    "method": "GET",
+    "path": "/api/warehouse/alerts",
+    "endpoint_class": "GET /api/warehouse/alerts",
+    "status": 503,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-WAREHOUSE-ALERTS",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-WAREHOUSE-ALERTS",
+    "json": {
+      "code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "message": "外部服务暂时不可用",
+      "data": null
+    }
+  },
+  "warehouse_batches": {
+    "method": "GET",
+    "path": "/api/warehouse/batches",
+    "endpoint_class": "GET /api/warehouse/batches",
+    "status": 503,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-WAREHOUSE-BATCHES",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-WAREHOUSE-BATCHES",
+    "json": {
+      "code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "message": "外部服务暂时不可用",
+      "data": null
+    }
+  },
+  "cancel_result": {
+    "method": "POST",
+    "path": "/api/factory-statements/1/cancel",
+    "endpoint_class": "POST /api/factory-statements/{statement_id}/cancel",
+    "status": 200,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CANCEL",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CANCEL",
+    "json": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "id": 1,
+        "statement_no": "FS-20260518034320486596-00DACD",
+        "status": "cancelled",
+        "cancelled_by": "local.dev",
+        "cancelled_at": "2026-05-18T03:43:20.524784",
+        "idempotent_replay": false
+      }
+    }
+  },
+  "detail_after_cancel": {
+    "method": "GET",
+    "path": "/api/factory-statements/1",
+    "endpoint_class": "GET /api/factory-statements/{statement_id}",
+    "status": 200,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-DETAIL-AFTER-CANCEL",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-DETAIL-AFTER-CANCEL",
+    "json": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "statement_id": 1,
+        "statement_no": "FS-20260518034320486596-00DACD",
+        "statement_status": "cancelled",
+        "company": "Z005 Local Company 005",
+        "supplier": "Z005 Local Supplier 005",
+        "from_date": "2026-05-18",
+        "to_date": "2026-05-18",
+        "source_count": 0,
+        "inspected_qty": "0.000000",
+        "rejected_qty": "0.000000",
+        "accepted_qty": "0.000000",
+        "gross_amount": "0.000000",
+        "deduction_amount": "0.000000",
+        "net_amount": "0.000000",
+        "rejected_rate": "0.000000",
+        "idempotency_key": "IDEMP-Z005-READBACK-PRECONDITION-20260518-005-CREATE",
+        "created_by": "local.dev",
+        "created_at": "2026-05-18T03:43:20",
+        "payable_outbox_id": null,
+        "payable_outbox_status": null,
+        "purchase_invoice_name": null,
+        "payable_error_code": null,
+        "payable_error_message": null,
+        "items": [],
+        "logs": [
+          {
+            "action": "factory_statement:cancel",
+            "operator": "local.dev",
+            "operated_at": "2026-05-18T03:43:20",
+            "remark": "CANCEL-Z005-READBACK-PRECONDITION-20260518-005",
+            "from_status": "draft",
+            "to_status": "cancelled"
+          },
+          {
+            "action": "factory_statement:create",
+            "operator": "local.dev",
+            "operated_at": "2026-05-18T03:43:20",
+            "remark": "create_draft_local_synthetic:Z005-READBACK-PRECONDITION-20260518-005",
+            "from_status": "draft",
+            "to_status": "draft"
+          },
+          {
+            "action": "factory_statement:confirm",
+            "operator": "local.dev",
+            "operated_at": "2026-05-15T23:45:59",
+            "remark": "CONFIRM-Z002-FACTORY-STMT-20260516-777",
+            "from_status": "draft",
+            "to_status": "confirmed"
+          },
+          {
+            "action": "factory_statement:create",
+            "operator": "local.dev",
+            "operated_at": "2026-05-15T23:45:59",
+            "remark": "create_draft_local_synthetic:Z002-FACTORY-STMT-20260516-777",
+            "from_status": "draft",
+            "to_status": "draft"
+          }
+        ],
+        "payable_outboxes": []
+      }
+    }
+  },
+  "observed_requests": [
+    {
+      "method": "GET",
+      "path": "/api/factory-statements/?company=Z005+Local+Company+005&supplier=Z005+Local+Supplier+005&from_date=2026-05-18&to_date=2026-05-18&page=1&page_size=20",
+      "endpoint_class": "GET /api/factory-statements/",
+      "status": 200,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-LIST-BEFORE",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-LIST-BEFORE",
+      "json": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [],
+          "total": 0,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/factory-statements/",
+      "endpoint_class": "POST /api/factory-statements/",
+      "status": 200,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CREATE",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CREATE",
+      "json": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "statement_id": 1,
+          "statement_no": "FS-20260518034320486596-00DACD",
+          "statement_status": "draft",
+          "company": "Z005 Local Company 005",
+          "supplier": "Z005 Local Supplier 005",
+          "from_date": "2026-05-18",
+          "to_date": "2026-05-18",
+          "source_count": 0,
+          "inspected_qty": "0",
+          "rejected_qty": "0",
+          "accepted_qty": "0",
+          "gross_amount": "0",
+          "deduction_amount": "0",
+          "net_amount": "0",
+          "rejected_rate": "0",
+          "idempotency_key": "IDEMP-Z005-READBACK-PRECONDITION-20260518-005-CREATE",
+          "request_hash": "b8f470533dc30edf35eade7e1b56962556528bed14c86d8ffce461e5a520a9f7",
+          "idempotent_replay": false
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/factory-statements/?company=Z005+Local+Company+005&supplier=Z005+Local+Supplier+005&from_date=2026-05-18&to_date=2026-05-18&page=1&page_size=20",
+      "endpoint_class": "GET /api/factory-statements/",
+      "status": 200,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-LIST-AFTER-WRITE",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-LIST-AFTER-WRITE",
+      "json": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "items": [
+            {
+              "id": 1,
+              "statement_no": "FS-20260518034320486596-00DACD",
+              "company": "Z005 Local Company 005",
+              "supplier": "Z005 Local Supplier 005",
+              "from_date": "2026-05-18",
+              "to_date": "2026-05-18",
+              "source_count": 0,
+              "gross_amount": "0.000000",
+              "deduction_amount": "0.000000",
+              "net_amount": "0.000000",
+              "rejected_rate": "0.000000",
+              "statement_status": "draft",
+              "payable_outbox_id": null,
+              "payable_outbox_status": null,
+              "purchase_invoice_name": null,
+              "payable_error_code": null,
+              "payable_error_message": null,
+              "created_by": "local.dev",
+              "created_at": "2026-05-18T03:43:20"
+            }
+          ],
+          "total": 1,
+          "page": 1,
+          "page_size": 20
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/factory-statements/1",
+      "endpoint_class": "GET /api/factory-statements/{statement_id}",
+      "status": 200,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-DETAIL",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-DETAIL",
+      "json": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "statement_id": 1,
+          "statement_no": "FS-20260518034320486596-00DACD",
+          "statement_status": "draft",
+          "company": "Z005 Local Company 005",
+          "supplier": "Z005 Local Supplier 005",
+          "from_date": "2026-05-18",
+          "to_date": "2026-05-18",
+          "source_count": 0,
+          "inspected_qty": "0.000000",
+          "rejected_qty": "0.000000",
+          "accepted_qty": "0.000000",
+          "gross_amount": "0.000000",
+          "deduction_amount": "0.000000",
+          "net_amount": "0.000000",
+          "rejected_rate": "0.000000",
+          "idempotency_key": "IDEMP-Z005-READBACK-PRECONDITION-20260518-005-CREATE",
+          "created_by": "local.dev",
+          "created_at": "2026-05-18T03:43:20",
+          "payable_outbox_id": null,
+          "payable_outbox_status": null,
+          "purchase_invoice_name": null,
+          "payable_error_code": null,
+          "payable_error_message": null,
+          "items": [],
+          "logs": [
+            {
+              "action": "factory_statement:create",
+              "operator": "local.dev",
+              "operated_at": "2026-05-18T03:43:20",
+              "remark": "create_draft_local_synthetic:Z005-READBACK-PRECONDITION-20260518-005",
+              "from_status": "draft",
+              "to_status": "draft"
+            },
+            {
+              "action": "factory_statement:confirm",
+              "operator": "local.dev",
+              "operated_at": "2026-05-15T23:45:59",
+              "remark": "CONFIRM-Z002-FACTORY-STMT-20260516-777",
+              "from_status": "draft",
+              "to_status": "confirmed"
+            },
+            {
+              "action": "factory_statement:create",
+              "operator": "local.dev",
+              "operated_at": "2026-05-15T23:45:59",
+              "remark": "create_draft_local_synthetic:Z002-FACTORY-STMT-20260516-777",
+              "from_status": "draft",
+              "to_status": "draft"
+            }
+          ],
+          "payable_outboxes": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/warehouse/alerts",
+      "endpoint_class": "GET /api/warehouse/alerts",
+      "status": 503,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-WAREHOUSE-ALERTS",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-WAREHOUSE-ALERTS",
+      "json": {
+        "code": "EXTERNAL_SERVICE_UNAVAILABLE",
+        "message": "外部服务暂时不可用",
+        "data": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/warehouse/batches",
+      "endpoint_class": "GET /api/warehouse/batches",
+      "status": 503,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-WAREHOUSE-BATCHES",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-WAREHOUSE-BATCHES",
+      "json": {
+        "code": "EXTERNAL_SERVICE_UNAVAILABLE",
+        "message": "外部服务暂时不可用",
+        "data": null
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/factory-statements/1/cancel",
+      "endpoint_class": "POST /api/factory-statements/{statement_id}/cancel",
+      "status": 200,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CANCEL",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-CANCEL",
+      "json": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "id": 1,
+          "statement_no": "FS-20260518034320486596-00DACD",
+          "status": "cancelled",
+          "cancelled_by": "local.dev",
+          "cancelled_at": "2026-05-18T03:43:20.524784",
+          "idempotent_replay": false
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/factory-statements/1",
+      "endpoint_class": "GET /api/factory-statements/{statement_id}",
+      "status": 200,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-DETAIL-AFTER-CANCEL",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-005-REQ-DETAIL-AFTER-CANCEL",
+      "json": {
+        "code": "0",
+        "message": "success",
+        "data": {
+          "statement_id": 1,
+          "statement_no": "FS-20260518034320486596-00DACD",
+          "statement_status": "cancelled",
+          "company": "Z005 Local Company 005",
+          "supplier": "Z005 Local Supplier 005",
+          "from_date": "2026-05-18",
+          "to_date": "2026-05-18",
+          "source_count": 0,
+          "inspected_qty": "0.000000",
+          "rejected_qty": "0.000000",
+          "accepted_qty": "0.000000",
+          "gross_amount": "0.000000",
+          "deduction_amount": "0.000000",
+          "net_amount": "0.000000",
+          "rejected_rate": "0.000000",
+          "idempotency_key": "IDEMP-Z005-READBACK-PRECONDITION-20260518-005-CREATE",
+          "created_by": "local.dev",
+          "created_at": "2026-05-18T03:43:20",
+          "payable_outbox_id": null,
+          "payable_outbox_status": null,
+          "purchase_invoice_name": null,
+          "payable_error_code": null,
+          "payable_error_message": null,
+          "items": [],
+          "logs": [
+            {
+              "action": "factory_statement:cancel",
+              "operator": "local.dev",
+              "operated_at": "2026-05-18T03:43:20",
+              "remark": "CANCEL-Z005-READBACK-PRECONDITION-20260518-005",
+              "from_status": "draft",
+              "to_status": "cancelled"
+            },
+            {
+              "action": "factory_statement:create",
+              "operator": "local.dev",
+              "operated_at": "2026-05-18T03:43:20",
+              "remark": "create_draft_local_synthetic:Z005-READBACK-PRECONDITION-20260518-005",
+              "from_status": "draft",
+              "to_status": "draft"
+            },
+            {
+              "action": "factory_statement:confirm",
+              "operator": "local.dev",
+              "operated_at": "2026-05-15T23:45:59",
+              "remark": "CONFIRM-Z002-FACTORY-STMT-20260516-777",
+              "from_status": "draft",
+              "to_status": "confirmed"
+            },
+            {
+              "action": "factory_statement:create",
+              "operator": "local.dev",
+              "operated_at": "2026-05-15T23:45:59",
+              "remark": "create_draft_local_synthetic:Z002-FACTORY-STMT-20260516-777",
+              "from_status": "draft",
+              "to_status": "draft"
+            }
+          ],
+          "payable_outboxes": []
+        }
+      }
+    }
+  ],
+  "allowed_write_hit": [
+    "POST /api/factory-statements/",
+    "POST /api/factory-statements/{statement_id}/cancel"
+  ],
+  "allowed_read_hit": [
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}",
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "write_request_count": 2,
+  "unexpected_write_request_count": 0,
+  "unexpected_write_requests": [],
+  "unexpected_read_request_count": 0,
+  "unexpected_read_requests": [],
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "failed_gate_db_write_count": 0,
+  "statement_id_source_proof": {
+    "source": "POST /api/factory-statements/ create response",
+    "statement_id": 1,
+    "statement_no": "FS-20260518034320486596-00DACD",
+    "create_response_has_statement_id": true,
+    "list_readback_same_statement_id": true,
+    "detail_readback_same_statement_id": true,
+    "detail_after_cancel_status": "cancelled",
+    "blocked_reason": null
+  },
+  "zero_residual_summary": {
+    "baseline_total": 0,
+    "after_write_total": 1,
+    "after_cleanup_total": 0,
+    "zero_residual": true,
+    "residual_scan_result": "no_new_residual"
+  }
+}

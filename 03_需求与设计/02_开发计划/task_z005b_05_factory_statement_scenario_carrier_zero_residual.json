@@ -1,0 +1,58 @@
+{
+  "task_id": "TASK-Z005B-05-IMPL",
+  "scenario_tag": "Z005-READBACK-PRECONDITION-20260518-005",
+  "baseline": {
+    "active_factory_statement_by_idempotency_excluding_cancelled": 0,
+    "active_payable_outbox_by_idempotency": 0,
+    "active_non_cancel_operation_by_idempotency": 0,
+    "active_statement_items": 0,
+    "security_audit_by_request_id": 0,
+    "total": 0
+  },
+  "baseline_history": {
+    "factory_statement_rows_by_idempotency": 0,
+    "factory_statement_log_by_request_or_remark": 0,
+    "factory_statement_operation_by_idempotency_or_remark": 0,
+    "factory_statement_payable_outbox_by_idempotency_or_event": 0
+  },
+  "after_write": {
+    "active_factory_statement_by_idempotency_excluding_cancelled": 1,
+    "active_payable_outbox_by_idempotency": 0,
+    "active_non_cancel_operation_by_idempotency": 0,
+    "active_statement_items": 0,
+    "security_audit_by_request_id": 0,
+    "total": 1
+  },
+  "after_write_history": {
+    "factory_statement_rows_by_idempotency": 1,
+    "factory_statement_log_by_request_or_remark": 1,
+    "factory_statement_operation_by_idempotency_or_remark": 0,
+    "factory_statement_payable_outbox_by_idempotency_or_event": 0
+  },
+  "after_cleanup": {
+    "active_factory_statement_by_idempotency_excluding_cancelled": 0,
+    "active_payable_outbox_by_idempotency": 0,
+    "active_non_cancel_operation_by_idempotency": 0,
+    "active_statement_items": 0,
+    "total": 0
+  },
+  "after_cleanup_history": {
+    "factory_statement_rows_by_idempotency": 1,
+    "factory_statement_log_by_request_or_remark": 2,
+    "factory_statement_operation_by_idempotency_or_remark": 1,
+    "factory_statement_payable_outbox_by_idempotency_or_event": 0
+  },
+  "baseline_total": 0,
+  "after_write_total": 1,
+  "after_cleanup_total": 0,
+  "cancel_cleanup_executed": true,
+  "cleanup_method": "POST /api/factory-statements/{statement_id}/cancel",
+  "history_note": "cancelled statement/log/operation/security audit rows are retained as audit trail and excluded from active business residual total",
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "failed_gate_db_write_count": 0,
+  "after_cleanup_audit_history": {
+    "ly_security_audit_log_by_request_id": 2,
+    "ly_operation_audit_log_by_request_id": 6
+  }
+}

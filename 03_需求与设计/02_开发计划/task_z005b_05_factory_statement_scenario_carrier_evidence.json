@@ -1,0 +1,40 @@
+{
+  "task_id": "TASK-Z005B-05-IMPL",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z005A-READBACK-PRECONDITION-MAINLINE",
+  "source_head": "ca1e2b977644bf76b4715b0d2255aeee0d93b3fe",
+  "source_subject": "chore: seal z004 final local closeout",
+  "task_status": "PASS",
+  "legal_readback_precondition_executed": true,
+  "statement_id_source_proof_exists": true,
+  "statement_id_source_proof": {
+    "source": "POST /api/factory-statements/ create response",
+    "statement_id": 1,
+    "statement_no": "FS-20260518034320486596-00DACD",
+    "create_response_has_statement_id": true,
+    "list_readback_same_statement_id": true,
+    "detail_readback_same_statement_id": true,
+    "detail_after_cancel_status": "cancelled",
+    "blocked_reason": null
+  },
+  "statement_id_source": "POST /api/factory-statements/ create response",
+  "statement_detail_readback_status": "hit",
+  "warehouse_alerts_readback_status": "blocked_503_EXTERNAL_SERVICE_UNAVAILABLE",
+  "warehouse_batches_readback_status": "blocked_503_EXTERNAL_SERVICE_UNAVAILABLE",
+  "allowed_write_hit": [
+    "POST /api/factory-statements/",
+    "POST /api/factory-statements/{statement_id}/cancel"
+  ],
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "failed_gate_db_write_count": 0,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_residual",
+  "readback_business_closed": false,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true
+}
