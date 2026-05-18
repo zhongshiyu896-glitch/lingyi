@@ -1,0 +1,38 @@
+{
+  "task_id": "TASK-Z007B-37-IMPL",
+  "generated_at": "2026-05-19T03:31:36+08:00",
+  "source_head": "0792e2972b9d4229392b3164462b03fd3e5bb12b",
+  "selected_candidate_id": "Z007-CAND-004",
+  "allowed_read_endpoints": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches",
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}",
+    "GET /api/factory-statements/supplier-evaluations",
+    "GET /api/factory-statements/factory-evaluations",
+    "GET /api/factory-statements/customer-evaluations"
+  ],
+  "allowed_write_endpoints": [],
+  "contract_assertion_mode": "fixture_plus_schema_plus_router_get_contract",
+  "allowed_read_contract_asserted": [
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}",
+    "GET /api/factory-statements/supplier-evaluations",
+    "GET /api/factory-statements/factory-evaluations",
+    "GET /api/factory-statements/customer-evaluations",
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_read_endpoint_extra": [],
+  "allowed_write_hit": [],
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "production_write_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "request_methods": [
+    "GET"
+  ],
+  "task_status": "PASS"
+}

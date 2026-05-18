@@ -1,0 +1,480 @@
+{
+  "meta": {
+    "task_id": "TASK-Z007B-37-IMPL",
+    "purpose": "factory statement readback contract fixture for local adapter/fixture/contract extension",
+    "source_of_truth": "schema and router contract",
+    "version": 1
+  },
+  "list_contract_expected": {
+    "response_fields": [
+      "items",
+      "total",
+      "page",
+      "page_size"
+    ],
+    "item_required_fields": [
+      "id",
+      "statement_no",
+      "company",
+      "supplier",
+      "from_date",
+      "to_date",
+      "source_count",
+      "gross_amount",
+      "deduction_amount",
+      "net_amount",
+      "rejected_rate",
+      "statement_status",
+      "created_by",
+      "created_at"
+    ],
+    "item_optional_fields": [
+      "payable_outbox_id",
+      "payable_outbox_status",
+      "purchase_invoice_name",
+      "payable_error_code",
+      "payable_error_message"
+    ]
+  },
+  "detail_contract_expected": {
+    "header_required_fields": [
+      "statement_id",
+      "statement_no",
+      "statement_status",
+      "company",
+      "supplier",
+      "from_date",
+      "to_date",
+      "source_count",
+      "inspected_qty",
+      "rejected_qty",
+      "accepted_qty",
+      "gross_amount",
+      "deduction_amount",
+      "net_amount",
+      "rejected_rate",
+      "idempotency_key",
+      "created_by",
+      "created_at",
+      "items",
+      "logs",
+      "payable_outboxes"
+    ],
+    "header_optional_fields": [
+      "payable_outbox_id",
+      "payable_outbox_status",
+      "purchase_invoice_name",
+      "payable_error_code",
+      "payable_error_message"
+    ],
+    "item_required_fields": [
+      "id",
+      "line_no",
+      "inspection_id",
+      "subcontract_id",
+      "subcontract_no",
+      "company",
+      "supplier",
+      "inspected_qty",
+      "rejected_qty",
+      "accepted_qty",
+      "subcontract_rate",
+      "gross_amount",
+      "deduction_amount",
+      "net_amount",
+      "rejected_rate"
+    ],
+    "item_optional_fields": [
+      "inspection_no",
+      "item_code",
+      "inspected_at"
+    ],
+    "log_required_fields": [
+      "action",
+      "operator",
+      "operated_at"
+    ],
+    "log_optional_fields": [
+      "remark",
+      "from_status",
+      "to_status"
+    ],
+    "payable_outbox_required_fields": [
+      "id",
+      "status",
+      "created_at",
+      "updated_at"
+    ],
+    "payable_outbox_optional_fields": [
+      "erpnext_purchase_invoice",
+      "erpnext_docstatus",
+      "erpnext_status",
+      "last_error_code",
+      "last_error_message"
+    ]
+  },
+  "readonly_sub_routes_contract_expected": {
+    "runtime_routes": [
+      {
+        "path": "/api/factory-statements/supplier-evaluations",
+        "item_required_fields": [
+          "evaluation_no",
+          "statement_no",
+          "company",
+          "supplier",
+          "supplier_code",
+          "assessor",
+          "score",
+          "score_level",
+          "review_status",
+          "follow_up_status",
+          "evaluation_date",
+          "expiry_date",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/factory-evaluations",
+        "item_required_fields": [
+          "evaluation_no",
+          "statement_no",
+          "company",
+          "supplier",
+          "factory_name",
+          "factory_code",
+          "assessor",
+          "score",
+          "score_level",
+          "review_status",
+          "follow_up_status",
+          "evaluation_date",
+          "expiry_date",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/customer-evaluations",
+        "item_required_fields": [
+          "evaluation_no",
+          "statement_no",
+          "company",
+          "customer_name",
+          "customer_code",
+          "assessor",
+          "score",
+          "score_level",
+          "review_status",
+          "follow_up_status",
+          "evaluation_date",
+          "expiry_date",
+          "owner",
+          "remark"
+        ]
+      }
+    ],
+    "schema_only_routes": [
+      {
+        "path": "/api/factory-statements/expense-reimbursement-payments",
+        "item_schema": "FactoryStatementExpenseReimbursementPaymentItem",
+        "item_required_fields": [
+          "payment_no",
+          "reimbursement_no",
+          "statement_no",
+          "company",
+          "supplier",
+          "expense_type",
+          "payable_amount",
+          "paid_amount",
+          "pending_amount",
+          "payment_status",
+          "review_status",
+          "payment_date",
+          "payable_account",
+          "cost_center",
+          "owner",
+          "ref_no"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/bank-deposits",
+        "item_schema": "FactoryStatementBankDepositItem",
+        "item_required_fields": [
+          "deposit_no",
+          "statement_no",
+          "company",
+          "bank_name",
+          "account_name",
+          "account_no",
+          "currency",
+          "deposit_amount",
+          "confirmed_amount",
+          "pending_amount",
+          "deposit_status",
+          "review_status",
+          "deposit_date",
+          "voucher_no",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/bank-withdrawals",
+        "item_schema": "FactoryStatementBankWithdrawalItem",
+        "item_required_fields": [
+          "withdrawal_no",
+          "statement_no",
+          "company",
+          "bank_name",
+          "account_name",
+          "account_no",
+          "currency",
+          "withdrawal_amount",
+          "transferred_amount",
+          "pending_amount",
+          "withdrawal_status",
+          "review_status",
+          "withdrawal_date",
+          "voucher_no",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/bank-ledgers",
+        "item_schema": "FactoryStatementBankLedgerItem",
+        "item_required_fields": [
+          "ledger_no",
+          "statement_no",
+          "company",
+          "bank_name",
+          "account_name",
+          "account_no",
+          "currency",
+          "transaction_type",
+          "debit_amount",
+          "credit_amount",
+          "balance_after",
+          "ledger_status",
+          "review_status",
+          "ledger_date",
+          "voucher_no",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/supplier-reconciliations",
+        "item_schema": "FactoryStatementSupplierReconciliationItem",
+        "item_required_fields": [
+          "reconciliation_no",
+          "statement_no",
+          "company",
+          "supplier",
+          "supplier_code",
+          "currency",
+          "reconciliation_amount",
+          "settled_amount",
+          "pending_amount",
+          "settlement_status",
+          "review_status",
+          "follow_up_status",
+          "reconciled_at",
+          "due_date",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/factory-reconciliations",
+        "item_schema": "FactoryStatementFactoryReconciliationItem",
+        "item_required_fields": [
+          "reconciliation_no",
+          "statement_no",
+          "company",
+          "supplier",
+          "factory_name",
+          "factory_code",
+          "currency",
+          "reconciliation_amount",
+          "settled_amount",
+          "pending_amount",
+          "settlement_status",
+          "review_status",
+          "follow_up_status",
+          "reconciled_at",
+          "due_date",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/customer-reconciliations",
+        "item_schema": "FactoryStatementCustomerReconciliationItem",
+        "item_required_fields": [
+          "reconciliation_no",
+          "statement_no",
+          "company",
+          "customer_name",
+          "customer_code",
+          "currency",
+          "receivable_amount",
+          "settled_amount",
+          "pending_amount",
+          "settlement_status",
+          "review_status",
+          "due_date",
+          "reconciled_at",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/supplier-payable-summaries",
+        "item_schema": "FactoryStatementSupplierPayableSummaryItem",
+        "item_required_fields": [
+          "summary_no",
+          "statement_no",
+          "company",
+          "supplier",
+          "supplier_code",
+          "currency",
+          "opening_payable",
+          "current_payable",
+          "paid_amount",
+          "ending_payable",
+          "aging_30",
+          "aging_60",
+          "aging_90_plus",
+          "risk_level",
+          "review_status",
+          "follow_up_status",
+          "summary_date",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/factory-payable-summaries",
+        "item_schema": "FactoryStatementFactoryPayableSummaryItem",
+        "item_required_fields": [
+          "summary_no",
+          "statement_no",
+          "company",
+          "supplier",
+          "factory_name",
+          "factory_code",
+          "currency",
+          "opening_payable",
+          "current_payable",
+          "paid_amount",
+          "ending_payable",
+          "aging_30",
+          "aging_60",
+          "aging_90_plus",
+          "risk_level",
+          "review_status",
+          "summary_date",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/customer-receivable-summaries",
+        "item_schema": "FactoryStatementCustomerReceivableSummaryItem",
+        "item_required_fields": [
+          "summary_no",
+          "statement_no",
+          "company",
+          "customer_name",
+          "customer_code",
+          "currency",
+          "opening_receivable",
+          "current_receivable",
+          "received_amount",
+          "ending_receivable",
+          "aging_30",
+          "aging_60",
+          "aging_90_plus",
+          "risk_level",
+          "review_status",
+          "summary_date",
+          "owner",
+          "remark"
+        ]
+      },
+      {
+        "path": "/api/factory-statements/customer-unpaid-reports",
+        "item_schema": "FactoryStatementCustomerUnpaidReportItem",
+        "item_required_fields": [
+          "report_no",
+          "statement_no",
+          "company",
+          "customer_name",
+          "customer_code",
+          "currency",
+          "receivable_amount",
+          "received_amount",
+          "unpaid_amount",
+          "overdue_days",
+          "collection_status",
+          "review_status",
+          "due_date",
+          "last_collection_at",
+          "owner",
+          "remark"
+        ]
+      }
+    ]
+  },
+  "cross_module_canonical_mapping": [
+    {
+      "anchor": "supplier",
+      "warehouse_contract_fields": [
+        "company"
+      ],
+      "factory_statement_contract_fields": [
+        "supplier",
+        "supplier_code"
+      ],
+      "status": "mapped"
+    },
+    {
+      "anchor": "factory",
+      "warehouse_contract_fields": [
+        "warehouse"
+      ],
+      "factory_statement_contract_fields": [
+        "factory_name",
+        "factory_code"
+      ],
+      "status": "mapped"
+    },
+    {
+      "anchor": "customer",
+      "warehouse_contract_fields": [],
+      "factory_statement_contract_fields": [
+        "customer_name",
+        "customer_code"
+      ],
+      "status": "mapped_with_factory_statement_only"
+    },
+    {
+      "anchor": "material",
+      "warehouse_contract_fields": [
+        "item_code"
+      ],
+      "factory_statement_contract_fields": [
+        "item_code"
+      ],
+      "status": "mapped"
+    },
+    {
+      "anchor": "style",
+      "warehouse_contract_fields": [],
+      "factory_statement_contract_fields": [],
+      "status": "blocked_no_style_field_in_current_readback_contract"
+    }
+  ]
+}

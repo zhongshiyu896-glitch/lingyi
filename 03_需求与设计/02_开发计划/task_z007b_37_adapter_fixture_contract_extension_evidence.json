@@ -1,0 +1,52 @@
+{
+  "task_id": "TASK-Z007B-37-IMPL",
+  "generated_at": "2026-05-19T03:31:36+08:00",
+  "source_head": "0792e2972b9d4229392b3164462b03fd3e5bb12b",
+  "selected_candidate_id": "Z007-CAND-004",
+  "boundary_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_36_adapter_fixture_contract_extension_boundary.json",
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/fixtures/factory_statement_readback_contract_fixture.json",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_factory_statement_readback_contract_fixture.py"
+  ],
+  "contract_gap_matrix_result": {
+    "warehouse_alerts": "PASS_baseline_kept",
+    "warehouse_batches": "PASS_baseline_kept",
+    "factory_statement_list_contract": "PASS_fixture_driven_schema_contract",
+    "factory_statement_detail_contract": "PASS_fixture_driven_schema_contract",
+    "factory_statement_readonly_sub_routes_contract": "PASS_runtime_and_schema_route_contract",
+    "warehouse_factory_statement_cross_module_mapping": {
+      "supplier": "PASS",
+      "factory": "PASS",
+      "customer": "PASS_mapped_with_factory_statement_only",
+      "material": "PASS",
+      "style": "BLOCKED_NO_STYLE_FIELD_IN_CURRENT_READBACK_CONTRACT"
+    }
+  },
+  "test_results": [
+    {
+      "command": "uv run --with-requirements requirements-dev.txt pytest tests/test_warehouse_adapter_contract_fixture.py -q",
+      "result": "PASS",
+      "summary": "10 passed, 1 warning"
+    },
+    {
+      "command": "uv run --with-requirements requirements-dev.txt pytest tests/test_factory_statement_readback_contract_fixture.py -q",
+      "result": "PASS",
+      "summary": "6 passed, 1 warning"
+    },
+    {
+      "command": "uv run --with-requirements requirements-dev.txt pytest tests/test_warehouse_permission_mode_readback_matrix.py -q",
+      "result": "PASS",
+      "summary": "6 passed, 1 warning"
+    }
+  ],
+  "summary": {
+    "task_status": "PASS",
+    "allowed_write_hit": [],
+    "unexpected_write_request_count": 0,
+    "forbidden_write_request_count": 0,
+    "production_write_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "allowed_read_endpoint_extra": []
+  }
+}

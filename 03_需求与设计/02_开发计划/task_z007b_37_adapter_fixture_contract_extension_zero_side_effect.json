@@ -1,0 +1,25 @@
+{
+  "task_id": "TASK-Z007B-37-IMPL",
+  "generated_at": "2026-05-19T03:31:36+08:00",
+  "source_head": "0792e2972b9d4229392b3164462b03fd3e5bb12b",
+  "selected_candidate_id": "Z007-CAND-004",
+  "allowed_write_endpoints": [],
+  "allowed_write_hit": [],
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "production_write_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "allowed_read_endpoint_extra": [],
+  "created_new_business_data_count": 0,
+  "notes": [
+    "B37 通过 fixture/schema/router contract 断言闭合缺口，不触发业务写请求。",
+    "style anchor 在当前 readback contract 中无字段，保留 blocked 说明，不外推闭合。"
+  ],
+  "git_gate": {
+    "git_diff_cached_name_only_empty": true,
+    "git_diff_cached_check_pass": true,
+    "git_diff_check_pass": true
+  },
+  "task_status": "PASS"
+}
