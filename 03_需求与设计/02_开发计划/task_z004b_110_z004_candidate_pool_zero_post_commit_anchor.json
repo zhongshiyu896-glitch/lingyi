@@ -1,0 +1,46 @@
+{
+  "task_id": "TASK-Z004B-110",
+  "role": "B Engineer",
+  "source_task": "TASK-Z004B-109",
+  "source_head": "d35208ceaadcce8c1da5e5f1fd0ca8ecab209a94",
+  "parent": "9a57b87f00872b8d421d6f4204906ca546f21a4b",
+  "source_subject": "chore: seal z004 candidate pool zero",
+  "commit_verification": {
+    "ledger_source": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_107_commit_candidate_ledger.json",
+    "committed_count": 4,
+    "missing": [],
+    "extra": [],
+    "committed_no_intersection": [],
+    "committed_files": [
+      "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z004B-106-PREP_Z004最新代码真值候选池重建与阻断收口报告.md",
+      "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_106_latest_candidate_pool_rebuild.json",
+      "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_106_latest_candidate_pool_rebuild.tsv",
+      "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+    ]
+  },
+  "z004_local_candidate_pool_cleared": true,
+  "candidate_count": 0,
+  "recommended_next_task_id": null,
+  "recommended_next_task_type": null,
+  "next_action_state": "WAIT_FOR_A_OR_USER_DECISION",
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "readback_business_closed": false,
+  "remaining_blocked_items": [
+    {
+      "candidate_id": "TASK-Z004B-CAND-10-S5",
+      "blocked_precondition": true,
+      "blocked_reason": "readback_business_closed_false_and_blocked_no_statement_id"
+    }
+  ],
+  "residual_readback_risks": [
+    "GET /api/factory-statements/{statement_id} = blocked_no_statement_id",
+    "GET /api/warehouse/alerts = 503 / EXTERNAL_SERVICE_UNAVAILABLE",
+    "GET /api/warehouse/batches = 503 / EXTERNAL_SERVICE_UNAVAILABLE"
+  ],
+  "no_remote_lifecycle_actions": true,
+  "notes": [
+    "当前仅剩阻断项，不推荐进入实现任务。",
+    "本地候选池清零不等于项目整体完成。"
+  ]
+}
