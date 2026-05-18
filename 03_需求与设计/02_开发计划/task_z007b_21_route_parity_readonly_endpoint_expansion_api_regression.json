@@ -1,0 +1,1149 @@
+{
+  "task_id": "TASK-Z007B-21-IMPL",
+  "role": "B Engineer",
+  "generated_at": "2026-05-19T00:07:07+08:00",
+  "source_head": "d8bfad7aaed847f324de9bbda131d701b28f124e",
+  "selected_candidate_id": "Z007-CAND-002",
+  "allowed_read_endpoints": [
+    "GET /api/auth/me",
+    "GET /api/dashboard/overview",
+    "GET /api/bom/",
+    "GET /api/bom/fabrics",
+    "GET /api/production/plans",
+    "GET /api/reports/catalog",
+    "GET /api/sales-inventory/customers",
+    "GET /api/sales-inventory/stock-ledger",
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches",
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}",
+    "GET /api/auth/actions",
+    "GET /api/bom/accessories-packaging",
+    "GET /api/bom/material-deduction",
+    "GET /api/bom/material-gallery",
+    "GET /api/bom/material-processing",
+    "GET /api/bom/material-processing-inbound",
+    "GET /api/bom/material-sales-outbound",
+    "GET /api/bom/material-types",
+    "GET /api/bom/material-units",
+    "GET /api/bom/processing-types",
+    "GET /api/bom/purchase-orders",
+    "GET /api/production/followup-templates",
+    "GET /api/production/material-cost-details",
+    "GET /api/production/order-io-quantities",
+    "GET /api/production/quotes",
+    "GET /api/production/sales-forecast-details",
+    "GET /api/production/salesperson-performance",
+    "GET /api/reports/approval-reports",
+    "GET /api/reports/catalog/factory_product_stock_report",
+    "GET /api/reports/employee-task-statistics",
+    "GET /api/sales-inventory/material-transfers",
+    "GET /api/sales-inventory/warehouses"
+  ],
+  "allowed_write_endpoints": [],
+  "summary": {
+    "request_log_required": true,
+    "request_total": 80,
+    "allowed_read_hit": 80,
+    "api_404_count": 0,
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "browser_request_methods": [
+      "GET"
+    ],
+    "console_error_count": 0,
+    "blocking_console_error_count": 0,
+    "network_error_count": 0,
+    "non_allowed_read_request_count": 0,
+    "target_final_url_mismatch_count": 0,
+    "target_page_screenshot_count": 14
+  },
+  "request_log_coverage_by_endpoint": [
+    {
+      "endpoint": "GET /api/auth/actions",
+      "hit_count": 14,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/auth/me",
+      "hit_count": 14,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/accessories-packaging",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/fabrics",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/material-deduction",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/material-gallery",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/material-processing",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/material-processing-inbound",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/material-sales-outbound",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/material-types",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/material-units",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/processing-types",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/bom/purchase-orders",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/production/followup-templates",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/production/material-cost-details",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/production/order-io-quantities",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/production/plans",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/production/quotes",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/production/sales-forecast-details",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/production/salesperson-performance",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/reports/approval-reports",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/reports/catalog",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/reports/catalog/factory_product_stock_report",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/reports/employee-task-statistics",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/sales-inventory/customers",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/sales-inventory/material-transfers",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    },
+    {
+      "endpoint": "GET /api/sales-inventory/warehouses",
+      "hit_count": 2,
+      "statuses": [
+        200
+      ]
+    }
+  ],
+  "request_log": [
+    {
+      "scope": "desktop:/fate/dashboard/overview",
+      "page_target": "/fate/dashboard/overview",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/dashboard/overview",
+      "page_target": "/fate/dashboard/overview",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=dashboard",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/sales-inventory/references",
+      "page_target": "/fate/sales-inventory/references",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/sales-inventory/references",
+      "page_target": "/fate/sales-inventory/references",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/sales-inventory/references",
+      "page_target": "/fate/sales-inventory/references",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/sales-inventory/customers?page=1&page_size=20",
+      "path": "/api/sales-inventory/customers",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/sales-inventory/references",
+      "page_target": "/fate/sales-inventory/references",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/sales-inventory/warehouses?page=1&page_size=20",
+      "path": "/api/sales-inventory/warehouses",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=bom",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/?page=1&page_size=20",
+      "path": "/api/bom/",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/fabrics?page=1&page_size=20",
+      "path": "/api/bom/fabrics",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/accessories-packaging?page=1&page_size=20",
+      "path": "/api/bom/accessories-packaging",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/processing-types?page=1&page_size=20",
+      "path": "/api/bom/processing-types",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-processing?page=1&page_size=20",
+      "path": "/api/bom/material-processing",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-processing-inbound?page=1&page_size=20",
+      "path": "/api/bom/material-processing-inbound",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-deduction?page=1&page_size=20",
+      "path": "/api/bom/material-deduction",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-sales-outbound?page=1&page_size=20",
+      "path": "/api/bom/material-sales-outbound",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-types?page=1&page_size=20",
+      "path": "/api/bom/material-types",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-units?page=1&page_size=20",
+      "path": "/api/bom/material-units",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-gallery?page=1&page_size=20",
+      "path": "/api/bom/material-gallery",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/purchase-orders?page=1&page_size=20",
+      "path": "/api/bom/purchase-orders",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=production",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/plans?page=1&page_size=20",
+      "path": "/api/production/plans",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/material-cost-details?page=1&page_size=20",
+      "path": "/api/production/material-cost-details",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/sales-forecast-details?page=1&page_size=20",
+      "path": "/api/production/sales-forecast-details",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/quotes?page=1&page_size=20",
+      "path": "/api/production/quotes",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/followup-templates?page=1&page_size=20",
+      "path": "/api/production/followup-templates",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/order-io-quantities?page=1&page_size=20",
+      "path": "/api/production/order-io-quantities",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/salesperson-performance?page=1&page_size=20",
+      "path": "/api/production/salesperson-performance",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/sales-inventory/stock-ledger",
+      "page_target": "/fate/sales-inventory/stock-ledger",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/sales-inventory/stock-ledger",
+      "page_target": "/fate/sales-inventory/stock-ledger",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/sales-inventory/stock-ledger",
+      "page_target": "/fate/sales-inventory/stock-ledger",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/sales-inventory/material-transfers?page=1&page_size=20",
+      "path": "/api/sales-inventory/material-transfers",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/warehouse",
+      "page_target": "/fate/warehouse",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/warehouse",
+      "page_target": "/fate/warehouse",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=warehouse",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=report",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/reports/employee-task-statistics",
+      "path": "/api/reports/employee-task-statistics",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/reports/catalog?source_module=finance&report_type=financial",
+      "path": "/api/reports/catalog",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/reports/approval-reports",
+      "path": "/api/reports/approval-reports",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "desktop:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/reports/catalog/factory_product_stock_report",
+      "path": "/api/reports/catalog/factory_product_stock_report",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/dashboard/overview",
+      "page_target": "/fate/dashboard/overview",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/dashboard/overview",
+      "page_target": "/fate/dashboard/overview",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=dashboard",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/sales-inventory/references",
+      "page_target": "/fate/sales-inventory/references",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/sales-inventory/references",
+      "page_target": "/fate/sales-inventory/references",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/sales-inventory/references",
+      "page_target": "/fate/sales-inventory/references",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/sales-inventory/customers?page=1&page_size=20",
+      "path": "/api/sales-inventory/customers",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/sales-inventory/references",
+      "page_target": "/fate/sales-inventory/references",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/sales-inventory/warehouses?page=1&page_size=20",
+      "path": "/api/sales-inventory/warehouses",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=bom",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/?page=1&page_size=20",
+      "path": "/api/bom/",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/fabrics?page=1&page_size=20",
+      "path": "/api/bom/fabrics",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/accessories-packaging?page=1&page_size=20",
+      "path": "/api/bom/accessories-packaging",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/processing-types?page=1&page_size=20",
+      "path": "/api/bom/processing-types",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-processing?page=1&page_size=20",
+      "path": "/api/bom/material-processing",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-processing-inbound?page=1&page_size=20",
+      "path": "/api/bom/material-processing-inbound",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-deduction?page=1&page_size=20",
+      "path": "/api/bom/material-deduction",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-sales-outbound?page=1&page_size=20",
+      "path": "/api/bom/material-sales-outbound",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-types?page=1&page_size=20",
+      "path": "/api/bom/material-types",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-units?page=1&page_size=20",
+      "path": "/api/bom/material-units",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/material-gallery?page=1&page_size=20",
+      "path": "/api/bom/material-gallery",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/bom/list",
+      "page_target": "/fate/bom/list",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/bom/purchase-orders?page=1&page_size=20",
+      "path": "/api/bom/purchase-orders",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=production",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/plans?page=1&page_size=20",
+      "path": "/api/production/plans",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/material-cost-details?page=1&page_size=20",
+      "path": "/api/production/material-cost-details",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/sales-forecast-details?page=1&page_size=20",
+      "path": "/api/production/sales-forecast-details",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/quotes?page=1&page_size=20",
+      "path": "/api/production/quotes",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/followup-templates?page=1&page_size=20",
+      "path": "/api/production/followup-templates",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/order-io-quantities?page=1&page_size=20",
+      "path": "/api/production/order-io-quantities",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/production/plans",
+      "page_target": "/fate/production/plans",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/salesperson-performance?page=1&page_size=20",
+      "path": "/api/production/salesperson-performance",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/sales-inventory/stock-ledger",
+      "page_target": "/fate/sales-inventory/stock-ledger",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/sales-inventory/stock-ledger",
+      "page_target": "/fate/sales-inventory/stock-ledger",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=sales_inventory",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/sales-inventory/stock-ledger",
+      "page_target": "/fate/sales-inventory/stock-ledger",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/sales-inventory/material-transfers?page=1&page_size=20",
+      "path": "/api/sales-inventory/material-transfers",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/warehouse",
+      "page_target": "/fate/warehouse",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/warehouse",
+      "page_target": "/fate/warehouse",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=warehouse",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "path": "/api/auth/me",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=report",
+      "path": "/api/auth/actions",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/reports/employee-task-statistics",
+      "path": "/api/reports/employee-task-statistics",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/reports/catalog?source_module=finance&report_type=financial",
+      "path": "/api/reports/catalog",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/reports/approval-reports",
+      "path": "/api/reports/approval-reports",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    },
+    {
+      "scope": "mobile:/fate/reports/catalog",
+      "page_target": "/fate/reports/catalog",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/reports/catalog/factory_product_stock_report",
+      "path": "/api/reports/catalog/factory_product_stock_report",
+      "status": 200,
+      "allowed_read_hit": true,
+      "source": "page_runtime"
+    }
+  ],
+  "non_allowed_read_request_samples": [],
+  "go_live_ready": false,
+  "production_readback_ready": false,
+  "project_completion_claimed": false,
+  "readback_business_closed": true,
+  "readback_business_closed_scope": "local_dev_static_fallback_only",
+  "remote_lifecycle_parked": true
+}

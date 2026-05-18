@@ -1,0 +1,208 @@
+{
+  "task_id": "TASK-Z007B-21-IMPL",
+  "role": "B Engineer",
+  "generated_at": "2026-05-19T00:07:07+08:00",
+  "source_head": "d8bfad7aaed847f324de9bbda131d701b28f124e",
+  "boundary_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_20_route_parity_readonly_endpoint_expansion_boundary.json",
+  "selected_candidate_id": "Z007-CAND-002",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/views/HomePage.vue",
+    "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+    "07_后端/lingyi_service/app/routers/dashboard.py",
+    "07_后端/lingyi_service/app/routers/sales_inventory.py"
+  ],
+  "route_matrix_results": [
+    {
+      "order": 1,
+      "module": "首页",
+      "baseline_entry": "/dashboard/workplace",
+      "local_route": "/dashboard/overview",
+      "result": "implemented",
+      "evidence": "desktop/mobile screenshot + route alias",
+      "notes": "通过 router alias 保持入口可达。"
+    },
+    {
+      "order": 2,
+      "module": "基础资料/客户",
+      "baseline_entry": "/foundation/customer",
+      "local_route": "/sales-inventory/references?tab=customers",
+      "result": "implemented",
+      "evidence": "desktop/mobile screenshot + route alias",
+      "notes": "映射到只读客户参考页。"
+    },
+    {
+      "order": 3,
+      "module": "基础资料/供应商",
+      "baseline_entry": "/foundation/supplier",
+      "local_route": "/factory-statements/list?parity=foundation-supplier",
+      "result": "blocked_or_split_required",
+      "evidence": "route alias established",
+      "notes": "仅入口映射，缺独立供应商列表 1:1 视图。"
+    },
+    {
+      "order": 4,
+      "module": "基础资料/加工厂",
+      "baseline_entry": "/foundation/factory",
+      "local_route": "/factory-statements/list?parity=foundation-factory",
+      "result": "blocked_or_split_required",
+      "evidence": "route alias established",
+      "notes": "仅入口映射，缺独立加工厂列表 1:1 视图。"
+    },
+    {
+      "order": 5,
+      "module": "物料开发/面料",
+      "baseline_entry": "/material/materialFabric",
+      "local_route": "/bom/list?parity=material-fabric",
+      "result": "implemented",
+      "evidence": "desktop/mobile screenshot + route alias",
+      "notes": "映射到 BOM 列表中的面料只读区块。"
+    },
+    {
+      "order": 6,
+      "module": "商品企划/物料小样",
+      "baseline_entry": "/goodsPlan/materialSamples",
+      "local_route": "/bom/list?parity=goodsplan-material-samples",
+      "result": "implemented",
+      "evidence": "route alias + bom list screenshot",
+      "notes": "通过入口映射落到本地可审计列表页。"
+    },
+    {
+      "order": 7,
+      "module": "款式设计/款式资料",
+      "baseline_entry": "/product/product",
+      "local_route": "/bom/list?parity=product-style",
+      "result": "implemented",
+      "evidence": "route alias + bom list screenshot",
+      "notes": "款式编码在 BOM 列表可检索。"
+    },
+    {
+      "order": 8,
+      "module": "设计打样/样板单",
+      "baseline_entry": "/sample/sampleListV2",
+      "local_route": "/production/plans?parity=sample-list",
+      "result": "implemented",
+      "evidence": "route alias + production list screenshot",
+      "notes": "流程入口映射到本地生产计划列表。"
+    },
+    {
+      "order": 9,
+      "module": "大货管理/订单",
+      "baseline_entry": "/production/productOrder",
+      "local_route": "/production/plans?parity=production-order",
+      "result": "implemented",
+      "evidence": "route alias + production list screenshot",
+      "notes": "订单流程映射到本地生产计划列表。"
+    },
+    {
+      "order": 10,
+      "module": "物料采购/物料采购单",
+      "baseline_entry": "/materialPurchase/materialPurchaseProcess",
+      "local_route": "/subcontract/list?parity=material-purchase",
+      "result": "blocked_or_split_required",
+      "evidence": "route alias established",
+      "notes": "仅入口映射，采购单 1:1 列表仍需单独补齐。"
+    },
+    {
+      "order": 11,
+      "module": "库存/物料库存",
+      "baseline_entry": "/materialStock/materialTypeStock",
+      "local_route": "/sales-inventory/stock-ledger?parity=material-stock",
+      "result": "evidence_only",
+      "evidence": "desktop/mobile screenshot",
+      "notes": "已有本地库存流水页，保留语义差距说明。"
+    },
+    {
+      "order": 12,
+      "module": "库存/成品库存",
+      "baseline_entry": "/productStock/productStockList",
+      "local_route": "/warehouse?parity=product-stock",
+      "result": "evidence_only",
+      "evidence": "desktop/mobile screenshot",
+      "notes": "复用仓库看板只读证据，不扩展写链路。"
+    },
+    {
+      "order": 13,
+      "module": "财务/客户应收",
+      "baseline_entry": "/financial/financialReport/customerReconciliationReport",
+      "local_route": "/reports/catalog?parity=customer-reconciliation",
+      "result": "blocked_or_split_required",
+      "evidence": "route alias + readonly_probe screenshot",
+      "notes": "当前为目录入口映射，客户应收叶子报表仍需单独定位。"
+    },
+    {
+      "order": 14,
+      "module": "报表中心/加工成品库存",
+      "baseline_entry": "/reportManage/collaborationReport/factoryProductStockReport",
+      "local_route": "/reports/catalog?parity=factory-product-stock",
+      "result": "blocked_or_split_required",
+      "evidence": "route alias + readonly_probe screenshot",
+      "notes": "目录入口可达，但加工成品库存叶子报表尚未本地 1:1 闭合。"
+    }
+  ],
+  "route_matrix_pass_count": 9,
+  "route_matrix_blocked_or_split_count": 5,
+  "valid_target_screenshot_count": 14,
+  "target_final_url_mismatch_count": 0,
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "console_error_count": 0,
+  "blocking_console_error_count": 0,
+  "network_error_count": 0,
+  "non_allowed_read_request_count": 0,
+  "request_log_coverage_summary": {
+    "request_total": 80,
+    "allowed_read_endpoint_count": 34,
+    "covered_endpoint_count": 28,
+    "missing_allowed_read_endpoints": [
+      "GET /api/dashboard/overview",
+      "GET /api/sales-inventory/stock-ledger",
+      "GET /api/warehouse/alerts",
+      "GET /api/warehouse/batches",
+      "GET /api/factory-statements/",
+      "GET /api/factory-statements/{statement_id}"
+    ],
+    "covered_allowed_read_endpoints": [
+      "GET /api/auth/actions",
+      "GET /api/auth/me",
+      "GET /api/bom/",
+      "GET /api/bom/accessories-packaging",
+      "GET /api/bom/fabrics",
+      "GET /api/bom/material-deduction",
+      "GET /api/bom/material-gallery",
+      "GET /api/bom/material-processing",
+      "GET /api/bom/material-processing-inbound",
+      "GET /api/bom/material-sales-outbound",
+      "GET /api/bom/material-types",
+      "GET /api/bom/material-units",
+      "GET /api/bom/processing-types",
+      "GET /api/bom/purchase-orders",
+      "GET /api/production/followup-templates",
+      "GET /api/production/material-cost-details",
+      "GET /api/production/order-io-quantities",
+      "GET /api/production/plans",
+      "GET /api/production/quotes",
+      "GET /api/production/sales-forecast-details",
+      "GET /api/production/salesperson-performance",
+      "GET /api/reports/approval-reports",
+      "GET /api/reports/catalog",
+      "GET /api/reports/catalog/factory_product_stock_report",
+      "GET /api/reports/employee-task-statistics",
+      "GET /api/sales-inventory/customers",
+      "GET /api/sales-inventory/material-transfers",
+      "GET /api/sales-inventory/warehouses"
+    ]
+  },
+  "legacy_artifact_reference_check": {
+    "legacy_reference_count": 0,
+    "referenced_legacy_paths": []
+  },
+  "allowed_write_endpoints": [],
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "readback_business_closed": true,
+  "readback_business_closed_scope": "local_dev_static_fallback_only"
+}

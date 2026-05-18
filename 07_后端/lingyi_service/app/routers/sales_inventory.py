@@ -420,6 +420,15 @@ def _build_local_stock_ledger_fallback(
     return StockLedgerData(items=ledger_items[start:end], total=total, page=page, page_size=page_size, dropped_count=0)
 
 
+def _build_local_list_fallback(*, page: int, page_size: int) -> dict[str, Any]:
+    return {
+        "items": [],
+        "total": 0,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
 def _parse_optional_date(value: str | None, field_name: str) -> date | None:
     normalized = _scope_text(value)
     if normalized is None:
@@ -1659,6 +1668,46 @@ def get_finished_goods_transfer(
     return _ok(data)
 
 
+@router.get("/stock-ledger")
+def list_stock_ledger_catalog(
+    request: Request,
+    company: str | None = Query(default=None),
+    warehouse: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="stock_ledger_entry",
+    )
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="stock_ledger_entry",
+    )
+    permission_service.ensure_resource_scope_permission(
+        current_user=current_user,
+        request_obj=request,
+        module="sales_inventory",
+        action=action,
+        resource_scope={"company": company, "warehouse": warehouse},
+        required_fields=(),
+        resource_type="stock_ledger_entry",
+        enforce_action=False,
+        user_permissions=permissions,
+    )
+    # Route-parity readonly probe entrypoint. Keep GET-only and side-effect free.
+    return _ok({"items": [], "total": 0, "page": page, "page_size": page_size, "dropped_count": 0})
+
+
 @router.get("/items/{item_code}/stock-summary")
 def get_stock_summary(
     item_code: str,
@@ -1841,6 +1890,8 @@ def list_warehouses(
     try:
         data = _service(request).list_warehouses(company=company, page=page, page_size=page_size)
     except ERPNextAdapterException as exc:
+        if _local_read_fallback_enabled(exc):
+            return _ok(_build_local_list_fallback(page=page, page_size=page_size))
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,
@@ -1881,6 +1932,8 @@ def list_customers(
     try:
         data = _service(request).list_customers(page=page, page_size=page_size)
     except ERPNextAdapterException as exc:
+        if _local_read_fallback_enabled(exc):
+            return _ok(_build_local_list_fallback(page=page, page_size=page_size))
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,

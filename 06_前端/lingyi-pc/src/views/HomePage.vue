@@ -131,6 +131,24 @@ const entryGroups: EntryGroup[] = [
     ],
   },
   {
+    title: '衣算云入口映射（只读）',
+    items: [
+      { title: '衣算云首页', path: '/dashboard/workplace', group: '衣算云入口映射（只读）' },
+      { title: '基础资料/客户', path: '/foundation/customer', group: '衣算云入口映射（只读）' },
+      { title: '基础资料/供应商', path: '/foundation/supplier', group: '衣算云入口映射（只读）' },
+      { title: '基础资料/加工厂', path: '/foundation/factory', group: '衣算云入口映射（只读）' },
+      { title: '物料开发/面料', path: '/material/materialFabric', group: '衣算云入口映射（只读）' },
+      { title: '商品企划/物料小样', path: '/goodsPlan/materialSamples', group: '衣算云入口映射（只读）' },
+      { title: '设计打样/样板单', path: '/sample/sampleListV2', group: '衣算云入口映射（只读）' },
+      { title: '大货管理/订单', path: '/production/productOrder', group: '衣算云入口映射（只读）' },
+      { title: '物料采购/采购流程', path: '/materialPurchase/materialPurchaseProcess', group: '衣算云入口映射（只读）' },
+      { title: '库存/物料库存', path: '/materialStock/materialTypeStock', group: '衣算云入口映射（只读）' },
+      { title: '库存/成品库存', path: '/productStock/productStockList', group: '衣算云入口映射（只读）' },
+      { title: '财务/客户应收', path: '/financial/financialReport/customerReconciliationReport', group: '衣算云入口映射（只读）' },
+      { title: '报表/加工成品库存', path: '/reportManage/collaborationReport/factoryProductStockReport', group: '衣算云入口映射（只读）' },
+    ],
+  },
+  {
     title: '报表治理',
     items: [
       { title: '报表目录', path: '/reports/catalog', group: '报表治理' },

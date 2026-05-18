@@ -178,6 +178,87 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/cross_module/CrossModuleView.vue'),
     meta: { module: 'sales_inventory' },
   },
+  // Yisuan module-entry parity aliases (readonly navigation only).
+  {
+    path: '/dashboard/workplace',
+    redirect: '/dashboard/overview',
+  },
+  {
+    path: '/foundation/customer',
+    redirect: { path: '/sales-inventory/references', query: { tab: 'customers', parity: 'foundation-customer' } },
+  },
+  {
+    path: '/foundation/supplier',
+    redirect: { path: '/factory-statements/list', query: { parity: 'foundation-supplier' } },
+  },
+  {
+    path: '/foundation/factory',
+    redirect: { path: '/factory-statements/list', query: { parity: 'foundation-factory' } },
+  },
+  {
+    path: '/material/materialFabric',
+    redirect: { path: '/bom/list', query: { parity: 'material-fabric' } },
+  },
+  {
+    path: '/goodsPlan/materialSamples',
+    redirect: { path: '/bom/list', query: { parity: 'goodsplan-material-samples' } },
+  },
+  {
+    path: '/goodsPlan/goodsPlanProcess',
+    redirect: { path: '/bom/list', query: { parity: 'goodsplan-material-samples' } },
+  },
+  {
+    path: '/product/product',
+    redirect: { path: '/bom/list', query: { parity: 'product-style' } },
+  },
+  {
+    path: '/sample/sampleListV2',
+    redirect: { path: '/production/plans', query: { parity: 'sample-list' } },
+  },
+  {
+    path: '/sample/sampleProcess',
+    redirect: { path: '/production/plans', query: { parity: 'sample-list' } },
+  },
+  {
+    path: '/production/productOrder',
+    redirect: { path: '/production/plans', query: { parity: 'production-order' } },
+  },
+  {
+    path: '/production/productionProcess',
+    redirect: { path: '/production/plans', query: { parity: 'production-order' } },
+  },
+  {
+    path: '/materialPurchase/materialPurchaseProcess',
+    redirect: { path: '/subcontract/list', query: { parity: 'material-purchase' } },
+  },
+  {
+    path: '/materialStock/materialTypeStock',
+    redirect: { path: '/sales-inventory/stock-ledger', query: { parity: 'material-stock' } },
+  },
+  {
+    path: '/materialStock/materialStockProcess',
+    redirect: { path: '/sales-inventory/stock-ledger', query: { parity: 'material-stock' } },
+  },
+  {
+    path: '/productStock/productStockList',
+    redirect: { path: '/warehouse', query: { parity: 'product-stock' } },
+  },
+  {
+    path: '/productStock/productStockProcess',
+    redirect: { path: '/warehouse', query: { parity: 'product-stock' } },
+  },
+  {
+    path: '/financial/financialReport/customerReconciliationReport',
+    redirect: { path: '/reports/catalog', query: { parity: 'customer-reconciliation' } },
+  },
+  {
+    path: '/financial/financialProcess',
+    redirect: { path: '/reports/catalog', query: { parity: 'customer-reconciliation' } },
+  },
+  {
+    path: '/reportManage/collaborationReport/factoryProductStockReport',
+    redirect: { path: '/reports/catalog', query: { parity: 'factory-product-stock' } },
+  },
   {
     path: '/app/:pathMatch(.*)*',
     redirect: '/home',
@@ -189,7 +270,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 })
 

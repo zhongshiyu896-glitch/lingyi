@@ -107,6 +107,14 @@
         style="margin-bottom: 12px"
       />
       <el-alert
+        v-if="parityHint"
+        type="info"
+        :closable="false"
+        :title="parityHint"
+        data-testid="report-catalog-parity-hint"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
         v-if="scopeExpandedToOtherReports"
         type="warning"
         :closable="false"
@@ -470,6 +478,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import reportApi from '@/api/report'
 import { usePermissionStore } from '@/stores/permission'
@@ -527,6 +536,7 @@ const PRESERVED_REPORT_KEY = 'factory_product_stock_report'
 const TASK_SCOPE_REPORT_KEYS = new Set([TASK_SCOPE_REPORT_KEY, PRESERVED_REPORT_KEY])
 
 const permissionStore = usePermissionStore()
+const route = useRoute()
 const loading = ref<boolean>(false)
 const employeeTaskLoading = ref<boolean>(false)
 const approvalLoading = ref<boolean>(false)
@@ -539,6 +549,8 @@ const approvalErrorMessage = ref<string>('')
 const scopeExpandedToOtherReports = ref<boolean>(false)
 const taskY3B07EntryPreserved = ref<boolean>(true)
 const preserveCheckMessage = ref<string>('')
+const parityHint = ref<string>('')
+const readonlyProbe = computed<boolean>(() => route.query.readonly_probe === '1')
 
 const employeeTaskItems = ref<EmployeeTaskStatisticsItem[]>([])
 const selectedEmployeeTaskItem = ref<EmployeeTaskStatisticsItem | null>(null)
@@ -787,7 +799,28 @@ const handleExport = (): Promise<void> => {
   return Promise.resolve()
 }
 
+const resolveParityHint = (): void => {
+  const parity = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  if (!parity) {
+    parityHint.value = ''
+    return
+  }
+  if (parity === 'customer-reconciliation') {
+    parityHint.value = '当前路径由衣算云“财务/客户应收对账入口”映射进入，仅做本地只读 parity 对照。'
+    return
+  }
+  if (parity === 'factory-product-stock') {
+    parityHint.value = '当前路径由衣算云“报表中心/加工成品库存”映射进入，仅做本地只读 parity 对照。'
+    return
+  }
+  parityHint.value = `当前路径由衣算云入口映射进入（${parity}），仅做本地只读 parity 对照。`
+}
+
 onMounted(() => {
+  resolveParityHint()
+  if (readonlyProbe.value) {
+    return
+  }
   permissionStore
     .loadCurrentUser()
     .then(() => permissionStore.loadModuleActions('report'))
