@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "fixture_id": "Z006-CAND-002-WAREHOUSE-ADAPTER-CONTRACT",
+    "version": 1,
+    "source": "TASK-Z006B-03-IMPL"
+  },
+  "list_stock_summary_rows": [
+    {
+      "company": "COMP-A",
+      "warehouse": "WH-A",
+      "item_code": "ITEM-A",
+      "actual_qty": "1",
+      "projected_qty": "1",
+      "reserved_qty": "0",
+      "ordered_qty": "0",
+      "reorder_level": "5",
+      "safety_stock": "3"
+    },
+    {
+      "company": "COMP-A",
+      "warehouse": "WH-A",
+      "item_code": "ITEM-B",
+      "actual_qty": "20",
+      "projected_qty": "20",
+      "reserved_qty": "0",
+      "ordered_qty": "0",
+      "reorder_level": "5",
+      "safety_stock": "3"
+    }
+  ],
+  "latest_movement_by_item_warehouse_rows": [
+    {
+      "item_code": "ITEM-A",
+      "warehouse": "WH-A",
+      "posting_date": "2026-04-01"
+    },
+    {
+      "item_code": "ITEM-B",
+      "warehouse": "WH-A",
+      "posting_date": "2026-05-01"
+    }
+  ],
+  "list_batches_rows": [
+    {
+      "company": "COMP-A",
+      "batch_no": "BATCH-001",
+      "item_code": "ITEM-A",
+      "warehouse": "WH-A",
+      "manufacturing_date": "2026-04-01",
+      "expiry_date": "2026-08-01",
+      "disabled": false,
+      "qty": "8"
+    }
+  ],
+  "alerts_contract_expected": {
+    "query": {
+      "company": "COMP-A",
+      "warehouse": "WH-A",
+      "item_code": "ITEM-A",
+      "alert_type": "low_stock"
+    },
+    "response_fields": [
+      "company",
+      "warehouse",
+      "item_code",
+      "alert_type",
+      "items"
+    ],
+    "first_item_required_fields": [
+      "company",
+      "warehouse",
+      "item_code",
+      "alert_type",
+      "current_qty",
+      "threshold_qty",
+      "gap_qty",
+      "severity"
+    ]
+  },
+  "batches_contract_expected": {
+    "query": {
+      "company": "COMP-A",
+      "warehouse": "WH-A",
+      "item_code": "ITEM-A",
+      "batch_no": "BATCH-001"
+    },
+    "response_fields": [
+      "company",
+      "warehouse",
+      "item_code",
+      "batch_no",
+      "total",
+      "items"
+    ],
+    "first_item_required_fields": [
+      "company",
+      "batch_no",
+      "item_code",
+      "warehouse",
+      "manufacturing_date",
+      "expiry_date",
+      "disabled",
+      "qty"
+    ]
+  },
+  "alerts_empty_state_expected": {
+    "company": "COMP-A",
+    "warehouse": "WH-A",
+    "item_code": "ITEM-A",
+    "alert_type": null,
+    "items": []
+  },
+  "batches_empty_state_expected": {
+    "company": "COMP-A",
+    "warehouse": "WH-A",
+    "item_code": "ITEM-A",
+    "batch_no": null,
+    "total": 0,
+    "items": []
+  },
+  "exception_mapping_cases": [
+    {
+      "case_id": "local_dev_static_external_service_unavailable_alerts",
+      "endpoint": "alerts",
+      "error_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "env": {
+        "APP_ENV": "development",
+        "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+        "LINGYI_PERMISSION_SOURCE": "static"
+      },
+      "expected_http_status": 200,
+      "expected_result": "fallback_empty_state"
+    },
+    {
+      "case_id": "local_dev_static_external_service_unavailable_batches",
+      "endpoint": "batches",
+      "error_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "env": {
+        "APP_ENV": "development",
+        "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+        "LINGYI_PERMISSION_SOURCE": "static"
+      },
+      "expected_http_status": 200,
+      "expected_result": "fallback_empty_state"
+    },
+    {
+      "case_id": "non_local_dev_fail_closed",
+      "endpoint": "alerts",
+      "error_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "env": {
+        "APP_ENV": "test",
+        "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+        "LINGYI_PERMISSION_SOURCE": "static"
+      },
+      "expected_http_status": 503,
+      "expected_code": "EXTERNAL_SERVICE_UNAVAILABLE"
+    },
+    {
+      "case_id": "non_static_permission_fail_closed",
+      "endpoint": "alerts",
+      "error_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "env": {
+        "APP_ENV": "development",
+        "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+        "LINGYI_PERMISSION_SOURCE": "erpnext"
+      },
+      "expected_http_status": 503,
+      "expected_code": "PERMISSION_SOURCE_UNAVAILABLE"
+    },
+    {
+      "case_id": "response_invalid_fail_closed",
+      "endpoint": "alerts",
+      "error_code": "ERPNEXT_RESPONSE_INVALID",
+      "env": {
+        "APP_ENV": "development",
+        "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+        "LINGYI_PERMISSION_SOURCE": "static"
+      },
+      "expected_http_status": 502,
+      "expected_code": "ERPNEXT_RESPONSE_INVALID"
+    }
+  ],
+  "fail_closed_cases": [
+    "non_local_dev_db_gate_must_fail_closed",
+    "non_static_permission_source_must_fail_closed",
+    "non_external_service_unavailable_must_fail_closed",
+    "erpnext_response_invalid_must_fail_closed"
+  ]
+}

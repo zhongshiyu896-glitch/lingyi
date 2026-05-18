@@ -1,0 +1,86 @@
+{
+  "task_id": "TASK-Z006B-03-IMPL",
+  "generated_at": "2026-05-18T16:48:00+0800",
+  "api_regression_cases": [
+    {
+      "case_id": "alerts_contract_field_mapping",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 200,
+      "result": "PASS"
+    },
+    {
+      "case_id": "batches_contract_field_mapping",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 200,
+      "result": "PASS"
+    },
+    {
+      "case_id": "alerts_empty_state",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 200,
+      "result": "PASS"
+    },
+    {
+      "case_id": "batches_empty_state",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 200,
+      "result": "PASS"
+    },
+    {
+      "case_id": "external_service_unavailable_local_dev_static_fallback_alerts",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 200,
+      "result": "PASS"
+    },
+    {
+      "case_id": "external_service_unavailable_local_dev_static_fallback_batches",
+      "method": "GET",
+      "endpoint": "/api/warehouse/batches",
+      "expected_status": 200,
+      "result": "PASS"
+    },
+    {
+      "case_id": "external_service_unavailable_non_local_dev_fail_closed",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 503,
+      "expected_code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "result": "PASS"
+    },
+    {
+      "case_id": "external_service_unavailable_non_static_permission_fail_closed",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 503,
+      "expected_code": "PERMISSION_SOURCE_UNAVAILABLE",
+      "result": "PASS"
+    },
+    {
+      "case_id": "erpnext_response_invalid_must_fail_closed",
+      "method": "GET",
+      "endpoint": "/api/warehouse/alerts",
+      "expected_status": 502,
+      "expected_code": "ERPNEXT_RESPONSE_INVALID",
+      "result": "PASS"
+    }
+  ],
+  "method_summary": {
+    "get": 9,
+    "post": 0,
+    "put": 0,
+    "patch": 0,
+    "delete": 0
+  },
+  "allowed_read_endpoints": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_write_endpoints": [],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0
+}

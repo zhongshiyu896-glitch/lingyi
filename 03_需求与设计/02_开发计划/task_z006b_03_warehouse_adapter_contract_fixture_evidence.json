@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-Z006B-03-IMPL",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z006A-PRODUCTION-READBACK-READINESS-MAINLINE",
+  "generated_at": "2026-05-18T16:48:00+0800",
+  "source_head": "78e44ac54d8fc27a37e37f6d88d24630b8deee27",
+  "source_subject": "chore: seal z005 final readback anchor",
+  "selected_candidate_id": "Z006-CAND-002",
+  "boundary_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_02_warehouse_adapter_contract_fixture_boundary.json",
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_warehouse_adapter_contract_fixture.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/fixtures/warehouse_adapter_contract_fixture.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-03-IMPL_warehouse_adapter_contract_fixture最小实现与回归报告.md",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_03_warehouse_adapter_contract_fixture_evidence.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_03_warehouse_adapter_contract_fixture_api_regression.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+  ],
+  "fixture_directory_created": true,
+  "fixture_file_created": true,
+  "legal_local_contract_fixture_path_exists": "YES",
+  "adapter_contract_tests": {
+    "runner": ".venv/bin/python -m unittest tests.test_warehouse_adapter_contract_fixture -v",
+    "result": "PASS",
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "errors": 0
+  },
+  "python_compile": {
+    "runner": ".venv/bin/python -m py_compile app/services/erpnext_warehouse_adapter.py app/services/warehouse_service.py app/routers/warehouse.py tests/test_warehouse_adapter_contract_fixture.py",
+    "result": "PASS"
+  },
+  "alerts_contract_status": "PASS",
+  "batches_contract_status": "PASS",
+  "empty_state_status": "PASS",
+  "exception_mapping_status": "PASS",
+  "fail_closed_status": "PASS",
+  "allowed_read_hit": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "allowed_write_endpoints": [],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "readback_business_closed": true,
+  "readback_business_closed_scope": "local_dev_static_fallback_only",
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true
+}
