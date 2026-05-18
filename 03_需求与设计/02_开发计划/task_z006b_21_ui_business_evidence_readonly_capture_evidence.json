@@ -1,0 +1,58 @@
+{
+  "task_id": "TASK-Z006B-21-IMPL-FIX1",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z006A-PRODUCTION-READBACK-READINESS-MAINLINE",
+  "generated_at": "2026-05-18T18:57:24+0800",
+  "source_head": "47e0f1b6113a05155e857fe1039d84df08f37776",
+  "source_subject": "chore: seal z006 go live acceptance audit",
+  "selected_candidate_id": "Z006-CAND-007",
+  "base_path_corrected": true,
+  "ui_evidence_capture_executed": true,
+  "target_pages": [
+    "/fate/warehouse",
+    "/fate/factory-statements/list?z005_readback=1",
+    "/fate/factory-statements/detail?id=1"
+  ],
+  "target_pages_count": 3,
+  "desktop_mobile_required": true,
+  "screenshot_count": 10,
+  "target_page_screenshot_count": 6,
+  "desktop_count": 3,
+  "mobile_count": 3,
+  "statement_id_source": {
+    "from_readonly_list": null,
+    "from_existing_evidence": 1,
+    "used_for_detail_capture": 1
+  },
+  "factory_statement_detail_status": "ui_rendered_with_statement_id_1_api_500_or_requestfailed",
+  "browser_request_methods": [
+    "GET"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches",
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}"
+  ],
+  "allowed_read_hit": 18,
+  "api_404_count": 0,
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "allowed_write_endpoints": [],
+  "production_write_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "local_acceptance_closed": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "references": {
+    "raw_capture": "/tmp/task_z006b21_capture_raw_fix1.json",
+    "screenshots_dir": "/tmp/task_z006b21_screenshots",
+    "api_regression": "task_z006b_21_ui_business_evidence_readonly_capture_api_regression.json",
+    "browser_result": "task_z006b_21_ui_business_evidence_readonly_capture_browser_result.json"
+  }
+}

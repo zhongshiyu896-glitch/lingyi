@@ -1,0 +1,92 @@
+{
+  "task_id": "TASK-Z006B-21-IMPL-FIX1",
+  "role": "B Engineer",
+  "source_head": "47e0f1b6113a05155e857fe1039d84df08f37776",
+  "selected_candidate_id": "Z006-CAND-007",
+  "base_path_corrected": true,
+  "ui_evidence_capture_executed": true,
+  "target_pages": [
+    "/fate/warehouse",
+    "/fate/factory-statements/list?z005_readback=1",
+    "/fate/factory-statements/detail?id=1"
+  ],
+  "target_pages_count": 3,
+  "desktop_mobile_required": true,
+  "screenshot_count": 10,
+  "target_page_screenshot_count": 6,
+  "desktop_count": 3,
+  "mobile_count": 3,
+  "screenshots": [
+    {
+      "page_target": "/fate/factory-statements/detail?id=1",
+      "viewport": "desktop",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_factory_detail_desktop.png",
+      "is_target_page": false,
+      "rejection_reason": "legacy_pre_fix1_capture_not_counted"
+    },
+    {
+      "page_target": "/fate/factory-statements/detail?id=1",
+      "viewport": "mobile",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_factory_detail_mobile.png",
+      "is_target_page": false,
+      "rejection_reason": "legacy_pre_fix1_capture_not_counted"
+    },
+    {
+      "page_target": "/fate/factory-statements/list?z005_readback=1",
+      "viewport": "desktop",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_factory_list_desktop.png",
+      "is_target_page": false,
+      "rejection_reason": "legacy_pre_fix1_capture_not_counted"
+    },
+    {
+      "page_target": "/fate/factory-statements/list?z005_readback=1",
+      "viewport": "mobile",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_factory_list_mobile.png",
+      "is_target_page": false,
+      "rejection_reason": "legacy_pre_fix1_capture_not_counted"
+    },
+    {
+      "page_target": "/fate/factory-statements/detail?id=1",
+      "viewport": "desktop",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_factory_statement_detail_desktop.png",
+      "is_target_page": true,
+      "rejection_reason": null
+    },
+    {
+      "page_target": "/fate/factory-statements/detail?id=1",
+      "viewport": "mobile",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_factory_statement_detail_mobile.png",
+      "is_target_page": true,
+      "rejection_reason": null
+    },
+    {
+      "page_target": "/fate/factory-statements/list?z005_readback=1",
+      "viewport": "desktop",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_factory_statement_list_desktop.png",
+      "is_target_page": true,
+      "rejection_reason": null
+    },
+    {
+      "page_target": "/fate/factory-statements/list?z005_readback=1",
+      "viewport": "mobile",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_factory_statement_list_mobile.png",
+      "is_target_page": true,
+      "rejection_reason": null
+    },
+    {
+      "page_target": "/fate/warehouse",
+      "viewport": "desktop",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_warehouse_desktop.png",
+      "is_target_page": true,
+      "rejection_reason": null
+    },
+    {
+      "page_target": "/fate/warehouse",
+      "viewport": "mobile",
+      "path": "/tmp/task_z006b21_screenshots/z006b21_warehouse_mobile.png",
+      "is_target_page": true,
+      "rejection_reason": null
+    }
+  ],
+  "request_log_required": true
+}

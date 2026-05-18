@@ -1,0 +1,209 @@
+{
+  "task_id": "TASK-Z006B-21-IMPL-FIX1",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z006A-PRODUCTION-READBACK-READINESS-MAINLINE",
+  "generated_at": "2026-05-18T18:57:24+0800",
+  "source_head": "47e0f1b6113a05155e857fe1039d84df08f37776",
+  "source_subject": "chore: seal z006 go live acceptance audit",
+  "selected_candidate_id": "Z006-CAND-007",
+  "base_path_corrected": true,
+  "browser_request_methods": [
+    "GET"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches",
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/{statement_id}"
+  ],
+  "cases": [
+    {
+      "case_id": "API-DESKTOP-001",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/warehouse/alerts?company=LY&warehouse=WH-001&item_code=ITEM-001&alert_type=low_stock",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/warehouse/alerts"
+    },
+    {
+      "case_id": "API-DESKTOP-002",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/warehouse/alerts?company=LY&warehouse=WH-001&item_code=ITEM-001&alert_type=low_stock",
+      "status": null,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/warehouse/alerts",
+      "failed": true,
+      "failure_text": "net::ERR_ABORTED"
+    },
+    {
+      "case_id": "API-DESKTOP-003",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/warehouse/batches?company=LY&warehouse=WH-001&item_code=ITEM-001&batch_no=BATCH-001",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/warehouse/batches"
+    },
+    {
+      "case_id": "API-DESKTOP-004",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/warehouse/batches?company=LY&warehouse=WH-001&item_code=ITEM-001&batch_no=BATCH-001",
+      "status": null,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/warehouse/batches",
+      "failed": true,
+      "failure_text": "net::ERR_ABORTED"
+    },
+    {
+      "case_id": "API-DESKTOP-005",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/?page=1&page_size=20",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/"
+    },
+    {
+      "case_id": "API-DESKTOP-006",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/?page=1&page_size=20",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/"
+    },
+    {
+      "case_id": "API-DESKTOP-007",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/?page=1&page_size=20",
+      "status": null,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/",
+      "failed": true,
+      "failure_text": "net::ERR_ABORTED"
+    },
+    {
+      "case_id": "API-DESKTOP-008",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/1",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/{statement_id}"
+    },
+    {
+      "case_id": "API-DESKTOP-009",
+      "viewport": "desktop",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/1",
+      "status": null,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/{statement_id}",
+      "failed": true,
+      "failure_text": "net::ERR_ABORTED"
+    },
+    {
+      "case_id": "API-MOBILE-001",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/warehouse/alerts?company=LY&warehouse=WH-001&item_code=ITEM-001&alert_type=low_stock",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/warehouse/alerts"
+    },
+    {
+      "case_id": "API-MOBILE-002",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/warehouse/alerts?company=LY&warehouse=WH-001&item_code=ITEM-001&alert_type=low_stock",
+      "status": null,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/warehouse/alerts",
+      "failed": true,
+      "failure_text": "net::ERR_ABORTED"
+    },
+    {
+      "case_id": "API-MOBILE-003",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/warehouse/batches?company=LY&warehouse=WH-001&item_code=ITEM-001&batch_no=BATCH-001",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/warehouse/batches"
+    },
+    {
+      "case_id": "API-MOBILE-004",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/warehouse/batches?company=LY&warehouse=WH-001&item_code=ITEM-001&batch_no=BATCH-001",
+      "status": null,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/warehouse/batches",
+      "failed": true,
+      "failure_text": "net::ERR_ABORTED"
+    },
+    {
+      "case_id": "API-MOBILE-005",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/?page=1&page_size=20",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/"
+    },
+    {
+      "case_id": "API-MOBILE-006",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/?page=1&page_size=20",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/"
+    },
+    {
+      "case_id": "API-MOBILE-007",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/?page=1&page_size=20",
+      "status": null,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/",
+      "failed": true,
+      "failure_text": "net::ERR_ABORTED"
+    },
+    {
+      "case_id": "API-MOBILE-008",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/1",
+      "status": 500,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/{statement_id}"
+    },
+    {
+      "case_id": "API-MOBILE-009",
+      "viewport": "mobile",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/factory-statements/1",
+      "status": null,
+      "allowed_read_endpoint": true,
+      "matched_allowed_read_endpoint": "GET /api/factory-statements/{statement_id}",
+      "failed": true,
+      "failure_text": "net::ERR_ABORTED"
+    }
+  ],
+  "summary": {
+    "request_log_required": true,
+    "request_total": 18,
+    "allowed_read_hit": 18,
+    "api_404_count": 0,
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "allowed_write_endpoints": []
+  }
+}
