@@ -1,0 +1,154 @@
+{
+  "task_id": "TASK-Z006B-15-IMPL",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z006A-PRODUCTION-READBACK-READINESS-MAINLINE",
+  "generated_at": "2026-05-18T18:08:00+0800",
+  "source_head": "ec2205b47d5ea180719bcd19c279e06871f172e8",
+  "source_subject": "chore: seal z006 warehouse permission matrix",
+  "selected_candidate_id": "Z006-CAND-006",
+  "audit_bundle_status": "PASS",
+  "local_acceptance_closed": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "blocked_by_remote_or_production_dependency": true,
+  "local_closed_items": [
+    "factory_statement_carrier_readback_zero_residual",
+    "warehouse_local_dev_static_fallback_readback",
+    "warehouse_adapter_contract_fixture",
+    "warehouse_permission_mode_matrix"
+  ],
+  "production_open_items": [
+    "production_erpnext_non_fallback_readback_closed=false",
+    "remote_lifecycle_authorized=false"
+  ],
+  "production_erpnext_non_fallback_readback_closed": false,
+  "remote_lifecycle_authorized": false,
+  "allowed_write_endpoints": [],
+  "unique_unblock_conditions": [
+    "grant_production_readonly_erpnext_account_and_controlled_dataset",
+    "authorize_remote_lifecycle_push_pr_tag_release_minimal_scope"
+  ],
+  "recommended_next_task_id": null,
+  "optional_local_candidate_suggestion": "Z006-CAND-007",
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "state_hold": {
+    "readback_business_closed": true,
+    "readback_business_closed_scope": "local_dev_static_fallback_only",
+    "production_erpnext_non_fallback_readback_closed": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  },
+  "entries": [
+    {
+      "entry_id": "A001",
+      "key": "selected_candidate_id",
+      "value": "Z006-CAND-006"
+    },
+    {
+      "entry_id": "A002",
+      "key": "local_acceptance_closed",
+      "value": "true"
+    },
+    {
+      "entry_id": "A003",
+      "key": "production_readback_ready",
+      "value": "false"
+    },
+    {
+      "entry_id": "A004",
+      "key": "go_live_ready",
+      "value": "false"
+    },
+    {
+      "entry_id": "A005",
+      "key": "blocked_by_remote_or_production_dependency",
+      "value": "true"
+    },
+    {
+      "entry_id": "A006",
+      "key": "factory_statement_carrier_readback_zero_residual",
+      "value": "local_acceptance_closed"
+    },
+    {
+      "entry_id": "A007",
+      "key": "warehouse_local_dev_static_fallback_readback",
+      "value": "local_acceptance_closed"
+    },
+    {
+      "entry_id": "A008",
+      "key": "warehouse_adapter_contract_fixture",
+      "value": "local_acceptance_closed"
+    },
+    {
+      "entry_id": "A009",
+      "key": "warehouse_permission_mode_matrix",
+      "value": "local_acceptance_closed"
+    },
+    {
+      "entry_id": "A010",
+      "key": "production_erpnext_non_fallback_readback_closed",
+      "value": "false"
+    },
+    {
+      "entry_id": "A011",
+      "key": "remote_lifecycle_authorized",
+      "value": "false"
+    },
+    {
+      "entry_id": "A012",
+      "key": "allowed_write_endpoints",
+      "value": "[]"
+    },
+    {
+      "entry_id": "A013",
+      "key": "unique_unblock_condition_1",
+      "value": "grant_production_readonly_erpnext_account_and_controlled_dataset"
+    },
+    {
+      "entry_id": "A014",
+      "key": "unique_unblock_condition_2",
+      "value": "authorize_remote_lifecycle_push_pr_tag_release_minimal_scope"
+    },
+    {
+      "entry_id": "A015",
+      "key": "recommended_next_task_id",
+      "value": "null"
+    },
+    {
+      "entry_id": "A016",
+      "key": "optional_local_candidate_suggestion",
+      "value": "Z006-CAND-007"
+    },
+    {
+      "entry_id": "A017",
+      "key": "readback_business_closed",
+      "value": "true"
+    },
+    {
+      "entry_id": "A018",
+      "key": "readback_business_closed_scope",
+      "value": "local_dev_static_fallback_only"
+    },
+    {
+      "entry_id": "A019",
+      "key": "project_completion_claimed",
+      "value": "false"
+    },
+    {
+      "entry_id": "A020",
+      "key": "remote_lifecycle_parked",
+      "value": "true"
+    }
+  ],
+  "evidence_sources": [
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_13_z006_candidate_refresh_after_cand003.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_13_z006_candidate_refresh_after_cand003.tsv",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_24_z005_post_commit_final_readback_archive.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_04_warehouse_adapter_contract_fixture_result_freeze.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_10_warehouse_permission_mode_readback_matrix_result_freeze.json",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/factory_statement.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/warehouse.py",
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/warehouse_service.py"
+  ]
+}
