@@ -1,0 +1,36 @@
+{
+  "task_id": "TASK-Z007B-11-IMPL",
+  "task_status": "PASS",
+  "generated_at": "2026-05-18T21:19:18+08:00",
+  "source_head": "48892f2fa01622587b931ef58117654505575478",
+  "selected_candidate_id": "Z007-CAND-001-S1",
+  "baseline_scan": {
+    "item_code": "LY-APLUS-STYLE-20260518-01",
+    "draft_or_active_count": 1,
+    "draft_or_active_bom_no": [
+      "BOM-LY-APLUS-STYLE-20260518-01-V1-Z002-BOM-20260518-634-20260518120334726097"
+    ]
+  },
+  "write_phase": {
+    "created_bom_no": "BOM-LY-APLUS-STYLE-20260518-01-V1-Z002-BOM-20260518-711-20260518131629123409",
+    "created_bom_id": 11,
+    "create_status": 200,
+    "activate_status": 200,
+    "deactivate_status": 200,
+    "target_status_after_activate": "active",
+    "target_status_after_deactivate": "inactive",
+    "draft_or_active_count_after_write": 2,
+    "draft_or_active_count_after_write_source": "derived_from_baseline_plus_created_target_active_transition"
+  },
+  "after_cleanup_scan": {
+    "item_code": "LY-APLUS-STYLE-20260518-01",
+    "draft_or_active_count": 1,
+    "draft_or_active_bom_no": [
+      "BOM-LY-APLUS-STYLE-20260518-01-V1-Z002-BOM-20260518-634-20260518120334726097"
+    ]
+  },
+  "new_residual_active_or_draft_bom_no": [],
+  "created_new_bom_count": 1,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_active_or_draft_residual"
+}

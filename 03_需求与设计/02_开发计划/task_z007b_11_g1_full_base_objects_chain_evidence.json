@@ -1,0 +1,78 @@
+{
+  "task_id": "TASK-Z007B-11-IMPL",
+  "task_status": "PASS",
+  "generated_at": "2026-05-18T21:16:29.165530+08:00",
+  "source_head": "48892f2fa01622587b931ef58117654505575478",
+  "selected_candidate_id": "Z007-CAND-001-S1",
+  "parent_candidate_id": "Z007-CAND-001",
+  "runtime": {
+    "api_base": "http://127.0.0.1:8010",
+    "scenario_tag": "Z002-BOM-20260518-711"
+  },
+  "object_chain_summary": {
+    "customer": "reuse_only_no_independent_master_create",
+    "supplier": "reuse_only_no_independent_master_create",
+    "factory": "reuse_only_no_independent_master_create",
+    "fabric": "verified_via_bom_carrier_LY-APLUS-FAB-20260518-01",
+    "style": "verified_via_bom_carrier_LY-APLUS-STYLE-20260518-01"
+  },
+  "created_or_reused_objects_summary": {
+    "reused": {
+      "customer": "G0 reusable test customer evidence reused",
+      "supplier": "G0 reusable test supplier evidence reused",
+      "factory": "G0 reusable test factory evidence reused"
+    },
+    "created": {
+      "bom_no": "BOM-LY-APLUS-STYLE-20260518-01-V1-Z002-BOM-20260518-711-20260518131629123409",
+      "style_item_code": "LY-APLUS-STYLE-20260518-01",
+      "material_item_code": "LY-APLUS-FAB-20260518-01",
+      "final_status": "inactive"
+    }
+  },
+  "allowed_write_endpoints": [
+    "POST /api/bom/",
+    "POST /api/bom/{bom_id}/activate",
+    "POST /api/bom/{bom_id}/deactivate"
+  ],
+  "allowed_write_hit": [
+    {
+      "endpoint": "POST /api/bom/",
+      "status": 200,
+      "code": "0",
+      "result": "created_bom_draft"
+    },
+    {
+      "endpoint": "POST /api/bom/{bom_id}/activate",
+      "status": 200,
+      "code": "0",
+      "result": "activated_bom"
+    },
+    {
+      "endpoint": "POST /api/bom/{bom_id}/deactivate",
+      "status": 200,
+      "code": "0",
+      "result": "deactivated_bom"
+    }
+  ],
+  "allowed_write_hit_count": 3,
+  "allowed_write_missing_count": 0,
+  "allowed_write_extra_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_write_request_count": 0,
+  "write_request_count": 3,
+  "production_write_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "created_independent_master_data_count": 0,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_active_or_draft_residual",
+  "state_hold": {
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "readback_business_closed": true,
+    "readback_business_closed_scope": "local_dev_static_fallback_only"
+  }
+}

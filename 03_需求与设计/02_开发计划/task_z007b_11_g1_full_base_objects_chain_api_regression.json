@@ -1,0 +1,185 @@
+{
+  "task_id": "TASK-Z007B-11-IMPL",
+  "task_status": "PASS",
+  "generated_at": "2026-05-18T21:16:29.165530+08:00",
+  "source_head": "48892f2fa01622587b931ef58117654505575478",
+  "selected_candidate_id": "Z007-CAND-001-S1",
+  "api_base": "http://127.0.0.1:8010",
+  "request_methods": [
+    "GET",
+    "POST"
+  ],
+  "allowed_read_endpoints": [
+    "GET /api/sales-inventory/customers",
+    "GET /api/sales-inventory/sales-orders",
+    "GET /api/factory-statements/",
+    "GET /api/factory-statements/supplier-evaluations",
+    "GET /api/factory-statements/factory-evaluations",
+    "GET /api/bom/",
+    "GET /api/bom/fabrics"
+  ],
+  "allowed_write_endpoints": [
+    "POST /api/bom/",
+    "POST /api/bom/{bom_id}/activate",
+    "POST /api/bom/{bom_id}/deactivate"
+  ],
+  "calls": [
+    {
+      "phase": "baseline_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/sales-inventory/customers?page=1&page_size=20",
+      "status": 503,
+      "code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "baseline_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/sales-inventory/sales-orders?page=1&page_size=20",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "baseline_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/factory-statements/?page=1&page_size=20",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "baseline_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/factory-statements/supplier-evaluations?page=1&page_size=20",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "baseline_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/factory-statements/factory-evaluations?page=1&page_size=20",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "baseline_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/bom/?item_code=LY-APLUS-STYLE-20260518-01&page=1&page_size=200",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "baseline_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/bom/fabrics?item_code=LY-APLUS-STYLE-20260518-01&page=1&page_size=200",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "write_create",
+      "method": "POST",
+      "url": "http://127.0.0.1:8010/api/bom/",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_write": true,
+      "x_request_id": "Z002-BOM-20260518-711-RQ-IC655-BFA44-R0F1B"
+    },
+    {
+      "phase": "write_activate",
+      "method": "POST",
+      "url": "http://127.0.0.1:8010/api/bom/11/activate",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_write": true,
+      "x_request_id": "Z002-BOM-20260518-711-RQ-IC655-BC7B3-R0F1B"
+    },
+    {
+      "phase": "write_deactivate",
+      "method": "POST",
+      "url": "http://127.0.0.1:8010/api/bom/11/deactivate",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_write": true,
+      "x_request_id": "Z002-BOM-20260518-711-RQ-IC655-BC7B3-R48AA"
+    },
+    {
+      "phase": "after_cleanup_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/sales-inventory/customers?page=1&page_size=20",
+      "status": 503,
+      "code": "EXTERNAL_SERVICE_UNAVAILABLE",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "after_cleanup_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/sales-inventory/sales-orders?page=1&page_size=20",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "after_cleanup_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/factory-statements/?page=1&page_size=20",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "after_cleanup_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/factory-statements/supplier-evaluations?page=1&page_size=20",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "after_cleanup_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/factory-statements/factory-evaluations?page=1&page_size=20",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "after_cleanup_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/bom/?item_code=LY-APLUS-STYLE-20260518-01&page=1&page_size=200",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    },
+    {
+      "phase": "after_cleanup_read",
+      "method": "GET",
+      "url": "http://127.0.0.1:8010/api/bom/fabrics?item_code=LY-APLUS-STYLE-20260518-01&page=1&page_size=200",
+      "status": 200,
+      "code": "0",
+      "hit_allowed_read": true
+    }
+  ],
+  "summary": {
+    "read_call_count": 14,
+    "write_call_count": 3,
+    "allowed_write_hit": [
+      "POST /api/bom/",
+      "POST /api/bom/{bom_id}/activate",
+      "POST /api/bom/{bom_id}/deactivate"
+    ],
+    "allowed_write_missing": [],
+    "allowed_write_extra": [],
+    "unexpected_write_request_count": 0,
+    "forbidden_write_request_count": 0,
+    "production_write_count": 0,
+    "erpnext_write_count": 0,
+    "worker_sync_internal_job_request_count": 0,
+    "import_export_download_upload_print_count": 0,
+    "created_independent_master_data_count": 0
+  }
+}
