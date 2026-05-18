@@ -1,0 +1,71 @@
+{
+  "task_id": "TASK-Z004B-106-PREP",
+  "role": "B Engineer",
+  "source_head": "9a57b87f00872b8d421d6f4204906ca546f21a4b",
+  "parent": "fa52aacc40dca11e1835a87f42488f7a33e211af",
+  "source_subject": "chore: seal z004 blocked closeout anchor",
+  "scan_mode": "read_only_docs_json_tsv_log_only",
+  "candidate_count": 0,
+  "candidates": [],
+  "blocked_items": [
+    {
+      "candidate_id": "TASK-Z004B-CAND-10-S5",
+      "candidate_type": "guarded_to_real_interaction_split_gap",
+      "module": "factory_statement_detail",
+      "route_scope": [
+        "/factory-statements/detail"
+      ],
+      "current_gap": "factory statement detail 仍依赖合法 statement_id 才能闭合写链路与回读；当前前置条件未满足。",
+      "evidence_source": [
+        "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_102_z004_blocked_closeout_anchor.json",
+        "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_98_z004_remaining_blocked_status_anchor.json",
+        "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementDetail.vue",
+        "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/factory_statement.py"
+      ],
+      "risk_level": "high",
+      "recommended_priority": "P1",
+      "blocked_reason": "blocked_precondition: readback_business_closed_false_and_blocked_no_statement_id",
+      "duplicate_or_already_closed": true,
+      "recommended_next_task_id": null,
+      "recommended_next_task_type": null,
+      "project_completion_claimed": false,
+      "remote_lifecycle_parked": true,
+      "readback_business_closed": false
+    }
+  ],
+  "non_candidate_findings": [
+    {
+      "finding_type": "recursive_control_plane_loop",
+      "description": "若继续仅执行归档/冻结/stage/commit 自身循环，将形成控制面递归，不应作为新开发候选。",
+      "evidence_source": [
+        "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_103_commit_candidate_ledger.json",
+        "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_102_z004_blocked_closeout_anchor.json"
+      ]
+    },
+    {
+      "finding_type": "remote_lifecycle_only_blocked",
+      "description": "远端生命周期仍为 PARKED，只能登记为阻断，不派发为本地实现任务。",
+      "evidence_source": [
+        "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z004b_102_z004_blocked_closeout_anchor.json"
+      ]
+    }
+  ],
+  "recommended_next_candidate_id": null,
+  "recommended_next_task_id": null,
+  "recommended_next_task_type": null,
+  "next_action_state": "WAIT_FOR_A_OR_USER_DECISION",
+  "z004_local_candidate_pool_cleared": true,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "readback_business_closed": false,
+  "residual_readback_risks": [
+    "GET /api/factory-statements/{statement_id} = blocked_no_statement_id",
+    "GET /api/warehouse/alerts = 503 / EXTERNAL_SERVICE_UNAVAILABLE",
+    "GET /api/warehouse/batches = 503 / EXTERNAL_SERVICE_UNAVAILABLE"
+  ],
+  "notes": [
+    "本次重建未发现新增可执行候选。",
+    "S5 前置条件未变化，继续 blocked_precondition，不重复推荐为实现任务。",
+    "当前仅剩阻断项与控制面循环风险登记，不宣称项目整体完成。"
+  ]
+}
