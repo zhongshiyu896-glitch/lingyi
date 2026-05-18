@@ -1,0 +1,31 @@
+{
+  "task_id": "TASK-Z007B-05-IMPL",
+  "task_status": "PASS",
+  "generated_at": "2026-05-18T20:25:44.496595",
+  "source_head": "7ae7867bb62e846d644dab556df08f8bd4268611",
+  "residual_bom_id": "BOM-LY-APLUS-STYLE-20260518-01-V1-20260518120718702643",
+  "baseline_scan": {
+    "target_status": "draft",
+    "draft_or_active_count": 2,
+    "draft_or_active_bom_no": [
+      "BOM-LY-APLUS-STYLE-20260518-01-V1-20260518120718702643",
+      "BOM-LY-APLUS-STYLE-20260518-01-V1-Z002-BOM-20260518-634-20260518120334726097"
+    ]
+  },
+  "rollback_phase": {
+    "activate_status": 200,
+    "deactivate_status": 200,
+    "activate_result_status": "active",
+    "deactivate_result_status": "inactive"
+  },
+  "after_rollback_scan": {
+    "target_status": "inactive",
+    "draft_or_active_count": 1,
+    "draft_or_active_bom_no": [
+      "BOM-LY-APLUS-STYLE-20260518-01-V1-Z002-BOM-20260518-634-20260518120334726097"
+    ]
+  },
+  "created_new_bom_count": 0,
+  "zero_residual": true,
+  "residual_scan_result": "no_new_active_or_draft_residual"
+}
