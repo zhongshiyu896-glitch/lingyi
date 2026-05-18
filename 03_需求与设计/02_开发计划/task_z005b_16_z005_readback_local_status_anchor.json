@@ -1,0 +1,157 @@
+{
+  "task_id": "TASK-Z005B-16",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z005A-READBACK-PRECONDITION-MAINLINE",
+  "generated_at": "2026-05-18T13:27:00+0800",
+  "source_head": "1adab5edb083b7466a7eff4d63fb70dc820ee850",
+  "parent": "9dd14e3f0a34de0c6d6c782974d051173b1246ff",
+  "source_subject": "chore: seal z005 warehouse readback fallback",
+  "committed_task": "TASK-Z005B-15",
+  "archive_status": "PASS",
+  "entries": [
+    {
+      "entry_id": "A001",
+      "key": "source_head",
+      "value": "1adab5edb083b7466a7eff4d63fb70dc820ee850"
+    },
+    {
+      "entry_id": "A002",
+      "key": "parent",
+      "value": "9dd14e3f0a34de0c6d6c782974d051173b1246ff"
+    },
+    {
+      "entry_id": "A003",
+      "key": "source_subject",
+      "value": "chore: seal z005 warehouse readback fallback"
+    },
+    {
+      "entry_id": "A004",
+      "key": "committed_count",
+      "value": "6"
+    },
+    {
+      "entry_id": "A005",
+      "key": "missing",
+      "value": "[]"
+    },
+    {
+      "entry_id": "A006",
+      "key": "extra",
+      "value": "[]"
+    },
+    {
+      "entry_id": "A007",
+      "key": "committed_no_intersection",
+      "value": "[]"
+    },
+    {
+      "entry_id": "A008",
+      "key": "factory_statement_scenario_carrier_fix_submitted",
+      "value": "true"
+    },
+    {
+      "entry_id": "A009",
+      "key": "statement_id_generation_verified",
+      "value": "true"
+    },
+    {
+      "entry_id": "A010",
+      "key": "factory_statement_list_detail_readback_verified",
+      "value": "true"
+    },
+    {
+      "entry_id": "A011",
+      "key": "cancel_zero_residual_verified",
+      "value": "true"
+    },
+    {
+      "entry_id": "A012",
+      "key": "warehouse_alerts_local_dev_static_empty_state_verified",
+      "value": "true"
+    },
+    {
+      "entry_id": "A013",
+      "key": "warehouse_batches_local_dev_static_empty_state_verified",
+      "value": "true"
+    },
+    {
+      "entry_id": "A014",
+      "key": "readback_business_closed",
+      "value": "true"
+    },
+    {
+      "entry_id": "A015",
+      "key": "readback_business_closed_scope",
+      "value": "local_dev_static_fallback_only"
+    },
+    {
+      "entry_id": "A016",
+      "key": "project_completion_claimed",
+      "value": "false"
+    },
+    {
+      "entry_id": "A017",
+      "key": "remote_lifecycle_parked",
+      "value": "true"
+    },
+    {
+      "entry_id": "A018",
+      "key": "recommended_next_task_id",
+      "value": "null"
+    },
+    {
+      "entry_id": "A019",
+      "key": "next_action_state",
+      "value": "WAIT_FOR_A_OR_USER_DECISION"
+    },
+    {
+      "entry_id": "A020",
+      "key": "unauthorized_push_pr_tag_release_cleanup",
+      "value": "true"
+    },
+    {
+      "entry_id": "A021",
+      "key": "unauthorized_production_write",
+      "value": "true"
+    },
+    {
+      "entry_id": "A022",
+      "key": "unauthorized_erpnext_write",
+      "value": "true"
+    },
+    {
+      "entry_id": "A023",
+      "key": "unauthorized_worker_internal_sync_job",
+      "value": "true"
+    }
+  ],
+  "closed_readback_items": [
+    "factory_statement_scenario_carrier_compatibility_fix_submitted",
+    "legal_statement_id_generation_verified",
+    "factory_statement_list_detail_readback_verified",
+    "cancel_zero_residual_verified",
+    "warehouse_alerts_local_dev_static_empty_state_readback_verified",
+    "warehouse_batches_local_dev_static_empty_state_readback_verified"
+  ],
+  "state_anchor": {
+    "readback_business_closed": true,
+    "readback_business_closed_scope": "local_dev_static_fallback_only",
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "recommended_next_task_id": null,
+    "next_action_state": "WAIT_FOR_A_OR_USER_DECISION"
+  },
+  "non_authorized_actions": [
+    "push_pr_tag_release_cleanup",
+    "production_write",
+    "erpnext_write",
+    "worker_internal_sync_job"
+  ],
+  "evidence_sources": [
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_13_commit_candidate_ledger.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_13_warehouse_readback_static_fallback_result_freeze.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_12_warehouse_readback_static_fallback_evidence.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_12_warehouse_readback_static_fallback_api_regression.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_12_warehouse_readback_static_fallback_browser_result.json"
+  ]
+}

@@ -1,0 +1,24 @@
+entry_id	key	value
+A001	source_head	1adab5edb083b7466a7eff4d63fb70dc820ee850
+A002	parent	9dd14e3f0a34de0c6d6c782974d051173b1246ff
+A003	source_subject	chore: seal z005 warehouse readback fallback
+A004	committed_count	6
+A005	missing	[]
+A006	extra	[]
+A007	committed_no_intersection	[]
+A008	factory_statement_scenario_carrier_fix_submitted	true
+A009	statement_id_generation_verified	true
+A010	factory_statement_list_detail_readback_verified	true
+A011	cancel_zero_residual_verified	true
+A012	warehouse_alerts_local_dev_static_empty_state_verified	true
+A013	warehouse_batches_local_dev_static_empty_state_verified	true
+A014	readback_business_closed	true
+A015	readback_business_closed_scope	local_dev_static_fallback_only
+A016	project_completion_claimed	false
+A017	remote_lifecycle_parked	true
+A018	recommended_next_task_id	null
+A019	next_action_state	WAIT_FOR_A_OR_USER_DECISION
+A020	unauthorized_push_pr_tag_release_cleanup	true
+A021	unauthorized_production_write	true
+A022	unauthorized_erpnext_write	true
+A023	unauthorized_worker_internal_sync_job	true
