@@ -1,0 +1,96 @@
+{
+  "task_id": "TASK-Z007B-52-IMPL",
+  "role": "B Engineer",
+  "mainline": "TASK-Z007A-YISUAN-1TO1-LOCAL-PARITY-MAINLINE",
+  "generated_at": "2026-05-19T05:28:08+08:00",
+  "source_head": "e8ddb2a93b90f333a91435b811d6c1c5a408e8d9",
+  "selected_candidate_id": "Z007-CAND-009-PROPOSED",
+  "template_generated": true,
+  "runtime_request_allowed": false,
+  "runtime_request_count": 0,
+  "write_request_count": 0,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "default_remote_authorization_granted": false,
+  "remote_lifecycle_authorization_required_count": 1,
+  "allowed_write_endpoints_next": [],
+  "remote_lifecycle_candidate": {
+    "candidate_id": "Z007-CAND-008",
+    "blocker_type": "remote_lifecycle_release_authorization",
+    "status_without_authorization": "BLOCKED_REMOTE_LIFECYCLE"
+  },
+  "authorization_entries": [
+    {
+      "order": 1,
+      "lifecycle_action": "push",
+      "default_granted": false,
+      "required_user_authorization_text": "我授权在指定分支执行 push，并接受受保护分支策略校验。",
+      "approval_conditions": [
+        "target_branch_explicit",
+        "protected_branch_policy_confirmed",
+        "audit_log_retained"
+      ],
+      "audit_evidence_template": [
+        "authorization_message_snapshot",
+        "target_branch_record",
+        "protected_branch_policy_record"
+      ]
+    },
+    {
+      "order": 2,
+      "lifecycle_action": "pr",
+      "default_granted": false,
+      "required_user_authorization_text": "我授权创建/更新 PR，并接受评审与检查门禁。",
+      "approval_conditions": [
+        "base_branch_explicit",
+        "reviewer_policy_confirmed",
+        "checks_required_confirmed"
+      ],
+      "audit_evidence_template": [
+        "authorization_message_snapshot",
+        "base_branch_record",
+        "reviewer_policy_record"
+      ]
+    },
+    {
+      "order": 3,
+      "lifecycle_action": "tag",
+      "default_granted": false,
+      "required_user_authorization_text": "我授权创建发布标签，并采用约定命名与注释策略。",
+      "approval_conditions": [
+        "tag_naming_rule_confirmed",
+        "annotated_tag_required",
+        "tag_scope_confirmed"
+      ],
+      "audit_evidence_template": [
+        "authorization_message_snapshot",
+        "tag_naming_rule_record",
+        "tag_scope_record"
+      ]
+    },
+    {
+      "order": 4,
+      "lifecycle_action": "release",
+      "default_granted": false,
+      "required_user_authorization_text": "我授权发布 release，并按发布检查清单执行。",
+      "approval_conditions": [
+        "release_checklist_attached",
+        "rollback_plan_declared",
+        "approval_owner_confirmed"
+      ],
+      "audit_evidence_template": [
+        "authorization_message_snapshot",
+        "release_checklist_record",
+        "rollback_plan_record"
+      ]
+    }
+  ],
+  "recommended_next_task_id": "TASK-Z007B-53",
+  "recommended_next_task_type": "freeze_and_commit_candidate_ledger_for_access_packet_template",
+  "state_anchor": {
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "task_id": "TASK-Z007B-52-IMPL",
+  "role": "B Engineer",
+  "mainline": "TASK-Z007A-YISUAN-1TO1-LOCAL-PARITY-MAINLINE",
+  "generated_at": "2026-05-19T05:28:08+08:00",
+  "source_head": "e8ddb2a93b90f333a91435b811d6c1c5a408e8d9",
+  "selected_candidate_id": "Z007-CAND-009-PROPOSED",
+  "template_generated": true,
+  "runtime_request_allowed": false,
+  "runtime_request_count": 0,
+  "write_request_count": 0,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "default_remote_authorization_granted": false,
+  "production_readonly_required_count": 3,
+  "allowed_write_endpoints_next": [],
+  "access_packet_template_entries": [
+    {
+      "order": 1,
+      "candidate_id": "Z007-CAND-005",
+      "blocker_type": "production_erpnext_non_fallback_readback",
+      "status_without_production_access": "BLOCKED_EXTERNAL_DEPENDENCY",
+      "production_readonly_account_permissions_min": [
+        "warehouse_read_api_scope",
+        "erpnext_stock_read_scope",
+        "request_audit_log_read_scope"
+      ],
+      "controlled_samples_min_count": 2,
+      "controlled_sample_types": [
+        "warehouse_alert_real_cases",
+        "batch_inventory_real_cases"
+      ],
+      "field_checklist": [
+        "warehouse_code",
+        "warehouse_name",
+        "item_code",
+        "batch_no",
+        "qty",
+        "updated_at",
+        "source_system",
+        "request_id"
+      ],
+      "allowed_read_endpoints": [
+        "GET /api/warehouse/alerts",
+        "GET /api/warehouse/batches"
+      ],
+      "non_fallback_proof_conditions": [
+        "response_not_local_dev_static_fallback",
+        "source_trace_links_to_production_erpnext",
+        "same_request_id_replay_consistent"
+      ],
+      "request_trace_requirements": [
+        "request_id_present",
+        "source_trace_present",
+        "replay_consistency_snapshot"
+      ],
+      "local_evidence_can_prove": [
+        "schema_and_field_contract_consistency",
+        "readonly_endpoint_contract_shape"
+      ],
+      "local_evidence_cannot_prove": [
+        "production_runtime_source_truth",
+        "production_request_traceability"
+      ],
+      "unique_unblock_condition": "获得生产只读账号与受控样本窗口后，完成 warehouse 两端点非 fallback 取证并满足 request_id/source trace/replay consistency。"
+    },
+    {
+      "order": 2,
+      "candidate_id": "Z007-CAND-006",
+      "blocker_type": "factory_statement_payable_real_linkage",
+      "status_without_production_access": "BLOCKED_EXTERNAL_DEPENDENCY",
+      "production_readonly_account_permissions_min": [
+        "factory_statement_read_scope",
+        "payable_outbox_read_scope",
+        "erpnext_purchase_invoice_read_scope"
+      ],
+      "controlled_samples_min_count": 3,
+      "controlled_sample_types": [
+        "factory_statement_real_cases",
+        "payable_outbox_real_cases",
+        "purchase_invoice_real_cases"
+      ],
+      "field_checklist": [
+        "statement_id",
+        "statement_no",
+        "supplier",
+        "payable_outbox_id",
+        "payable_outbox_status",
+        "purchase_invoice_name",
+        "purchase_invoice_docstatus",
+        "purchase_invoice_status",
+        "request_id"
+      ],
+      "allowed_read_endpoints": [
+        "GET /api/factory-statements/",
+        "GET /api/factory-statements/{statement_id}",
+        "GET /api/factory-statements/supplier-evaluations",
+        "GET /api/factory-statements/factory-evaluations",
+        "GET /api/factory-statements/customer-evaluations"
+      ],
+      "non_fallback_proof_conditions": [
+        "factory_statement_to_payable_outbox_link_real",
+        "payable_outbox_to_purchase_invoice_link_real",
+        "invoice_status_fields_match_production_source"
+      ],
+      "request_trace_requirements": [
+        "request_id_present",
+        "source_trace_present",
+        "linkage_field_consistency_snapshot"
+      ],
+      "local_evidence_can_prove": [
+        "statement_to_payable_field_mapping_contract",
+        "readonly_linkage_field_shape"
+      ],
+      "local_evidence_cannot_prove": [
+        "erpnext_invoice_runtime_status_truth",
+        "production_payable_link_integrity"
+      ],
+      "unique_unblock_condition": "获得生产只读账号与真实应付样本后，证明 factory statement -> payable_outbox -> purchase_invoice 链路为非 fallback 且字段一致。"
+    },
+    {
+      "order": 3,
+      "candidate_id": "Z007-CAND-007",
+      "blocker_type": "production_master_data_real_dataset_parity",
+      "status_without_production_access": "BLOCKED_EXTERNAL_DEPENDENCY",
+      "production_readonly_account_permissions_min": [
+        "master_data_read_scope_customer",
+        "master_data_read_scope_supplier_factory",
+        "master_data_read_scope_material_style"
+      ],
+      "controlled_samples_min_count": 5,
+      "controlled_sample_types": [
+        "customer_real_dataset",
+        "supplier_real_dataset",
+        "factory_real_dataset",
+        "fabric_real_dataset",
+        "style_real_dataset"
+      ],
+      "field_checklist": [
+        "customer_code",
+        "supplier_code",
+        "factory_code",
+        "fabric_code",
+        "style_code",
+        "name",
+        "status",
+        "updated_at",
+        "source_system"
+      ],
+      "allowed_read_endpoints": [
+        "GET /api/sales-inventory/customers",
+        "GET /api/sales-inventory/warehouses",
+        "GET /api/reports/catalog"
+      ],
+      "non_fallback_proof_conditions": [
+        "production_master_data_values_match_mapping_contract",
+        "code_name_status_consistency_on_real_samples",
+        "cross_module_anchor_consistency"
+      ],
+      "request_trace_requirements": [
+        "request_id_present_when_available",
+        "source_trace_present",
+        "parity_diff_matrix_snapshot"
+      ],
+      "parity_diff_matrix_required_objects": [
+        "customer",
+        "supplier",
+        "factory",
+        "fabric",
+        "style"
+      ],
+      "local_evidence_can_prove": [
+        "contract_field_mapping_rules",
+        "cross_module_anchor_definition"
+      ],
+      "local_evidence_cannot_prove": [
+        "production_master_data_semantic_truth",
+        "real_dataset_distribution_parity"
+      ],
+      "unique_unblock_condition": "获得生产只读账号与受控主数据样本后，完成五类对象 parity 审计并提交差异矩阵。"
+    }
+  ],
+  "recommended_next_task_id": "TASK-Z007B-53",
+  "recommended_next_task_type": "freeze_and_commit_candidate_ledger_for_access_packet_template",
+  "state_anchor": {
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}
