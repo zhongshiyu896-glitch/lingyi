@@ -1,0 +1,14 @@
+{
+  "task_id": "TASK-Z005B-12-IMPL",
+  "generated_at": "2026-05-18T12:50:15+0800",
+  "browser_e2e_executed": false,
+  "reason": "forbidden_by_task_sheet",
+  "api_only_regression": true,
+  "request_methods": [
+    "GET"
+  ],
+  "request_methods_get_only": true,
+  "screenshot_dir": "/tmp/task_z005b12_screenshots",
+  "screenshot_files": [],
+  "screenshot_count": 0
+}

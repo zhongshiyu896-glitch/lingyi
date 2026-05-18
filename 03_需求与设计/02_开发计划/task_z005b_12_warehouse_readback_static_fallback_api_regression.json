@@ -1,0 +1,115 @@
+{
+  "task_id": "TASK-Z005B-12-IMPL",
+  "generated_at": "2026-05-18T12:50:15+0800",
+  "base_url": "http://127.0.0.1:8000",
+  "source_head": "9dd14e3f0a34de0c6d6c782974d051173b1246ff",
+  "source_subject": "chore: seal z005 readback carrier precondition",
+  "local_dev_gate": {
+    "status": "verified",
+    "process": "bash scripts/run_local_dev_runtime.sh -> app.local_dev:app",
+    "cwd": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+    "app_env_expected": "development",
+    "permission_source_expected": "static",
+    "db_url_expected": "sqlite:///./lingyi_service.local.db",
+    "erpnext_base_url_expected": ""
+  },
+  "carrier": {
+    "scenario_tag": "Z005-READBACK-PRECONDITION-20260518-012",
+    "request_ids": [
+      "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-ALERTS",
+      "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-BATCHES"
+    ],
+    "idempotency_key": null,
+    "source_ref": null
+  },
+  "auth": {
+    "mode": "local_dev_header_auth",
+    "headers": [
+      "X-LY-Dev-User",
+      "X-LY-Dev-Roles",
+      "X-Request-ID"
+    ]
+  },
+  "warehouse_alerts": {
+    "method": "GET",
+    "path": "/api/warehouse/alerts",
+    "endpoint_class": "GET /api/warehouse/alerts",
+    "status": 200,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-ALERTS",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-ALERTS",
+    "query": {
+      "company": "Z005 Local Company 005",
+      "warehouse": "样衣仓",
+      "item_code": "LY-MTRL-001",
+      "alert_type": "LOW_STOCK"
+    },
+    "json": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "company": "Z005 Local Company 005",
+        "warehouse": "样衣仓",
+        "item_code": "LY-MTRL-001",
+        "alert_type": "low_stock",
+        "items": []
+      }
+    }
+  },
+  "warehouse_batches": {
+    "method": "GET",
+    "path": "/api/warehouse/batches",
+    "endpoint_class": "GET /api/warehouse/batches",
+    "status": 200,
+    "request_id": "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-BATCHES",
+    "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-BATCHES",
+    "query": {
+      "company": "Z005 Local Company 005",
+      "warehouse": "样衣仓",
+      "item_code": "LY-MTRL-001",
+      "batch_no": "BATCH-Z005-001"
+    },
+    "json": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "company": "Z005 Local Company 005",
+        "warehouse": "样衣仓",
+        "item_code": "LY-MTRL-001",
+        "batch_no": "BATCH-Z005-001",
+        "total": 0,
+        "items": []
+      }
+    }
+  },
+  "observed_requests": [
+    {
+      "method": "GET",
+      "path": "/api/warehouse/alerts",
+      "endpoint_class": "GET /api/warehouse/alerts",
+      "status": 200,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-ALERTS",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-ALERTS"
+    },
+    {
+      "method": "GET",
+      "path": "/api/warehouse/batches",
+      "endpoint_class": "GET /api/warehouse/batches",
+      "status": 200,
+      "request_id": "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-BATCHES",
+      "response_x_request_id": "Z005-READBACK-PRECONDITION-20260518-012-REQ-WAREHOUSE-BATCHES"
+    }
+  ],
+  "allowed_read_hit": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "unexpected_read_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "failed_gate_db_write_count": 0
+}

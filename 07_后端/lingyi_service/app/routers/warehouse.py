@@ -40,6 +40,7 @@ from app.core.permissions import get_permission_source
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.schemas.warehouse import ApiResponse
+from app.schemas.warehouse import WarehouseAlertsData
 from app.schemas.warehouse import WarehouseBatchDetailData
 from app.schemas.warehouse import WarehouseBatchListData
 from app.schemas.warehouse import WarehouseDiagnosticData
@@ -679,6 +680,50 @@ def _build_local_stock_summary_fallback(
         items=items,
         warehouse_management=[],
         material_inventory=[],
+    )
+
+
+def _normalize_alert_type_for_fallback(alert_type: str | None) -> str | None:
+    normalized = _scope_text(alert_type)
+    if normalized is None:
+        return None
+    normalized = normalized.lower()
+    supported = {"low_stock", "below_safety", "overstock", "stale_stock"}
+    if normalized not in supported:
+        return None
+    return normalized
+
+
+def _build_local_alerts_fallback(
+    *,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+    alert_type: str | None,
+) -> WarehouseAlertsData:
+    return WarehouseAlertsData(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+        alert_type=_normalize_alert_type_for_fallback(alert_type),
+        items=[],
+    )
+
+
+def _build_local_batches_fallback(
+    *,
+    company: str | None,
+    warehouse: str | None,
+    item_code: str | None,
+    batch_no: str | None,
+) -> WarehouseBatchListData:
+    return WarehouseBatchListData(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+        batch_no=_scope_text(batch_no),
+        total=0,
+        items=[],
     )
 
 
@@ -1747,14 +1792,22 @@ def get_stock_alerts(
             alert_type=_scope_text(alert_type),
         )
     except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="WarehouseAlert",
-        )
+        if _local_warehouse_read_fallback_enabled(exc):
+            data = _build_local_alerts_fallback(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                alert_type=alert_type,
+            )
+        else:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="WarehouseAlert",
+            )
 
     filtered = [
         row
@@ -1822,14 +1875,22 @@ def list_batches(
             page_size=page_size,
         )
     except ERPNextAdapterException as exc:
-        _handle_erpnext_error(
-            exc=exc,
-            permission_service=permission_service,
-            request=request,
-            current_user=current_user,
-            action=action,
-            resource_type="Batch",
-        )
+        if _local_warehouse_read_fallback_enabled(exc):
+            data = _build_local_batches_fallback(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                batch_no=batch_no,
+            )
+        else:
+            _handle_erpnext_error(
+                exc=exc,
+                permission_service=permission_service,
+                request=request,
+                current_user=current_user,
+                action=action,
+                resource_type="Batch",
+            )
 
     normalized_batch = _scope_text(batch_no)
     filtered = [

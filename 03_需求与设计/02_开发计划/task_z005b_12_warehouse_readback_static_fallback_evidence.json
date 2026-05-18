@@ -1,0 +1,44 @@
+{
+  "task_id": "TASK-Z005B-12-IMPL",
+  "generated_at": "2026-05-18T12:50:15+0800",
+  "role": "B Engineer",
+  "selected_mainline": "TASK-Z005A-READBACK-PRECONDITION-MAINLINE",
+  "source_head": "9dd14e3f0a34de0c6d6c782974d051173b1246ff",
+  "source_subject": "chore: seal z005 readback carrier precondition",
+  "boundary_file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_11_warehouse_readback_static_fallback_boundary.json",
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/routers/warehouse.py"
+  ],
+  "fallback_strategy": "local_dev_static_permission_only_read_fallback_for_alerts_and_batches",
+  "fallback_trigger": "EXTERNAL_SERVICE_UNAVAILABLE and _local_warehouse_read_fallback_enabled(exc)=true",
+  "fail_closed_conditions": [
+    "non_local_dev_db_gate_must_fail_closed",
+    "non_static_permission_source_must_fail_closed",
+    "non_EXTERNAL_SERVICE_UNAVAILABLE_errors_must_not_trigger_fallback"
+  ],
+  "alerts_readback_status": "hit_local_dev_static_empty_state",
+  "batches_readback_status": "hit_local_dev_static_empty_state",
+  "allowed_read_hit": [
+    "GET /api/warehouse/alerts",
+    "GET /api/warehouse/batches"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "erpnext_write_count": 0,
+  "worker_sync_internal_job_request_count": 0,
+  "production_write_count": 0,
+  "import_export_download_upload_print_count": 0,
+  "failed_gate_db_write_count": 0,
+  "statement_detail_readback_status_from_previous": "hit",
+  "statement_detail_readback_evidence_source": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_05_factory_statement_scenario_carrier_evidence.json",
+  "readback_business_closed": true,
+  "readback_business_closed_reason": "factory statement detail readback=hit and warehouse alerts/batches readback both switched to local-dev static empty-state hit",
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "residual_risks": [
+    "readback_business_closed_promoted_to_true_under_local_dev_static_fallback_only",
+    "project_completion_claimed_false",
+    "remote_lifecycle_parked_true"
+  ]
+}
