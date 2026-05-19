@@ -1,0 +1,156 @@
+{
+  "task_id": "TASK-Z008B-07-IMPL",
+  "source_head": "278d9e509471e1f27485748a333808795327e352",
+  "selected_candidate_id": "Z008-CAND-002",
+  "generated_by": "verify_text_hygiene.py",
+  "entries": [
+    {
+      "entry_id": "E001",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z008B-02-IMPL_JSON_TSV一致性自动化实现与回归报告.md"
+    },
+    {
+      "entry_id": "E002",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_json_tsv_consistency.py"
+    },
+    {
+      "entry_id": "E003",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_json_tsv_consistency_manifest.json"
+    },
+    {
+      "entry_id": "E004",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_json_tsv_consistency_result.json"
+    },
+    {
+      "entry_id": "E005",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_json_tsv_consistency_result.tsv"
+    },
+    {
+      "entry_id": "E006",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z008B-03_B02_JSON_TSV一致性自动化结果冻结与提交候选账本报告.md"
+    },
+    {
+      "entry_id": "E007",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_03_b02_json_tsv_consistency_freeze.json"
+    },
+    {
+      "entry_id": "E008",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_03_commit_candidate_ledger.json"
+    },
+    {
+      "entry_id": "E009",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_03_commit_candidate_ledger.tsv"
+    },
+    {
+      "entry_id": "E010",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z008B-06_JSON_TSV一致性自动化提交后归档与候选刷新报告.md"
+    },
+    {
+      "entry_id": "E011",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_06_remaining_candidate_refresh.json"
+    },
+    {
+      "entry_id": "E012",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_06_remaining_candidate_refresh.tsv"
+    },
+    {
+      "entry_id": "E013",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-52-IMPL_生产只读访问包与远端授权清单模板生成报告.md"
+    },
+    {
+      "entry_id": "E014",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json"
+    },
+    {
+      "entry_id": "E015",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.tsv"
+    },
+    {
+      "entry_id": "E016",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json"
+    },
+    {
+      "entry_id": "E017",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.tsv"
+    },
+    {
+      "entry_id": "E018",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-58-IMPL_Z007上线前本地审计包完整性收敛执行报告.md"
+    },
+    {
+      "entry_id": "E019",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_evidence_index.json"
+    },
+    {
+      "entry_id": "E020",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_evidence_index.tsv"
+    },
+    {
+      "entry_id": "E021",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_coverage_matrix.json"
+    },
+    {
+      "entry_id": "E022",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_coverage_matrix.tsv"
+    },
+    {
+      "entry_id": "E023",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_blocker_matrix.json"
+    },
+    {
+      "entry_id": "E024",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_blocker_matrix.tsv"
+    },
+    {
+      "entry_id": "E025",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_gate_command_template.json"
+    },
+    {
+      "entry_id": "E026",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_gate_command_template.tsv"
+    },
+    {
+      "entry_id": "E027",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-64-IMPL_Z007上线前审计包可读化仪表盘执行报告.md"
+    },
+    {
+      "entry_id": "E028",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/index.html"
+    },
+    {
+      "entry_id": "E029",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_evidence_index.json"
+    },
+    {
+      "entry_id": "E030",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_evidence_index.tsv"
+    },
+    {
+      "entry_id": "E031",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_coverage_summary.json"
+    },
+    {
+      "entry_id": "E032",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_coverage_summary.tsv"
+    },
+    {
+      "entry_id": "E033",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.json"
+    },
+    {
+      "entry_id": "E034",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.tsv"
+    },
+    {
+      "entry_id": "E035",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_gate_command_checklist.json"
+    },
+    {
+      "entry_id": "E036",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_gate_command_checklist.tsv"
+    },
+    {
+      "entry_id": "E037",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/工程师会话日志.md"
+    }
+  ]
+}
