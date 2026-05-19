@@ -1,0 +1,12 @@
+gate_id	gate_name	status	observed	expected	command_exit_code	command	block_on_fail
+G01	status_branch_snapshot	PASS	"{""stdout_line_count"":1457,""stderr_line_count"":0}"	command_exit_code=0; capture only	0	git status --short --branch	true
+G02	head_matches_source_head	PASS	"""b9c98ff651552a95ba10f6af08bcfb1c897ea5bf"""	head=b9c98ff651552a95ba10f6af08bcfb1c897ea5bf	0	git rev-parse HEAD	true
+G03	head_subject_snapshot	PASS	"{""stdout_line_count"":1,""stderr_line_count"":0}"	command_exit_code=0; capture only	0	git log -1 --pretty=%s	true
+G04	cached_diff_name_only_snapshot	PASS	"{""stdout_line_count"":0,""stderr_line_count"":0}"	allow empty or non-empty; capture only	0	git diff --cached --name-only	true
+G05	cached_product_backend_diff_empty	PASS	[]	[]	0	git diff --cached --name-only -- 06_前端 07_后端	true
+G06	worktree_product_backend_diff_empty	PASS	[]	[]	0	git diff --name-only -- 06_前端 07_后端	true
+G07	cached_diff_check_pass	PASS	"{""stdout_line_count"":0,""stderr_line_count"":0}"	command_exit_code=0	0	git diff --cached --check	true
+G08	worktree_diff_check_pass	PASS	"{""stdout_line_count"":0,""stderr_line_count"":0}"	command_exit_code=0	0	git diff --check	true
+G09	tag_at_head_empty	PASS	[]	[]	0	git tag --points-at HEAD	true
+G10	remote_contains_head_empty	PASS	[]	[]	0	git branch -r --contains HEAD	true
+G11	pr_list_empty	PASS	[]	[]	0	gh pr list --head codex/sprint4-seal --json number,title,state,url	true

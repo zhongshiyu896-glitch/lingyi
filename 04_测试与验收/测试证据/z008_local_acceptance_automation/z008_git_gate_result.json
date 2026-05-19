@@ -1,0 +1,143 @@
+{
+  "task_id": "TASK-Z008B-12-IMPL",
+  "source_head": "b9c98ff651552a95ba10f6af08bcfb1c897ea5bf",
+  "selected_candidate_id": "Z008-CAND-003",
+  "generated_at": "2026-05-19T08:24:58+08:00",
+  "repo_root": "/Users/hh/Desktop/领意服装管理系统",
+  "manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_git_gate_manifest.json",
+  "task_status": "PASS",
+  "gate_count": 11,
+  "pass_gate_count": 11,
+  "block_gate_count": 0,
+  "runtime_request_count": 0,
+  "write_request_count": 0,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "results": [
+    {
+      "gate_id": "G01",
+      "gate_name": "status_branch_snapshot",
+      "status": "PASS",
+      "observed": {
+        "stdout_line_count": 1457,
+        "stderr_line_count": 0
+      },
+      "expected": "command_exit_code=0; capture only",
+      "command_exit_code": 0,
+      "command": "git status --short --branch",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G02",
+      "gate_name": "head_matches_source_head",
+      "status": "PASS",
+      "observed": "b9c98ff651552a95ba10f6af08bcfb1c897ea5bf",
+      "expected": "head=b9c98ff651552a95ba10f6af08bcfb1c897ea5bf",
+      "command_exit_code": 0,
+      "command": "git rev-parse HEAD",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G03",
+      "gate_name": "head_subject_snapshot",
+      "status": "PASS",
+      "observed": {
+        "stdout_line_count": 1,
+        "stderr_line_count": 0
+      },
+      "expected": "command_exit_code=0; capture only",
+      "command_exit_code": 0,
+      "command": "git log -1 --pretty=%s",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G04",
+      "gate_name": "cached_diff_name_only_snapshot",
+      "status": "PASS",
+      "observed": {
+        "stdout_line_count": 0,
+        "stderr_line_count": 0
+      },
+      "expected": "allow empty or non-empty; capture only",
+      "command_exit_code": 0,
+      "command": "git diff --cached --name-only",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G05",
+      "gate_name": "cached_product_backend_diff_empty",
+      "status": "PASS",
+      "observed": [],
+      "expected": "[]",
+      "command_exit_code": 0,
+      "command": "git diff --cached --name-only -- 06_前端 07_后端",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G06",
+      "gate_name": "worktree_product_backend_diff_empty",
+      "status": "PASS",
+      "observed": [],
+      "expected": "[]",
+      "command_exit_code": 0,
+      "command": "git diff --name-only -- 06_前端 07_后端",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G07",
+      "gate_name": "cached_diff_check_pass",
+      "status": "PASS",
+      "observed": {
+        "stdout_line_count": 0,
+        "stderr_line_count": 0
+      },
+      "expected": "command_exit_code=0",
+      "command_exit_code": 0,
+      "command": "git diff --cached --check",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G08",
+      "gate_name": "worktree_diff_check_pass",
+      "status": "PASS",
+      "observed": {
+        "stdout_line_count": 0,
+        "stderr_line_count": 0
+      },
+      "expected": "command_exit_code=0",
+      "command_exit_code": 0,
+      "command": "git diff --check",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G09",
+      "gate_name": "tag_at_head_empty",
+      "status": "PASS",
+      "observed": [],
+      "expected": "[]",
+      "command_exit_code": 0,
+      "command": "git tag --points-at HEAD",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G10",
+      "gate_name": "remote_contains_head_empty",
+      "status": "PASS",
+      "observed": [],
+      "expected": "[]",
+      "command_exit_code": 0,
+      "command": "git branch -r --contains HEAD",
+      "block_on_fail": true
+    },
+    {
+      "gate_id": "G11",
+      "gate_name": "pr_list_empty",
+      "status": "PASS",
+      "observed": [],
+      "expected": "[]",
+      "command_exit_code": 0,
+      "command": "gh pr list --head codex/sprint4-seal --json number,title,state,url",
+      "block_on_fail": true
+    }
+  ]
+}
