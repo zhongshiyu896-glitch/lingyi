@@ -1,0 +1,112 @@
+{
+  "task_id": "TASK-Z008B-22-IMPL",
+  "source_head": "12681686d5c33b45fca8bc37c8878b7e21098288",
+  "selected_candidate_id": "Z008-CAND-005",
+  "base_url": "http://127.0.0.1:5176",
+  "allowed_hosts": [
+    "127.0.0.1",
+    "localhost"
+  ],
+  "blocked_final_url_tokens": [
+    "/login",
+    "/signin",
+    "/auth",
+    "/404",
+    "not-found",
+    "vite"
+  ],
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "target_pages": [
+    {
+      "page_id": "P01",
+      "path": "/fate/dashboard/overview",
+      "route_token": "/fate/dashboard/overview",
+      "identity_keywords": [
+        "看板",
+        "总览",
+        "dashboard"
+      ]
+    },
+    {
+      "page_id": "P02",
+      "path": "/fate/warehouse",
+      "route_token": "/fate/warehouse",
+      "identity_keywords": [
+        "仓库",
+        "库存",
+        "warehouse"
+      ]
+    },
+    {
+      "page_id": "P03",
+      "path": "/fate/factory-statements/list?z005_readback=1",
+      "route_token": "/fate/factory-statements/list",
+      "identity_keywords": [
+        "对账",
+        "factory",
+        "statement"
+      ]
+    },
+    {
+      "page_id": "P04",
+      "path": "/fate/factory-statements/detail?id=1",
+      "route_token": "/fate/factory-statements/detail",
+      "identity_keywords": [
+        "对账",
+        "明细",
+        "factory",
+        "statement"
+      ]
+    },
+    {
+      "page_id": "P05",
+      "path": "/fate/bom/list",
+      "route_token": "/fate/bom/list",
+      "identity_keywords": [
+        "bom",
+        "物料",
+        "款式"
+      ]
+    },
+    {
+      "page_id": "P06",
+      "path": "/fate/production/plans",
+      "route_token": "/fate/production/plans",
+      "identity_keywords": [
+        "生产",
+        "计划",
+        "production"
+      ]
+    },
+    {
+      "page_id": "P07",
+      "path": "/fate/reports/catalog",
+      "route_token": "/fate/reports/catalog",
+      "identity_keywords": [
+        "报表",
+        "目录",
+        "reports"
+      ]
+    }
+  ],
+  "timeouts": {
+    "goto_ms": 30000,
+    "settle_ms": 1200
+  },
+  "notes": [
+    "只读 smoke，不改产品代码。",
+    "仅验证可达性、页面身份判定与请求越界。",
+    "若登录态缺失或跳转到错误页，必须标记 BLOCKED。"
+  ]
+}

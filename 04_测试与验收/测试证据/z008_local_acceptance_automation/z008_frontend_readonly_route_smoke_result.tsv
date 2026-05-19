@@ -1,0 +1,15 @@
+run_id	page_id	viewport	status	is_target_page	identity_basis	target_url	final_url	blocked_reason	request_count	console_error_count	network_error_count	screenshot_path
+R01	P01	desktop	PASS	true	path+keyword	http://127.0.0.1:5176/fate/dashboard/overview	http://127.0.0.1:5176/fate/dashboard/overview	null	20	0	0	/tmp/task_z008b22_screenshots/z008b22_01_P01_desktop.png
+R02	P01	mobile	PASS	true	path+keyword	http://127.0.0.1:5176/fate/dashboard/overview	http://127.0.0.1:5176/fate/dashboard/overview	null	20	0	0	/tmp/task_z008b22_screenshots/z008b22_02_P01_mobile.png
+R03	P02	desktop	PASS	true	path+keyword	http://127.0.0.1:5176/fate/warehouse	http://127.0.0.1:5176/fate/warehouse	null	20	0	0	/tmp/task_z008b22_screenshots/z008b22_03_P02_desktop.png
+R04	P02	mobile	PASS	true	path+keyword	http://127.0.0.1:5176/fate/warehouse	http://127.0.0.1:5176/fate/warehouse	null	20	0	0	/tmp/task_z008b22_screenshots/z008b22_04_P02_mobile.png
+R05	P03	desktop	PASS	true	path+keyword	http://127.0.0.1:5176/fate/factory-statements/list?z005_readback=1	http://127.0.0.1:5176/fate/factory-statements/list?z005_readback=1	null	19	0	0	/tmp/task_z008b22_screenshots/z008b22_05_P03_desktop.png
+R06	P03	mobile	PASS	true	path+keyword	http://127.0.0.1:5176/fate/factory-statements/list?z005_readback=1	http://127.0.0.1:5176/fate/factory-statements/list?z005_readback=1	null	19	0	0	/tmp/task_z008b22_screenshots/z008b22_06_P03_mobile.png
+R07	P04	desktop	PASS	true	path+keyword	http://127.0.0.1:5176/fate/factory-statements/detail?id=1	http://127.0.0.1:5176/fate/factory-statements/detail?id=1	null	22	0	0	/tmp/task_z008b22_screenshots/z008b22_07_P04_desktop.png
+R08	P04	mobile	PASS	true	path+keyword	http://127.0.0.1:5176/fate/factory-statements/detail?id=1	http://127.0.0.1:5176/fate/factory-statements/detail?id=1	null	22	0	0	/tmp/task_z008b22_screenshots/z008b22_08_P04_mobile.png
+R09	P05	desktop	PASS	true	path+keyword	http://127.0.0.1:5176/fate/bom/list	http://127.0.0.1:5176/fate/bom/list	null	32	0	0	/tmp/task_z008b22_screenshots/z008b22_09_P05_desktop.png
+R10	P05	mobile	PASS	true	path+keyword	http://127.0.0.1:5176/fate/bom/list	http://127.0.0.1:5176/fate/bom/list	null	32	0	0	/tmp/task_z008b22_screenshots/z008b22_10_P05_mobile.png
+R11	P06	desktop	PASS	true	path+keyword	http://127.0.0.1:5176/fate/production/plans	http://127.0.0.1:5176/fate/production/plans	null	27	0	0	/tmp/task_z008b22_screenshots/z008b22_11_P06_desktop.png
+R12	P06	mobile	PASS	true	path+keyword	http://127.0.0.1:5176/fate/production/plans	http://127.0.0.1:5176/fate/production/plans	null	27	0	0	/tmp/task_z008b22_screenshots/z008b22_12_P06_mobile.png
+R13	P07	desktop	PASS	true	path+keyword	http://127.0.0.1:5176/fate/reports/catalog	http://127.0.0.1:5176/fate/reports/catalog	null	24	0	0	/tmp/task_z008b22_screenshots/z008b22_13_P07_desktop.png
+R14	P07	mobile	PASS	true	path+keyword	http://127.0.0.1:5176/fate/reports/catalog	http://127.0.0.1:5176/fate/reports/catalog	null	24	0	0	/tmp/task_z008b22_screenshots/z008b22_14_P07_mobile.png
