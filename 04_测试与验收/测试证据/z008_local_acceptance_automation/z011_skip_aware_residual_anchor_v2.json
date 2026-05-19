@@ -1,0 +1,105 @@
+{
+  "task_id": "TASK-Z011B-05-IMPL",
+  "selected_candidate_id": "Z011-CAND-004",
+  "source_head": "44bed39c58dc68493a36cbb49391e458ea24a231",
+  "generated_at": "2026-05-19T18:42:30+08:00",
+  "anchor_version": 2,
+  "z009_orchestrator_local_closed": true,
+  "z009_orchestrator_closed_mode": "SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL",
+  "z010_documentation_mainline_local_closed": true,
+  "z011_gap_closure_in_progress": true,
+  "full_browser_route_smoke_closed": false,
+  "skipped_script_id": "Z008-SCRIPT-005",
+  "skipped_reason": "login_state_env_missing:Z009_BROWSER_LOGIN_READY",
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "residual_entry_count": 8,
+  "residuals": [
+    {
+      "residual_id": "Z011-RESIDUAL-001",
+      "category": "BROWSER_LOGIN_PRECONDITION",
+      "status": "OPEN_USER_MANUAL_LOGIN_REQUIRED",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_09_browser_login_rerun_freeze.json",
+      "why_remaining": "当前 `Z009_BROWSER_LOGIN_READY` 未满足，`Z008-SCRIPT-005` 保持 `SKIPPED_BY_BOUNDARY`。",
+      "only_unblock_condition": "用户在本地开发环境手工完成登录态并设置 `Z009_BROWSER_LOGIN_READY=1` 后，执行只读复跑。",
+      "forbidden_misread": "禁止把登录态前置缺失解释为自动化失败或伪造 PASS。",
+      "next_safe_action": "维持 skip-aware 残余锚点，等待用户确认登录态前置。"
+    },
+    {
+      "residual_id": "Z011-RESIDUAL-002",
+      "category": "BROWSER_ROUTE_CLOSURE",
+      "status": "OPEN_RESIDUAL",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.json",
+      "why_remaining": "`full_browser_route_smoke_closed=false` 是当前真实状态，不能被文档动作改写。",
+      "only_unblock_condition": "在登录态前置满足后复跑 browser route smoke 并满足 GET-only、零写请求、final URL 匹配。",
+      "forbidden_misread": "禁止将 `SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL` 解读为完整浏览器链路闭合。",
+      "next_safe_action": "持续在状态锚点和总览中保留 `full_browser_route_smoke_closed=false`。"
+    },
+    {
+      "residual_id": "Z011-RESIDUAL-003",
+      "category": "PRODUCTION_READBACK",
+      "status": "OPEN_EXTERNAL_DEPENDENCY",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_residual_risk_and_blocker_matrix.json",
+      "why_remaining": "生产只读账号与受控真实样本未授权，生产 non-fallback readback 仍未闭合。",
+      "only_unblock_condition": "用户提供生产只读账号和受控样本边界后，执行受控生产只读取证。",
+      "forbidden_misread": "禁止用本地 fallback 或 mock 证据冒充生产 readback 闭合。",
+      "next_safe_action": "维持本地证据链，等待外部授权再进入生产只读任务。"
+    },
+    {
+      "residual_id": "Z011-RESIDUAL-004",
+      "category": "GO_LIVE_GATE",
+      "status": "OPEN_EXTERNAL_DEPENDENCY",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_10_final_local_status_refresh.json",
+      "why_remaining": "`go_live_ready=false`，缺少生产只读链路与远端生命周期授权支撑。",
+      "only_unblock_condition": "完成生产只读取证并通过上线前授权流程后，才可进入 go-live 判定。",
+      "forbidden_misread": "禁止把本地自动化/文档闭合直接等同于可上线。",
+      "next_safe_action": "维持 go-live 阻断并同步在风险矩阵中保留。"
+    },
+    {
+      "residual_id": "Z011-RESIDUAL-005",
+      "category": "REMOTE_LIFECYCLE",
+      "status": "BLOCKED_REMOTE_LIFECYCLE",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_10_final_local_status_refresh.json",
+      "why_remaining": "`remote_lifecycle_parked=true`，未获得 push/PR/tag/release 授权。",
+      "only_unblock_condition": "用户显式授权远端生命周期动作并限定范围后再执行。",
+      "forbidden_misread": "禁止在 parked 状态下暗示远端发布链路已启动或闭合。",
+      "next_safe_action": "继续保持 parked，仅维护本地证据与文档一致性。"
+    },
+    {
+      "residual_id": "Z011-RESIDUAL-006",
+      "category": "PROJECT_COMPLETION_GOVERNANCE",
+      "status": "OPEN_GOVERNANCE_BLOCKER",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_10_final_local_status_refresh.json",
+      "why_remaining": "`project_completion_claimed=false`，外部依赖未解除，不能声明项目整体完成。",
+      "only_unblock_condition": "生产只读、浏览器链路、远端生命周期均完成并通过最终审计后才可声明完成。",
+      "forbidden_misread": "禁止将阶段性本地闭合解释为项目完成。",
+      "next_safe_action": "保持治理状态锚点并在后续归档中重复校验。"
+    },
+    {
+      "residual_id": "Z011-RESIDUAL-007",
+      "category": "NO_WRITE_GUARD",
+      "status": "GUARD_ACTIVE",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z011_cross_phase_evidence_consistency_result.json",
+      "why_remaining": "当前主线要求持续保持零写入与零生产账号动作，属于必须长期守卫而非一次性闭合。",
+      "only_unblock_condition": "仅在后续明确授权变更守卫策略时可调整。",
+      "forbidden_misread": "禁止将 guard 持续生效误读为可执行写请求。",
+      "next_safe_action": "持续校验 `production_account_used=false` 与 `remote_lifecycle_action_executed=false`。"
+    },
+    {
+      "residual_id": "Z011-RESIDUAL-008",
+      "category": "LOCAL_GAP_CLOSURE_CONTINUATION",
+      "status": "IN_PROGRESS",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z011b_01_gap_closure_candidate_pool.json",
+      "why_remaining": "Z011 缺口闭合主线仍在推进，当前为本地可持续改进阶段。",
+      "only_unblock_condition": "完成剩余本地主线候选并形成新的归档锚点。",
+      "forbidden_misread": "禁止把 in-progress 状态误读为阻断失败或项目完成。",
+      "next_safe_action": "继续执行 `Z011-CAND-006` 等本地可行动候选。"
+    }
+  ],
+  "recommended_next_candidate_id": "Z011-CAND-006",
+  "recommended_next_task_id": "TASK-Z011B-06-IMPL"
+}

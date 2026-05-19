@@ -1,0 +1,129 @@
+{
+  "task_id": "TASK-Z011B-06-IMPL",
+  "selected_candidate_id": "Z011-CAND-006",
+  "source_head": "44bed39c58dc68493a36cbb49391e458ea24a231",
+  "generated_at": "2026-05-19T18:55:00+08:00",
+  "blocker_checklist_generated": true,
+  "blocker_entry_count": 10,
+  "full_browser_route_smoke_closed": false,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "checklist": [
+    {
+      "blocker_id": "Z011-BLOCKER-001",
+      "blocker_type": "BROWSER_LOGIN_READY_ENV",
+      "current_status": "BLOCKED_USER_MANUAL_LOGIN_REQUIRED",
+      "required_authorization_or_input": "用户在本地开发环境手工完成登录态，并确认 `Z009_BROWSER_LOGIN_READY=1`。",
+      "allowed_next_action_after_unblock": "仅允许在 localhost/127.0.0.1 范围只读复跑 browser route smoke。",
+      "forbidden_before_unblock": "禁止伪造登录就绪、禁止自动登录、禁止读取 cookie/localStorage/sessionStorage/token。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_09_browser_login_rerun_freeze.json",
+      "owner": "User",
+      "residual_note": "当前 `full_browser_route_smoke_closed=false` 与 `Z008-SCRIPT-005=SKIPPED_BY_BOUNDARY` 为预期残余。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-002",
+      "blocker_type": "BROWSER_ROUTE_SMOKE_CLOSURE",
+      "current_status": "OPEN_RESIDUAL",
+      "required_authorization_or_input": "登录态就绪后执行只读复跑并满足 GET-only、零写请求、final URL 匹配、零 blocking 错误。",
+      "allowed_next_action_after_unblock": "更新 browser rerun 证据并由 A 派发审核闭合任务。",
+      "forbidden_before_unblock": "禁止将 `SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL` 直接解释为完整浏览器链路闭合。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z011_skip_aware_residual_anchor_v2.json",
+      "owner": "A Technical Architect",
+      "residual_note": "`full_browser_route_smoke_closed=false` 不是失败，而是边界内保留状态。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-003",
+      "blocker_type": "PRODUCTION_READONLY_ACCOUNT",
+      "current_status": "BLOCKED_EXTERNAL_DEPENDENCY",
+      "required_authorization_or_input": "用户提供生产只读账号并明确权限范围（只读 API 与审计链路）。",
+      "allowed_next_action_after_unblock": "按生产访问包模板执行受控只读取证，不得写入业务数据。",
+      "forbidden_before_unblock": "禁止 B 自行登录生产系统，禁止在未授权情况下发起生产请求。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "owner": "User",
+      "residual_note": "`production_readback_ready=false` 必须保留到外部条件满足后。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-004",
+      "blocker_type": "CONTROLLED_REAL_SAMPLES",
+      "current_status": "BLOCKED_EXTERNAL_DEPENDENCY",
+      "required_authorization_or_input": "用户提供受控真实样本窗口与样本范围（warehouse/factory statement/master data）。",
+      "allowed_next_action_after_unblock": "仅采集授权样本的只读证据并对照非 fallback 条件。",
+      "forbidden_before_unblock": "禁止使用未授权真实样本，禁止用本地 fallback 冒充生产样本闭合。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_residual_risk_and_blocker_matrix.json",
+      "owner": "User",
+      "residual_note": "受控样本是生产 non-fallback readback 的必要前置。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-005",
+      "blocker_type": "NON_FALLBACK_READBACK_PROOF",
+      "current_status": "BLOCKED_EXTERNAL_DEPENDENCY",
+      "required_authorization_or_input": "具备生产只读账号与受控样本后，完成 request_id/source trace/replay consistency 取证。",
+      "allowed_next_action_after_unblock": "提交生产 non-fallback readback 证据包并进入专门审计任务。",
+      "forbidden_before_unblock": "禁止跳过 non-fallback 证明条件，禁止以 mock/静态返回宣称生产闭合。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "owner": "B Engineer (after explicit authorization)",
+      "residual_note": "未完成前必须保持 `production_readback_ready=false`。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-006",
+      "blocker_type": "REMOTE_LIFECYCLE_PUSH",
+      "current_status": "BLOCKED_REMOTE_LIFECYCLE",
+      "required_authorization_or_input": "用户显式授权 push（目标分支、保护策略、审计记录）。",
+      "allowed_next_action_after_unblock": "仅执行被授权分支的 push，并保留审计记录。",
+      "forbidden_before_unblock": "禁止任何未授权 push。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "owner": "User",
+      "residual_note": "当前 `remote_lifecycle_parked=true`，不执行远端生命周期动作。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-007",
+      "blocker_type": "REMOTE_LIFECYCLE_PR",
+      "current_status": "BLOCKED_REMOTE_LIFECYCLE",
+      "required_authorization_or_input": "用户显式授权 PR（base 分支、评审策略、检查门禁）。",
+      "allowed_next_action_after_unblock": "按授权参数创建/更新 PR 并记录门禁状态。",
+      "forbidden_before_unblock": "禁止任何未授权 PR 动作。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "owner": "User",
+      "residual_note": "本地 checklist 不是授权，不可替代用户授权指令。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-008",
+      "blocker_type": "REMOTE_LIFECYCLE_TAG",
+      "current_status": "BLOCKED_REMOTE_LIFECYCLE",
+      "required_authorization_or_input": "用户显式授权 tag（命名规则、作用域、annotated 要求）。",
+      "allowed_next_action_after_unblock": "仅执行授权 tag 操作并保存审计记录。",
+      "forbidden_before_unblock": "禁止创建未授权 tag。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "owner": "User",
+      "residual_note": "在 parked 状态下 tag 一律视为违规动作。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-009",
+      "blocker_type": "REMOTE_LIFECYCLE_RELEASE",
+      "current_status": "BLOCKED_REMOTE_LIFECYCLE",
+      "required_authorization_or_input": "用户显式授权 release（发布清单、回滚计划、审批责任人）。",
+      "allowed_next_action_after_unblock": "按授权流程执行 release 并输出发布审计包。",
+      "forbidden_before_unblock": "禁止任何未授权 release。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "owner": "User",
+      "residual_note": "远端生命周期动作未授权时必须保持 `remote_lifecycle_parked=true`。"
+    },
+    {
+      "blocker_id": "Z011-BLOCKER-010",
+      "blocker_type": "PROJECT_COMPLETION_GOVERNANCE",
+      "current_status": "OPEN_GOVERNANCE_BLOCKER",
+      "required_authorization_or_input": "完成生产 readback、go-live 验证、远端 release 授权与审计闭环。",
+      "allowed_next_action_after_unblock": "进入项目完成声明审批流程。",
+      "forbidden_before_unblock": "禁止在 `production_readback_ready=false`、`go_live_ready=false`、`project_completion_claimed=false` 状态下声明项目完成。",
+      "evidence_required": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z011_skip_aware_residual_anchor_v2.json",
+      "owner": "A Technical Architect",
+      "residual_note": "本地 checklist 仅用于解阻准备，不代表任何授权已经生效。"
+    }
+  ],
+  "recommended_next_candidate_id": "Z011-CAND-007",
+  "recommended_next_task_id": "TASK-Z011B-07-PREP"
+}

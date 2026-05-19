@@ -1,0 +1,1377 @@
+{
+  "task_id": "TASK-Z011B-04-IMPL",
+  "source_head": "44bed39c58dc68493a36cbb49391e458ea24a231",
+  "generated_at": "2026-05-19T18:32:28+08:00",
+  "task_status": "PASS",
+  "check_count": 136,
+  "pass_check_count": 136,
+  "block_check_count": 0,
+  "sensitive_pattern_hit_count": 0,
+  "full_browser_route_smoke_closed": false,
+  "runtime_request_count": 0,
+  "write_request_count": 0,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "checks": [
+    {
+      "check_id": "CP-001",
+      "category": "source_head",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统",
+      "status": "PASS",
+      "expected": "44bed39c58dc68493a36cbb49391e458ea24a231",
+      "observed": "44bed39c58dc68493a36cbb49391e458ea24a231",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-002",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z005B-03-IMPL_readback前置链路最小实现与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z005-E001"
+    },
+    {
+      "check_id": "CP-003",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_03_readback_precondition_evidence.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z005-E002"
+    },
+    {
+      "check_id": "CP-004",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_03_readback_precondition_browser_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z005-E003"
+    },
+    {
+      "check_id": "CP-005",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z005B-12-IMPL_warehouse_readback_static_fallback最小实现与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z005-E004"
+    },
+    {
+      "check_id": "CP-006",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_12_warehouse_readback_static_fallback_evidence.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z005-E005"
+    },
+    {
+      "check_id": "CP-007",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_12_warehouse_readback_static_fallback_browser_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z005-E006"
+    },
+    {
+      "check_id": "CP-008",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z005B-24_Z005本地readback最终锚定提交后归档报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z005-E007"
+    },
+    {
+      "check_id": "CP-009",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_24_z005_post_commit_final_readback_archive.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z005-E008"
+    },
+    {
+      "check_id": "CP-010",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-03-IMPL_warehouse_adapter_contract_fixture最小实现与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z006-E001"
+    },
+    {
+      "check_id": "CP-011",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_03_warehouse_adapter_contract_fixture_evidence.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z006-E002"
+    },
+    {
+      "check_id": "CP-012",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-09-IMPL_warehouse_permission_mode_readback_matrix最小实现与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z006-E003"
+    },
+    {
+      "check_id": "CP-013",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_09_warehouse_permission_mode_readback_matrix_evidence.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z006-E004"
+    },
+    {
+      "check_id": "CP-014",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-15-IMPL_go_live_acceptance_audit_bundle执行与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z006-E005"
+    },
+    {
+      "check_id": "CP-015",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_15_go_live_acceptance_audit_bundle.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z006-E006"
+    },
+    {
+      "check_id": "CP-016",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-25_Z006_UI只读证据提交后归档与剩余候选刷新报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z006-E007"
+    },
+    {
+      "check_id": "CP-017",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_25_remaining_candidate_refresh.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z006-E008"
+    },
+    {
+      "check_id": "CP-018",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-21-IMPL_路由1比1readonly端点扩边复测与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E001"
+    },
+    {
+      "check_id": "CP-019",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_21_route_parity_readonly_endpoint_expansion_evidence.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E002"
+    },
+    {
+      "check_id": "CP-020",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-37-IMPL_本地adapter_fixture_contract扩展最小实现与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E003"
+    },
+    {
+      "check_id": "CP-021",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_37_adapter_fixture_contract_extension_evidence.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E004"
+    },
+    {
+      "check_id": "CP-022",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-43-IMPL_style字段readback映射最小实现与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E005"
+    },
+    {
+      "check_id": "CP-023",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_43_style_mapping_readback_evidence.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E006"
+    },
+    {
+      "check_id": "CP-024",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-52-IMPL_生产只读访问包与远端授权清单模板生成报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E007"
+    },
+    {
+      "check_id": "CP-025",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E008"
+    },
+    {
+      "check_id": "CP-026",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E009"
+    },
+    {
+      "check_id": "CP-027",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-58-IMPL_Z007上线前本地审计包完整性收敛执行报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E010"
+    },
+    {
+      "check_id": "CP-028",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_evidence_index.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E011"
+    },
+    {
+      "check_id": "CP-029",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_evidence_index.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E012"
+    },
+    {
+      "check_id": "CP-030",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_coverage_matrix.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E013"
+    },
+    {
+      "check_id": "CP-031",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_coverage_matrix.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E014"
+    },
+    {
+      "check_id": "CP-032",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_blocker_matrix.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E015"
+    },
+    {
+      "check_id": "CP-033",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_blocker_matrix.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E016"
+    },
+    {
+      "check_id": "CP-034",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_gate_command_template.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E017"
+    },
+    {
+      "check_id": "CP-035",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_gate_command_template.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E018"
+    },
+    {
+      "check_id": "CP-036",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-64-IMPL_Z007上线前审计包可读化仪表盘执行报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E019"
+    },
+    {
+      "check_id": "CP-037",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/index.html",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E020"
+    },
+    {
+      "check_id": "CP-038",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_evidence_index.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E021"
+    },
+    {
+      "check_id": "CP-039",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_evidence_index.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E022"
+    },
+    {
+      "check_id": "CP-040",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_coverage_summary.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E023"
+    },
+    {
+      "check_id": "CP-041",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_coverage_summary.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E024"
+    },
+    {
+      "check_id": "CP-042",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E025"
+    },
+    {
+      "check_id": "CP-043",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E026"
+    },
+    {
+      "check_id": "CP-044",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_gate_command_checklist.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E027"
+    },
+    {
+      "check_id": "CP-045",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_gate_command_checklist.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E028"
+    },
+    {
+      "check_id": "CP-046",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z007B-68_Z007可读化审计包提交后归档与候选刷新报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E029"
+    },
+    {
+      "check_id": "CP-047",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z007-E030"
+    },
+    {
+      "check_id": "CP-048",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_json_tsv_consistency.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E001"
+    },
+    {
+      "check_id": "CP-049",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_json_tsv_consistency_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E002"
+    },
+    {
+      "check_id": "CP-050",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_text_hygiene.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E003"
+    },
+    {
+      "check_id": "CP-051",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_text_hygiene_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E004"
+    },
+    {
+      "check_id": "CP-052",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_git_gates.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E005"
+    },
+    {
+      "check_id": "CP-053",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_git_gate_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E006"
+    },
+    {
+      "check_id": "CP-054",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_backend_contract_matrix.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E007"
+    },
+    {
+      "check_id": "CP-055",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_backend_contract_matrix_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E008"
+    },
+    {
+      "check_id": "CP-056",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_frontend_readonly_route_smoke.mjs",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E009"
+    },
+    {
+      "check_id": "CP-057",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_frontend_readonly_route_smoke_browser_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E010"
+    },
+    {
+      "check_id": "CP-058",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_local_audit_packet_integrity.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E011"
+    },
+    {
+      "check_id": "CP-059",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_local_audit_packet_integrity_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E012"
+    },
+    {
+      "check_id": "CP-060",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_blocker_state_anti_misjudge.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E013"
+    },
+    {
+      "check_id": "CP-061",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_blocker_state_anti_misjudge_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E014"
+    },
+    {
+      "check_id": "CP-062",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_zero_write_prod_remote_guard.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E015"
+    },
+    {
+      "check_id": "CP-063",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_zero_write_prod_remote_guard_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E016"
+    },
+    {
+      "check_id": "CP-064",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z008B-41_Z008-CAND-008提交后归档与本地候选池关闭报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E017"
+    },
+    {
+      "check_id": "CP-065",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_41_final_candidate_refresh.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-E018"
+    },
+    {
+      "check_id": "CP-066",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z009B-02-IMPL_Z009本地验收Orchestrator最小实现与回归报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E001"
+    },
+    {
+      "check_id": "CP-067",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_local_acceptance_orchestrator.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E002"
+    },
+    {
+      "check_id": "CP-068",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_orchestrator_result.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E003"
+    },
+    {
+      "check_id": "CP-069",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_orchestrator_subcheck_summary.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E004"
+    },
+    {
+      "check_id": "CP-070",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_09_browser_login_rerun_freeze.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E005"
+    },
+    {
+      "check_id": "CP-071",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_13_skip_aware_final_status_anchor.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E006"
+    },
+    {
+      "check_id": "CP-072",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.html",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E007"
+    },
+    {
+      "check_id": "CP-073",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E008"
+    },
+    {
+      "check_id": "CP-074",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_post_orchestrator_regression_gate.py",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E009"
+    },
+    {
+      "check_id": "CP-075",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_16_post_orchestrator_regression_freeze.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E010"
+    },
+    {
+      "check_id": "CP-076",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009-E011"
+    },
+    {
+      "check_id": "CP-077",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_01_documentation_candidate_pool.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z010-E001"
+    },
+    {
+      "check_id": "CP-078",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z010B-02-IMPL_本地验收运行手册实现与核对报告.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z010-E002"
+    },
+    {
+      "check_id": "CP-079",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z010_本地验收运行手册.md",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z010-E003"
+    },
+    {
+      "check_id": "CP-080",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_acceptance_runbook_index.json",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z010-E004"
+    },
+    {
+      "check_id": "CP-081",
+      "category": "file_existence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_acceptance_runbook_index.tsv",
+      "status": "PASS",
+      "expected": "exists=true",
+      "observed": "exists=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z010-E005"
+    },
+    {
+      "check_id": "CP-082",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_24_z005_post_commit_final_readback_archive.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z005b_24_z005_post_commit_final_readback_archive.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=26,tsv_count=26,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-083",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_15_go_live_acceptance_audit_bundle.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_15_go_live_acceptance_audit_bundle.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=20,tsv_count=20,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-084",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_25_remaining_candidate_refresh.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z006b_25_remaining_candidate_refresh.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=4,tsv_count=4,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-085",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=3,tsv_count=3,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-086",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=4,tsv_count=4,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-087",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_blocker_matrix.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_blocker_matrix.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=4,tsv_count=4,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-088",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_coverage_matrix.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_coverage_matrix.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=7,tsv_count=7,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-089",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_evidence_index.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_evidence_index.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=12,tsv_count=12,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-090",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_gate_command_template.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_gate_command_template.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=16,tsv_count=16,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-091",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=6,tsv_count=6,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-092",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_41_final_candidate_refresh.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_41_final_candidate_refresh.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=0,tsv_count=0,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-093",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_13_skip_aware_final_status_anchor.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_13_skip_aware_final_status_anchor.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=1,tsv_count=1,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-094",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=1,tsv_count=1,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-095",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_01_documentation_candidate_pool.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_01_documentation_candidate_pool.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=5,tsv_count=5,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-096",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_10_final_local_status_refresh.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_10_final_local_status_refresh.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=1,tsv_count=1,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-097",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z011b_01_gap_closure_candidate_pool.json <-> /Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z011b_01_gap_closure_candidate_pool.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=9,tsv_count=9,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-098",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=4,tsv_count=4,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-099",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_coverage_summary.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_coverage_summary.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=7,tsv_count=7,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-100",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_evidence_index.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_evidence_index.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=12,tsv_count=12,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-101",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_gate_command_checklist.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_gate_command_checklist.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=16,tsv_count=16,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-102",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_backend_contract_matrix_result.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_backend_contract_matrix_result.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=4,tsv_count=4,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-103",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_blocker_state_anti_misjudge_result.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_blocker_state_anti_misjudge_result.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=51,tsv_count=51,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-104",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_git_gate_result.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_git_gate_result.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=11,tsv_count=11,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-105",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_json_tsv_consistency_result.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_json_tsv_consistency_result.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=10,tsv_count=10,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-106",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_local_audit_packet_integrity_result.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_local_audit_packet_integrity_result.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=127,tsv_count=127,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-107",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_text_hygiene_result.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_text_hygiene_result.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=37,tsv_count=37,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-108",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_zero_write_prod_remote_guard_result.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_zero_write_prod_remote_guard_result.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=141,tsv_count=141,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-109",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_orchestrator_result.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_orchestrator_result.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=8,tsv_count=8,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-110",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_orchestrator_subcheck_summary.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_orchestrator_subcheck_summary.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=8,tsv_count=8,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-111",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=14,tsv_count=14,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-112",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_browser_login_manual_precondition_checklist.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_browser_login_manual_precondition_checklist.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=9,tsv_count=9,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": "order key not found; order check skipped"
+    },
+    {
+      "check_id": "CP-113",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_acceptance_handoff_overview.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_acceptance_handoff_overview.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=10,tsv_count=10,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-114",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_acceptance_runbook_index.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_acceptance_runbook_index.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=10,tsv_count=10,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-115",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_evidence_file_map.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_evidence_file_map.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=80,tsv_count=80,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-116",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_residual_risk_and_blocker_matrix.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_residual_risk_and_blocker_matrix.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=8,tsv_count=8,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-117",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z011_automation_stability_policy_matrix.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z011_automation_stability_policy_matrix.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=6,tsv_count=6,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-118",
+      "category": "json_tsv_alignment",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z011_local_acceptance_entrypoint_index.json <-> /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z011_local_acceptance_entrypoint_index.tsv",
+      "status": "PASS",
+      "expected": "count/order/core_fields_consistent",
+      "observed": "json_count=10,tsv_count=10,mismatch_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-119",
+      "category": "state_anchor",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.json",
+      "status": "PASS",
+      "expected": "z009_orchestrator_local_closed=true,z009_orchestrator_closed_mode=SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL,full_browser_route_smoke_closed=false,skipped_script_id=Z008-SCRIPT-005,skipped_reason=login_state_env_missing:Z009_BROWSER_LOGIN_READY,state_hold.production_readback_ready=false,state_hold.go_live_ready=false,state_hold.project_completion_claimed=false,state_hold.remote_lifecycle_parked=true",
+      "observed": "z009_orchestrator_local_closed=true,z009_orchestrator_closed_mode=SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL,full_browser_route_smoke_closed=false,skipped_script_id=Z008-SCRIPT-005,skipped_reason=login_state_env_missing:Z009_BROWSER_LOGIN_READY,state_hold.production_readback_ready=false,state_hold.go_live_ready=false,state_hold.project_completion_claimed=false,state_hold.remote_lifecycle_parked=true",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-120",
+      "category": "state_anchor",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z010b_10_final_local_status_refresh.json",
+      "status": "PASS",
+      "expected": "z010_documentation_mainline_local_closed=true,z010_handoff_docs_committed=true,full_browser_route_smoke_closed=false,state_hold.production_readback_ready=false,state_hold.go_live_ready=false,state_hold.project_completion_claimed=false,state_hold.remote_lifecycle_parked=true",
+      "observed": "z010_documentation_mainline_local_closed=true,z010_handoff_docs_committed=true,full_browser_route_smoke_closed=false,state_hold.production_readback_ready=false,state_hold.go_live_ready=false,state_hold.project_completion_claimed=false,state_hold.remote_lifecycle_parked=true",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-121",
+      "category": "state_anchor",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z011b_01_gap_closure_candidate_pool.json",
+      "status": "PASS",
+      "expected": "full_browser_route_smoke_closed=false,state_hold.production_readback_ready=false,state_hold.go_live_ready=false,state_hold.project_completion_claimed=false,state_hold.remote_lifecycle_parked=true",
+      "observed": "full_browser_route_smoke_closed=false,state_hold.production_readback_ready=false,state_hold.go_live_ready=false,state_hold.project_completion_claimed=false,state_hold.remote_lifecycle_parked=true",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-122",
+      "category": "state_anchor",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_13_skip_aware_final_status_anchor.json",
+      "status": "PASS",
+      "expected": "z009_orchestrator_local_closed=true,z009_orchestrator_closed_mode=SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL,full_browser_route_smoke_closed=false,skipped_script_id=Z008-SCRIPT-005,skipped_reason=login_state_env_missing:Z009_BROWSER_LOGIN_READY,production_readback_ready=false,go_live_ready=false,project_completion_claimed=false,remote_lifecycle_parked=true",
+      "observed": "z009_orchestrator_local_closed=true,z009_orchestrator_closed_mode=SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL,full_browser_route_smoke_closed=false,skipped_script_id=Z008-SCRIPT-005,skipped_reason=login_state_env_missing:Z009_BROWSER_LOGIN_READY,production_readback_ready=false,go_live_ready=false,project_completion_claimed=false,remote_lifecycle_parked=true",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-123",
+      "category": "keyword_presence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/LOCAL_ACCEPTANCE_README.md",
+      "status": "PASS",
+      "expected": "contains:SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL",
+      "observed": "contains=True",
+      "severity": "BLOCKING",
+      "residual_note": "SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL"
+    },
+    {
+      "check_id": "CP-124",
+      "category": "keyword_presence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/LOCAL_ACCEPTANCE_README.md",
+      "status": "PASS",
+      "expected": "contains:full_browser_route_smoke_closed=false",
+      "observed": "contains=True",
+      "severity": "BLOCKING",
+      "residual_note": "full_browser_route_smoke_closed=false"
+    },
+    {
+      "check_id": "CP-125",
+      "category": "keyword_presence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/LOCAL_ACCEPTANCE_README.md",
+      "status": "PASS",
+      "expected": "contains:Z008-SCRIPT-005=SKIPPED_BY_BOUNDARY",
+      "observed": "contains=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z008-SCRIPT-005=SKIPPED_BY_BOUNDARY"
+    },
+    {
+      "check_id": "CP-126",
+      "category": "keyword_presence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z010_本地验收交接包总览.md",
+      "status": "PASS",
+      "expected": "contains:remote_lifecycle_parked=true",
+      "observed": "contains=True",
+      "severity": "BLOCKING",
+      "residual_note": "remote_lifecycle_parked=true"
+    },
+    {
+      "check_id": "CP-127",
+      "category": "keyword_presence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z010_残余风险与外部阻断说明.md",
+      "status": "PASS",
+      "expected": "contains:Z009_BROWSER_LOGIN_READY",
+      "observed": "contains=True",
+      "severity": "BLOCKING",
+      "residual_note": "Z009_BROWSER_LOGIN_READY"
+    },
+    {
+      "check_id": "CP-128",
+      "category": "keyword_presence",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z011_自动化稳定性与复跑规范.md",
+      "status": "PASS",
+      "expected": "contains:SKIPPED_BY_BOUNDARY",
+      "observed": "contains=True",
+      "severity": "BLOCKING",
+      "residual_note": "SKIPPED_BY_BOUNDARY"
+    },
+    {
+      "check_id": "CP-129",
+      "category": "sensitive_scan",
+      "target_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z005B-03-IMPL_readback前置链路最小实现与回归报告.md;/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z005B-12-IMPL_warehouse_readback_static_fallback最小实现与回归报告.md;/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z005B-24_Z005本地readback最终锚定提交后归档报告.md;/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-03-IMPL_warehouse_adapter_contract_fixture最小实现与回归报告.md;/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/TASK-Z006B-09-IMPL_warehouse_permission_mode_readback_matrix最小实现与回归报告.md...",
+      "status": "PASS",
+      "expected": "sensitive_pattern_hit_count=0",
+      "observed": "sensitive_pattern_hit_count=0",
+      "severity": "BLOCKING",
+      "residual_note": ""
+    },
+    {
+      "check_id": "CP-130",
+      "category": "git_gate",
+      "target_path": "git diff --cached --name-only",
+      "status": "PASS",
+      "expected": "<empty>",
+      "observed": "<empty>",
+      "severity": "BLOCKING",
+      "residual_note": "git_cached_diff_empty"
+    },
+    {
+      "check_id": "CP-131",
+      "category": "git_gate",
+      "target_path": "git diff --name-only -- 06_前端 07_后端",
+      "status": "PASS",
+      "expected": "<empty>",
+      "observed": "<empty>",
+      "severity": "BLOCKING",
+      "residual_note": "git_product_backend_diff_empty"
+    },
+    {
+      "check_id": "CP-132",
+      "category": "git_gate",
+      "target_path": "git diff --cached --check",
+      "status": "PASS",
+      "expected": "<empty>",
+      "observed": "<empty>",
+      "severity": "BLOCKING",
+      "residual_note": "git_cached_check_pass"
+    },
+    {
+      "check_id": "CP-133",
+      "category": "git_gate",
+      "target_path": "git diff --check",
+      "status": "PASS",
+      "expected": "<empty>",
+      "observed": "<empty>",
+      "severity": "BLOCKING",
+      "residual_note": "git_worktree_check_pass"
+    },
+    {
+      "check_id": "CP-134",
+      "category": "git_gate",
+      "target_path": "git tag --points-at HEAD",
+      "status": "PASS",
+      "expected": "<empty>",
+      "observed": "<empty>",
+      "severity": "BLOCKING",
+      "residual_note": "tag_at_head_empty"
+    },
+    {
+      "check_id": "CP-135",
+      "category": "git_gate",
+      "target_path": "git branch -r --contains HEAD",
+      "status": "PASS",
+      "expected": "<empty>",
+      "observed": "<empty>",
+      "severity": "BLOCKING",
+      "residual_note": "remote_contains_head_empty"
+    },
+    {
+      "check_id": "CP-136",
+      "category": "git_gate",
+      "target_path": "gh pr list --head codex/sprint4-seal --json number,title,state,url",
+      "status": "PASS",
+      "expected": "[]",
+      "observed": "[]",
+      "severity": "BLOCKING",
+      "residual_note": "pr_list"
+    }
+  ]
+}

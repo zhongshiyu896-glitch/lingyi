@@ -1,0 +1,74 @@
+{
+  "task_id": "TASK-Z011B-03-IMPL",
+  "source_head": "44bed39c58dc68493a36cbb49391e458ea24a231",
+  "stability_policy_generated": true,
+  "full_browser_route_smoke_closed": false,
+  "policies": [
+    {
+      "policy_id": "Z011-POLICY-001",
+      "script_group": "file_parse_and_consistency",
+      "timeout_seconds": 120,
+      "output_isolation_rule": "默认输出到 /tmp/<run_id>/，不得覆盖已提交证据目录。",
+      "rerun_command_template": "python3 <script.py> --manifest <manifest.json> --output-json /tmp/<run_id>/<name>_result.json --output-tsv /tmp/<run_id>/<name>_result.tsv",
+      "result_alignment_rule": "JSON/TSV 条目数量、顺序与核心字段必须一致。",
+      "failure_classification_rule": "解析失败或核心字段不一致 => BLOCKING；可解释差异但不阻断主链 => RESIDUAL；否则 PASS。",
+      "ledger_exclusion_rule": "/tmp、__pycache__、.pyc 不纳入 ledger。",
+      "security_guard": "write_request_count=0; production_account_used=false; remote_lifecycle_action_executed=false; 禁止读取 cookie/localStorage/sessionStorage/token。"
+    },
+    {
+      "policy_id": "Z011-POLICY-002",
+      "script_group": "git_gate_checks",
+      "timeout_seconds": 90,
+      "output_isolation_rule": "仅输出 JSON/TSV 到 /tmp/<run_id>/ 或显式目标文件，不修改仓库内容。",
+      "rerun_command_template": "python3 verify_git_gates.py --repo-root /Users/hh/Desktop/领意服装管理系统 --manifest <manifest.json> --output-json /tmp/<run_id>/git_gate_result.json --output-tsv /tmp/<run_id>/git_gate_result.tsv",
+      "result_alignment_rule": "每条 gate 的 observed/expected/status 必须在 JSON/TSV 同步。",
+      "failure_classification_rule": "任一强门禁失败 => BLOCKING；无强门禁失败且有可接受说明 => RESIDUAL；全通过 => PASS。",
+      "ledger_exclusion_rule": "branch 探针、缓存目录、测试报告临时目录不纳入 ledger。",
+      "security_guard": "禁止 fetch/pull/push/reset/restore/clean；write_request_count=0；remote_lifecycle_action_executed=false。"
+    },
+    {
+      "policy_id": "Z011-POLICY-003",
+      "script_group": "pytest_contract_matrix",
+      "timeout_seconds": 900,
+      "output_isolation_rule": "测试结果写入 /tmp/<run_id>/，历史证据文件只读。",
+      "rerun_command_template": "python3 verify_backend_contract_matrix.py --backend-root /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service --manifest <manifest.json> --output-json /tmp/<run_id>/backend_matrix_result.json --output-tsv /tmp/<run_id>/backend_matrix_result.tsv",
+      "result_alignment_rule": "test_id/module/status/exit_code/pass_count/fail_count/skip_count 在 JSON/TSV 对齐。",
+      "failure_classification_rule": "必跑测试失败 => BLOCKING；仅可接受跳过并有边界原因 => RESIDUAL；全部必跑通过 => PASS。",
+      "ledger_exclusion_rule": ".pytest_cache、__pycache__、临时日志不纳入 ledger。",
+      "security_guard": "禁止生产账号与远端生命周期动作；write_request_count=0。"
+    },
+    {
+      "policy_id": "Z011-POLICY-004",
+      "script_group": "browser_get_only_smoke",
+      "timeout_seconds": 900,
+      "output_isolation_rule": "截图与 browser result 输出到 /tmp/<run_id>/；不覆盖已提交 browser 证据。",
+      "rerun_command_template": "node --check verify_frontend_readonly_route_smoke.mjs && Z009_BROWSER_LOGIN_READY=<0_or_1> node verify_frontend_readonly_route_smoke.mjs --manifest <manifest.json> --output-json /tmp/<run_id>/browser_smoke_result.json --output-tsv /tmp/<run_id>/browser_smoke_result.tsv --browser-result-json /tmp/<run_id>/browser_result.json",
+      "result_alignment_rule": "目标页统计、request_methods、write_request_count 在 JSON/TSV/browser_result 三方一致。",
+      "failure_classification_rule": "非 GET/写请求/final URL 错误/阻断错误 => BLOCKING；登录态前置缺失 => SKIPPED_BY_BOUNDARY；满足条件且全通过 => PASS。",
+      "ledger_exclusion_rule": "截图目录、浏览器缓存、/tmp 输出不纳入 ledger。",
+      "security_guard": "GET-only；write_request_count=0；production_account_used=false；remote_lifecycle_action_executed=false；不读取 cookie/localStorage/sessionStorage/token。"
+    },
+    {
+      "policy_id": "Z011-POLICY-005",
+      "script_group": "local_acceptance_orchestrator",
+      "timeout_seconds": 1200,
+      "output_isolation_rule": "统一 run-root 置于 /tmp/<run_id>/，子脚本输出重定向至 run-root；历史证据只读。",
+      "rerun_command_template": "python3 verify_local_acceptance_orchestrator.py --manifest <manifest.json> --output-json /tmp/<run_id>/orchestrator_result.json --output-tsv /tmp/<run_id>/orchestrator_result.tsv --summary-json /tmp/<run_id>/subcheck_summary.json --summary-tsv /tmp/<run_id>/subcheck_summary.tsv --run-root /tmp/<run_id>/run",
+      "result_alignment_rule": "subcheck_total 与 pass/blocking/residual/skipped 统计在 JSON/TSV/summary 一致。",
+      "failure_classification_rule": "非 browser 子检查失败 => BLOCKING；browser 前置缺失 => SKIPPED_BY_BOUNDARY；可解释非阻断项 => RESIDUAL；其余 => PASS。",
+      "ledger_exclusion_rule": "run-root 临时输出不纳入 ledger，提交只包含任务要求产物。",
+      "security_guard": "write_request_count=0；production_account_used=false；remote_lifecycle_action_executed=false。"
+    },
+    {
+      "policy_id": "Z011-POLICY-006",
+      "script_group": "post_orchestrator_regression_gate",
+      "timeout_seconds": 300,
+      "output_isolation_rule": "回归门禁复跑结果写入 /tmp/<run_id>/，不覆盖已提交 result 文件。",
+      "rerun_command_template": "python3 verify_post_orchestrator_regression_gate.py --manifest <manifest.json> --output-json /tmp/<run_id>/regression_gate_result.json --output-tsv /tmp/<run_id>/regression_gate_result.tsv",
+      "result_alignment_rule": "regression_check_count 与各状态统计在 JSON/TSV 一致。",
+      "failure_classification_rule": "状态误写、git gate 失败、文本卫生失败、越界动作 => BLOCKING；保留残余但不阻断 => RESIDUAL；全部满足 => PASS。",
+      "ledger_exclusion_rule": "/tmp 复跑输出、缓存、截图目录不纳入 ledger。",
+      "security_guard": "full_browser_route_smoke_closed=false 可保留且不算失败；write_request_count=0；remote_lifecycle_action_executed=false。"
+    }
+  ]
+}
