@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Z010 本地验收交接包总览</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin: 24px; color: #111; }
+    h1, h2 { margin: 0 0 12px 0; }
+    .meta { margin-bottom: 16px; }
+    .meta li { margin: 4px 0; }
+    .warn { background: #fff8e1; border: 1px solid #f0d27a; padding: 12px; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; text-align: left; }
+    th { background: #f6f7f9; }
+    code { background: #f4f4f4; padding: 1px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Z010 本地验收交接包总览</h1>
+  <ul class="meta">
+    <li><code>source_head=1b2fbd8b8a8ddc48058fdeda8f142a7944816288</code></li>
+    <li><code>z009_orchestrator_closed_mode=SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL</code></li>
+    <li><code>full_browser_route_smoke_closed=false</code></li>
+    <li><code>Z008-SCRIPT-005=SKIPPED_BY_BOUNDARY</code></li>
+    <li><code>remote_lifecycle_parked=true</code></li>
+  </ul>
+
+  <div class="warn">
+    <strong>当前不可外推：</strong>
+    不得将本地证据链解释为生产 readback、go-live 或项目完成。
+    当前状态保持 <code>production_readback_ready=false</code>、<code>go_live_ready=false</code>、<code>project_completion_claimed=false</code>。
+  </div>
+
+  <h2>交接入口</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>entry_id</th>
+        <th>section</th>
+        <th>title</th>
+        <th>path</th>
+        <th>status</th>
+        <th>summary</th>
+        <th>residual_note</th>
+        <th>next_safe_action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Z010-HO-001</td>
+        <td>RUNBOOK</td>
+        <td>Z010 本地验收运行手册</td>
+        <td><code>/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z010_本地验收运行手册.md</code></td>
+        <td>LOCAL_UNCOMMITTED_DOCUMENTATION</td>
+        <td>覆盖 Z008 单项脚本、Z009 orchestrator 与回归门禁执行方法。</td>
+        <td>保留 skip-aware residual 语义。</td>
+        <td>按手册执行本地只读复核。</td>
+      </tr>
+      <tr>
+        <td>Z010-HO-002</td>
+        <td>EVIDENCE_MAP</td>
+        <td>Z010 本地证据索引与文件地图</td>
+        <td><code>/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z010_本地证据索引与文件地图.md</code></td>
+        <td>LOCAL_UNCOMMITTED_DOCUMENTATION</td>
+        <td>汇总 Z005-Z010 关键证据位置与用途。</td>
+        <td>保留 Z008-SCRIPT-005 与远端 parked 状态。</td>
+        <td>用于人工验收前的路径核对。</td>
+      </tr>
+      <tr>
+        <td>Z010-HO-003</td>
+        <td>RISK_BLOCKER</td>
+        <td>Z010 残余风险与外部阻断说明</td>
+        <td><code>/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z010_残余风险与外部阻断说明.md</code></td>
+        <td>LOCAL_UNCOMMITTED_DOCUMENTATION</td>
+        <td>明确登录态残余、生产只读、go-live、远端授权阻断。</td>
+        <td><code>full_browser_route_smoke_closed=false</code></td>
+        <td>按 only_unblock_condition 推进，不走捷径。</td>
+      </tr>
+      <tr>
+        <td>Z010-HO-004</td>
+        <td>MANUAL_LOGIN_PRECONDITION</td>
+        <td>Z010 浏览器登录态人工前置操作说明</td>
+        <td><code>/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z010_浏览器登录态人工前置操作说明.md</code></td>
+        <td>LOCAL_UNCOMMITTED_DOCUMENTATION</td>
+        <td>定义用户人工完成登录后设置 <code>Z009_BROWSER_LOGIN_READY=1</code> 的边界。</td>
+        <td>未满足前保持 <code>SKIPPED_BY_BOUNDARY</code>。</td>
+        <td>用户完成本地登录态后再只读复跑。</td>
+      </tr>
+      <tr>
+        <td>Z010-HO-005</td>
+        <td>SUMMARY_DASHBOARD</td>
+        <td>Z009 本地验收摘要仪表盘</td>
+        <td><code>/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.html</code></td>
+        <td>LOCAL_UNCOMMITTED_DOCUMENTATION</td>
+        <td>可视化展示 Z008/Z009 自动化与残余状态。</td>
+        <td>不等价于生产闭合。</td>
+        <td>用于交接阅读，不触发任何远端动作。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>后续安全动作</h2>
+  <ul>
+    <li>用户完成本地登录态后，可只读复跑 browser route smoke。</li>
+    <li>用户提供生产只读账号和受控样本后，才可进入生产 non-fallback readback 取证。</li>
+    <li>用户明确授权后，才可进入 push/PR/tag/release。</li>
+  </ul>
+</body>
+</html>

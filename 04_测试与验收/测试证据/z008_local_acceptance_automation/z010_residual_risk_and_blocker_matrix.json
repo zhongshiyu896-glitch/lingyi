@@ -1,0 +1,109 @@
+{
+  "task_id": "TASK-Z010B-04-IMPL",
+  "source_head": "1b2fbd8b8a8ddc48058fdeda8f142a7944816288",
+  "generated_at": "2026-05-19T17:08:21+08:00",
+  "risk_matrix_generated": true,
+  "risk_entry_count": 8,
+  "full_browser_route_smoke_closed": false,
+  "script_005_status": "SKIPPED_BY_BOUNDARY",
+  "skipped_script_id": "Z008-SCRIPT-005",
+  "skipped_reason": "login_state_env_missing:Z009_BROWSER_LOGIN_READY",
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false,
+  "remote_lifecycle_parked": true,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "recommended_next_candidate_id": "Z010-CAND-004",
+  "recommended_next_task_id": "TASK-Z010B-05-IMPL",
+  "risks": [
+    {
+      "risk_id": "Z010-RISK-001",
+      "category": "BROWSER_LOGIN_PRECONDITION",
+      "status": "OPEN_USER_MANUAL_LOGIN_REQUIRED",
+      "scope": "Z009 orchestrator 子检查 `Z008-SCRIPT-005` 浏览器 route smoke",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_09_browser_login_rerun_freeze.json",
+      "why_not_closed": "当前 `Z009_BROWSER_LOGIN_READY` 缺失，脚本按边界保持 `SKIPPED_BY_BOUNDARY`。",
+      "only_unblock_condition": "用户在本地开发环境人工完成登录态，并显式设置 `Z009_BROWSER_LOGIN_READY=1` 后再只读复跑。",
+      "forbidden_shortcut": "禁止伪造 PASS、禁止读取/导出 cookie、localStorage、sessionStorage、token。",
+      "next_safe_action": "保持 skip-aware 状态；如用户确认登录态就绪，执行只读 browser rerun。"
+    },
+    {
+      "risk_id": "Z010-RISK-002",
+      "category": "BROWSER_ROUTE_CLOSURE",
+      "status": "OPEN_RESIDUAL",
+      "scope": "Z008/Z009 浏览器链路总闭合判定",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.json",
+      "why_not_closed": "`full_browser_route_smoke_closed=false` 为当前真实状态，不能被本地文档化动作改写。",
+      "only_unblock_condition": "完成合法登录态前置后，复跑 `Z008-SCRIPT-005` 并满足 GET-only、零写请求、final URL 匹配与无 blocking 错误。",
+      "forbidden_shortcut": "禁止将 `SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL` 解释为完整浏览器闭合。",
+      "next_safe_action": "在状态摘要中持续保留 `full_browser_route_smoke_closed=false`。"
+    },
+    {
+      "risk_id": "Z010-RISK-003",
+      "category": "PRODUCTION_READONLY_ACCOUNT",
+      "status": "OPEN_EXTERNAL_DEPENDENCY",
+      "scope": "生产只读取证所需账号与受控样本",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "why_not_closed": "仅形成生产访问包模板，未获得生产只读账号与受控真实样本。",
+      "only_unblock_condition": "用户提供生产只读账号授权与受控样本边界后，执行生产 non-fallback readback 取证。",
+      "forbidden_shortcut": "禁止用本地 fallback 或 mock 结果冒充生产 readback 闭合。",
+      "next_safe_action": "维护模板与审计清单，等待外部授权后再进入生产只读任务。"
+    },
+    {
+      "risk_id": "Z010-RISK-004",
+      "category": "PRODUCTION_NON_FALLBACK_READBACK",
+      "status": "OPEN_EXTERNAL_DEPENDENCY",
+      "scope": "生产 ERPNext non-fallback readback",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.json",
+      "why_not_closed": "全局状态保持 `production_readback_ready=false`，未执行生产只读取证链路。",
+      "only_unblock_condition": "在生产只读账号授权到位后执行受控 readback，并形成可审计证据链。",
+      "forbidden_shortcut": "禁止将本地自动化 PASS 推断为生产 readback ready。",
+      "next_safe_action": "保持 `production_readback_ready=false`，仅推进本地文档化与证据整理。"
+    },
+    {
+      "risk_id": "Z010-RISK-005",
+      "category": "GO_LIVE_GATE",
+      "status": "OPEN_EXTERNAL_DEPENDENCY",
+      "scope": "上线门禁总判定",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.json",
+      "why_not_closed": "`go_live_ready=false`，且存在浏览器登录态残余与生产只读取证未闭合。",
+      "only_unblock_condition": "浏览器闭环、生产 readback、远端生命周期授权链路全部闭合并通过审计。",
+      "forbidden_shortcut": "禁止以本地 commit 或文档归档替代 go-live 门禁。",
+      "next_safe_action": "持续输出残余与阻断说明，避免误判上线就绪。"
+    },
+    {
+      "risk_id": "Z010-RISK-006",
+      "category": "REMOTE_LIFECYCLE_AUTHORIZATION",
+      "status": "OPEN_EXTERNAL_DEPENDENCY",
+      "scope": "push/PR/tag/release 远端生命周期动作",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "why_not_closed": "`remote_lifecycle_parked=true`，当前仅允许本地控制面与只读验证。",
+      "only_unblock_condition": "用户明确授权远端生命周期后，按独立任务执行 push/PR/tag/release。",
+      "forbidden_shortcut": "禁止在未授权状态执行任意远端发布动作。",
+      "next_safe_action": "维持 parked 状态并在文档中明确“未授权不得执行”。"
+    },
+    {
+      "risk_id": "Z010-RISK-007",
+      "category": "PROJECT_COMPLETION_CLAIM",
+      "status": "OPEN_GOVERNANCE_BLOCKER",
+      "scope": "项目整体完成声明",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_19_final_local_status_refresh.json",
+      "why_not_closed": "`project_completion_claimed=false`，且仍存在浏览器与生产/远端外部阻断。",
+      "only_unblock_condition": "所有外部阻断解除并完成最终审计闭环后方可声明项目完成。",
+      "forbidden_shortcut": "禁止把 `SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL` 解释为项目完成。",
+      "next_safe_action": "保持 completion=false，并在交接文档中明确残余项。"
+    },
+    {
+      "risk_id": "Z010-RISK-008",
+      "category": "CONTROLLED_REAL_SAMPLE_DEPENDENCY",
+      "status": "OPEN_EXTERNAL_DEPENDENCY",
+      "scope": "生产受控真实样本可用性",
+      "evidence_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.tsv",
+      "why_not_closed": "尚无生产环境受控真实样本白名单，无法合法完成生产 readback 验证。",
+      "only_unblock_condition": "用户提供可审计样本范围、脱敏规则与只读授权后执行取证。",
+      "forbidden_shortcut": "禁止使用任意非授权真实数据或扩大样本范围。",
+      "next_safe_action": "先维护样本清单模板与审批占位，等待外部输入。"
+    }
+  ]
+}

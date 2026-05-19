@@ -1,0 +1,182 @@
+{
+  "task_id": "TASK-Z010B-02-IMPL",
+  "source_head": "1b2fbd8b8a8ddc48058fdeda8f142a7944816288",
+  "runbook_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/Z010_本地验收运行手册.md",
+  "z009_orchestrator_local_closed": true,
+  "z009_orchestrator_closed_mode": "SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL",
+  "full_browser_route_smoke_closed": false,
+  "skipped_script_id": "Z008-SCRIPT-005",
+  "skipped_reason": "login_state_env_missing:Z009_BROWSER_LOGIN_READY",
+  "state_hold": {
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  },
+  "index_entry_count": 10,
+  "entries": [
+    {
+      "order": 1,
+      "entry_id": "RUN-001",
+      "script_id": "Z008-SCRIPT-001",
+      "script_name": "verify_json_tsv_consistency.py",
+      "candidate_origin": "Z008-CAND-001",
+      "category": "single_check",
+      "command_template": "python3 verify_json_tsv_consistency.py --manifest <manifest.json> --output-json <result.json> --output-tsv <result.tsv>",
+      "output_artifacts": [
+        "z008_json_tsv_consistency_manifest.json",
+        "z008_json_tsv_consistency_result.json",
+        "z008_json_tsv_consistency_result.tsv"
+      ],
+      "boundary_notes": "仅本地文件解析与一致性校验。",
+      "requires_manual_login": false
+    },
+    {
+      "order": 2,
+      "entry_id": "RUN-002",
+      "script_id": "Z008-SCRIPT-002",
+      "script_name": "verify_text_hygiene.py",
+      "candidate_origin": "Z008-CAND-002",
+      "category": "single_check",
+      "command_template": "python3 verify_text_hygiene.py --manifest <manifest.json> --output-json <result.json> --output-tsv <result.tsv>",
+      "output_artifacts": [
+        "z008_text_hygiene_manifest.json",
+        "z008_text_hygiene_result.json",
+        "z008_text_hygiene_result.tsv"
+      ],
+      "boundary_notes": "仅文本卫生检查，不修复业务逻辑。",
+      "requires_manual_login": false
+    },
+    {
+      "order": 3,
+      "entry_id": "RUN-003",
+      "script_id": "Z008-SCRIPT-003",
+      "script_name": "verify_git_gates.py",
+      "candidate_origin": "Z008-CAND-003",
+      "category": "single_check",
+      "command_template": "python3 verify_git_gates.py --repo-root /Users/hh/Desktop/领意服装管理系统 --manifest <manifest.json> --output-json <result.json> --output-tsv <result.tsv>",
+      "output_artifacts": [
+        "z008_git_gate_manifest.json",
+        "z008_git_gate_result.json",
+        "z008_git_gate_result.tsv"
+      ],
+      "boundary_notes": "仅执行本地只读 git/gh 查询。",
+      "requires_manual_login": false
+    },
+    {
+      "order": 4,
+      "entry_id": "RUN-004",
+      "script_id": "Z008-SCRIPT-004",
+      "script_name": "verify_backend_contract_matrix.py",
+      "candidate_origin": "Z008-CAND-004",
+      "category": "single_check",
+      "command_template": "python3 verify_backend_contract_matrix.py --backend-root /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service --manifest <manifest.json> --output-json <result.json> --output-tsv <result.tsv>",
+      "output_artifacts": [
+        "z008_backend_contract_matrix_manifest.json",
+        "z008_backend_contract_matrix_result.json",
+        "z008_backend_contract_matrix_result.tsv"
+      ],
+      "boundary_notes": "后端本地测试矩阵，不连接生产 ERPNext。",
+      "requires_manual_login": false
+    },
+    {
+      "order": 5,
+      "entry_id": "RUN-005",
+      "script_id": "Z008-SCRIPT-005",
+      "script_name": "verify_frontend_readonly_route_smoke.mjs",
+      "candidate_origin": "Z008-CAND-005",
+      "category": "single_check",
+      "command_template": "node verify_frontend_readonly_route_smoke.mjs --manifest <manifest.json> --output-json <result.json> --output-tsv <result.tsv> --output-browser-json <browser_result.json> --screenshot-dir <screenshot_dir>",
+      "output_artifacts": [
+        "z008_frontend_readonly_route_smoke_manifest.json",
+        "z008_frontend_readonly_route_smoke_result.json",
+        "z008_frontend_readonly_route_smoke_result.tsv",
+        "z008_frontend_readonly_route_smoke_browser_result.json"
+      ],
+      "boundary_notes": "仅在本地登录态前置满足时运行；否则保持 SKIPPED_BY_BOUNDARY。",
+      "requires_manual_login": true
+    },
+    {
+      "order": 6,
+      "entry_id": "RUN-006",
+      "script_id": "Z008-SCRIPT-006",
+      "script_name": "verify_local_audit_packet_integrity.py",
+      "candidate_origin": "Z008-CAND-006",
+      "category": "single_check",
+      "command_template": "python3 verify_local_audit_packet_integrity.py --manifest <manifest.json> --output-json <result.json> --output-tsv <result.tsv>",
+      "output_artifacts": [
+        "z008_local_audit_packet_integrity_manifest.json",
+        "z008_local_audit_packet_integrity_result.json",
+        "z008_local_audit_packet_integrity_result.tsv"
+      ],
+      "boundary_notes": "核验本地审计包完整性与状态字段。",
+      "requires_manual_login": false
+    },
+    {
+      "order": 7,
+      "entry_id": "RUN-007",
+      "script_id": "Z008-SCRIPT-007",
+      "script_name": "verify_blocker_state_anti_misjudge.py",
+      "candidate_origin": "Z008-CAND-007",
+      "category": "single_check",
+      "command_template": "python3 verify_blocker_state_anti_misjudge.py --manifest <manifest.json> --output-json <result.json> --output-tsv <result.tsv>",
+      "output_artifacts": [
+        "z008_blocker_state_anti_misjudge_manifest.json",
+        "z008_blocker_state_anti_misjudge_result.json",
+        "z008_blocker_state_anti_misjudge_result.tsv"
+      ],
+      "boundary_notes": "防止将外部阻断误写为完成。",
+      "requires_manual_login": false
+    },
+    {
+      "order": 8,
+      "entry_id": "RUN-008",
+      "script_id": "Z008-SCRIPT-008",
+      "script_name": "verify_zero_write_prod_remote_guard.py",
+      "candidate_origin": "Z008-CAND-008",
+      "category": "single_check",
+      "command_template": "python3 verify_zero_write_prod_remote_guard.py --manifest <manifest.json> --output-json <result.json> --output-tsv <result.tsv>",
+      "output_artifacts": [
+        "z008_zero_write_prod_remote_guard_manifest.json",
+        "z008_zero_write_prod_remote_guard_result.json",
+        "z008_zero_write_prod_remote_guard_result.tsv"
+      ],
+      "boundary_notes": "零写入/生产账号/远端生命周期守卫。",
+      "requires_manual_login": false
+    },
+    {
+      "order": 9,
+      "entry_id": "RUN-009",
+      "script_id": "Z009-ORCH",
+      "script_name": "verify_local_acceptance_orchestrator.py",
+      "candidate_origin": "TASK-Z009B-02-IMPL",
+      "category": "orchestrator",
+      "command_template": "python3 verify_local_acceptance_orchestrator.py --manifest z009_local_acceptance_orchestrator_manifest.json --output-json <result.json> --output-tsv <result.tsv> --summary-json <summary.json> --summary-tsv <summary.tsv> --run-root <run_root>",
+      "output_artifacts": [
+        "z009_local_acceptance_orchestrator_manifest.json",
+        "z009_local_acceptance_orchestrator_result.json",
+        "z009_local_acceptance_orchestrator_result.tsv",
+        "z009_local_acceptance_orchestrator_subcheck_summary.json",
+        "z009_local_acceptance_orchestrator_subcheck_summary.tsv"
+      ],
+      "boundary_notes": "当前闭合模式为 SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL。",
+      "requires_manual_login": false
+    },
+    {
+      "order": 10,
+      "entry_id": "RUN-010",
+      "script_id": "Z009-POST-GATE",
+      "script_name": "verify_post_orchestrator_regression_gate.py",
+      "candidate_origin": "TASK-Z009B-15-IMPL",
+      "category": "regression_gate",
+      "command_template": "python3 verify_post_orchestrator_regression_gate.py --manifest z009_post_orchestrator_regression_gate_manifest.json --output-json <result.json> --output-tsv <result.tsv>",
+      "output_artifacts": [
+        "z009_post_orchestrator_regression_gate_manifest.json",
+        "z009_post_orchestrator_regression_gate_result.json",
+        "z009_post_orchestrator_regression_gate_result.tsv"
+      ],
+      "boundary_notes": "要求 full_browser_route_smoke_closed=false 仍被正确保留。",
+      "requires_manual_login": false
+    }
+  ]
+}
