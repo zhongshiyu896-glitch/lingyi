@@ -1,0 +1,93 @@
+{
+  "task_id": "TASK-Z009B-02-IMPL",
+  "source_head": "bb1516b8d368ed4307a25fdbdb6b70c183f5b1c2",
+  "selected_candidate_id": "Z009-CAND-001-PROPOSED",
+  "repo_root": "/Users/hh/Desktop/领意服装管理系统",
+  "backend_root": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "notes": [
+    "只读编排器：仅调用已存在 Z008 脚本，不改 06_前端/07_后端。",
+    "browser 脚本前置条件缺失时必须 SKIPPED_BY_BOUNDARY，不得伪造 PASS。",
+    "默认禁止任何写请求、生产账号、远端生命周期动作。"
+  ],
+  "subchecks": [
+    {
+      "script_id": "Z008-SCRIPT-001",
+      "candidate_origin": "Z008-CAND-001",
+      "script_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_json_tsv_consistency.py",
+      "base_manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_json_tsv_consistency_manifest.json",
+      "lang": "python",
+      "runtime_request_profile": "NONE",
+      "write_request_profile": "NONE"
+    },
+    {
+      "script_id": "Z008-SCRIPT-002",
+      "candidate_origin": "Z008-CAND-002",
+      "script_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_text_hygiene.py",
+      "base_manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_text_hygiene_manifest.json",
+      "lang": "python",
+      "runtime_request_profile": "NONE",
+      "write_request_profile": "NONE"
+    },
+    {
+      "script_id": "Z008-SCRIPT-003",
+      "candidate_origin": "Z008-CAND-003",
+      "script_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_git_gates.py",
+      "base_manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_git_gate_manifest.json",
+      "lang": "python",
+      "runtime_request_profile": "NONE",
+      "write_request_profile": "NONE"
+    },
+    {
+      "script_id": "Z008-SCRIPT-004",
+      "candidate_origin": "Z008-CAND-004",
+      "script_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_backend_contract_matrix.py",
+      "base_manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_backend_contract_matrix_manifest.json",
+      "lang": "python",
+      "runtime_request_profile": "LOCAL_PYTEST_ONLY",
+      "write_request_profile": "NONE"
+    },
+    {
+      "script_id": "Z008-SCRIPT-005",
+      "candidate_origin": "Z008-CAND-005",
+      "script_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_frontend_readonly_route_smoke.mjs",
+      "base_manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_frontend_readonly_route_smoke_manifest.json",
+      "lang": "node",
+      "runtime_request_profile": "BROWSER_GET_ONLY",
+      "write_request_profile": "MUST_BE_ZERO",
+      "browser_preconditions": {
+        "require_browser": true,
+        "require_dev_server": true,
+        "require_login_state": true,
+        "login_state_env": "Z009_BROWSER_LOGIN_READY",
+        "login_state_expected": "1"
+      }
+    },
+    {
+      "script_id": "Z008-SCRIPT-006",
+      "candidate_origin": "Z008-CAND-006",
+      "script_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_local_audit_packet_integrity.py",
+      "base_manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_local_audit_packet_integrity_manifest.json",
+      "lang": "python",
+      "runtime_request_profile": "NONE",
+      "write_request_profile": "NONE"
+    },
+    {
+      "script_id": "Z008-SCRIPT-007",
+      "candidate_origin": "Z008-CAND-007",
+      "script_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_blocker_state_anti_misjudge.py",
+      "base_manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_blocker_state_anti_misjudge_manifest.json",
+      "lang": "python",
+      "runtime_request_profile": "NONE",
+      "write_request_profile": "NONE"
+    },
+    {
+      "script_id": "Z008-SCRIPT-008",
+      "candidate_origin": "Z008-CAND-008",
+      "script_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/verify_zero_write_prod_remote_guard.py",
+      "base_manifest_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z008_zero_write_prod_remote_guard_manifest.json",
+      "lang": "python",
+      "runtime_request_profile": "NONE",
+      "write_request_profile": "NONE"
+    }
+  ]
+}

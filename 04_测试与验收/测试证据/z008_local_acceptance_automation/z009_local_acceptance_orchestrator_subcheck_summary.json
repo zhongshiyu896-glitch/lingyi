@@ -1,0 +1,105 @@
+{
+  "task_id": "TASK-Z009B-02-IMPL",
+  "source_head": "bb1516b8d368ed4307a25fdbdb6b70c183f5b1c2",
+  "selected_candidate_id": "Z009-CAND-001-PROPOSED",
+  "generated_at": "2026-05-19T13:16:05+08:00",
+  "subcheck_total": 8,
+  "pass_count": 7,
+  "blocking_count": 0,
+  "residual_count": 0,
+  "skipped_by_boundary_count": 1,
+  "runtime_request_count": 0,
+  "write_request_count": 0,
+  "production_account_used": false,
+  "remote_lifecycle_action_executed": false,
+  "summary_entries": [
+    {
+      "script_id": "Z008-SCRIPT-001",
+      "candidate_origin": "Z008-CAND-001",
+      "classification": "PASS",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 51,
+      "runtime_request_count": 0,
+      "write_request_count": 0,
+      "reason": "null"
+    },
+    {
+      "script_id": "Z008-SCRIPT-002",
+      "candidate_origin": "Z008-CAND-002",
+      "classification": "PASS",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 63,
+      "runtime_request_count": 0,
+      "write_request_count": 0,
+      "reason": "null"
+    },
+    {
+      "script_id": "Z008-SCRIPT-003",
+      "candidate_origin": "Z008-CAND-003",
+      "classification": "PASS",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 3657,
+      "runtime_request_count": 0,
+      "write_request_count": 0,
+      "reason": "null"
+    },
+    {
+      "script_id": "Z008-SCRIPT-004",
+      "candidate_origin": "Z008-CAND-004",
+      "classification": "PASS",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 5805,
+      "runtime_request_count": 0,
+      "write_request_count": 0,
+      "reason": "null"
+    },
+    {
+      "script_id": "Z008-SCRIPT-005",
+      "candidate_origin": "Z008-CAND-005",
+      "classification": "SKIPPED_BY_BOUNDARY",
+      "status": "SKIPPED_BY_BOUNDARY",
+      "exit_code": 0,
+      "duration_ms": 0,
+      "runtime_request_count": 0,
+      "write_request_count": 0,
+      "reason": "login_state_env_missing:Z009_BROWSER_LOGIN_READY"
+    },
+    {
+      "script_id": "Z008-SCRIPT-006",
+      "candidate_origin": "Z008-CAND-006",
+      "classification": "PASS",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 63,
+      "runtime_request_count": 0,
+      "write_request_count": 0,
+      "reason": "null"
+    },
+    {
+      "script_id": "Z008-SCRIPT-007",
+      "candidate_origin": "Z008-CAND-007",
+      "classification": "PASS",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 50,
+      "runtime_request_count": 0,
+      "write_request_count": 0,
+      "reason": "null"
+    },
+    {
+      "script_id": "Z008-SCRIPT-008",
+      "candidate_origin": "Z008-CAND-008",
+      "classification": "PASS",
+      "status": "PASS",
+      "exit_code": 0,
+      "duration_ms": 2027,
+      "runtime_request_count": 0,
+      "write_request_count": 0,
+      "reason": "null"
+    }
+  ]
+}
