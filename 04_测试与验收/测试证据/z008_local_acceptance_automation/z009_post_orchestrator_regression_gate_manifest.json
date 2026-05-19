@@ -1,0 +1,112 @@
+{
+  "task_id": "TASK-Z009B-15-IMPL",
+  "selected_candidate_id": "Z009-CAND-004",
+  "source_head": "88aff9d168d34fe3f494623a7dc3e7813cd254cc",
+  "repo_root": "/Users/hh/Desktop/领意服装管理系统",
+  "plans_root": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划",
+  "automation_root": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation",
+  "z008_freeze_checks": [
+    {
+      "check_id": "Z008-001",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_03_b02_json_tsv_consistency_freeze.json",
+      "candidate_id": "Z008-CAND-001",
+      "candidate_key": "selected_candidate_id",
+      "task_status": "PASS"
+    },
+    {
+      "check_id": "Z008-002",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_08_b07_text_hygiene_freeze.json",
+      "candidate_id": "Z008-CAND-002",
+      "candidate_key": "selected_candidate_id",
+      "task_status": "PASS"
+    },
+    {
+      "check_id": "Z008-003",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_13_b12_git_gate_freeze.json",
+      "candidate_id": "Z008-CAND-003",
+      "candidate_key": "selected_candidate_id",
+      "task_status": "PASS"
+    },
+    {
+      "check_id": "Z008-004",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_18_b17_backend_contract_matrix_freeze.json",
+      "candidate_id": "Z008-CAND-004",
+      "candidate_key": "selected_candidate_id",
+      "task_status": "PASS"
+    },
+    {
+      "check_id": "Z008-005",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_23_frontend_readonly_route_smoke_freeze.json",
+      "candidate_id": "Z008-CAND-005",
+      "candidate_key": "closed_candidate_id",
+      "freeze_status": "PASS"
+    },
+    {
+      "check_id": "Z008-006",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_28_local_audit_packet_integrity_freeze.json",
+      "candidate_id": "Z008-CAND-006",
+      "candidate_key": "closed_candidate_id",
+      "freeze_status": "PASS"
+    },
+    {
+      "check_id": "Z008-007",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_33_blocker_state_anti_misjudge_freeze.json",
+      "candidate_id": "Z008-CAND-007",
+      "candidate_key": "closed_candidate_id",
+      "freeze_status": "PASS"
+    },
+    {
+      "check_id": "Z008-008",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_38_zero_write_prod_remote_guard_freeze.json",
+      "candidate_id": "Z008-CAND-008",
+      "candidate_key": "closed_candidate_id",
+      "freeze_status": "PASS"
+    }
+  ],
+  "z009_orchestrator_state_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_06_orchestrator_state_refresh.json",
+  "z009_browser_rerun_freeze_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_09_browser_login_rerun_freeze.json",
+  "z009_skip_anchor_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_13_skip_aware_final_status_anchor.json",
+  "z009_dashboard_json_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.json",
+  "z009_dashboard_tsv_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.tsv",
+  "z009_dashboard_html_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.html",
+  "z008_final_refresh_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_41_final_candidate_refresh.json",
+  "state_expected": {
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  },
+  "browser_skip_expected": {
+    "script_005_status": "SKIPPED_BY_BOUNDARY",
+    "skipped_reason": "login_state_env_missing:Z009_BROWSER_LOGIN_READY",
+    "full_browser_route_smoke_closed": false
+  },
+  "dashboard_required_strings": [
+    "z009_orchestrator_local_closed=true",
+    "z009_orchestrator_closed_mode=SKIP_AWARE_LOCAL_CLOSED_WITH_RESIDUAL",
+    "subcheck_total=8",
+    "pass_count=7",
+    "skipped_by_boundary_count=1",
+    "skipped_script_id=Z008-SCRIPT-005",
+    "full_browser_route_smoke_closed=false",
+    "production_readback_ready=false",
+    "go_live_ready=false",
+    "project_completion_claimed=false",
+    "remote_lifecycle_parked=true"
+  ],
+  "sensitive_pattern_files": [
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.html",
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.json",
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.tsv"
+  ],
+  "text_hygiene_files": [
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_41_final_candidate_refresh.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_06_orchestrator_state_refresh.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_09_browser_login_rerun_freeze.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_12_state_refresh_and_candidate_pool.json",
+    "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z009b_13_skip_aware_final_status_anchor.json",
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.html",
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.json",
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.tsv"
+  ]
+}
