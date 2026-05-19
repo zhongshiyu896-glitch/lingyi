@@ -1,0 +1,59 @@
+{
+  "task_id": "TASK-Z008B-17-IMPL",
+  "source_head": "e40bf1b09bcb5a483f4cec3f06729ceef204cb3e",
+  "selected_candidate_id": "Z008-CAND-004",
+  "backend_root": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "notes": [
+    "仅运行本地只读测试，不启动生产服务，不访问生产 ERPNext。",
+    "优先使用 .venv/bin/python。",
+    "pytest 使用 -p no:cacheprovider 避免生成 .pytest_cache。"
+  ],
+  "test_entries": [
+    {
+      "test_id": "T01",
+      "module": "tests.test_warehouse_adapter_contract_fixture",
+      "required": true,
+      "allow_skip_on_no_collection": false,
+      "pytest_args": [
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ]
+    },
+    {
+      "test_id": "T02",
+      "module": "tests.test_warehouse_permission_mode_readback_matrix",
+      "required": true,
+      "allow_skip_on_no_collection": false,
+      "pytest_args": [
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ]
+    },
+    {
+      "test_id": "T03",
+      "module": "tests.test_factory_statement_readback_contract_fixture",
+      "required": true,
+      "allow_skip_on_no_collection": false,
+      "pytest_args": [
+        "-q",
+        "-p",
+        "no:cacheprovider"
+      ]
+    },
+    {
+      "test_id": "T04",
+      "module": "tests.test_factory_statement_api",
+      "required": false,
+      "allow_skip_on_no_collection": true,
+      "pytest_args": [
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "-k",
+        "readback or list or detail or filter or evaluations"
+      ]
+    }
+  ]
+}

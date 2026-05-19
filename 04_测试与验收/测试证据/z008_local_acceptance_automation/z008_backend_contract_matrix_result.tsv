@@ -1,0 +1,5 @@
+test_id	module	status	exit_code	pass_count	fail_count	skip_count	deselected_count	duration_seconds	required	skip_reason
+T01	tests.test_warehouse_adapter_contract_fixture	PASS	0	10	0	0	0	1.814	true	null
+T02	tests.test_warehouse_permission_mode_readback_matrix	PASS	0	6	0	0	0	1.68	true	null
+T03	tests.test_factory_statement_readback_contract_fixture	PASS	0	6	0	0	0	0.78	true	null
+T04	tests.test_factory_statement_api	PASS	0	2	0	0	8	1.749	false	null
