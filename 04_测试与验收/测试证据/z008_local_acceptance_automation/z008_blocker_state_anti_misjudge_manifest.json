@@ -1,0 +1,321 @@
+{
+  "task_id": "TASK-Z008B-32-IMPL",
+  "source_head": "0fa8127f52a842d62f7a6f1e8fc519cfa3d08fe2",
+  "selected_candidate_id": "Z008-CAND-007",
+  "file_entries": [
+    {
+      "entry_id": "Z007-B68-REFRESH-JSON",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.json",
+      "kind": "json"
+    },
+    {
+      "entry_id": "Z007-B68-REFRESH-TSV",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.tsv",
+      "kind": "text"
+    },
+    {
+      "entry_id": "Z007-B62-REFRESH-JSON",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_62_remaining_candidate_refresh.json",
+      "kind": "json"
+    },
+    {
+      "entry_id": "Z007-B52-ACCESS-JSON",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "kind": "json"
+    },
+    {
+      "entry_id": "Z007-B52-REMOTE-JSON",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "kind": "json"
+    },
+    {
+      "entry_id": "Z007-B58-BLOCKER-JSON",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_blocker_matrix.json",
+      "kind": "json"
+    },
+    {
+      "entry_id": "Z007-B64-READABLE-BLOCKER-JSON",
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.json",
+      "kind": "json"
+    },
+    {
+      "entry_id": "Z008-B26-REFRESH-JSON",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_26_remaining_candidate_refresh.json",
+      "kind": "json"
+    },
+    {
+      "entry_id": "Z008-B31-REFRESH-JSON",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_31_remaining_candidate_refresh.json",
+      "kind": "json"
+    },
+    {
+      "entry_id": "Z008-B31-REFRESH-TSV",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_31_remaining_candidate_refresh.tsv",
+      "kind": "text"
+    }
+  ],
+  "json_tsv_pairs": [
+    {
+      "pair_id": "PAIR-Z007-B68-REFRESH",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.json",
+      "tsv_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.tsv",
+      "json_array_key": "remaining_candidates",
+      "compare_fields": [
+        "order",
+        "candidate_id",
+        "candidate_type",
+        "candidate_status",
+        "local_actionable",
+        "blocker_type",
+        "current_gap",
+        "unique_unblock_condition",
+        "recommended_next_task_id",
+        "risk_level"
+      ]
+    },
+    {
+      "pair_id": "PAIR-Z008-B31-REFRESH",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_31_remaining_candidate_refresh.json",
+      "tsv_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_31_remaining_candidate_refresh.tsv",
+      "json_array_key": "remaining_candidates",
+      "compare_fields": [
+        "order",
+        "candidate_id",
+        "candidate_type",
+        "candidate_status",
+        "local_actionable",
+        "implementation_risk",
+        "scope",
+        "blocked_reason",
+        "recommended_next_task_id",
+        "risk_level"
+      ]
+    }
+  ],
+  "state_checks": [
+    {
+      "check_id": "STATE-Z007-B68-HOLD",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.json",
+      "object_path": "state_hold",
+      "expected": {
+        "production_readback_ready": false,
+        "go_live_ready": false,
+        "project_completion_claimed": false,
+        "remote_lifecycle_parked": true
+      }
+    },
+    {
+      "check_id": "STATE-Z007-B62-HOLD",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_62_remaining_candidate_refresh.json",
+      "object_path": "state_hold",
+      "expected": {
+        "production_readback_ready": false,
+        "go_live_ready": false,
+        "project_completion_claimed": false,
+        "remote_lifecycle_parked": true
+      }
+    },
+    {
+      "check_id": "STATE-Z007-B52-ACCESS-TOP",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "object_path": null,
+      "expected": {
+        "runtime_request_count": 0,
+        "write_request_count": 0,
+        "production_account_used": false,
+        "remote_lifecycle_action_executed": false
+      }
+    },
+    {
+      "check_id": "STATE-Z007-B52-ACCESS-ANCHOR",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "object_path": "state_anchor",
+      "expected": {
+        "production_readback_ready": false,
+        "go_live_ready": false,
+        "project_completion_claimed": false,
+        "remote_lifecycle_parked": true
+      }
+    },
+    {
+      "check_id": "STATE-Z007-B52-REMOTE-TOP",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "object_path": null,
+      "expected": {
+        "runtime_request_count": 0,
+        "write_request_count": 0,
+        "production_account_used": false,
+        "remote_lifecycle_action_executed": false,
+        "default_remote_authorization_granted": false
+      }
+    },
+    {
+      "check_id": "STATE-Z007-B52-REMOTE-ANCHOR",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "object_path": "state_anchor",
+      "expected": {
+        "production_readback_ready": false,
+        "go_live_ready": false,
+        "project_completion_claimed": false,
+        "remote_lifecycle_parked": true
+      }
+    },
+    {
+      "check_id": "STATE-Z007-B58-BLOCKER-ANCHOR",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_58_z007_local_audit_blocker_matrix.json",
+      "object_path": "state_anchor",
+      "expected": {
+        "production_readback_ready": false,
+        "go_live_ready": false,
+        "project_completion_claimed": false,
+        "remote_lifecycle_parked": true
+      }
+    },
+    {
+      "check_id": "STATE-Z007-B64-READABLE-TOP",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.json",
+      "object_path": null,
+      "expected": {
+        "runtime_request_count": 0,
+        "write_request_count": 0,
+        "production_account_used": false,
+        "remote_lifecycle_action_executed": false,
+        "production_readback_ready": false,
+        "go_live_ready": false,
+        "project_completion_claimed": false,
+        "remote_lifecycle_parked": true
+      }
+    },
+    {
+      "check_id": "STATE-Z008-B31-HOLD",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_31_remaining_candidate_refresh.json",
+      "object_path": "state_hold",
+      "expected": {
+        "production_readback_ready": false,
+        "go_live_ready": false,
+        "project_completion_claimed": false,
+        "remote_lifecycle_parked": true
+      }
+    },
+    {
+      "check_id": "STATE-Z008-B26-CLOSED-LOCAL",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_26_remaining_candidate_refresh.json",
+      "object_path": null,
+      "expected": {
+        "z008_cand005_status": "LOCAL_CLOSED_COMMITTED"
+      }
+    },
+    {
+      "check_id": "STATE-Z008-B31-CLOSED-LOCAL",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z008b_31_remaining_candidate_refresh.json",
+      "object_path": null,
+      "expected": {
+        "z008_cand006_status": "LOCAL_CLOSED_COMMITTED"
+      }
+    }
+  ],
+  "candidate_status_checks": [
+    {
+      "check_id": "CANDIDATE-STATUS-Z007-B68-BLOCKERS",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.json",
+      "array_key": "remaining_candidates",
+      "id_field": "candidate_id",
+      "status_field": "candidate_status",
+      "expected": {
+        "Z007-CAND-005": "BLOCKED_EXTERNAL_DEPENDENCY",
+        "Z007-CAND-006": "BLOCKED_EXTERNAL_DEPENDENCY",
+        "Z007-CAND-007": "BLOCKED_EXTERNAL_DEPENDENCY",
+        "Z007-CAND-008": "BLOCKED_REMOTE_LIFECYCLE"
+      }
+    },
+    {
+      "check_id": "CANDIDATE-STATUS-Z007-B64-READABLE-BLOCKERS",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z007_pre_go_live_local_audit_packet/z007_local_audit_packet_readable_blocker_summary.json",
+      "array_key": "readable_blocker_summary_entries",
+      "id_field": "candidate_id",
+      "status_field": "blocker_status",
+      "expected": {
+        "Z007-CAND-005": "BLOCKED_EXTERNAL_DEPENDENCY",
+        "Z007-CAND-006": "BLOCKED_EXTERNAL_DEPENDENCY",
+        "Z007-CAND-007": "BLOCKED_EXTERNAL_DEPENDENCY",
+        "Z007-CAND-008": "BLOCKED_REMOTE_LIFECYCLE"
+      }
+    }
+  ],
+  "local_closure_checks": [
+    {
+      "check_id": "LOCAL-CLOSURE-Z007-B68",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.json",
+      "array_key": "remaining_candidates",
+      "id_field": "candidate_id",
+      "status_field": "candidate_status",
+      "candidate_ids": [
+        "Z007-CAND-010-PROPOSED",
+        "Z007-CAND-011-PROPOSED"
+      ],
+      "required_prefix": "LOCAL_"
+    }
+  ],
+  "blocked_counter_source": {
+    "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_68_remaining_candidate_refresh.json",
+    "array_key": "remaining_candidates",
+    "id_field": "candidate_id",
+    "status_field": "candidate_status",
+    "external_dependency_ids": [
+      "Z007-CAND-005",
+      "Z007-CAND-006",
+      "Z007-CAND-007"
+    ],
+    "remote_lifecycle_ids": [
+      "Z007-CAND-008"
+    ],
+    "external_status": "BLOCKED_EXTERNAL_DEPENDENCY",
+    "remote_status": "BLOCKED_REMOTE_LIFECYCLE"
+  },
+  "blocked_counter_thresholds": [
+    {
+      "check_id": "THRESHOLD-EXTERNAL-DEPENDENCY",
+      "metric": "blocked_external_dependency_count",
+      "operator": ">=",
+      "expected": 3
+    },
+    {
+      "check_id": "THRESHOLD-REMOTE-LIFECYCLE",
+      "metric": "blocked_remote_lifecycle_count",
+      "operator": ">=",
+      "expected": 1
+    }
+  ],
+  "forbidden_value_checks": [
+    {
+      "check_id": "FORBID-B52-ACCESS-PRODUCTION-ACCOUNT-USED",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "key": "production_account_used",
+      "forbidden_value": true
+    },
+    {
+      "check_id": "FORBID-B52-ACCESS-REMOTE-LIFECYCLE-ACTION",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_production_readonly_access_packet_template.json",
+      "key": "remote_lifecycle_action_executed",
+      "forbidden_value": true
+    },
+    {
+      "check_id": "FORBID-B52-REMOTE-ACCOUNT-USED",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "key": "production_account_used",
+      "forbidden_value": true
+    },
+    {
+      "check_id": "FORBID-B52-REMOTE-LIFECYCLE-ACTION",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "key": "remote_lifecycle_action_executed",
+      "forbidden_value": true
+    },
+    {
+      "check_id": "FORBID-B52-REMOTE-DEFAULT-GRANT",
+      "json_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z007b_52_remote_lifecycle_authorization_checklist.json",
+      "key": "default_remote_authorization_granted",
+      "forbidden_value": true
+    }
+  ]
+}
