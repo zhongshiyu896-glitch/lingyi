@@ -1,0 +1,58 @@
+{
+  "task_id": "TASK-Z011B-12-IMPL",
+  "source_head": "d3bd97e3e6da2d0b580e7d014e8b48a4fdd0be14",
+  "generated_at": "2026-05-19T19:42:28+0800",
+  "sampling_target_count": 4,
+  "excluded_login_required_target_count": 7,
+  "allowed_targets": [
+    {
+      "target_id": "Z011-NOLOGIN-001",
+      "target_url": "file:///Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.html"
+    },
+    {
+      "target_id": "Z011-NOLOGIN-002",
+      "target_url": "file:///Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_acceptance_handoff_overview.html"
+    },
+    {
+      "target_id": "Z011-NOLOGIN-003",
+      "target_url": "http://127.0.0.1:5173/fate/"
+    },
+    {
+      "target_id": "Z011-NOLOGIN-004",
+      "target_url": "http://127.0.0.1:5173/fate/login"
+    }
+  ],
+  "excluded_targets": [
+    {
+      "target_id": "Z011-EXCLUDED-001",
+      "target_url": "/fate/dashboard/overview"
+    },
+    {
+      "target_id": "Z011-EXCLUDED-002",
+      "target_url": "/fate/warehouse"
+    },
+    {
+      "target_id": "Z011-EXCLUDED-003",
+      "target_url": "/fate/factory-statements/list?z005_readback=1"
+    },
+    {
+      "target_id": "Z011-EXCLUDED-004",
+      "target_url": "/fate/factory-statements/detail?id=1"
+    },
+    {
+      "target_id": "Z011-EXCLUDED-005",
+      "target_url": "/fate/bom/list"
+    },
+    {
+      "target_id": "Z011-EXCLUDED-006",
+      "target_url": "/fate/production/plans"
+    },
+    {
+      "target_id": "Z011-EXCLUDED-007",
+      "target_url": "/fate/reports/catalog"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z011b12_screenshots",
+  "request_method_policy": "GET-only",
+  "external_http_requests_blocked_locally": 2
+}

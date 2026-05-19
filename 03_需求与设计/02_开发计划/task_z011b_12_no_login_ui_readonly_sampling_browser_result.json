@@ -1,0 +1,72 @@
+{
+  "task_id": "TASK-Z011B-12-IMPL",
+  "generated_at": "2026-05-19T19:42:28+0800",
+  "screenshot_dir": "/tmp/task_z011b12_screenshots",
+  "external_http_requests_blocked_locally": 2,
+  "entries": [
+    {
+      "target_id": "Z011-NOLOGIN-001",
+      "target_url": "file:///Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.html",
+      "final_url": "file:///Users/hh/Desktop/%E9%A2%86%E6%84%8F%E6%9C%8D%E8%A3%85%E7%AE%A1%E7%90%86%E7%B3%BB%E7%BB%9F/04_%E6%B5%8B%E8%AF%95%E4%B8%8E%E9%AA%8C%E6%94%B6/%E6%B5%8B%E8%AF%95%E8%AF%81%E6%8D%AE/z008_local_acceptance_automation/z009_local_acceptance_summary_dashboard.html",
+      "status": "PASS",
+      "blocked_reason": null,
+      "screenshot_path": "/tmp/task_z011b12_screenshots/Z011-NOLOGIN-001.png",
+      "request_count": 1,
+      "request_methods": [
+        "GET"
+      ],
+      "console_error_count": 0,
+      "network_error_count": 0,
+      "requestfailed": [],
+      "navigation_error": null
+    },
+    {
+      "target_id": "Z011-NOLOGIN-002",
+      "target_url": "file:///Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z008_local_acceptance_automation/z010_local_acceptance_handoff_overview.html",
+      "final_url": "file:///Users/hh/Desktop/%E9%A2%86%E6%84%8F%E6%9C%8D%E8%A3%85%E7%AE%A1%E7%90%86%E7%B3%BB%E7%BB%9F/04_%E6%B5%8B%E8%AF%95%E4%B8%8E%E9%AA%8C%E6%94%B6/%E6%B5%8B%E8%AF%95%E8%AF%81%E6%8D%AE/z008_local_acceptance_automation/z010_local_acceptance_handoff_overview.html",
+      "status": "PASS",
+      "blocked_reason": null,
+      "screenshot_path": "/tmp/task_z011b12_screenshots/Z011-NOLOGIN-002.png",
+      "request_count": 1,
+      "request_methods": [
+        "GET"
+      ],
+      "console_error_count": 0,
+      "network_error_count": 0,
+      "requestfailed": [],
+      "navigation_error": null
+    },
+    {
+      "target_id": "Z011-NOLOGIN-003",
+      "target_url": "http://127.0.0.1:5173/fate/",
+      "final_url": "http://127.0.0.1:5173/fate/#/",
+      "status": "PASS",
+      "blocked_reason": null,
+      "screenshot_path": "/tmp/task_z011b12_screenshots/Z011-NOLOGIN-003.png",
+      "request_count": 235,
+      "request_methods": [
+        "GET"
+      ],
+      "console_error_count": 0,
+      "network_error_count": 0,
+      "requestfailed": [],
+      "navigation_error": null
+    },
+    {
+      "target_id": "Z011-NOLOGIN-004",
+      "target_url": "http://127.0.0.1:5173/fate/login",
+      "final_url": "http://127.0.0.1:5173/fate/login#/",
+      "status": "PASS",
+      "blocked_reason": null,
+      "screenshot_path": "/tmp/task_z011b12_screenshots/Z011-NOLOGIN-004.png",
+      "request_count": 235,
+      "request_methods": [
+        "GET"
+      ],
+      "console_error_count": 0,
+      "network_error_count": 0,
+      "requestfailed": [],
+      "navigation_error": null
+    }
+  ]
+}
