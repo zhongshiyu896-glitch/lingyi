@@ -1,0 +1,4 @@
+order	candidate_id	status	local_actionable	blocked_reason	recommended_next_task_id	next_safe_action	residual_note
+1	Z011-CAND-007	BLOCKED_EXTERNAL_DEPENDENCY	false	login_state_env_missing:Z009_BROWSER_LOGIN_READY		等待用户提供本地登录态并授权后，再按既有边界只读复跑。	full_browser_route_smoke_closed=false
+2	Z011-CAND-008	BLOCKED_EXTERNAL_DEPENDENCY	false	production_readonly_account_and_controlled_samples_not_authorized		等待用户提供生产只读账号与受控真实样本授权。	production_readback_ready=false
+3	Z011-CAND-009	BLOCKED_REMOTE_LIFECYCLE	false	remote_lifecycle_parked_without_user_authorization		等待用户明确远端生命周期授权后再进入 push/PR/tag/release。	remote_lifecycle_parked=true
