@@ -1,0 +1,9 @@
+entry_order	check_id	status	observed	evidence
+1	route_parity_switch	PASS	/production/productionProcess -> /production/plans?parity=production-followup-template	src/router/index.ts
+2	followup_template_parity_hint	PASS	data-testid=production-followup-template-parity-hint 可见并语义正确	ProductionPlanList.vue + browser_result.target_results
+3	filter_interaction	PASS	template_no/template_name/template_type/item_code/keyword/from_date/to_date/status 可交互	task_z012b_15_followup_template_interaction_browser_result.json.filter_values_before_reset
+4	reset_interaction	PASS	跟进模板筛选重置恢复默认值	task_z012b_15_followup_template_interaction_browser_result.json.filter_values_after_reset
+5	readonly_write_guards	PASS	write_guard_count=4 且 write_guard_disabled_count=4	task_z012b_15_followup_template_interaction_browser_result.json
+6	empty_error_state_semantics	PASS	空态与错误态文案均为跟进模板专项语义	ProductionPlanList.vue + task_z012b_15_followup_template_interaction_browser_result.json
+7	network_get_only	PASS	request_methods=[GET], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0	task_z012b_15_followup_template_interaction_browser_result.json
+8	typecheck_build	PASS	npm run typecheck PASS; npm run build PASS	terminal output

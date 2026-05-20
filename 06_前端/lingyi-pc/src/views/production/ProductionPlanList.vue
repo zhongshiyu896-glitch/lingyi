@@ -176,7 +176,7 @@
       />
 
       <el-empty
-        v-if="!canRead && !isProductionQuoteParity"
+        v-if="!canRead && !isProductionQuoteParity && !isProductionFollowupTemplateParity"
         description="无大货跟进查看权限"
         data-testid="production-plan-no-permission"
       />
@@ -778,6 +778,14 @@
           <div class="title-group">
             <span class="title">跟进模板</span>
             <span class="sub-title">大货管理 / 跟进模板（P1）</span>
+            <el-tag
+              v-if="isProductionFollowupTemplateParity"
+              type="success"
+              effect="plain"
+              data-testid="production-followup-template-parity-hint"
+            >
+              衣算云 / 大货管理 / 跟进模板
+            </el-tag>
           </div>
 
           <el-form :inline="true" :model="followupTemplateQuery" class="query-form">
@@ -786,6 +794,7 @@
                 v-model="followupTemplateQuery.template_no"
                 clearable
                 placeholder="模板编号"
+                data-testid="production-followup-template-filter-template-no"
                 @keyup.enter="onFollowupTemplateSearch"
               />
             </el-form-item>
@@ -794,6 +803,7 @@
                 v-model="followupTemplateQuery.template_name"
                 clearable
                 placeholder="模板名称"
+                data-testid="production-followup-template-filter-template-name"
                 @keyup.enter="onFollowupTemplateSearch"
               />
             </el-form-item>
@@ -803,6 +813,7 @@
                 clearable
                 placeholder="全部类型"
                 style="width: 160px"
+                data-testid="production-followup-template-filter-template-type"
               >
                 <el-option label="基础跟进" value="基础跟进" />
                 <el-option label="排期跟进" value="排期跟进" />
@@ -817,6 +828,7 @@
                 v-model="followupTemplateQuery.item_code"
                 clearable
                 placeholder="款号"
+                data-testid="production-followup-template-filter-item-code"
                 @keyup.enter="onFollowupTemplateSearch"
               />
             </el-form-item>
@@ -825,11 +837,18 @@
                 v-model="followupTemplateQuery.keyword"
                 clearable
                 placeholder="模板号/模板名/制单号"
+                data-testid="production-followup-template-filter-keyword"
                 @keyup.enter="onFollowupTemplateSearch"
               />
             </el-form-item>
             <el-form-item label="状态">
-              <el-select v-model="followupTemplateQuery.status" clearable placeholder="全部状态" style="width: 160px">
+              <el-select
+                v-model="followupTemplateQuery.status"
+                clearable
+                placeholder="全部状态"
+                style="width: 160px"
+                data-testid="production-followup-template-filter-status"
+              >
                 <el-option label="启用" value="enabled" />
                 <el-option label="停用" value="disabled" />
               </el-select>
@@ -841,6 +860,7 @@
                 value-format="YYYY-MM-DD"
                 placeholder="开始时间"
                 clearable
+                data-testid="production-followup-template-filter-from-date"
               />
             </el-form-item>
             <el-form-item label="结束时间">
@@ -850,23 +870,54 @@
                 value-format="YYYY-MM-DD"
                 placeholder="结束时间"
                 clearable
+                data-testid="production-followup-template-filter-to-date"
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :disabled="!canRead" @click="onFollowupTemplateSearch">搜索</el-button>
-              <el-button :disabled="!canRead" @click="onFollowupTemplateReset">重置</el-button>
-              <el-button :disabled="!canRead" @click="onFollowupTemplateRefresh">刷新</el-button>
+              <el-button
+                type="primary"
+                :disabled="!canFollowupTemplateReadonlyInteractive"
+                data-testid="production-followup-template-search"
+                @click="onFollowupTemplateSearch"
+              >
+                搜索
+              </el-button>
+              <el-button
+                :disabled="!canFollowupTemplateReadonlyInteractive"
+                data-testid="production-followup-template-reset"
+                @click="onFollowupTemplateReset"
+              >
+                重置
+              </el-button>
+              <el-button :disabled="!canFollowupTemplateReadonlyInteractive" @click="onFollowupTemplateRefresh">刷新</el-button>
             </el-form-item>
           </el-form>
 
           <div class="toolbar-row">
-            <el-button :disabled="!canRead" @click="onFollowupTemplateSearch">筛选</el-button>
-            <el-button :disabled="!canRead" @click="onFollowupTemplateClearFilters">清空</el-button>
-            <el-button :disabled="!canRead" @click="onGuardedAction('导出跟进模板', false)">导出</el-button>
-            <el-button :disabled="!canRead" @click="onGuardedAction('跟进模板列设置', false)">列设置</el-button>
+            <el-button
+              :disabled="!canFollowupTemplateReadonlyInteractive"
+              data-testid="production-followup-template-apply-filters"
+              @click="onFollowupTemplateSearch"
+            >
+              筛选
+            </el-button>
+            <el-button
+              :disabled="!canFollowupTemplateReadonlyInteractive"
+              data-testid="production-followup-template-clear-filters"
+              @click="onFollowupTemplateClearFilters"
+            >
+              清空
+            </el-button>
+            <el-button :disabled="!canFollowupTemplateReadonlyInteractive" @click="onGuardedAction('导出跟进模板', false)">
+              导出
+            </el-button>
+            <el-button :disabled="!canFollowupTemplateReadonlyInteractive" @click="onGuardedAction('跟进模板列设置', false)">
+              列设置
+            </el-button>
             <el-button
               :disabled="!canWriteGuarded"
               data-action-type="write"
+              data-write-guard="guarded:readonly"
               @click="onGuardedAction('新增跟进模板', true)"
             >
               新增
@@ -874,6 +925,7 @@
             <el-button
               :disabled="!canWriteGuarded"
               data-action-type="write"
+              data-write-guard="guarded:readonly"
               @click="onGuardedAction('启用跟进模板', true)"
             >
               启用
@@ -881,6 +933,7 @@
             <el-button
               :disabled="!canWriteGuarded"
               data-action-type="write"
+              data-write-guard="guarded:readonly"
               @click="onGuardedAction('停用跟进模板', true)"
             >
               停用
@@ -893,6 +946,7 @@
             type="error"
             :closable="false"
             :title="`跟进模板加载失败：${followupTemplateError}`"
+            data-testid="production-followup-template-error-alert"
           />
 
           <el-table
@@ -900,6 +954,7 @@
             border
             v-loading="followupTemplateLoading"
             empty-text="暂无跟进模板数据，请调整筛选条件后重试"
+            data-testid="production-followup-template-table"
           >
             <el-table-column prop="template_no" label="模板编号" min-width="160" />
             <el-table-column prop="template_name" label="模板名称" min-width="180" />
@@ -923,7 +978,14 @@
             <el-table-column label="操作" fixed="right" min-width="240">
               <template #default="scope">
                 <el-button link type="primary" @click="goDetail(scope.row.template_id)">查看</el-button>
-                <el-button link @click="onGuardedAction('编辑跟进模板', true)">编辑</el-button>
+                <el-button
+                  link
+                  data-action-type="write"
+                  data-write-guard="guarded:readonly"
+                  @click="onGuardedAction('编辑跟进模板', true)"
+                >
+                  编辑
+                </el-button>
                 <el-button link @click="onGuardedAction('打印跟进模板', false)">打印</el-button>
                 <el-button link @click="onGuardedAction('导出跟进模板', false)">导出</el-button>
               </template>
@@ -1359,6 +1421,7 @@ const currentParity = computed<string>(() => {
 })
 
 const isProductionQuoteParity = computed<boolean>(() => currentParity.value === 'production-quote')
+const isProductionFollowupTemplateParity = computed<boolean>(() => currentParity.value === 'production-followup-template')
 
 const loading = ref<boolean>(false)
 const rows = ref<ProductionPlanListItem[]>([])
@@ -1395,6 +1458,9 @@ const canRead = computed<boolean>(() => {
   return permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('production:read')
 })
 const canQuoteReadonlyInteractive = computed<boolean>(() => canRead.value || isProductionQuoteParity.value)
+const canFollowupTemplateReadonlyInteractive = computed<boolean>(
+  () => canRead.value || isProductionFollowupTemplateParity.value,
+)
 const canWriteGuarded = computed<boolean>(() => {
   return permissionStore.state.buttonPermissions.plan_create || permissionStore.state.actions.includes('production:plan_create')
 })

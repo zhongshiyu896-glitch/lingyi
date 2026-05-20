@@ -1,0 +1,666 @@
+{
+  "run_tag": "2026-05-20T06-20-29-969Z",
+  "started_at": "2026-05-20T06:20:36.904Z",
+  "requested_browser_targets": [
+    "http://127.0.0.1:5173/production/productionProcess",
+    "http://127.0.0.1:5173/production/plans?parity=production-followup-template",
+    "http://127.0.0.1:5173/production/plans"
+  ],
+  "runtime_browser_targets": [
+    "http://127.0.0.1:5176/production/productionProcess",
+    "http://127.0.0.1:5176/production/plans?parity=production-followup-template",
+    "http://127.0.0.1:5176/production/plans"
+  ],
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5176",
+  "browser_targets_executed": [
+    {
+      "target_id": "Z012-FOLLOWUP-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/production/productionProcess",
+      "attempted_url": "http://127.0.0.1:5176/production/productionProcess",
+      "final_url": "http://127.0.0.1:5176/production/plans?parity=production-followup-template"
+    },
+    {
+      "target_id": "Z012-FOLLOWUP-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/production/plans?parity=production-followup-template",
+      "attempted_url": "http://127.0.0.1:5176/production/plans?parity=production-followup-template",
+      "final_url": "http://127.0.0.1:5176/production/plans?parity=production-followup-template"
+    },
+    {
+      "target_id": "Z012-FOLLOWUP-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/production/plans",
+      "attempted_url": "http://127.0.0.1:5176/production/plans",
+      "final_url": "http://127.0.0.1:5176/production/plans"
+    }
+  ],
+  "target_results": [
+    {
+      "target_id": "Z012-FOLLOWUP-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/production/productionProcess",
+      "attempted_url": "http://127.0.0.1:5176/production/productionProcess",
+      "final_url": "http://127.0.0.1:5176/production/plans?parity=production-followup-template",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b15_followup_template_screenshots/2026-05-20T06-20-29-969Z_Z012-FOLLOWUP-TARGET-1_1.png"
+    },
+    {
+      "target_id": "Z012-FOLLOWUP-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/production/plans?parity=production-followup-template",
+      "attempted_url": "http://127.0.0.1:5176/production/plans?parity=production-followup-template",
+      "final_url": "http://127.0.0.1:5176/production/plans?parity=production-followup-template",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b15_followup_template_screenshots/2026-05-20T06-20-29-969Z_Z012-FOLLOWUP-TARGET-2_2.png"
+    },
+    {
+      "target_id": "Z012-FOLLOWUP-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/production/plans",
+      "attempted_url": "http://127.0.0.1:5176/production/plans",
+      "final_url": "http://127.0.0.1:5176/production/plans",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b15_followup_template_screenshots/2026-05-20T06-20-29-969Z_Z012-FOLLOWUP-TARGET-3_3.png"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z012b15_followup_template_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z012b15_followup_template_screenshots/2026-05-20T06-20-29-969Z_Z012-FOLLOWUP-TARGET-1_1.png",
+    "/tmp/task_z012b15_followup_template_screenshots/2026-05-20T06-20-29-969Z_Z012-FOLLOWUP-TARGET-2_2.png",
+    "/tmp/task_z012b15_followup_template_screenshots/2026-05-20T06-20-29-969Z_Z012-FOLLOWUP-TARGET-3_3.png"
+  ],
+  "screenshot_count": 3,
+  "valid_target_screenshot_count": 3,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "console_error_count": 0,
+  "page_error_count": 0,
+  "network_error_count": 0,
+  "followup_template_parity_hint_status": "PASS",
+  "filter_interaction_status": "PASS",
+  "reset_interaction_status": "PASS",
+  "readonly_guard_status": "PASS",
+  "empty_error_state_semantics_status": "PASS",
+  "filter_values_before_reset": {
+    "template_no": "FT-LOCAL-001",
+    "template_name": "跟进模板A",
+    "item_code": "ITEM-LOCAL-001",
+    "keyword": "KW-FOLLOWUP",
+    "from_date": "2026-05-01",
+    "to_date": "2026-05-31",
+    "template_type": "基础跟进",
+    "status": "启用"
+  },
+  "filter_values_after_reset": {
+    "template_no": "",
+    "template_name": "",
+    "item_code": "",
+    "keyword": "",
+    "from_date": "",
+    "to_date": "",
+    "template_type": "",
+    "status": ""
+  },
+  "write_guard_count": 3,
+  "write_guard_disabled_count": 3,
+  "interaction_error": null,
+  "non_get_requests": [],
+  "request_failed": [],
+  "console_errors": [],
+  "page_errors": [],
+  "sample_request_log": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/production/productionProcess",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/main.ts?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/router/index.ts?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/production/ProductionPlanList.vue?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/production.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/production/ProductionPlanList.vue?vue&type=style&index=0&scoped=d4213a41&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=production",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/plans?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/material-cost-details?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/sales-forecast-details?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/quotes?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/followup-templates?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/order-io-quantities?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/salesperson-performance?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/production/plans?parity=production-followup-template",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/main.ts?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/router/index.ts?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/production/ProductionPlanList.vue?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/production.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/production/ProductionPlanList.vue?vue&type=style&index=0&scoped=d4213a41&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=production",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/plans?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/material-cost-details?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/sales-forecast-details?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/quotes?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/followup-templates?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/order-io-quantities?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/salesperson-performance?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/production/plans",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/main.ts?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/router/index.ts?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/production/ProductionPlanList.vue?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/production.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/production/ProductionPlanList.vue?vue&type=style&index=0&scoped=d4213a41&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=production",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/plans?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/material-cost-details?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/sales-forecast-details?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/quotes?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/followup-templates?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/order-io-quantities?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/salesperson-performance?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/production/plans?parity=production-followup-template",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/main.ts?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/router/index.ts?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/production/ProductionPlanList.vue?t=1779254868865",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/production.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/production/ProductionPlanList.vue?vue&type=style&index=0&scoped=d4213a41&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/actions?module=production",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/plans?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/material-cost-details?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/sales-forecast-details?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/quotes?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/followup-templates?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/order-io-quantities?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/salesperson-performance?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/followup-templates?template_no=FT-LOCAL-001&template_name=%E8%B7%9F%E8%BF%9B%E6%A8%A1%E6%9D%BFA&template_type=%E5%9F%BA%E7%A1%80%E8%B7%9F%E8%BF%9B&item_code=ITEM-LOCAL-001&keyword=KW-FOLLOWUP&from_date=2026-05-01&to_date=2026-05-31&status=enabled&page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/production/followup-templates?page=1&page_size=20",
+      "resourceType": "fetch"
+    }
+  ]
+}

@@ -225,7 +225,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/production/productionProcess',
-    redirect: { path: '/production/plans', query: { parity: 'production-quote' } },
+    redirect: { path: '/production/plans', query: { parity: 'production-followup-template' } },
   },
   {
     path: '/materialPurchase/materialPurchaseProcess',
