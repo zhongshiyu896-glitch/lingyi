@@ -1,0 +1,10 @@
+entry_order	check_id	status	observed	evidence
+1	route_parity_mapping	PASS	/materialStock/materialTypeStock 最终落点为 /sales-inventory/stock-ledger?parity=material-stock	task_z012b_21_material_stock_interaction_browser_result.json.target_results[0].final_url
+2	material_stock_parity_hint	PASS	data-testid=material-stock-parity-hint 可见且语义正确	SalesInventoryStockLedger.vue + browser_result.target_results
+3	filter_interaction	PASS	item_code/warehouse/keyword/status/from_date/to_date 可交互	task_z012b_21_material_stock_interaction_browser_result.json.filter_values_before_reset
+4	pagination_interaction	PASS	pagination_shell_visible=true 且分页交互可执行	task_z012b_21_material_stock_interaction_browser_result.json.pagination_shell_visible
+5	reset_interaction	PASS	筛选重置后输入恢复默认空值	task_z012b_21_material_stock_interaction_browser_result.json.filter_values_after_reset
+6	readonly_dev_guards	PASS	write_guard_count=2 且 write_guard_disabled_count=2	task_z012b_21_material_stock_interaction_browser_result.json
+7	empty_error_state_semantics	PASS	物料库存空态/错误态/无权限 parity 壳层语义符合候选要求	SalesInventoryStockLedger.vue + task_z012b_21_material_stock_interaction_browser_result.json
+8	network_get_only	PASS	request_methods=[GET], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0	task_z012b_21_material_stock_interaction_browser_result.json
+9	typecheck_build	PASS	npm run typecheck PASS; npm run build PASS	terminal output

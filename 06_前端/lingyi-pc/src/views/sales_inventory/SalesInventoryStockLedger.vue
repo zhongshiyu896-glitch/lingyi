@@ -4,15 +4,15 @@
       <template #header>
         <div class="header-row">
           <div class="title-group">
-            <span class="title">库存台账</span>
-            <span class="sub-title">TASK-Y99-FE-02 / 只读真实交互首版</span>
+            <span class="title">{{ stockLedgerTitle }}</span>
+            <span class="sub-title">{{ stockLedgerSubTitle }}</span>
           </div>
           <el-tag type="info" effect="plain">本地首版</el-tag>
         </div>
       </template>
 
       <section class="stock-ledger-section" data-testid="stock-ledger-section">
-        <el-form :inline="true" :model="query" class="query-form" data-testid="stock-ledger-filter-form">
+          <el-form :inline="true" :model="query" class="query-form" data-testid="stock-ledger-filter-form">
           <el-form-item label="款号">
             <el-input
               v-model="query.item_code"
@@ -40,6 +40,24 @@
               @keyup.enter="onSearch"
             />
           </el-form-item>
+          <el-form-item label="关键词">
+            <el-input
+              v-model="query.keyword"
+              clearable
+              placeholder="凭证号/凭证类型/仓库（本地过滤）"
+              data-testid="stock-ledger-keyword-input"
+              @keyup.enter="onSearch"
+            />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-input
+              v-model="query.status"
+              clearable
+              placeholder="正常/低库存/缺货（本地过滤）"
+              data-testid="stock-ledger-status-input"
+              @keyup.enter="onSearch"
+            />
+          </el-form-item>
           <el-form-item label="开始日期">
             <el-date-picker
               v-model="query.from_date"
@@ -61,26 +79,44 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button :disabled="!canRead" data-testid="stock-ledger-reset-button" @click="onReset">重置</el-button>
-            <el-button type="primary" :disabled="!canRead" data-testid="stock-ledger-query-button" @click="onSearch">
+            <el-button :disabled="!canRead && !isMaterialStockParity" data-testid="stock-ledger-reset-button" @click="onReset">
+              重置
+            </el-button>
+            <el-button
+              type="primary"
+              :disabled="!canRead && !isMaterialStockParity"
+              data-testid="stock-ledger-query-button"
+              @click="onSearch"
+            >
               查询
             </el-button>
           </el-form-item>
         </el-form>
 
+        <el-alert
+          v-if="isMaterialStockParity"
+          type="info"
+          :closable="false"
+          data-testid="material-stock-parity-hint"
+          title="衣算云 / 物料进销存 / 物料库存（只读交互）"
+          description="当前为 parity=material-stock，本地仅开放读取、筛选、分页、空态/错误态验证。"
+        />
+
         <div class="toolbar-row" data-testid="stock-ledger-guarded-actions">
           <el-button
             type="primary"
-            :disabled="!canRead || localWriteLoading"
+            :disabled="!canRead || localWriteLoading || isMaterialStockParity"
+            data-write-guard="guarded:readonly-dev-only"
             data-testid="stock-ledger-local-draft-open-button"
-            @click="applyLocalSalesOrderDraft"
+            @click="onOpenLocalDraftGuarded"
           >
             下单（本地草稿）
           </el-button>
           <el-button
-            :disabled="!canRead || !localDraft || localWriteLoading"
+            :disabled="!canRead || !localDraft || localWriteLoading || isMaterialStockParity"
+            data-write-guard="guarded:readonly-dev-only"
             data-testid="stock-ledger-local-draft-void-button"
-            @click="voidLocalSalesOrderDraft"
+            @click="onVoidLocalDraftGuarded"
           >
             作废草稿
           </el-button>
@@ -93,6 +129,7 @@
           <el-form-item label="scenario_tag">
             <el-input
               v-model="localWriteForm.scenario_tag"
+              :disabled="isMaterialStockParity"
               clearable
               placeholder="Z003-SALES-ORDER-YYYYMMDD-NNN"
               data-testid="stock-ledger-local-scenario-tag-input"
@@ -101,6 +138,7 @@
           <el-form-item label="公司">
             <el-input
               v-model="localWriteForm.company"
+              :disabled="isMaterialStockParity"
               clearable
               placeholder="LY-TEST"
               data-testid="stock-ledger-local-company-input"
@@ -109,6 +147,7 @@
           <el-form-item label="客户">
             <el-input
               v-model="localWriteForm.customer"
+              :disabled="isMaterialStockParity"
               clearable
               placeholder="LOCAL-CUSTOMER"
               data-testid="stock-ledger-local-customer-input"
@@ -117,6 +156,7 @@
           <el-form-item label="款号">
             <el-input
               v-model="localWriteForm.item_code"
+              :disabled="isMaterialStockParity"
               clearable
               placeholder="SO-ITEM-001"
               data-testid="stock-ledger-local-item-code-input"
@@ -125,6 +165,7 @@
           <el-form-item label="仓库">
             <el-input
               v-model="localWriteForm.warehouse"
+              :disabled="isMaterialStockParity"
               clearable
               placeholder="SO-WH-001"
               data-testid="stock-ledger-local-warehouse-input"
@@ -133,6 +174,7 @@
           <el-form-item label="数量">
             <el-input
               v-model="localWriteForm.qty"
+              :disabled="isMaterialStockParity"
               clearable
               placeholder="1"
               data-testid="stock-ledger-local-qty-input"
@@ -185,13 +227,28 @@
           type="error"
           :closable="false"
           data-testid="stock-ledger-error-state"
-          :title="`库存台账加载失败：${lastError}`"
+          :title="stockLedgerErrorTitle"
         />
 
-        <el-empty v-if="!canRead" data-testid="stock-ledger-permission-state" description="无库存台账查看权限" />
+        <el-empty
+          v-if="!canRead && !isMaterialStockParity"
+          data-testid="stock-ledger-permission-state"
+          :description="stockLedgerPermissionDescription"
+        />
         <template v-else>
+          <el-alert
+            v-if="!canRead && isMaterialStockParity"
+            class="error-alert"
+            type="warning"
+            :closable="false"
+            data-testid="stock-ledger-parity-readonly-shell-state"
+            title="当前账号无物料库存读取权限，页面仅保留本地只读交互壳层用于验证。"
+          />
           <div class="summary-row" data-testid="stock-ledger-summary-row">
             <el-tag type="info" effect="plain">台账记录：{{ total }}</el-tag>
+            <el-tag type="primary" effect="plain" data-testid="stock-ledger-filtered-count">
+              当前筛选结果：{{ stockLedgerFilteredRows.length }}
+            </el-tag>
             <el-tag type="success" effect="plain">变动数量合计：{{ totalQty }}</el-tag>
             <el-tag type="warning" effect="plain">在库结存合计：{{ stockSummaryBalanceQty }}</el-tag>
             <el-tag type="primary" effect="plain" data-testid="stock-ledger-aggregation-count">
@@ -206,11 +263,11 @@
           </div>
 
           <el-table
-            :data="rows"
+            :data="stockLedgerFilteredRows"
             border
             v-loading="loading"
             data-testid="stock-ledger-table"
-            empty-text="暂无库存台账数据，请调整筛选条件后重试"
+            :empty-text="stockLedgerEmptyText"
           >
             <el-table-column prop="posting_date" label="过账日期" min-width="120" />
             <el-table-column prop="posting_time" label="过账时间" min-width="110" />
@@ -219,6 +276,13 @@
             <el-table-column prop="warehouse" label="仓库" min-width="130" />
             <el-table-column prop="voucher_type" label="凭证类型" min-width="120" />
             <el-table-column prop="voucher_no" label="凭证号" min-width="160" />
+            <el-table-column label="状态" min-width="100">
+              <template #default="scope">
+                <el-tag :type="stockLedgerStatusTagType(scope.row)" effect="plain">
+                  {{ stockLedgerStatusLabel(scope.row) }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="变动数量" min-width="110">
               <template #default="scope">{{ formatAmount(scope.row.actual_qty) }}</template>
             </el-table-column>
@@ -247,6 +311,7 @@
               :page-size="query.page_size"
               :total="total"
               :page-sizes="[10, 20, 50, 100]"
+              :hide-on-single-page="!isMaterialStockParity"
               @current-change="onPageChange"
               @size-change="onSizeChange"
             />
@@ -3389,6 +3454,61 @@ const canExport = computed<boolean>(() => {
   )
 })
 
+const stockLedgerParity = computed<string>(() => {
+  return typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+})
+
+const isMaterialStockParity = computed<boolean>(() => stockLedgerParity.value === 'material-stock')
+
+const stockLedgerTitle = computed<string>(() => {
+  return isMaterialStockParity.value ? '物料库存台账' : '库存台账'
+})
+
+const stockLedgerSubTitle = computed<string>(() => {
+  return isMaterialStockParity.value
+    ? '衣算云 / 物料进销存 / 物料库存（只读交互）'
+    : 'TASK-Y99-FE-02 / 只读真实交互首版'
+})
+
+const stockLedgerErrorTitle = computed<string>(() => {
+  if (!lastError.value) {
+    return ''
+  }
+  return isMaterialStockParity.value ? `物料库存加载失败：${lastError.value}` : `库存台账加载失败：${lastError.value}`
+})
+
+const stockLedgerEmptyText = computed<string>(() => {
+  return isMaterialStockParity.value
+    ? '暂无物料库存台账数据，请调整筛选条件后重试'
+    : '暂无库存台账数据，请调整筛选条件后重试'
+})
+
+const stockLedgerPermissionDescription = computed<string>(() => {
+  return isMaterialStockParity.value ? '无物料库存台账查看权限' : '无库存台账查看权限'
+})
+
+const stockLedgerStatusLabel = (row: StockLedgerItem): '缺货' | '低库存' | '正常' => {
+  const balanceQty = Number(row.qty_after_transaction ?? 0)
+  if (balanceQty <= 0) {
+    return '缺货'
+  }
+  if (balanceQty < 20) {
+    return '低库存'
+  }
+  return '正常'
+}
+
+const stockLedgerStatusTagType = (row: StockLedgerItem): 'danger' | 'warning' | 'success' => {
+  const status = stockLedgerStatusLabel(row)
+  if (status === '缺货') {
+    return 'danger'
+  }
+  if (status === '低库存') {
+    return 'warning'
+  }
+  return 'success'
+}
+
 const localWriteLoading = ref<boolean>(false)
 const localWriteFeedback = ref<string>('')
 const localWriteFeedbackType = ref<'success' | 'warning' | 'error'>('success')
@@ -3745,6 +3865,8 @@ const query = reactive({
   item_code: '',
   company: '',
   warehouse: '',
+  keyword: '',
+  status: '',
   from_date: '',
   to_date: '',
   page: 1,
@@ -3755,6 +3877,8 @@ const applyRoutePrefill = (): void => {
   const itemCode = typeof route.query.item_code === 'string' ? route.query.item_code.trim() : ''
   const company = typeof route.query.company === 'string' ? route.query.company.trim() : ''
   const warehouse = typeof route.query.warehouse === 'string' ? route.query.warehouse.trim() : ''
+  const keyword = typeof route.query.keyword === 'string' ? route.query.keyword.trim() : ''
+  const status = typeof route.query.status === 'string' ? route.query.status.trim() : ''
   if (itemCode) {
     query.item_code = itemCode
   }
@@ -3764,7 +3888,30 @@ const applyRoutePrefill = (): void => {
   if (warehouse) {
     query.warehouse = warehouse
   }
+  if (keyword) {
+    query.keyword = keyword
+  }
+  if (status) {
+    query.status = status
+  }
 }
+
+const stockLedgerFilteredRows = computed<StockLedgerItem[]>(() => {
+  const keyword = query.keyword.trim().toLowerCase()
+  const status = query.status.trim()
+  return rows.value.filter((row) => {
+    if (status && stockLedgerStatusLabel(row) !== status) {
+      return false
+    }
+    if (!keyword) {
+      return true
+    }
+    const searchable = [row.item_code, row.company, row.warehouse, row.voucher_no, row.voucher_type]
+      .map((value) => String(value || '').toLowerCase())
+      .join(' ')
+    return searchable.includes(keyword)
+  })
+})
 
 const materialTransferQuery = reactive({
   item_code: '',
@@ -4611,6 +4758,8 @@ const onReset = (): void => {
   query.item_code = ''
   query.company = ''
   query.warehouse = ''
+  query.keyword = ''
+  query.status = ''
   query.from_date = ''
   query.to_date = ''
   query.page = 1
@@ -4703,6 +4852,14 @@ const applyLocalSalesOrderDraft = async (): Promise<void> => {
   }
 }
 
+const onOpenLocalDraftGuarded = (): void => {
+  if (isMaterialStockParity.value) {
+    onGuardedAction('物料库存草稿写入（dev-only）')
+    return
+  }
+  void applyLocalSalesOrderDraft()
+}
+
 const voidLocalSalesOrderDraft = async (): Promise<void> => {
   if (!canRead.value || !localDraft.value) {
     return
@@ -4743,6 +4900,14 @@ const voidLocalSalesOrderDraft = async (): Promise<void> => {
   } finally {
     localWriteLoading.value = false
   }
+}
+
+const onVoidLocalDraftGuarded = (): void => {
+  if (isMaterialStockParity.value) {
+    onGuardedAction('物料库存草稿作废（dev-only）')
+    return
+  }
+  void voidLocalSalesOrderDraft()
 }
 
 const onGuardedAction = (actionName: string): void => {

@@ -1,0 +1,130 @@
+{
+  "task_id": "TASK-Z012B-21-IMPL",
+  "role": "B Engineer",
+  "source_head": "eac87c67f91d7b1336317f298e9d25e164ad1f5a",
+  "selected_candidate_id": "Z012-CAND-004",
+  "code_changed": true,
+  "runtime_base_url": "http://127.0.0.1:5176",
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5176",
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue"
+  ],
+  "changed_product_files_count": 1,
+  "unchanged_allowlist_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/sales_inventory.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/warehouse.ts"
+  ],
+  "backend_changed": false,
+  "implementation": {
+    "material_stock_parity_hint": "新增并稳定保留 data-testid=material-stock-parity-hint，展示“衣算云 / 物料进销存 / 物料库存（只读交互）”。",
+    "filter_interaction": "新增 keyword/status 本地筛选并保持 item_code/warehouse/date 区间筛选可交互，含路由预填与重置恢复。",
+    "pagination_interaction": "parity 场景下分页壳层稳定可见，支持分页交互验收。",
+    "readonly_dev_guard": "下单草稿/作废草稿写动作保持 guarded:readonly-dev-only 且在 parity 场景禁用，不触发写请求。",
+    "empty_error_state_semantics": "错误态/空态/权限态使用物料库存专项语义文案，并在无权限 + parity 场景显示只读壳层提示。",
+    "api_adapter": "未新增写接口；本轮未修改 sales_inventory.ts 与 warehouse.ts。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/task_z012b_21_material_stock_interaction_browser_result.json",
+    "browser_targets": [
+      "http://127.0.0.1:5173/materialStock/materialTypeStock",
+      "http://127.0.0.1:5173/sales-inventory/stock-ledger?parity=material-stock",
+      "http://127.0.0.1:5173/sales-inventory/stock-ledger"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "network_error_count": 0,
+    "material_stock_parity_hint_status": "PASS",
+    "filter_interaction_status": "PASS",
+    "pagination_interaction_status": "PASS",
+    "reset_interaction_status": "PASS",
+    "readonly_dev_guard_status": "PASS",
+    "empty_error_state_semantics_status": "PASS",
+    "screenshot_dir": "/tmp/task_z012b21_material_stock_screenshots",
+    "screenshot_count": 4,
+    "valid_target_screenshot_count": 3
+  },
+  "result_check_count": 9,
+  "result_pass_count": 9,
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "production_account_used": false,
+    "remote_lifecycle_action_executed": false
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "route_parity_mapping",
+      "status": "PASS",
+      "observed": "/materialStock/materialTypeStock 最终落点为 /sales-inventory/stock-ledger?parity=material-stock",
+      "evidence": "task_z012b_21_material_stock_interaction_browser_result.json.target_results[0].final_url"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "material_stock_parity_hint",
+      "status": "PASS",
+      "observed": "data-testid=material-stock-parity-hint 可见且语义正确",
+      "evidence": "SalesInventoryStockLedger.vue + browser_result.target_results"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "filter_interaction",
+      "status": "PASS",
+      "observed": "item_code/warehouse/keyword/status/from_date/to_date 可交互",
+      "evidence": "task_z012b_21_material_stock_interaction_browser_result.json.filter_values_before_reset"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "pagination_interaction",
+      "status": "PASS",
+      "observed": "pagination_shell_visible=true 且分页交互可执行",
+      "evidence": "task_z012b_21_material_stock_interaction_browser_result.json.pagination_shell_visible"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "reset_interaction",
+      "status": "PASS",
+      "observed": "筛选重置后输入恢复默认空值",
+      "evidence": "task_z012b_21_material_stock_interaction_browser_result.json.filter_values_after_reset"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "readonly_dev_guards",
+      "status": "PASS",
+      "observed": "write_guard_count=2 且 write_guard_disabled_count=2",
+      "evidence": "task_z012b_21_material_stock_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "empty_error_state_semantics",
+      "status": "PASS",
+      "observed": "物料库存空态/错误态/无权限 parity 壳层语义符合候选要求",
+      "evidence": "SalesInventoryStockLedger.vue + task_z012b_21_material_stock_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "network_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[GET], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0",
+      "evidence": "task_z012b_21_material_stock_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "typecheck_build",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS; npm run build PASS",
+      "evidence": "terminal output"
+    }
+  ]
+}

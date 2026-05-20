@@ -1,0 +1,589 @@
+{
+  "run_tag": "2026-05-20T08-01-11-717Z",
+  "started_at": "2026-05-20T08:01:22.185Z",
+  "requested_browser_targets": [
+    "http://127.0.0.1:5173/materialStock/materialTypeStock",
+    "http://127.0.0.1:5173/sales-inventory/stock-ledger?parity=material-stock",
+    "http://127.0.0.1:5173/sales-inventory/stock-ledger"
+  ],
+  "runtime_browser_targets": [
+    "http://127.0.0.1:5176/materialStock/materialTypeStock",
+    "http://127.0.0.1:5176/sales-inventory/stock-ledger?parity=material-stock",
+    "http://127.0.0.1:5176/sales-inventory/stock-ledger"
+  ],
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5176",
+  "target_results": [
+    {
+      "target_id": "Z012-MATERIAL-STOCK-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/materialStock/materialTypeStock",
+      "attempted_url": "http://127.0.0.1:5176/materialStock/materialTypeStock",
+      "final_url": "http://127.0.0.1:5176/sales-inventory/stock-ledger?parity=material-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b21_material_stock_screenshots/2026-05-20T08-01-11-717Z_Z012-MATERIAL-STOCK-TARGET-1.png"
+    },
+    {
+      "target_id": "Z012-MATERIAL-STOCK-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/sales-inventory/stock-ledger?parity=material-stock",
+      "attempted_url": "http://127.0.0.1:5176/sales-inventory/stock-ledger?parity=material-stock",
+      "final_url": "http://127.0.0.1:5176/sales-inventory/stock-ledger?parity=material-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b21_material_stock_screenshots/2026-05-20T08-01-11-717Z_Z012-MATERIAL-STOCK-TARGET-2.png"
+    },
+    {
+      "target_id": "Z012-MATERIAL-STOCK-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/sales-inventory/stock-ledger",
+      "attempted_url": "http://127.0.0.1:5176/sales-inventory/stock-ledger",
+      "final_url": "http://127.0.0.1:5176/sales-inventory/stock-ledger",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b21_material_stock_screenshots/2026-05-20T08-01-11-717Z_Z012-MATERIAL-STOCK-TARGET-3.png"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z012b21_material_stock_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z012b21_material_stock_screenshots/2026-05-20T08-01-11-717Z_Z012-MATERIAL-STOCK-TARGET-1.png",
+    "/tmp/task_z012b21_material_stock_screenshots/2026-05-20T08-01-11-717Z_Z012-MATERIAL-STOCK-TARGET-2.png",
+    "/tmp/task_z012b21_material_stock_screenshots/2026-05-20T08-01-11-717Z_Z012-MATERIAL-STOCK-TARGET-3.png",
+    "/tmp/task_z012b21_material_stock_screenshots/2026-05-20T08-01-11-717Z_Z012-MATERIAL-STOCK-INTERACTION.png"
+  ],
+  "screenshot_count": 4,
+  "valid_target_screenshot_count": 3,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "console_error_count": 4,
+  "expected_console_error_count": 4,
+  "blocking_response_error_count": 0,
+  "expected_response_error_count": 4,
+  "page_error_count": 0,
+  "network_error_count": 0,
+  "material_stock_parity_hint_status": "PASS",
+  "filter_interaction_status": "PASS",
+  "pagination_interaction_status": "PASS",
+  "reset_interaction_status": "PASS",
+  "readonly_dev_guard_status": "PASS",
+  "empty_error_state_semantics_status": "PASS",
+  "filter_values_before_reset": {
+    "item_code": "ITEM-LOCAL-001",
+    "warehouse": "WH-LOCAL-001",
+    "keyword": "KW-MATERIAL",
+    "status": "低库存"
+  },
+  "filter_values_after_reset": {
+    "item_code": "",
+    "warehouse": "",
+    "keyword": "",
+    "status": ""
+  },
+  "write_guard_count": 2,
+  "write_guard_disabled_count": 2,
+  "pagination_shell_visible": true,
+  "interaction_error": null,
+  "non_get_requests": [],
+  "request_failed": [],
+  "response_errors": [
+    {
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1",
+      "status": 500,
+      "url": "http://127.0.0.1:5176/api/auth/me"
+    },
+    {
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2",
+      "status": 500,
+      "url": "http://127.0.0.1:5176/api/auth/me"
+    },
+    {
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3",
+      "status": 500,
+      "url": "http://127.0.0.1:5176/api/auth/me"
+    },
+    {
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION",
+      "status": 500,
+      "url": "http://127.0.0.1:5176/api/auth/me"
+    }
+  ],
+  "console_errors": [
+    {
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    }
+  ],
+  "page_errors": [],
+  "sample_request_log": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/materialStock/materialTypeStock",
+      "resourceType": "document",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/main.ts?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/router/index.ts?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/sales_inventory/SalesInventoryStockLedger.vue?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/sales_inventory.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/sales_inventory/SalesInventoryStockLedger.vue?vue&type=style&index=0&scoped=32ce1aa5&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "resourceType": "fetch",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/sales-inventory/stock-ledger?parity=material-stock",
+      "resourceType": "document",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/main.ts?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/router/index.ts?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/sales_inventory/SalesInventoryStockLedger.vue?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/sales_inventory.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/sales_inventory/SalesInventoryStockLedger.vue?vue&type=style&index=0&scoped=32ce1aa5&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "resourceType": "fetch",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/sales-inventory/stock-ledger",
+      "resourceType": "document",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/main.ts?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/router/index.ts?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/sales_inventory/SalesInventoryStockLedger.vue?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/sales_inventory.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/sales_inventory/SalesInventoryStockLedger.vue?vue&type=style&index=0&scoped=32ce1aa5&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "resourceType": "fetch",
+      "targetId": "Z012-MATERIAL-STOCK-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/sales-inventory/stock-ledger?parity=material-stock",
+      "resourceType": "document",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/main.ts?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/router/index.ts?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/sales_inventory/SalesInventoryStockLedger.vue?t=1779263919382",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/sales_inventory.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/views/sales_inventory/SalesInventoryStockLedger.vue?vue&type=style&index=0&scoped=32ce1aa5&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5176/api/auth/me",
+      "resourceType": "fetch",
+      "targetId": "Z012-MATERIAL-STOCK-INTERACTION"
+    }
+  ]
+}
