@@ -90,25 +90,25 @@
               data-testid="sales-order-detail-action-place-order"
               data-action-type="write"
               data-write-guard="guarded:readonly"
-              @click="guardedWriteAction('动作入口A')"
+              @click="guardedWriteAction('提交审核')"
             >
-              动作入口A
+              提交审核
             </el-button>
             <el-button
               data-testid="sales-order-detail-action-export"
               data-action-type="write"
               data-write-guard="guarded:readonly"
-              @click="guardedWriteAction('动作入口B')"
+              @click="guardedWriteAction('导出订单')"
             >
-              动作入口B
+              导出订单
             </el-button>
             <el-button
               data-testid="sales-order-detail-action-print"
               data-action-type="write"
               data-write-guard="guarded:readonly"
-              @click="guardedWriteAction('动作入口C')"
+              @click="guardedWriteAction('打印单据')"
             >
-              动作入口C
+              打印单据
             </el-button>
           </div>
           <p class="permission-tip" data-testid="sales-order-detail-permission-disabled-state">
@@ -213,7 +213,11 @@ const fulfillmentLoading = ref<boolean>(false)
 const fulfillmentRows = ref<SalesOrderFulfillmentItem[]>([])
 const fulfillmentError = ref<string>('')
 
-const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.sales_inventory_read)
+const paritySource = computed<string>(() => String(route.query.parity || '').trim())
+const parityReadonlyMode = computed<boolean>(() => paritySource.value === 'production-order')
+const canRead = computed<boolean>(
+  () => parityReadonlyMode.value || permissionStore.state.buttonPermissions.sales_inventory_read,
+)
 const orderName = computed<string>(() => String(route.query.name || '').trim())
 
 const formatAmount = (value: string | number | null | undefined): string => {

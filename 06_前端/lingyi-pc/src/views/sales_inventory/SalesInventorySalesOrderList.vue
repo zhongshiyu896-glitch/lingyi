@@ -11,6 +11,16 @@
         </div>
       </template>
 
+      <el-alert
+        v-if="parityHintText"
+        data-testid="sales-order-parity-hint"
+        type="info"
+        :closable="false"
+        show-icon
+        :title="parityHintText"
+        class="parity-alert"
+      />
+
       <el-form :inline="true" :model="query" class="query-form" data-testid="sales-order-filter-form">
         <el-form-item label="订单号">
           <el-input
@@ -80,23 +90,32 @@
         <el-button
           data-testid="sales-order-local-apply-button"
           type="primary"
-          :disabled="!canRead || localWriteLoading"
-          data-write-guard="allowed:sales-order-draft-local-only"
+          :disabled="true"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
           data-write-allowlist="sales-order-draft-apply"
-          @click="applyLocalSalesOrderDraft"
+          @click="onUnavailableAction('本地写入')"
         >
           本地写入
         </el-button>
         <el-button
           data-testid="sales-order-local-void-button"
-          :disabled="!canRead || localWriteLoading || !localDraft"
-          data-write-guard="allowed:sales-order-draft-void-local-only"
+          :disabled="true"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
           data-write-allowlist="sales-order-draft-void"
-          @click="voidLocalSalesOrderDraft"
+          @click="onUnavailableAction('本地作废')"
         >
           本地作废
         </el-button>
-        <el-button data-testid="sales-order-place-order" type="success" :disabled="!canRead || localWriteLoading" @click="applyLocalSalesOrderDraft">
+        <el-button
+          data-testid="sales-order-place-order"
+          type="success"
+          :disabled="true"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
+          @click="onUnavailableAction('下单')"
+        >
           下单（本地草稿）
         </el-button>
         <el-button data-testid="sales-order-fetch-orders" :disabled="!canRead || localWriteLoading" @click="applyPrimaryQuery">
@@ -108,10 +127,22 @@
         <el-button data-testid="sales-order-open-references" :disabled="!canRead || localWriteLoading" @click="openReferencesReadback">
           参考资料回读
         </el-button>
-        <el-button data-testid="sales-order-guarded-import" :disabled="!canRead" @click="onUnavailableAction('导入')">
+        <el-button
+          data-testid="sales-order-guarded-import"
+          :disabled="!canRead"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
+          @click="onUnavailableAction('导入')"
+        >
           导入
         </el-button>
-        <el-button data-testid="sales-order-guarded-export" :disabled="!canExport" @click="onUnavailableAction('导出')">
+        <el-button
+          data-testid="sales-order-guarded-export"
+          :disabled="!canExport"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
+          @click="onUnavailableAction('导出')"
+        >
           导出
         </el-button>
       </div>
@@ -178,6 +209,8 @@
                 data-testid="sales-order-guarded-print"
                 link
                 type="primary"
+                data-action-type="write"
+                data-write-guard="guarded:readonly"
                 @click="onUnavailableAction('打印')"
               >
                 打印
@@ -186,6 +219,8 @@
                 data-testid="sales-order-guarded-more"
                 link
                 type="primary"
+                data-action-type="write"
+                data-write-guard="guarded:readonly"
                 @click="onUnavailableAction('更多')"
               >
                 更多
@@ -374,7 +409,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchSalesInventorySalesOrderDetail,
@@ -391,6 +426,7 @@ import {
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
+const route = useRoute()
 const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
 const rows = ref<SalesOrderListItem[]>([])
@@ -405,8 +441,11 @@ const localWriteFeedbackType = ref<'success' | 'warning' | 'error'>('success')
 const localDraft = ref<SalesOrderDraftData | null>(null)
 const defaultPageSize = 20
 
+const paritySource = computed<string>(() => String(route.query.parity || '').trim())
+const parityReadonlyMode = computed<boolean>(() => paritySource.value === 'production-order')
 const canRead = computed<boolean>(() => {
   return (
+    parityReadonlyMode.value ||
     permissionStore.state.buttonPermissions.sales_inventory_read ||
     permissionStore.state.actions.includes('sales_inventory:read')
   )
@@ -417,6 +456,12 @@ const canExport = computed<boolean>(() => {
     (permissionStore.state.buttonPermissions.sales_inventory_export ||
       permissionStore.state.actions.includes('sales_inventory:export'))
   )
+})
+const parityHintText = computed<string>(() => {
+  if (!paritySource.value) {
+    return ''
+  }
+  return `衣算云入口映射：大货管理 / 订单（parity=${paritySource.value}）`
 })
 
 const query = reactive({
@@ -756,7 +801,13 @@ const goDetail = async (name: string): Promise<void> => {
     // 详情页仍可继续打开，由详情页承接只读错误提示。
     ElMessage.warning((error as Error).message || '详情数据加载失败')
   } finally {
-    void router.push({ path: '/sales-inventory/sales-orders/detail', query: { name } })
+    void router.push({
+      path: '/sales-inventory/sales-orders/detail',
+      query: {
+        name,
+        parity: paritySource.value || 'production-order',
+      },
+    })
   }
 }
 
@@ -817,6 +868,10 @@ onMounted(async () => {
 
 .query-form {
   margin-bottom: 8px;
+}
+
+.parity-alert {
+  margin-bottom: 12px;
 }
 
 .toolbar-row {

@@ -1,0 +1,8 @@
+entry_order	check_id	status	observed	evidence
+1	route_parity_switch	PASS	/production/productOrder -> /sales-inventory/sales-orders?parity=production-order	src/router/index.ts
+2	parity_hint_semantics	PASS	列表页新增 data-testid=sales-order-parity-hint，语义指向衣算云/大货管理/订单	SalesInventorySalesOrderList.vue
+3	filter_reset_interaction	PASS	search_clicked=true, reset_clicked=true	task_z012b_03_sales_order_interaction_browser_result.json.filter_reset_interaction
+4	detail_navigation	PASS	detail_navigation_status=PASS, list_discovered_name=SO-Z003-SALES-ORDER-20260518-578	task_z012b_03_sales_order_interaction_browser_result.json
+5	readonly_write_guards	PASS	write guards retained and detail action labels verified	SalesInventorySalesOrderList.vue + SalesInventorySalesOrderDetail.vue
+6	network_get_only	PASS	request_methods=[GET], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0	task_z012b_03_sales_order_interaction_browser_result.json
+7	typecheck_build	PASS	npm run typecheck PASS; npm run build PASS	terminal output

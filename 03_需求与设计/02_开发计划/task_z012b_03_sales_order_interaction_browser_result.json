@@ -1,0 +1,363 @@
+{
+  "run_tag": "2026-05-20T01-24-29-649Z",
+  "started_at": "2026-05-20T01:24:29.649Z",
+  "requested_browser_targets": [
+    "http://127.0.0.1:5173/production/productOrder",
+    "http://127.0.0.1:5173/sales-inventory/sales-orders"
+  ],
+  "runtime_browser_targets": [
+    "http://127.0.0.1:5175/production/productOrder",
+    "http://127.0.0.1:5175/sales-inventory/sales-orders"
+  ],
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5175",
+  "browser_targets_executed": [
+    {
+      "target_id": "Z012-TARGET-001",
+      "requested_url": "http://127.0.0.1:5173/production/productOrder",
+      "attempted_url": "http://127.0.0.1:5175/production/productOrder",
+      "final_url": "http://127.0.0.1:5175/sales-inventory/sales-orders?parity=production-order"
+    },
+    {
+      "target_id": "Z012-TARGET-002",
+      "requested_url": "http://127.0.0.1:5173/sales-inventory/sales-orders",
+      "attempted_url": "http://127.0.0.1:5175/sales-inventory/sales-orders",
+      "final_url": "http://127.0.0.1:5175/sales-inventory/sales-orders"
+    }
+  ],
+  "target_results": [
+    {
+      "target_id": "Z012-TARGET-001",
+      "requested_url": "http://127.0.0.1:5173/production/productOrder",
+      "attempted_url": "http://127.0.0.1:5175/production/productOrder",
+      "final_url": "http://127.0.0.1:5175/sales-inventory/sales-orders?parity=production-order",
+      "http_status": 200,
+      "selector_pass": true,
+      "key_selector_checks": {
+        "sales_order_page": true,
+        "parity_hint": true
+      },
+      "screenshot_path": "/tmp/task_z012b03_sales_order_screenshots/2026-05-20T01-24-29-649Z_Z012-TARGET-001_productOrder.png"
+    },
+    {
+      "target_id": "Z012-TARGET-002",
+      "requested_url": "http://127.0.0.1:5173/sales-inventory/sales-orders",
+      "attempted_url": "http://127.0.0.1:5175/sales-inventory/sales-orders",
+      "final_url": "http://127.0.0.1:5175/sales-inventory/sales-orders",
+      "http_status": 200,
+      "selector_pass": true,
+      "key_selector_checks": {
+        "sales_order_page": true,
+        "filter_form": true
+      },
+      "screenshot_path": "/tmp/task_z012b03_sales_order_screenshots/2026-05-20T01-24-29-649Z_Z012-TARGET-002_sales-orders.png"
+    }
+  ],
+  "filter_reset_interaction": {
+    "search_clicked": true,
+    "reset_clicked": true,
+    "interacted": true
+  },
+  "detail_navigation_status": "PASS",
+  "list_discovered_name": "SO-Z003-SALES-ORDER-20260518-578",
+  "detail_final_url": "http://127.0.0.1:5175/sales-inventory/sales-orders/detail?name=SO-Z003-SALES-ORDER-20260518-578&parity=production-order",
+  "detail_action_labels_verified": true,
+  "screenshot_dir": "/tmp/task_z012b03_sales_order_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z012b03_sales_order_screenshots/2026-05-20T01-24-29-649Z_Z012-TARGET-001_productOrder.png",
+    "/tmp/task_z012b03_sales_order_screenshots/2026-05-20T01-24-29-649Z_Z012-TARGET-002_sales-orders.png",
+    "/tmp/task_z012b03_sales_order_screenshots/2026-05-20T01-24-29-649Z_target3_sales_order_detail.png"
+  ],
+  "screenshot_count": 3,
+  "valid_target_screenshot_count": 3,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "console_error_count": 0,
+  "page_error_count": 0,
+  "network_error_count": 0,
+  "non_get_requests": [],
+  "request_failed": [],
+  "console_errors": [],
+  "page_errors": [],
+  "sample_request_log": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/production/productOrder",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/main.ts?t=1779240209849",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/router/index.ts?t=1779240209849",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/sales_inventory/SalesInventorySalesOrderList.vue?t=1779240209849",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/sales_inventory.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/sales_inventory/SalesInventorySalesOrderList.vue?vue&type=style&index=0&scoped=5db14912&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/actions?module=sales_inventory",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-orders?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-order-fulfillment?",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/sales-inventory/sales-orders",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/main.ts?t=1779240209849",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/router/index.ts?t=1779240209849",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/sales_inventory/SalesInventorySalesOrderList.vue?t=1779240209849",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/sales_inventory.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/sales_inventory/SalesInventorySalesOrderList.vue?vue&type=style&index=0&scoped=5db14912&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/actions?module=sales_inventory",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-orders?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-order-fulfillment?",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-orders?order_no=SO-&keyword=LOCAL&page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-order-fulfillment?",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-orders?page=1&page_size=20",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-order-fulfillment?",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-orders/SO-Z003-SALES-ORDER-20260518-578",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue?t=1779239915723",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue?vue&type=style&index=0&scoped=1e7c30c3&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/actions?module=sales_inventory",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-orders/SO-Z003-SALES-ORDER-20260518-578",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/sales-inventory/sales-order-fulfillment?company=LY-TEST&item_code=SO-ITEM-001",
+      "resourceType": "fetch"
+    }
+  ]
+}
