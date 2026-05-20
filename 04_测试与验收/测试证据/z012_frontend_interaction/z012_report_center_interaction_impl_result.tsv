@@ -1,0 +1,16 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B34 source_head 与 B33 冻结头一致（1583bf3c8c7f5180578a83e4de77a39b7a75bfc8）。	task_z012b_33_report_center_interaction_boundary.json + git baseline
+2	changed_files_allowlist	PASS	06_前端差异仅 ReportCatalog.vue 与 report.ts，均在 B33 allowlist 内。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	customer_reconciliation_parity_hint	PASS	customer-reconciliation parity 提示存在且可命中。	z012_report_center_interaction_browser_result.json.customer_reconciliation_parity_hint
+5	factory_product_stock_parity_hint	PASS	factory-product-stock parity 提示存在且可命中。	z012_report_center_interaction_browser_result.json.factory_product_stock_parity_hint
+6	finance_catalog_filter_interaction	PASS	资金计划报表筛选链路可交互。	z012_report_center_interaction_browser_result.json.filter_values_before_reset
+7	report_detail_preview	PASS	资金计划报表详情预览可用。	z012_report_center_interaction_browser_result.json.report_detail_preview
+8	employee_task_filter_interaction	PASS	员工任务统计筛选链路可交互。	z012_report_center_interaction_browser_result.json.employee_task_filter_interaction
+9	employee_task_detail_preview	PASS	员工任务统计详情预览可用。	z012_report_center_interaction_browser_result.json.employee_task_detail_preview
+10	guarded_export_print_upload_actions	PASS	导出/打印/上传及确认/审核均受控，未发起副作用请求。	ReportCatalog.vue + browser_result.guarded_export_print_upload_actions
+11	empty_state_or_error_state_semantics	PASS	空态/错误态保留报表中心专项语义。	ReportCatalog.vue + browser_result.empty_state_or_error_state_semantics
+12	typecheck	PASS	npm run typecheck PASS。	terminal output
+13	build	PASS	npm run build PASS。	terminal output
+14	browser_get_only	PASS	request_methods=[GET], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。	z012_report_center_interaction_browser_result.json
+15	text_hygiene	PASS	报告、impl result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。	trailing whitespace & EOF newline checks

@@ -1,0 +1,154 @@
+{
+  "task_id": "TASK-Z012B-35-REGRESSION",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z012B-34-IMPL",
+  "source_head": "1583bf3c8c7f5180578a83e4de77a39b7a75bfc8",
+  "selected_candidate_id": "Z012-CAND-006",
+  "module": "报表中心",
+  "yisuan_page": "资金计划报表 / 员工任务统计表 / 加工成品库存报表",
+  "code_changed": false,
+  "route_count": 5,
+  "screenshot_count": 6,
+  "valid_target_screenshot_count": 5,
+  "regression_runtime_base_url": "http://127.0.0.1:5182",
+  "regression_runtime_note": "port_5173_occupied_or_not_bound_to_this_regression_runtime_switched_to_5182",
+  "typecheck": "PASS",
+  "build": "PASS",
+  "impl_result_json_tsv_alignment": "PASS (15/15)",
+  "impl_browser_result_parse": "PASS",
+  "customer_reconciliation_parity_hint": "PASS",
+  "factory_product_stock_parity_hint": "PASS",
+  "finance_catalog_filter_interaction": "PASS",
+  "report_detail_preview": "PASS",
+  "employee_task_filter_interaction": "PASS",
+  "employee_task_detail_preview": "PASS",
+  "guarded_export_print_upload_actions": "PASS",
+  "empty_state_or_error_state_semantics": "PASS",
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_endpoint_called": false,
+  "expected_non_blocking_errors": [],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  },
+  "result_check_count": 15,
+  "result_pass_count": 15,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B35 使用的 source_head 与 B34 基线一致（1583bf3c8c7f5180578a83e4de77a39b7a75bfc8）。",
+      "evidence": "TASK-Z012B-34-IMPL report + git HEAD baseline"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "impl_result_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B34 impl result JSON entries=15，TSV 数据行=15，全部 PASS。",
+      "evidence": "z012_report_center_interaction_impl_result.json/.tsv"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "impl_browser_result_parse",
+      "status": "PASS",
+      "observed": "B34 browser result JSON 可解析。",
+      "evidence": "z012_report_center_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "impl_browser_screenshot_paths_exist",
+      "status": "PASS",
+      "observed": "B34 browser result 中 6/6 截图路径存在。",
+      "evidence": "z012_report_center_interaction_browser_result.json.screenshot_paths_created"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "customer_reconciliation_parity_hint",
+      "status": "PASS",
+      "observed": "customer-reconciliation parity 提示存在且可见。",
+      "evidence": "z012_report_center_regression_browser_result.json.customer_reconciliation_parity_hint"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "factory_product_stock_parity_hint",
+      "status": "PASS",
+      "observed": "factory-product-stock parity 提示存在且可见。",
+      "evidence": "z012_report_center_regression_browser_result.json.factory_product_stock_parity_hint"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "finance_catalog_filter_interaction",
+      "status": "PASS",
+      "observed": "资金计划报表目录筛选交互可执行。",
+      "evidence": "z012_report_center_regression_browser_result.json.finance_catalog_filter_interaction"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "report_detail_preview",
+      "status": "PASS",
+      "observed": "报表详情预览可执行。",
+      "evidence": "z012_report_center_regression_browser_result.json.report_detail_preview"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "employee_task_filter_interaction",
+      "status": "PASS",
+      "observed": "员工任务统计筛选交互可执行。",
+      "evidence": "z012_report_center_regression_browser_result.json.employee_task_filter_interaction"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "employee_task_detail_preview",
+      "status": "PASS",
+      "observed": "员工任务统计详情预览可执行。",
+      "evidence": "z012_report_center_regression_browser_result.json.employee_task_detail_preview"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "guarded_export_print_upload_actions",
+      "status": "PASS",
+      "observed": "导出/打印/上传/确认/审核动作均被 guarded 或 disabled，未触发写请求。",
+      "evidence": "z012_report_center_regression_browser_result.json.guarded_export_print_upload_actions"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "empty_state_or_error_state_semantics",
+      "status": "PASS",
+      "observed": "空态/错误态语义可测。",
+      "evidence": "z012_report_center_regression_browser_result.json.empty_state_or_error_state_semantics"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 15,
+      "check_id": "browser_get_only_and_export_guard",
+      "status": "PASS",
+      "observed": "request_methods=[GET]，write_request_count=0，forbidden_request_count=0，未调用 /api/reports/catalog/export。",
+      "evidence": "z012_report_center_regression_browser_result.json"
+    }
+  ]
+}

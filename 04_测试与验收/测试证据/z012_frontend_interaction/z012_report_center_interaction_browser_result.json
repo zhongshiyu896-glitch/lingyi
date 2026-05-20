@@ -1,0 +1,725 @@
+{
+  "run_tag": "2026-05-20T12-06-57-639Z",
+  "started_at": "2026-05-20T12:07:14.763Z",
+  "requested_browser_targets": [
+    "http://127.0.0.1:5173/financial/financialReport/customerReconciliationReport",
+    "http://127.0.0.1:5173/financial/financialProcess",
+    "http://127.0.0.1:5173/reportManage/collaborationReport/factoryProductStockReport",
+    "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation",
+    "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock"
+  ],
+  "runtime_browser_targets": [
+    "http://127.0.0.1:5180/financial/financialReport/customerReconciliationReport",
+    "http://127.0.0.1:5180/financial/financialProcess",
+    "http://127.0.0.1:5180/reportManage/collaborationReport/factoryProductStockReport",
+    "http://127.0.0.1:5180/reports/catalog?parity=customer-reconciliation",
+    "http://127.0.0.1:5180/reports/catalog?parity=factory-product-stock"
+  ],
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5180",
+  "target_results": [
+    {
+      "target_id": "Z012-REPORT-CENTER-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/financial/financialReport/customerReconciliationReport",
+      "attempted_url": "http://127.0.0.1:5180/financial/financialReport/customerReconciliationReport",
+      "final_url": "http://127.0.0.1:5180/reports/catalog?parity=customer-reconciliation",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-1.png"
+    },
+    {
+      "target_id": "Z012-REPORT-CENTER-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/financial/financialProcess",
+      "attempted_url": "http://127.0.0.1:5180/financial/financialProcess",
+      "final_url": "http://127.0.0.1:5180/reports/catalog?parity=customer-reconciliation",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-2.png"
+    },
+    {
+      "target_id": "Z012-REPORT-CENTER-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/reportManage/collaborationReport/factoryProductStockReport",
+      "attempted_url": "http://127.0.0.1:5180/reportManage/collaborationReport/factoryProductStockReport",
+      "final_url": "http://127.0.0.1:5180/reports/catalog?parity=factory-product-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-3.png"
+    },
+    {
+      "target_id": "Z012-REPORT-CENTER-TARGET-4",
+      "requested_url": "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation",
+      "attempted_url": "http://127.0.0.1:5180/reports/catalog?parity=customer-reconciliation",
+      "final_url": "http://127.0.0.1:5180/reports/catalog?parity=customer-reconciliation",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-4.png"
+    },
+    {
+      "target_id": "Z012-REPORT-CENTER-TARGET-5",
+      "requested_url": "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock",
+      "attempted_url": "http://127.0.0.1:5180/reports/catalog?parity=factory-product-stock",
+      "final_url": "http://127.0.0.1:5180/reports/catalog?parity=factory-product-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-5.png"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z012b34_report_center_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-1.png",
+    "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-2.png",
+    "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-3.png",
+    "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-4.png",
+    "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-TARGET-5.png",
+    "/tmp/task_z012b34_report_center_screenshots/2026-05-20T12-06-57-639Z_Z012-REPORT-CENTER-INTERACTION.png"
+  ],
+  "screenshot_count": 6,
+  "valid_target_screenshot_count": 5,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "console_error_count": 0,
+  "expected_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "expected_response_error_count": 0,
+  "page_error_count": 0,
+  "network_error_count": 0,
+  "customer_reconciliation_parity_hint": "PASS",
+  "factory_product_stock_parity_hint": "PASS",
+  "finance_catalog_filter_interaction": "PASS",
+  "report_detail_preview": "PASS",
+  "employee_task_filter_interaction": "PASS",
+  "employee_task_detail_preview": "PASS",
+  "guarded_export_print_upload_actions": "PASS",
+  "empty_state_or_error_state_semantics": "PASS",
+  "filter_values_before_reset": {
+    "company": "领意服装",
+    "customer_keyword": "领意",
+    "employee_keyword": "E-001",
+    "approver_keyword": "A-001",
+    "from_date": "2026-05-01",
+    "to_date": "2026-05-30"
+  },
+  "filter_values_after_reset": {
+    "company": "",
+    "customer_keyword": "",
+    "employee_keyword": "",
+    "approver_keyword": "",
+    "from_date": "",
+    "to_date": ""
+  },
+  "write_guard_count": 11,
+  "write_guard_disabled_count": 6,
+  "non_get_requests": [],
+  "export_endpoint_requests": [],
+  "response_errors": [],
+  "expected_non_blocking_errors": [],
+  "console_errors": [],
+  "page_errors": [],
+  "request_failed": [],
+  "sample_request_log": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/financial/financialReport/customerReconciliationReport",
+      "resourceType": "document",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/report.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/financial/financialProcess",
+      "resourceType": "document",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/report.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/reportManage/collaborationReport/factoryProductStockReport",
+      "resourceType": "document",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/report.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/reports/catalog?parity=customer-reconciliation",
+      "resourceType": "document",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/report.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-4"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/reports/catalog?parity=factory-product-stock",
+      "resourceType": "document",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/report.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-TARGET-5"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/reports/catalog?parity=customer-reconciliation",
+      "resourceType": "document",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts?t=1779278639732",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-REPORT-CENTER-INTERACTION"
+    }
+  ]
+}

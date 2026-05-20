@@ -1,4 +1,4 @@
-import { request, requestFile, type ApiResponse } from '@/api/request'
+import { request, type ApiResponse } from '@/api/request'
 
 interface ReportCatalogQuery {
   company?: string
@@ -186,30 +186,11 @@ const fetchReportCatalogDetail = (
   return request<ReportCatalogDetailData>(url)
 }
 
-const exportReportCatalogCsv = async (query: ReportCatalogQuery): Promise<void> => {
-  const queryString = toQuery({
-    company: query.company,
-    source_module: query.source_module,
-    report_type: query.report_type,
-  })
-  const url = queryString ? `/api/reports/catalog/export?${queryString}` : '/api/reports/catalog/export'
-  const { blob, filename } = await requestFile(url, { method: 'GET' }, 'report_catalog_export.csv')
-  const objectUrl = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = objectUrl
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(objectUrl)
-}
-
 const reportApi = {
   fetchReportCatalog,
   fetchReportEmployeeTaskStatistics,
   fetchReportApprovalReports,
   fetchReportCatalogDetail,
-  exportReportCatalogCsv,
 }
 
 export default reportApi

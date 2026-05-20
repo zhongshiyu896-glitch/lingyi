@@ -1,0 +1,719 @@
+{
+  "run_tag": "2026-05-20T12-32-16-784Z",
+  "started_at": "2026-05-20T12:32:16.785Z",
+  "requested_browser_targets": [
+    "http://127.0.0.1:5173/financial/financialReport/customerReconciliationReport",
+    "http://127.0.0.1:5173/financial/financialProcess",
+    "http://127.0.0.1:5173/reportManage/collaborationReport/factoryProductStockReport",
+    "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation",
+    "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock"
+  ],
+  "runtime_browser_targets": [
+    "http://127.0.0.1:5182/financial/financialReport/customerReconciliationReport",
+    "http://127.0.0.1:5182/financial/financialProcess",
+    "http://127.0.0.1:5182/reportManage/collaborationReport/factoryProductStockReport",
+    "http://127.0.0.1:5182/reports/catalog?parity=customer-reconciliation",
+    "http://127.0.0.1:5182/reports/catalog?parity=factory-product-stock"
+  ],
+  "runtime_note": "port_5173_occupied_or_not_bound_to_this_regression_runtime_switched_to_5182",
+  "target_results": [
+    {
+      "target_id": "Z012-REPORT-CENTER-REGRESSION-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/financial/financialReport/customerReconciliationReport",
+      "attempted_url": "http://127.0.0.1:5182/financial/financialReport/customerReconciliationReport",
+      "final_url": "http://127.0.0.1:5182/reports/catalog?parity=customer-reconciliation",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-1.png"
+    },
+    {
+      "target_id": "Z012-REPORT-CENTER-REGRESSION-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/financial/financialProcess",
+      "attempted_url": "http://127.0.0.1:5182/financial/financialProcess",
+      "final_url": "http://127.0.0.1:5182/reports/catalog?parity=customer-reconciliation",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-2.png"
+    },
+    {
+      "target_id": "Z012-REPORT-CENTER-REGRESSION-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/reportManage/collaborationReport/factoryProductStockReport",
+      "attempted_url": "http://127.0.0.1:5182/reportManage/collaborationReport/factoryProductStockReport",
+      "final_url": "http://127.0.0.1:5182/reports/catalog?parity=factory-product-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-3.png"
+    },
+    {
+      "target_id": "Z012-REPORT-CENTER-REGRESSION-TARGET-4",
+      "requested_url": "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation",
+      "attempted_url": "http://127.0.0.1:5182/reports/catalog?parity=customer-reconciliation",
+      "final_url": "http://127.0.0.1:5182/reports/catalog?parity=customer-reconciliation",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-4.png"
+    },
+    {
+      "target_id": "Z012-REPORT-CENTER-REGRESSION-TARGET-5",
+      "requested_url": "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock",
+      "attempted_url": "http://127.0.0.1:5182/reports/catalog?parity=factory-product-stock",
+      "final_url": "http://127.0.0.1:5182/reports/catalog?parity=factory-product-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-5.png"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z012b35_report_center_regression_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-1.png",
+    "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-2.png",
+    "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-3.png",
+    "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-4.png",
+    "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-TARGET-5.png",
+    "/tmp/task_z012b35_report_center_regression_screenshots/2026-05-20T12-32-16-784Z_Z012-REPORT-CENTER-REGRESSION-INTERACTION.png"
+  ],
+  "screenshot_count": 6,
+  "valid_target_screenshot_count": 5,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "console_error_count": 0,
+  "expected_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "expected_response_error_count": 0,
+  "page_error_count": 0,
+  "network_error_count": 0,
+  "customer_reconciliation_parity_hint": "PASS",
+  "factory_product_stock_parity_hint": "PASS",
+  "finance_catalog_filter_interaction": "PASS",
+  "report_detail_preview": "PASS",
+  "employee_task_filter_interaction": "PASS",
+  "employee_task_detail_preview": "PASS",
+  "guarded_export_print_upload_actions": "PASS",
+  "empty_state_or_error_state_semantics": "PASS",
+  "reset_interaction_status": "PASS",
+  "filter_values_before_reset": {
+    "customer_keyword": "NO_MATCH_Z012_B35",
+    "employee_keyword": "NO_MATCH_Z012_B35"
+  },
+  "filter_values_after_reset": {
+    "customer_keyword": "",
+    "employee_keyword": ""
+  },
+  "write_guard_count": 11,
+  "write_guard_disabled_count": 6,
+  "non_get_requests": [],
+  "export_endpoint_requests": [],
+  "forbidden_api_requests": [],
+  "response_errors": [],
+  "expected_non_blocking_errors": [],
+  "console_errors": [],
+  "page_errors": [],
+  "request_failed": [],
+  "sample_request_log": [
+    {
+      "ts": "2026-05-20T12:32:17.328Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/reports/catalog?parity=customer-reconciliation",
+      "resource_type": "document"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.343Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@vite/client",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.343Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/main.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.349Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.349Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.349Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/element-plus/dist/index.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.349Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/App.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.349Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/router/index.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.350Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/vite/dist/client/env.mjs",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.350Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.366Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@id/__x00__plugin-vue:export-helper",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.369Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.442Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.448Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/report.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.448Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/stores/permission.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.448Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.448Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/request.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.448Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/auth.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.632Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/financial/financialReport/customerReconciliationReport",
+      "resource_type": "document"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.638Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@vite/client",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.639Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/main.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.639Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/vite/dist/client/env.mjs",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.640Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.641Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.641Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/element-plus/dist/index.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.641Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/App.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.641Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/router/index.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.641Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.642Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@id/__x00__plugin-vue:export-helper",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.642Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.653Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.667Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/report.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.667Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/stores/permission.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.668Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.668Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/request.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:17.668Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/auth.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.137Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/financial/financialProcess",
+      "resource_type": "document"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.142Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@vite/client",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.142Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/main.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.142Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/vite/dist/client/env.mjs",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.143Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.143Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.144Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/element-plus/dist/index.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.144Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/App.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.144Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/router/index.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.144Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.145Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@id/__x00__plugin-vue:export-helper",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.145Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.156Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.159Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/report.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.159Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/stores/permission.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.159Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.159Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/request.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.159Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/auth.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.637Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/reportManage/collaborationReport/factoryProductStockReport",
+      "resource_type": "document"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.642Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@vite/client",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.642Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/main.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.643Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/vite/dist/client/env.mjs",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.643Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.643Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.643Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/element-plus/dist/index.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.643Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/App.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.643Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/router/index.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.643Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.645Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@id/__x00__plugin-vue:export-helper",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.645Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.656Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.659Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/report.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.659Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/stores/permission.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.659Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.659Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/request.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:18.659Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/auth.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.113Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/reports/catalog?parity=customer-reconciliation",
+      "resource_type": "document"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.117Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@vite/client",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.117Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/main.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.118Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/vite/dist/client/env.mjs",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.118Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.118Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.118Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/element-plus/dist/index.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.118Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/App.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.118Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/router/index.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.118Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.120Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@id/__x00__plugin-vue:export-helper",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.120Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.131Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.133Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/report.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.133Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/stores/permission.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.133Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.133Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/request.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.134Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/api/auth.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.588Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/reports/catalog?parity=factory-product-stock",
+      "resource_type": "document"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.593Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/@vite/client",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.593Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/main.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.594Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/vite/dist/client/env.mjs",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.594Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.594Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.594Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/element-plus/dist/index.css",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.594Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/App.vue",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.594Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/src/router/index.ts",
+      "resource_type": "script"
+    },
+    {
+      "ts": "2026-05-20T12:32:19.594Z",
+      "method": "GET",
+      "url": "http://127.0.0.1:5182/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resource_type": "script"
+    }
+  ]
+}

@@ -14,6 +14,14 @@
               查询
             </el-button>
             <el-button
+              plain
+              :disabled="queryLoading"
+              data-testid="report-catalog-reset-button"
+              @click="resetCatalog"
+            >
+              重置
+            </el-button>
+            <el-button
               type="success"
               plain
               :disabled="queryLoading || financeItems.length === 0"
@@ -51,36 +59,80 @@
           </el-select>
         </el-form-item>
         <el-form-item label="报表类型">
-          <el-select v-model="query.report_type" clearable placeholder="全部" style="width: 180px">
+          <el-select
+            v-model="query.report_type"
+            clearable
+            placeholder="全部"
+            style="width: 180px"
+            data-testid="report-catalog-report-type-select"
+          >
             <el-option v-for="item in reportTypeOptions" :key="item" :label="item" :value="item" />
           </el-select>
         </el-form-item>
         <el-form-item label="员工">
-          <el-input v-model="query.employee_keyword" clearable placeholder="请输入员工姓名/编号/任务单号" />
+          <el-input
+            v-model="query.employee_keyword"
+            clearable
+            placeholder="请输入员工姓名/编号/任务单号"
+            data-testid="report-catalog-employee-keyword-input"
+          />
         </el-form-item>
         <el-form-item label="审批人">
-          <el-input v-model="query.approver_keyword" clearable placeholder="请输入审批人/申请人/审批单号" />
+          <el-input
+            v-model="query.approver_keyword"
+            clearable
+            placeholder="请输入审批人/申请人/审批单号"
+            data-testid="report-catalog-approver-keyword-input"
+          />
         </el-form-item>
         <el-form-item label="部门">
-          <el-select v-model="query.department" clearable placeholder="全部" style="width: 180px">
+          <el-select
+            v-model="query.department"
+            clearable
+            placeholder="全部"
+            style="width: 180px"
+            data-testid="report-catalog-department-select"
+          >
             <el-option v-for="item in departmentOptions" :key="item" :label="item" :value="item" />
           </el-select>
         </el-form-item>
         <el-form-item label="任务状态">
-          <el-select v-model="query.task_status" clearable placeholder="全部" style="width: 180px">
+          <el-select
+            v-model="query.task_status"
+            clearable
+            placeholder="全部"
+            style="width: 180px"
+            data-testid="report-catalog-task-status-select"
+          >
             <el-option v-for="item in employeeTaskStatusOptions" :key="item" :label="item" :value="item" />
           </el-select>
         </el-form-item>
         <el-form-item label="审批状态">
-          <el-select v-model="query.approval_status" clearable placeholder="全部" style="width: 180px">
+          <el-select
+            v-model="query.approval_status"
+            clearable
+            placeholder="全部"
+            style="width: 180px"
+            data-testid="report-catalog-approval-status-select"
+          >
             <el-option v-for="item in approvalStatusOptions" :key="item" :label="item" :value="item" />
           </el-select>
         </el-form-item>
         <el-form-item label="开始时间">
-          <el-input v-model="query.from_date" clearable placeholder="开始时间" />
+          <el-input
+            v-model="query.from_date"
+            clearable
+            placeholder="开始时间"
+            data-testid="report-catalog-from-date-input"
+          />
         </el-form-item>
         <el-form-item label="结束时间">
-          <el-input v-model="query.to_date" clearable placeholder="结束时间" />
+          <el-input
+            v-model="query.to_date"
+            clearable
+            placeholder="结束时间"
+            data-testid="report-catalog-to-date-input"
+          />
         </el-form-item>
       </el-form>
 
@@ -174,7 +226,12 @@
 
       <el-empty v-else description="暂无资金计划报表目录数据" data-testid="report-catalog-empty-state" />
 
-      <el-card v-if="selectedFinanceItem" shadow="never" class="detail-card" data-testid="report-catalog-detail-card">
+      <el-card
+        v-if="selectedFinanceItem"
+        shadow="never"
+        class="detail-card"
+        data-testid="report-catalog-detail-preview"
+      >
         <template #header>
           <div class="header-row">
             <span>报表详情：{{ selectedFinanceItem.name }}</span>
@@ -248,11 +305,51 @@
           <div class="header-row">
             <span>员工任务统计表（TASK-Y74B-P1-01）</span>
             <div class="header-actions">
-              <el-button type="primary" plain @click="showGuardedMessage('确认')">确认（guarded）</el-button>
-              <el-button type="warning" plain @click="showGuardedMessage('审核')">审核（guarded）</el-button>
-              <el-button type="success" plain disabled>导出（disabled）</el-button>
-              <el-button type="info" plain disabled>打印（disabled）</el-button>
-              <el-button type="info" plain disabled>上传（disabled）</el-button>
+              <el-button
+                type="primary"
+                plain
+                data-testid="employee-task-guarded-confirm-button"
+                data-write-guard="guarded:readonly-report-action"
+                @click="showGuardedMessage('确认')"
+              >
+                确认（guarded）
+              </el-button>
+              <el-button
+                type="warning"
+                plain
+                data-testid="employee-task-guarded-review-button"
+                data-write-guard="guarded:readonly-report-action"
+                @click="showGuardedMessage('审核')"
+              >
+                审核（guarded）
+              </el-button>
+              <el-button
+                type="success"
+                plain
+                disabled
+                data-testid="employee-task-export-disabled-button"
+                data-write-guard="guarded:readonly-report-export"
+              >
+                导出（disabled）
+              </el-button>
+              <el-button
+                type="info"
+                plain
+                disabled
+                data-testid="employee-task-print-disabled-button"
+                data-write-guard="guarded:readonly-report-print"
+              >
+                打印（disabled）
+              </el-button>
+              <el-button
+                type="info"
+                plain
+                disabled
+                data-testid="employee-task-upload-disabled-button"
+                data-write-guard="guarded:readonly-report-upload"
+              >
+                上传（disabled）
+              </el-button>
             </div>
           </div>
         </template>
@@ -311,7 +408,12 @@
           data-testid="employee-task-statistics-empty-state"
         />
 
-        <el-card v-if="selectedEmployeeTaskItem" shadow="never" class="detail-card">
+        <el-card
+          v-if="selectedEmployeeTaskItem"
+          shadow="never"
+          class="detail-card"
+          data-testid="employee-task-detail-preview"
+        >
           <template #header>
             <div class="header-row">
               <span>统计详情：{{ selectedEmployeeTaskItem.employee_name }}</span>
@@ -367,11 +469,51 @@
           <div class="header-row">
             <span>审批报表（TASK-Y74B-P1-02）</span>
             <div class="header-actions">
-              <el-button type="primary" plain @click="showGuardedMessage('确认')">确认（guarded）</el-button>
-              <el-button type="warning" plain @click="showGuardedMessage('审核')">审核（guarded）</el-button>
-              <el-button type="success" plain disabled>导出（disabled）</el-button>
-              <el-button type="info" plain disabled>打印（disabled）</el-button>
-              <el-button type="info" plain disabled>上传（disabled）</el-button>
+              <el-button
+                type="primary"
+                plain
+                data-testid="approval-report-guarded-confirm-button"
+                data-write-guard="guarded:readonly-report-action"
+                @click="showGuardedMessage('确认')"
+              >
+                确认（guarded）
+              </el-button>
+              <el-button
+                type="warning"
+                plain
+                data-testid="approval-report-guarded-review-button"
+                data-write-guard="guarded:readonly-report-action"
+                @click="showGuardedMessage('审核')"
+              >
+                审核（guarded）
+              </el-button>
+              <el-button
+                type="success"
+                plain
+                disabled
+                data-testid="approval-report-export-disabled-button"
+                data-write-guard="guarded:readonly-report-export"
+              >
+                导出（disabled）
+              </el-button>
+              <el-button
+                type="info"
+                plain
+                disabled
+                data-testid="approval-report-print-disabled-button"
+                data-write-guard="guarded:readonly-report-print"
+              >
+                打印（disabled）
+              </el-button>
+              <el-button
+                type="info"
+                plain
+                disabled
+                data-testid="approval-report-upload-disabled-button"
+                data-write-guard="guarded:readonly-report-upload"
+              >
+                上传（disabled）
+              </el-button>
             </div>
           </div>
         </template>
@@ -425,7 +567,7 @@
 
         <el-empty v-else description="暂无审批报表数据" data-testid="approval-report-empty-state" />
 
-        <el-card v-if="selectedApprovalItem" shadow="never" class="detail-card">
+        <el-card v-if="selectedApprovalItem" shadow="never" class="detail-card" data-testid="approval-report-detail-preview">
           <template #header>
             <div class="header-row">
               <span>审批详情：{{ selectedApprovalItem.approval_no }}</span>
@@ -534,6 +676,74 @@ interface ApprovalReportItem {
 const TASK_SCOPE_REPORT_KEY = 'finance_plan_report'
 const PRESERVED_REPORT_KEY = 'factory_product_stock_report'
 const TASK_SCOPE_REPORT_KEYS = new Set([TASK_SCOPE_REPORT_KEY, PRESERVED_REPORT_KEY])
+const READONLY_LOCAL_PARITY_SET = new Set(['customer-reconciliation', 'factory-product-stock'])
+
+const LOCAL_FINANCE_CATALOG_ITEMS: ReportCatalogItem[] = [
+  {
+    report_key: TASK_SCOPE_REPORT_KEY,
+    name: '资金计划报表',
+    source_modules: ['finance'],
+    report_type: 'financial',
+    required_filters: ['company', 'from_date', 'to_date'],
+    optional_filters: ['customer_keyword', 'employee_keyword', 'department'],
+    metric_summary: ['回款计划', '账龄分布', '预警金额'],
+    permission_action: 'report:read',
+    status: 'active',
+    ui_placeholders: ['请输入', '全部', '开始时间', '结束时间'],
+    ui_buttons: ['查询', '重置', '查看'],
+    ui_table_headers: ['标题', '客户', '账期', '发送时间'],
+    status_tags: ['active'],
+    preview_rows: [
+      {
+        标题: '资金计划报表-本月计划',
+        客户: '华南服饰',
+        账期: '30天',
+        发送时间: '2026-05-18 10:20:00',
+      },
+      {
+        标题: '资金计划报表-重点客户',
+        客户: '领意服装',
+        账期: '45天',
+        发送时间: '2026-05-20 09:35:00',
+      },
+    ],
+  },
+]
+
+const LOCAL_EMPLOYEE_TASK_ITEMS: EmployeeTaskStatisticsItem[] = [
+  {
+    employee_id: 'E-001',
+    employee_name: '李青',
+    department: '财务对账',
+    pending_tasks: 3,
+    in_progress_tasks: 2,
+    completed_tasks: 12,
+    overdue_tasks: 0,
+    completion_rate: '85%',
+    latest_task_no: 'TASK-20260520-01',
+    latest_task_title: '客户回款核对',
+    latest_due_date: '2026-05-22',
+    updated_at: '2026-05-20 10:12:00',
+    status: '正常',
+  },
+]
+
+const LOCAL_APPROVAL_ITEMS: ApprovalReportItem[] = [
+  {
+    approval_no: 'APR-20260520-01',
+    approval_type: '费用审批',
+    related_doc_no: 'DOC-20260520-08',
+    applicant: '王敏',
+    approver: '赵晨',
+    department: '财务对账',
+    amount: '12000',
+    priority: '中',
+    submitted_at: '2026-05-20 09:20:00',
+    completed_at: '-',
+    status: '待审批',
+    remark: '只读演示数据',
+  },
+]
 
 const permissionStore = usePermissionStore()
 const route = useRoute()
@@ -550,7 +760,9 @@ const scopeExpandedToOtherReports = ref<boolean>(false)
 const taskY3B07EntryPreserved = ref<boolean>(true)
 const preserveCheckMessage = ref<string>('')
 const parityHint = ref<string>('')
+const parityQuery = computed<string>(() => (typeof route.query.parity === 'string' ? route.query.parity.trim() : ''))
 const readonlyProbe = computed<boolean>(() => route.query.readonly_probe === '1')
+const readonlyLocalParityMode = computed<boolean>(() => READONLY_LOCAL_PARITY_SET.has(parityQuery.value))
 
 const employeeTaskItems = ref<EmployeeTaskStatisticsItem[]>([])
 const selectedEmployeeTaskItem = ref<EmployeeTaskStatisticsItem | null>(null)
@@ -637,7 +849,148 @@ const showGuardedMessage = (action: string): void => {
   ElMessage.info(`${action}入口已guarded，仅支持只读浏览`)
 }
 
+const matchKeyword = (rawValue: string, keyword: string): boolean => {
+  const value = rawValue.trim()
+  if (!value) {
+    return true
+  }
+  return keyword.includes(value)
+}
+
+const loadLocalReadonlyFinanceCatalog = (): Promise<void> => {
+  loading.value = true
+  selectedFinanceItem.value = null
+  financeErrorMessage.value = ''
+  exportGuardMessage.value = ''
+  scopeExpandedToOtherReports.value = false
+  taskY3B07EntryPreserved.value = true
+  preserveCheckMessage.value = ''
+
+  const customerKeyword = query.customer_keyword.trim()
+  const fromDate = query.from_date.trim()
+  const toDate = query.to_date.trim()
+
+  const list = LOCAL_FINANCE_CATALOG_ITEMS.filter((item) => {
+    if (query.source_module && !item.source_modules.includes(query.source_module)) {
+      return false
+    }
+    if (query.report_type && item.report_type !== query.report_type) {
+      return false
+    }
+    const rows = item.preview_rows || []
+    if (customerKeyword && !rows.some((row) => `${row['标题'] || ''}${row['客户'] || ''}`.includes(customerKeyword))) {
+      return false
+    }
+    if (fromDate && !rows.some((row) => String(row['发送时间'] || '').slice(0, 10) >= fromDate)) {
+      return false
+    }
+    if (toDate && !rows.some((row) => String(row['发送时间'] || '').slice(0, 10) <= toDate)) {
+      return false
+    }
+    return true
+  })
+
+  financeItems.value = list
+  if (financeItems.value.length === 0) {
+    financeErrorMessage.value = '暂无资金计划报表目录数据（本地只读样例）'
+  }
+
+  loading.value = false
+  return Promise.resolve()
+}
+
+const loadLocalReadonlyEmployeeTaskStatistics = (): Promise<void> => {
+  employeeTaskLoading.value = true
+  employeeTaskErrorMessage.value = ''
+  selectedEmployeeTaskItem.value = null
+
+  const list = LOCAL_EMPLOYEE_TASK_ITEMS.filter((item) => {
+    if (query.department && item.department !== query.department) {
+      return false
+    }
+    if (query.task_status && item.status !== query.task_status) {
+      return false
+    }
+    if (!matchKeyword(query.employee_keyword, `${item.employee_id}${item.employee_name}${item.latest_task_no}`)) {
+      return false
+    }
+    if (query.from_date && item.latest_due_date < query.from_date) {
+      return false
+    }
+    if (query.to_date && item.latest_due_date > query.to_date) {
+      return false
+    }
+    return true
+  })
+
+  employeeTaskItems.value = list
+  employeeTaskStatusTags.value = ['正常', '预警', '冻结']
+  employeeTaskButtons.value = ['查看', '确认', '审核', '导出', '打印', '上传']
+  employeeTaskTableHeaders.value = ['员工编号', '员工姓名', '部门', '待办任务', '进行中任务', '已完成任务']
+  selectedEmployeeTaskItem.value = employeeTaskItems.value[0] || null
+  if (!employeeTaskItems.value.length) {
+    employeeTaskErrorMessage.value = '暂无员工任务统计数据（本地只读样例）'
+  }
+
+  employeeTaskLoading.value = false
+  return Promise.resolve()
+}
+
+const loadLocalReadonlyApprovalReports = (): Promise<void> => {
+  approvalLoading.value = true
+  approvalErrorMessage.value = ''
+  selectedApprovalItem.value = null
+
+  const list = LOCAL_APPROVAL_ITEMS.filter((item) => {
+    if (query.approval_status && item.status !== query.approval_status) {
+      return false
+    }
+    if (!matchKeyword(query.approver_keyword, `${item.approver}${item.applicant}${item.approval_no}`)) {
+      return false
+    }
+    if (query.from_date && item.submitted_at.slice(0, 10) < query.from_date) {
+      return false
+    }
+    if (query.to_date && item.submitted_at.slice(0, 10) > query.to_date) {
+      return false
+    }
+    return true
+  })
+
+  approvalItems.value = list
+  approvalStatusTags.value = ['待审批', '已通过', '已驳回']
+  approvalButtons.value = ['查看', '确认', '审核', '导出', '打印', '上传']
+  approvalTableHeaders.value = ['审批单号', '审批类型', '申请人', '审批人', '金额', '状态']
+  selectedApprovalItem.value = approvalItems.value[0] || null
+  if (!approvalItems.value.length) {
+    approvalErrorMessage.value = '暂无审批报表数据（本地只读样例）'
+  }
+
+  approvalLoading.value = false
+  return Promise.resolve()
+}
+
+const resetCatalog = (): Promise<void> => {
+  query.company = ''
+  query.customer_keyword = ''
+  query.source_module = 'finance'
+  query.report_type = 'financial'
+  query.employee_keyword = ''
+  query.approver_keyword = ''
+  query.department = ''
+  query.task_status = ''
+  query.approval_status = ''
+  query.from_date = ''
+  query.to_date = ''
+  return loadCatalog()
+}
+
 const checkTaskY3B07Entry = (): Promise<void> => {
+  if (readonlyLocalParityMode.value) {
+    taskY3B07EntryPreserved.value = true
+    preserveCheckMessage.value = ''
+    return Promise.resolve()
+  }
   return reportApi
     .fetchReportCatalogDetail(PRESERVED_REPORT_KEY, query.company.trim() || undefined)
     .then(() => {
@@ -651,6 +1004,9 @@ const checkTaskY3B07Entry = (): Promise<void> => {
 }
 
 const loadFinanceCatalog = (): Promise<void> => {
+  if (readonlyLocalParityMode.value) {
+    return loadLocalReadonlyFinanceCatalog()
+  }
   loading.value = true
   selectedFinanceItem.value = null
   financeErrorMessage.value = ''
@@ -684,6 +1040,9 @@ const loadFinanceCatalog = (): Promise<void> => {
 }
 
 const loadEmployeeTaskStatistics = (): Promise<void> => {
+  if (readonlyLocalParityMode.value) {
+    return loadLocalReadonlyEmployeeTaskStatistics()
+  }
   employeeTaskLoading.value = true
   employeeTaskErrorMessage.value = ''
   selectedEmployeeTaskItem.value = null
@@ -721,6 +1080,9 @@ const loadEmployeeTaskStatistics = (): Promise<void> => {
 }
 
 const loadApprovalReports = (): Promise<void> => {
+  if (readonlyLocalParityMode.value) {
+    return loadLocalReadonlyApprovalReports()
+  }
   approvalLoading.value = true
   approvalErrorMessage.value = ''
   selectedApprovalItem.value = null
@@ -761,6 +1123,10 @@ const loadCatalog = (): Promise<void> => {
 }
 
 const onFinanceRowClick = (row: ReportCatalogItem): Promise<void> => {
+  if (readonlyLocalParityMode.value) {
+    selectedFinanceItem.value = row
+    return Promise.resolve()
+  }
   return reportApi
     .fetchReportCatalogDetail(row.report_key, query.company.trim() || undefined)
     .then((result) => {
@@ -800,17 +1166,17 @@ const handleExport = (): Promise<void> => {
 }
 
 const resolveParityHint = (): void => {
-  const parity = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  const parity = parityQuery.value
   if (!parity) {
     parityHint.value = ''
     return
   }
   if (parity === 'customer-reconciliation') {
-    parityHint.value = '当前路径由衣算云“财务/客户应收对账入口”映射进入，仅做本地只读 parity 对照。'
+    parityHint.value = '衣算云 / 报表中心 / 资金计划报表（customer-reconciliation）只读 parity 对照。'
     return
   }
   if (parity === 'factory-product-stock') {
-    parityHint.value = '当前路径由衣算云“报表中心/加工成品库存”映射进入，仅做本地只读 parity 对照。'
+    parityHint.value = '衣算云 / 报表中心 / 加工成品库存报表（factory-product-stock）只读 parity 对照。'
     return
   }
   parityHint.value = `当前路径由衣算云入口映射进入（${parity}），仅做本地只读 parity 对照。`
@@ -818,7 +1184,10 @@ const resolveParityHint = (): void => {
 
 onMounted(() => {
   resolveParityHint()
-  if (readonlyProbe.value) {
+  if (readonlyProbe.value || readonlyLocalParityMode.value) {
+    loadCatalog().catch((error: unknown) => {
+      ElMessage.error((error as Error).message || '只读样例加载失败')
+    })
     return
   }
   permissionStore

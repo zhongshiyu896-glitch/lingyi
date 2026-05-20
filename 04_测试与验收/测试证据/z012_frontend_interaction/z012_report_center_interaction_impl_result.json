@@ -1,0 +1,181 @@
+{
+  "task_id": "TASK-Z012B-34-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z012B-33-PREP",
+  "source_head": "1583bf3c8c7f5180578a83e4de77a39b7a75bfc8",
+  "selected_candidate_id": "Z012-CAND-006",
+  "code_changed": true,
+  "runtime_base_url": "http://127.0.0.1:5180",
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5180",
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "changed_product_files_count": 2,
+  "backend_changed": false,
+  "implementation": {
+    "selected_candidate_id": "Z012-CAND-006",
+    "route_parity": "KEEP_EXISTING_REPORT_CATALOG_ALIASES_AND_REFINE_customer-reconciliation_factory-product-stock_employee-task_READONLY_INTERACTION",
+    "readonly_interactions": "在 ReportCatalog.vue 补齐 customer/factory parity 提示、筛选/重置、资金计划详情预览、员工任务统计详情预览、空态/错误态语义。",
+    "guarded_write_actions": "导出/打印/上传/确认/审核动作统一 guarded 或 disabled，未触发副作用请求。",
+    "api_changes": "report.ts 删除 /api/reports/catalog/export 调用路径，仅保留 GET-only 只读读取接口。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z012_frontend_interaction/z012_report_center_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/financial/financialReport/customerReconciliationReport",
+      "http://127.0.0.1:5173/financial/financialProcess",
+      "http://127.0.0.1:5173/reportManage/collaborationReport/factoryProductStockReport",
+      "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation",
+      "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock"
+    ],
+    "runtime_browser_targets": [
+      "http://127.0.0.1:5180/financial/financialReport/customerReconciliationReport",
+      "http://127.0.0.1:5180/financial/financialProcess",
+      "http://127.0.0.1:5180/reportManage/collaborationReport/factoryProductStockReport",
+      "http://127.0.0.1:5180/reports/catalog?parity=customer-reconciliation",
+      "http://127.0.0.1:5180/reports/catalog?parity=factory-product-stock"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "expected_non_blocking_errors": [],
+    "customer_reconciliation_parity_hint": "PASS",
+    "factory_product_stock_parity_hint": "PASS",
+    "finance_catalog_filter_interaction": "PASS",
+    "report_detail_preview": "PASS",
+    "employee_task_filter_interaction": "PASS",
+    "employee_task_detail_preview": "PASS",
+    "guarded_export_print_upload_actions": "PASS",
+    "empty_state_or_error_state_semantics": "PASS",
+    "screenshot_dir": "/tmp/task_z012b34_report_center_screenshots",
+    "screenshot_count": 6,
+    "valid_target_screenshot_count": 5
+  },
+  "result_check_count": 15,
+  "result_pass_count": 15,
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "production_account_used": false,
+    "remote_lifecycle_action_executed": false
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B34 source_head 与 B33 冻结头一致（1583bf3c8c7f5180578a83e4de77a39b7a75bfc8）。",
+      "evidence": "task_z012b_33_report_center_interaction_boundary.json + git baseline"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "06_前端差异仅 ReportCatalog.vue 与 report.ts，均在 B33 allowlist 内。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "customer_reconciliation_parity_hint",
+      "status": "PASS",
+      "observed": "customer-reconciliation parity 提示存在且可命中。",
+      "evidence": "z012_report_center_interaction_browser_result.json.customer_reconciliation_parity_hint"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "factory_product_stock_parity_hint",
+      "status": "PASS",
+      "observed": "factory-product-stock parity 提示存在且可命中。",
+      "evidence": "z012_report_center_interaction_browser_result.json.factory_product_stock_parity_hint"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "finance_catalog_filter_interaction",
+      "status": "PASS",
+      "observed": "资金计划报表筛选链路可交互。",
+      "evidence": "z012_report_center_interaction_browser_result.json.filter_values_before_reset"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "report_detail_preview",
+      "status": "PASS",
+      "observed": "资金计划报表详情预览可用。",
+      "evidence": "z012_report_center_interaction_browser_result.json.report_detail_preview"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "employee_task_filter_interaction",
+      "status": "PASS",
+      "observed": "员工任务统计筛选链路可交互。",
+      "evidence": "z012_report_center_interaction_browser_result.json.employee_task_filter_interaction"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "employee_task_detail_preview",
+      "status": "PASS",
+      "observed": "员工任务统计详情预览可用。",
+      "evidence": "z012_report_center_interaction_browser_result.json.employee_task_detail_preview"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "guarded_export_print_upload_actions",
+      "status": "PASS",
+      "observed": "导出/打印/上传及确认/审核均受控，未发起副作用请求。",
+      "evidence": "ReportCatalog.vue + browser_result.guarded_export_print_upload_actions"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "empty_state_or_error_state_semantics",
+      "status": "PASS",
+      "observed": "空态/错误态保留报表中心专项语义。",
+      "evidence": "ReportCatalog.vue + browser_result.empty_state_or_error_state_semantics"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[GET], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。",
+      "evidence": "z012_report_center_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 15,
+      "check_id": "text_hygiene",
+      "status": "PASS",
+      "observed": "报告、impl result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。",
+      "evidence": "trailing whitespace & EOF newline checks"
+    }
+  ]
+}

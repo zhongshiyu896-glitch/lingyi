@@ -1,0 +1,16 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B35 使用的 source_head 与 B34 基线一致（1583bf3c8c7f5180578a83e4de77a39b7a75bfc8）。	TASK-Z012B-34-IMPL report + git HEAD baseline
+2	impl_result_json_tsv_alignment	PASS	B34 impl result JSON entries=15，TSV 数据行=15，全部 PASS。	z012_report_center_interaction_impl_result.json/.tsv
+3	impl_browser_result_parse	PASS	B34 browser result JSON 可解析。	z012_report_center_interaction_browser_result.json
+4	impl_browser_screenshot_paths_exist	PASS	B34 browser result 中 6/6 截图路径存在。	z012_report_center_interaction_browser_result.json.screenshot_paths_created
+5	customer_reconciliation_parity_hint	PASS	customer-reconciliation parity 提示存在且可见。	z012_report_center_regression_browser_result.json.customer_reconciliation_parity_hint
+6	factory_product_stock_parity_hint	PASS	factory-product-stock parity 提示存在且可见。	z012_report_center_regression_browser_result.json.factory_product_stock_parity_hint
+7	finance_catalog_filter_interaction	PASS	资金计划报表目录筛选交互可执行。	z012_report_center_regression_browser_result.json.finance_catalog_filter_interaction
+8	report_detail_preview	PASS	报表详情预览可执行。	z012_report_center_regression_browser_result.json.report_detail_preview
+9	employee_task_filter_interaction	PASS	员工任务统计筛选交互可执行。	z012_report_center_regression_browser_result.json.employee_task_filter_interaction
+10	employee_task_detail_preview	PASS	员工任务统计详情预览可执行。	z012_report_center_regression_browser_result.json.employee_task_detail_preview
+11	guarded_export_print_upload_actions	PASS	导出/打印/上传/确认/审核动作均被 guarded 或 disabled，未触发写请求。	z012_report_center_regression_browser_result.json.guarded_export_print_upload_actions
+12	empty_state_or_error_state_semantics	PASS	空态/错误态语义可测。	z012_report_center_regression_browser_result.json.empty_state_or_error_state_semantics
+13	typecheck	PASS	npm run typecheck PASS。	terminal output
+14	build	PASS	npm run build PASS。	terminal output
+15	browser_get_only_and_export_guard	PASS	request_methods=[GET]，write_request_count=0，forbidden_request_count=0，未调用 /api/reports/catalog/export。	z012_report_center_regression_browser_result.json
