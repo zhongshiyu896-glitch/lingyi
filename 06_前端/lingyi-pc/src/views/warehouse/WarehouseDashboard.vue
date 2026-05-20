@@ -7,10 +7,29 @@
             <h2>成品进销存 / 成品库存</h2>
             <span class="subtitle">成品库存台账（只读首版）</span>
             <el-tag
+              v-if="isFinishedGoodsParity"
               size="small"
               type="info"
               effect="plain"
               data-testid="finished-goods-stock-parity-hint"
+            >
+              {{ finishedGoodsParityHint }}
+            </el-tag>
+            <el-tag
+              v-else-if="isFoundationWarehouseParity"
+              size="small"
+              type="warning"
+              effect="plain"
+              data-testid="foundation-warehouse-parity-hint"
+            >
+              {{ foundationWarehouseParityHint }}
+            </el-tag>
+            <el-tag
+              v-else
+              size="small"
+              type="info"
+              effect="plain"
+              data-testid="warehouse-stock-parity-hint"
             >
               {{ finishedGoodsParityHint }}
             </el-tag>
@@ -1481,15 +1500,20 @@ const localSeedSemiFinishedOutboundRows: WarehouseSemiFinishedOutboundItem[] = [
 
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
 const isFinishedGoodsParity = computed<boolean>(() => parityValue.value === 'product-stock')
+const isFoundationWarehouseParity = computed<boolean>(() => parityValue.value === 'foundation-warehouse')
 const finishedGoodsParityHint = computed<string>(() => (
   isFinishedGoodsParity.value
     ? '衣算云 / 成品进销存 / 成品库存（parity=product-stock，只读交互）'
     : '衣算云 / 成品进销存 / 成品库存（默认只读交互）'
 ))
+const foundationWarehouseParityHint = computed<string>(() => (
+  '衣算云 / 基础资料 / 仓库管理（parity=foundation-warehouse，只读交互）'
+))
 const localWriteReadonlyGuarded = computed<boolean>(() => true)
 
 const canRead = computed<boolean>(() => (
   isFinishedGoodsParity.value
+  || isFoundationWarehouseParity.value
   || permissionStore.state.buttonPermissions.read
   || permissionStore.state.actions.includes('warehouse:read')
 ))
@@ -1948,7 +1972,8 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
 
   const normalized = normalizeQuery()
   const useLocalSeed =
-    isFinishedGoodsParity.value || (
+    isFinishedGoodsParity.value ||
+    isFoundationWarehouseParity.value || (
       !options?.forceRemote &&
       !normalized.company &&
       !normalized.warehouse &&
@@ -2342,9 +2367,15 @@ const onSelectionChange = (rows: DisplayRow[]): void => {
 }
 
 const openLedgerDetail = async (): Promise<void> => {
-  const selected = selectedRows.value[0]
+  const selected = selectedRows.value[0] || displayRows.value[0]
   if (!selected) {
     ElMessage.warning('请先勾选一条库存记录')
+    return
+  }
+  if (isFoundationWarehouseParity.value) {
+    const localRows = localSeedLedgerRows.filter((row) => row.item_code === selected.style_no)
+    ledgerRows.value = localRows.length > 0 ? localRows : localSeedLedgerRows
+    ledgerDialogVisible.value = true
     return
   }
   const normalized = normalizeQuery()

@@ -6,6 +6,16 @@
           <div class="title-group">
             <span class="title">库存参考资料</span>
             <span class="sub-title">TASK-Y99-FE-03 / 只读真实交互首版</span>
+            <el-tag
+              v-if="foundationCustomerParityHint"
+              size="small"
+              type="info"
+              effect="plain"
+              class="parity-hint"
+              data-testid="foundation-customer-parity-hint"
+            >
+              {{ foundationCustomerParityHint }}
+            </el-tag>
           </div>
           <div class="header-actions">
             <el-button size="small" text @click="toggleReadonlyGuide">
@@ -249,9 +259,17 @@ const warehouseError = ref<string>('')
 const detailVisible = ref<boolean>(false)
 const detailType = ref<DetailType>('customer')
 const detailRow = ref<CustomerItem | WarehouseItem | null>(null)
+const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
+const isFoundationCustomerParity = computed<boolean>(() => parityValue.value === 'foundation-customer')
+const foundationCustomerParityHint = computed<string>(() => (
+  isFoundationCustomerParity.value
+    ? '衣算云 / 基础资料 / 客户（parity=foundation-customer，只读交互）'
+    : ''
+))
 
 const canRead = computed<boolean>(
   () =>
+    isFoundationCustomerParity.value ||
     permissionStore.state.buttonPermissions.sales_inventory_read ||
     permissionStore.state.actions.includes('sales_inventory:read'),
 )
@@ -266,6 +284,14 @@ const warehouseQuery = reactive({
   page: 1,
   page_size: 20,
 })
+
+const foundationCustomerFallbackRows: CustomerItem[] = [
+  {
+    name: 'CUS-LOCAL-001',
+    customer_name: '本地只读客户示例',
+    disabled: false,
+  },
+]
 
 const applyRoutePrefill = (): void => {
   const tab = typeof route.query.tab === 'string' ? route.query.tab.trim() : ''
@@ -282,6 +308,12 @@ const loadCustomers = async (): Promise<void> => {
   if (!canRead.value) {
     customerRows.value = []
     customerTotal.value = 0
+    return
+  }
+  if (isFoundationCustomerParity.value) {
+    customerRows.value = foundationCustomerFallbackRows
+    customerTotal.value = foundationCustomerFallbackRows.length
+    customerError.value = ''
     return
   }
   customerLoading.value = true
@@ -416,17 +448,27 @@ const refreshReadonlyStatus = async (): Promise<void> => {
 }
 
 onMounted(async () => {
+  let permissionBootstrapped = true
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('sales_inventory')
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    permissionBootstrapped = false
+    ElMessage.warning((error as Error).message || '权限加载失败，页面将按基础资料只读模式继续')
+  }
+  applyRoutePrefill()
+  if (canRead.value || isFoundationCustomerParity.value) {
+    await loadCustomers()
+    if (!isFoundationCustomerParity.value) {
+      await loadWarehouses()
+    }
     return
   }
-  if (canRead.value) {
-    applyRoutePrefill()
-    await loadCustomers()
-    await loadWarehouses()
+  if (!permissionBootstrapped) {
+    customerRows.value = []
+    warehouseRows.value = []
+    customerTotal.value = 0
+    warehouseTotal.value = 0
   }
 })
 </script>
@@ -448,6 +490,11 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.parity-hint {
+  align-self: flex-start;
+  margin-top: 2px;
 }
 
 .title {

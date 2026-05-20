@@ -196,6 +196,10 @@ const routes: RouteRecordRaw[] = [
     redirect: { path: '/factory-statements/list', query: { parity: 'foundation-factory' } },
   },
   {
+    path: '/foundation/warehouse',
+    redirect: { path: '/warehouse', query: { parity: 'foundation-warehouse' } },
+  },
+  {
     path: '/material/materialFabric',
     redirect: { path: '/bom/list', query: { parity: 'material-fabric' } },
   },

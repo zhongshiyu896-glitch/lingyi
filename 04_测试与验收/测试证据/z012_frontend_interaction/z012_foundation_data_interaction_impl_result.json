@@ -1,0 +1,172 @@
+{
+  "task_id": "TASK-Z012B-41-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z012B-40-PREP",
+  "source_head": "4382dcc316efd170f8fae0aff9dbe7ea1738307d",
+  "selected_candidate_id": "Z012-CAND-007",
+  "code_changed": true,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/router/index.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue"
+  ],
+  "changed_product_files_count": 4,
+  "backend_changed": false,
+  "implementation": {
+    "selected_candidate_id": "Z012-CAND-007",
+    "route_parity": "保留 foundation/customer|supplier|factory 既有映射，并补齐 foundation/warehouse -> /warehouse?parity=foundation-warehouse。",
+    "customer_interaction": "SalesInventoryReferenceList 新增 foundation-customer parity hint 与 data-testid，提供只读客户示例数据以稳定筛选/分页/明细抽屉验证。",
+    "supplier_interaction": "FactoryStatementList 新增 foundation-supplier parity hint，基础资料 parity 下统一写动作 disabled/guarded，不触发 create/cancel/payable-draft/confirm。",
+    "factory_interaction": "FactoryStatementList 新增 foundation-factory parity hint，并保持查询/重置/分页/详情只读可测。",
+    "warehouse_interaction": "WarehouseDashboard 新增 foundation-warehouse parity hint，基础资料 parity 下强制 local-seed 只读数据，并允许无勾选时打开只读明细弹层。",
+    "readonly_write_guards": "新增、编辑、删除、确认、取消、付款草稿、导出、打印、上传均保持 guarded/disabled，未触发非 GET 请求。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z012_frontend_interaction/z012_foundation_data_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/foundation/customer",
+      "http://127.0.0.1:5173/foundation/supplier",
+      "http://127.0.0.1:5173/foundation/factory",
+      "http://127.0.0.1:5173/sales-inventory/references?tab=customers&parity=foundation-customer",
+      "http://127.0.0.1:5173/factory-statements/list?parity=foundation-supplier",
+      "http://127.0.0.1:5173/factory-statements/list?parity=foundation-factory",
+      "http://127.0.0.1:5173/warehouse?parity=foundation-warehouse"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "expected_non_blocking_errors_count": 86,
+    "customer_parity_hint_status": "PASS",
+    "supplier_parity_hint_status": "PASS",
+    "factory_parity_hint_status": "PASS",
+    "warehouse_parity_hint_status": "PASS",
+    "customer_interaction_status": "PASS",
+    "supplier_interaction_status": "PASS",
+    "factory_interaction_status": "PASS",
+    "warehouse_interaction_status": "PASS",
+    "readonly_write_guards_status": "PASS",
+    "screenshot_dir": "/tmp/task_z012b41_foundation_data_screenshots",
+    "screenshot_count": 7,
+    "valid_target_screenshot_count": 7
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "production_account_used": false,
+    "remote_lifecycle_action_executed": false
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B41 source_head 与 B40 冻结头一致（4382dcc316efd170f8fae0aff9dbe7ea1738307d）。",
+      "evidence": "task_z012b_40_foundation_data_interaction_boundary.json + git baseline"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "06_前端差异仅 router/index.ts、SalesInventoryReferenceList.vue、FactoryStatementList.vue、WarehouseDashboard.vue。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity",
+      "status": "PASS",
+      "observed": "foundation customer/supplier/factory 语义保持，补齐 foundation/warehouse 只读映射。",
+      "evidence": "router/index.ts"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "customer_interaction",
+      "status": "PASS",
+      "observed": "customer parity hint、查询、重置、分页、明细抽屉可测。",
+      "evidence": "browser_result.customer_parity_hint_status + browser_result.customer_interaction_status"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "supplier_interaction",
+      "status": "PASS",
+      "observed": "supplier parity hint、查询、重置、分页、明细预览可测。",
+      "evidence": "browser_result.supplier_parity_hint_status + browser_result.supplier_interaction_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "factory_interaction",
+      "status": "PASS",
+      "observed": "factory parity hint、查询、重置、分页、明细预览可测。",
+      "evidence": "browser_result.factory_parity_hint_status + browser_result.factory_interaction_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "warehouse_interaction",
+      "status": "PASS",
+      "observed": "warehouse parity hint、查询、重置、分页、只读明细弹层可测。",
+      "evidence": "browser_result.warehouse_parity_hint_status + browser_result.warehouse_interaction_status"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "readonly_write_guards",
+      "status": "PASS",
+      "observed": "写动作统一 guarded/disabled，未触发副作用请求。",
+      "evidence": "FactoryStatementList.vue + WarehouseDashboard.vue + browser_result.readonly_write_guards_status"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[GET]，write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。",
+      "evidence": "z012_foundation_data_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "browser_blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。",
+      "evidence": "z012_foundation_data_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "text_hygiene",
+      "status": "PASS",
+      "observed": "B41 报告、impl result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。",
+      "evidence": "trailing whitespace & EOF newline checks"
+    }
+  ]
+}

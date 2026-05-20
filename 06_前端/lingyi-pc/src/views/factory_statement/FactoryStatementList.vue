@@ -8,8 +8,8 @@
             type="primary"
             :disabled="!canCreateAction"
             data-action-type="write"
-            data-write-guard="allowed:factory-statement-create-local-only"
-            data-write-allowlist="factory-statement-create"
+            :data-write-guard="isFoundationReadonlyParity ? 'guarded:readonly-foundation-data' : 'allowed:factory-statement-create-local-only'"
+            :data-write-allowlist="isFoundationReadonlyParity ? undefined : 'factory-statement-create'"
             :data-guard-state="canCreateAction ? 'enabled' : 'disabled'"
             @click="openCreateDialog"
           >
@@ -23,10 +23,20 @@
         :closable="false"
         show-icon
         title="款式打板下单对账表（TASK-Y22B-P1-02）"
-        description="本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。"
+        :description="mainAlertDescription"
         class="reconciliation-alert"
         data-testid="factory-statement-main-alert"
       />
+      <div v-if="foundationParityHint" class="foundation-parity-row">
+        <el-tag
+          size="small"
+          type="warning"
+          effect="plain"
+          :data-testid="isFoundationSupplierParity ? 'foundation-supplier-parity-hint' : 'foundation-factory-parity-hint'"
+        >
+          {{ foundationParityHint }}
+        </el-tag>
+      </div>
 
       <div class="statement-kpi-grid" data-testid="factory-statement-kpi-grid">
         <div class="statement-kpi-card" data-testid="factory-statement-kpi-total">
@@ -275,8 +285,8 @@
                 type="warning"
                 :disabled="!canPayableAction"
                 data-action-type="write"
-                data-write-guard="allowed:factory-statement-payable-draft-local-only"
-                data-write-allowlist="factory-statement-payable-draft"
+                :data-write-guard="isFoundationReadonlyParity ? 'guarded:readonly-foundation-data' : 'allowed:factory-statement-payable-draft-local-only'"
+                :data-write-allowlist="isFoundationReadonlyParity ? undefined : 'factory-statement-payable-draft'"
                 :data-guard-state="canPayableAction ? 'enabled' : 'disabled'"
                 @click="createPayableDraft(scope.row)"
               >
@@ -298,8 +308,8 @@
                 type="danger"
                 :disabled="!canCancelAction"
                 data-action-type="write"
-                data-write-guard="allowed:factory-statement-cancel-local-only"
-                data-write-allowlist="factory-statement-cancel"
+                :data-write-guard="isFoundationReadonlyParity ? 'guarded:readonly-foundation-data' : 'allowed:factory-statement-cancel-local-only'"
+                :data-write-allowlist="isFoundationReadonlyParity ? undefined : 'factory-statement-cancel'"
                 :data-guard-state="canCancelAction ? 'enabled' : 'disabled'"
                 @click="cancelStatement(scope.row)"
               >
@@ -3433,6 +3443,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   cancelFactoryStatement,
@@ -3479,6 +3490,7 @@ import {
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
+const route = useRoute()
 
 const loading = ref<boolean>(false)
 const creating = ref<boolean>(false)
@@ -3554,6 +3566,29 @@ const FACTORY_STATEMENT_PAYABLE_STATUS_ACTION = 'payable_draft'
 const readonlyWriteHint = '当前仅允许 local-dev 受控 create/cancel/payable-draft，confirm、导出、打印等动作仍禁用'
 const readbackPreconditionMode =
   typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('z005_readback') === '1'
+const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
+const isFoundationSupplierParity = computed<boolean>(() => parityValue.value === 'foundation-supplier')
+const isFoundationFactoryParity = computed<boolean>(() => parityValue.value === 'foundation-factory')
+const isFoundationReadonlyParity = computed<boolean>(() => isFoundationSupplierParity.value || isFoundationFactoryParity.value)
+const foundationParityHint = computed<string>(() => {
+  if (isFoundationSupplierParity.value) {
+    return '衣算云 / 基础资料 / 供应商（parity=foundation-supplier，只读交互）'
+  }
+  if (isFoundationFactoryParity.value) {
+    return '衣算云 / 基础资料 / 加工厂（parity=foundation-factory，只读交互）'
+  }
+  return ''
+})
+const readonlyWriteHintText = computed<string>(() => (
+  isFoundationReadonlyParity.value
+    ? '基础资料模式仅允许只读查询与明细预览，创建/取消/应付草稿/确认/导出/打印均已禁用。'
+    : readonlyWriteHint
+))
+const mainAlertDescription = computed<string>(() => (
+  isFoundationReadonlyParity.value
+    ? '基础资料 parity 仅开放只读查询、分页与详情预览；create/cancel/payable-draft/confirm、导出、打印保持禁用。'
+    : '本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。'
+))
 
 interface SampleOrderReconciliationRow extends FactoryStatementListItem {
   sample_order_no: string
@@ -3563,15 +3598,19 @@ interface SampleOrderReconciliationRow extends FactoryStatementListItem {
   order_amount: number | null
 }
 
-const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
+const canRead = computed<boolean>(() => (
+  isFoundationReadonlyParity.value || permissionStore.state.buttonPermissions.factory_statement_read
+))
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_create)
 const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
 const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
 const canPayableDraft = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_payable_draft_create)
-const canCreateAction = computed<boolean>(() => canCreate.value && LOCAL_WRITE_MODE)
-const canConfirmAction = computed<boolean>(() => canConfirm.value && LOCAL_WRITE_MODE && LOCAL_CONFIRM_WRITE_MODE)
-const canCancelAction = computed<boolean>(() => canCancel.value && LOCAL_WRITE_MODE)
-const canPayableAction = computed<boolean>(() => canPayableDraft.value && LOCAL_WRITE_MODE)
+const canCreateAction = computed<boolean>(() => canCreate.value && LOCAL_WRITE_MODE && !isFoundationReadonlyParity.value)
+const canConfirmAction = computed<boolean>(() => (
+  canConfirm.value && LOCAL_WRITE_MODE && LOCAL_CONFIRM_WRITE_MODE && !isFoundationReadonlyParity.value
+))
+const canCancelAction = computed<boolean>(() => canCancel.value && LOCAL_WRITE_MODE && !isFoundationReadonlyParity.value)
+const canPayableAction = computed<boolean>(() => canPayableDraft.value && LOCAL_WRITE_MODE && !isFoundationReadonlyParity.value)
 
 const query = reactive({
   supplier: '',
@@ -4214,7 +4253,11 @@ const buildIdempotencyKey = (prefix: string): string => {
 
 const openCreateDialog = (): void => {
   if (!LOCAL_WRITE_MODE) {
-    ElMessage.warning(readonlyWriteHint)
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
+  if (isFoundationReadonlyParity.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
     return
   }
   if (!canCreateAction.value) {
@@ -4235,7 +4278,11 @@ const openCreateDialog = (): void => {
 
 const submitCreateStatement = async (): Promise<void> => {
   if (!LOCAL_WRITE_MODE) {
-    ElMessage.warning(readonlyWriteHint)
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
+  if (isFoundationReadonlyParity.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
     return
   }
   if (!canCreateAction.value) {
@@ -4280,7 +4327,11 @@ const submitCreateStatement = async (): Promise<void> => {
 
 const confirmStatement = async (row: FactoryStatementListItem): Promise<void> => {
   if (!LOCAL_WRITE_MODE) {
-    ElMessage.warning(readonlyWriteHint)
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
+  if (isFoundationReadonlyParity.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
     return
   }
   if (!canConfirmAction.value) {
@@ -4312,7 +4363,11 @@ const confirmStatement = async (row: FactoryStatementListItem): Promise<void> =>
 
 const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => {
   if (!LOCAL_WRITE_MODE) {
-    ElMessage.warning(readonlyWriteHint)
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
+  if (isFoundationReadonlyParity.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
     return
   }
   if (!canCancelAction.value) {
@@ -4344,7 +4399,11 @@ const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => 
 
 const createPayableDraft = async (row: FactoryStatementListItem): Promise<void> => {
   if (!LOCAL_WRITE_MODE) {
-    ElMessage.warning(readonlyWriteHint)
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
+  if (isFoundationReadonlyParity.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
     return
   }
   if (!canPayableAction.value) {
@@ -5044,7 +5103,7 @@ const openReadonlyDetail = async (statementId: number): Promise<void> => {
 }
 
 const showGuardedAction = (actionLabel: string): void => {
-  ElMessage.warning(`${actionLabel}已禁用：${readonlyWriteHint}`)
+  ElMessage.warning(`${actionLabel}已禁用：${readonlyWriteHintText.value}`)
 }
 
 const onPageChange = (page: number): void => {
@@ -5415,11 +5474,22 @@ onMounted(async () => {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('factory_statement')
   } catch (error) {
-    ElMessage.error((error as Error).message)
-    return
+    ElMessage.warning((error as Error).message || '权限加载失败，将按只读模式继续')
+    if (!isFoundationReadonlyParity.value) {
+      return
+    }
   }
   if (canRead.value) {
     await loadRows()
+    if (isFoundationReadonlyParity.value) {
+      await loadFactoryEvaluations()
+      await loadFactoryReconciliations()
+      await loadFactoryPayableSummaries()
+      await loadSupplierEvaluations()
+      await loadSupplierReconciliations()
+      await loadSupplierPayableSummaries()
+      return
+    }
     await loadExpenseReimbursementPayments()
     await loadBankDeposits()
     await loadBankWithdrawals()
@@ -5452,6 +5522,10 @@ onMounted(async () => {
 }
 
 .reconciliation-alert {
+  margin-bottom: 12px;
+}
+
+.foundation-parity-row {
   margin-bottom: 12px;
 }
 

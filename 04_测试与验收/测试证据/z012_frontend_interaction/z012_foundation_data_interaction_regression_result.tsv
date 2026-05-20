@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B42 基线 source_head 维持 4382dcc316efd170f8fae0aff9dbe7ea1738307d。	git rev-parse HEAD
+2	b41_result_json_tsv_alignment	PASS	B41 impl result JSON/TSV 对齐：14/14。	z012_foundation_data_interaction_impl_result.json/.tsv
+3	b41_browser_result_json_parse	PASS	B41 browser result JSON 可解析。	z012_foundation_data_interaction_browser_result.json
+4	regression_browser_result_json_parse	PASS	B42 regression browser result JSON 可解析。	z012_foundation_data_interaction_regression_browser_result.json
+5	route_hit_all	PASS	8 条目标路由命中 8/8。	regression browser route_checks
+6	customer_interaction	PASS	customer parity 提示、筛选/重置/分页/明细链路可测。	regression browser customer_* status
+7	supplier_interaction	PASS	supplier parity 提示、筛选/重置/分页/明细链路可测。	regression browser supplier_* status
+8	factory_interaction	PASS	factory parity 提示、筛选/重置/分页/明细链路可测。	regression browser factory_* status
+9	warehouse_interaction	PASS	warehouse parity 提示、筛选/重置/分页/明细链路可测。	regression browser warehouse_* status
+10	readonly_write_guards	PASS	写动作保持 guarded/disabled。	regression browser readonly_write_guards_status
+11	browser_get_only	PASS	request_methods=['GET']，write=0，unexpected_write=0，forbidden=0。	regression browser request metrics
+12	browser_blocking_metrics	PASS	blocking_console=0，blocking_response=0，network_error=0。	regression browser blocking metrics
+13	screenshot_paths_exist	PASS	截图路径存在 8/8。	regression browser screenshot_paths_created
+14	text_hygiene	PASS	B42 报告与 result JSON/TSV/browser JSON 文本卫生通过（无 trailing whitespace，EOF 单换行）。	local text hygiene checks

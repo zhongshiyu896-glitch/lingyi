@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B41 source_head 与 B40 冻结头一致（4382dcc316efd170f8fae0aff9dbe7ea1738307d）。	task_z012b_40_foundation_data_interaction_boundary.json + git baseline
+2	changed_files_allowlist	PASS	06_前端差异仅 router/index.ts、SalesInventoryReferenceList.vue、FactoryStatementList.vue、WarehouseDashboard.vue。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_parity	PASS	foundation customer/supplier/factory 语义保持，补齐 foundation/warehouse 只读映射。	router/index.ts
+5	customer_interaction	PASS	customer parity hint、查询、重置、分页、明细抽屉可测。	browser_result.customer_parity_hint_status + browser_result.customer_interaction_status
+6	supplier_interaction	PASS	supplier parity hint、查询、重置、分页、明细预览可测。	browser_result.supplier_parity_hint_status + browser_result.supplier_interaction_status
+7	factory_interaction	PASS	factory parity hint、查询、重置、分页、明细预览可测。	browser_result.factory_parity_hint_status + browser_result.factory_interaction_status
+8	warehouse_interaction	PASS	warehouse parity hint、查询、重置、分页、只读明细弹层可测。	browser_result.warehouse_parity_hint_status + browser_result.warehouse_interaction_status
+9	readonly_write_guards	PASS	写动作统一 guarded/disabled，未触发副作用请求。	FactoryStatementList.vue + WarehouseDashboard.vue + browser_result.readonly_write_guards_status
+10	typecheck	PASS	npm run typecheck PASS。	terminal output
+11	build	PASS	npm run build PASS。	terminal output
+12	browser_get_only	PASS	request_methods=[GET]，write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。	z012_foundation_data_interaction_browser_result.json
+13	browser_blocking_metrics	PASS	blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。	z012_foundation_data_interaction_browser_result.json
+14	text_hygiene	PASS	B41 报告、impl result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。	trailing whitespace & EOF newline checks
