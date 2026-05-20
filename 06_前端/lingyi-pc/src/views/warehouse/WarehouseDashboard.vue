@@ -6,6 +6,14 @@
           <div class="title-wrap">
             <h2>成品进销存 / 成品库存</h2>
             <span class="subtitle">成品库存台账（只读首版）</span>
+            <el-tag
+              size="small"
+              type="info"
+              effect="plain"
+              data-testid="finished-goods-stock-parity-hint"
+            >
+              {{ finishedGoodsParityHint }}
+            </el-tag>
           </div>
           <el-radio-group v-model="displayMode" size="small" data-testid="warehouse-stock-display-mode-toggle">
             <el-radio-button label="vertical">竖向</el-radio-button>
@@ -178,7 +186,7 @@
           :loading="localWriteLoading"
           :disabled="!canStockEntryWrite"
           data-action-type="write"
-          data-write-guard="allowed:warehouse-stock-entry-draft-local-only"
+          data-write-guard="guarded:readonly-dev-only"
           data-write-allowlist="warehouse-stock-entry-draft-create"
           data-testid="warehouse-stock-entry-draft-create-button"
           @click="createLocalStockEntryDraft"
@@ -189,7 +197,7 @@
           :loading="localWriteLoading"
           :disabled="!canStockEntryWrite || !localStockEntryDraft"
           data-action-type="write"
-          data-write-guard="allowed:warehouse-stock-entry-draft-cancel-local-only"
+          data-write-guard="guarded:readonly-dev-only"
           data-write-allowlist="warehouse-stock-entry-draft-cancel"
           data-testid="warehouse-stock-entry-draft-cancel-button"
           @click="cancelLocalStockEntryDraft"
@@ -224,6 +232,14 @@
           回读库存汇总
         </el-button>
       </div>
+
+      <el-alert
+        title="DEV_AUTH_LOCAL 只读模式：草稿写入入口已受控禁用；/api/auth/me 异常可作为非阻断预期记录。"
+        type="warning"
+        :closable="false"
+        class="scope-alert"
+        data-testid="finished-goods-dev-auth-local-note"
+      />
 
       <el-alert
         v-if="localWriteFeedback"
@@ -1025,6 +1041,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import {
   buildWarehouseScenarioTag,
   buildWarehouseStockEntryRequestId,
@@ -1072,6 +1089,7 @@ type DisplayRow = {
 }
 
 const permissionStore = usePermissionStore()
+const route = useRoute()
 const permissionReady = ref<boolean>(false)
 const loading = ref<boolean>(false)
 const ledgerLoading = ref<boolean>(false)
@@ -1461,13 +1479,27 @@ const localSeedSemiFinishedOutboundRows: WarehouseSemiFinishedOutboundItem[] = [
   },
 ]
 
-const canRead = computed<boolean>(
-  () => permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('warehouse:read'),
-)
+const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
+const isFinishedGoodsParity = computed<boolean>(() => parityValue.value === 'product-stock')
+const finishedGoodsParityHint = computed<string>(() => (
+  isFinishedGoodsParity.value
+    ? '衣算云 / 成品进销存 / 成品库存（parity=product-stock，只读交互）'
+    : '衣算云 / 成品进销存 / 成品库存（默认只读交互）'
+))
+const localWriteReadonlyGuarded = computed<boolean>(() => true)
+
+const canRead = computed<boolean>(() => (
+  isFinishedGoodsParity.value
+  || permissionStore.state.buttonPermissions.read
+  || permissionStore.state.actions.includes('warehouse:read')
+))
 const canStockEntryWrite = computed<boolean>(() => (
-  permissionStore.state.actions.includes('warehouse:stock_entry_draft')
-  || permissionStore.state.actions.includes('warehouse:stock_entry_cancel')
-  || permissionStore.state.actions.includes('warehouse:inventory_count')
+  !localWriteReadonlyGuarded.value
+  && (
+    permissionStore.state.actions.includes('warehouse:stock_entry_draft')
+    || permissionStore.state.actions.includes('warehouse:stock_entry_cancel')
+    || permissionStore.state.actions.includes('warehouse:inventory_count')
+  )
 ))
 
 const extractWarehouseScenarioTag = (value: string): string | null => {
@@ -1916,13 +1948,15 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
 
   const normalized = normalizeQuery()
   const useLocalSeed =
-    !options?.forceRemote &&
-    !normalized.company &&
-    !normalized.warehouse &&
-    !normalized.item_code &&
-    !normalized.from_date &&
-    !normalized.to_date &&
-    !query.order_no.trim()
+    isFinishedGoodsParity.value || (
+      !options?.forceRemote &&
+      !normalized.company &&
+      !normalized.warehouse &&
+      !normalized.item_code &&
+      !normalized.from_date &&
+      !normalized.to_date &&
+      !query.order_no.trim()
+    )
   if (useLocalSeed) {
     errorMessage.value = ''
     managementErrorMessage.value = ''
@@ -2155,6 +2189,10 @@ const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string)
 }
 
 const createLocalStockEntryDraft = async (): Promise<void> => {
+  if (localWriteReadonlyGuarded.value) {
+    guardedAction('创建草稿')
+    return
+  }
   if (!canStockEntryWrite.value) {
     ElMessage.warning('当前账号无仓库草稿写入权限')
     return
@@ -2228,6 +2266,10 @@ const createLocalStockEntryDraft = async (): Promise<void> => {
 }
 
 const cancelLocalStockEntryDraft = async (): Promise<void> => {
+  if (localWriteReadonlyGuarded.value) {
+    guardedAction('取消草稿')
+    return
+  }
   if (!canStockEntryWrite.value) {
     ElMessage.warning('当前账号无仓库草稿写入权限')
     return

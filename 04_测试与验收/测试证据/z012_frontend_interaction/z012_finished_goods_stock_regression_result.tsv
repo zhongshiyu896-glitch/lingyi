@@ -1,0 +1,14 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B28 使用的 source_head 与 B27 基线一致（6a0854da243f6e7ca514ee4c06e95c43e0d3e301）。	TASK-Z012B-27-IMPL report + git HEAD baseline
+2	impl_result_json_tsv_alignment	PASS	B27 impl result JSON entries=13，TSV 数据行=13。	z012_finished_goods_stock_interaction_impl_result.json/.tsv
+3	impl_browser_result_parse	PASS	B27 browser result JSON 可解析。	z012_finished_goods_stock_interaction_browser_result.json
+4	impl_browser_screenshot_paths_exist	PASS	B27 browser result 中 4/4 截图路径存在。	z012_finished_goods_stock_interaction_browser_result.json.screenshot_paths_created
+5	finished_goods_parity_hint	PASS	成品库存 parity 提示可见。	z012_finished_goods_stock_regression_browser_result.json.finished_goods_parity_hint_status
+6	filter_interaction	PASS	筛选输入可交互，查询链路可执行。	z012_finished_goods_stock_regression_browser_result.json.filter_values_before_reset
+7	reset_interaction	PASS	重置后筛选值恢复默认。	z012_finished_goods_stock_regression_browser_result.json.filter_values_after_reset
+8	kpi_list_linkage	PASS	KPI 与列表联动链路可测。	z012_finished_goods_stock_regression_browser_result.json.kpi_list_linkage_status
+9	readonly_detail_panel_or_drawer	PASS	只读详情通过 warning 等价路径可测（未触发写入）。	z012_finished_goods_stock_regression_browser_result.json.readonly_detail_panel_or_drawer_note
+10	guarded_write_actions_and_get_only	PASS	写动作均受控，request_methods=[GET]，无写请求。	z012_finished_goods_stock_regression_browser_result.json
+11	typecheck	PASS	npm run typecheck PASS。	terminal output
+12	build	PASS	npm run build PASS。	terminal output
+13	text_hygiene	PASS	B28 报告、result JSON/TSV、browser result JSON、工程师日志文本卫生通过。	trailing whitespace + EOF newline checks

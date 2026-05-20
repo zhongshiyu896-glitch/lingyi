@@ -1,0 +1,139 @@
+{
+  "task_id": "TASK-Z012B-28-REGRESSION",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z012B-27-IMPL",
+  "source_head": "6a0854da243f6e7ca514ee4c06e95c43e0d3e301",
+  "selected_candidate_id": "Z012-CAND-005",
+  "module": "成品进销存",
+  "yisuan_page": "成品库存 / 成品进销存报表",
+  "code_changed": false,
+  "route_count": 3,
+  "screenshot_count": 4,
+  "valid_target_screenshot_count": 3,
+  "regression_runtime_base_url": "http://127.0.0.1:5181",
+  "regression_runtime_note": "port_5173_occupied_by_non_lingyi_runtime_switched_to_5181",
+  "typecheck": "PASS",
+  "build": "PASS",
+  "impl_result_json_tsv_alignment": "PASS (13/13)",
+  "impl_browser_result_parse": "PASS",
+  "parity_hint_status": "PASS",
+  "filter_interaction_status": "PASS",
+  "reset_interaction_status": "PASS",
+  "kpi_list_linkage_status": "PASS",
+  "readonly_detail_status": "PASS",
+  "guarded_write_actions_status": "PASS",
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "expected_non_blocking_errors": [
+    "/api/auth/me 500 under DEV_AUTH_LOCAL x5"
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  },
+  "result_check_count": 13,
+  "result_pass_count": 13,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B28 使用的 source_head 与 B27 基线一致（6a0854da243f6e7ca514ee4c06e95c43e0d3e301）。",
+      "evidence": "TASK-Z012B-27-IMPL report + git HEAD baseline"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "impl_result_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B27 impl result JSON entries=13，TSV 数据行=13。",
+      "evidence": "z012_finished_goods_stock_interaction_impl_result.json/.tsv"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "impl_browser_result_parse",
+      "status": "PASS",
+      "observed": "B27 browser result JSON 可解析。",
+      "evidence": "z012_finished_goods_stock_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "impl_browser_screenshot_paths_exist",
+      "status": "PASS",
+      "observed": "B27 browser result 中 4/4 截图路径存在。",
+      "evidence": "z012_finished_goods_stock_interaction_browser_result.json.screenshot_paths_created"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "finished_goods_parity_hint",
+      "status": "PASS",
+      "observed": "成品库存 parity 提示可见。",
+      "evidence": "z012_finished_goods_stock_regression_browser_result.json.finished_goods_parity_hint_status"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "filter_interaction",
+      "status": "PASS",
+      "observed": "筛选输入可交互，查询链路可执行。",
+      "evidence": "z012_finished_goods_stock_regression_browser_result.json.filter_values_before_reset"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "reset_interaction",
+      "status": "PASS",
+      "observed": "重置后筛选值恢复默认。",
+      "evidence": "z012_finished_goods_stock_regression_browser_result.json.filter_values_after_reset"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "kpi_list_linkage",
+      "status": "PASS",
+      "observed": "KPI 与列表联动链路可测。",
+      "evidence": "z012_finished_goods_stock_regression_browser_result.json.kpi_list_linkage_status"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "readonly_detail_panel_or_drawer",
+      "status": "PASS",
+      "observed": "只读详情通过 warning 等价路径可测（未触发写入）。",
+      "evidence": "z012_finished_goods_stock_regression_browser_result.json.readonly_detail_panel_or_drawer_note"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "guarded_write_actions_and_get_only",
+      "status": "PASS",
+      "observed": "写动作均受控，request_methods=[GET]，无写请求。",
+      "evidence": "z012_finished_goods_stock_regression_browser_result.json"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "text_hygiene",
+      "status": "PASS",
+      "observed": "B28 报告、result JSON/TSV、browser result JSON、工程师日志文本卫生通过。",
+      "evidence": "trailing whitespace + EOF newline checks"
+    }
+  ]
+}

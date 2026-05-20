@@ -1,0 +1,616 @@
+{
+  "run_tag": "2026-05-20T09-30-19-712Z",
+  "started_at": "2026-05-20T09:30:19.712Z",
+  "requested_browser_targets": [
+    "http://127.0.0.1:5173/productStock/productStockList",
+    "http://127.0.0.1:5173/warehouse?parity=product-stock",
+    "http://127.0.0.1:5173/warehouse"
+  ],
+  "runtime_browser_targets": [
+    "http://127.0.0.1:5180/productStock/productStockList",
+    "http://127.0.0.1:5180/warehouse?parity=product-stock",
+    "http://127.0.0.1:5180/warehouse"
+  ],
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5180",
+  "target_results": [
+    {
+      "target_id": "Z012-FINISHED-GOODS-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/productStock/productStockList",
+      "attempted_url": "http://127.0.0.1:5180/productStock/productStockList",
+      "final_url": "http://127.0.0.1:5180/warehouse?parity=product-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b27_finished_goods_stock_screenshots/2026-05-20T09-30-19-712Z_Z012-FINISHED-GOODS-TARGET-1.png"
+    },
+    {
+      "target_id": "Z012-FINISHED-GOODS-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/warehouse?parity=product-stock",
+      "attempted_url": "http://127.0.0.1:5180/warehouse?parity=product-stock",
+      "final_url": "http://127.0.0.1:5180/warehouse?parity=product-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b27_finished_goods_stock_screenshots/2026-05-20T09-30-19-712Z_Z012-FINISHED-GOODS-TARGET-2.png"
+    },
+    {
+      "target_id": "Z012-FINISHED-GOODS-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/warehouse",
+      "attempted_url": "http://127.0.0.1:5180/warehouse",
+      "final_url": "http://127.0.0.1:5180/warehouse",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b27_finished_goods_stock_screenshots/2026-05-20T09-30-19-712Z_Z012-FINISHED-GOODS-TARGET-3.png"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z012b27_finished_goods_stock_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z012b27_finished_goods_stock_screenshots/2026-05-20T09-30-19-712Z_Z012-FINISHED-GOODS-TARGET-1.png",
+    "/tmp/task_z012b27_finished_goods_stock_screenshots/2026-05-20T09-30-19-712Z_Z012-FINISHED-GOODS-TARGET-2.png",
+    "/tmp/task_z012b27_finished_goods_stock_screenshots/2026-05-20T09-30-19-712Z_Z012-FINISHED-GOODS-TARGET-3.png",
+    "/tmp/task_z012b27_finished_goods_stock_screenshots/2026-05-20T09-30-19-712Z_Z012-FINISHED-GOODS-INTERACTION.png"
+  ],
+  "screenshot_count": 4,
+  "valid_target_screenshot_count": 3,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "console_error_count": 4,
+  "expected_console_error_count": 4,
+  "blocking_response_error_count": 0,
+  "expected_response_error_count": 4,
+  "page_error_count": 0,
+  "network_error_count": 0,
+  "finished_goods_parity_hint_status": "PASS",
+  "filter_interaction_status": "PASS",
+  "pagination_interaction_status": "PASS",
+  "reset_interaction_status": "PASS",
+  "kpi_list_linkage_status": "PASS",
+  "readonly_detail_panel_or_drawer_status": "PASS",
+  "readonly_detail_panel_or_drawer_note": "readonly_warning_path",
+  "readonly_dev_guard_status": "PASS",
+  "empty_error_state_semantics_status": "PASS",
+  "filter_values_before_reset": {
+    "warehouse": "成品仓",
+    "order_no": "DD20240718001",
+    "style_keyword": "20240718001"
+  },
+  "filter_values_after_reset": {
+    "warehouse": "",
+    "order_no": "",
+    "style_keyword": ""
+  },
+  "write_guard_count": 20,
+  "write_guard_disabled_count": 2,
+  "pagination_shell_visible": true,
+  "interaction_error": null,
+  "non_get_requests": [],
+  "request_failed": [],
+  "response_errors": [
+    {
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1",
+      "status": 500,
+      "url": "http://127.0.0.1:5180/api/auth/me"
+    },
+    {
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2",
+      "status": 500,
+      "url": "http://127.0.0.1:5180/api/auth/me"
+    },
+    {
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3",
+      "status": 500,
+      "url": "http://127.0.0.1:5180/api/auth/me"
+    },
+    {
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION",
+      "status": 500,
+      "url": "http://127.0.0.1:5180/api/auth/me"
+    }
+  ],
+  "expected_non_blocking_errors": [
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1",
+      "reason": "DEV_AUTH_LOCAL"
+    },
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2",
+      "reason": "DEV_AUTH_LOCAL"
+    },
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3",
+      "reason": "DEV_AUTH_LOCAL"
+    },
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION",
+      "reason": "DEV_AUTH_LOCAL"
+    }
+  ],
+  "console_errors": [
+    {
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    }
+  ],
+  "page_errors": [],
+  "sample_request_log": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/productStock/productStockList",
+      "resourceType": "document",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/warehouse/WarehouseDashboard.vue",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/warehouse.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/warehouse/WarehouseDashboard.vue?vue&type=style&index=0&scoped=f9795a07&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "resourceType": "fetch",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-1"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/warehouse?parity=product-stock",
+      "resourceType": "document",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/warehouse/WarehouseDashboard.vue",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/warehouse.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/warehouse/WarehouseDashboard.vue?vue&type=style&index=0&scoped=f9795a07&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "resourceType": "fetch",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-2"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/warehouse",
+      "resourceType": "document",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/warehouse/WarehouseDashboard.vue",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/warehouse.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/warehouse/WarehouseDashboard.vue?vue&type=style&index=0&scoped=f9795a07&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "resourceType": "fetch",
+      "targetId": "Z012-FINISHED-GOODS-TARGET-3"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/warehouse?parity=product-stock",
+      "resourceType": "document",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@vite/client",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/main.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/App.vue",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/router/index.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/warehouse/WarehouseDashboard.vue",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/warehouse.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/stores/permission.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/views/warehouse/WarehouseDashboard.vue?vue&type=style&index=0&scoped=f9795a07&lang.css",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/request.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/src/api/auth.ts",
+      "resourceType": "script",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "resourceType": "fetch",
+      "targetId": "Z012-FINISHED-GOODS-INTERACTION"
+    }
+  ]
+}

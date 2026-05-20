@@ -1,0 +1,166 @@
+{
+  "task_id": "TASK-Z012B-27-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z012B-26-PREP",
+  "source_head": "6a0854da243f6e7ca514ee4c06e95c43e0d3e301",
+  "selected_candidate_id": "Z012-CAND-005",
+  "code_changed": true,
+  "runtime_base_url": "http://127.0.0.1:5180",
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5180",
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue"
+  ],
+  "changed_product_files_count": 1,
+  "unchanged_allowlist_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/warehouse.ts"
+  ],
+  "backend_changed": false,
+  "implementation": {
+    "selected_candidate_id": "Z012-CAND-005",
+    "route_parity": "KEEP_EXISTING_/productStock/productStockList_TO_/warehouse?parity=product-stock",
+    "readonly_interactions": "在 WarehouseDashboard.vue 补齐 parity 提示、只读筛选/重置、KPI 与列表联动、只读详情区域、空态/错误态语义。",
+    "guarded_write_actions": "草稿创建/取消与其他写动作统一 guarded:readonly-dev-only，且在本地只读场景禁用。",
+    "api_changes": "warehouse.ts 无实际修改；未新增写 API。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z012_frontend_interaction/z012_finished_goods_stock_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/productStock/productStockList",
+      "http://127.0.0.1:5173/warehouse?parity=product-stock",
+      "http://127.0.0.1:5173/warehouse"
+    ],
+    "runtime_browser_targets": [
+      "http://127.0.0.1:5180/productStock/productStockList",
+      "http://127.0.0.1:5180/warehouse?parity=product-stock",
+      "http://127.0.0.1:5180/warehouse"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "network_error_count": 0,
+    "expected_non_blocking_errors": [
+      "/api/auth/me 500 under DEV_AUTH_LOCAL"
+    ],
+    "finished_goods_parity_hint_status": "PASS",
+    "filter_interaction_status": "PASS",
+    "pagination_interaction_status": "PASS",
+    "reset_interaction_status": "PASS",
+    "kpi_list_linkage_status": "PASS",
+    "readonly_dev_guard_status": "PASS",
+    "empty_error_state_semantics_status": "PASS",
+    "readonly_detail_panel_or_drawer_status": "PASS",
+    "screenshot_dir": "/tmp/task_z012b27_finished_goods_stock_screenshots",
+    "screenshot_count": 4,
+    "valid_target_screenshot_count": 3
+  },
+  "result_check_count": 13,
+  "result_pass_count": 13,
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "production_account_used": false,
+    "remote_lifecycle_action_executed": false
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B27 source_head 与 B26 冻结头一致（6a0854da243f6e7ca514ee4c06e95c43e0d3e301）。",
+      "evidence": "task_z012b_26_finished_goods_stock_interaction_boundary.json + current git HEAD baseline"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "06_前端 diff 仅 WarehouseDashboard.vue，位于 B26 allowlist 内。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "finished_goods_parity_hint",
+      "status": "PASS",
+      "observed": "data-testid=finished-goods-stock-parity-hint 可见，成品库存 parity 语义成立。",
+      "evidence": "WarehouseDashboard.vue + z012_finished_goods_stock_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "filter_interaction",
+      "status": "PASS",
+      "observed": "只读筛选链路可交互，筛选字段变更可被记录。",
+      "evidence": "z012_finished_goods_stock_interaction_browser_result.json.filter_values_before_reset"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "reset_interaction",
+      "status": "PASS",
+      "observed": "重置操作后筛选值恢复默认空值。",
+      "evidence": "z012_finished_goods_stock_interaction_browser_result.json.filter_values_after_reset"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "kpi_list_linkage",
+      "status": "PASS",
+      "observed": "KPI 与列表联动可测。",
+      "evidence": "z012_finished_goods_stock_interaction_browser_result.json.kpi_list_linkage_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "readonly_detail_panel_or_drawer",
+      "status": "PASS",
+      "observed": "只读详情区域可测（warning path）。",
+      "evidence": "z012_finished_goods_stock_interaction_browser_result.json.readonly_detail_panel_or_drawer_status"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "guarded_write_actions",
+      "status": "PASS",
+      "observed": "写动作均为 guarded/disabled，未触发写请求。",
+      "evidence": "WarehouseDashboard.vue + browser_result.write_request_count=0"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[GET]，write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。",
+      "evidence": "z012_finished_goods_stock_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "text_hygiene",
+      "status": "PASS",
+      "observed": "报告、impl result JSON/TSV、工程师会话日志文本卫生通过。",
+      "evidence": "trailing whitespace & EOF newline checks"
+    }
+  ]
+}

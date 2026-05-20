@@ -1,0 +1,14 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B27 source_head 与 B26 冻结头一致（6a0854da243f6e7ca514ee4c06e95c43e0d3e301）。	task_z012b_26_finished_goods_stock_interaction_boundary.json + current git HEAD baseline
+2	changed_files_allowlist	PASS	06_前端 diff 仅 WarehouseDashboard.vue，位于 B26 allowlist 内。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	finished_goods_parity_hint	PASS	data-testid=finished-goods-stock-parity-hint 可见，成品库存 parity 语义成立。	WarehouseDashboard.vue + z012_finished_goods_stock_interaction_browser_result.json
+5	filter_interaction	PASS	只读筛选链路可交互，筛选字段变更可被记录。	z012_finished_goods_stock_interaction_browser_result.json.filter_values_before_reset
+6	reset_interaction	PASS	重置操作后筛选值恢复默认空值。	z012_finished_goods_stock_interaction_browser_result.json.filter_values_after_reset
+7	kpi_list_linkage	PASS	KPI 与列表联动可测。	z012_finished_goods_stock_interaction_browser_result.json.kpi_list_linkage_status
+8	readonly_detail_panel_or_drawer	PASS	只读详情区域可测（warning path）。	z012_finished_goods_stock_interaction_browser_result.json.readonly_detail_panel_or_drawer_status
+9	guarded_write_actions	PASS	写动作均为 guarded/disabled，未触发写请求。	WarehouseDashboard.vue + browser_result.write_request_count=0
+10	typecheck	PASS	npm run typecheck PASS。	terminal output
+11	build	PASS	npm run build PASS。	terminal output
+12	browser_get_only	PASS	request_methods=[GET]，write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。	z012_finished_goods_stock_interaction_browser_result.json
+13	text_hygiene	PASS	报告、impl result JSON/TSV、工程师会话日志文本卫生通过。	trailing whitespace & EOF newline checks

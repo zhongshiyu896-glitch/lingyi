@@ -1,0 +1,133 @@
+{
+  "run_tag": "2026-05-20T10-08-16-761Z_Z012-FINISHED-GOODS-REGRESSION",
+  "started_at": "2026-05-20T10:08:26.028Z",
+  "requested_browser_targets": [
+    "http://127.0.0.1:5173/productStock/productStockList",
+    "http://127.0.0.1:5173/warehouse?parity=product-stock",
+    "http://127.0.0.1:5173/warehouse"
+  ],
+  "runtime_browser_targets": [
+    "http://127.0.0.1:5181/productStock/productStockList",
+    "http://127.0.0.1:5181/warehouse?parity=product-stock",
+    "http://127.0.0.1:5181/warehouse"
+  ],
+  "runtime_note": "regression_runtime_uses_5181_local_dev_server",
+  "target_results": [
+    {
+      "target_id": "Z012-FINISHED-GOODS-REGRESSION-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/productStock/productStockList",
+      "attempted_url": "http://127.0.0.1:5181/productStock/productStockList",
+      "final_url": "http://127.0.0.1:5181/warehouse?parity=product-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b28_finished_goods_stock_regression_screenshots/2026-05-20T10-08-16-761Z_Z012-FINISHED-GOODS-REGRESSION_Z012-FINISHED-GOODS-REGRESSION-TARGET-1.png"
+    },
+    {
+      "target_id": "Z012-FINISHED-GOODS-REGRESSION-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/warehouse?parity=product-stock",
+      "attempted_url": "http://127.0.0.1:5181/warehouse?parity=product-stock",
+      "final_url": "http://127.0.0.1:5181/warehouse?parity=product-stock",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b28_finished_goods_stock_regression_screenshots/2026-05-20T10-08-16-761Z_Z012-FINISHED-GOODS-REGRESSION_Z012-FINISHED-GOODS-REGRESSION-TARGET-2.png"
+    },
+    {
+      "target_id": "Z012-FINISHED-GOODS-REGRESSION-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/warehouse",
+      "attempted_url": "http://127.0.0.1:5181/warehouse",
+      "final_url": "http://127.0.0.1:5181/warehouse",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b28_finished_goods_stock_regression_screenshots/2026-05-20T10-08-16-761Z_Z012-FINISHED-GOODS-REGRESSION_Z012-FINISHED-GOODS-REGRESSION-TARGET-3.png"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z012b28_finished_goods_stock_regression_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z012b28_finished_goods_stock_regression_screenshots/2026-05-20T10-08-16-761Z_Z012-FINISHED-GOODS-REGRESSION_Z012-FINISHED-GOODS-REGRESSION-TARGET-1.png",
+    "/tmp/task_z012b28_finished_goods_stock_regression_screenshots/2026-05-20T10-08-16-761Z_Z012-FINISHED-GOODS-REGRESSION_Z012-FINISHED-GOODS-REGRESSION-TARGET-2.png",
+    "/tmp/task_z012b28_finished_goods_stock_regression_screenshots/2026-05-20T10-08-16-761Z_Z012-FINISHED-GOODS-REGRESSION_Z012-FINISHED-GOODS-REGRESSION-TARGET-3.png",
+    "/tmp/task_z012b28_finished_goods_stock_regression_screenshots/2026-05-20T10-08-16-761Z_Z012-FINISHED-GOODS-REGRESSION_Z012-FINISHED-GOODS-REGRESSION-INTERACTION.png"
+  ],
+  "screenshot_count": 4,
+  "valid_target_screenshot_count": 3,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "page_error_count": 0,
+  "expected_non_blocking_errors": [
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5181/api/auth/me",
+      "reason": "DEV_AUTH_LOCAL"
+    },
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5181/api/auth/me",
+      "reason": "DEV_AUTH_LOCAL"
+    },
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5181/api/auth/me",
+      "reason": "DEV_AUTH_LOCAL"
+    },
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5181/api/auth/me",
+      "reason": "DEV_AUTH_LOCAL"
+    },
+    {
+      "type": "response_500",
+      "url": "http://127.0.0.1:5181/api/auth/me",
+      "reason": "DEV_AUTH_LOCAL"
+    }
+  ],
+  "expected_console_error_count": 5,
+  "expected_response_error_count": 5,
+  "finished_goods_parity_hint_status": "PASS",
+  "filter_interaction_status": "PASS",
+  "pagination_interaction_status": "PASS",
+  "reset_interaction_status": "PASS",
+  "kpi_list_linkage_status": "PASS",
+  "readonly_detail_panel_or_drawer_status": "PASS",
+  "readonly_detail_panel_or_drawer_note": "readonly_warning_path",
+  "readonly_dev_guard_status": "PASS",
+  "empty_error_state_semantics_status": "PASS",
+  "write_guard_count": 20,
+  "write_guard_disabled_count": 2,
+  "filter_values_before_reset": {
+    "warehouse": "成品仓A",
+    "order_no": "FG-ORDER-001",
+    "style_keyword": "FG-STYLE"
+  },
+  "filter_values_after_reset": {
+    "warehouse": "",
+    "order_no": "",
+    "style_keyword": ""
+  },
+  "pagination_shell_visible": true,
+  "non_get_requests": [],
+  "request_failed": [],
+  "response_errors": [],
+  "expected_console_errors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "blocking_console_errors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "page_errors": []
+}
