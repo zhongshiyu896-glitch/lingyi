@@ -260,6 +260,18 @@ const routes: RouteRecordRaw[] = [
     redirect: { path: '/reports/catalog', query: { parity: 'customer-reconciliation' } },
   },
   {
+    path: '/finance/bank-flow',
+    redirect: { path: '/factory-statements/list', query: { parity: 'finance-bank-ledger' } },
+  },
+  {
+    path: '/finance/receipts-payments',
+    redirect: { path: '/factory-statements/list', query: { parity: 'finance-expense-payment' } },
+  },
+  {
+    path: '/finance/reconciliation',
+    redirect: { path: '/factory-statements/list', query: { parity: 'finance-customer-reconciliation' } },
+  },
+  {
     path: '/reportManage/collaborationReport/factoryProductStockReport',
     redirect: { path: '/reports/catalog', query: { parity: 'factory-product-stock' } },
   },

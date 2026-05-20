@@ -1,0 +1,147 @@
+{
+  "task_id": "TASK-Z012B-49-REGRESSION",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z012B-48-FIX1",
+  "source_head": "a1f712c1650a8141ca66fba937d610017c1ce350",
+  "selected_candidate_id": "Z012-CAND-008",
+  "code_changed": false,
+  "backend_changed": false,
+  "api_changed": false,
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "runtime_evidence": {
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z012_frontend_interaction/z012_finance_interaction_regression_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/factory-statements/list?parity=finance-bank-ledger",
+      "http://127.0.0.1:5173/factory-statements/list?parity=finance-expense-payment",
+      "http://127.0.0.1:5173/factory-statements/list?parity=finance-customer-reconciliation",
+      "http://127.0.0.1:5173/finance/bank-flow",
+      "http://127.0.0.1:5173/finance/receipts-payments",
+      "http://127.0.0.1:5173/finance/reconciliation"
+    ],
+    "route_hit_count": 6,
+    "canonical_route_checks": true,
+    "alias_routes_to_canonical_parity": true,
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "screenshot_dir": "/tmp/task_z012b49_finance_regression_screenshots",
+    "screenshot_count": 6,
+    "valid_target_screenshot_count": 6,
+    "expected_non_blocking_response_errors_count": 9
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "b48_fix1_result_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B48 FIX1 result JSON/TSV 对齐 14/14。",
+      "evidence": "z012_finance_interaction_impl_result.json + z012_finance_interaction_impl_result.tsv"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "regression_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B49 regression JSON/TSV 对齐 14/14。",
+      "evidence": "z012_finance_interaction_regression_result.json + z012_finance_interaction_regression_result.tsv"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "browser_result_json_parse",
+      "status": "PASS",
+      "observed": "回归 browser result JSON 可解析。",
+      "evidence": "z012_finance_interaction_regression_browser_result.json"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "canonical_route_checks",
+      "status": "PASS",
+      "observed": "3 条 canonical direct routes 命中均为 PASS。",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "alias_routes_to_canonical_parity",
+      "status": "PASS",
+      "observed": "finance 三条入口别名最终均落到 canonical parity。",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "screenshot_paths",
+      "status": "PASS",
+      "observed": "截图路径存在且全部位于 /tmp/task_z012b49_finance_regression_screenshots。",
+      "evidence": "browser_result.screenshot_paths_created"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "request_methods",
+      "status": "PASS",
+      "observed": "request_methods=[GET]。",
+      "evidence": "browser_result.request_methods"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "write_request_count",
+      "status": "PASS",
+      "observed": "write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。",
+      "evidence": "browser_result write counters"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。",
+      "evidence": "browser_result blocking/network metrics"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "export_endpoint_called",
+      "status": "PASS",
+      "observed": "export_endpoint_called=false。",
+      "evidence": "browser_result.export_endpoint_called"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "git_scope",
+      "status": "PASS",
+      "observed": "git diff --name-only -- 06_前端 仍仅 B47 allowlist 内实际修改文件；07_后端为空。",
+      "evidence": "git diff outputs"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "git_hygiene",
+      "status": "PASS",
+      "observed": "git diff --cached --check PASS；git diff --check PASS。",
+      "evidence": "git check outputs"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "text_hygiene",
+      "status": "PASS",
+      "observed": "B49 报告、regression result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。",
+      "evidence": "trailing whitespace & EOF newline checks"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "no_remote_action",
+      "status": "PASS",
+      "observed": "无 tag，remote 不含当前 HEAD，PR 列表为空。",
+      "evidence": "git tag + git branch -r --contains HEAD + gh pr list"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

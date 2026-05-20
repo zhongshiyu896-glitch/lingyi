@@ -8,8 +8,8 @@
             type="primary"
             :disabled="!canCreateAction"
             data-action-type="write"
-            :data-write-guard="isFoundationReadonlyParity ? 'guarded:readonly-foundation-data' : 'allowed:factory-statement-create-local-only'"
-            :data-write-allowlist="isFoundationReadonlyParity ? undefined : 'factory-statement-create'"
+            :data-write-guard="readonlyWriteGuardTag || 'allowed:factory-statement-create-local-only'"
+            :data-write-allowlist="isReadonlyParity ? undefined : 'factory-statement-create'"
             :data-guard-state="canCreateAction ? 'enabled' : 'disabled'"
             @click="openCreateDialog"
           >
@@ -27,14 +27,14 @@
         class="reconciliation-alert"
         data-testid="factory-statement-main-alert"
       />
-      <div v-if="foundationParityHint" class="foundation-parity-row">
+      <div v-if="readonlyParityHint" class="foundation-parity-row">
         <el-tag
           size="small"
           type="warning"
           effect="plain"
-          :data-testid="isFoundationSupplierParity ? 'foundation-supplier-parity-hint' : 'foundation-factory-parity-hint'"
+          :data-testid="readonlyParityHintTestId"
         >
-          {{ foundationParityHint }}
+          {{ readonlyParityHint }}
         </el-tag>
       </div>
 
@@ -285,8 +285,8 @@
                 type="warning"
                 :disabled="!canPayableAction"
                 data-action-type="write"
-                :data-write-guard="isFoundationReadonlyParity ? 'guarded:readonly-foundation-data' : 'allowed:factory-statement-payable-draft-local-only'"
-                :data-write-allowlist="isFoundationReadonlyParity ? undefined : 'factory-statement-payable-draft'"
+                :data-write-guard="readonlyWriteGuardTag || 'allowed:factory-statement-payable-draft-local-only'"
+                :data-write-allowlist="isReadonlyParity ? undefined : 'factory-statement-payable-draft'"
                 :data-guard-state="canPayableAction ? 'enabled' : 'disabled'"
                 @click="createPayableDraft(scope.row)"
               >
@@ -308,8 +308,8 @@
                 type="danger"
                 :disabled="!canCancelAction"
                 data-action-type="write"
-                :data-write-guard="isFoundationReadonlyParity ? 'guarded:readonly-foundation-data' : 'allowed:factory-statement-cancel-local-only'"
-                :data-write-allowlist="isFoundationReadonlyParity ? undefined : 'factory-statement-cancel'"
+                :data-write-guard="readonlyWriteGuardTag || 'allowed:factory-statement-cancel-local-only'"
+                :data-write-allowlist="isReadonlyParity ? undefined : 'factory-statement-cancel'"
                 :data-guard-state="canCancelAction ? 'enabled' : 'disabled'"
                 @click="cancelStatement(scope.row)"
               >
@@ -335,7 +335,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="expense-reimbursement-payment-section">
+    <el-card shadow="never" class="expense-reimbursement-payment-section" data-testid="finance-expense-payment-section">
       <template #header>
         <div class="header-row">
           <span>费用(报销)支付（TASK-Y59B-P1-02）</span>
@@ -351,7 +351,7 @@
         class="expense-reimbursement-alert"
       />
 
-      <el-form :inline="true" :model="expensePaymentQuery" class="expense-filter-form">
+      <el-form :inline="true" :model="expensePaymentQuery" class="expense-filter-form" data-testid="finance-expense-payment-filter-form">
         <el-form-item label="支付单号">
           <el-input v-model="expensePaymentQuery.payment_no" clearable placeholder="请输入支付单号" />
         </el-form-item>
@@ -407,8 +407,8 @@
           />
         </el-form-item>
         <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="loadExpenseReimbursementPayments">查询</el-button>
-          <el-button :disabled="!canRead" @click="resetExpensePaymentFilters">重置</el-button>
+          <el-button type="primary" :disabled="!canRead" data-testid="finance-expense-payment-query-button" @click="loadExpenseReimbursementPayments">查询</el-button>
+          <el-button :disabled="!canRead" data-testid="finance-expense-payment-reset-button" @click="resetExpensePaymentFilters">重置</el-button>
         </el-form-item>
       </el-form>
 
@@ -1141,7 +1141,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="customer-reconciliation-section">
+    <el-card shadow="never" class="customer-reconciliation-section" data-testid="finance-customer-reconciliation-section">
       <template #header>
         <div class="header-row">
           <span>客户对账表（TASK-Y64B-P1-01）</span>
@@ -1157,7 +1157,7 @@
         class="customer-reconciliation-alert"
       />
 
-      <el-form :inline="true" :model="customerReconciliationQuery" class="customer-reconciliation-filter-form">
+      <el-form :inline="true" :model="customerReconciliationQuery" class="customer-reconciliation-filter-form" data-testid="finance-customer-reconciliation-filter-form">
         <el-form-item label="对账单号">
           <el-input
             v-model="customerReconciliationQuery.reconciliation_no"
@@ -1232,8 +1232,8 @@
           />
         </el-form-item>
         <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="loadCustomerReconciliations">查询</el-button>
-          <el-button :disabled="!canRead" @click="resetCustomerReconciliationFilters">重置</el-button>
+          <el-button type="primary" :disabled="!canRead" data-testid="finance-customer-reconciliation-query-button" @click="loadCustomerReconciliations">查询</el-button>
+          <el-button :disabled="!canRead" data-testid="finance-customer-reconciliation-reset-button" @click="resetCustomerReconciliationFilters">重置</el-button>
         </el-form-item>
       </el-form>
 
@@ -3113,7 +3113,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="bank-ledger-section" data-testid="bank-ledger-section">
+    <el-card shadow="never" class="bank-ledger-section" data-testid="finance-bank-ledger-section">
       <template #header>
         <div class="header-row">
           <span>银行流水（TASK-Y69B-P1-05）</span>
@@ -3129,7 +3129,7 @@
         class="bank-ledger-alert"
       />
 
-      <el-form :inline="true" :model="bankLedgerQuery" class="bank-ledger-filter-form">
+      <el-form :inline="true" :model="bankLedgerQuery" class="bank-ledger-filter-form" data-testid="finance-bank-ledger-filter-form">
         <el-form-item label="流水单号">
           <el-input v-model="bankLedgerQuery.ledger_no" clearable placeholder="请输入流水单号" />
         </el-form-item>
@@ -3206,8 +3206,8 @@
           />
         </el-form-item>
         <el-form-item label="操作">
-          <el-button type="primary" :disabled="!canRead" @click="loadBankLedgers">查询</el-button>
-          <el-button :disabled="!canRead" @click="resetBankLedgerFilters">重置</el-button>
+          <el-button type="primary" :disabled="!canRead" data-testid="finance-bank-ledger-query-button" @click="loadBankLedgers">查询</el-button>
+          <el-button :disabled="!canRead" data-testid="finance-bank-ledger-reset-button" @click="resetBankLedgerFilters">重置</el-button>
         </el-form-item>
       </el-form>
 
@@ -3570,6 +3570,34 @@ const parityValue = computed<string>(() => String(route.query.parity || '').trim
 const isFoundationSupplierParity = computed<boolean>(() => parityValue.value === 'foundation-supplier')
 const isFoundationFactoryParity = computed<boolean>(() => parityValue.value === 'foundation-factory')
 const isFoundationReadonlyParity = computed<boolean>(() => isFoundationSupplierParity.value || isFoundationFactoryParity.value)
+const financeParityNormalized = computed<string>(() => {
+  if (parityValue.value === 'finance-bank-ledger' || parityValue.value === 'finance-bank-flow') {
+    return 'finance-bank-ledger'
+  }
+  if (parityValue.value === 'finance-expense-payment' || parityValue.value === 'finance-receipts-payments') {
+    return 'finance-expense-payment'
+  }
+  if (parityValue.value === 'finance-customer-reconciliation' || parityValue.value === 'finance-reconciliation') {
+    return 'finance-customer-reconciliation'
+  }
+  return ''
+})
+const isFinanceBankLedgerParity = computed<boolean>(() => financeParityNormalized.value === 'finance-bank-ledger')
+const isFinanceExpensePaymentParity = computed<boolean>(() => financeParityNormalized.value === 'finance-expense-payment')
+const isFinanceCustomerReconciliationParity = computed<boolean>(() => (
+  financeParityNormalized.value === 'finance-customer-reconciliation'
+))
+const isFinanceReadonlyParity = computed<boolean>(() => Boolean(financeParityNormalized.value))
+const isReadonlyParity = computed<boolean>(() => isFoundationReadonlyParity.value || isFinanceReadonlyParity.value)
+const readonlyWriteGuardTag = computed<string>(() => {
+  if (isFoundationReadonlyParity.value) {
+    return 'guarded:readonly-foundation-data'
+  }
+  if (isFinanceReadonlyParity.value) {
+    return 'guarded:readonly-finance'
+  }
+  return ''
+})
 const foundationParityHint = computed<string>(() => {
   if (isFoundationSupplierParity.value) {
     return '衣算云 / 基础资料 / 供应商（parity=foundation-supplier，只读交互）'
@@ -3579,15 +3607,50 @@ const foundationParityHint = computed<string>(() => {
   }
   return ''
 })
+const financeParityHint = computed<string>(() => {
+  if (isFinanceBankLedgerParity.value) {
+    return '衣算云 / 财务管理 / 银行流水（parity=finance-bank-flow|finance-bank-ledger，只读交互）'
+  }
+  if (isFinanceExpensePaymentParity.value) {
+    return '衣算云 / 财务管理 / 收付款（parity=finance-receipts-payments|finance-expense-payment，只读交互）'
+  }
+  if (isFinanceCustomerReconciliationParity.value) {
+    return '衣算云 / 财务管理 / 对账表（parity=finance-reconciliation|finance-customer-reconciliation，只读交互）'
+  }
+  return ''
+})
+const readonlyParityHint = computed<string>(() => foundationParityHint.value || financeParityHint.value)
+const readonlyParityHintTestId = computed<string>(() => {
+  if (isFoundationSupplierParity.value) {
+    return 'foundation-supplier-parity-hint'
+  }
+  if (isFoundationFactoryParity.value) {
+    return 'foundation-factory-parity-hint'
+  }
+  if (isFinanceBankLedgerParity.value) {
+    return 'finance-bank-ledger-parity-hint'
+  }
+  if (isFinanceExpensePaymentParity.value) {
+    return 'finance-expense-payment-parity-hint'
+  }
+  if (isFinanceCustomerReconciliationParity.value) {
+    return 'finance-customer-reconciliation-parity-hint'
+  }
+  return 'factory-statement-parity-hint'
+})
 const readonlyWriteHintText = computed<string>(() => (
   isFoundationReadonlyParity.value
     ? '基础资料模式仅允许只读查询与明细预览，创建/取消/应付草稿/确认/导出/打印均已禁用。'
-    : readonlyWriteHint
+    : isFinanceReadonlyParity.value
+      ? '财务管理模式仅允许只读查询、分页与详情预览，确认/取消/付款草稿/导出/打印均已禁用。'
+      : readonlyWriteHint
 ))
 const mainAlertDescription = computed<string>(() => (
   isFoundationReadonlyParity.value
     ? '基础资料 parity 仅开放只读查询、分页与详情预览；create/cancel/payable-draft/confirm、导出、打印保持禁用。'
-    : '本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。'
+    : isFinanceReadonlyParity.value
+      ? '财务管理 parity 仅开放只读查询、分页与详情预览；create/cancel/payable-draft/confirm、导出、打印保持禁用。'
+      : '本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。'
 ))
 
 interface SampleOrderReconciliationRow extends FactoryStatementListItem {
@@ -3599,18 +3662,18 @@ interface SampleOrderReconciliationRow extends FactoryStatementListItem {
 }
 
 const canRead = computed<boolean>(() => (
-  isFoundationReadonlyParity.value || permissionStore.state.buttonPermissions.factory_statement_read
+  isReadonlyParity.value || permissionStore.state.buttonPermissions.factory_statement_read
 ))
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_create)
 const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
 const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
 const canPayableDraft = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_payable_draft_create)
-const canCreateAction = computed<boolean>(() => canCreate.value && LOCAL_WRITE_MODE && !isFoundationReadonlyParity.value)
+const canCreateAction = computed<boolean>(() => canCreate.value && LOCAL_WRITE_MODE && !isReadonlyParity.value)
 const canConfirmAction = computed<boolean>(() => (
-  canConfirm.value && LOCAL_WRITE_MODE && LOCAL_CONFIRM_WRITE_MODE && !isFoundationReadonlyParity.value
+  canConfirm.value && LOCAL_WRITE_MODE && LOCAL_CONFIRM_WRITE_MODE && !isReadonlyParity.value
 ))
-const canCancelAction = computed<boolean>(() => canCancel.value && LOCAL_WRITE_MODE && !isFoundationReadonlyParity.value)
-const canPayableAction = computed<boolean>(() => canPayableDraft.value && LOCAL_WRITE_MODE && !isFoundationReadonlyParity.value)
+const canCancelAction = computed<boolean>(() => canCancel.value && LOCAL_WRITE_MODE && !isReadonlyParity.value)
+const canPayableAction = computed<boolean>(() => canPayableDraft.value && LOCAL_WRITE_MODE && !isReadonlyParity.value)
 
 const query = reactive({
   supplier: '',
@@ -4256,7 +4319,7 @@ const openCreateDialog = (): void => {
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
-  if (isFoundationReadonlyParity.value) {
+  if (isReadonlyParity.value) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
@@ -4281,7 +4344,7 @@ const submitCreateStatement = async (): Promise<void> => {
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
-  if (isFoundationReadonlyParity.value) {
+  if (isReadonlyParity.value) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
@@ -4330,7 +4393,7 @@ const confirmStatement = async (row: FactoryStatementListItem): Promise<void> =>
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
-  if (isFoundationReadonlyParity.value) {
+  if (isReadonlyParity.value) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
@@ -4366,7 +4429,7 @@ const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => 
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
-  if (isFoundationReadonlyParity.value) {
+  if (isReadonlyParity.value) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
@@ -4402,7 +4465,7 @@ const createPayableDraft = async (row: FactoryStatementListItem): Promise<void> 
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
-  if (isFoundationReadonlyParity.value) {
+  if (isReadonlyParity.value) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
   }
@@ -5475,7 +5538,7 @@ onMounted(async () => {
     await permissionStore.loadModuleActions('factory_statement')
   } catch (error) {
     ElMessage.warning((error as Error).message || '权限加载失败，将按只读模式继续')
-    if (!isFoundationReadonlyParity.value) {
+    if (!isReadonlyParity.value) {
       return
     }
   }
@@ -5488,6 +5551,22 @@ onMounted(async () => {
       await loadSupplierEvaluations()
       await loadSupplierReconciliations()
       await loadSupplierPayableSummaries()
+      return
+    }
+    if (isFinanceReadonlyParity.value) {
+      if (isFinanceBankLedgerParity.value) {
+        await loadBankDeposits()
+        await loadBankWithdrawals()
+        await loadBankLedgers()
+      }
+      if (isFinanceExpensePaymentParity.value) {
+        await loadExpenseReimbursementPayments()
+      }
+      if (isFinanceCustomerReconciliationParity.value) {
+        await loadCustomerReconciliations()
+        await loadCustomerUnpaidReports()
+        await loadCustomerReceivableSummaries()
+      }
       return
     }
     await loadExpenseReimbursementPayments()

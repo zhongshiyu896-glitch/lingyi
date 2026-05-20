@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B48 source_head 与 B47 冻结头一致（a1f712c1650a8141ca66fba937d610017c1ce350）。	task_z012b_47_finance_interaction_boundary.json + git rev-parse HEAD
+2	changed_files_allowlist	PASS	06_前端差异仅 router/index.ts、FactoryStatementList.vue。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_parity	PASS	新增 finance 三个入口别名并映射到 canonical parity（finance-bank-ledger / finance-expense-payment / finance-customer-reconciliation）。	router/index.ts
+5	finance_sections	PASS	银行流水/收付款/客户对账区块均具备 finance parity hint 与 data-testid。	FactoryStatementList.vue + browser parity hint statuses
+6	readonly_filters	PASS	finance parity 下查询/重置交互可测，列表与筛选链路可执行。	browser_result.finance_filter_interaction_status
+7	guarded_actions	PASS	写动作统一 guarded/disabled，未触发副作用写请求。	FactoryStatementList.vue + browser_result.guarded_actions_status
+8	write_endpoints_not_called	PASS	POST /api/factory-statements/、confirm、cancel、payable-draft 均未触发。	browser_result.request_methods + write_request_count
+9	typecheck	PASS	npm run typecheck PASS。	terminal output
+10	build	PASS	npm run build PASS。	terminal output
+11	browser_route_hits	PASS	目标路由命中 6/6（含 finance 入口别名跳转校验）。	z012_finance_interaction_browser_result.json route_checks
+12	browser_get_only	PASS	request_methods=[GET]，write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。	z012_finance_interaction_browser_result.json
+13	browser_blocking_metrics	PASS	blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。	z012_finance_interaction_browser_result.json
+14	text_hygiene	PASS	B48 报告、impl result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。	trailing whitespace & EOF newline checks

@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	b48_fix1_result_json_tsv_alignment	PASS	B48 FIX1 result JSON/TSV 对齐 14/14。	z012_finance_interaction_impl_result.json + z012_finance_interaction_impl_result.tsv
+2	regression_json_tsv_alignment	PASS	B49 regression JSON/TSV 对齐 14/14。	z012_finance_interaction_regression_result.json + z012_finance_interaction_regression_result.tsv
+3	browser_result_json_parse	PASS	回归 browser result JSON 可解析。	z012_finance_interaction_regression_browser_result.json
+4	canonical_route_checks	PASS	3 条 canonical direct routes 命中均为 PASS。	browser_result.route_checks
+5	alias_routes_to_canonical_parity	PASS	finance 三条入口别名最终均落到 canonical parity。	browser_result.route_checks
+6	screenshot_paths	PASS	截图路径存在且全部位于 /tmp/task_z012b49_finance_regression_screenshots。	browser_result.screenshot_paths_created
+7	request_methods	PASS	request_methods=[GET]。	browser_result.request_methods
+8	write_request_count	PASS	write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。	browser_result write counters
+9	blocking_metrics	PASS	blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。	browser_result blocking/network metrics
+10	export_endpoint_called	PASS	export_endpoint_called=false。	browser_result.export_endpoint_called
+11	git_scope	PASS	git diff --name-only -- 06_前端 仍仅 B47 allowlist 内实际修改文件；07_后端为空。	git diff outputs
+12	git_hygiene	PASS	git diff --cached --check PASS；git diff --check PASS。	git check outputs
+13	text_hygiene	PASS	B49 报告、regression result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。	trailing whitespace & EOF newline checks
+14	no_remote_action	PASS	无 tag，remote 不含当前 HEAD，PR 列表为空。	git tag + git branch -r --contains HEAD + gh pr list

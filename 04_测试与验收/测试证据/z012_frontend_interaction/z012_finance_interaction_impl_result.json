@@ -1,0 +1,172 @@
+{
+  "task_id": "TASK-Z012B-48-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z012B-47-PREP",
+  "source_head": "a1f712c1650a8141ca66fba937d610017c1ce350",
+  "selected_candidate_id": "Z012-CAND-008",
+  "module": "财务管理",
+  "yisuan_page": "银行流水 / 收付款相关页面",
+  "code_changed": true,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/router/index.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementList.vue"
+  ],
+  "changed_product_files_count": 2,
+  "unchanged_allowlist_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/factory_statement.ts"
+  ],
+  "backend_changed": false,
+  "implementation": {
+    "route_parity": "新增 finance 只读入口别名：/finance/bank-flow、/finance/receipts-payments、/finance/reconciliation，统一跳转到 /factory-statements/list 对应 parity。",
+    "finance_sections": "在 FactoryStatementList 为银行流水、收付款、客户对账区块补齐 parity hint 与稳定 data-testid。",
+    "readonly_filters": "finance parity 下查询/重置/列表展示可执行，筛选动作仅触发 GET 请求。",
+    "guarded_actions": "创建、取消、付款草稿、确认等写动作在 finance parity 下统一 guarded:readonly-finance 或 disabled。",
+    "write_endpoints_not_called": "未调用 POST /api/factory-statements/、confirm、cancel、payable-draft 等写接口。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z012_frontend_interaction/z012_finance_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/factory-statements/list?parity=finance-bank-ledger",
+      "http://127.0.0.1:5173/factory-statements/list?parity=finance-expense-payment",
+      "http://127.0.0.1:5173/factory-statements/list?parity=finance-customer-reconciliation",
+      "http://127.0.0.1:5173/finance/bank-flow",
+      "http://127.0.0.1:5173/finance/receipts-payments",
+      "http://127.0.0.1:5173/finance/reconciliation"
+    ],
+    "route_hit_count": 6,
+    "route_target_count": 6,
+    "screenshot_count": 6,
+    "valid_target_screenshot_count": 6,
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "expected_non_blocking_response_errors_count": 12,
+    "finance_bank_ledger_parity_hint_status": "PASS",
+    "finance_expense_payment_parity_hint_status": "PASS",
+    "finance_customer_reconciliation_parity_hint_status": "PASS",
+    "finance_filter_interaction_status": "PASS",
+    "guarded_actions_status": "PASS",
+    "empty_error_state_semantics_status": "PASS",
+    "screenshot_dir": "/tmp/task_z012b48_finance_screenshots"
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "production_account_used": false,
+    "remote_lifecycle_action_executed": false
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B48 source_head 与 B47 冻结头一致（a1f712c1650a8141ca66fba937d610017c1ce350）。",
+      "evidence": "task_z012b_47_finance_interaction_boundary.json + git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "06_前端差异仅 router/index.ts、FactoryStatementList.vue。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity",
+      "status": "PASS",
+      "observed": "新增 finance 三个入口别名并映射到 canonical parity（finance-bank-ledger / finance-expense-payment / finance-customer-reconciliation）。",
+      "evidence": "router/index.ts"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "finance_sections",
+      "status": "PASS",
+      "observed": "银行流水/收付款/客户对账区块均具备 finance parity hint 与 data-testid。",
+      "evidence": "FactoryStatementList.vue + browser parity hint statuses"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "readonly_filters",
+      "status": "PASS",
+      "observed": "finance parity 下查询/重置交互可测，列表与筛选链路可执行。",
+      "evidence": "browser_result.finance_filter_interaction_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "guarded_actions",
+      "status": "PASS",
+      "observed": "写动作统一 guarded/disabled，未触发副作用写请求。",
+      "evidence": "FactoryStatementList.vue + browser_result.guarded_actions_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "write_endpoints_not_called",
+      "status": "PASS",
+      "observed": "POST /api/factory-statements/、confirm、cancel、payable-draft 均未触发。",
+      "evidence": "browser_result.request_methods + write_request_count"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 6/6（含 finance 入口别名跳转校验）。",
+      "evidence": "z012_finance_interaction_browser_result.json route_checks"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[GET]，write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。",
+      "evidence": "z012_finance_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "browser_blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。",
+      "evidence": "z012_finance_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "text_hygiene",
+      "status": "PASS",
+      "observed": "B48 报告、impl result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。",
+      "evidence": "trailing whitespace & EOF newline checks"
+    }
+  ]
+}
