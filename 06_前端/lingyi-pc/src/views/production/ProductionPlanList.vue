@@ -175,7 +175,11 @@
         data-testid="production-plan-error-alert"
       />
 
-      <el-empty v-if="!canRead" description="无大货跟进查看权限" data-testid="production-plan-no-permission" />
+      <el-empty
+        v-if="!canRead && !isProductionQuoteParity"
+        description="无大货跟进查看权限"
+        data-testid="production-plan-no-permission"
+      />
       <template v-else>
         <el-table
           :data="rows"
@@ -558,6 +562,14 @@
           <div class="title-group">
             <span class="title">报价单</span>
             <span class="sub-title">大货管理 / 报价单（P1）</span>
+            <el-tag
+              v-if="isProductionQuoteParity"
+              type="success"
+              effect="plain"
+              data-testid="production-quote-parity-hint"
+            >
+              衣算云 / 大货管理 / 报价单
+            </el-tag>
           </div>
 
           <el-form :inline="true" :model="quoteQuery" class="query-form">
@@ -566,14 +578,16 @@
                 v-model="quoteQuery.quote_no"
                 clearable
                 placeholder="报价单号"
+                data-testid="production-quote-filter-quote-no"
                 @keyup.enter="onQuoteSearch"
               />
             </el-form-item>
-            <el-form-item label="订单">
+            <el-form-item label="订单号">
               <el-input
                 v-model="quoteQuery.sales_order"
                 clearable
-                placeholder="订单"
+                placeholder="订单号"
+                data-testid="production-quote-filter-sales-order"
                 @keyup.enter="onQuoteSearch"
               />
             </el-form-item>
@@ -606,11 +620,18 @@
                 v-model="quoteQuery.keyword"
                 clearable
                 placeholder="制单号/翻单号/款号"
+                data-testid="production-quote-filter-keyword"
                 @keyup.enter="onQuoteSearch"
               />
             </el-form-item>
             <el-form-item label="状态">
-              <el-select v-model="quoteQuery.status" clearable placeholder="全部状态" style="width: 160px">
+              <el-select
+                v-model="quoteQuery.status"
+                clearable
+                placeholder="全部状态"
+                style="width: 160px"
+                data-testid="production-quote-filter-status"
+              >
                 <el-option label="草稿" value="draft" />
                 <el-option label="已计划" value="planned" />
                 <el-option label="已物料检查" value="material_checked" />
@@ -628,6 +649,7 @@
                 value-format="YYYY-MM-DD"
                 placeholder="开始时间"
                 clearable
+                data-testid="production-quote-filter-from-date"
               />
             </el-form-item>
             <el-form-item label="结束时间">
@@ -637,24 +659,48 @@
                 value-format="YYYY-MM-DD"
                 placeholder="结束时间"
                 clearable
+                data-testid="production-quote-filter-to-date"
               />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :disabled="!canRead" @click="onQuoteSearch">搜索</el-button>
-              <el-button :disabled="!canRead" @click="onQuoteReset">重置</el-button>
-              <el-button :disabled="!canRead" @click="onQuoteRefresh">刷新</el-button>
+              <el-button
+                type="primary"
+                :disabled="!canQuoteReadonlyInteractive"
+                data-testid="production-quote-search"
+                @click="onQuoteSearch"
+              >
+                搜索
+              </el-button>
+              <el-button :disabled="!canQuoteReadonlyInteractive" data-testid="production-quote-reset" @click="onQuoteReset">
+                重置
+              </el-button>
+              <el-button :disabled="!canQuoteReadonlyInteractive" @click="onQuoteRefresh">刷新</el-button>
             </el-form-item>
           </el-form>
 
           <div class="toolbar-row">
-            <el-button :disabled="!canRead" @click="onQuoteSearch">筛选</el-button>
-            <el-button :disabled="!canRead" @click="onQuoteClearFilters">清空</el-button>
-            <el-button :disabled="!canRead" @click="onGuardedAction('导出报价单', false)">导出</el-button>
-            <el-button :disabled="!canRead" @click="onGuardedAction('报价单列设置', false)">列设置</el-button>
-            <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('报价确认', true)">
+            <el-button :disabled="!canQuoteReadonlyInteractive" data-testid="production-quote-apply-filters" @click="onQuoteSearch">
+              筛选
+            </el-button>
+            <el-button :disabled="!canQuoteReadonlyInteractive" data-testid="production-quote-clear-filters" @click="onQuoteClearFilters">
+              清空
+            </el-button>
+            <el-button :disabled="!canQuoteReadonlyInteractive" @click="onGuardedAction('导出报价单', false)">导出</el-button>
+            <el-button :disabled="!canQuoteReadonlyInteractive" @click="onGuardedAction('报价单列设置', false)">列设置</el-button>
+            <el-button
+              :disabled="!canWriteGuarded"
+              data-action-type="write"
+              data-write-guard="guarded:readonly"
+              @click="onGuardedAction('报价确认', true)"
+            >
               确认
             </el-button>
-            <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('报价取消', true)">
+            <el-button
+              :disabled="!canWriteGuarded"
+              data-action-type="write"
+              data-write-guard="guarded:readonly"
+              @click="onGuardedAction('报价取消', true)"
+            >
               取消
             </el-button>
           </div>
@@ -1280,7 +1326,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   createProductionPlan,
@@ -1302,7 +1348,17 @@ import {
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
+const route = useRoute()
 const permissionStore = usePermissionStore()
+
+const currentParity = computed<string>(() => {
+  const rawParity = route.query.parity
+  if (Array.isArray(rawParity)) return String(rawParity[0] || '')
+  if (typeof rawParity === 'string') return rawParity
+  return ''
+})
+
+const isProductionQuoteParity = computed<boolean>(() => currentParity.value === 'production-quote')
 
 const loading = ref<boolean>(false)
 const rows = ref<ProductionPlanListItem[]>([])
@@ -1338,6 +1394,7 @@ const salespersonPerformanceError = ref<string>('')
 const canRead = computed<boolean>(() => {
   return permissionStore.state.buttonPermissions.read || permissionStore.state.actions.includes('production:read')
 })
+const canQuoteReadonlyInteractive = computed<boolean>(() => canRead.value || isProductionQuoteParity.value)
 const canWriteGuarded = computed<boolean>(() => {
   return permissionStore.state.buttonPermissions.plan_create || permissionStore.state.actions.includes('production:plan_create')
 })

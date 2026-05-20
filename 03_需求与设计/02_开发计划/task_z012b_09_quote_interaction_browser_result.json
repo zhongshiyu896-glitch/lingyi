@@ -1,0 +1,396 @@
+{
+  "run_tag": "2026-05-20T04-17-56-334Z",
+  "started_at": "2026-05-20T04:18:02.603Z",
+  "requested_browser_targets": [
+    "http://127.0.0.1:5173/production/productionProcess",
+    "http://127.0.0.1:5173/production/plans?parity=production-quote",
+    "http://127.0.0.1:5173/production/plans"
+  ],
+  "runtime_browser_targets": [
+    "http://127.0.0.1:5175/production/productionProcess",
+    "http://127.0.0.1:5175/production/plans?parity=production-quote",
+    "http://127.0.0.1:5175/production/plans"
+  ],
+  "runtime_note": "port_5173_is_occupied_by_non_lingyi_project_runtime_switched_to_5175",
+  "browser_targets_executed": [
+    {
+      "target_id": "Z012-QUOTE-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/production/productionProcess",
+      "attempted_url": "http://127.0.0.1:5175/production/productionProcess",
+      "final_url": "http://127.0.0.1:5175/production/plans?parity=production-quote"
+    },
+    {
+      "target_id": "Z012-QUOTE-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/production/plans?parity=production-quote",
+      "attempted_url": "http://127.0.0.1:5175/production/plans?parity=production-quote",
+      "final_url": "http://127.0.0.1:5175/production/plans?parity=production-quote"
+    },
+    {
+      "target_id": "Z012-QUOTE-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/production/plans",
+      "attempted_url": "http://127.0.0.1:5175/production/plans",
+      "final_url": "http://127.0.0.1:5175/production/plans"
+    }
+  ],
+  "target_results": [
+    {
+      "target_id": "Z012-QUOTE-TARGET-1",
+      "requested_url": "http://127.0.0.1:5173/production/productionProcess",
+      "attempted_url": "http://127.0.0.1:5175/production/productionProcess",
+      "final_url": "http://127.0.0.1:5175/production/plans?parity=production-quote",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b09_quote_screenshots/2026-05-20T04-17-56-334Z_Z012-QUOTE-TARGET-1_productionProcess.png"
+    },
+    {
+      "target_id": "Z012-QUOTE-TARGET-2",
+      "requested_url": "http://127.0.0.1:5173/production/plans?parity=production-quote",
+      "attempted_url": "http://127.0.0.1:5175/production/plans?parity=production-quote",
+      "final_url": "http://127.0.0.1:5175/production/plans?parity=production-quote",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b09_quote_screenshots/2026-05-20T04-17-56-334Z_Z012-QUOTE-TARGET-2_plans_quote.png"
+    },
+    {
+      "target_id": "Z012-QUOTE-TARGET-3",
+      "requested_url": "http://127.0.0.1:5173/production/plans",
+      "attempted_url": "http://127.0.0.1:5175/production/plans",
+      "final_url": "http://127.0.0.1:5175/production/plans",
+      "http_status": 200,
+      "selector_pass": true,
+      "screenshot_path": "/tmp/task_z012b09_quote_screenshots/2026-05-20T04-17-56-334Z_Z012-QUOTE-TARGET-3_plans_default.png"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z012b09_quote_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z012b09_quote_screenshots/2026-05-20T04-17-56-334Z_Z012-QUOTE-TARGET-1_productionProcess.png",
+    "/tmp/task_z012b09_quote_screenshots/2026-05-20T04-17-56-334Z_Z012-QUOTE-TARGET-2_plans_quote.png",
+    "/tmp/task_z012b09_quote_screenshots/2026-05-20T04-17-56-334Z_Z012-QUOTE-TARGET-3_plans_default.png"
+  ],
+  "screenshot_count": 3,
+  "valid_target_screenshot_count": 3,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "console_error_count": 0,
+  "page_error_count": 0,
+  "network_error_count": 0,
+  "quote_parity_hint_status": "PASS",
+  "filter_interaction_status": "PASS",
+  "reset_interaction_status": "PASS",
+  "readonly_guard_status": "PASS",
+  "filter_values_before_reset": {
+    "quote_no": "Q-LOCAL-001",
+    "sales_order": "SO-LOCAL-001",
+    "keyword": "KW-LOCAL",
+    "from_date": "2026-05-01",
+    "to_date": "2026-05-31",
+    "status": "草稿"
+  },
+  "filter_values_after_reset": {
+    "quote_no": "",
+    "sales_order": "",
+    "keyword": "",
+    "from_date": "",
+    "to_date": "",
+    "status": "全部状态"
+  },
+  "write_guard_count": 2,
+  "write_guard_disabled_count": 2,
+  "interaction_error": null,
+  "non_get_requests": [],
+  "request_failed": [],
+  "console_errors": [],
+  "page_errors": [],
+  "sample_request_log": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/production/productionProcess",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/main.ts?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/router/index.ts?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/production/ProductionPlanList.vue?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/production.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/production/ProductionPlanList.vue?vue&type=style&index=0&scoped=d4213a41&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/production/plans?parity=production-quote",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/main.ts?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/router/index.ts?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/production/ProductionPlanList.vue?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/production.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/production/ProductionPlanList.vue?vue&type=style&index=0&scoped=d4213a41&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/production/plans",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/main.ts?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/router/index.ts?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/production/ProductionPlanList.vue?t=1779250136983",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/production.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/views/production/ProductionPlanList.vue?vue&type=style&index=0&scoped=d4213a41&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5175/api/auth/me",
+      "resourceType": "fetch"
+    }
+  ]
+}
