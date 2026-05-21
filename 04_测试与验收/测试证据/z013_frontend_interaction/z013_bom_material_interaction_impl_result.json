@@ -1,0 +1,174 @@
+{
+  "task_id": "TASK-Z013B-03-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-02-PREP",
+  "source_head": "359b280e4b0c25353d01bc8fc9845d7f9251cf45",
+  "selected_candidate_id": "Z013-CAND-001",
+  "module": "BOM与物料资料",
+  "yisuan_page": "面料档案 / 物料样 / 款式档案",
+  "code_changed": true,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/bom/BomList.vue"
+  ],
+  "changed_product_files_count": 1,
+  "unchanged_allowlist_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/router/index.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/bom.ts"
+  ],
+  "backend_changed": false,
+  "implementation": {
+    "route_parity": "保持 /material/materialFabric、/goodsPlan/materialSamples、/goodsPlan/goodsPlanProcess、/product/product 到 /bom/list 指定 parity 的入口语义。",
+    "bom_sections": "在 BomList 增加 BOM parity hint，并为面料/辅料包材/加工类型/加工入仓区块补齐稳定 data-testid。",
+    "readonly_filters": "主列表与面料区块的查询/重置交互可执行，分页控件存在并可测。",
+    "detail_drawer": "新增主列表详情抽屉入口（详情抽屉按钮）用于只读详情验证。",
+    "guarded_actions": "写动作保持 guarded/disabled，仅弹本地提示，不触发写请求。",
+    "write_endpoints_not_called": "未触发 POST/PUT/PATCH/DELETE。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/material/materialFabric",
+      "http://127.0.0.1:5173/goodsPlan/materialSamples",
+      "http://127.0.0.1:5173/goodsPlan/goodsPlanProcess",
+      "http://127.0.0.1:5173/product/product",
+      "http://127.0.0.1:5173/bom/list?parity=material-fabric",
+      "http://127.0.0.1:5173/bom/list?parity=goodsplan-material-samples",
+      "http://127.0.0.1:5173/bom/list?parity=product-style"
+    ],
+    "route_hit_count": 7,
+    "route_target_count": 7,
+    "screenshot_count": 7,
+    "valid_target_screenshot_count": 7,
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "bom_parity_hint_status": "PASS",
+    "bom_sections_status": "PASS",
+    "readonly_filter_interaction_status": "PASS",
+    "pagination_interaction_status": "PASS",
+    "readonly_detail_drawer_status": "PASS",
+    "guarded_actions_status": "PASS",
+    "expected_non_blocking_response_errors_count": 158,
+    "screenshot_dir": "/tmp/task_z013b03_bom_material_screenshots"
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true,
+    "production_account_used": false,
+    "remote_lifecycle_action_executed": false
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B03 source_head 与 B02 冻结头一致（359b280e4b0c25353d01bc8fc9845d7f9251cf45）。",
+      "evidence": "task_z013b_02_bom_material_interaction_boundary.json + git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "06_前端差异仅 BomList.vue，位于 B02 allowlist。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity",
+      "status": "PASS",
+      "observed": "入口语义保持并标准化到 material-fabric / goodsplan-material-samples / product-style。",
+      "evidence": "router/index.ts + browser_result.route_checks"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "bom_sections",
+      "status": "PASS",
+      "observed": "面料、辅料/包材、加工类型、加工入仓区块补齐稳定 data-testid。",
+      "evidence": "BomList.vue + browser_result.bom_sections_status"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "readonly_filters",
+      "status": "PASS",
+      "observed": "主列表与面料区块查询/重置交互可执行。",
+      "evidence": "browser_result.readonly_filter_interaction_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "detail_drawer",
+      "status": "PASS",
+      "observed": "详情抽屉入口可测；在无行数据情况下保持只读可用态。",
+      "evidence": "BomList.vue + browser_result.readonly_detail_drawer_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "guarded_actions",
+      "status": "PASS",
+      "observed": "新建/启停/删除/导出/导入等写动作保持 guarded/disabled，不触发写请求。",
+      "evidence": "BomList.vue + browser_result.guarded_actions_status"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 7/7。",
+      "evidence": "z013_bom_material_interaction_browser_result.json route_checks"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"]，write_request_count=0，unexpected_write_request_count=0，forbidden_request_count=0。",
+      "evidence": "z013_bom_material_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "browser_blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。",
+      "evidence": "z013_bom_material_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "text_hygiene",
+      "status": "PASS",
+      "observed": "B03 报告、impl result JSON/TSV、browser result JSON、工程师会话日志文本卫生通过。",
+      "evidence": "trailing whitespace & EOF newline checks"
+    }
+  ]
+}

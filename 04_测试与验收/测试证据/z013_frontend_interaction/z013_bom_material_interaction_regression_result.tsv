@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	b03_result_json_tsv_alignment	PASS	B03 JSON checks=14, pass=14; TSV checks=14。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_impl_result.json + /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_impl_result.tsv
+2	browser_result_json_parse	PASS	B04 browser result JSON 可解析。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+3	route_hit_count	PASS	route_hit=7/7。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json route_checks
+4	screenshot_dir	PASS	screenshot_dir=/tmp/task_z013b04_bom_material_regression_screenshots。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+5	screenshot_paths	PASS	screenshot_count=7, exists=7。	/tmp/task_z013b04_bom_material_regression_screenshots
+6	request_methods	PASS	request_methods=["GET"]。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+7	write_request_count	PASS	write_request_count=0。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+8	unexpected_write_request_count	PASS	unexpected_write_request_count=0。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+9	forbidden_request_count	PASS	forbidden_request_count=0。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+10	blocking_console_error_count	PASS	blocking_console_error_count=0。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+11	blocking_response_error_count	PASS	blocking_response_error_count=0。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+12	network_error_count	PASS	network_error_count=0。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+13	expected_non_blocking_response_errors	PASS	expected_non_blocking_response_errors_count=106（仅记录，不外推生产闭环）。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_browser_result.json
+14	regression_json_tsv_alignment	PASS	B04 regression JSON/TSV 一致（14/14）。	/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_result.json + /Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_bom_material_interaction_regression_result.tsv

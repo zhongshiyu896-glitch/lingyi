@@ -40,6 +40,15 @@
       <el-empty v-if="!canRead" description="无 BOM 查看权限" />
       <template v-else>
         <el-alert
+          v-if="parityHint"
+          class="bom-parity-hint-alert"
+          :title="parityHint"
+          type="info"
+          show-icon
+          :closable="false"
+          data-testid="bom-parity-hint"
+        />
+        <el-alert
           v-if="listError"
           class="main-list-error-alert"
           title="BOM主列表加载失败"
@@ -73,10 +82,13 @@
             </template>
           </el-table-column>
           <el-table-column prop="effective_date" label="生效日期" min-width="120" />
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column label="操作" width="180" fixed="right">
             <template #default="scope">
               <el-button link type="primary" data-testid="bom-main-detail-button" @click="goDetail(scope.row.id)">
-                详情
+                详情页
+              </el-button>
+              <el-button link type="success" data-testid="bom-main-drawer-button" @click="openBomDetail(scope.row.id)">
+                详情抽屉
               </el-button>
             </template>
           </el-table-column>
@@ -159,8 +171,8 @@
 
         <el-divider content-position="left">面料（TASK-Y27B-P1-01）</el-divider>
 
-        <section class="fabric-section">
-          <el-form :inline="true" :model="fabricQuery">
+        <section class="fabric-section" data-testid="bom-fabric-section">
+          <el-form :inline="true" :model="fabricQuery" data-testid="bom-fabric-filters">
             <el-form-item label="款号">
               <el-input v-model="fabricQuery.item_code" clearable placeholder="请输入款号" />
             </el-form-item>
@@ -193,8 +205,10 @@
               </el-select>
             </el-form-item>
             <el-form-item label="操作">
-              <el-button type="primary" :disabled="!canRead" @click="loadFabrics">查询</el-button>
-              <el-button :disabled="!canRead" @click="resetFabricQuery">重置</el-button>
+              <el-button type="primary" :disabled="!canRead" data-testid="bom-fabric-search-button" @click="loadFabrics">
+                查询
+              </el-button>
+              <el-button :disabled="!canRead" data-testid="bom-fabric-reset-button" @click="resetFabricQuery">重置</el-button>
               <el-button data-action-type="write" data-write-guard="readonly-fabric-use" @click="guardedReadonlyAction('选用')">
                 选用
               </el-button>
@@ -218,7 +232,14 @@
             :closable="false"
           />
 
-          <el-table class="fabric-table" :data="fabricRows" v-loading="fabricLoading" border empty-text="暂无面料数据">
+          <el-table
+            class="fabric-table"
+            :data="fabricRows"
+            v-loading="fabricLoading"
+            border
+            empty-text="暂无面料数据"
+            data-testid="bom-fabric-table"
+          >
             <el-table-column prop="material_item_code" label="面料编码" min-width="160" />
             <el-table-column prop="fabric_name" label="面料名称" min-width="170" />
             <el-table-column prop="item_code" label="款号" min-width="130" />
@@ -236,7 +257,9 @@
             </el-table-column>
             <el-table-column label="操作" width="220" fixed="right">
               <template #default="scope">
-                <el-button link type="primary" @click="openFabricDetail(scope.row)">查看</el-button>
+                <el-button link type="primary" data-testid="bom-fabric-detail-button" @click="openFabricDetail(scope.row)">
+                  查看
+                </el-button>
                 <el-button link type="warning" @click="guardedReadonlyAction('选用')">选用</el-button>
                 <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
               </template>
@@ -259,8 +282,8 @@
 
         <el-divider content-position="left">辅料/包材（TASK-Y27B-P1-02）</el-divider>
 
-        <section class="accessories-packaging-section">
-          <el-form :inline="true" :model="accessoriesQuery">
+        <section class="accessories-packaging-section" data-testid="bom-accessories-section">
+          <el-form :inline="true" :model="accessoriesQuery" data-testid="bom-accessories-filters">
             <el-form-item label="款号">
               <el-input v-model="accessoriesQuery.item_code" clearable placeholder="请输入款号" />
             </el-form-item>
@@ -299,8 +322,17 @@
               </el-select>
             </el-form-item>
             <el-form-item label="操作">
-              <el-button type="primary" :disabled="!canRead" @click="loadAccessoriesPackaging">查询</el-button>
-              <el-button :disabled="!canRead" @click="resetAccessoriesQuery">重置</el-button>
+              <el-button
+                type="primary"
+                :disabled="!canRead"
+                data-testid="bom-accessories-search-button"
+                @click="loadAccessoriesPackaging"
+              >
+                查询
+              </el-button>
+              <el-button :disabled="!canRead" data-testid="bom-accessories-reset-button" @click="resetAccessoriesQuery">
+                重置
+              </el-button>
               <el-button
                 data-action-type="write"
                 data-write-guard="readonly-accessories-use"
@@ -341,6 +373,7 @@
             v-loading="accessoriesLoading"
             border
             empty-text="暂无辅料/包材数据"
+            data-testid="bom-accessories-table"
           >
             <el-table-column prop="material_item_code" label="物料编码" min-width="160" />
             <el-table-column prop="material_name" label="物料名称" min-width="170" />
@@ -360,7 +393,14 @@
             </el-table-column>
             <el-table-column label="操作" width="260" fixed="right">
               <template #default="scope">
-                <el-button link type="primary" @click="openAccessoriesDetail(scope.row)">查看</el-button>
+                <el-button
+                  link
+                  type="primary"
+                  data-testid="bom-accessories-detail-button"
+                  @click="openAccessoriesDetail(scope.row)"
+                >
+                  查看
+                </el-button>
                 <el-button link type="warning" @click="guardedReadonlyAction('选用')">选用</el-button>
                 <el-button link type="info" @click="guardedReadonlyAction('上传')">上传</el-button>
                 <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
@@ -384,8 +424,8 @@
 
         <el-divider content-position="left">物料加工类型（TASK-Y27B-P1-03）</el-divider>
 
-        <section class="processing-type-section">
-          <el-form :inline="true" :model="processingTypeQuery">
+        <section class="processing-type-section" data-testid="bom-processing-type-section">
+          <el-form :inline="true" :model="processingTypeQuery" data-testid="bom-processing-type-filters">
             <el-form-item label="款号">
               <el-input v-model="processingTypeQuery.item_code" clearable placeholder="请输入款号" />
             </el-form-item>
@@ -435,8 +475,21 @@
               </el-select>
             </el-form-item>
             <el-form-item label="操作">
-              <el-button type="primary" :disabled="!canRead" @click="loadProcessingTypes">查询</el-button>
-              <el-button :disabled="!canRead" @click="resetProcessingTypeQuery">重置</el-button>
+              <el-button
+                type="primary"
+                :disabled="!canRead"
+                data-testid="bom-processing-type-search-button"
+                @click="loadProcessingTypes"
+              >
+                查询
+              </el-button>
+              <el-button
+                :disabled="!canRead"
+                data-testid="bom-processing-type-reset-button"
+                @click="resetProcessingTypeQuery"
+              >
+                重置
+              </el-button>
               <el-button
                 data-action-type="write"
                 data-write-guard="readonly-processing-type-config"
@@ -477,6 +530,7 @@
             v-loading="processingTypeLoading"
             border
             empty-text="暂无物料加工类型数据"
+            data-testid="bom-processing-type-table"
           >
             <el-table-column prop="process_type_code" label="加工类型编码" min-width="170" />
             <el-table-column prop="process_type_name" label="加工类型" min-width="160" />
@@ -494,7 +548,14 @@
             </el-table-column>
             <el-table-column label="操作" width="260" fixed="right">
               <template #default="scope">
-                <el-button link type="primary" @click="openProcessingTypeDetail(scope.row)">查看</el-button>
+                <el-button
+                  link
+                  type="primary"
+                  data-testid="bom-processing-type-detail-button"
+                  @click="openProcessingTypeDetail(scope.row)"
+                >
+                  查看
+                </el-button>
                 <el-button link type="warning" @click="guardedReadonlyAction('配置')">配置</el-button>
                 <el-button link type="danger" @click="guardedReadonlyAction('启停')">启停</el-button>
                 <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
@@ -674,8 +735,8 @@
 
         <el-divider content-position="left">物料加工入仓（TASK-Y39B-P1-01）</el-divider>
 
-        <section class="material-processing-inbound-section">
-          <el-form :inline="true" :model="materialProcessingInboundQuery">
+        <section class="material-processing-inbound-section" data-testid="bom-processing-inbound-section">
+          <el-form :inline="true" :model="materialProcessingInboundQuery" data-testid="bom-processing-inbound-filters">
             <el-form-item label="款号">
               <el-input v-model="materialProcessingInboundQuery.item_code" clearable placeholder="请输入款号" />
             </el-form-item>
@@ -722,8 +783,21 @@
               </el-select>
             </el-form-item>
             <el-form-item label="操作">
-              <el-button type="primary" :disabled="!canRead" @click="loadMaterialProcessingInbound">查询</el-button>
-              <el-button :disabled="!canRead" @click="resetMaterialProcessingInboundQuery">重置</el-button>
+              <el-button
+                type="primary"
+                :disabled="!canRead"
+                data-testid="bom-processing-inbound-search-button"
+                @click="loadMaterialProcessingInbound"
+              >
+                查询
+              </el-button>
+              <el-button
+                :disabled="!canRead"
+                data-testid="bom-processing-inbound-reset-button"
+                @click="resetMaterialProcessingInboundQuery"
+              >
+                重置
+              </el-button>
               <el-button
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-inbound-confirm"
@@ -778,6 +852,7 @@
             v-loading="materialProcessingInboundLoading"
             border
             empty-text="暂无物料加工入仓数据"
+            data-testid="bom-processing-inbound-table"
           >
             <el-table-column prop="inbound_no" label="入仓单号" min-width="170" />
             <el-table-column prop="process_no" label="工序编号" min-width="150" />
@@ -797,7 +872,14 @@
             </el-table-column>
             <el-table-column label="操作" width="300" fixed="right">
               <template #default="scope">
-                <el-button link type="primary" @click="openMaterialProcessingInboundDetail(scope.row)">查看</el-button>
+                <el-button
+                  link
+                  type="primary"
+                  data-testid="bom-processing-inbound-detail-button"
+                  @click="openMaterialProcessingInboundDetail(scope.row)"
+                >
+                  查看
+                </el-button>
                 <el-button link type="success" @click="guardedReadonlyAction('入仓确认')">入仓确认</el-button>
                 <el-button link type="warning" @click="guardedReadonlyAction('质检')">质检</el-button>
                 <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
@@ -1674,7 +1756,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchBomAccessoriesPackaging,
@@ -1707,6 +1789,7 @@ import {
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref<boolean>(false)
 const rows = ref<BomListItem[]>([])
 const total = ref<number>(0)
@@ -1762,9 +1845,32 @@ const purchaseTotal = ref<number>(0)
 const purchaseError = ref<string>('')
 const previewVisible = ref<boolean>(false)
 const previewRow = ref<BomMaterialGalleryItem | null>(null)
+const readonlyFallback = ref<boolean>(false)
 const permissionStore = usePermissionStore()
-const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
-const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.create)
+const canRead = computed<boolean>(() => readonlyFallback.value || permissionStore.state.buttonPermissions.read)
+const canCreate = computed<boolean>(() => !readonlyFallback.value && permissionStore.state.buttonPermissions.create)
+const parityLabelMap: Record<string, string> = {
+  'material-fabric': '入口映射：面料档案（/material/materialFabric）',
+  'goodsplan-material-samples': '入口映射：物料样（/goodsPlan/materialSamples、/goodsPlan/goodsPlanProcess）',
+  'product-style': '入口映射：款式档案（/product/product）',
+}
+const parityToken = computed<string>(() => {
+  const raw = route.query.parity
+  if (typeof raw === 'string') {
+    return raw
+  }
+  if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === 'string') {
+    return raw[0]
+  }
+  return ''
+})
+const parityHint = computed<string>(() => {
+  const token = parityToken.value
+  if (!token) {
+    return ''
+  }
+  return parityLabelMap[token] ?? `入口映射：${token}`
+})
 
 const query = reactive({
   item_code: '',
@@ -2608,7 +2714,11 @@ onMounted(async () => {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('bom')
   } catch (error) {
+    readonlyFallback.value = true
     ElMessage.error((error as Error).message)
+  }
+  if (!permissionStore.state.buttonPermissions.read) {
+    readonlyFallback.value = true
   }
   await loadList()
   await loadFabrics()
