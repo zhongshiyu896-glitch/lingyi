@@ -713,6 +713,67 @@
             :title="`报价单加载失败：${quoteError}`"
           />
 
+          <div class="quote-contract-shell" data-testid="production-quote-a004-contract-shell">
+            <div class="quote-contract-header">
+              <div class="cell-stack">
+                <span class="primary-text">A004 报价草稿最小回读契约</span>
+                <span class="secondary-text">
+                  仅展示已验证的报价草稿字段、状态和详情回读；提交、审核、转订单和价格算法仍保持 blocked。
+                </span>
+              </div>
+              <div class="quote-contract-tags">
+                <el-tag type="success" effect="plain">VERIFIED_MINIMAL_DRAFT_SAVE_READBACK</el-tag>
+                <el-tag type="warning" effect="plain">动作逻辑受限</el-tag>
+              </div>
+            </div>
+
+            <div class="quote-contract-grid">
+              <div
+                v-for="field in quoteDraftReadbackFields"
+                :key="field.key"
+                class="quote-contract-field"
+                :data-testid="`production-quote-contract-field-${field.key}`"
+              >
+                <span class="quote-contract-label">{{ field.label }}</span>
+                <span class="quote-contract-value">{{ field.value || '-' }}</span>
+                <el-tag class="quote-contract-source" size="small" effect="plain" :type="field.type">
+                  {{ field.source }}
+                </el-tag>
+              </div>
+            </div>
+
+            <div class="quote-contract-boundary">
+              <div class="cell-stack">
+                <span class="primary-text">未知 / 阻断边界</span>
+                <span class="secondary-text">这些内容只能做 UI 提示，不得实现为动作、算法或完整 1:1 流程。</span>
+              </div>
+              <div class="quote-boundary-tags">
+                <el-tag
+                  v-for="item in quoteDraftBlockedScopes"
+                  :key="item"
+                  type="danger"
+                  effect="plain"
+                  data-testid="production-quote-contract-blocked-scope"
+                >
+                  {{ item }}
+                </el-tag>
+              </div>
+            </div>
+
+            <div class="quote-contract-actions" data-testid="production-quote-contract-guarded-actions">
+              <el-button
+                v-for="action in quoteDraftGuardedActions"
+                :key="action.label"
+                disabled
+                :type="action.type"
+                data-action-type="write"
+                data-write-guard="blocked:a004-contract"
+              >
+                {{ action.label }}（{{ action.state }}）
+              </el-button>
+            </div>
+          </div>
+
           <el-table
             :data="quoteRows"
             border
@@ -1615,6 +1676,50 @@ const salespersonPerformanceQuery = reactive({
   page_size: 20,
 })
 
+const quoteDraftReadbackFields = [
+  { key: 'quoteNo', label: '报价单号', value: 'LY-APLUS-QUOTE-20260518-01', source: 'list/detail verified', type: 'success' },
+  { key: 'status', label: '状态', value: '待提交', source: 'list/detail verified', type: 'success' },
+  { key: 'customer', label: '客户', value: '测试123', source: 'list/detail verified', type: 'success' },
+  { key: 'styleCode', label: '款号', value: 'LY-APLUS-STYLE-20260518-01', source: 'list/detail verified', type: 'success' },
+  { key: 'styleName', label: '款名', value: 'LY-APLUS-STYLE-20260518-01', source: 'list/detail verified', type: 'success' },
+  { key: 'quoteDate', label: '报价日期', value: '2026-05-18', source: 'detail verified', type: 'success' },
+  { key: 'quotePerson', label: '报价人', value: '蓝小姐', source: 'list/detail verified', type: 'success' },
+  { key: 'currency', label: '币种', value: 'RMB', source: 'detail verified', type: 'success' },
+  { key: 'exchangeRate', label: '汇率', value: '1', source: 'detail verified', type: 'success' },
+  { key: 'taxRate', label: '税率', value: '0%', source: 'field only / algorithm blocked', type: 'warning' },
+  { key: 'color', label: '颜色', value: '已回读为空', source: 'detail verified empty', type: 'info' },
+  { key: 'size', label: '尺码', value: '已回读为空', source: 'detail verified empty', type: 'info' },
+  { key: 'taxIncludedPrice', label: '含税报价', value: '0', source: 'field only / algorithm blocked', type: 'warning' },
+  { key: 'taxExcludedPrice', label: '不含税报价', value: '10', source: 'field only / algorithm blocked', type: 'warning' },
+  { key: 'taxExcludedPriceRmb', label: '不含税报价RMB', value: '10', source: 'field only / algorithm blocked', type: 'warning' },
+  { key: 'quoteCost', label: '报价成本', value: '0', source: 'field only / algorithm blocked', type: 'warning' },
+  { key: 'grossProfit', label: '毛利', value: '10', source: 'field only / formula blocked', type: 'warning' },
+  { key: 'remark', label: '备注', value: 'LY-APLUS-CAPTURE-20260518 / LY-APLUS-QUOTE-20260518-01', source: 'detail verified', type: 'success' },
+  { key: 'createdBy', label: '创建人', value: '蓝小姐', source: 'system field / rule unknown', type: 'info' },
+  { key: 'createdAt', label: '创建时间', value: '2026-05-18 17:34:47', source: 'system field / rule unknown', type: 'info' },
+  { key: 'modifiedBy', label: '修改人', value: '蓝小姐', source: 'system field / rule unknown', type: 'info' },
+  { key: 'modifiedAt', label: '修改时间', value: '2026-05-18 17:34:47', source: 'system field / rule unknown', type: 'info' },
+] as const
+
+const quoteDraftBlockedScopes = [
+  '报价提交',
+  '提交审核 / 审核 / 反审核',
+  '删除 / 作废',
+  '生成订单 / 转订单',
+  '价格算法 / 利润公式 / 税价换算',
+  '生产 / 库存 / 财务联动',
+] as const
+
+const quoteDraftGuardedActions = [
+  { label: '保存并关闭', state: '仅 G2-FIX5 历史最小草稿验证，本页不执行', type: 'primary' },
+  { label: '提交', state: 'blocked', type: 'danger' },
+  { label: '审核', state: 'blocked', type: 'danger' },
+  { label: '反审核', state: 'blocked', type: 'danger' },
+  { label: '删除', state: 'blocked', type: 'danger' },
+  { label: '作废', state: 'blocked', type: 'danger' },
+  { label: '生成订单', state: 'blocked', type: 'danger' },
+] as const
+
 const statusLabel = (value: string): string => {
   const labels: Record<string, string> = {
     draft: '草稿',
@@ -2489,6 +2594,83 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.quote-contract-shell {
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background: var(--el-fill-color-blank);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quote-contract-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quote-contract-tags,
+.quote-boundary-tags,
+.quote-contract-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quote-contract-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.quote-contract-field {
+  min-width: 0;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quote-contract-label {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.quote-contract-value {
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.quote-contract-source {
+  align-self: flex-start;
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+  line-height: 1.4;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.quote-contract-boundary {
+  border-top: 1px dashed var(--el-border-color);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .quote-contract-header {
+    flex-direction: column;
+  }
 }
 
 .followup-template-section {
