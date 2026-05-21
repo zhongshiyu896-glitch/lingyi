@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B38 source_head 与当前 HEAD 一致（d33c1e218099149f91c2d5b6a3f120168019e8f3）。	git rev-parse HEAD
+2	changed_files_allowlist	PASS	本任务仅修改 PermissionGovernance.vue 与 permission_governance.ts，均在 B37/B38 allowlist 内；router 保持 unchanged。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_parity_and_readonly_hint	PASS	权限治理页面提供 permission-governance-parity-hint 与 READONLY_GET_ONLY 状态锚点。	browser_result.anchor_checks.parity_hint + readonly_status
+5	action_catalog_and_roles_matrix	PASS	动作目录与角色矩阵只读区块具备稳定 data-testid。	browser_result.anchor_checks.action_catalog + roles_matrix
+6	menu_management_query_reset	PASS	菜单管理查询与重置入口可测，菜单写动作带 readonly guard 元数据且仅本地提示。	browser_result.anchor_checks.menu_query + menu_reset + source guard metadata
+7	security_operation_audit_query_reset	PASS	安全审计与操作审计查询、重置入口可测。	browser_result.anchor_checks.security_audit_reset + operation_audit_reset
+8	guarded_audit_exports	PASS	安全审计/操作审计导出按钮带 guarded_readonly 与 download-disabled 元数据，点击未触发导出接口。	browser_result.guard_metadata + export_endpoint_called=false
+9	api_get_only_surface	PASS	permission_governance.ts 仅保留 B37 允许的 5 个 GET helper，移除 security/operations export helper。	rg exportPermissionSecurityAuditCsv exportPermissionOperationAuditCsv
+10	typecheck	PASS	npm run typecheck PASS。	terminal output
+11	build	PASS	npm run build PASS。	terminal output
+12	browser_route_hits	PASS	目标路由命中 1/1。	browser_result.route_checks
+13	browser_get_only_no_write_no_export	PASS	request_methods=["GET"], write/unexpected_write/forbidden 全为 0，export_endpoint_called=false。	browser_result request stats
+14	blocking_metrics_and_screenshots	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，截图 4/4 存在；/api/auth/me 500 仅作 expected non-blocking 记录。	browser_result blocking stats + screenshot paths

@@ -1,4 +1,4 @@
-import { request, requestFile, type ApiResponse } from '@/api/request'
+import { request, type ApiResponse } from '@/api/request'
 
 export interface PermissionActionCatalogEntry {
   action: string
@@ -186,43 +186,12 @@ const fetchPermissionOperationAudit = (
   return request<PermissionOperationAuditData>(url)
 }
 
-const downloadBlobFile = (blob: Blob, filename: string): void => {
-  const objectUrl = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = objectUrl
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(objectUrl)
-}
-
-const exportPermissionSecurityAuditCsv = async (query: PermissionSecurityAuditQuery): Promise<void> => {
-  const queryString = toQuery({ ...query })
-  const url = queryString
-    ? `/api/permissions/audit/security/export?${queryString}`
-    : '/api/permissions/audit/security/export'
-  const { blob, filename } = await requestFile(url, { method: 'GET' }, 'permission_security_audit_export.csv')
-  downloadBlobFile(blob, filename)
-}
-
-const exportPermissionOperationAuditCsv = async (query: PermissionOperationAuditQuery): Promise<void> => {
-  const queryString = toQuery({ ...query })
-  const url = queryString
-    ? `/api/permissions/audit/operations/export?${queryString}`
-    : '/api/permissions/audit/operations/export'
-  const { blob, filename } = await requestFile(url, { method: 'GET' }, 'permission_operation_audit_export.csv')
-  downloadBlobFile(blob, filename)
-}
-
 const permissionGovernanceApi = {
   fetchPermissionActionCatalog,
   fetchPermissionRolesMatrix,
   fetchPermissionMenuManagement,
   fetchPermissionSecurityAudit,
   fetchPermissionOperationAudit,
-  exportPermissionSecurityAuditCsv,
-  exportPermissionOperationAuditCsv,
 }
 
 export default permissionGovernanceApi

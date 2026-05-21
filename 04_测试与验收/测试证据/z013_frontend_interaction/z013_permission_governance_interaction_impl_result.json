@@ -1,0 +1,188 @@
+{
+  "task_id": "TASK-Z013B-38-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-37-PREP",
+  "source_head": "d33c1e218099149f91c2d5b6a3f120168019e8f3",
+  "selected_candidate_id": "Z013-CAND-006",
+  "module": "权限治理",
+  "yisuan_page": "权限治理 / 用户角色菜单权限只读审计",
+  "code_changed": true,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/permission_governance.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/system/PermissionGovernance.vue"
+  ],
+  "unchanged_allowlist_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/router/index.ts"
+  ],
+  "backend_changed": false,
+  "cached_diff_empty": true,
+  "implementation": {
+    "route_parity": "KEEP_EXISTING_/permissions/governance_AND_REFINE_PERMISSION_GOVERNANCE_READONLY_INTERACTION",
+    "readonly_runtime_mode": "READONLY_GET_ONLY",
+    "allowed_get_endpoints": [
+      "/api/permissions/actions/catalog",
+      "/api/permissions/roles/matrix",
+      "/api/permissions/menu-management",
+      "/api/permissions/audit/security",
+      "/api/permissions/audit/operations"
+    ],
+    "forbidden_endpoints": [
+      "POST/PUT/PATCH/DELETE /api/permissions/**",
+      "GET /api/permissions/audit/security/export",
+      "GET /api/permissions/audit/operations/export"
+    ],
+    "guarded_actions": [
+      "menu write actions guarded_readonly",
+      "security audit CSV export guarded_readonly",
+      "operation audit CSV export guarded_readonly"
+    ]
+  },
+  "runtime_evidence": {
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_permission_governance_interaction_browser_result.json",
+    "route_hit_count": 1,
+    "route_target_count": 1,
+    "screenshot_dir": "/tmp/task_z013b38_permission_governance_screenshots",
+    "screenshot_count": 4,
+    "screenshot_paths": [
+      "/tmp/task_z013b38_permission_governance_screenshots/01_permission_governance_route.png",
+      "/tmp/task_z013b38_permission_governance_screenshots/02_permission_governance_parity_hint.png",
+      "/tmp/task_z013b38_permission_governance_screenshots/03_permission_governance_menu_management.png",
+      "/tmp/task_z013b38_permission_governance_screenshots/04_permission_governance_audit_guard.png"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "expected_non_blocking_response_errors": [
+      {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me"
+      }
+    ]
+  },
+  "current_git_facts": {
+    "frontend_diff_files": [
+      "\"06_\\345\\211\\215\\347\\253\\257/lingyi-pc/src/api/permission_governance.ts\"",
+      "\"06_\\345\\211\\215\\347\\253\\257/lingyi-pc/src/views/system/PermissionGovernance.vue\""
+    ],
+    "backend_diff_files": [],
+    "cached_diff_files": []
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B38 source_head 与当前 HEAD 一致（d33c1e218099149f91c2d5b6a3f120168019e8f3）。",
+      "evidence": "git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "本任务仅修改 PermissionGovernance.vue 与 permission_governance.ts，均在 B37/B38 allowlist 内；router 保持 unchanged。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity_and_readonly_hint",
+      "status": "PASS",
+      "observed": "权限治理页面提供 permission-governance-parity-hint 与 READONLY_GET_ONLY 状态锚点。",
+      "evidence": "browser_result.anchor_checks.parity_hint + readonly_status"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "action_catalog_and_roles_matrix",
+      "status": "PASS",
+      "observed": "动作目录与角色矩阵只读区块具备稳定 data-testid。",
+      "evidence": "browser_result.anchor_checks.action_catalog + roles_matrix"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "menu_management_query_reset",
+      "status": "PASS",
+      "observed": "菜单管理查询与重置入口可测，菜单写动作带 readonly guard 元数据且仅本地提示。",
+      "evidence": "browser_result.anchor_checks.menu_query + menu_reset + source guard metadata"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "security_operation_audit_query_reset",
+      "status": "PASS",
+      "observed": "安全审计与操作审计查询、重置入口可测。",
+      "evidence": "browser_result.anchor_checks.security_audit_reset + operation_audit_reset"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "guarded_audit_exports",
+      "status": "PASS",
+      "observed": "安全审计/操作审计导出按钮带 guarded_readonly 与 download-disabled 元数据，点击未触发导出接口。",
+      "evidence": "browser_result.guard_metadata + export_endpoint_called=false"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "api_get_only_surface",
+      "status": "PASS",
+      "observed": "permission_governance.ts 仅保留 B37 允许的 5 个 GET helper，移除 security/operations export helper。",
+      "evidence": "rg exportPermissionSecurityAuditCsv exportPermissionOperationAuditCsv"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 1/1。",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "browser_get_only_no_write_no_export",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"], write/unexpected_write/forbidden 全为 0，export_endpoint_called=false。",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "blocking_metrics_and_screenshots",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，截图 4/4 存在；/api/auth/me 500 仅作 expected non-blocking 记录。",
+      "evidence": "browser_result blocking stats + screenshot paths"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

@@ -1,0 +1,167 @@
+{
+  "task_id": "TASK-Z013B-39-REGRESSION",
+  "selected_candidate_id": "Z013-CAND-006",
+  "code_changed": false,
+  "target_url": "http://127.0.0.1:5173/permissions/governance",
+  "route_hit_count": 1,
+  "route_target_count": 1,
+  "route_checks": [
+    {
+      "url": "http://127.0.0.1:5173/permissions/governance",
+      "status": "PASS"
+    }
+  ],
+  "screenshot_dir": "/tmp/task_z013b39_permission_governance_regression_screenshots",
+  "screenshot_count": 4,
+  "screenshot_paths": [
+    "/tmp/task_z013b39_permission_governance_regression_screenshots/01_regression_permission_governance_route.png",
+    "/tmp/task_z013b39_permission_governance_regression_screenshots/02_regression_action_catalog_roles.png",
+    "/tmp/task_z013b39_permission_governance_regression_screenshots/03_regression_menu_management_guard.png",
+    "/tmp/task_z013b39_permission_governance_regression_screenshots/04_regression_audit_export_guard.png"
+  ],
+  "anchor_checks": {
+    "page": 1,
+    "parity_hint": 1,
+    "readonly_status": 1,
+    "action_catalog": 1,
+    "roles_matrix": 1,
+    "menu_management": 1,
+    "menu_query": 1,
+    "menu_reset": 1,
+    "security_audit": 1,
+    "security_audit_reset": 1,
+    "operation_audit": 1,
+    "operation_audit_reset": 1,
+    "export_security_guard": 1,
+    "export_operation_guard": 1
+  },
+  "guard_metadata": {
+    "security_export_write_guard": "guarded:readonly-security-audit-export",
+    "security_export_guard_state": "guarded_readonly",
+    "security_export_side_effect_guard": "download-disabled",
+    "operation_export_write_guard": "guarded:readonly-operation-audit-export",
+    "operation_export_guard_state": "guarded_readonly",
+    "operation_export_side_effect_guard": "download-disabled"
+  },
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_endpoint_called": false,
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/permissions/governance",
+      "url": "http://127.0.0.1:5173/permissions/governance"
+    },
+    {
+      "method": "GET",
+      "path": "/@vite/client",
+      "url": "http://127.0.0.1:5173/@vite/client"
+    },
+    {
+      "method": "GET",
+      "path": "/src/main.ts",
+      "url": "http://127.0.0.1:5173/src/main.ts?t=1779368815155"
+    },
+    {
+      "method": "GET",
+      "path": "/node_modules/.vite/deps/vue.js",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "path": "/node_modules/.vite/deps/element-plus.js",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "path": "/node_modules/element-plus/dist/index.css",
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css"
+    },
+    {
+      "method": "GET",
+      "path": "/src/App.vue",
+      "url": "http://127.0.0.1:5173/src/App.vue"
+    },
+    {
+      "method": "GET",
+      "path": "/src/router/index.ts",
+      "url": "http://127.0.0.1:5173/src/router/index.ts?t=1779368815155"
+    },
+    {
+      "method": "GET",
+      "path": "/node_modules/vite/dist/client/env.mjs",
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/node_modules/.vite/deps/chunk-6X6RLDOS.js",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "path": "/@id/__x00__plugin-vue:export-helper",
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper"
+    },
+    {
+      "method": "GET",
+      "path": "/node_modules/.vite/deps/vue-router.js",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "path": "/src/views/system/PermissionGovernance.vue",
+      "url": "http://127.0.0.1:5173/src/views/system/PermissionGovernance.vue?t=1779368815155"
+    },
+    {
+      "method": "GET",
+      "path": "/src/api/permission_governance.ts",
+      "url": "http://127.0.0.1:5173/src/api/permission_governance.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/src/stores/permission.ts",
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/src/views/system/PermissionGovernance.vue",
+      "url": "http://127.0.0.1:5173/src/views/system/PermissionGovernance.vue?vue&type=style&index=0&scoped=070e8036&lang.css"
+    },
+    {
+      "method": "GET",
+      "path": "/src/api/request.ts",
+      "url": "http://127.0.0.1:5173/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/src/api/auth.ts",
+      "url": "http://127.0.0.1:5173/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "url": "http://127.0.0.1:5173/api/auth/me"
+    }
+  ],
+  "forbidden_requests": [],
+  "blocking_console_errors": [],
+  "page_errors": [],
+  "blocking_response_errors": [],
+  "network_errors": [],
+  "expected_non_blocking_response_errors": [
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me"
+    }
+  ],
+  "status": "PASS"
+}

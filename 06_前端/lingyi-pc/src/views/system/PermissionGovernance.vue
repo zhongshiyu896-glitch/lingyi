@@ -1,5 +1,19 @@
 <template>
   <div class="permission-governance-page" data-testid="permission-governance-page">
+    <el-alert
+      type="info"
+      :closable="false"
+      title="权限治理只读交互 /permissions/governance"
+      description="仅允许 GET 查询动作目录、角色矩阵、菜单管理与审计记录；菜单写动作和审计导出均为本地 guarded_readonly。"
+      data-testid="permission-governance-parity-hint"
+      class="readonly-parity-hint"
+    />
+    <div class="readonly-status-row" data-testid="permission-governance-readonly-status">
+      <el-tag type="success" effect="plain">READONLY_GET_ONLY</el-tag>
+      <el-tag type="warning" effect="plain">write endpoints disabled</el-tag>
+      <el-tag type="info" effect="plain">audit export guarded</el-tag>
+    </div>
+
     <el-card shadow="never" data-testid="action-catalog-section">
       <template #header>
         <div class="header-row">
@@ -125,6 +139,7 @@
             <el-button type="primary" :loading="menuLoading" data-testid="menu-management-query-button" @click="loadMenuManagement">
               查询
             </el-button>
+            <el-button data-testid="menu-management-reset-button" @click="resetMenuManagementQuery">重置</el-button>
           </el-form-item>
         </el-form>
 
@@ -167,6 +182,8 @@
                 :plain="action.guarded"
                 :disabled="action.guarded"
                 :title="action.guarded ? action.guard_reason || '只读区块：写动作已禁用' : '只读查看'"
+                :data-write-guard="`readonly:${action.action_key}`"
+                data-guard-state="guarded_readonly"
                 @click="onMenuAction(scope.row.menu_name, action.action_label, action.guarded, action.guard_reason)"
               >
                 {{ action.action_label }}
@@ -194,6 +211,8 @@
               :disabled="auditLoading"
               data-testid="permission-security-audit-export-guarded-button"
               data-write-guard="guarded:readonly-security-audit-export"
+              data-guard-state="guarded_readonly"
+              data-side-effect-guard="download-disabled"
               @click="exportSecurityAuditCsv"
             >
               导出安全审计 CSV
@@ -205,6 +224,8 @@
               :disabled="auditLoading"
               data-testid="permission-operation-audit-export-guarded-button"
               data-write-guard="guarded:readonly-operation-audit-export"
+              data-guard-state="guarded_readonly"
+              data-side-effect-guard="download-disabled"
               @click="exportOperationAuditCsv"
             >
               导出操作审计 CSV
@@ -259,6 +280,9 @@
           <el-form-item label="事件类型">
             <el-input v-model="securityQuery.event_type" clearable placeholder="event_type" />
           </el-form-item>
+          <el-form-item>
+            <el-button data-testid="permission-security-audit-reset-button" @click="resetSecurityQuery">重置</el-button>
+          </el-form-item>
         </el-form>
 
         <el-table :data="securityAudit.items" border empty-text="暂无安全审计记录" data-testid="permission-security-audit-table">
@@ -303,6 +327,9 @@
               <el-option label="success" value="success" />
               <el-option label="failed" value="failed" />
             </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button data-testid="permission-operation-audit-reset-button" @click="resetOperationQuery">重置</el-button>
           </el-form-item>
         </el-form>
 
@@ -533,6 +560,13 @@ const loadMenuManagement = async (): Promise<void> => {
   }
 }
 
+const resetMenuManagementQuery = (): void => {
+  menuManagementQuery.module = ''
+  menuManagementQuery.status = ''
+  menuManagementQuery.keyword = ''
+  void loadMenuManagement()
+}
+
 const onMenuAction = (
   menuName: string,
   actionLabel: string,
@@ -571,6 +605,37 @@ const loadAuditData = async (): Promise<void> => {
   } finally {
     auditLoading.value = false
   }
+}
+
+const resetSecurityQuery = (): void => {
+  securityQuery.from_date = ''
+  securityQuery.to_date = ''
+  securityQuery.module = ''
+  securityQuery.action = ''
+  securityQuery.request_id = ''
+  securityQuery.resource_type = ''
+  securityQuery.resource_id = ''
+  securityQuery.event_type = ''
+  securityQuery.user_id = ''
+  securityQuery.page = 1
+  securityQuery.page_size = 20
+  void loadAuditData()
+}
+
+const resetOperationQuery = (): void => {
+  operationQuery.from_date = ''
+  operationQuery.to_date = ''
+  operationQuery.module = ''
+  operationQuery.action = ''
+  operationQuery.request_id = ''
+  operationQuery.resource_type = ''
+  operationQuery.resource_id = undefined
+  operationQuery.operator = ''
+  operationQuery.result = undefined
+  operationQuery.error_code = ''
+  operationQuery.page = 1
+  operationQuery.page_size = 20
+  void loadAuditData()
 }
 
 const exportSecurityAuditCsv = async (): Promise<void> => {
@@ -629,6 +694,17 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.readonly-parity-hint {
+  margin-bottom: 0;
+}
+
+.readonly-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .header-row {

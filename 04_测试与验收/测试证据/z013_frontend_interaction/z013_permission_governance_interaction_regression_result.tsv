@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	code_changed_no	PASS	本轮为独立回归，未修改产品代码；当前产品 diff 仍为 B38 两个权限治理文件。	git diff --name-only -- 06_前端
+2	b38_result_json_tsv_alignment	PASS	B38 impl JSON/TSV 对齐，14/14 PASS。	B38 result JSON/TSV
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	cached_diff_empty	PASS	暂存区为空。	git diff --cached --name-only
+5	route_hit	PASS	权限治理路由命中 1/1。	browser_result.route_checks
+6	readonly_anchor_coverage	PASS	权限动作目录、角色矩阵、菜单管理、安全审计、操作审计、空态/错误态与只读状态锚点均可测。	browser_result.anchor_checks
+7	menu_management_query_reset	PASS	菜单管理查询/重置入口可测。	browser_result.anchor_checks.menu_query + menu_reset
+8	audit_query_reset	PASS	安全审计/操作审计查询与重置入口可测。	browser_result.anchor_checks.security_audit_reset + operation_audit_reset
+9	guarded_readonly_actions	PASS	审计 CSV 导出具备 guarded_readonly 与 download-disabled 元数据，菜单写动作保持 readonly guard。	browser_result.guard_metadata + source guard metadata
+10	browser_get_only	PASS	request_methods=["GET"]。	browser_result.request_methods
+11	no_write_or_forbidden_request	PASS	write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。	browser_result request stats
+12	no_export_endpoint_called	PASS	export_endpoint_called=false，未触发 security/operations audit export endpoint。	browser_result.export_endpoint_called
+13	blocking_metrics	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0。	browser_result blocking stats
+14	screenshot_paths	PASS	截图 4/4 存在，目录为 /tmp/task_z013b39_permission_governance_regression_screenshots。	browser_result.screenshot_paths

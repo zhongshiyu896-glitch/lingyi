@@ -1,0 +1,160 @@
+{
+  "task_id": "TASK-Z013B-39-REGRESSION",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-38-IMPL",
+  "source_head": "d33c1e218099149f91c2d5b6a3f120168019e8f3",
+  "selected_candidate_id": "Z013-CAND-006",
+  "module": "权限治理",
+  "code_changed": false,
+  "b38_result_check_count": 14,
+  "b38_result_pass_count": 14,
+  "b38_result_json_tsv_alignment": "PASS",
+  "regression_check_count": 14,
+  "regression_pass_count": 14,
+  "browser_evidence": {
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_permission_governance_interaction_regression_browser_result.json",
+    "route_hit_count": 1,
+    "route_target_count": 1,
+    "screenshot_dir": "/tmp/task_z013b39_permission_governance_regression_screenshots",
+    "screenshot_count": 4,
+    "screenshot_paths": [
+      "/tmp/task_z013b39_permission_governance_regression_screenshots/01_regression_permission_governance_route.png",
+      "/tmp/task_z013b39_permission_governance_regression_screenshots/02_regression_action_catalog_roles.png",
+      "/tmp/task_z013b39_permission_governance_regression_screenshots/03_regression_menu_management_guard.png",
+      "/tmp/task_z013b39_permission_governance_regression_screenshots/04_regression_audit_export_guard.png"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "expected_non_blocking_response_errors": [
+      {
+        "method": "GET",
+        "path": "/api/auth/me",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me"
+      }
+    ]
+  },
+  "current_git_facts": {
+    "frontend_diff_files": [
+      "06_前端/lingyi-pc/src/api/permission_governance.ts",
+      "06_前端/lingyi-pc/src/views/system/PermissionGovernance.vue"
+    ],
+    "backend_diff_files": [],
+    "cached_diff_files": []
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "code_changed_no",
+      "status": "PASS",
+      "observed": "本轮为独立回归，未修改产品代码；当前产品 diff 仍为 B38 两个权限治理文件。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "b38_result_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B38 impl JSON/TSV 对齐，14/14 PASS。",
+      "evidence": "B38 result JSON/TSV"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "cached_diff_empty",
+      "status": "PASS",
+      "observed": "暂存区为空。",
+      "evidence": "git diff --cached --name-only"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "route_hit",
+      "status": "PASS",
+      "observed": "权限治理路由命中 1/1。",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "readonly_anchor_coverage",
+      "status": "PASS",
+      "observed": "权限动作目录、角色矩阵、菜单管理、安全审计、操作审计、空态/错误态与只读状态锚点均可测。",
+      "evidence": "browser_result.anchor_checks"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "menu_management_query_reset",
+      "status": "PASS",
+      "observed": "菜单管理查询/重置入口可测。",
+      "evidence": "browser_result.anchor_checks.menu_query + menu_reset"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "audit_query_reset",
+      "status": "PASS",
+      "observed": "安全审计/操作审计查询与重置入口可测。",
+      "evidence": "browser_result.anchor_checks.security_audit_reset + operation_audit_reset"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "guarded_readonly_actions",
+      "status": "PASS",
+      "observed": "审计 CSV 导出具备 guarded_readonly 与 download-disabled 元数据，菜单写动作保持 readonly guard。",
+      "evidence": "browser_result.guard_metadata + source guard metadata"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"]。",
+      "evidence": "browser_result.request_methods"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "no_write_or_forbidden_request",
+      "status": "PASS",
+      "observed": "write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "no_export_endpoint_called",
+      "status": "PASS",
+      "observed": "export_endpoint_called=false，未触发 security/operations audit export endpoint。",
+      "evidence": "browser_result.export_endpoint_called"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0。",
+      "evidence": "browser_result blocking stats"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "screenshot_paths",
+      "status": "PASS",
+      "observed": "截图 4/4 存在，目录为 /tmp/task_z013b39_permission_governance_regression_screenshots。",
+      "evidence": "browser_result.screenshot_paths"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}
