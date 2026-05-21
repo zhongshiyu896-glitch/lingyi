@@ -26,9 +26,10 @@
           <el-button :disabled="!canRead" data-testid="bom-main-reset-button" @click="resetMainQuery">重置</el-button>
           <el-button
             v-if="canCreate"
+            disabled
             data-action-type="write"
             data-write-guard="permission:create(v-if)"
-            data-guard-state="visible_when_allowed"
+            data-guard-state="dev_cand_005_disabled"
             data-testid="bom-main-create-guarded-button"
             @click="goCreate"
           >
@@ -73,6 +74,19 @@
             show-icon
             :closable="false"
           />
+
+          <div class="style-dev-cand-005-guard" data-testid="product-style-dev-cand-005-guard">
+            <div class="style-guard-status-row" aria-label="DEV-CAND-005 证据状态分层">
+              <el-tag type="success" effect="plain">VERIFIED：款式字段/面料引用</el-tag>
+              <el-tag type="warning" effect="plain">PARTIAL：颜色尺码</el-tag>
+              <el-tag type="info" effect="plain">UNKNOWN：矩阵/算法口径</el-tag>
+              <el-tag type="danger" effect="plain">BLOCKED：样板/订单/BOM 保存</el-tag>
+              <el-tag type="danger" effect="dark">NO-GO：生产/库存/财务</el-tag>
+            </div>
+            <p class="style-guard-note">
+              DEV-CAND-005 仅统一只读态、禁用态和风险 guard；面料引用不得外推为 BOM、采购、库存、成本或生产联动。
+            </p>
+          </div>
 
           <el-descriptions
             class="style-contract-descriptions"
@@ -333,10 +347,11 @@
                 查询
               </el-button>
               <el-button :disabled="!canRead" data-testid="bom-fabric-reset-button" @click="resetFabricQuery">重置</el-button>
-              <el-button data-action-type="write" data-write-guard="readonly-fabric-use" @click="guardedReadonlyAction('选用')">
+              <el-button disabled data-action-type="write" data-write-guard="readonly-fabric-use" @click="guardedReadonlyAction('选用')">
                 选用
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-fabric-export"
                 @click="guardedReadonlyAction('导出')"
@@ -384,8 +399,8 @@
                 <el-button link type="primary" data-testid="bom-fabric-detail-button" @click="openFabricDetail(scope.row)">
                   查看
                 </el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('选用')">选用</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('选用')">选用</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -458,6 +473,7 @@
                 重置
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-accessories-use"
                 @click="guardedReadonlyAction('选用')"
@@ -465,6 +481,7 @@
                 选用
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-accessories-upload"
                 @click="guardedReadonlyAction('上传')"
@@ -472,6 +489,7 @@
                 上传
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-accessories-export"
                 @click="guardedReadonlyAction('导出')"
@@ -525,9 +543,9 @@
                 >
                   查看
                 </el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('选用')">选用</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('上传')">上传</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('选用')">选用</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('上传')">上传</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -615,6 +633,7 @@
                 重置
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-processing-type-config"
                 @click="guardedReadonlyAction('配置')"
@@ -622,6 +641,7 @@
                 配置
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-processing-type-toggle"
                 @click="guardedReadonlyAction('启停')"
@@ -629,6 +649,7 @@
                 启停
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-processing-type-export"
                 @click="guardedReadonlyAction('导出')"
@@ -680,9 +701,9 @@
                 >
                   查看
                 </el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('配置')">配置</el-button>
-                <el-button link type="danger" @click="guardedReadonlyAction('启停')">启停</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('配置')">配置</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="danger" @click="guardedReadonlyAction('启停')">启停</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -747,6 +768,7 @@
               <el-button type="primary" :disabled="!canRead" @click="loadMaterialProcessing">查询</el-button>
               <el-button :disabled="!canRead" @click="resetMaterialProcessingQuery">重置</el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-create"
                 @click="guardedReadonlyAction('新增加工')"
@@ -754,6 +776,7 @@
                 新增加工
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-edit"
                 @click="guardedReadonlyAction('编辑')"
@@ -761,6 +784,7 @@
                 编辑
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-delete"
                 @click="guardedReadonlyAction('删除')"
@@ -768,6 +792,7 @@
                 删除
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-submit"
                 @click="guardedReadonlyAction('提交审核')"
@@ -775,6 +800,7 @@
                 提交审核
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-sync"
                 @click="guardedReadonlyAction('同步')"
@@ -782,6 +808,7 @@
                 同步
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-export"
                 @click="guardedReadonlyAction('导出')"
@@ -789,6 +816,7 @@
                 导出
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-print"
                 @click="guardedReadonlyAction('打印')"
@@ -835,10 +863,10 @@
             <el-table-column label="操作" width="280" fixed="right">
               <template #default="scope">
                 <el-button link type="primary" @click="openMaterialProcessingDetail(scope.row)">查看</el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('编辑')">编辑</el-button>
-                <el-button link type="danger" @click="guardedReadonlyAction('删除')">删除</el-button>
-                <el-button link type="success" @click="guardedReadonlyAction('提交审核')">提交审核</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('编辑')">编辑</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="danger" @click="guardedReadonlyAction('删除')">删除</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="success" @click="guardedReadonlyAction('提交审核')">提交审核</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -923,6 +951,7 @@
                 重置
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-inbound-confirm"
                 @click="guardedReadonlyAction('入仓确认')"
@@ -930,6 +959,7 @@
                 入仓确认
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-inbound-inspect"
                 @click="guardedReadonlyAction('质检')"
@@ -937,6 +967,7 @@
                 质检
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-inbound-sync"
                 @click="guardedReadonlyAction('同步')"
@@ -944,6 +975,7 @@
                 同步
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-inbound-export"
                 @click="guardedReadonlyAction('导出')"
@@ -951,6 +983,7 @@
                 导出
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-processing-inbound-print"
                 @click="guardedReadonlyAction('打印')"
@@ -1004,10 +1037,10 @@
                 >
                   查看
                 </el-button>
-                <el-button link type="success" @click="guardedReadonlyAction('入仓确认')">入仓确认</el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('质检')">质检</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="success" @click="guardedReadonlyAction('入仓确认')">入仓确认</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('质检')">质检</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -1068,6 +1101,7 @@
               <el-button type="primary" :disabled="!canRead" @click="loadMaterialDeduction">查询</el-button>
               <el-button :disabled="!canRead" @click="resetMaterialDeductionQuery">重置</el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-deduction-confirm"
                 @click="guardedReadonlyAction('扣仓确认')"
@@ -1075,6 +1109,7 @@
                 扣仓确认
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-deduction-reverse"
                 @click="guardedReadonlyAction('扣仓冲销')"
@@ -1082,6 +1117,7 @@
                 扣仓冲销
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-deduction-sync"
                 @click="guardedReadonlyAction('同步')"
@@ -1089,6 +1125,7 @@
                 同步
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-deduction-export"
                 @click="guardedReadonlyAction('导出')"
@@ -1096,6 +1133,7 @@
                 导出
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-deduction-print"
                 @click="guardedReadonlyAction('打印')"
@@ -1140,10 +1178,10 @@
             <el-table-column label="操作" width="300" fixed="right">
               <template #default="scope">
                 <el-button link type="primary" @click="openMaterialDeductionDetail(scope.row)">查看</el-button>
-                <el-button link type="success" @click="guardedReadonlyAction('扣仓确认')">扣仓确认</el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('扣仓冲销')">扣仓冲销</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="success" @click="guardedReadonlyAction('扣仓确认')">扣仓确认</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('扣仓冲销')">扣仓冲销</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -1228,6 +1266,7 @@
               <el-button type="primary" :disabled="!canRead" @click="loadMaterialSalesOutbound">查询</el-button>
               <el-button :disabled="!canRead" @click="resetMaterialSalesOutboundQuery">重置</el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-sales-outbound-confirm"
                 @click="guardedReadonlyAction('出仓确认')"
@@ -1235,6 +1274,7 @@
                 出仓确认
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-sales-outbound-audit"
                 @click="guardedReadonlyAction('审核通过')"
@@ -1242,6 +1282,7 @@
                 审核通过
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-sales-outbound-sync"
                 @click="guardedReadonlyAction('同步')"
@@ -1249,6 +1290,7 @@
                 同步
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-sales-outbound-export"
                 @click="guardedReadonlyAction('导出')"
@@ -1256,6 +1298,7 @@
                 导出
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-sales-outbound-print"
                 @click="guardedReadonlyAction('打印')"
@@ -1312,10 +1355,10 @@
             <el-table-column label="操作" width="320" fixed="right">
               <template #default="scope">
                 <el-button link type="primary" @click="openMaterialSalesOutboundDetail(scope.row)">查看</el-button>
-                <el-button link type="success" @click="guardedReadonlyAction('出仓确认')">出仓确认</el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('审核通过')">审核通过</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="success" @click="guardedReadonlyAction('出仓确认')">出仓确认</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('审核通过')">审核通过</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('打印')">打印</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -1393,6 +1436,7 @@
               <el-button type="primary" :disabled="!canRead" @click="loadMaterialTypes">查询</el-button>
               <el-button :disabled="!canRead" @click="resetMaterialTypeQuery">重置</el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-type-create"
                 @click="guardedReadonlyAction('新增类型')"
@@ -1400,6 +1444,7 @@
                 新增类型
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-type-edit"
                 @click="guardedReadonlyAction('编辑')"
@@ -1407,6 +1452,7 @@
                 编辑
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-type-delete"
                 @click="guardedReadonlyAction('删除')"
@@ -1414,6 +1460,7 @@
                 删除
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-type-export"
                 @click="guardedReadonlyAction('导出')"
@@ -1456,9 +1503,9 @@
             <el-table-column label="操作" width="250" fixed="right">
               <template #default="scope">
                 <el-button link type="primary" @click="openMaterialTypeDetail(scope.row)">查看</el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('编辑')">编辑</el-button>
-                <el-button link type="danger" @click="guardedReadonlyAction('删除')">删除</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('编辑')">编辑</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="danger" @click="guardedReadonlyAction('删除')">删除</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -1507,6 +1554,7 @@
               <el-button type="primary" :disabled="!canRead" @click="loadMaterialUnits">查询</el-button>
               <el-button :disabled="!canRead" @click="resetMaterialUnitQuery">重置</el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-unit-create"
                 @click="guardedReadonlyAction('新增单位')"
@@ -1514,6 +1562,7 @@
                 新增单位
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-unit-edit"
                 @click="guardedReadonlyAction('编辑')"
@@ -1521,6 +1570,7 @@
                 编辑
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-unit-disable"
                 @click="guardedReadonlyAction('停用')"
@@ -1528,6 +1578,7 @@
                 停用
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-material-unit-export"
                 @click="guardedReadonlyAction('导出')"
@@ -1570,9 +1621,9 @@
             <el-table-column label="操作" width="250" fixed="right">
               <template #default="scope">
                 <el-button link type="primary" @click="openMaterialUnitDetail(scope.row)">查看</el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('编辑')">编辑</el-button>
-                <el-button link type="danger" @click="guardedReadonlyAction('停用')">停用</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('编辑')">编辑</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="danger" @click="guardedReadonlyAction('停用')">停用</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -1622,6 +1673,7 @@
               <el-button type="primary" :disabled="!canRead" @click="loadGallery">查询</el-button>
               <el-button :disabled="!canRead" @click="resetGalleryQuery">重置</el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-gallery-choose"
                 @click="guardedReadonlyAction('选用')"
@@ -1629,6 +1681,7 @@
                 选用
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-gallery-upload"
                 @click="guardedReadonlyAction('上传')"
@@ -1636,6 +1689,7 @@
                 上传
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-gallery-edit"
                 @click="guardedReadonlyAction('编辑')"
@@ -1643,6 +1697,7 @@
                 编辑
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-gallery-delete"
                 @click="guardedReadonlyAction('删除')"
@@ -1693,10 +1748,10 @@
             <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
                 <el-button link type="primary" @click="openGalleryPreview(scope.row)">查看</el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('选用')">选用</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('上传')">上传</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('编辑')">编辑</el-button>
-                <el-button link type="danger" @click="guardedReadonlyAction('删除')">删除</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('选用')">选用</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('上传')">上传</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('编辑')">编辑</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="danger" @click="guardedReadonlyAction('删除')">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -1767,6 +1822,7 @@
               <el-button type="primary" :disabled="!canRead" @click="loadPurchaseOrders">查询</el-button>
               <el-button :disabled="!canRead" @click="resetPurchaseQuery">重置</el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-purchase-generate"
                 @click="guardedReadonlyAction('生成采购')"
@@ -1774,6 +1830,7 @@
                 生成采购
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-purchase-confirm"
                 @click="guardedReadonlyAction('确认')"
@@ -1781,6 +1838,7 @@
                 确认
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-purchase-cancel"
                 @click="guardedReadonlyAction('取消')"
@@ -1788,6 +1846,7 @@
                 取消
               </el-button>
               <el-button
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly-purchase-export"
                 @click="guardedReadonlyAction('导出')"
@@ -1832,10 +1891,10 @@
             <el-table-column label="操作" width="270" fixed="right">
               <template #default="scope">
                 <el-button link type="primary" @click="openPurchaseDetail(scope.row)">查看</el-button>
-                <el-button link type="warning" @click="guardedReadonlyAction('生成采购')">生成采购</el-button>
-                <el-button link type="success" @click="guardedReadonlyAction('确认')">确认</el-button>
-                <el-button link type="danger" @click="guardedReadonlyAction('取消')">取消</el-button>
-                <el-button link type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="warning" @click="guardedReadonlyAction('生成采购')">生成采购</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="success" @click="guardedReadonlyAction('确认')">确认</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="danger" @click="guardedReadonlyAction('取消')">取消</el-button>
+                <el-button link disabled data-write-guard="dev-cand-005:readonly-disabled" type="info" @click="guardedReadonlyAction('导出')">导出</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -3065,6 +3124,26 @@ onMounted(async () => {
 .style-contract-alert,
 .style-contract-descriptions {
   margin-top: 12px;
+}
+
+.style-dev-cand-005-guard {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+  padding: 10px;
+  margin-top: 12px;
+}
+
+.style-guard-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.style-guard-note {
+  margin: 8px 0 0;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
 }
 
 .field-evidence-tag {

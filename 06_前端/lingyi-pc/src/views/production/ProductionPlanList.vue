@@ -141,6 +141,7 @@
             :loading="creatingPlan"
             :disabled="creatingPlan || !canWriteGuarded"
             data-action-type="write"
+            data-write-guard="dev-cand-005:readonly-disabled"
             data-testid="production-plan-create-submit"
             @click="submitCreatePlan"
           >
@@ -155,15 +156,16 @@
         <el-button
           :disabled="!canWriteGuarded"
           data-action-type="write"
+          data-write-guard="dev-cand-005:readonly-disabled"
           data-testid="production-plan-guarded-confirm"
           @click="onGuardedAction('确定', true)"
         >
           确定
         </el-button>
-        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('标志已读', true)">标志已读</el-button>
-        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('删除消息', true)">删除消息</el-button>
-        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('新增消息', true)">新增消息</el-button>
-        <el-button :disabled="!canWriteGuarded" data-action-type="write" @click="onGuardedAction('保存', true)">保存</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" data-write-guard="dev-cand-005:readonly-disabled" @click="onGuardedAction('标志已读', true)">标志已读</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" data-write-guard="dev-cand-005:readonly-disabled" @click="onGuardedAction('删除消息', true)">删除消息</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" data-write-guard="dev-cand-005:readonly-disabled" @click="onGuardedAction('新增消息', true)">新增消息</el-button>
+        <el-button :disabled="!canWriteGuarded" data-action-type="write" data-write-guard="dev-cand-005:readonly-disabled" @click="onGuardedAction('保存', true)">保存</el-button>
       </div>
 
       <el-alert
@@ -727,6 +729,19 @@
               </div>
             </div>
 
+            <div class="dev-cand-005-guard" data-testid="production-quote-dev-cand-005-guard">
+              <div class="guard-status-row" aria-label="DEV-CAND-005 证据状态分层">
+                <el-tag type="success" effect="plain">VERIFIED：字段/状态/最小回读</el-tag>
+                <el-tag type="warning" effect="plain">PARTIAL：价格字段展示</el-tag>
+                <el-tag type="info" effect="plain">UNKNOWN：算法口径</el-tag>
+                <el-tag type="danger" effect="plain">BLOCKED：提交/审核/转订单</el-tag>
+                <el-tag type="danger" effect="dark">NO-GO：生产/库存/财务</el-tag>
+              </div>
+              <p class="guard-note">
+                DEV-CAND-005 仅统一 UI guard 表达；报价草稿仍只支持字段、状态和最小回读壳层，不实现保存、提交、审核、转订单、价格算法或利润公式。
+              </p>
+            </div>
+
             <div class="quote-contract-grid">
               <div
                 v-for="field in quoteDraftReadbackFields"
@@ -1179,6 +1194,7 @@
             <el-button
               :disabled="!canWriteGuarded"
               data-action-type="write"
+              data-write-guard="dev-cand-005:readonly-disabled"
               @click="onGuardedAction('同步进出数量', true)"
             >
               同步
@@ -1356,6 +1372,7 @@
             <el-button
               :disabled="!canWriteGuarded"
               data-action-type="write"
+              data-write-guard="dev-cand-005:readonly-disabled"
               @click="onGuardedAction('刷新业绩分析', true)"
             >
               刷新分析
@@ -1363,6 +1380,7 @@
             <el-button
               :disabled="!canWriteGuarded"
               data-action-type="write"
+              data-write-guard="dev-cand-005:readonly-disabled"
               @click="onGuardedAction('同步业绩分析', true)"
             >
               同步
@@ -1522,9 +1540,7 @@ const canQuoteReadonlyInteractive = computed<boolean>(() => canRead.value || isP
 const canFollowupTemplateReadonlyInteractive = computed<boolean>(
   () => canRead.value || isProductionFollowupTemplateParity.value,
 )
-const canWriteGuarded = computed<boolean>(() => {
-  return permissionStore.state.buttonPermissions.plan_create || permissionStore.state.actions.includes('production:plan_create')
-})
+const canWriteGuarded = computed<boolean>(() => false)
 
 const buildScenarioTag = (): string => {
   const now = new Date()
@@ -2615,10 +2631,24 @@ onMounted(async () => {
 
 .quote-contract-tags,
 .quote-boundary-tags,
-.quote-contract-actions {
+.quote-contract-actions,
+.guard-status-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.dev-cand-005-guard {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+  padding: 10px;
+}
+
+.guard-note {
+  margin: 8px 0 0;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
 }
 
 .quote-contract-grid {

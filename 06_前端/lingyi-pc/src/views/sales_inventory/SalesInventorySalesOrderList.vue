@@ -33,6 +33,19 @@
           </div>
         </div>
 
+        <div class="order-dev-cand-005-guard" data-testid="sales-order-dev-cand-005-guard">
+          <div class="guard-status-row" aria-label="DEV-CAND-005 证据状态分层">
+            <el-tag type="success" effect="plain">VERIFIED：popup-only 本地回写</el-tag>
+            <el-tag type="warning" effect="plain">PARTIAL：静态字段/按钮展示</el-tag>
+            <el-tag type="info" effect="plain">UNKNOWN：payload/详情回读</el-tag>
+            <el-tag type="danger" effect="plain">BLOCKED：主订单保存</el-tag>
+            <el-tag type="danger" effect="dark">NO-GO：生产/BOM/库存/财务</el-tag>
+          </div>
+          <p class="guard-note">
+            DEV-CAND-005 仅统一订单页风险 guard；popup-only 只表示弹窗保存(S)本地回写当前页面矩阵，不能声明订单创建、主保存、详情回读或后端 payload 成功。
+          </p>
+        </div>
+
         <div class="contract-grid">
           <div class="contract-panel" data-testid="order-static-fields-contract">
             <div class="panel-title">静态字段壳层</div>
@@ -1153,6 +1166,25 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
+}
+
+.order-dev-cand-005-guard {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+  padding: 10px;
+}
+
+.guard-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.guard-note {
+  margin: 8px 0 0;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
 }
 
 .contract-grid {
