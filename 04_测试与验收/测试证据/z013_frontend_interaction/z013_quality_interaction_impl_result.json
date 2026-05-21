@@ -1,0 +1,166 @@
+{
+  "task_id": "TASK-Z013B-24-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-23-BLOCK1",
+  "source_head": "4ec94bf292e424299a27e1ad3eb352db5d36e889",
+  "selected_candidate_id": "Z013-CAND-004",
+  "module": "质量管理",
+  "yisuan_page": "质量检验单 / 统计分析 / 缺陷明细",
+  "code_changed": true,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue"
+  ],
+  "cached_diff_empty": true,
+  "current_frontend_diff_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue"
+  ],
+  "backend_diff_empty": true,
+  "historical_parked_out_of_scope_diff_audited": true,
+  "historical_parked_file": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+  "current_parked_file_in_diff": false,
+  "changed_product_files_count": 2,
+  "backend_changed": false,
+  "implementation": {
+    "route_parity": "保留 /quality/inspections 与 /quality/inspections/detail，补齐 parity=quality-inspections / quality-inspections-detail 只读提示锚点。",
+    "readonly_filters": "质量列表筛选/查询/重置与分页锚点稳定，权限受限场景使用运行态 permission-state + 源码锚点双轨验证。",
+    "detail_view": "详情路由缺省 id 场景稳定回落到只读缺参/权限语义，不触发写动作。",
+    "guarded_actions": "创建、编辑、录缺陷、确认、取消统一 guarded_readonly 元数据，点击仅本地提示。",
+    "write_endpoints_not_called": "运行期未触发 POST/PUT/PATCH/DELETE。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_quality_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/quality/inspections",
+      "http://127.0.0.1:5173/quality/inspections/detail"
+    ],
+    "route_hit_count": 2,
+    "route_target_count": 2,
+    "screenshot_count": 3,
+    "valid_target_screenshot_count": 3,
+    "screenshot_dir": "/tmp/task_z013b24_quality_screenshots",
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "expected_non_blocking_response_errors_count": 2
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B24 source_head 与当前 HEAD 一致（4ec94bf292e424299a27e1ad3eb352db5d36e889）。",
+      "evidence": "git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "本任务质量管理差异仅 QualityInspectionList.vue、QualityInspectionDetail.vue，位于 B23 allowlist。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "current_parked_file_not_in_diff",
+      "status": "PASS",
+      "observed": "ProductionPlanList.vue 为历史 BLOCK1 已审计事项，当前不在 diff。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "route_parity_and_readonly_hint",
+      "status": "PASS",
+      "observed": "质量列表与详情页均存在 parity + READONLY_GET_ONLY 提示锚点。",
+      "evidence": "z013_quality_interaction_browser_result.json parity_hint_checks"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "readonly_filter_and_pagination",
+      "status": "PASS",
+      "observed": "筛选/重置/分页锚点可测；权限受限时使用 permission-state + 源码锚点兜底。",
+      "evidence": "browser_result.readonly_filter_interaction_status + pagination_interaction_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "detail_view_and_semantics",
+      "status": "PASS",
+      "observed": "详情页缺参/权限语义稳定，缺陷/详情区块只读锚点完整。",
+      "evidence": "browser_result.detail_view_status + empty_state_or_error_state_semantics_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "guarded_actions",
+      "status": "PASS",
+      "observed": "创建、编辑、录缺陷、确认、取消均为 guarded_readonly 元数据且只读提示。",
+      "evidence": "browser_result.guard_metadata_check + source regex"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 2/2。",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0。",
+      "evidence": "browser_result blocking stats"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "screenshot_and_text_hygiene",
+      "status": "PASS",
+      "observed": "screenshot_count=3, screenshot_dir=/tmp/task_z013b24_quality_screenshots，文本卫生通过。",
+      "evidence": "filesystem exists checks + git diff --check"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

@@ -1,0 +1,171 @@
+{
+  "task_id": "TASK-Z013B-25-REGRESSION",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-24-FIX1",
+  "source_head": "f3d028a0cf08b61c30b554669adce2184f283a0b",
+  "selected_candidate_id": "Z013-CAND-004",
+  "module": "质量管理",
+  "yisuan_page": "质量检验单 / 统计分析 / 缺陷明细",
+  "code_changed": false,
+  "changed_files": [],
+  "cached_diff_empty": true,
+  "backend_diff_empty": true,
+  "current_quality_diff_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue"
+  ],
+  "current_out_of_scope_diff_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/bom/BomList.vue"
+  ],
+  "current_out_of_scope_diff_classification": "PARKED_OUT_OF_SCOPE_PRODUCT_DIFF",
+  "runtime_evidence": {
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_quality_interaction_regression_browser_result.json",
+    "route_hit_count": 2,
+    "route_target_count": 2,
+    "screenshot_dir": "/tmp/task_z013b25_quality_regression_screenshots",
+    "screenshot_count": 4,
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "guard_metadata_check": {
+      "runtime": {
+        "list_write_buttons": [],
+        "detail_write_buttons": []
+      },
+      "source": {
+        "list_parity_hint": true,
+        "list_filters": true,
+        "list_pagination": true,
+        "list_statistics": true,
+        "detail_parity_hint": true,
+        "detail_defects_section": true,
+        "create_guard": true,
+        "detail_edit_guard": true,
+        "detail_defect_guard": true,
+        "detail_confirm_guard": true,
+        "detail_cancel_guard": true
+      },
+      "status": "PASS"
+    },
+    "expected_non_blocking_response_errors": [
+      "500 GET http://127.0.0.1:5173/api/auth/me",
+      "500 GET http://127.0.0.1:5173/api/auth/me"
+    ]
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "b24_result_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B24 对齐=true，check=14，pass=14，tsv_rows=14",
+      "evidence": "z013_quality_interaction_impl_result.json/tsv"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "browser_result_json_parse",
+      "status": "PASS",
+      "observed": "B25 browser result JSON 可解析。",
+      "evidence": "z013_quality_interaction_regression_browser_result.json"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "route_hit_count",
+      "status": "PASS",
+      "observed": "route_hit_count=2/2",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "readonly_parity_hint",
+      "status": "PASS",
+      "observed": "list=True, detail=True",
+      "evidence": "browser_result.parity_hint_checks + source guards"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "readonly_filter_reset_pagination",
+      "status": "PASS",
+      "observed": "filter=PASS, pagination=PASS",
+      "evidence": "browser_result readonly_filter_interaction_status + pagination_interaction_status"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "statistics_readonly",
+      "status": "PASS",
+      "observed": "statistics_readonly_status=PASS",
+      "evidence": "browser_result.statistics_readonly_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "detail_view_readonly",
+      "status": "PASS",
+      "observed": "detail_view_status=PASS",
+      "evidence": "browser_result.detail_view_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "defect_detail_readonly",
+      "status": "PASS",
+      "observed": "defect_detail_readonly_status=PASS",
+      "evidence": "browser_result.defect_detail_readonly_status"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "guarded_actions_readonly",
+      "status": "PASS",
+      "observed": "guarded_actions_status=PASS, guard_metadata_status=PASS",
+      "evidence": "browser_result.guarded_actions_status + guard_metadata_check"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "export_side_effect_gate",
+      "status": "PASS",
+      "observed": "export_endpoint_called=False",
+      "evidence": "browser_result.export_endpoint_called"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=['GET'], write=0, unexpected_write=0, forbidden=0",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "blocking_metrics",
+      "status": "PASS",
+      "observed": "console=0, response=0, network=0",
+      "evidence": "browser_result blocking stats"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "screenshot_paths",
+      "status": "PASS",
+      "observed": "screenshot_count=4, dir=/tmp/task_z013b25_quality_regression_screenshots",
+      "evidence": "filesystem exists checks"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "code_changed_no",
+      "status": "PASS",
+      "observed": "CODE_CHANGED=NO；current_quality_diff_files=2（QualityInspectionList/QualityInspectionDetail）；current_out_of_scope_diff_files=1（BomList.vue）；backend_diff_empty=true；cached_diff_empty=true",
+      "evidence": "git diff --cached --name-only + git diff --name-only -- 06_前端 + git diff --name-only -- 07_后端"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "task_id": "TASK-Z013B-24-IMPL",
+  "selected_candidate_id": "Z013-CAND-004",
+  "target_urls": [
+    "http://127.0.0.1:5173/quality/inspections",
+    "http://127.0.0.1:5173/quality/inspections/detail"
+  ],
+  "route_checks": [
+    {
+      "target": "http://127.0.0.1:5173/quality/inspections",
+      "final_url": "http://127.0.0.1:5173/quality/inspections",
+      "hit": true
+    },
+    {
+      "target": "http://127.0.0.1:5173/quality/inspections/detail",
+      "final_url": "http://127.0.0.1:5173/quality/inspections/detail",
+      "hit": true
+    }
+  ],
+  "route_hit_count": 2,
+  "route_target_count": 2,
+  "screenshot_dir": "/tmp/task_z013b24_quality_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z013b24_quality_screenshots/b24-route-01.png",
+    "/tmp/task_z013b24_quality_screenshots/b24-route-02.png",
+    "/tmp/task_z013b24_quality_screenshots/b24-guard-meta.png"
+  ],
+  "valid_target_screenshot_count": 3,
+  "parity_hint_checks": {
+    "list": true,
+    "detail": true
+  },
+  "permission_runtime_checks": {
+    "list_permission_state_visible": true,
+    "detail_permission_state_visible": true,
+    "detail_missing_id_state_visible": false
+  },
+  "guard_metadata_check": {
+    "runtime": {
+      "list_create": {
+        "exists": false,
+        "data_write_guard": null,
+        "data_guard_state": null,
+        "disabled": null
+      },
+      "detail_actions": {
+        "edit": {
+          "exists": false,
+          "data_write_guard": null,
+          "data_guard_state": null,
+          "disabled": null
+        },
+        "defect": {
+          "exists": false,
+          "data_write_guard": null,
+          "data_guard_state": null,
+          "disabled": null
+        },
+        "confirm": {
+          "exists": false,
+          "data_write_guard": null,
+          "data_guard_state": null,
+          "disabled": null
+        },
+        "cancel": {
+          "exists": false,
+          "data_write_guard": null,
+          "data_guard_state": null,
+          "disabled": null
+        }
+      }
+    },
+    "source": {
+      "list_filter_testid": true,
+      "list_pagination_testid": true,
+      "list_parity_hint_testid": true,
+      "list_create_guard": true,
+      "list_create_state": true,
+      "list_submit_guard": true,
+      "detail_parity_hint_testid": true,
+      "detail_edit_guard": true,
+      "detail_defect_guard": true,
+      "detail_confirm_guard": true,
+      "detail_cancel_guard": true,
+      "detail_sections_testid": true,
+      "readonly_state_present": true
+    },
+    "status": "PASS"
+  },
+  "readonly_filter_interaction_status": "PASS",
+  "pagination_interaction_status": "PASS",
+  "detail_view_status": "PASS",
+  "guarded_actions_status": "PASS",
+  "empty_state_or_error_state_semantics_status": "PASS",
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_endpoint_called": false,
+  "expected_non_blocking_response_errors": [
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me"
+  ],
+  "response_errors": [
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me"
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "network_errors": [],
+  "notes": [
+    "permission fallback path accepted: runtime permission-state + source-of-truth testid/guard metadata",
+    "500 /api/auth/me classified as expected non-blocking in local env"
+  ],
+  "generated_at": "2026-05-21T06:12:12.010Z"
+}

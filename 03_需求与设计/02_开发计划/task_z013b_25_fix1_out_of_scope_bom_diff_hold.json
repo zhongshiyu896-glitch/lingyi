@@ -1,0 +1,24 @@
+{
+  "task_id": "TASK-Z013B-25-FIX1",
+  "blocked_task_id": "TASK-Z013B-25-REGRESSION",
+  "blocked_next_task_id": "TASK-Z013B-26-LEDGER",
+  "source_head": "f3d028a0cf08b61c30b554669adce2184f283a0b",
+  "current_candidate": "Z013-CAND-004｜质量管理",
+  "out_of_scope_file": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/bom/BomList.vue",
+  "out_of_scope_module": "BOM与物料资料 / 款式档案",
+  "current_candidate_allowlist_contains_file": false,
+  "classification": "PARKED_OUT_OF_SCOPE_PRODUCT_DIFF",
+  "provenance_signals": [
+    "DEV-CAND-002 / A005 verified input",
+    "product-style-readonly-contract-panel",
+    "款式字段 / 颜色尺码 / 面料引用只读壳层",
+    "LY-APLUS-STYLE-20260518-01",
+    "LY-APLUS-FAB-20260518-01"
+  ],
+  "action_taken": "NO_CODE_CHANGE_NO_STAGE_NO_COMMIT",
+  "rules": {
+    "quality_chain_must_not_touch_bomlist": true,
+    "separate_authorization_required_for_bomlist": true,
+    "bomlist_diff_resolved_claimed": false
+  }
+}

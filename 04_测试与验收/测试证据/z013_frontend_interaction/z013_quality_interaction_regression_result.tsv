@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	b24_result_json_tsv_alignment	PASS	B24 对齐=true，check=14，pass=14，tsv_rows=14	z013_quality_interaction_impl_result.json/tsv
+2	browser_result_json_parse	PASS	B25 browser result JSON 可解析。	z013_quality_interaction_regression_browser_result.json
+3	route_hit_count	PASS	route_hit_count=2/2	browser_result.route_checks
+4	readonly_parity_hint	PASS	list=True, detail=True	browser_result.parity_hint_checks + source guards
+5	readonly_filter_reset_pagination	PASS	filter=PASS, pagination=PASS	browser_result readonly_filter_interaction_status + pagination_interaction_status
+6	statistics_readonly	PASS	statistics_readonly_status=PASS	browser_result.statistics_readonly_status
+7	detail_view_readonly	PASS	detail_view_status=PASS	browser_result.detail_view_status
+8	defect_detail_readonly	PASS	defect_detail_readonly_status=PASS	browser_result.defect_detail_readonly_status
+9	guarded_actions_readonly	PASS	guarded_actions_status=PASS, guard_metadata_status=PASS	browser_result.guarded_actions_status + guard_metadata_check
+10	export_side_effect_gate	PASS	export_endpoint_called=False	browser_result.export_endpoint_called
+11	browser_get_only	PASS	request_methods=['GET'], write=0, unexpected_write=0, forbidden=0	browser_result request stats
+12	blocking_metrics	PASS	console=0, response=0, network=0	browser_result blocking stats
+13	screenshot_paths	PASS	screenshot_count=4, dir=/tmp/task_z013b25_quality_regression_screenshots	filesystem exists checks
+14	code_changed_no	PASS	CODE_CHANGED=NO；current_quality_diff_files=2（QualityInspectionList/QualityInspectionDetail）；current_out_of_scope_diff_files=1（BomList.vue）；backend_diff_empty=true；cached_diff_empty=true	git diff --cached --name-only + git diff --name-only -- 06_前端 + git diff --name-only -- 07_后端

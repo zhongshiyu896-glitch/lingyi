@@ -47,8 +47,11 @@
             <el-button
               v-if="canCreate"
               type="success"
+              :disabled="readonlyWriteDisabled || !canCreate"
               data-testid="quality-create-button"
               data-action-type="write"
+              data-write-guard="readonly:quality-create-inspection"
+              data-guard-state="guarded_readonly"
               @click="openCreateDialog"
             >
               创建检验单
@@ -56,6 +59,13 @@
           </div>
         </div>
       </template>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        data-testid="quality-readonly-parity-hint"
+        :title="`quality parity=${qualityParity}（READONLY_GET_ONLY，写动作仅本地提示）`"
+      />
 
       <el-form :inline="true" :model="query" data-testid="quality-filter-form">
         <el-form-item label="公司">
@@ -421,9 +431,11 @@
         <el-button
           type="primary"
           :loading="createSubmitting"
-          :disabled="!canCreate"
+          :disabled="readonlyWriteDisabled || !canCreate"
           data-testid="quality-create-submit"
           data-action-type="write"
+          data-write-guard="readonly:quality-create-submit"
+          data-guard-state="guarded_readonly"
           @click="submitCreate"
         >
           保存
@@ -436,7 +448,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   buildQualityInspectionRequestId,
@@ -455,6 +467,7 @@ import {
 import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
+const route = useRoute()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
@@ -537,6 +550,11 @@ const createForm = reactive<QualityCreateFormState>(buildCreateFormState())
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_read)
 const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_create)
 const canExport = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_export)
+const readonlyWriteDisabled = computed<boolean>(() => true)
+const qualityParity = computed<string>(() => {
+  const parity = String(route.query.parity || 'quality-inspections').trim()
+  return parity || 'quality-inspections'
+})
 
 const query = reactive({
   company: '',
@@ -723,17 +741,11 @@ const resetPrimaryFilters = (): void => {
 }
 
 const showGuardedAction = (actionName: string): void => {
-  ElMessage.warning(`${actionName}在当前只读交互阶段已禁用`)
+  ElMessage.warning(`${actionName}在当前只读交互阶段已禁用（parity=${qualityParity.value}）`)
 }
 
 const openCreateDialog = (): void => {
-  if (!canCreate.value) {
-    ElMessage.error('无创建检验单权限')
-    return
-  }
-  resetCreateForm()
-  refreshCreateRequestId()
-  createDialogVisible.value = true
+  showGuardedAction('创建检验单')
 }
 
 const closeCreateDialog = (): void => {
@@ -741,6 +753,8 @@ const closeCreateDialog = (): void => {
 }
 
 const submitCreate = async (): Promise<void> => {
+  showGuardedAction('创建检验单保存')
+  return
   if (!canCreate.value) {
     ElMessage.error('无创建检验单权限')
     return
@@ -829,7 +843,7 @@ const goDetail = async (id: number): Promise<void> => {
   }
   try {
     await fetchQualityInspectionDetail(id)
-    await router.push({ path: '/quality/inspections/detail', query: { id: String(id) } })
+    await router.push({ path: '/quality/inspections/detail', query: { id: String(id), parity: qualityParity.value } })
   } catch (error) {
     const message = (error as Error).message
     ElMessage.error(message)
