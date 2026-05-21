@@ -48,6 +48,130 @@
           :closable="false"
           data-testid="bom-parity-hint"
         />
+
+        <section
+          v-if="isProductStyleParity"
+          class="style-contract-panel"
+          data-testid="product-style-readonly-contract-panel"
+        >
+          <div class="style-contract-header">
+            <div>
+              <p class="style-contract-eyebrow">DEV-CAND-002 / A005 verified input</p>
+              <h3>款式字段 / 颜色尺码 / 面料引用只读壳层</h3>
+            </div>
+            <div class="style-contract-tags">
+              <el-tag type="success">款式最小回读 verified</el-tag>
+              <el-tag type="warning">颜色尺码 partial</el-tag>
+              <el-tag type="info">仅 UI 展示</el-tag>
+            </div>
+          </div>
+
+          <el-alert
+            class="style-contract-alert"
+            title="本区域只展示 A005 已采集契约；不开放样板、订单、BOM、生产、库存、财务或生命周期动作。"
+            type="warning"
+            show-icon
+            :closable="false"
+          />
+
+          <el-descriptions
+            class="style-contract-descriptions"
+            :column="2"
+            border
+            size="small"
+            data-testid="product-style-readback-fields"
+          >
+            <el-descriptions-item
+              v-for="field in styleReadbackFields"
+              :key="field.label"
+              :label="field.label"
+            >
+              <span>{{ field.value }}</span>
+              <el-tag class="field-evidence-tag" :type="field.tagType" size="small">
+                {{ field.evidence }}
+              </el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
+
+          <div class="style-contract-grid">
+            <el-card shadow="never" class="style-contract-card" data-testid="product-style-color-size-contract">
+              <template #header>
+                <div class="style-contract-card-title">
+                  <span>颜色 / 尺码</span>
+                  <el-tag type="warning" size="small">partial</el-tag>
+                </div>
+              </template>
+              <el-table :data="styleColorSizeRows" border size="small" empty-text="暂无颜色尺码证据">
+                <el-table-column prop="color" label="颜色" min-width="100" />
+                <el-table-column prop="size" label="尺码" min-width="100" />
+                <el-table-column prop="status" label="证据状态" min-width="150" />
+                <el-table-column prop="limitation" label="限制" min-width="220" />
+              </el-table>
+            </el-card>
+
+            <el-card shadow="never" class="style-contract-card" data-testid="product-style-material-reference-contract">
+              <template #header>
+                <div class="style-contract-card-title">
+                  <span>面料引用</span>
+                  <el-tag type="success" size="small">style reference</el-tag>
+                </div>
+              </template>
+              <el-descriptions :column="1" border size="small">
+                <el-descriptions-item label="面料编码">{{ styleMaterialReference.code }}</el-descriptions-item>
+                <el-descriptions-item label="面料名称">{{ styleMaterialReference.name }}</el-descriptions-item>
+                <el-descriptions-item label="证据状态">{{ styleMaterialReference.status }}</el-descriptions-item>
+                <el-descriptions-item label="边界">{{ styleMaterialReference.limitation }}</el-descriptions-item>
+              </el-descriptions>
+            </el-card>
+          </div>
+
+          <div class="style-scope-columns">
+            <div class="scope-column">
+              <h4>verified 字段</h4>
+              <el-tag
+                v-for="field in styleVerifiedFieldNames"
+                :key="field"
+                class="scope-tag"
+                type="success"
+              >
+                {{ field }}
+              </el-tag>
+            </div>
+            <div class="scope-column">
+              <h4>partial / unknown</h4>
+              <el-tag
+                v-for="field in stylePartialFieldNames"
+                :key="field"
+                class="scope-tag"
+                type="warning"
+              >
+                {{ field }}
+              </el-tag>
+              <el-tag
+                v-for="field in styleUnknownFieldNames"
+                :key="field"
+                class="scope-tag"
+                type="info"
+              >
+                {{ field }}
+              </el-tag>
+            </div>
+          </div>
+
+          <div class="style-blocked-actions" data-testid="product-style-blocked-actions">
+            <h4>仍保持 blocked 的动作</h4>
+            <el-button
+              v-for="action in styleBlockedActions"
+              :key="action.label"
+              disabled
+              plain
+              data-action-type="blocked"
+              :data-blocked-reason="action.reason"
+            >
+              {{ action.label }}
+            </el-button>
+          </div>
+        </section>
         <el-alert
           v-if="listError"
           class="main-list-error-alert"
@@ -1871,6 +1995,52 @@ const parityHint = computed<string>(() => {
   }
   return parityLabelMap[token] ?? `入口映射：${token}`
 })
+const isProductStyleParity = computed<boolean>(() => parityToken.value === 'product-style')
+
+const styleReadbackFields = [
+  { label: '款号', value: 'LY-APLUS-STYLE-20260518-01', evidence: 'verified', tagType: 'success' },
+  { label: '款名', value: 'LY-APLUS-STYLE-20260518-01', evidence: 'verified', tagType: 'success' },
+  { label: '单位', value: '件', evidence: 'verified', tagType: 'success' },
+  { label: '面料', value: 'LY-APLUS-FAB-20260518-01', evidence: 'verified', tagType: 'success' },
+  { label: '备注', value: 'LY-APLUS-CAPTURE-20260518，仅用于 1:1 影子复采。', evidence: 'verified', tagType: 'success' },
+  { label: '可打样', value: '否', evidence: 'verified', tagType: 'success' },
+  { label: '创建人', value: '蓝小姐', evidence: 'verified', tagType: 'success' },
+  { label: '修改人', value: '蓝小姐', evidence: 'verified', tagType: 'success' },
+  { label: '颜色', value: '黑色', evidence: 'partial', tagType: 'warning' },
+  { label: '尺码', value: 'M', evidence: 'partial', tagType: 'warning' },
+  { label: '吊牌价', value: '0', evidence: 'partial', tagType: 'warning' },
+  { label: '创建时间', value: '2026-05-18 14:01:35', evidence: 'partial', tagType: 'warning' },
+  { label: '修改时间', value: '2026-05-18 14:01:35', evidence: 'partial', tagType: 'warning' },
+] as const
+
+const styleColorSizeRows = [
+  {
+    color: '黑色',
+    size: 'M',
+    status: 'partial verified',
+    limitation: '仅支撑款式页局部展示，不支撑完整颜色尺码矩阵业务算法。',
+  },
+]
+
+const styleMaterialReference = {
+  code: 'LY-APLUS-FAB-20260518-01',
+  name: 'LY-APLUS-FAB-20260518-01',
+  status: '款式字段引用 G1 面料对象 verified',
+  limitation: '不外推为 BOM、采购、库存、成本或生产联动。',
+}
+
+const styleVerifiedFieldNames = ['款号', '款名', '单位', '面料', '备注', '可打样', '创建人', '修改人']
+const stylePartialFieldNames = ['颜色', '尺码', '吊牌价', '创建时间', '修改时间']
+const styleUnknownFieldNames = ['完整颜色尺码矩阵规则', '价格规则', '设计号生成/录入规则', '纸样师选择规则']
+const styleBlockedActions = [
+  { label: '生成样板', reason: '样板生成/保存闭环未验证' },
+  { label: '订单主保存', reason: '订单主保存仍 NO-GO' },
+  { label: '报价转订单', reason: '报价转订单未验证' },
+  { label: 'BOM 保存/发布', reason: 'A005 面料引用不能外推为 BOM 算法' },
+  { label: '生产/加工', reason: '生产与加工联动未验证' },
+  { label: '库存/财务', reason: '库存与财务链路未验证' },
+  { label: '提交/审核/删除/作废', reason: '生命周期动作均为高风险 blocked' },
+] as const
 
 const query = reactive({
   item_code: '',
@@ -2858,6 +3028,100 @@ onMounted(async () => {
   color: var(--el-text-color-secondary);
 }
 
+.style-contract-panel {
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: var(--el-fill-color-lighter);
+}
+
+.style-contract-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.style-contract-header h3 {
+  margin: 2px 0 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.style-contract-eyebrow {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.style-contract-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.style-contract-alert,
+.style-contract-descriptions {
+  margin-top: 12px;
+}
+
+.field-evidence-tag {
+  margin-left: 8px;
+}
+
+.style-contract-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.style-contract-card {
+  min-width: 0;
+}
+
+.style-contract-card-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.style-scope-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.scope-column {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+}
+
+.scope-column h4,
+.style-blocked-actions h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.scope-tag {
+  margin: 0 8px 8px 0;
+}
+
+.style-blocked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+
 .gallery-error-alert {
   margin-bottom: 12px;
 }
@@ -2938,5 +3202,12 @@ onMounted(async () => {
 
 .preview-meta p {
   margin: 0 0 6px;
+}
+
+@media (max-width: 720px) {
+  .style-contract-grid,
+  .style-scope-columns {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
