@@ -101,6 +101,7 @@
             <el-button
               data-testid="subcontract-detail-action-settlement"
               data-action-type="write"
+              data-write-guard="guarded:readonly"
               :disabled="!detail"
               @click="openSettlementDialog"
             >
@@ -350,6 +351,8 @@
         <el-button
           :loading="settlementSubmitting"
           data-testid="subcontract-settlement-lock-button"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
           type="primary"
           @click="submitSettlementLock"
         >
@@ -358,6 +361,8 @@
         <el-button
           :loading="settlementSubmitting"
           data-testid="subcontract-settlement-release-button"
+          data-action-type="write"
+          data-write-guard="guarded:readonly"
           type="warning"
           @click="submitSettlementRelease"
         >
@@ -585,25 +590,47 @@ const guardedWriteAction = (actionName: string): void => {
   ElMessage.warning(guardedFeedback.value)
 }
 
+const isReadonlyInteractionMode = (): boolean => true
+
 const openIssueDialog = (): void => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('发料')
+    return
+  }
   guardedWriteAction('发料')
 }
 
 const openReceiveDialog = (): void => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('回料')
+    return
+  }
   guardedWriteAction('回料')
 }
 
 const openInspectDialog = (): void => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('验货')
+    return
+  }
   guardedWriteAction('验货')
 }
 
 const openSettlementDialog = async (): Promise<void> => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('结算锁定/释放')
+    return
+  }
   if (!detail.value) return
   await loadSettlementCandidates()
   settlementDialogVisible.value = true
 }
 
 const submitIssue = async (): Promise<void> => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('发料保存')
+    return
+  }
   if (!detail.value || issueSubmitting.value) return
   if (!issueForm.warehouse.trim() || !issueForm.material_item_code.trim()) {
     ElMessage.warning('请填写发料仓和物料编码')
@@ -634,6 +661,10 @@ const submitIssue = async (): Promise<void> => {
 }
 
 const submitReceive = async (): Promise<void> => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('回料保存')
+    return
+  }
   if (!detail.value || receiveSubmitting.value) return
   if (!receiveForm.receipt_warehouse.trim()) {
     ElMessage.warning('请填写回料仓')
@@ -663,6 +694,10 @@ const submitReceive = async (): Promise<void> => {
 }
 
 const submitInspect = async (): Promise<void> => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('验货保存')
+    return
+  }
   if (!detail.value || inspectSubmitting.value) return
   if (!inspectForm.receipt_batch_no.trim()) {
     ElMessage.warning('请填写回料批次')
@@ -695,6 +730,10 @@ const runSettlementPreview = async (): Promise<void> => {
 }
 
 const submitSettlementLock = async (): Promise<void> => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('结算锁定')
+    return
+  }
   if (!detail.value || settlementSubmitting.value) return
   if (!settlementForm.inspection_ids.length) {
     ElMessage.warning('请至少选择一个验货ID')
@@ -726,6 +765,10 @@ const submitSettlementLock = async (): Promise<void> => {
 }
 
 const submitSettlementRelease = async (): Promise<void> => {
+  if (isReadonlyInteractionMode()) {
+    guardedWriteAction('结算释放')
+    return
+  }
   if (!detail.value || settlementSubmitting.value) return
   if (!settlementForm.inspection_ids.length) {
     ElMessage.warning('请至少选择一个验货ID')

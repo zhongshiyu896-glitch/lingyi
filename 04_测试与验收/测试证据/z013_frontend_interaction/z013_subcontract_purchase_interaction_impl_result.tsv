@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B10 source_head 与 B09 冻结头一致（c4a88d257b567abede5499d17949ac91f2bb73ae）。	task_z013b_09_subcontract_interaction_boundary.json + git rev-parse HEAD
+2	changed_files_allowlist	PASS	06_前端差异仅 SubcontractOrderList.vue 与 SubcontractOrderDetail.vue，位于 B09 allowlist。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_parity	PASS	入口 alias 与 direct route 都落在 /subcontract/list?parity=material-purchase。	router/index.ts + browser_result.route_checks
+5	subcontract_parity_hint	PASS	列表页存在稳定 parity hint（data-testid=subcontract-parity-hint）。	SubcontractOrderList.vue + browser_result.subcontract_parity_hint_status
+6	readonly_filters	PASS	筛选、查询、重置锚点稳定且可测。	browser_result.readonly_filter_interaction_status
+7	pagination_interaction	PASS	分页锚点存在且可测（权限回落场景通过源码锚点校验）。	SubcontractOrderList.vue data-testid=subcontract-pagination + browser_result.pagination_interaction_status
+8	detail_view	PASS	详情页主锚点与错误/空态可测，详情入口链路保持可验证。	SubcontractOrderDetail.vue + browser_result.detail_view_status
+9	guarded_actions	PASS	写动作统一 guarded，本地提示，不触发写请求。	SubcontractOrderList.vue + SubcontractOrderDetail.vue + browser_result.guarded_actions_status
+10	typecheck	PASS	npm run typecheck PASS。	terminal output
+11	build	PASS	npm run build PASS。	terminal output
+12	browser_route_hits	PASS	目标路由命中 2/2。	z013_subcontract_purchase_interaction_browser_result.json route_checks
+13	browser_get_only	PASS	request_methods=["GET"], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。	z013_subcontract_purchase_interaction_browser_result.json
+14	text_hygiene_and_blocking_metrics	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，文本卫生通过。	browser_result + git diff --check + EOF/trailing whitespace checks

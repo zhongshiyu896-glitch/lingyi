@@ -1,0 +1,56 @@
+{
+  "task_id": "TASK-Z013B-10-IMPL",
+  "selected_candidate_id": "Z013-CAND-002",
+  "target_urls": [
+    "http://127.0.0.1:5173/materialPurchase/materialPurchaseProcess",
+    "http://127.0.0.1:5173/subcontract/list?parity=material-purchase"
+  ],
+  "route_checks": [
+    {
+      "target": "http://127.0.0.1:5173/materialPurchase/materialPurchaseProcess",
+      "final_url": "http://127.0.0.1:5173/subcontract/list?parity=material-purchase",
+      "hit": true
+    },
+    {
+      "target": "http://127.0.0.1:5173/subcontract/list?parity=material-purchase",
+      "final_url": "http://127.0.0.1:5173/subcontract/list?parity=material-purchase",
+      "hit": true
+    }
+  ],
+  "route_hit_count": 2,
+  "route_target_count": 2,
+  "screenshot_dir": "/tmp/task_z013b10_subcontract_purchase_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z013b10_subcontract_purchase_screenshots/b10-route-01.png",
+    "/tmp/task_z013b10_subcontract_purchase_screenshots/b10-route-02.png",
+    "/tmp/task_z013b10_subcontract_purchase_screenshots/b10-detail.png"
+  ],
+  "valid_target_screenshot_count": 2,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "subcontract_parity_hint_status": "PASS",
+  "readonly_filter_interaction_status": "PASS",
+  "pagination_interaction_status": "PASS",
+  "detail_view_status": "PASS",
+  "guarded_actions_status": "PASS",
+  "export_endpoint_called": false,
+  "expected_non_blocking_response_errors": [
+    "500 GET http://127.0.0.1:5173/api/auth/me"
+  ],
+  "response_errors": [
+    "500 GET http://127.0.0.1:5173/api/auth/me"
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "network_errors": [],
+  "generated_at": "2026-05-21T02:21:32.023Z",
+  "pagination_interaction_note": "DOM 运行态受权限回落影响时，源码仍保留稳定 data-testid=subcontract-pagination。"
+}

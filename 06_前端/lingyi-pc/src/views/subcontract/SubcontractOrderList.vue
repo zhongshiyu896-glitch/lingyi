@@ -22,6 +22,19 @@
         </div>
       </template>
 
+      <el-alert
+        v-if="parityHint"
+        type="info"
+        show-icon
+        :closable="false"
+        class="parity-hint"
+        data-testid="subcontract-parity-hint"
+      >
+        <template #title>
+          <span data-testid="subcontract-parity-hint-text">当前入口：{{ parityHint.label }}（{{ parityHint.key }}）</span>
+        </template>
+      </el-alert>
+
         <el-form :inline="true" :model="query" data-testid="subcontract-filter-form">
         <el-form-item label="加工厂">
           <div data-testid="subcontract-filter-supplier">
@@ -178,7 +191,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   buildSubcontractRequestId,
@@ -189,6 +202,7 @@ import {
 } from '@/api/subcontract'
 import { usePermissionStore } from '@/stores/permission'
 
+const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
@@ -199,6 +213,16 @@ const createDialogVisible = ref<boolean>(false)
 const createSubmitting = ref<boolean>(false)
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
+const parityHint = computed<{ key: string; label: string } | null>(() => {
+  const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  if (raw === 'material-purchase') {
+    return { key: raw, label: '物料采购进度只读视图' }
+  }
+  if (raw === 'subcontract-order') {
+    return { key: raw, label: '外发加工单只读视图' }
+  }
+  return null
+})
 
 const query = reactive({
   supplier: '',
@@ -270,6 +294,8 @@ const openCreateDialog = (): void => {
 }
 
 const submitCreate = async (): Promise<void> => {
+  guardedAction('保存新建外发单')
+  return
   if (createSubmitting.value) return
   const supplier = createForm.supplier.trim()
   const itemCode = createForm.item_code.trim()
@@ -325,9 +351,10 @@ const submitCreate = async (): Promise<void> => {
 
     query.page = 1
     await loadOrders()
-    const createdRow = rows.value.find((row) => row.subcontract_no === created.data.name)
-    if (createdRow) {
-      goDetail(createdRow.id)
+    const createdRowId = rows.value.find((row) => row.subcontract_no === created.data.name)?.id
+    const nextOrderId = Number(createdRowId ?? 0)
+    if (nextOrderId > 0) {
+      goDetail(nextOrderId)
     }
     createDialogVisible.value = false
     ElMessage.success(`外发单已创建：${created.data.name}`)
@@ -429,6 +456,10 @@ onMounted(async () => {
 }
 
 .error-state {
+  margin-bottom: 12px;
+}
+
+.parity-hint {
   margin-bottom: 12px;
 }
 

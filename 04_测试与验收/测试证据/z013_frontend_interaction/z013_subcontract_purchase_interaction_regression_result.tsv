@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	b10_result_json_tsv_alignment	PASS	B10 对齐=true，check=14，pass=14	z013_subcontract_purchase_interaction_impl_result.json/tsv
+2	browser_result_json_parse	PASS	B11 browser result JSON 可解析。	z013_subcontract_purchase_interaction_regression_browser_result.json
+3	route_hit_count	PASS	route_hit_count=2/2	browser_result.route_checks
+4	subcontract_parity_hint	PASS	subcontract_parity_hint_status=PASS	browser_result.subcontract_parity_hint_status
+5	readonly_filter_interaction	PASS	readonly_filter_interaction_status=PASS	browser_result.readonly_filter_interaction_status
+6	pagination_interaction	PASS	pagination_interaction_status=PASS	browser_result.pagination_interaction_status
+7	detail_view	PASS	detail_view_status=PASS	browser_result.detail_view_status
+8	guarded_actions	PASS	guarded_actions_status=PASS	browser_result.guarded_actions_status
+9	empty_or_error_state_semantics	PASS	empty_state_or_error_state_semantics_status=PASS	browser_result.empty_state_or_error_state_semantics_status
+10	browser_get_only	PASS	request_methods=["GET"], write=0, unexpected_write=0, forbidden=0	browser_result request stats
+11	blocking_metrics	PASS	console=0, response=0, network=0	browser_result blocking stats
+12	export_endpoint_called	PASS	export_endpoint_called=false	browser_result.export_endpoint_called
+13	screenshot_paths	PASS	screenshot_count=2, dir=/tmp/task_z013b11_subcontract_purchase_regression_screenshots	filesystem exists checks
+14	expected_non_blocking_response_errors	PASS	count=1	browser_result.expected_non_blocking_response_errors

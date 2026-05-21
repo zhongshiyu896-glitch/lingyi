@@ -1,0 +1,167 @@
+{
+  "task_id": "TASK-Z013B-10-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-09-PREP",
+  "source_head": "c4a88d257b567abede5499d17949ac91f2bb73ae",
+  "selected_candidate_id": "Z013-CAND-002",
+  "module": "外协采购与加工进度",
+  "yisuan_page": "物料采购进度 / 外发加工单",
+  "code_changed": true,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "changed_product_files_count": 2,
+  "unchanged_allowlist_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/router/index.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/subcontract.ts"
+  ],
+  "backend_changed": false,
+  "implementation": {
+    "route_parity": "保留 /materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase，direct route 稳定可测。",
+    "readonly_filters": "列表页保留筛选/查询/重置/分页的稳定 data-testid，并补齐 parity hint 显示。",
+    "pagination": "分页锚点 data-testid=subcontract-pagination 保持稳定；权限回落场景仍可通过源码锚点断言。",
+    "detail_view": "详情页主卡片、错误态/空态和回料/验货区块保持只读可测锚点。",
+    "guarded_actions": "新建、发料、回料、验货、结算、导出、打印等写动作统一只读 guard，本地提示且不触发写请求。",
+    "write_endpoints_not_called": "运行期未触发 POST/PUT/PATCH/DELETE。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_subcontract_purchase_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/materialPurchase/materialPurchaseProcess",
+      "http://127.0.0.1:5173/subcontract/list?parity=material-purchase"
+    ],
+    "route_hit_count": 2,
+    "route_target_count": 2,
+    "screenshot_count": 3,
+    "valid_target_screenshot_count": 2,
+    "screenshot_dir": "/tmp/task_z013b10_subcontract_purchase_screenshots",
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "subcontract_parity_hint_status": "PASS",
+    "readonly_filter_interaction_status": "PASS",
+    "pagination_interaction_status": "PASS",
+    "detail_view_status": "PASS",
+    "guarded_actions_status": "PASS",
+    "export_endpoint_called": false,
+    "expected_non_blocking_response_errors_count": 1
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  },
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B10 source_head 与 B09 冻结头一致（c4a88d257b567abede5499d17949ac91f2bb73ae）。",
+      "evidence": "task_z013b_09_subcontract_interaction_boundary.json + git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "06_前端差异仅 SubcontractOrderList.vue 与 SubcontractOrderDetail.vue，位于 B09 allowlist。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity",
+      "status": "PASS",
+      "observed": "入口 alias 与 direct route 都落在 /subcontract/list?parity=material-purchase。",
+      "evidence": "router/index.ts + browser_result.route_checks"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "subcontract_parity_hint",
+      "status": "PASS",
+      "observed": "列表页存在稳定 parity hint（data-testid=subcontract-parity-hint）。",
+      "evidence": "SubcontractOrderList.vue + browser_result.subcontract_parity_hint_status"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "readonly_filters",
+      "status": "PASS",
+      "observed": "筛选、查询、重置锚点稳定且可测。",
+      "evidence": "browser_result.readonly_filter_interaction_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "pagination_interaction",
+      "status": "PASS",
+      "observed": "分页锚点存在且可测（权限回落场景通过源码锚点校验）。",
+      "evidence": "SubcontractOrderList.vue data-testid=subcontract-pagination + browser_result.pagination_interaction_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "detail_view",
+      "status": "PASS",
+      "observed": "详情页主锚点与错误/空态可测，详情入口链路保持可验证。",
+      "evidence": "SubcontractOrderDetail.vue + browser_result.detail_view_status"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "guarded_actions",
+      "status": "PASS",
+      "observed": "写动作统一 guarded，本地提示，不触发写请求。",
+      "evidence": "SubcontractOrderList.vue + SubcontractOrderDetail.vue + browser_result.guarded_actions_status"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 2/2。",
+      "evidence": "z013_subcontract_purchase_interaction_browser_result.json route_checks"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。",
+      "evidence": "z013_subcontract_purchase_interaction_browser_result.json"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "text_hygiene_and_blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，文本卫生通过。",
+      "evidence": "browser_result + git diff --check + EOF/trailing whitespace checks"
+    }
+  ]
+}
