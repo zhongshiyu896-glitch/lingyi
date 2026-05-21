@@ -1,0 +1,130 @@
+{
+  "task_id": "TASK-Z013B-52-IMPL",
+  "selected_candidate_id": "Z013-CAND-008",
+  "module": "跨模块链路视图",
+  "route": "http://127.0.0.1:5173/cross-module/view",
+  "route_hit_count": 1,
+  "route_hit_total": 1,
+  "route_hit_pass": true,
+  "screenshot_dir": "/tmp/task_z013b52_cross_module_view_screenshots",
+  "screenshot_count": 4,
+  "screenshot_expected_count": 4,
+  "screenshot_paths": [
+    {
+      "path": "/tmp/task_z013b52_cross_module_view_screenshots/01_cross_module_route_parity.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z013b52_cross_module_view_screenshots/02_cross_module_work_order_trail.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z013b52_cross_module_view_screenshots/03_cross_module_error_state.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z013b52_cross_module_view_screenshots/04_cross_module_sales_order_trail.png",
+      "exists": true
+    }
+  ],
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_or_download_endpoint_called": false,
+  "sync_endpoint_called": false,
+  "allowed_get_paths": [
+    "/api/auth/me",
+    "/api/auth/actions?module=sales_inventory",
+    "/api/auth/actions?module=quality",
+    "/api/cross-module/work-order-trail/{work_order_id}?company={company}",
+    "/api/cross-module/sales-order-trail/{sales_order_id}?company={company}"
+  ],
+  "requested_api_paths": [
+    "GET /api/auth/me",
+    "GET /api/auth/actions?module=sales_inventory",
+    "GET /api/auth/actions?module=quality",
+    "GET /api/cross-module/work-order-trail/WO-Z013-052?company=Lingyi+Local",
+    "GET /api/cross-module/work-order-trail/ERR-WO?company=Lingyi+Local",
+    "GET /api/cross-module/sales-order-trail/SO-Z013-052?company=Lingyi+Local"
+  ],
+  "expected_non_blocking_response_errors": [],
+  "expected_non_blocking_console_errors": [],
+  "blocking_responses": [],
+  "console_errors": [],
+  "page_errors": [],
+  "network_failures": [],
+  "required_anchor_results": {
+    "cross-module-parity-hint": 1,
+    "cross-module-tabs": 1,
+    "cross-module-work-order-tab": 1,
+    "cross-module-work-order-form": 1,
+    "cross-module-work-order-id-input": 1,
+    "cross-module-work-order-company-input": 1,
+    "cross-module-work-order-query-button": 1,
+    "cross-module-work-order-reset-button": 1,
+    "cross-module-work-order-export-guard": 1,
+    "cross-module-work-order-sync-guard": 1,
+    "cross-module-work-order-guarded-state": 1,
+    "cross-module-work-order-summary": 1,
+    "cross-module-work-order-stock-table": 1,
+    "cross-module-work-order-quality-table": 1,
+    "cross-module-work-order-error-state": 1,
+    "cross-module-sales-order-form": 1,
+    "cross-module-sales-order-id-input": 1,
+    "cross-module-sales-order-company-input": 1,
+    "cross-module-sales-order-query-button": 1,
+    "cross-module-sales-order-reset-button": 1,
+    "cross-module-sales-order-export-guard": 1,
+    "cross-module-sales-order-sync-guard": 1,
+    "cross-module-sales-order-guarded-state": 1,
+    "cross-module-sales-order-summary": 1,
+    "cross-module-sales-order-delivery-table": 1,
+    "cross-module-sales-order-quality-table": 1,
+    "cross-module-permission-action-hint": 1,
+    "cross-module-sales-order-tab": 1
+  },
+  "required_anchor_pass": true,
+  "guarded_action_metadata_count": 4,
+  "guarded_action_metadata": [
+    {
+      "text": "导出快照",
+      "write_guard": "readonly:cross-module-work-order-export",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "text": "同步链路",
+      "write_guard": "readonly:cross-module-work-order-sync",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "text": "导出快照",
+      "write_guard": "readonly:cross-module-sales-order-export",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "text": "同步链路",
+      "write_guard": "readonly:cross-module-sales-order-sync",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    }
+  ],
+  "guard_metadata_pass": true,
+  "forbidden_endpoint_patterns_checked": [
+    "POST/PUT/PATCH/DELETE /api/cross-module/**",
+    "POST/PUT/PATCH/DELETE /api/sales-inventory/**",
+    "POST/PUT/PATCH/DELETE /api/quality/**",
+    "POST/PUT/PATCH/DELETE /api/stock/**",
+    "POST/PUT/PATCH/DELETE /api/production/**",
+    "GET /api/cross-module/**/export|download|sync"
+  ],
+  "pass": true
+}

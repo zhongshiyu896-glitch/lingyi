@@ -1,0 +1,152 @@
+{
+  "task_id": "TASK-Z013B-53-REGRESSION",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-52-IMPL",
+  "source_head": "228322991deaebd7887858b4a8393ad96287c49d",
+  "selected_candidate_id": "Z013-CAND-008",
+  "module": "跨模块链路视图",
+  "code_changed": false,
+  "b52_result_check_count": 14,
+  "b52_result_pass_count": 14,
+  "b52_result_tsv_count": 14,
+  "current_product_diff_files": [
+    "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue"
+  ],
+  "backend_changed": false,
+  "cached_diff_empty": true,
+  "runtime_evidence": {
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_cross_module_view_interaction_regression_browser_result.json",
+    "route_hit_count": 1,
+    "route_target_count": 1,
+    "screenshot_dir": "/tmp/task_z013b53_cross_module_view_regression_screenshots",
+    "screenshot_count": 4,
+    "screenshot_paths": [
+      "/tmp/task_z013b53_cross_module_view_regression_screenshots/01_cross_module_route_parity.png",
+      "/tmp/task_z013b53_cross_module_view_regression_screenshots/02_cross_module_work_order_trail.png",
+      "/tmp/task_z013b53_cross_module_view_regression_screenshots/03_cross_module_error_state.png",
+      "/tmp/task_z013b53_cross_module_view_regression_screenshots/04_cross_module_sales_order_trail.png"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_or_download_endpoint_called": false,
+    "sync_endpoint_called": false,
+    "expected_non_blocking_response_errors": [],
+    "expected_non_blocking_console_errors": []
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "code_changed_no",
+      "status": "PASS",
+      "observed": "B53 仅生成独立回归证据，未修改任何产品代码。",
+      "evidence": "git diff product scope before/after regression"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "当前 HEAD 保持 228322991deaebd7887858b4a8393ad96287c49d。",
+      "evidence": "git rev-parse HEAD"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "b52_impl_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B52 impl JSON/TSV 仍为 14/14 PASS，TSV 14 行对齐。",
+      "evidence": "B52 result JSON/TSV parse"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "current_frontend_diff_scope",
+      "status": "PASS",
+      "observed": "当前前端 diff 仍仅 CrossModuleView.vue。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "cached_diff_empty",
+      "status": "PASS",
+      "observed": "暂存区为空。",
+      "evidence": "git diff --cached --name-only"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "route_hit",
+      "status": "PASS",
+      "observed": "跨模块链路视图路由 /cross-module/view 命中 1/1。",
+      "evidence": "B53 browser result route_hit_count"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "readonly_anchor_and_guard_metadata",
+      "status": "PASS",
+      "observed": "生产-库存-质量链路、销售-库存-质量链路、工单 trail、销售订单 trail、权限动作提示、空态/错误态、guarded actions 锚点复核 PASS。",
+      "evidence": "B53 browser result required_anchor_results + guarded_action_metadata"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "浏览器网络 request_methods=[\"GET\"]。",
+      "evidence": "B53 browser request methods"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "write_request_gate",
+      "status": "PASS",
+      "observed": "write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。",
+      "evidence": "B53 browser write gate"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "export_download_sync_gate",
+      "status": "PASS",
+      "observed": "export_or_download_endpoint_called=false, sync_endpoint_called=false。",
+      "evidence": "B53 browser forbidden endpoint gate"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "sales_quality_stock_production_write_gate",
+      "status": "PASS",
+      "observed": "未触发 sales-inventory / quality / stock / production 写接口，所有请求均为允许 GET。",
+      "evidence": "B53 browser requested_api_paths + forbidden endpoint checks"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "blocking_metrics_and_screenshots",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，B53 截图 4/4 存在。",
+      "evidence": "B53 browser blocking metrics + screenshot_paths"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "state_hold_and_forbidden_actions",
+      "status": "PASS",
+      "observed": "未 stage/commit/push/PR/tag/release/cleanup/reset/restore，未启动 Z014 或其他新主线，未触发真实跨模块写入。",
+      "evidence": "execution log + git checks"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B52 source_head 与当前 HEAD 一致（228322991deaebd7887858b4a8393ad96287c49d）。	git rev-parse HEAD
+2	changed_files_allowlist	PASS	本任务仅修改 CrossModuleView.vue，位于 B51/B52 allowlist 内；router 与 api/cross_module.ts 保持 unchanged。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_parity_and_readonly_hint	PASS	跨模块链路视图提供 cross-module-parity-hint 与 READONLY_GET_ONLY 状态提示。	browser_result.required_anchor_results
+5	work_order_trail_readonly_anchors	PASS	生产-库存-质量链路的工单输入、公司输入、查询、重置、库存流水表、质量检验表和汇总均具备稳定 data-testid。	browser_result.required_anchor_results
+6	sales_order_trail_readonly_anchors	PASS	销售-库存-质量链路的销售单输入、公司输入、查询、重置、交付出库表、质量检验表和汇总均具备稳定 data-testid。	browser_result.required_anchor_results
+7	empty_and_error_state_anchors	PASS	空条件 guard 与本地错误态均可测，错误态不依赖 4xx/5xx 阻断响应。	browser_result.required_anchor_results
+8	guarded_action_metadata	PASS	4 个导出/同步入口均具备 readonly:* 与 guarded_readonly 元数据，仅本地提示，不触发网络副作用。	browser_result.guarded_action_metadata
+9	api_get_only_surface	PASS	api/cross_module.ts 未修改，继续只读 GET helper；未新增 POST/PUT/PATCH/DELETE。	git diff --name-only -- 06_前端 + source review
+10	typecheck	PASS	npm run typecheck PASS。	terminal output
+11	build	PASS	npm run build PASS。	terminal output
+12	browser_route_hits	PASS	目标路由命中 1/1。	browser_result.route_hit_count
+13	browser_get_only_no_write_no_export_sync	PASS	request_methods=["GET"], write/unexpected_write/forbidden 均为 0，export_or_download_endpoint_called=false，sync_endpoint_called=false。	browser_result request stats
+14	blocking_metrics_screenshots_and_git_gate	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，截图 4/4 存在；暂存区为空，当前前端 diff 仅 CrossModuleView.vue，后端 diff 为空。	browser_result blocking stats + screenshot paths + git diff

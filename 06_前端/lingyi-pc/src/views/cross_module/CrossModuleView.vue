@@ -5,19 +5,42 @@
         <div class="header-row">
           <span>跨模块只读视图</span>
           <div class="header-actions">
-            <el-button size="small" text @click="toggleReadonlyGuide">
+            <el-button size="small" text data-testid="cross-module-readonly-guide-toggle" @click="toggleReadonlyGuide">
               {{ showReadonlyGuide ? '隐藏只读说明' : '显示只读说明' }}
             </el-button>
-            <el-button size="small" :loading="permissionLoading" @click="refreshReadonlyStatus">刷新只读状态</el-button>
+            <el-button
+              size="small"
+              :loading="permissionLoading"
+              data-testid="cross-module-permission-refresh-button"
+              data-readonly-request="GET:/api/auth/actions"
+              @click="refreshReadonlyStatus"
+            >
+              刷新只读状态
+            </el-button>
           </div>
         </div>
       </template>
+      <el-alert
+        type="success"
+        :closable="false"
+        class="readonly-contract-panel"
+        data-testid="cross-module-parity-hint"
+        title="Z013-CAND-008 跨模块链路视图｜READONLY_GET_ONLY｜仅允许 GET 查询生产-库存-质量与销售-库存-质量事实链路。"
+      />
       <el-alert
         v-if="showReadonlyGuide"
         type="info"
         :closable="false"
         class="readonly-guide"
+        data-testid="cross-module-readonly-guide"
         title="本页仅展示跨模块链路事实，交互仅限输入查询条件、切换标签与返回，不会触发写入。"
+      />
+      <el-alert
+        type="warning"
+        :closable="false"
+        class="readonly-guide"
+        data-testid="cross-module-permission-action-hint"
+        title="导出、下载、同步、生成快照与跨模块写入均为只读 guard，本页不会触发这些副作用接口。"
       />
 
       <el-empty
@@ -49,6 +72,27 @@
                 <el-form-item label="操作" data-testid="cross-module-work-order-action-field">
                   <el-button type="primary" data-testid="cross-module-work-order-query-button" @click="loadWorkOrderTrail">
                     查询链路
+                  </el-button>
+                  <el-button data-testid="cross-module-work-order-reset-button" @click="resetWorkOrderQuery">
+                    重置
+                  </el-button>
+                  <el-button
+                    plain
+                    data-testid="cross-module-work-order-export-guard"
+                    data-write-guard="readonly:cross-module-work-order-export"
+                    data-guard-state="guarded_readonly"
+                    @click="guardReadonlyAction('生产-库存-质量链路导出')"
+                  >
+                    导出快照
+                  </el-button>
+                  <el-button
+                    plain
+                    data-testid="cross-module-work-order-sync-guard"
+                    data-write-guard="readonly:cross-module-work-order-sync"
+                    data-guard-state="guarded_readonly"
+                    @click="guardReadonlyAction('生产-库存-质量链路同步')"
+                  >
+                    同步链路
                   </el-button>
                 </el-form-item>
               </el-form>
@@ -157,6 +201,27 @@
                 <el-form-item label="操作" data-testid="cross-module-sales-order-action-field">
                   <el-button type="primary" data-testid="cross-module-sales-order-query-button" @click="loadSalesOrderTrail">
                     查询链路
+                  </el-button>
+                  <el-button data-testid="cross-module-sales-order-reset-button" @click="resetSalesOrderQuery">
+                    重置
+                  </el-button>
+                  <el-button
+                    plain
+                    data-testid="cross-module-sales-order-export-guard"
+                    data-write-guard="readonly:cross-module-sales-order-export"
+                    data-guard-state="guarded_readonly"
+                    @click="guardReadonlyAction('销售-库存-质量链路导出')"
+                  >
+                    导出快照
+                  </el-button>
+                  <el-button
+                    plain
+                    data-testid="cross-module-sales-order-sync-guard"
+                    data-write-guard="readonly:cross-module-sales-order-sync"
+                    data-guard-state="guarded_readonly"
+                    @click="guardReadonlyAction('销售-库存-质量链路同步')"
+                  >
+                    同步链路
                   </el-button>
                 </el-form-item>
               </el-form>
@@ -352,6 +417,38 @@ const loadSalesOrderTrail = async (): Promise<void> => {
   }
 }
 
+const resetWorkOrderQuery = (): void => {
+  workOrderQuery.work_order_id = ''
+  workOrderQuery.company = ''
+  workOrderTrail.value = null
+  workOrderGuardMessage.value = ''
+  workOrderErrorMessage.value = ''
+  workOrderQueried.value = false
+  ElMessage.info('已重置生产-库存-质量链路查询条件')
+}
+
+const resetSalesOrderQuery = (): void => {
+  salesOrderQuery.sales_order_id = ''
+  salesOrderQuery.company = ''
+  salesOrderTrail.value = null
+  salesOrderGuardMessage.value = ''
+  salesOrderErrorMessage.value = ''
+  salesOrderQueried.value = false
+  ElMessage.info('已重置销售-库存-质量链路查询条件')
+}
+
+const guardReadonlyAction = (actionName: string): void => {
+  const message = `${actionName} 已在只读回归中禁用，不会触发网络副作用`
+  if (activeTab.value === 'work_order') {
+    workOrderGuardMessage.value = message
+    workOrderErrorMessage.value = ''
+  } else {
+    salesOrderGuardMessage.value = message
+    salesOrderErrorMessage.value = ''
+  }
+  ElMessage.warning(message)
+}
+
 const toggleReadonlyGuide = (): void => {
   showReadonlyGuide.value = !showReadonlyGuide.value
 }
@@ -434,6 +531,10 @@ onMounted(async () => {
 }
 
 .readonly-guide {
+  margin-bottom: 12px;
+}
+
+.readonly-contract-panel {
   margin-bottom: 12px;
 }
 

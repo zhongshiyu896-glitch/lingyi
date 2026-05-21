@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	code_changed_no	PASS	B53 仅生成独立回归证据，未修改任何产品代码。	git diff product scope before/after regression
+2	source_head_match	PASS	当前 HEAD 保持 228322991deaebd7887858b4a8393ad96287c49d。	git rev-parse HEAD
+3	b52_impl_json_tsv_alignment	PASS	B52 impl JSON/TSV 仍为 14/14 PASS，TSV 14 行对齐。	B52 result JSON/TSV parse
+4	current_frontend_diff_scope	PASS	当前前端 diff 仍仅 CrossModuleView.vue。	git diff --name-only -- 06_前端
+5	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+6	cached_diff_empty	PASS	暂存区为空。	git diff --cached --name-only
+7	route_hit	PASS	跨模块链路视图路由 /cross-module/view 命中 1/1。	B53 browser result route_hit_count
+8	readonly_anchor_and_guard_metadata	PASS	生产-库存-质量链路、销售-库存-质量链路、工单 trail、销售订单 trail、权限动作提示、空态/错误态、guarded actions 锚点复核 PASS。	B53 browser result required_anchor_results + guarded_action_metadata
+9	browser_get_only	PASS	浏览器网络 request_methods=["GET"]。	B53 browser request methods
+10	write_request_gate	PASS	write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。	B53 browser write gate
+11	export_download_sync_gate	PASS	export_or_download_endpoint_called=false, sync_endpoint_called=false。	B53 browser forbidden endpoint gate
+12	sales_quality_stock_production_write_gate	PASS	未触发 sales-inventory / quality / stock / production 写接口，所有请求均为允许 GET。	B53 browser requested_api_paths + forbidden endpoint checks
+13	blocking_metrics_and_screenshots	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，B53 截图 4/4 存在。	B53 browser blocking metrics + screenshot_paths
+14	state_hold_and_forbidden_actions	PASS	未 stage/commit/push/PR/tag/release/cleanup/reset/restore，未启动 Z014 或其他新主线，未触发真实跨模块写入。	execution log + git checks

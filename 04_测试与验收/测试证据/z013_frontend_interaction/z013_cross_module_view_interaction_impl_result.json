@@ -1,0 +1,193 @@
+{
+  "task_id": "TASK-Z013B-52-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-51-PREP",
+  "source_head": "228322991deaebd7887858b4a8393ad96287c49d",
+  "selected_candidate_id": "Z013-CAND-008",
+  "module": "跨模块链路视图",
+  "yisuan_page": "跨模块链路视图",
+  "code_changed": true,
+  "backend_changed": false,
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue"
+  ],
+  "unchanged_allowlist_files": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/cross_module.ts"
+  ],
+  "implementation": {
+    "route_parity": "KEEP_EXISTING_/cross-module/view_AND_REFINE_CROSS_MODULE_READONLY_INTERACTION",
+    "readonly_runtime_mode": "READONLY_GET_ONLY",
+    "route_checks": [
+      "http://127.0.0.1:5173/cross-module/view"
+    ],
+    "readonly_sections": [
+      "cross-module-parity-hint",
+      "cross-module-permission-action-hint",
+      "cross-module-work-order-tab",
+      "cross-module-sales-order-tab",
+      "cross-module-work-order-summary",
+      "cross-module-sales-order-summary",
+      "cross-module-work-order-error-state"
+    ],
+    "guarded_actions": [
+      "cross-module-work-order-export-guard",
+      "cross-module-work-order-sync-guard",
+      "cross-module-sales-order-export-guard",
+      "cross-module-sales-order-sync-guard"
+    ],
+    "forbidden_write_endpoints": [
+      "POST/PUT/PATCH/DELETE /api/cross-module/**",
+      "POST/PUT/PATCH/DELETE /api/sales-inventory/**",
+      "POST/PUT/PATCH/DELETE /api/quality/**",
+      "POST/PUT/PATCH/DELETE /api/stock/**",
+      "POST/PUT/PATCH/DELETE /api/production/**",
+      "GET /api/cross-module/**/export|download|sync"
+    ],
+    "write_endpoints_not_called": true
+  },
+  "runtime_evidence": {
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_cross_module_view_interaction_browser_result.json",
+    "route_hit_count": 1,
+    "route_target_count": 1,
+    "screenshot_dir": "/tmp/task_z013b52_cross_module_view_screenshots",
+    "screenshot_count": 4,
+    "screenshot_paths": [
+      "/tmp/task_z013b52_cross_module_view_screenshots/01_cross_module_route_parity.png",
+      "/tmp/task_z013b52_cross_module_view_screenshots/02_cross_module_work_order_trail.png",
+      "/tmp/task_z013b52_cross_module_view_screenshots/03_cross_module_error_state.png",
+      "/tmp/task_z013b52_cross_module_view_screenshots/04_cross_module_sales_order_trail.png"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_or_download_endpoint_called": false,
+    "sync_endpoint_called": false,
+    "guarded_action_metadata_count": 4,
+    "expected_non_blocking_response_errors": [],
+    "expected_non_blocking_console_errors": []
+  },
+  "current_git_facts": {
+    "head": "228322991deaebd7887858b4a8393ad96287c49d",
+    "cached_diff_empty": true,
+    "frontend_diff_files": [
+      "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue"
+    ],
+    "backend_diff_empty": true
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B52 source_head 与当前 HEAD 一致（228322991deaebd7887858b4a8393ad96287c49d）。",
+      "evidence": "git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "本任务仅修改 CrossModuleView.vue，位于 B51/B52 allowlist 内；router 与 api/cross_module.ts 保持 unchanged。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity_and_readonly_hint",
+      "status": "PASS",
+      "observed": "跨模块链路视图提供 cross-module-parity-hint 与 READONLY_GET_ONLY 状态提示。",
+      "evidence": "browser_result.required_anchor_results"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "work_order_trail_readonly_anchors",
+      "status": "PASS",
+      "observed": "生产-库存-质量链路的工单输入、公司输入、查询、重置、库存流水表、质量检验表和汇总均具备稳定 data-testid。",
+      "evidence": "browser_result.required_anchor_results"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "sales_order_trail_readonly_anchors",
+      "status": "PASS",
+      "observed": "销售-库存-质量链路的销售单输入、公司输入、查询、重置、交付出库表、质量检验表和汇总均具备稳定 data-testid。",
+      "evidence": "browser_result.required_anchor_results"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "empty_and_error_state_anchors",
+      "status": "PASS",
+      "observed": "空条件 guard 与本地错误态均可测，错误态不依赖 4xx/5xx 阻断响应。",
+      "evidence": "browser_result.required_anchor_results"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "guarded_action_metadata",
+      "status": "PASS",
+      "observed": "4 个导出/同步入口均具备 readonly:* 与 guarded_readonly 元数据，仅本地提示，不触发网络副作用。",
+      "evidence": "browser_result.guarded_action_metadata"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "api_get_only_surface",
+      "status": "PASS",
+      "observed": "api/cross_module.ts 未修改，继续只读 GET helper；未新增 POST/PUT/PATCH/DELETE。",
+      "evidence": "git diff --name-only -- 06_前端 + source review"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 1/1。",
+      "evidence": "browser_result.route_hit_count"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "browser_get_only_no_write_no_export_sync",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"], write/unexpected_write/forbidden 均为 0，export_or_download_endpoint_called=false，sync_endpoint_called=false。",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "blocking_metrics_screenshots_and_git_gate",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，截图 4/4 存在；暂存区为空，当前前端 diff 仅 CrossModuleView.vue，后端 diff 为空。",
+      "evidence": "browser_result blocking stats + screenshot paths + git diff"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}
