@@ -65,6 +65,37 @@
               弹窗 {{ a006QtyPopup.popupSaveButton }} 仅证明回写当前页面矩阵；未点击主订单保存，未形成订单。
             </p>
             <el-tag type="warning" effect="plain">不得外推为订单创建成功</el-tag>
+
+            <div class="popup-only-demo" data-testid="dev-cand-004-popup-only-demo">
+              <div class="demo-toolbar">
+                <el-button size="small" type="primary" plain @click="openPopupOnlyMatrixDialog">
+                  打开数量矩阵弹窗（本地 only）
+                </el-button>
+                <el-button size="small" text @click="resetPopupOnlyMatrix">
+                  重置本地矩阵
+                </el-button>
+              </div>
+              <div class="local-matrix" data-testid="popup-only-local-matrix">
+                <div class="matrix-row matrix-head">
+                  <span>颜色</span>
+                  <span>{{ a006QtyPopup.size }}</span>
+                  <span>小计</span>
+                </div>
+                <div class="matrix-row">
+                  <span>{{ a006QtyPopup.color }}</span>
+                  <strong>{{ popupOnlyMatrix.quantity }}</strong>
+                  <strong>{{ popupOnlyMatrixTotal }}</strong>
+                </div>
+                <div class="matrix-row matrix-total">
+                  <span>合计</span>
+                  <strong>{{ popupOnlyMatrixTotal }}</strong>
+                  <strong>{{ popupOnlyMatrixTotal }}</strong>
+                </div>
+              </div>
+              <p class="contract-note">
+                {{ popupOnlyMatrixStatusText }}；main_order_save_verified=false，order_created_verified=false，order_detail_readback_verified=false，后端 payload 未验证。
+              </p>
+            </div>
           </div>
         </div>
 
@@ -96,6 +127,44 @@
           </el-button>
         </div>
       </section>
+
+      <el-dialog
+        v-model="popupOnlyDialogVisible"
+        title="按条下单 / 数量矩阵（本地 only）"
+        width="420px"
+        append-to-body
+        data-testid="popup-only-qty-dialog"
+      >
+        <div class="popup-dialog-body">
+          <el-alert
+            type="warning"
+            :closable="false"
+            show-icon
+            title="本弹窗只模拟前端本地回写，不保存订单、不调用 API。"
+          />
+          <div class="dialog-matrix" data-testid="popup-only-cross-cell">
+            <div class="matrix-row matrix-head">
+              <span>颜色</span>
+              <span>尺码</span>
+              <span>quantity</span>
+            </div>
+            <div class="matrix-row">
+              <span>{{ popupOnlyDraft.color }}</span>
+              <span>{{ popupOnlyDraft.size }}</span>
+              <strong>{{ popupOnlyDraft.quantity }}</strong>
+            </div>
+          </div>
+          <p class="contract-note">
+            证据来源限定为 G2-FIX16：黑色 / M / 2 -> 弹窗 保存(S) -> 当前页面矩阵回写 2。
+          </p>
+        </div>
+        <template #footer>
+          <el-button @click="popupOnlyDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="applyPopupOnlyMatrix">
+            保存(S) 仅本地回写 / 不保存订单
+          </el-button>
+        </template>
+      </el-dialog>
 
       <el-form :inline="true" :model="query" class="query-form" data-testid="sales-order-filter-form">
         <el-form-item label="订单号">
@@ -612,6 +681,51 @@ const a006QtyPopup = {
   popupSaveButton: '保存(S)',
 }
 
+const popupOnlyDialogVisible = ref<boolean>(false)
+const popupOnlyDraft = reactive({
+  color: a006QtyPopup.color,
+  size: a006QtyPopup.size,
+  quantity: a006QtyPopup.quantity,
+})
+const popupOnlyMatrix = reactive({
+  color: a006QtyPopup.color,
+  size: a006QtyPopup.size,
+  quantity: 0,
+  writebackApplied: false,
+  localSaveClicks: 0,
+})
+const popupOnlyMatrixTotal = computed<number>(() => popupOnlyMatrix.quantity)
+const popupOnlyMatrixStatusText = computed<string>(() => {
+  if (popupOnlyMatrix.writebackApplied) {
+    return `弹窗 保存(S) 已仅本地回写 ${popupOnlyMatrix.color}/${popupOnlyMatrix.size}/${popupOnlyMatrix.quantity}，合计 ${popupOnlyMatrixTotal.value}；不保存订单、不调用 API`
+  }
+  return '本地矩阵尚未回写，点击弹窗内保存(S) 后仅更新当前页面矩阵；不保存订单、不调用 API'
+})
+
+const openPopupOnlyMatrixDialog = (): void => {
+  popupOnlyDraft.color = a006QtyPopup.color
+  popupOnlyDraft.size = a006QtyPopup.size
+  popupOnlyDraft.quantity = a006QtyPopup.quantity
+  popupOnlyDialogVisible.value = true
+}
+
+const applyPopupOnlyMatrix = (): void => {
+  popupOnlyMatrix.color = popupOnlyDraft.color
+  popupOnlyMatrix.size = popupOnlyDraft.size
+  popupOnlyMatrix.quantity = popupOnlyDraft.quantity
+  popupOnlyMatrix.writebackApplied = true
+  popupOnlyMatrix.localSaveClicks += 1
+  popupOnlyDialogVisible.value = false
+}
+
+const resetPopupOnlyMatrix = (): void => {
+  popupOnlyMatrix.color = a006QtyPopup.color
+  popupOnlyMatrix.size = a006QtyPopup.size
+  popupOnlyMatrix.quantity = 0
+  popupOnlyMatrix.writebackApplied = false
+  popupOnlyMatrix.localSaveClicks = 0
+}
+
 const a006LinkedNogoSections = [
   '生产制单',
   '加工单',
@@ -1080,6 +1194,60 @@ onMounted(async () => {
   border-radius: 6px;
   background: var(--el-fill-color);
   color: var(--el-text-color-primary);
+}
+
+.popup-only-demo {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--el-border-color);
+}
+
+.demo-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.local-matrix,
+.dialog-matrix {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.matrix-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) minmax(56px, 0.8fr) minmax(56px, 0.8fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.matrix-row span,
+.matrix-row strong {
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--el-fill-color);
+  color: var(--el-text-color-primary);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.matrix-head span {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.matrix-total span,
+.matrix-total strong {
+  background: var(--el-color-primary-light-9);
+}
+
+.popup-dialog-body {
+  display: grid;
+  gap: 12px;
 }
 
 .contract-note {
