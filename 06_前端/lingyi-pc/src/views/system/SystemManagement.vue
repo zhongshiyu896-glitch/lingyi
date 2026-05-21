@@ -1,6 +1,39 @@
 <template>
   <div class="system-management-page" data-testid="system-management-page">
-    <el-card shadow="never">
+    <el-alert
+      data-testid="system-management-parity-hint"
+      data-route-parity="/system/management"
+      data-runtime-mode="READONLY_GET_ONLY"
+      type="info"
+      :closable="false"
+      title="系统管理只读交互：/system/management｜READONLY_GET_ONLY｜系统配置 / 用户角色菜单 / 审计日志 / 同步导出下载入口均按本地只读 guard 验证"
+    />
+
+    <div class="readonly-strip" data-testid="system-management-readonly-status">
+      <el-tag effect="plain" data-testid="system-management-get-only">GET-only</el-tag>
+      <el-tag
+        effect="plain"
+        type="warning"
+        data-testid="system-management-write-guard"
+        data-write-guard="readonly:system-save-submit"
+        data-guard-state="guarded_readonly"
+        data-side-effect-guard="write-disabled"
+      >
+        写入动作 guarded_readonly
+      </el-tag>
+      <el-tag
+        effect="plain"
+        type="warning"
+        data-testid="system-management-export-download-guard"
+        data-write-guard="readonly:system-export-download-sync"
+        data-guard-state="guarded_readonly"
+        data-side-effect-guard="download-sync-disabled"
+      >
+        导出 / 下载 / 同步不触发
+      </el-tag>
+    </div>
+
+    <el-card shadow="never" data-testid="approval-flow-section">
       <template #header>
         <div class="header-row">
           <span>审核流程（TASK-Y3B-09，只读）</span>
@@ -31,7 +64,7 @@
           title="共享路由边界：本任务仅实现审核流程，保留 Y3B-10 用户管理未实现语义。"
         />
 
-        <el-form :inline="true" :model="approvalFlowQuery" class="query-form">
+        <el-form :inline="true" :model="approvalFlowQuery" class="query-form" data-testid="approval-flow-query-form">
           <el-form-item label="审核类型">
             <el-select
               v-model="approvalFlowQuery.audit_type"
@@ -64,9 +97,16 @@
             <el-input v-model="approvalFlowQuery.end_date" clearable placeholder="结束时间" style="width: 160px" />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="approvalFlowLoading" @click="loadApprovalFlows">搜索</el-button>
-            <el-button @click="resetApprovalFlowFilters">重置</el-button>
-            <el-button @click="clearApprovalFlowSelection">清空</el-button>
+            <el-button
+              type="primary"
+              :loading="approvalFlowLoading"
+              data-testid="approval-flow-search"
+              @click="loadApprovalFlows"
+            >
+              搜索
+            </el-button>
+            <el-button data-testid="approval-flow-reset" @click="resetApprovalFlowFilters">重置</el-button>
+            <el-button data-testid="approval-flow-clear" @click="clearApprovalFlowSelection">清空</el-button>
           </el-form-item>
         </el-form>
 
@@ -83,7 +123,13 @@
           style="margin-bottom: 12px"
         />
 
-        <el-table :data="approvalFlowItems" border row-key="flow_key" empty-text="暂无审核流程目录数据">
+        <el-table
+          :data="approvalFlowItems"
+          border
+          row-key="flow_key"
+          empty-text="暂无审核流程目录数据"
+          data-testid="approval-flow-table"
+        >
           <el-table-column prop="title" label="标题" min-width="180" />
           <el-table-column prop="sent_at" label="发送时间" min-width="180" />
           <el-table-column label="状态" width="110">
@@ -104,6 +150,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onGuardedActionClick(action)"
                 >
                   {{ action.label }}
@@ -113,7 +162,7 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!approvalFlowItems.length" description="暂无审核流程目录数据" />
+        <el-empty v-if="!approvalFlowItems.length" description="暂无审核流程目录数据" data-testid="approval-flow-empty" />
 
         <el-alert
           type="warning"
@@ -157,7 +206,12 @@
           title="共享路由边界：本任务仅新增组织框架只读语义，不覆盖审批流程、用户目录、配置目录、字典目录与系统健康摘要。"
         />
 
-        <el-form :inline="true" :model="organizationFrameworkQuery" class="query-form">
+        <el-form
+          :inline="true"
+          :model="organizationFrameworkQuery"
+          class="query-form"
+          data-testid="organization-framework-query-form"
+        >
           <el-form-item label="组织层级">
             <el-select v-model="organizationFrameworkQuery.org_level" clearable placeholder="全部" style="width: 180px">
               <el-option
@@ -198,11 +252,20 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="organizationFrameworkLoading" @click="loadOrganizationFrameworks">
+            <el-button
+              type="primary"
+              :loading="organizationFrameworkLoading"
+              data-testid="organization-framework-search"
+              @click="loadOrganizationFrameworks"
+            >
               搜索
             </el-button>
-            <el-button @click="resetOrganizationFrameworkFilters">重置</el-button>
-            <el-button @click="clearOrganizationFrameworkSelection">清空</el-button>
+            <el-button data-testid="organization-framework-reset" @click="resetOrganizationFrameworkFilters">
+              重置
+            </el-button>
+            <el-button data-testid="organization-framework-clear" @click="clearOrganizationFrameworkSelection">
+              清空
+            </el-button>
           </el-form-item>
         </el-form>
 
@@ -220,7 +283,13 @@
           style="margin-bottom: 12px"
         />
 
-        <el-table :data="organizationFrameworkItems" border row-key="org_code" empty-text="暂无组织框架数据">
+        <el-table
+          :data="organizationFrameworkItems"
+          border
+          row-key="org_code"
+          empty-text="暂无组织框架数据"
+          data-testid="organization-framework-table"
+        >
           <el-table-column prop="org_code" label="组织编码" min-width="140" />
           <el-table-column prop="org_name" label="组织名称" min-width="180" />
           <el-table-column prop="parent_org_name" label="上级组织" min-width="180" />
@@ -247,6 +316,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onOrganizationFrameworkActionClick(scope.row, action)"
                 >
                   {{ action.label }}
@@ -256,7 +328,11 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!organizationFrameworkItems.length" description="暂无组织框架数据" />
+        <el-empty
+          v-if="!organizationFrameworkItems.length"
+          description="暂无组织框架数据"
+          data-testid="organization-framework-empty"
+        />
 
         <el-alert
           type="warning"
@@ -300,7 +376,12 @@
           title="共享路由边界：本任务仅新增对接平台只读语义，不覆盖审批流程、用户目录、组织框架、配置目录、字典目录与系统健康摘要。"
         />
 
-        <el-form :inline="true" :model="integrationPlatformQuery" class="query-form">
+        <el-form
+          :inline="true"
+          :model="integrationPlatformQuery"
+          class="query-form"
+          data-testid="integration-platform-query-form"
+        >
           <el-form-item label="平台类型">
             <el-select v-model="integrationPlatformQuery.platform_type" clearable placeholder="全部" style="width: 180px">
               <el-option
@@ -351,11 +432,16 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="integrationPlatformLoading" @click="loadIntegrationPlatforms">
+            <el-button
+              type="primary"
+              :loading="integrationPlatformLoading"
+              data-testid="integration-platform-search"
+              @click="loadIntegrationPlatforms"
+            >
               搜索
             </el-button>
-            <el-button @click="resetIntegrationPlatformFilters">重置</el-button>
-            <el-button @click="clearIntegrationPlatformSelection">清空</el-button>
+            <el-button data-testid="integration-platform-reset" @click="resetIntegrationPlatformFilters">重置</el-button>
+            <el-button data-testid="integration-platform-clear" @click="clearIntegrationPlatformSelection">清空</el-button>
           </el-form-item>
         </el-form>
 
@@ -373,7 +459,13 @@
           style="margin-bottom: 12px"
         />
 
-        <el-table :data="integrationPlatformItems" border row-key="platform_code" empty-text="暂无对接平台数据">
+        <el-table
+          :data="integrationPlatformItems"
+          border
+          row-key="platform_code"
+          empty-text="暂无对接平台数据"
+          data-testid="integration-platform-table"
+        >
           <el-table-column prop="platform_code" label="平台编码" min-width="140" />
           <el-table-column prop="platform_name" label="平台名称" min-width="180" />
           <el-table-column prop="platform_type" label="平台类型" width="120" />
@@ -401,6 +493,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onIntegrationPlatformActionClick(scope.row, action)"
                 >
                   {{ action.label }}
@@ -410,7 +505,11 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!integrationPlatformItems.length" description="暂无对接平台数据" />
+        <el-empty
+          v-if="!integrationPlatformItems.length"
+          description="暂无对接平台数据"
+          data-testid="integration-platform-empty"
+        />
 
         <el-alert
           type="warning"
@@ -454,7 +553,12 @@
           title="共享路由边界：本任务仅新增系统公告只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、配置目录、字典目录与系统健康摘要。"
         />
 
-        <el-form :inline="true" :model="systemAnnouncementQuery" class="query-form">
+        <el-form
+          :inline="true"
+          :model="systemAnnouncementQuery"
+          class="query-form"
+          data-testid="system-announcement-query-form"
+        >
           <el-form-item label="分类">
             <el-select v-model="systemAnnouncementQuery.category" clearable placeholder="全部" style="width: 180px">
               <el-option
@@ -503,11 +607,16 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="systemAnnouncementLoading" @click="loadSystemAnnouncements">
+            <el-button
+              type="primary"
+              :loading="systemAnnouncementLoading"
+              data-testid="system-announcement-search"
+              @click="loadSystemAnnouncements"
+            >
               搜索
             </el-button>
-            <el-button @click="resetSystemAnnouncementFilters">重置</el-button>
-            <el-button @click="clearSystemAnnouncementSelection">清空</el-button>
+            <el-button data-testid="system-announcement-reset" @click="resetSystemAnnouncementFilters">重置</el-button>
+            <el-button data-testid="system-announcement-clear" @click="clearSystemAnnouncementSelection">清空</el-button>
           </el-form-item>
         </el-form>
 
@@ -525,7 +634,13 @@
           style="margin-bottom: 12px"
         />
 
-        <el-table :data="systemAnnouncementItems" border row-key="announcement_code" empty-text="暂无系统公告数据">
+        <el-table
+          :data="systemAnnouncementItems"
+          border
+          row-key="announcement_code"
+          empty-text="暂无系统公告数据"
+          data-testid="system-announcement-table"
+        >
           <el-table-column prop="announcement_code" label="公告编号" min-width="140" />
           <el-table-column prop="title" label="标题" min-width="220" />
           <el-table-column prop="category" label="分类" width="130" />
@@ -552,6 +667,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onSystemAnnouncementActionClick(scope.row, action)"
                 >
                   {{ action.label }}
@@ -561,7 +679,11 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!systemAnnouncementItems.length" description="暂无系统公告数据" />
+        <el-empty
+          v-if="!systemAnnouncementItems.length"
+          description="暂无系统公告数据"
+          data-testid="system-announcement-empty"
+        />
 
         <el-alert
           type="warning"
@@ -603,7 +725,7 @@
           title="共享路由边界：本任务仅新增操作日志只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、系统公告、配置目录、字典目录与系统健康摘要。"
         />
 
-        <el-form :inline="true" :model="operationLogQuery" class="query-form">
+        <el-form :inline="true" :model="operationLogQuery" class="query-form" data-testid="operation-log-query-form">
           <el-form-item label="模块">
             <el-select v-model="operationLogQuery.module" clearable placeholder="全部" style="width: 180px">
               <el-option v-for="option in operationLogModuleOptions" :key="option" :label="option" :value="option" />
@@ -647,9 +769,16 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="operationLogLoading" @click="loadOperationLogs">搜索</el-button>
-            <el-button @click="resetOperationLogFilters">重置</el-button>
-            <el-button @click="clearOperationLogSelection">清空</el-button>
+            <el-button
+              type="primary"
+              :loading="operationLogLoading"
+              data-testid="operation-log-search"
+              @click="loadOperationLogs"
+            >
+              搜索
+            </el-button>
+            <el-button data-testid="operation-log-reset" @click="resetOperationLogFilters">重置</el-button>
+            <el-button data-testid="operation-log-clear" @click="clearOperationLogSelection">清空</el-button>
           </el-form-item>
         </el-form>
 
@@ -667,7 +796,13 @@
           style="margin-bottom: 12px"
         />
 
-        <el-table :data="operationLogItems" border row-key="log_id" empty-text="暂无操作日志数据">
+        <el-table
+          :data="operationLogItems"
+          border
+          row-key="log_id"
+          empty-text="暂无操作日志数据"
+          data-testid="operation-log-table"
+        >
           <el-table-column prop="log_id" label="日志编号" min-width="140" />
           <el-table-column prop="module" label="模块" min-width="160" />
           <el-table-column prop="operation_type" label="操作类型" width="120" />
@@ -694,6 +829,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onOperationLogActionClick(scope.row, action)"
                 >
                   {{ action.label }}
@@ -703,7 +841,7 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!operationLogItems.length" description="暂无操作日志数据" />
+        <el-empty v-if="!operationLogItems.length" description="暂无操作日志数据" data-testid="operation-log-empty" />
 
         <el-alert
           type="warning"
@@ -745,7 +883,7 @@
           title="共享路由边界：本任务仅新增单据编码只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、系统公告、操作日志、配置目录、字典目录与系统健康摘要。"
         />
 
-        <el-form :inline="true" :model="documentCodeQuery" class="query-form">
+        <el-form :inline="true" :model="documentCodeQuery" class="query-form" data-testid="document-code-query-form">
           <el-form-item label="单据类型">
             <el-select v-model="documentCodeQuery.document_type" clearable placeholder="全部" style="width: 180px">
               <el-option v-for="option in documentCodeTypeOptions" :key="option" :label="option" :value="option" />
@@ -781,9 +919,16 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="documentCodeLoading" @click="loadDocumentCodes">搜索</el-button>
-            <el-button @click="resetDocumentCodeFilters">重置</el-button>
-            <el-button @click="clearDocumentCodeSelection">清空</el-button>
+            <el-button
+              type="primary"
+              :loading="documentCodeLoading"
+              data-testid="document-code-search"
+              @click="loadDocumentCodes"
+            >
+              搜索
+            </el-button>
+            <el-button data-testid="document-code-reset" @click="resetDocumentCodeFilters">重置</el-button>
+            <el-button data-testid="document-code-clear" @click="clearDocumentCodeSelection">清空</el-button>
           </el-form-item>
         </el-form>
 
@@ -801,7 +946,13 @@
           style="margin-bottom: 12px"
         />
 
-        <el-table :data="documentCodeItems" border row-key="document_code_id" empty-text="暂无单据编码数据">
+        <el-table
+          :data="documentCodeItems"
+          border
+          row-key="document_code_id"
+          empty-text="暂无单据编码数据"
+          data-testid="document-code-table"
+        >
           <el-table-column prop="document_code_id" label="编码编号" min-width="140" />
           <el-table-column prop="document_name" label="单据名称" min-width="170" />
           <el-table-column prop="document_type" label="单据类型" min-width="140" />
@@ -828,6 +979,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onDocumentCodeActionClick(scope.row, action)"
                 >
                   {{ action.label }}
@@ -837,7 +991,7 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!documentCodeItems.length" description="暂无单据编码数据" />
+        <el-empty v-if="!documentCodeItems.length" description="暂无单据编码数据" data-testid="document-code-empty" />
 
         <el-alert
           type="warning"
@@ -885,7 +1039,12 @@
           title="共享路由边界：本任务仅新增消息通知设置只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、系统公告、操作日志、单据编码、配置目录、字典目录与系统健康摘要。"
         />
 
-        <el-form :inline="true" :model="messageNotificationSettingQuery" class="query-form">
+        <el-form
+          :inline="true"
+          :model="messageNotificationSettingQuery"
+          class="query-form"
+          data-testid="message-notification-settings-query-form"
+        >
           <el-form-item label="通知渠道">
             <el-select
               v-model="messageNotificationSettingQuery.channel"
@@ -952,12 +1111,17 @@
             <el-button
               type="primary"
               :loading="messageNotificationSettingLoading"
+              data-testid="message-notification-settings-search"
               @click="loadMessageNotificationSettings"
             >
               搜索
             </el-button>
-            <el-button @click="resetMessageNotificationSettingFilters">重置</el-button>
-            <el-button @click="clearMessageNotificationSettingSelection">清空</el-button>
+            <el-button data-testid="message-notification-settings-reset" @click="resetMessageNotificationSettingFilters">
+              重置
+            </el-button>
+            <el-button data-testid="message-notification-settings-clear" @click="clearMessageNotificationSettingSelection">
+              清空
+            </el-button>
           </el-form-item>
         </el-form>
 
@@ -980,6 +1144,7 @@
           border
           row-key="setting_code"
           empty-text="暂无消息通知设置数据"
+          data-testid="message-notification-settings-table"
         >
           <el-table-column prop="setting_code" label="设置编号" min-width="140" />
           <el-table-column prop="setting_name" label="设置名称" min-width="200" />
@@ -1006,6 +1171,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onMessageNotificationSettingActionClick(scope.row, action)"
                 >
                   {{ action.label }}
@@ -1015,7 +1183,11 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!messageNotificationSettingItems.length" description="暂无消息通知设置数据" />
+        <el-empty
+          v-if="!messageNotificationSettingItems.length"
+          description="暂无消息通知设置数据"
+          data-testid="message-notification-settings-empty"
+        />
 
         <el-alert
           type="warning"
@@ -1059,7 +1231,12 @@
           title="共享路由边界：本任务仅新增偏好设置只读语义，不覆盖审批流程、用户目录、组织框架、对接平台、系统公告、操作日志、单据编码、消息通知设置、配置目录、字典目录与系统健康摘要。"
         />
 
-        <el-form :inline="true" :model="preferenceSettingQuery" class="query-form">
+        <el-form
+          :inline="true"
+          :model="preferenceSettingQuery"
+          class="query-form"
+          data-testid="preference-settings-query-form"
+        >
           <el-form-item label="适用范围">
             <el-select
               v-model="preferenceSettingQuery.preference_scope"
@@ -1110,9 +1287,16 @@
             />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="preferenceSettingLoading" @click="loadPreferenceSettings">搜索</el-button>
-            <el-button @click="resetPreferenceSettingFilters">重置</el-button>
-            <el-button @click="clearPreferenceSettingSelection">清空</el-button>
+            <el-button
+              type="primary"
+              :loading="preferenceSettingLoading"
+              data-testid="preference-settings-search"
+              @click="loadPreferenceSettings"
+            >
+              搜索
+            </el-button>
+            <el-button data-testid="preference-settings-reset" @click="resetPreferenceSettingFilters">重置</el-button>
+            <el-button data-testid="preference-settings-clear" @click="clearPreferenceSettingSelection">清空</el-button>
           </el-form-item>
         </el-form>
 
@@ -1130,7 +1314,13 @@
           style="margin-bottom: 12px"
         />
 
-        <el-table :data="preferenceSettingItems" border row-key="setting_code" empty-text="暂无偏好设置数据">
+        <el-table
+          :data="preferenceSettingItems"
+          border
+          row-key="setting_code"
+          empty-text="暂无偏好设置数据"
+          data-testid="preference-settings-table"
+        >
           <el-table-column prop="setting_code" label="设置编号" min-width="140" />
           <el-table-column prop="setting_name" label="设置名称" min-width="180" />
           <el-table-column prop="preference_scope" label="适用范围" min-width="140" />
@@ -1156,6 +1346,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onPreferenceSettingActionClick(scope.row, action)"
                 >
                   {{ action.label }}
@@ -1165,7 +1358,11 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!preferenceSettingItems.length" description="暂无偏好设置数据" />
+        <el-empty
+          v-if="!preferenceSettingItems.length"
+          description="暂无偏好设置数据"
+          data-testid="preference-settings-empty"
+        />
 
         <el-alert
           type="warning"
@@ -1176,7 +1373,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card shadow="never" data-testid="user-role-menu-section">
       <template #header>
         <div class="header-row">
           <span>用户管理（TASK-Y3B-10，只读）</span>
@@ -1207,7 +1404,7 @@
           title="共享路由边界：本任务仅实现用户管理语义，保留 Y3B-09 审核流程区块。"
         />
 
-        <el-form :inline="true" :model="userCatalogQuery" class="query-form">
+        <el-form :inline="true" :model="userCatalogQuery" class="query-form" data-testid="user-role-menu-query-form">
           <el-form-item label="角色">
             <el-select v-model="userCatalogQuery.role" clearable placeholder="全部" style="width: 180px">
               <el-option v-for="option in userRoleOptions" :key="option" :label="option" :value="option" />
@@ -1233,9 +1430,16 @@
             <el-input v-model="userCatalogQuery.end_date" clearable placeholder="结束时间" style="width: 160px" />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="userCatalogLoading" @click="loadUserCatalog">搜索</el-button>
-            <el-button @click="resetUserCatalogFilters">重置</el-button>
-            <el-button @click="clearUserCatalogSelection">清空</el-button>
+            <el-button
+              type="primary"
+              :loading="userCatalogLoading"
+              data-testid="user-role-menu-search"
+              @click="loadUserCatalog"
+            >
+              搜索
+            </el-button>
+            <el-button data-testid="user-role-menu-reset" @click="resetUserCatalogFilters">重置</el-button>
+            <el-button data-testid="user-role-menu-clear" @click="clearUserCatalogSelection">清空</el-button>
           </el-form-item>
         </el-form>
 
@@ -1252,7 +1456,13 @@
           style="margin-bottom: 12px"
         />
 
-        <el-table :data="userCatalogItems" border row-key="user_id" empty-text="暂无用户目录数据">
+        <el-table
+          :data="userCatalogItems"
+          border
+          row-key="user_id"
+          empty-text="暂无用户目录数据"
+          data-testid="user-role-menu-table"
+        >
           <el-table-column prop="username" label="用户名" min-width="140" />
           <el-table-column prop="display_name" label="姓名" min-width="140" />
           <el-table-column prop="role" label="角色" min-width="150" />
@@ -1273,6 +1483,9 @@
                   type="primary"
                   link
                   :disabled="action.guarded"
+                  :data-write-guard="systemGuardKey(action.action_key)"
+                  :data-guard-state="action.guarded ? 'guarded_readonly' : 'readonly_view'"
+                  :data-side-effect-guard="systemSideEffectGuard(action.action_key)"
                   @click="onUserCatalogActionClick(scope.row, action)"
                 >
                   {{ action.label }}
@@ -1282,7 +1495,7 @@
           </el-table-column>
         </el-table>
 
-        <el-empty v-if="!userCatalogItems.length" description="暂无用户目录数据" />
+        <el-empty v-if="!userCatalogItems.length" description="暂无用户目录数据" data-testid="user-role-menu-empty" />
 
         <el-alert
           type="warning"
@@ -1293,7 +1506,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card shadow="never" data-testid="system-config-section">
       <template #header>
         <div class="header-row">
           <span>系统配置目录（只读）</span>
@@ -1317,7 +1530,7 @@
       />
 
       <template v-else>
-        <el-form :inline="true" :model="configQuery" class="query-form">
+        <el-form :inline="true" :model="configQuery" class="query-form" data-testid="system-config-query-form">
           <el-form-item label="模块">
             <el-input v-model="configQuery.module" clearable placeholder="module（可选）" />
           </el-form-item>
@@ -1344,7 +1557,7 @@
           </el-form-item>
         </el-form>
 
-        <el-table :data="configItems" border empty-text="暂无配置目录数据">
+        <el-table :data="configItems" border empty-text="暂无配置目录数据" data-testid="system-config-table">
           <el-table-column prop="module" label="模块" width="130" />
           <el-table-column prop="config_key" label="配置键" min-width="220" />
           <el-table-column prop="config_group" label="分组" width="140" />
@@ -1359,11 +1572,11 @@
           <el-table-column prop="updated_at" label="更新时间" min-width="190" />
         </el-table>
 
-        <el-empty v-if="!configItems.length" description="暂无配置目录数据" />
+        <el-empty v-if="!configItems.length" description="暂无配置目录数据" data-testid="system-config-empty" />
       </template>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card shadow="never" data-testid="system-dictionary-section">
       <template #header>
         <div class="header-row">
           <span>数据字典目录（只读）</span>
@@ -1387,7 +1600,7 @@
       />
 
       <template v-else>
-        <el-form :inline="true" :model="dictionaryQuery" class="query-form">
+        <el-form :inline="true" :model="dictionaryQuery" class="query-form" data-testid="system-dictionary-query-form">
           <el-form-item label="字典类型">
             <el-input v-model="dictionaryQuery.dict_type" clearable placeholder="dict_type（可选）" />
           </el-form-item>
@@ -1406,7 +1619,7 @@
           </el-form-item>
         </el-form>
 
-        <el-table :data="dictionaryItems" border empty-text="暂无字典目录数据">
+        <el-table :data="dictionaryItems" border empty-text="暂无字典目录数据" data-testid="system-dictionary-table">
           <el-table-column prop="dict_type" label="dict_type" min-width="180" />
           <el-table-column prop="dict_code" label="dict_code" min-width="180" />
           <el-table-column prop="dict_name" label="dict_name" min-width="180" />
@@ -1415,11 +1628,11 @@
           <el-table-column prop="updated_at" label="updated_at" min-width="190" />
         </el-table>
 
-        <el-empty v-if="!dictionaryItems.length" description="暂无字典目录数据" />
+        <el-empty v-if="!dictionaryItems.length" description="暂无字典目录数据" data-testid="system-dictionary-empty" />
       </template>
     </el-card>
 
-    <el-card shadow="never">
+    <el-card shadow="never" data-testid="system-health-section">
       <template #header>
         <div class="header-row">
           <span>系统健康诊断摘要（只读）</span>
@@ -1443,7 +1656,7 @@
       />
 
       <template v-else>
-        <el-table :data="healthItems" border empty-text="暂无系统健康摘要数据">
+        <el-table :data="healthItems" border empty-text="暂无系统健康摘要数据" data-testid="system-health-table">
           <el-table-column prop="module" label="模块" width="140" />
           <el-table-column label="状态" width="130">
             <template #default="scope">
@@ -1455,7 +1668,7 @@
           <el-table-column prop="generated_at" label="生成时间" min-width="190" />
         </el-table>
 
-        <el-empty v-if="!healthItems.length" description="暂无系统健康摘要数据" />
+        <el-empty v-if="!healthItems.length" description="暂无系统健康摘要数据" data-testid="system-health-empty" />
       </template>
     </el-card>
 
@@ -1708,6 +1921,28 @@ const canReadOperationLogs = computed<boolean>(() => canSystemRead.value && canC
 const canReadDocumentCodes = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadMessageNotificationSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadPreferenceSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+
+const systemGuardKey = (actionKey: string): string => {
+  const normalized = actionKey.replace(/_/g, '-')
+  if (normalized === 'view') {
+    return 'readonly:system-view'
+  }
+  return `readonly:system-${normalized}`
+}
+
+const systemSideEffectGuard = (actionKey: string): string => {
+  const normalized = actionKey.toLowerCase()
+  if (normalized.includes('export') || normalized.includes('download') || normalized.includes('print')) {
+    return 'download-disabled'
+  }
+  if (normalized.includes('sync') || normalized.includes('retry') || normalized.includes('test')) {
+    return 'sync-disabled'
+  }
+  if (normalized === 'view') {
+    return 'view-only'
+  }
+  return 'write-disabled'
+}
 
 const loadConfigCatalog = async (): Promise<void> => {
   if (!canReadConfig.value) {
@@ -2485,6 +2720,12 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.readonly-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .header-row {

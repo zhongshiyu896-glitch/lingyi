@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	code_changed_no	PASS	B46 仅生成独立回归证据，未修改任何产品代码。	git diff product scope before/after regression
+2	source_head_match	PASS	当前 HEAD 保持 4e9415b5505eb1ff2e0ae460221be6ed3901c603。	git rev-parse HEAD
+3	b45_impl_json_tsv_alignment	PASS	B45 impl JSON/TSV 仍为 14/14 PASS，TSV 14 行对齐。	B45 result JSON/TSV parse
+4	current_frontend_diff_scope	PASS	当前前端 diff 仍仅 SystemManagement.vue。	git diff --name-only -- 06_前端
+5	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+6	cached_diff_empty	PASS	暂存区为空。	git diff --cached --name-only
+7	route_hit	PASS	系统管理路由 /system/management 命中 1/1。	B46 browser result route_hit_count
+8	readonly_anchor_and_guard_metadata	PASS	系统配置、用户/角色/菜单、审计/日志、同步/导出/下载 guarded actions、空态/错误态锚点复核 PASS。	B46 browser result anchor_checks + guarded_actions
+9	browser_get_only	PASS	浏览器网络 request_methods=["GET"]。	B46 browser request methods
+10	write_request_gate	PASS	write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。	B46 browser write gate
+11	export_download_sync_gate	PASS	export_or_download_endpoint_called=false, sync_endpoint_called=false。	B46 browser forbidden endpoint gate
+12	blocking_metrics	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0。	B46 browser blocking metrics
+13	screenshots_exist	PASS	B46 截图 4/4 存在。	B46 browser screenshot_paths
+14	state_hold_and_forbidden_actions	PASS	未 stage/commit/push/PR/tag/release/cleanup/reset/restore，未启动 Z013-CAND-008，未触发真实系统写入。	execution log + git checks

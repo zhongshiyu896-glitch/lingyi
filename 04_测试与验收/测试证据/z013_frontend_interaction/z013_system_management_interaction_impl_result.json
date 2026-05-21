@@ -1,0 +1,203 @@
+{
+  "task_id": "TASK-Z013B-45-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-44-PREP",
+  "source_head": "4e9415b5505eb1ff2e0ae460221be6ed3901c603",
+  "selected_candidate_id": "Z013-CAND-007",
+  "module": "系统管理",
+  "yisuan_page": "审核流程 / 组织框架 / 系统配置只读目录",
+  "code_changed": true,
+  "backend_changed": false,
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/system/SystemManagement.vue"
+  ],
+  "unchanged_allowlist_files": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/system_management.ts"
+  ],
+  "implementation": {
+    "route_parity": "KEEP_EXISTING_/system/management_AND_REFINE_SYSTEM_MANAGEMENT_READONLY_INTERACTION",
+    "readonly_runtime_mode": "READONLY_GET_ONLY",
+    "route_checks": [
+      "http://127.0.0.1:5173/system/management"
+    ],
+    "readonly_sections": [
+      "approval-flow-section",
+      "organization-framework-section",
+      "integration-platform-section",
+      "system-announcement-section",
+      "operation-log-section",
+      "document-code-section",
+      "message-notification-settings-section",
+      "preference-settings-section",
+      "user-role-menu-section",
+      "system-config-section",
+      "system-dictionary-section",
+      "system-health-section"
+    ],
+    "guarded_actions": [
+      "system-management-write-guard",
+      "system-management-export-download-guard",
+      "per-row action metadata: data-write-guard + data-guard-state + data-side-effect-guard"
+    ],
+    "forbidden_write_endpoints": [
+      "POST/PUT/PATCH/DELETE /api/system/**",
+      "GET /api/system/**/export",
+      "GET /api/system/**/download",
+      "GET /api/system/**/sync"
+    ],
+    "write_endpoints_not_called": true
+  },
+  "runtime_evidence": {
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_system_management_interaction_browser_result.json",
+    "route_hit_count": 1,
+    "route_target_count": 1,
+    "screenshot_dir": "/tmp/task_z013b45_system_management_screenshots",
+    "screenshot_count": 4,
+    "screenshot_paths": [
+      "/tmp/task_z013b45_system_management_screenshots/01_system_management_route.png",
+      "/tmp/task_z013b45_system_management_screenshots/02_system_management_parity_readonly.png",
+      "/tmp/task_z013b45_system_management_screenshots/03_system_management_user_role_menu.png",
+      "/tmp/task_z013b45_system_management_screenshots/04_system_management_audit_guard_sections.png"
+    ],
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_or_download_endpoint_called": false,
+    "sync_endpoint_called": false,
+    "guarded_action_metadata_count": 2,
+    "expected_non_blocking_response_errors": [
+      {
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "pathname": "/api/auth/me"
+      }
+    ],
+    "expected_non_blocking_console_errors": [
+      "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    ]
+  },
+  "current_git_facts": {
+    "head": "4e9415b5505eb1ff2e0ae460221be6ed3901c603",
+    "cached_diff_empty": true,
+    "frontend_diff_files": [
+      "06_前端/lingyi-pc/src/views/system/SystemManagement.vue"
+    ],
+    "backend_diff_empty": true
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B45 source_head 与当前 HEAD 一致（4e9415b5505eb1ff2e0ae460221be6ed3901c603）。",
+      "evidence": "git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "本任务仅修改 SystemManagement.vue，位于 B44/B45 allowlist 内；router 与 api/system_management.ts 保持 unchanged。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity_and_readonly_hint",
+      "status": "PASS",
+      "observed": "系统管理页面提供 system-management-parity-hint 与 READONLY_GET_ONLY 状态锚点。",
+      "evidence": "browser_result.required_anchor_results"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "system_config_user_role_menu_anchors",
+      "status": "PASS",
+      "observed": "系统配置、用户/角色/菜单、数据字典、健康诊断区块具备稳定 data-testid。",
+      "evidence": "browser_result.required_anchor_results"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "audit_log_sync_export_download_guard_anchors",
+      "status": "PASS",
+      "observed": "操作日志、单据编码、消息通知、偏好设置、同步/导出/下载只读 guard 区块具备稳定锚点。",
+      "evidence": "browser_result.required_anchor_results"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "guarded_action_metadata",
+      "status": "PASS",
+      "observed": "页面顶部稳定可见 guard 元数据为 guarded_readonly，写入/导出/下载/同步入口仅本地只读提示。",
+      "evidence": "browser_result.guarded_action_metadata"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "api_get_only_surface",
+      "status": "PASS",
+      "observed": "api/system_management.ts 未修改，继续只读 GET helper；未新增 POST/PUT/PATCH/DELETE。",
+      "evidence": "git diff --name-only -- 06_前端 + source review"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 1/1。",
+      "evidence": "browser_result.route_hit_count"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only_no_write_no_export_sync",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"], write/unexpected_write/forbidden 均为 0，export_or_download_endpoint_called=false，sync_endpoint_called=false。",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "blocking_metrics_and_screenshots",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，截图 4/4 存在；/api/auth/me 500 仅作 expected non-blocking 记录。",
+      "evidence": "browser_result blocking stats + screenshot paths"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "git_gate",
+      "status": "PASS",
+      "observed": "暂存区为空；当前前端 diff 仅 SystemManagement.vue；后端 diff 为空。",
+      "evidence": "git diff --cached --name-only + git diff --name-only"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B45 source_head 与当前 HEAD 一致（4e9415b5505eb1ff2e0ae460221be6ed3901c603）。	git rev-parse HEAD
+2	changed_files_allowlist	PASS	本任务仅修改 SystemManagement.vue，位于 B44/B45 allowlist 内；router 与 api/system_management.ts 保持 unchanged。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_parity_and_readonly_hint	PASS	系统管理页面提供 system-management-parity-hint 与 READONLY_GET_ONLY 状态锚点。	browser_result.required_anchor_results
+5	system_config_user_role_menu_anchors	PASS	系统配置、用户/角色/菜单、数据字典、健康诊断区块具备稳定 data-testid。	browser_result.required_anchor_results
+6	audit_log_sync_export_download_guard_anchors	PASS	操作日志、单据编码、消息通知、偏好设置、同步/导出/下载只读 guard 区块具备稳定锚点。	browser_result.required_anchor_results
+7	guarded_action_metadata	PASS	页面顶部稳定可见 guard 元数据为 guarded_readonly，写入/导出/下载/同步入口仅本地只读提示。	browser_result.guarded_action_metadata
+8	api_get_only_surface	PASS	api/system_management.ts 未修改，继续只读 GET helper；未新增 POST/PUT/PATCH/DELETE。	git diff --name-only -- 06_前端 + source review
+9	typecheck	PASS	npm run typecheck PASS。	terminal output
+10	build	PASS	npm run build PASS。	terminal output
+11	browser_route_hits	PASS	目标路由命中 1/1。	browser_result.route_hit_count
+12	browser_get_only_no_write_no_export_sync	PASS	request_methods=["GET"], write/unexpected_write/forbidden 均为 0，export_or_download_endpoint_called=false，sync_endpoint_called=false。	browser_result request stats
+13	blocking_metrics_and_screenshots	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0，截图 4/4 存在；/api/auth/me 500 仅作 expected non-blocking 记录。	browser_result blocking stats + screenshot paths
+14	git_gate	PASS	暂存区为空；当前前端 diff 仅 SystemManagement.vue；后端 diff 为空。	git diff --cached --name-only + git diff --name-only

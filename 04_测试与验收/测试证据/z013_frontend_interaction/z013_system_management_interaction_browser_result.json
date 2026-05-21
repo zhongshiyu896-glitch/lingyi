@@ -1,0 +1,118 @@
+{
+  "task_id": "TASK-Z013B-45-IMPL",
+  "selected_candidate_id": "Z013-CAND-007",
+  "module": "系统管理",
+  "route": "http://127.0.0.1:5173/system/management",
+  "route_hit_count": 1,
+  "route_hit_total": 1,
+  "route_hit_pass": true,
+  "screenshot_dir": "/tmp/task_z013b45_system_management_screenshots",
+  "screenshot_count": 4,
+  "screenshot_expected_count": 4,
+  "screenshot_paths": [
+    {
+      "path": "/tmp/task_z013b45_system_management_screenshots/01_system_management_route.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z013b45_system_management_screenshots/02_system_management_parity_readonly.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z013b45_system_management_screenshots/03_system_management_user_role_menu.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z013b45_system_management_screenshots/04_system_management_audit_guard_sections.png",
+      "exists": true
+    }
+  ],
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_or_download_endpoint_called": false,
+  "sync_endpoint_called": false,
+  "allowed_get_paths": [
+    "/api/system/approval-flows",
+    "/api/system/organization-frameworks",
+    "/api/system/configs/catalog",
+    "/api/system/dictionaries/catalog",
+    "/api/system/health/summary",
+    "/api/system/users/catalog",
+    "/api/system/integration-platforms",
+    "/api/system/system-announcements",
+    "/api/system/operation-logs",
+    "/api/system/document-codes",
+    "/api/system/message-notification-settings",
+    "/api/system/preference-settings"
+  ],
+  "requested_api_paths": [
+    "/api/auth/me"
+  ],
+  "expected_non_blocking_response_errors": [
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "pathname": "/api/auth/me"
+    }
+  ],
+  "expected_non_blocking_console_errors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "blocking_responses": [],
+  "console_errors": [],
+  "page_errors": [],
+  "network_failures": [],
+  "required_anchor_results": {
+    "system-management-page": 1,
+    "system-management-parity-hint": 1,
+    "system-management-readonly-status": 1,
+    "system-management-get-only": 1,
+    "system-management-write-guard": 1,
+    "system-management-export-download-guard": 1,
+    "approval-flow-section": 1,
+    "organization-framework-section": 1,
+    "integration-platform-section": 1,
+    "system-announcement-section": 1,
+    "operation-log-section": 1,
+    "document-code-section": 1,
+    "message-notification-settings-section": 1,
+    "preference-settings-section": 1,
+    "user-role-menu-section": 1,
+    "system-config-section": 1,
+    "system-dictionary-section": 1,
+    "system-health-section": 1
+  },
+  "required_anchor_pass": true,
+  "guarded_action_metadata_count": 2,
+  "guarded_action_metadata": [
+    {
+      "text": "写入动作 guarded_readonly",
+      "write_guard": "readonly:system-save-submit",
+      "guard_state": "guarded_readonly",
+      "side_effect_guard": "write-disabled",
+      "disabled": false
+    },
+    {
+      "text": "导出 / 下载 / 同步不触发",
+      "write_guard": "readonly:system-export-download-sync",
+      "guard_state": "guarded_readonly",
+      "side_effect_guard": "download-sync-disabled",
+      "disabled": false
+    }
+  ],
+  "guard_metadata_pass": true,
+  "forbidden_endpoint_patterns_checked": [
+    "POST/PUT/PATCH/DELETE /api/system/**",
+    "GET /api/system/**/export",
+    "GET /api/system/**/download",
+    "GET /api/system/**/sync"
+  ],
+  "pass": true
+}
