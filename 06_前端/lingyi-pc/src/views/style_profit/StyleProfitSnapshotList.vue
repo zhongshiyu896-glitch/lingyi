@@ -6,6 +6,7 @@
           <div class="title-group">
             <span class="page-title">大货管理 / 订单款式利润预测明细表</span>
             <span class="page-subtitle">按款式、品牌与时间范围查看销售预测、成本预测与利润预测明细</span>
+            <span class="parity-hint" data-testid="style-profit-parity-hint">parity: {{ parityHint }}</span>
           </div>
         </div>
       </template>
@@ -81,54 +82,39 @@
           <el-button :disabled="!canRead || loading" data-testid="style-profit-search-button" @click="loadRows">搜索</el-button>
           <el-button
             type="primary"
-            :loading="archiveBusy"
             :disabled="!canRead || loading"
             data-testid="style-profit-archive-button"
-            @click="runArchiveAction"
+            data-action-type="write"
+            data-write-guard="readonly:style-profit-archive"
+            data-guard-state="guarded_readonly"
+            @click="guardedAction('留档')"
           >
             留档
           </el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-clear" @click="guardedAction('清空')">清空</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-confirm" @click="guardedAction('确定')">确定</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-export" @click="guardedAction('导出')">导出</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-column-setting" @click="guardedAction('列设置')">列设置</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-reset-column" @click="guardedAction('重置列')">重置列</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-mark-read" @click="guardedAction('标志已读')">标志已读</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-delete-msg" @click="guardedAction('删除消息')">删除消息</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-add-msg" @click="guardedAction('新增消息')">新增消息</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-save" @click="guardedAction('保存')">保存</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-cancel" @click="guardedAction('取消')">取消</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-clear" data-action-type="write" data-write-guard="readonly:style-profit-clear" data-guard-state="guarded_readonly" @click="guardedAction('清空')">清空</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-confirm" data-action-type="write" data-write-guard="readonly:style-profit-confirm" data-guard-state="guarded_readonly" @click="guardedAction('确定')">确定</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-export" data-action-type="write" data-write-guard="readonly:style-profit-export" data-guard-state="guarded_readonly" @click="guardedAction('导出')">导出</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-column-setting" data-action-type="write" data-write-guard="readonly:style-profit-column-setting" data-guard-state="guarded_readonly" @click="guardedAction('列设置')">列设置</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-reset-column" data-action-type="write" data-write-guard="readonly:style-profit-reset-column" data-guard-state="guarded_readonly" @click="guardedAction('重置列')">重置列</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-mark-read" data-action-type="write" data-write-guard="readonly:style-profit-mark-read" data-guard-state="guarded_readonly" @click="guardedAction('标志已读')">标志已读</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-delete-msg" data-action-type="write" data-write-guard="readonly:style-profit-delete-msg" data-guard-state="guarded_readonly" @click="guardedAction('删除消息')">删除消息</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-add-msg" data-action-type="write" data-write-guard="readonly:style-profit-add-msg" data-guard-state="guarded_readonly" @click="guardedAction('新增消息')">新增消息</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-save" data-action-type="write" data-write-guard="readonly:style-profit-save" data-guard-state="guarded_readonly" @click="guardedAction('保存')">保存</el-button>
+          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-cancel" data-action-type="write" data-write-guard="readonly:style-profit-cancel" data-guard-state="guarded_readonly" @click="guardedAction('取消')">取消</el-button>
         </el-form-item>
       </el-form>
       <el-alert
         v-if="archiveFeedback"
-        :type="archiveFeedbackType"
+        type="warning"
         :title="archiveFeedback"
         :closable="false"
         show-icon
         class="feedback-alert"
         data-testid="style-profit-archive-feedback"
       />
-      <el-alert
-        v-if="latestArchiveSnapshotId > 0"
-        type="success"
-        :closable="false"
-        show-icon
-        class="feedback-alert"
-        data-testid="style-profit-archive-readback-ready"
-      >
-        <template #title>
-          留档已完成，可回读快照：
-          <el-button
-            link
-            type="primary"
-            data-testid="style-profit-open-latest-detail"
-            @click="openLatestArchiveDetail"
-          >
-            {{ latestArchiveSnapshotNo || `ID ${latestArchiveSnapshotId}` }}
-          </el-button>
-        </template>
-      </el-alert>
+      <p class="readonly-hint" data-testid="style-profit-readonly-hint">
+        当前页面为只读验证模式，写动作入口仅保留展示并已 guarded。
+      </p>
 
       <el-empty v-if="!canRead" description="无款式利润查看权限" data-testid="style-profit-no-permission" />
       <template v-else>
@@ -270,30 +256,26 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchStyleProfitSnapshots,
-  writeStyleProfitSnapshot,
   type StyleProfitSnapshotListItem,
-  type StyleProfitSnapshotWritePayload,
 } from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
 
+const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const loading = ref<boolean>(false)
-const archiveBusy = ref<boolean>(false)
 const rows = ref<StyleProfitSnapshotListItem[]>([])
 const total = ref<number>(0)
 const errorMessage = ref<string>('')
 const archiveFeedback = ref<string>('')
-const archiveFeedbackType = ref<'success' | 'warning'>('success')
-const latestArchiveSnapshotId = ref<number>(0)
-const latestArchiveSnapshotNo = ref<string>('')
 const weekColumns = ['日', '一', '二', '三', '四', '五', '六']
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
+const parityHint = computed<string>(() => String(route.query.parity || 'style-profit'))
 
 const query = reactive({
   company: '',
@@ -375,99 +357,12 @@ const resetQuery = (): void => {
   query.page_size = 20
   errorMessage.value = ''
   archiveFeedback.value = ''
-  latestArchiveSnapshotId.value = 0
-  latestArchiveSnapshotNo.value = ''
   resetRows()
 }
 
 const guardedAction = (action: string): void => {
-  ElMessage.info(`${action}仅保留展示入口，当前为本地只读验证模式`)
-}
-
-const buildDateTag = (): string => {
-  const now = new Date()
-  const yyyy = String(now.getFullYear())
-  const mm = String(now.getMonth() + 1).padStart(2, '0')
-  const dd = String(now.getDate()).padStart(2, '0')
-  return `${yyyy}${mm}${dd}`
-}
-
-const buildScenarioTag = (): string => {
-  const sequence = String(Date.now() % 1000).padStart(3, '0')
-  return `Z003-STYLE-PROFIT-${buildDateTag()}-${sequence}`
-}
-
-const runArchiveAction = async (): Promise<void> => {
-  if (!canRead.value || loading.value || archiveBusy.value) {
-    return
-  }
-  if (!hasRequiredScope()) {
-    archiveFeedbackType.value = 'warning'
-    archiveFeedback.value = '请先输入加工厂与款号/款名'
-    ElMessage.warning(archiveFeedback.value)
-    return
-  }
-  if (!query.sales_order.trim()) {
-    archiveFeedbackType.value = 'warning'
-    archiveFeedback.value = '请先输入设计号'
-    ElMessage.warning(archiveFeedback.value)
-    return
-  }
-  if (!query.from_date || !query.to_date) {
-    archiveFeedbackType.value = 'warning'
-    archiveFeedback.value = '请先选择开始与结束时间'
-    ElMessage.warning(archiveFeedback.value)
-    return
-  }
-
-  archiveBusy.value = true
-  archiveFeedback.value = ''
-  try {
-    const scenarioTag = buildScenarioTag()
-    const requestId = `RQ-${scenarioTag}`
-    const statusAction = 'snapshot_archive'
-    const company = query.company.trim()
-    const itemCode = query.item_code.trim()
-    const salesOrder = query.sales_order.trim()
-    const sourceRef = [
-      scenarioTag,
-      company,
-      itemCode,
-      salesOrder,
-      archiveParams.revenue_mode,
-      archiveParams.formula_version,
-      statusAction,
-    ].join('|')
-    const nonce = `${scenarioTag}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`
-    const payload: StyleProfitSnapshotWritePayload = {
-      company,
-      item_code: itemCode,
-      sales_order: salesOrder,
-      from_date: query.from_date,
-      to_date: query.to_date,
-      revenue_mode: archiveParams.revenue_mode,
-      formula_version: archiveParams.formula_version,
-      scenario_tag: scenarioTag,
-      source_ref: sourceRef,
-      status_action: statusAction,
-      nonce,
-    }
-
-    const result = await writeStyleProfitSnapshot(payload, { request_id: requestId })
-    latestArchiveSnapshotId.value = Number(result.data.snapshot_id || 0)
-    latestArchiveSnapshotNo.value = String(result.data.snapshot_no || '')
-    archiveFeedbackType.value = 'success'
-    archiveFeedback.value = `留档完成：${result.data.snapshot_no}`
-    ElMessage.success(archiveFeedback.value)
-    await loadRows()
-  } catch (error) {
-    const message = (error as Error).message || '留档失败'
-    archiveFeedbackType.value = 'warning'
-    archiveFeedback.value = message
-    ElMessage.error(message)
-  } finally {
-    archiveBusy.value = false
-  }
+  archiveFeedback.value = `${action}仅保留展示入口，当前为本地只读验证模式`
+  ElMessage.info(archiveFeedback.value)
 }
 
 const loadRows = async (): Promise<void> => {
@@ -509,17 +404,7 @@ const loadRows = async (): Promise<void> => {
 }
 
 const goDetail = (snapshotId: number): void => {
-  router.push({ path: '/reports/style-profit/detail', query: { id: String(snapshotId) } })
-}
-
-const openLatestArchiveDetail = (): void => {
-  if (latestArchiveSnapshotId.value <= 0) {
-    return
-  }
-  router.push({
-    path: '/reports/style-profit/detail',
-    query: { id: String(latestArchiveSnapshotId.value), from: 'archive' },
-  })
+  router.push({ path: '/reports/style-profit/detail', query: { id: String(snapshotId), parity: parityHint.value } })
 }
 
 const onPageChange = (page: number): void => {
@@ -575,6 +460,11 @@ onMounted(async () => {
   color: var(--el-text-color-secondary);
 }
 
+.parity-hint {
+  font-size: 12px;
+  color: var(--el-color-info);
+}
+
 .query-form {
   margin-bottom: 12px;
 }
@@ -591,6 +481,13 @@ onMounted(async () => {
 
 .feedback-alert {
   margin-bottom: 12px;
+}
+
+.readonly-hint {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 
 .summary-grid {

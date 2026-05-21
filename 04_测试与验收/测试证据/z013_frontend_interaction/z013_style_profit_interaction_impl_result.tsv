@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B31 source_head 与当前 HEAD 一致（e947c9b99d3dec4bd60a0268aaea4f13f57eff43）。	git rev-parse HEAD
+2	changed_files_allowlist	PASS	本任务仅修改 StyleProfitSnapshotList.vue 与 StyleProfitSnapshotDetail.vue，均在 B30 allowlist 内。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_parity_and_readonly_hint	PASS	列表与详情页 parity hint 均可见。	browser_result.parity_hint_checks
+5	readonly_filter_and_reset	PASS	筛选/重置入口可测，权限受限场景按只读锚点判定通过。	browser_result.readonly_filter_interaction_status
+6	pagination_anchor	PASS	分页锚点可测（runtime 或 source 兜底）。	browser_result.pagination_interaction_status + source checks
+7	detail_view_and_semantics	PASS	详情页只读状态、缺参/错误态语义锚点可测。	browser_result.detail_view_status + empty_state_or_error_state_semantics_status
+8	guarded_actions	PASS	留档/导出/保存等动作元数据为只读 guard，点击仅本地提示。	browser_result.guard_metadata_check
+9	typecheck	PASS	npm run typecheck PASS。	terminal output
+10	build	PASS	npm run build PASS。	terminal output
+11	browser_route_hits	PASS	目标路由命中 2/2。	browser_result.route_checks
+12	browser_get_only	PASS	request_methods=["GET"], write/unexpected_write/forbidden 全为 0。	browser_result request stats
+13	blocking_metrics	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0。	browser_result blocking stats
+14	screenshot_and_text_hygiene	PASS	screenshot_count=4，截图目录存在，文本卫生通过。	filesystem checks + git diff --check

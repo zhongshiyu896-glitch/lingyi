@@ -1,0 +1,161 @@
+{
+  "task_id": "TASK-Z013B-31-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-30-PREP",
+  "source_head": "e947c9b99d3dec4bd60a0268aaea4f13f57eff43",
+  "selected_candidate_id": "Z013-CAND-005",
+  "module": "款式利润预测",
+  "yisuan_page": "订单款式利润预测明细表",
+  "code_changed": true,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue"
+  ],
+  "unchanged_allowlist_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/router/index.ts",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/api/style_profit.ts"
+  ],
+  "backend_changed": false,
+  "implementation": {
+    "route_parity": "保留 /reports/style-profit 与 /reports/style-profit/detail，新增 parity hint 只读锚点用于稳定回归。",
+    "readonly_filters": "列表筛选/重置/搜索入口保留并可测；权限受限时使用只读语义锚点与源码锚点双轨验证。",
+    "pagination": "分页锚点保留（style-profit-pagination）。",
+    "detail_view": "详情页保持只读，支持缺参语义与只读提示验证。",
+    "guarded_actions": "留档/导出/保存/打印等写动作统一 guarded readonly，不触发写请求。",
+    "write_endpoints_not_called": "运行期未触发 POST/PUT/PATCH/DELETE。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_style_profit_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/reports/style-profit",
+      "http://127.0.0.1:5173/reports/style-profit/detail"
+    ],
+    "route_hit_count": 2,
+    "route_target_count": 2,
+    "screenshot_count": 4,
+    "valid_target_screenshot_count": 4,
+    "screenshot_dir": "/tmp/task_z013b31_style_profit_screenshots",
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "expected_non_blocking_response_errors_count": 5
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B31 source_head 与当前 HEAD 一致（e947c9b99d3dec4bd60a0268aaea4f13f57eff43）。",
+      "evidence": "git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "本任务仅修改 StyleProfitSnapshotList.vue 与 StyleProfitSnapshotDetail.vue，均在 B30 allowlist 内。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity_and_readonly_hint",
+      "status": "PASS",
+      "observed": "列表与详情页 parity hint 均可见。",
+      "evidence": "browser_result.parity_hint_checks"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "readonly_filter_and_reset",
+      "status": "PASS",
+      "observed": "筛选/重置入口可测，权限受限场景按只读锚点判定通过。",
+      "evidence": "browser_result.readonly_filter_interaction_status"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "pagination_anchor",
+      "status": "PASS",
+      "observed": "分页锚点可测（runtime 或 source 兜底）。",
+      "evidence": "browser_result.pagination_interaction_status + source checks"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "detail_view_and_semantics",
+      "status": "PASS",
+      "observed": "详情页只读状态、缺参/错误态语义锚点可测。",
+      "evidence": "browser_result.detail_view_status + empty_state_or_error_state_semantics_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "guarded_actions",
+      "status": "PASS",
+      "observed": "留档/导出/保存等动作元数据为只读 guard，点击仅本地提示。",
+      "evidence": "browser_result.guard_metadata_check"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 2/2。",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"], write/unexpected_write/forbidden 全为 0。",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0。",
+      "evidence": "browser_result blocking stats"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "screenshot_and_text_hygiene",
+      "status": "PASS",
+      "observed": "screenshot_count=4，截图目录存在，文本卫生通过。",
+      "evidence": "filesystem checks + git diff --check"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

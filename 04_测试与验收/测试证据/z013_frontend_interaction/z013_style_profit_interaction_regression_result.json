@@ -1,0 +1,140 @@
+{
+  "task_id": "TASK-Z013B-32-REGRESSION",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-31-IMPL",
+  "source_head": "e947c9b99d3dec4bd60a0268aaea4f13f57eff43",
+  "selected_candidate_id": "Z013-CAND-005",
+  "module": "款式利润预测",
+  "code_changed": false,
+  "b31_impl_result_check_count": 14,
+  "b31_impl_result_pass_count": 14,
+  "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_style_profit_interaction_regression_browser_result.json",
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "route_hit_count": 2,
+    "route_target_count": 2,
+    "screenshot_count": 4,
+    "screenshot_dir": "/tmp/task_z013b32_style_profit_regression_screenshots",
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "expected_non_blocking_response_errors_count": 5
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "b31_impl_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B31 impl JSON/TSV 仍为 14/14 PASS。",
+      "evidence": "z013_style_profit_interaction_impl_result.json + .tsv"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "code_changed_no",
+      "status": "PASS",
+      "observed": "本任务未修改产品代码，当前产品 diff 仍为 B31 两个 style_profit 文件。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 2/2。",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "parity_hint",
+      "status": "PASS",
+      "observed": "列表页与详情页 parity hint 均可测。",
+      "evidence": "browser_result.parity_hint_checks"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "readonly_filter_reset",
+      "status": "PASS",
+      "observed": "筛选/重置入口复核通过。",
+      "evidence": "browser_result.readonly_filter_interaction_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "empty_or_error_semantics",
+      "status": "PASS",
+      "observed": "列表/详情空态、错误态、缺参态语义锚点复核通过。",
+      "evidence": "browser_result.empty_state_or_error_state_semantics_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "guarded_readonly_actions",
+      "status": "PASS",
+      "observed": "留档/清空/确定/导出/保存/取消等入口为 guarded readonly，未触发写请求。",
+      "evidence": "browser_result.guard_metadata_check"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"]，write/unexpected_write/forbidden 均为 0。",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "blocking_metrics",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。",
+      "evidence": "browser_result blocking stats"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "screenshots",
+      "status": "PASS",
+      "observed": "截图目录存在，截图 4 张全部存在。",
+      "evidence": "/tmp/task_z013b32_style_profit_regression_screenshots"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "text_and_diff_checks",
+      "status": "PASS",
+      "observed": "git diff check 与文本卫生通过，暂存区为空。",
+      "evidence": "git diff --cached --check + git diff --check + hygiene scan"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

@@ -3,7 +3,10 @@
     <el-card shadow="never" v-loading="loading" data-testid="style-profit-detail-main-card">
       <template #header>
         <div class="header-row" data-testid="style-profit-detail-header">
-          <span data-testid="style-profit-detail-title">大货管理 / 订单款式利润预测明细表</span>
+          <div class="title-group">
+            <span data-testid="style-profit-detail-title">大货管理 / 订单款式利润预测明细表</span>
+            <span class="parity-hint" data-testid="style-profit-detail-parity-hint">parity: {{ parityHint }}</span>
+          </div>
           <el-button data-testid="style-profit-detail-back" @click="goBack">返回列表</el-button>
         </div>
       </template>
@@ -231,6 +234,7 @@ const loadError = ref<string>('')
 const guardedFeedback = ref<string>('')
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
+const parityHint = computed<string>(() => String(route.query.parity || 'style-profit'))
 const snapshotId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidSnapshotId = computed<boolean>(() => Number.isInteger(snapshotId.value) && snapshotId.value > 0)
 const fromArchiveEntry = computed<boolean>(() => String(route.query.from || '').trim() === 'archive')
@@ -341,6 +345,17 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.parity-hint {
+  font-size: 12px;
+  color: var(--el-color-info);
 }
 
 .warn-alert {

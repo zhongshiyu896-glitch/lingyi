@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	b31_impl_json_tsv_alignment	PASS	B31 impl JSON/TSV 仍为 14/14 PASS。	z013_style_profit_interaction_impl_result.json + .tsv
+2	code_changed_no	PASS	本任务未修改产品代码，当前产品 diff 仍为 B31 两个 style_profit 文件。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_hits	PASS	目标路由命中 2/2。	browser_result.route_checks
+5	parity_hint	PASS	列表页与详情页 parity hint 均可测。	browser_result.parity_hint_checks
+6	readonly_filter_reset	PASS	筛选/重置入口复核通过。	browser_result.readonly_filter_interaction_status
+7	empty_or_error_semantics	PASS	列表/详情空态、错误态、缺参态语义锚点复核通过。	browser_result.empty_state_or_error_state_semantics_status
+8	guarded_readonly_actions	PASS	留档/清空/确定/导出/保存/取消等入口为 guarded readonly，未触发写请求。	browser_result.guard_metadata_check
+9	typecheck	PASS	npm run typecheck PASS。	terminal output
+10	build	PASS	npm run build PASS。	terminal output
+11	browser_get_only	PASS	request_methods=["GET"]，write/unexpected_write/forbidden 均为 0。	browser_result request stats
+12	blocking_metrics	PASS	blocking_console_error_count=0，blocking_response_error_count=0，network_error_count=0。	browser_result blocking stats
+13	screenshots	PASS	截图目录存在，截图 4 张全部存在。	/tmp/task_z013b32_style_profit_regression_screenshots
+14	text_and_diff_checks	PASS	git diff check 与文本卫生通过，暂存区为空。	git diff --cached --check + git diff --check + hygiene scan

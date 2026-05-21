@@ -1,0 +1,100 @@
+{
+  "task_id": "TASK-Z013B-31-IMPL",
+  "selected_candidate_id": "Z013-CAND-005",
+  "target_urls": [
+    "http://127.0.0.1:5173/reports/style-profit",
+    "http://127.0.0.1:5173/reports/style-profit/detail"
+  ],
+  "route_checks": [
+    {
+      "target": "http://127.0.0.1:5173/reports/style-profit",
+      "final_url": "http://127.0.0.1:5173/reports/style-profit",
+      "hit": true
+    },
+    {
+      "target": "http://127.0.0.1:5173/reports/style-profit/detail",
+      "final_url": "http://127.0.0.1:5173/reports/style-profit/detail",
+      "hit": true
+    }
+  ],
+  "route_hit_count": 2,
+  "route_target_count": 2,
+  "screenshot_dir": "/tmp/task_z013b31_style_profit_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z013b31_style_profit_screenshots/b31-route-01.png",
+    "/tmp/task_z013b31_style_profit_screenshots/b31-route-02.png",
+    "/tmp/task_z013b31_style_profit_screenshots/b31-guard-meta.png",
+    "/tmp/task_z013b31_style_profit_screenshots/b31-detail-readonly.png"
+  ],
+  "screenshot_count": 4,
+  "valid_target_screenshot_count": 4,
+  "parity_hint_checks": {
+    "list": true,
+    "detail": true
+  },
+  "readonly_filter_interaction_status": "PASS",
+  "pagination_interaction_status": "PASS",
+  "detail_view_status": "PASS",
+  "empty_state_or_error_state_semantics_status": "PASS",
+  "guard_metadata_check": {
+    "runtime": {
+      "list_archive": {
+        "data_write_guard": "readonly:style-profit-archive",
+        "data_guard_state": "guarded_readonly"
+      },
+      "list_export": {
+        "data_write_guard": "readonly:style-profit-export"
+      },
+      "detail_export": {
+        "data_write_guard": null
+      }
+    },
+    "source": {
+      "list_pagination_testid": true,
+      "detail_page_testid": true,
+      "detail_permission_or_disabled_state": true,
+      "detail_missing_or_error_state": true,
+      "list_archive_guard": true,
+      "list_export_guard": true,
+      "detail_export_guard": true
+    },
+    "status": "PASS"
+  },
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_endpoint_called": false,
+  "expected_non_blocking_response_errors": [
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me"
+  ],
+  "response_errors": [
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me"
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "network_errors": [],
+  "notes": [
+    "500 /api/auth/me 在本地环境按 non-blocking 记录，不外推为生产 readback 闭合",
+    "写动作按钮均为只读 guard 元数据，点击仅本地提示"
+  ],
+  "generated_at": "2026-05-21T11:27:52.464Z"
+}
