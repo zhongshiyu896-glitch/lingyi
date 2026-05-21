@@ -1,0 +1,167 @@
+{
+  "task_id": "TASK-Z013B-17-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-16-PREP",
+  "source_head": "82725726c8d8fddbd3ea10c8c8445a425eab4f4a",
+  "selected_candidate_id": "Z013-CAND-003",
+  "module": "车间工票与日薪统计",
+  "yisuan_page": "工票登记 / 批量导入 / 日薪统计 / 工价档案",
+  "code_changed": true,
+  "changed_files": [
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue"
+  ],
+  "changed_product_files_count": 3,
+  "backend_changed": false,
+  "implementation": {
+    "route_parity": "保留 /workshop/tickets、/workshop/daily-wages、/workshop/wage-rates，并新增稳定只读 parity hint。",
+    "readonly_filters": "三页筛选/查询/重置锚点稳定；工票、日薪、工价查询保持 GET-only。",
+    "pagination": "三页分页锚点（data-testid）稳定可测。",
+    "detail_view": "工票汇总入口可测；无数据时回落源码锚点验证。",
+    "guarded_actions": "工票登记、批量导入、重试同步、导出/生成/同步、新增工价、停用工价全部只读 guard。",
+    "write_endpoints_not_called": "运行期未触发 POST/PUT/PATCH/DELETE。"
+  },
+  "runtime_evidence": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_workshop_ticket_wage_interaction_browser_result.json",
+    "target_urls": [
+      "http://127.0.0.1:5173/workshop/tickets",
+      "http://127.0.0.1:5173/workshop/daily-wages",
+      "http://127.0.0.1:5173/workshop/wage-rates"
+    ],
+    "route_hit_count": 3,
+    "route_target_count": 3,
+    "screenshot_count": 3,
+    "valid_target_screenshot_count": 3,
+    "screenshot_dir": "/tmp/task_z013b17_workshop_ticket_wage_screenshots",
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "workshop_ticket_parity_hint_status": "PASS",
+    "workshop_daily_wage_parity_hint_status": "PASS",
+    "workshop_wage_rates_parity_hint_status": "PASS",
+    "readonly_filter_interaction_status": "PASS",
+    "pagination_interaction_status": "PASS",
+    "detail_view_status": "PASS",
+    "guarded_actions_status": "PASS",
+    "export_endpoint_called": false,
+    "expected_non_blocking_response_errors_count": 6
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "source_head_match",
+      "status": "PASS",
+      "observed": "B17 source_head 与 B16 冻结头一致（82725726c8d8fddbd3ea10c8c8445a425eab4f4a）。",
+      "evidence": "task_z013b_16_workshop_ticket_wage_interaction_boundary.json + git rev-parse HEAD"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "changed_files_allowlist",
+      "status": "PASS",
+      "observed": "06_前端差异仅 WorkshopTicketList.vue、WorkshopDailyWage.vue、OperationWageRate.vue，位于 B16 allowlist。",
+      "evidence": "git diff --name-only -- 06_前端"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "backend_diff_empty",
+      "status": "PASS",
+      "observed": "07_后端无差异。",
+      "evidence": "git diff --name-only -- 07_后端"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "route_parity_and_hint",
+      "status": "PASS",
+      "observed": "workshop 三页均存在只读 parity hint，路由命中 3/3。",
+      "evidence": "browser_result route_checks + parity_hint statuses"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "readonly_filter_interaction",
+      "status": "PASS",
+      "observed": "工票/日薪/工价三页筛选、查询、重置锚点稳定可测。",
+      "evidence": "browser_result.readonly_filter_interaction_status"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "pagination_interaction",
+      "status": "PASS",
+      "observed": "三页分页锚点存在且可测。",
+      "evidence": "browser_result.pagination_interaction_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "detail_view_or_summary",
+      "status": "PASS",
+      "observed": "工票汇总入口可测（无数据时回落源码锚点验证）。",
+      "evidence": "browser_result.detail_view_status + notes"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "guarded_actions",
+      "status": "PASS",
+      "observed": "工票登记、批量导入、重试同步、导出/生成/同步、新增/停用均为只读 guard。",
+      "evidence": "three workshop views + browser_result.guarded_actions_status"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "typecheck",
+      "status": "PASS",
+      "observed": "npm run typecheck PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "build",
+      "status": "PASS",
+      "observed": "npm run build PASS。",
+      "evidence": "terminal output"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "browser_route_hits",
+      "status": "PASS",
+      "observed": "目标路由命中 3/3。",
+      "evidence": "z013_workshop_ticket_wage_interaction_browser_result.json route_checks"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "blocking_metrics_and_export",
+      "status": "PASS",
+      "observed": "blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0, export_endpoint_called=false。",
+      "evidence": "browser_result metrics"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "text_hygiene_and_screenshots",
+      "status": "PASS",
+      "observed": "screenshot_count=3, screenshot_dir=/tmp/task_z013b17_workshop_ticket_wage_screenshots，文本卫生通过。",
+      "evidence": "filesystem exists checks + git diff --check"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

@@ -18,6 +18,9 @@
               data-testid="wage-rates-create-action"
               type="primary"
               :disabled="!canManage"
+              data-action-type="write"
+              data-write-guard="readonly:wage-rate-create"
+              data-guard-state="guarded_readonly"
               @click="openCreateDialog"
             >
               新增工价
@@ -97,6 +100,15 @@
         </el-form-item>
       </el-form>
 
+      <el-alert
+        style="margin-bottom: 12px"
+        type="info"
+        :closable="false"
+        show-icon
+        title="当前页面为只读验证模式（parity=workshop-ticket-wage）"
+        data-testid="wage-rates-parity-hint"
+      />
+
       <el-empty v-if="!canRead" data-testid="wage-rates-permission-state" description="无工价查看权限" />
       <template v-else>
         <el-alert
@@ -147,6 +159,9 @@
             <template #default="scope">
               <el-button
                 data-testid="wage-rates-deactivate-action"
+                data-action-type="write"
+                data-write-guard="readonly:wage-rate-deactivate"
+                data-guard-state="guarded_readonly"
                 link
                 type="danger"
                 :disabled="!canManage || scope.row.status !== 'active' || (scope.row.is_global && !canManageAll)"
@@ -260,12 +275,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import {
-  createWorkshopWageRate,
-  deactivateWorkshopWageRate,
   fetchWorkshopWageRates,
-  type WorkshopWageRateDeactivatePayload,
   type WorkshopWageRateRow,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
@@ -273,8 +285,6 @@ import { usePermissionStore } from '@/stores/permission'
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const defaultPageSize = 20
-const WRITE_EVENT_STORAGE_KEY = 'ly_workshop_wage_last_write_v1'
-const REQUEST_ID_REGEX = /^[A-Za-z0-9_.-]{1,64}$/
 const loading = ref<boolean>(false)
 const rows = ref<WorkshopWageRateRow[]>([])
 const total = ref<number>(0)
@@ -308,52 +318,8 @@ const canManageAll = computed<boolean>(() => permissionStore.state.buttonPermiss
 
 const normalizeText = (value: string): string => value.trim()
 
-const normalizeDateCode = (value: string): string => value.replace(/-/g, '')
-
-const hash4 = (value: string): string => {
-  let hash = 2166136261
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i)
-    hash = Math.imul(hash, 16777619) >>> 0
-  }
-  return hash.toString(16).toUpperCase().padStart(8, '0').slice(-4)
-}
-
-const scenarioDate = (): string => {
-  const now = new Date()
-  const y = now.getFullYear().toString()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  return `${y}${m}${d}`
-}
-
-const buildScenarioTag = (): string => {
-  const seq = String(Math.floor(Math.random() * 900) + 100)
-  return `Z002-WORKSHOP-WAGE-${scenarioDate()}-${seq}`
-}
-
-const buildRequestId = (
-  scenarioTag: string,
-  company: string,
-  processName: string,
-  itemScope: string,
-  effectiveFrom: string,
-): string => {
-  const requestId = `${scenarioTag}-RW-C${hash4(company)}-P${hash4(processName)}-I${hash4(itemScope)}-D${normalizeDateCode(effectiveFrom)}`
-  if (!REQUEST_ID_REGEX.test(requestId)) {
-    throw new Error('request_id 生成失败：格式不合法')
-  }
-  return requestId
-}
-
-const saveLastWriteEvent = (payload: Record<string, unknown>): void => {
-  localStorage.setItem(
-    WRITE_EVENT_STORAGE_KEY,
-    JSON.stringify({
-      ...payload,
-      updated_at: new Date().toISOString(),
-    }),
-  )
+const guardedWriteAction = (label: string): void => {
+  ElMessage.warning(`${label} 仅可在授权流程中执行，当前为只读模式`)
 }
 
 const buildWageRateQuery = (): {
@@ -437,145 +403,15 @@ const openCreateDialog = (): void => {
     ElMessage.warning('无工价维护权限')
     return
   }
-  createDialogVisible.value = true
+  guardedWriteAction('新增工价')
 }
 
 const submitCreate = async (): Promise<void> => {
-  if (!canManage.value) {
-    ElMessage.warning('无工价维护权限')
-    return
-  }
-  const company = normalizeText(createForm.company)
-  const processName = normalizeText(createForm.process_name)
-  const itemCode = normalizeText(createForm.item_code)
-  const wageRate = Number(createForm.wage_rate)
-  const effectiveFrom = normalizeText(createForm.effective_from)
-  const effectiveTo = normalizeText(createForm.effective_to)
-
-  if (!company) {
-    ElMessage.warning('company 不能为空')
-    return
-  }
-  if (!processName) {
-    ElMessage.warning('process_name 不能为空')
-    return
-  }
-  if (!Number.isFinite(wageRate) || wageRate < 0) {
-    ElMessage.warning('wage_rate 必须为非负数')
-    return
-  }
-  if (!effectiveFrom) {
-    ElMessage.warning('effective_from 不能为空')
-    return
-  }
-
-  const scenarioTag = buildScenarioTag()
-  const itemScope = itemCode || 'GLOBAL'
-  const requestId = buildRequestId(scenarioTag, company, processName, itemScope, effectiveFrom)
-  const idempotencyKey = `IDM-${scenarioTag}-CREATE-${Date.now().toString(36).toUpperCase()}`
-  const sourceRef = `SRC-${scenarioTag}-CREATE`
-
-  createSubmitting.value = true
-  try {
-    const result = await createWorkshopWageRate(
-      {
-        item_code: itemCode || undefined,
-        company,
-        process_name: processName,
-        wage_rate: wageRate,
-        effective_from: effectiveFrom,
-        effective_to: effectiveTo || undefined,
-        scenario_tag: scenarioTag,
-        idempotency_key: idempotencyKey,
-        source_ref: sourceRef,
-      },
-      { requestId },
-    )
-    saveLastWriteEvent({
-      action: 'create',
-      scenario_tag: scenarioTag,
-      request_id: requestId,
-      company,
-      process_name: processName,
-      item_scope: itemScope,
-      wage_rate: wageRate,
-      effective_from: effectiveFrom,
-      effective_to: effectiveTo || null,
-      rate_id: result.data.id,
-    })
-    ElMessage.success(`新增成功，ID=${result.data.id}`)
-    createDialogVisible.value = false
-    createForm.item_code = ''
-    createForm.process_name = ''
-    createForm.wage_rate = ''
-    createForm.effective_from = ''
-    createForm.effective_to = ''
-    await loadRows()
-  } catch (error) {
-    ElMessage.error((error as Error).message || '新增工价失败')
-  } finally {
-    createSubmitting.value = false
-  }
+  guardedWriteAction('新增工价')
 }
 
 const onDeactivate = async (row: WorkshopWageRateRow): Promise<void> => {
-  if (!canManage.value || row.status !== 'active' || (row.is_global && !canManageAll.value)) {
-    ElMessage.warning('当前记录不可停用或无权限')
-    return
-  }
-  try {
-    const reasonInput = await ElMessageBox.prompt('请输入停用原因（将自动携带 scenario_tag）', '停用工价', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      inputPattern: /\S+/,
-      inputErrorMessage: '停用原因不能为空',
-    })
-    const scenarioTag = buildScenarioTag()
-    const company = normalizeText(row.company || 'GLOBAL')
-    const processName = normalizeText(row.process_name)
-    const itemScope = normalizeText(row.item_code || 'GLOBAL')
-    const effectiveFrom = normalizeText(row.effective_from)
-    const requestId = buildRequestId(scenarioTag, company, processName, itemScope, effectiveFrom)
-    const idempotencyKey = `IDM-${scenarioTag}-DEACT-${row.id}`
-    const sourceRef = `SRC-${scenarioTag}-DEACT-${row.id}`
-    const reason = `${normalizeText(reasonInput.value)}|${scenarioTag}`
-    const payload: WorkshopWageRateDeactivatePayload = {
-      reason,
-      scenario_tag: scenarioTag,
-      idempotency_key: idempotencyKey,
-      source_ref: sourceRef,
-      company: row.company || undefined,
-      process_name: row.process_name,
-      item_code: row.item_code || undefined,
-      wage_rate: Number(row.wage_rate),
-      effective_from: row.effective_from,
-      effective_to: row.effective_to || undefined,
-      rate_id: row.id,
-    }
-    const result = await deactivateWorkshopWageRate(row.id, payload, { requestId })
-    saveLastWriteEvent({
-      action: 'deactivate',
-      scenario_tag: scenarioTag,
-      request_id: requestId,
-      company: row.company || 'GLOBAL',
-      process_name: row.process_name,
-      item_scope: row.item_code || 'GLOBAL',
-      wage_rate: row.wage_rate,
-      effective_from: row.effective_from,
-      effective_to: row.effective_to || null,
-      rate_id: row.id,
-      reason,
-      status: result.data.status,
-    })
-    ElMessage.success(`停用成功，ID=${row.id}`)
-    await loadRows()
-  } catch (error) {
-    if (error === 'cancel' || error === 'close') {
-      return
-    }
-    const typed = error as { message?: string }
-    ElMessage.error(typed.message || '停用工价失败')
-  }
+  guardedWriteAction(`停用工价（ID=${row.id}）`)
 }
 
 const onPageChange = (page: number): void => {

@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	b17_result_json_tsv_alignment	PASS	B17 对齐=true，check=14，pass=14，tsv_rows=14	z013_workshop_ticket_wage_interaction_impl_result.json/tsv
+2	browser_result_json_parse	PASS	B18 browser result JSON 可解析。	z013_workshop_ticket_wage_interaction_regression_browser_result.json
+3	route_hit_count	PASS	route_hit_count=3/3	browser_result.route_checks
+4	guard_metadata_register	PASS	register guard source: write_guard=true, guard_state=true	WorkshopTicketList.vue source regex + runtime/source fallback
+5	guard_metadata_batch	PASS	batch guard source: write_guard=true, guard_state=true	WorkshopTicketList.vue source regex + runtime/source fallback
+6	readonly_filter_interaction	PASS	readonly_filter_interaction_status=PASS	browser_result.readonly_filter_interaction_status
+7	pagination_interaction	PASS	pagination_interaction_status=PASS	browser_result.pagination_interaction_status
+8	summary_or_dialog	PASS	summary_or_dialog_status=PASS	browser_result.summary_or_dialog_status
+9	daily_wage_readonly_query	PASS	daily_wage_readonly_query_status=PASS	browser_result.daily_wage_readonly_query_status
+10	wage_rate_readonly_query	PASS	wage_rate_readonly_query_status=PASS	browser_result.wage_rate_readonly_query_status
+11	guarded_actions	PASS	guarded_actions_status=PASS	browser_result.guarded_actions_status
+12	browser_get_only	PASS	request_methods=["GET"], write=0, unexpected_write=0, forbidden=0	browser_result request stats
+13	blocking_metrics	PASS	console=0, response=0, network=0	browser_result blocking stats
+14	screenshot_paths	PASS	screenshot_count=4, dir=/tmp/task_z013b18_workshop_ticket_wage_regression_screenshots	filesystem exists checks

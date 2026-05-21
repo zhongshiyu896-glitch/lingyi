@@ -9,9 +9,9 @@
               v-if="canRegister"
               type="primary"
               data-action-type="write"
-              data-write-guard="allowed:workshop-ticket-register-local-only-entry"
+              data-write-guard="readonly:workshop-ticket-register"
               data-write-allowlist="workshop-ticket-register"
-              data-guard-state="allowlist-local-dev"
+              data-guard-state="guarded_readonly"
               @click="goRegister"
             >
               工票登记
@@ -19,9 +19,9 @@
             <el-button
               v-if="canBatch"
               data-action-type="write"
-              data-write-guard="allowed:workshop-ticket-batch-local-only-entry"
+              data-write-guard="readonly:workshop-ticket-batch"
               data-write-allowlist="workshop-ticket-batch"
-              data-guard-state="allowlist-local-dev"
+              data-guard-state="guarded_readonly"
               @click="goBatch"
             >
               批量导入
@@ -98,6 +98,15 @@
           </div>
         </el-form-item>
       </el-form>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="当前页面为只读验证模式（parity=workshop-ticket-wage）"
+        class="parity-hint"
+        data-testid="workshop-ticket-parity-hint"
+      />
 
       <el-empty v-if="!canRead" description="无工票查看权限" data-testid="workshop-ticket-no-permission" />
       <template v-else>
@@ -320,10 +329,10 @@ const onSizeChange = (size: number): void => {
 }
 
 const goRegister = (): void => {
-  void router.push('/workshop/tickets/register')
+  guardedWriteAction('工票登记')
 }
 const goBatch = (): void => {
-  void router.push('/workshop/tickets/batch')
+  guardedWriteAction('批量导入')
 }
 const goDailyWage = (): void => {
   void router.push('/workshop/daily-wages')
@@ -367,6 +376,10 @@ onMounted(async () => {
 }
 
 .error-state {
+  margin-bottom: 12px;
+}
+
+.parity-hint {
   margin-bottom: 12px;
 }
 

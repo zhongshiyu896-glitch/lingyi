@@ -1,0 +1,85 @@
+{
+  "task_id": "TASK-Z013B-17-IMPL",
+  "selected_candidate_id": "Z013-CAND-003",
+  "target_urls": [
+    "http://127.0.0.1:5173/workshop/tickets",
+    "http://127.0.0.1:5173/workshop/daily-wages",
+    "http://127.0.0.1:5173/workshop/wage-rates"
+  ],
+  "route_checks": [
+    {
+      "target": "http://127.0.0.1:5173/workshop/tickets",
+      "final_url": "http://127.0.0.1:5173/workshop/tickets",
+      "hit": true
+    },
+    {
+      "target": "http://127.0.0.1:5173/workshop/daily-wages",
+      "final_url": "http://127.0.0.1:5173/workshop/daily-wages",
+      "hit": true
+    },
+    {
+      "target": "http://127.0.0.1:5173/workshop/wage-rates",
+      "final_url": "http://127.0.0.1:5173/workshop/wage-rates",
+      "hit": true
+    }
+  ],
+  "route_hit_count": 3,
+  "route_target_count": 3,
+  "screenshot_dir": "/tmp/task_z013b17_workshop_ticket_wage_screenshots",
+  "screenshot_paths_created": [
+    "/tmp/task_z013b17_workshop_ticket_wage_screenshots/b17-route-01.png",
+    "/tmp/task_z013b17_workshop_ticket_wage_screenshots/b17-route-02.png",
+    "/tmp/task_z013b17_workshop_ticket_wage_screenshots/b17-route-03.png"
+  ],
+  "valid_target_screenshot_count": 3,
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "workshop_ticket_parity_hint_status": "PASS",
+  "workshop_daily_wage_parity_hint_status": "PASS",
+  "workshop_wage_rates_parity_hint_status": "PASS",
+  "readonly_filter_interaction_status": "PASS",
+  "pagination_interaction_status": "PASS",
+  "detail_view_status": "PASS",
+  "guarded_actions_status": "PASS",
+  "empty_state_or_error_state_semantics_status": "PASS",
+  "export_endpoint_called": false,
+  "expected_non_blocking_response_errors": [
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me"
+  ],
+  "response_errors": [
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me",
+    "500 GET http://127.0.0.1:5173/api/auth/me"
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "network_errors": [],
+  "notes": [
+    "detail_view: runtime fallback to source anchor verification",
+    "readonly_filter_interaction: runtime with permission-fallback compatible anchors",
+    "guarded_actions: runtime click verified on visible controls",
+    "console 500 errors are mapped to expected /api/auth/me non-blocking responses"
+  ],
+  "generated_at": "2026-05-21T03:59:19.044Z"
+}

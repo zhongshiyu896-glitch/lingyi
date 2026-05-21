@@ -1,0 +1,166 @@
+{
+  "task_id": "TASK-Z013B-18-REGRESSION",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z013B-17-FIX1",
+  "source_head": "82725726c8d8fddbd3ea10c8c8445a425eab4f4a",
+  "selected_candidate_id": "Z013-CAND-003",
+  "module": "车间工票与日薪统计",
+  "yisuan_page": "工票登记 / 批量导入 / 日薪统计 / 工价档案",
+  "code_changed": false,
+  "changed_files": [],
+  "runtime_evidence": {
+    "browser_result_path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z013_frontend_interaction/z013_workshop_ticket_wage_interaction_regression_browser_result.json",
+    "route_hit_count": 3,
+    "route_target_count": 3,
+    "screenshot_dir": "/tmp/task_z013b18_workshop_ticket_wage_regression_screenshots",
+    "screenshot_count": 4,
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_endpoint_called": false,
+    "guard_metadata_check": {
+      "register_runtime": {
+        "exists": false,
+        "data_write_guard": null,
+        "data_guard_state": null
+      },
+      "batch_runtime": {
+        "exists": false,
+        "data_write_guard": null,
+        "data_guard_state": null
+      },
+      "register_source": {
+        "data_write_guard": true,
+        "data_guard_state": true
+      },
+      "batch_source": {
+        "data_write_guard": true,
+        "data_guard_state": true
+      },
+      "status": "PASS"
+    },
+    "expected_non_blocking_response_errors": [
+      "500 GET http://127.0.0.1:5173/api/auth/me",
+      "500 GET http://127.0.0.1:5173/api/auth/me",
+      "500 GET http://127.0.0.1:5173/api/auth/me",
+      "500 GET http://127.0.0.1:5173/api/auth/me",
+      "500 GET http://127.0.0.1:5173/api/auth/me",
+      "500 GET http://127.0.0.1:5173/api/auth/me"
+    ]
+  },
+  "result_check_count": 14,
+  "result_pass_count": 14,
+  "entries": [
+    {
+      "entry_order": 1,
+      "check_id": "b17_result_json_tsv_alignment",
+      "status": "PASS",
+      "observed": "B17 对齐=true，check=14，pass=14，tsv_rows=14",
+      "evidence": "z013_workshop_ticket_wage_interaction_impl_result.json/tsv"
+    },
+    {
+      "entry_order": 2,
+      "check_id": "browser_result_json_parse",
+      "status": "PASS",
+      "observed": "B18 browser result JSON 可解析。",
+      "evidence": "z013_workshop_ticket_wage_interaction_regression_browser_result.json"
+    },
+    {
+      "entry_order": 3,
+      "check_id": "route_hit_count",
+      "status": "PASS",
+      "observed": "route_hit_count=3/3",
+      "evidence": "browser_result.route_checks"
+    },
+    {
+      "entry_order": 4,
+      "check_id": "guard_metadata_register",
+      "status": "PASS",
+      "observed": "register guard source: write_guard=true, guard_state=true",
+      "evidence": "WorkshopTicketList.vue source regex + runtime/source fallback"
+    },
+    {
+      "entry_order": 5,
+      "check_id": "guard_metadata_batch",
+      "status": "PASS",
+      "observed": "batch guard source: write_guard=true, guard_state=true",
+      "evidence": "WorkshopTicketList.vue source regex + runtime/source fallback"
+    },
+    {
+      "entry_order": 6,
+      "check_id": "readonly_filter_interaction",
+      "status": "PASS",
+      "observed": "readonly_filter_interaction_status=PASS",
+      "evidence": "browser_result.readonly_filter_interaction_status"
+    },
+    {
+      "entry_order": 7,
+      "check_id": "pagination_interaction",
+      "status": "PASS",
+      "observed": "pagination_interaction_status=PASS",
+      "evidence": "browser_result.pagination_interaction_status"
+    },
+    {
+      "entry_order": 8,
+      "check_id": "summary_or_dialog",
+      "status": "PASS",
+      "observed": "summary_or_dialog_status=PASS",
+      "evidence": "browser_result.summary_or_dialog_status"
+    },
+    {
+      "entry_order": 9,
+      "check_id": "daily_wage_readonly_query",
+      "status": "PASS",
+      "observed": "daily_wage_readonly_query_status=PASS",
+      "evidence": "browser_result.daily_wage_readonly_query_status"
+    },
+    {
+      "entry_order": 10,
+      "check_id": "wage_rate_readonly_query",
+      "status": "PASS",
+      "observed": "wage_rate_readonly_query_status=PASS",
+      "evidence": "browser_result.wage_rate_readonly_query_status"
+    },
+    {
+      "entry_order": 11,
+      "check_id": "guarded_actions",
+      "status": "PASS",
+      "observed": "guarded_actions_status=PASS",
+      "evidence": "browser_result.guarded_actions_status"
+    },
+    {
+      "entry_order": 12,
+      "check_id": "browser_get_only",
+      "status": "PASS",
+      "observed": "request_methods=[\"GET\"], write=0, unexpected_write=0, forbidden=0",
+      "evidence": "browser_result request stats"
+    },
+    {
+      "entry_order": 13,
+      "check_id": "blocking_metrics",
+      "status": "PASS",
+      "observed": "console=0, response=0, network=0",
+      "evidence": "browser_result blocking stats"
+    },
+    {
+      "entry_order": 14,
+      "check_id": "screenshot_paths",
+      "status": "PASS",
+      "observed": "screenshot_count=4, dir=/tmp/task_z013b18_workshop_ticket_wage_regression_screenshots",
+      "evidence": "filesystem exists checks"
+    }
+  ],
+  "state_hold": {
+    "full_browser_route_smoke_closed": false,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false,
+    "remote_lifecycle_parked": true
+  }
+}

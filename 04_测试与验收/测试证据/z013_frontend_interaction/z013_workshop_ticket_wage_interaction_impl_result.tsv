@@ -1,0 +1,15 @@
+entry_order	check_id	status	observed	evidence
+1	source_head_match	PASS	B17 source_head 与 B16 冻结头一致（82725726c8d8fddbd3ea10c8c8445a425eab4f4a）。	task_z013b_16_workshop_ticket_wage_interaction_boundary.json + git rev-parse HEAD
+2	changed_files_allowlist	PASS	06_前端差异仅 WorkshopTicketList.vue、WorkshopDailyWage.vue、OperationWageRate.vue，位于 B16 allowlist。	git diff --name-only -- 06_前端
+3	backend_diff_empty	PASS	07_后端无差异。	git diff --name-only -- 07_后端
+4	route_parity_and_hint	PASS	workshop 三页均存在只读 parity hint，路由命中 3/3。	browser_result route_checks + parity_hint statuses
+5	readonly_filter_interaction	PASS	工票/日薪/工价三页筛选、查询、重置锚点稳定可测。	browser_result.readonly_filter_interaction_status
+6	pagination_interaction	PASS	三页分页锚点存在且可测。	browser_result.pagination_interaction_status
+7	detail_view_or_summary	PASS	工票汇总入口可测（无数据时回落源码锚点验证）。	browser_result.detail_view_status + notes
+8	guarded_actions	PASS	工票登记、批量导入、重试同步、导出/生成/同步、新增/停用均为只读 guard。	three workshop views + browser_result.guarded_actions_status
+9	typecheck	PASS	npm run typecheck PASS。	terminal output
+10	build	PASS	npm run build PASS。	terminal output
+11	browser_route_hits	PASS	目标路由命中 3/3。	z013_workshop_ticket_wage_interaction_browser_result.json route_checks
+12	browser_get_only	PASS	request_methods=["GET"], write_request_count=0, unexpected_write_request_count=0, forbidden_request_count=0。	browser_result request stats
+13	blocking_metrics_and_export	PASS	blocking_console_error_count=0, blocking_response_error_count=0, network_error_count=0, export_endpoint_called=false。	browser_result metrics
+14	text_hygiene_and_screenshots	PASS	screenshot_count=3, screenshot_dir=/tmp/task_z013b17_workshop_ticket_wage_screenshots，文本卫生通过。	filesystem exists checks + git diff --check

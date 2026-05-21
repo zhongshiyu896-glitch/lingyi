@@ -64,6 +64,15 @@
         </el-form-item>
       </el-form>
 
+      <el-alert
+        style="margin-bottom: 12px"
+        type="info"
+        :closable="false"
+        show-icon
+        title="当前页面为只读验证模式（parity=workshop-ticket-wage）"
+        data-testid="workshop-daily-wage-parity-hint"
+      />
+
       <el-skeleton v-if="!permissionReady" :rows="4" animated />
       <el-empty
         v-else-if="!canRead"
@@ -88,15 +97,32 @@
           :title="`当前查询工资合计：${totalAmount}`"
           data-testid="workshop-daily-wage-total-amount"
         />
-        <el-alert
-          v-if="linkageMessage"
-          style="margin-bottom: 12px"
-          type="info"
-          :closable="false"
-          show-icon
-          :title="linkageMessage"
-          data-testid="workshop-daily-wage-linkage-state"
-        />
+        <div class="guarded-actions" data-testid="workshop-daily-wage-guarded-actions">
+          <el-button
+            data-action-type="write"
+            data-write-guard="readonly:workshop-daily-wage-export"
+            data-guard-state="guarded_readonly"
+            @click="guardedWriteAction('导出日薪')"
+          >
+            导出
+          </el-button>
+          <el-button
+            data-action-type="write"
+            data-write-guard="readonly:workshop-daily-wage-generate"
+            data-guard-state="guarded_readonly"
+            @click="guardedWriteAction('生成日薪')"
+          >
+            生成
+          </el-button>
+          <el-button
+            data-action-type="write"
+            data-write-guard="readonly:workshop-daily-wage-sync"
+            data-guard-state="guarded_readonly"
+            @click="guardedWriteAction('同步日薪')"
+          >
+            同步
+          </el-button>
+        </div>
 
         <div data-testid="workshop-daily-wage-table">
           <el-table :data="rows" v-loading="loading" border empty-text="暂无日薪统计记录">
@@ -144,14 +170,12 @@ import { usePermissionStore } from '@/stores/permission'
 
 const router = useRouter()
 const permissionStore = usePermissionStore()
-const WRITE_EVENT_STORAGE_KEY = 'ly_workshop_wage_last_write_v1'
 const loading = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const rows = ref<WorkshopDailyWageRow[]>([])
 const total = ref<number>(0)
 const totalAmount = ref<string | number>('0')
 const errorMessage = ref<string>('')
-const linkageMessage = ref<string>('')
 
 const query = reactive({
   employee: '',
@@ -165,31 +189,8 @@ const query = reactive({
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_read)
 
-const loadWageRateLinkage = (): void => {
-  try {
-    const raw = localStorage.getItem(WRITE_EVENT_STORAGE_KEY)
-    if (!raw) {
-      linkageMessage.value = ''
-      return
-    }
-    const parsed = JSON.parse(raw) as {
-      action?: string
-      company?: string
-      process_name?: string
-      item_scope?: string
-      wage_rate?: string | number
-      effective_from?: string
-      updated_at?: string
-    }
-    if (!parsed.action || !parsed.process_name) {
-      linkageMessage.value = ''
-      return
-    }
-    const scopeText = parsed.item_scope && parsed.item_scope !== 'GLOBAL' ? parsed.item_scope : '通用工价'
-    linkageMessage.value = `最近工价动作：${parsed.action} / ${scopeText} / ${parsed.process_name} / 单价 ${parsed.wage_rate ?? '-'} / 生效 ${parsed.effective_from ?? '-'}`
-  } catch {
-    linkageMessage.value = ''
-  }
+const guardedWriteAction = (label: string): void => {
+  ElMessage.warning(`${label} 仅可在授权流程中执行，当前为只读模式`)
 }
 
 const loadRows = async (): Promise<void> => {
@@ -256,7 +257,6 @@ onMounted(async () => {
   } finally {
     permissionReady.value = true
   }
-  loadWageRateLinkage()
   await loadRows()
 })
 </script>
@@ -277,6 +277,12 @@ onMounted(async () => {
 .query-action {
   display: inline-flex;
   margin-right: 8px;
+}
+
+.guarded-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .empty-state {
