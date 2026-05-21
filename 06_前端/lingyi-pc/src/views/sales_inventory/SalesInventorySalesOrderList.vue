@@ -21,6 +21,82 @@
         class="parity-alert"
       />
 
+      <section class="a006-order-contract" data-testid="dev-cand-003-order-static-nogo-shell">
+        <div class="contract-heading">
+          <div>
+            <p class="contract-eyebrow">A006 订单页面静态契约</p>
+            <h3>订单字段 / 按钮风险 / 联动区 NO-GO</h3>
+          </div>
+          <div class="contract-status-tags">
+            <el-tag type="success" effect="plain">popup-only 已验证</el-tag>
+            <el-tag type="danger" effect="plain">主订单保存 BLOCKED</el-tag>
+          </div>
+        </div>
+
+        <div class="contract-grid">
+          <div class="contract-panel" data-testid="order-static-fields-contract">
+            <div class="panel-title">静态字段壳层</div>
+            <el-descriptions :column="2" size="small" border>
+              <el-descriptions-item label="目标订单">{{ a006OrderContract.orderCode }}</el-descriptions-item>
+              <el-descriptions-item label="客户">{{ a006OrderContract.customer }}</el-descriptions-item>
+              <el-descriptions-item label="款式">{{ a006OrderContract.styleCode }}</el-descriptions-item>
+              <el-descriptions-item label="状态边界">{{ a006OrderContract.mainSaveStatus }}</el-descriptions-item>
+            </el-descriptions>
+            <div class="contract-tag-list" aria-label="订单页面静态字段">
+              <el-tag
+                v-for="field in a006StaticFields"
+                :key="field"
+                effect="plain"
+                type="info"
+              >
+                {{ field }}
+              </el-tag>
+            </div>
+          </div>
+
+          <div class="contract-panel" data-testid="order-popup-qty-contract">
+            <div class="panel-title">数量矩阵 popup-only</div>
+            <div class="qty-proof">
+              <span>颜色 {{ a006QtyPopup.color }}</span>
+              <span>尺码 {{ a006QtyPopup.size }}</span>
+              <strong>数量 {{ a006QtyPopup.quantity }}</strong>
+            </div>
+            <p class="contract-note">
+              弹窗 {{ a006QtyPopup.popupSaveButton }} 仅证明回写当前页面矩阵；未点击主订单保存，未形成订单。
+            </p>
+            <el-tag type="warning" effect="plain">不得外推为订单创建成功</el-tag>
+          </div>
+        </div>
+
+        <div class="linked-nogo" data-testid="order-linked-sections-nogo">
+          <div class="panel-title">联动区 NO-GO</div>
+          <div class="contract-tag-list" aria-label="订单联动区禁入项">
+            <el-tag
+              v-for="section in a006LinkedNogoSections"
+              :key="section"
+              type="danger"
+              effect="plain"
+            >
+              {{ section }}
+            </el-tag>
+          </div>
+        </div>
+
+        <div class="blocked-actions" data-testid="order-high-risk-actions-blocked">
+          <div class="panel-title">高风险动作仅展示，不实现</div>
+          <el-button
+            v-for="action in a006BlockedActions"
+            :key="action"
+            size="small"
+            :disabled="true"
+            data-action-type="write"
+            data-write-guard="a006-nogo"
+          >
+            {{ action }} BLOCKED
+          </el-button>
+        </div>
+      </section>
+
       <el-form :inline="true" :model="query" class="query-form" data-testid="sales-order-filter-form">
         <el-form-item label="订单号">
           <el-input
@@ -505,6 +581,63 @@ const localWriteForm = reactive({
   qty: '1',
 })
 
+const a006OrderContract = {
+  orderCode: 'LY-APLUS-ORDER-20260518-01',
+  customer: '测试123',
+  styleCode: 'LY-APLUS-STYLE-20260518-01',
+  mainSaveStatus: 'BLOCKED / 未验证 / 未形成订单',
+}
+
+const a006StaticFields = [
+  '订单号',
+  '客户',
+  '下单日期',
+  '业务员',
+  '订金金额',
+  '汇率',
+  '币种',
+  '备注',
+  '款号',
+  '款名',
+  '颜色',
+  '尺码',
+  '单价',
+  '数量表',
+]
+
+const a006QtyPopup = {
+  color: '黑色',
+  size: 'M',
+  quantity: 2,
+  popupSaveButton: '保存(S)',
+}
+
+const a006LinkedNogoSections = [
+  '生产制单',
+  '加工单',
+  '面料BOM',
+  '辅料/包材BOM',
+  '工序表',
+  '库存',
+  '财务',
+]
+
+const a006BlockedActions = [
+  '主订单保存',
+  '详情回读 verified',
+  '提交',
+  '审核',
+  '反审核',
+  '删除',
+  '作废',
+  '生成生产',
+  '生成采购',
+  '生成加工单',
+  'BOM 保存',
+  '入库/出库',
+  '收款/付款/对账',
+]
+
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
     return '-'
@@ -874,6 +1007,102 @@ onMounted(async () => {
   margin-bottom: 12px;
 }
 
+.a006-order-contract {
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+  background: var(--el-fill-color-lighter);
+}
+
+.contract-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.contract-heading h3 {
+  margin: 2px 0 0;
+  font-size: 15px;
+}
+
+.contract-eyebrow {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.contract-status-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.contract-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  gap: 12px;
+}
+
+.contract-panel,
+.linked-nogo,
+.blocked-actions {
+  min-width: 0;
+}
+
+.panel-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.contract-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.qty-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.qty-proof span,
+.qty-proof strong {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--el-fill-color);
+  color: var(--el-text-color-primary);
+}
+
+.contract-note {
+  margin: 0 0 8px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+}
+
+.linked-nogo,
+.blocked-actions {
+  margin-top: 12px;
+}
+
+.blocked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.blocked-actions .panel-title {
+  flex-basis: 100%;
+}
+
 .toolbar-row {
   display: flex;
   gap: 8px;
@@ -916,5 +1145,21 @@ onMounted(async () => {
 .state-hint {
   margin-top: 8px;
   color: var(--el-text-color-secondary);
+}
+
+@media (max-width: 720px) {
+  .contract-heading,
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contract-status-tags {
+    justify-content: flex-start;
+  }
+
+  .contract-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
