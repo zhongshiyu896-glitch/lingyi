@@ -1,0 +1,84 @@
+{
+  "task_id": "TASK-Z014B-04-IMPL",
+  "selected_candidate_id": "Z014-CAND-011",
+  "module": "首页与经营总览",
+  "source_head": "e34cb6518dbdd053fcf82cc25186887473a3a875",
+  "code_changed": false,
+  "browser_result_path": "04_测试与验收/测试证据/z014_frontend_testable_gap/z014_dashboard_home_interaction_browser_result.json",
+  "pass_count": 14,
+  "total_count": 14,
+  "all_pass": true,
+  "checks": [
+    {
+      "check_id": "B03_C_PASS前置核验",
+      "status": "PASS",
+      "evidence": "B03 PREP 已由上游 C PASS 后派发 B04"
+    },
+    {
+      "check_id": "home_route_hit",
+      "status": "PASS",
+      "evidence": "http://127.0.0.1:5173/home"
+    },
+    {
+      "check_id": "dashboard_route_hit",
+      "status": "PASS",
+      "evidence": "http://127.0.0.1:5173/dashboard/overview"
+    },
+    {
+      "check_id": "screenshot_count_min_2",
+      "status": "PASS",
+      "evidence": "4"
+    },
+    {
+      "check_id": "screenshot_paths_exist",
+      "status": "PASS",
+      "evidence": "/tmp/task_z014b04_dashboard_home_screenshots/01_home_route.png;/tmp/task_z014b04_dashboard_home_screenshots/02_home_to_dashboard_navigation.png;/tmp/task_z014b04_dashboard_home_screenshots/03_dashboard_overview_route.png;/tmp/task_z014b04_dashboard_home_screenshots/04_dashboard_interactions_guarded.png"
+    },
+    {
+      "check_id": "request_methods_get_only",
+      "status": "PASS",
+      "evidence": "GET"
+    },
+    {
+      "check_id": "write_request_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "unexpected_write_request_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "forbidden_request_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "blocking_console_error_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "blocking_response_error_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "network_error_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "export_download_print_sync_not_called",
+      "status": "PASS",
+      "evidence": "false"
+    },
+    {
+      "check_id": "readonly_interactions_recorded",
+      "status": "PASS",
+      "evidence": "5"
+    }
+  ],
+  "generated_at": "2026-05-22T00:37:18.295Z"
+}

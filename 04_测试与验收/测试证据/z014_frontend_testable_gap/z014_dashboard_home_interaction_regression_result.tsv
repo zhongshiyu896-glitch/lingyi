@@ -1,0 +1,17 @@
+check_id	status	evidence
+B04_C_PASS前置核验	PASS	B04 IMPL 已由上游 C PASS 后派发 B05
+CODE_CHANGED_NO	PASS	B05 仅写证据产物
+B04_impl_result_still_pass	PASS	true
+home_route_hit	PASS	http://127.0.0.1:5173/home
+dashboard_route_hit	PASS	http://127.0.0.1:5173/dashboard/overview
+screenshot_count_min_4	PASS	4
+screenshot_paths_exist	PASS	/tmp/task_z014b05_dashboard_home_regression_screenshots/01_home_route.png;/tmp/task_z014b05_dashboard_home_regression_screenshots/02_home_to_dashboard_navigation.png;/tmp/task_z014b05_dashboard_home_regression_screenshots/03_dashboard_overview_route.png;/tmp/task_z014b05_dashboard_home_regression_screenshots/04_dashboard_interactions_guarded.png
+request_methods_get_only	PASS	GET
+write_request_count_zero	PASS	0
+unexpected_write_request_count_zero	PASS	0
+forbidden_request_count_zero	PASS	0
+blocking_console_error_count_zero	PASS	0
+blocking_response_error_count_zero	PASS	0
+network_error_count_zero	PASS	0
+export_download_print_sync_not_called	PASS	false
+readonly_interactions_recorded	PASS	5
