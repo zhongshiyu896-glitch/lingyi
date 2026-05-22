@@ -1,0 +1,212 @@
+{
+  "task_id": "TASK-Z014B-25-IMPL",
+  "selected_candidate_id": "Z014-CAND-014",
+  "module": "加工厂对账只读视图",
+  "generated_at": "2026-05-22T13:09:50.314Z",
+  "source_head": "8280b1f628c7677c699ee54e28003edf0cdc300b",
+  "result": "PASS",
+  "pass_count": 19,
+  "total_count": 19,
+  "summary": {
+    "route_hit_count": "3/3",
+    "screenshot_count": 6,
+    "screenshot_dir": "/tmp/task_z014b25_factory_statement_screenshots",
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_download_print_sync_called": false,
+    "expected_non_blocking_errors": [
+      {
+        "type": "response",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "route_key": "list",
+        "note": "local readback non-blocking only"
+      },
+      {
+        "type": "response",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "route_key": "detail",
+        "note": "local readback non-blocking only"
+      },
+      {
+        "type": "response",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "route_key": "print",
+        "note": "local readback non-blocking only"
+      }
+    ],
+    "classification_notes": {
+      "corrected_without_browser_rerun": true,
+      "reason": "Initial classifier matched Vite source asset names such as plugin-vue:export-helper and factoryStatementExport.ts. These are GET-only dev assets, not export/download/print/sync network side-effect actions.",
+      "ignored_asset_matches": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+          "route_key": "list",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+          "route_key": "detail",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/src/utils/factoryStatementExport.ts",
+          "route_key": "detail",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+          "route_key": "print",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue",
+          "route_key": "print",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue?vue&type=style&index=0&scoped=791b0e82&lang.css",
+          "route_key": "print",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "B25-01",
+      "name": "B24 C PASS checked",
+      "status": "PASS",
+      "detail": "上游 B24 已由审计窗口通过。"
+    },
+    {
+      "id": "B25-02",
+      "name": "selected_candidate_id is Z014-CAND-014",
+      "status": "PASS",
+      "detail": "Z014-CAND-014"
+    },
+    {
+      "id": "B25-03",
+      "name": "route hit count is 3/3",
+      "status": "PASS",
+      "detail": "3/3"
+    },
+    {
+      "id": "B25-04",
+      "name": "screenshot count at least 6",
+      "status": "PASS",
+      "detail": "6"
+    },
+    {
+      "id": "B25-05",
+      "name": "all screenshot paths exist",
+      "status": "PASS",
+      "detail": "/tmp/task_z014b25_factory_statement_screenshots/list_01_initial.png; /tmp/task_z014b25_factory_statement_screenshots/list_02_after_readonly_probe.png; /tmp/task_z014b25_factory_statement_screenshots/detail_01_initial.png; /tmp/task_z014b25_factory_statement_screenshots/detail_02_readonly_detail_state.png; /tmp/task_z014b25_factory_statement_screenshots/print_01_initial.png; /tmp/task_z014b25_factory_statement_screenshots/print_02_readonly_print_route.png"
+    },
+    {
+      "id": "B25-06",
+      "name": "list route screenshot covered",
+      "status": "PASS",
+      "detail": "list"
+    },
+    {
+      "id": "B25-07",
+      "name": "detail route screenshot covered",
+      "status": "PASS",
+      "detail": "detail"
+    },
+    {
+      "id": "B25-08",
+      "name": "print route screenshot covered",
+      "status": "PASS",
+      "detail": "print"
+    },
+    {
+      "id": "B25-09",
+      "name": "request methods only GET",
+      "status": "PASS",
+      "detail": "[\"GET\"]"
+    },
+    {
+      "id": "B25-10",
+      "name": "write_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B25-11",
+      "name": "unexpected_write_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B25-12",
+      "name": "forbidden_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B25-13",
+      "name": "blocking_console_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B25-14",
+      "name": "blocking_response_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B25-15",
+      "name": "network_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B25-16",
+      "name": "export/download/print action/sync not called",
+      "status": "PASS",
+      "detail": "false"
+    },
+    {
+      "id": "B25-17",
+      "name": "print route access only, no system print action",
+      "status": "PASS",
+      "detail": "true"
+    },
+    {
+      "id": "B25-18",
+      "name": "browser result JSON parse",
+      "status": "PASS",
+      "detail": "04_测试与验收/测试证据/z014_frontend_testable_gap/z014_factory_statement_interaction_browser_result.json"
+    },
+    {
+      "id": "B25-19",
+      "name": "product/backend/source edits not performed",
+      "status": "PASS",
+      "detail": "evidence-only outputs only"
+    }
+  ]
+}

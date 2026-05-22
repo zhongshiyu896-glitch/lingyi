@@ -1,0 +1,24 @@
+id	name	status	detail
+B26-01	B25 C PASS checked	PASS	上游 B25 已由审计窗口通过。
+B26-02	CODE_CHANGED is NO	PASS	06_前端=[]; 07_后端=[]
+B26-03	B25 impl JSON/TSV alignment	PASS	19/19 PASS
+B26-04	B25 impl result remains PASS	PASS	19/19 PASS
+B26-05	selected_candidate_id is Z014-CAND-014	PASS	Z014-CAND-014
+B26-06	route hit count is 3/3	PASS	3/3
+B26-07	screenshot count at least 6	PASS	6
+B26-08	all screenshot paths exist	PASS	/tmp/task_z014b26_factory_statement_regression_screenshots/list_01_initial.png; /tmp/task_z014b26_factory_statement_regression_screenshots/list_02_after_readonly_probe.png; /tmp/task_z014b26_factory_statement_regression_screenshots/detail_01_initial.png; /tmp/task_z014b26_factory_statement_regression_screenshots/detail_02_readonly_detail_state.png; /tmp/task_z014b26_factory_statement_regression_screenshots/print_01_initial.png; /tmp/task_z014b26_factory_statement_regression_screenshots/print_02_readonly_print_route.png
+B26-09	list route screenshot covered	PASS	list
+B26-10	detail route screenshot covered	PASS	detail
+B26-11	print route screenshot covered	PASS	print
+B26-12	request methods only GET	PASS	["GET"]
+B26-13	write_request_count is 0	PASS	0
+B26-14	unexpected_write_request_count is 0	PASS	0
+B26-15	forbidden_request_count is 0	PASS	0
+B26-16	blocking_console_error_count is 0	PASS	0
+B26-17	blocking_response_error_count is 0	PASS	0
+B26-18	network_error_count is 0	PASS	0
+B26-19	export/download/print action/sync not called	PASS	false
+B26-20	print route access only, no system print action	PASS	true
+B26-21	Vite source assets not counted as export/print side effects	PASS	6 ignored source asset matches
+B26-22	browser result JSON parse	PASS	04_测试与验收/测试证据/z014_frontend_testable_gap/z014_factory_statement_interaction_regression_browser_result.json
+B26-23	product/backend/source edits not performed	PASS	evidence-only outputs only

@@ -1,0 +1,237 @@
+{
+  "task_id": "TASK-Z014B-26-REGRESSION",
+  "selected_candidate_id": "Z014-CAND-014",
+  "module": "加工厂对账只读视图",
+  "generated_at": "2026-05-22T13:20:22.864Z",
+  "source_head": "8280b1f628c7677c699ee54e28003edf0cdc300b",
+  "code_changed": "NO",
+  "result": "PASS",
+  "pass_count": 23,
+  "total_count": 23,
+  "b25_impl_result": "19/19 PASS",
+  "summary": {
+    "route_hit_count": "3/3",
+    "screenshot_count": 6,
+    "screenshot_dir": "/tmp/task_z014b26_factory_statement_regression_screenshots",
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_download_print_sync_called": false,
+    "expected_non_blocking_errors": [
+      {
+        "type": "response",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "route_key": "list",
+        "note": "local readback non-blocking only"
+      },
+      {
+        "type": "response",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "route_key": "detail",
+        "note": "local readback non-blocking only"
+      },
+      {
+        "type": "response",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "route_key": "print",
+        "note": "local readback non-blocking only"
+      }
+    ],
+    "classification_notes": {
+      "vite_source_assets_not_counted_as_side_effects": true,
+      "ignored_asset_matches": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+          "route_key": "list",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+          "route_key": "detail",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/src/utils/factoryStatementExport.ts",
+          "route_key": "detail",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+          "route_key": "print",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue",
+          "route_key": "print",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue?vue&type=style&index=0&scoped=791b0e82&lang.css",
+          "route_key": "print",
+          "resourceType": "script",
+          "note": "dev source asset or readonly route, not a network side-effect action"
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "B26-01",
+      "name": "B25 C PASS checked",
+      "status": "PASS",
+      "detail": "上游 B25 已由审计窗口通过。"
+    },
+    {
+      "id": "B26-02",
+      "name": "CODE_CHANGED is NO",
+      "status": "PASS",
+      "detail": "06_前端=[]; 07_后端=[]"
+    },
+    {
+      "id": "B26-03",
+      "name": "B25 impl JSON/TSV alignment",
+      "status": "PASS",
+      "detail": "19/19 PASS"
+    },
+    {
+      "id": "B26-04",
+      "name": "B25 impl result remains PASS",
+      "status": "PASS",
+      "detail": "19/19 PASS"
+    },
+    {
+      "id": "B26-05",
+      "name": "selected_candidate_id is Z014-CAND-014",
+      "status": "PASS",
+      "detail": "Z014-CAND-014"
+    },
+    {
+      "id": "B26-06",
+      "name": "route hit count is 3/3",
+      "status": "PASS",
+      "detail": "3/3"
+    },
+    {
+      "id": "B26-07",
+      "name": "screenshot count at least 6",
+      "status": "PASS",
+      "detail": "6"
+    },
+    {
+      "id": "B26-08",
+      "name": "all screenshot paths exist",
+      "status": "PASS",
+      "detail": "/tmp/task_z014b26_factory_statement_regression_screenshots/list_01_initial.png; /tmp/task_z014b26_factory_statement_regression_screenshots/list_02_after_readonly_probe.png; /tmp/task_z014b26_factory_statement_regression_screenshots/detail_01_initial.png; /tmp/task_z014b26_factory_statement_regression_screenshots/detail_02_readonly_detail_state.png; /tmp/task_z014b26_factory_statement_regression_screenshots/print_01_initial.png; /tmp/task_z014b26_factory_statement_regression_screenshots/print_02_readonly_print_route.png"
+    },
+    {
+      "id": "B26-09",
+      "name": "list route screenshot covered",
+      "status": "PASS",
+      "detail": "list"
+    },
+    {
+      "id": "B26-10",
+      "name": "detail route screenshot covered",
+      "status": "PASS",
+      "detail": "detail"
+    },
+    {
+      "id": "B26-11",
+      "name": "print route screenshot covered",
+      "status": "PASS",
+      "detail": "print"
+    },
+    {
+      "id": "B26-12",
+      "name": "request methods only GET",
+      "status": "PASS",
+      "detail": "[\"GET\"]"
+    },
+    {
+      "id": "B26-13",
+      "name": "write_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B26-14",
+      "name": "unexpected_write_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B26-15",
+      "name": "forbidden_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B26-16",
+      "name": "blocking_console_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B26-17",
+      "name": "blocking_response_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B26-18",
+      "name": "network_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B26-19",
+      "name": "export/download/print action/sync not called",
+      "status": "PASS",
+      "detail": "false"
+    },
+    {
+      "id": "B26-20",
+      "name": "print route access only, no system print action",
+      "status": "PASS",
+      "detail": "true"
+    },
+    {
+      "id": "B26-21",
+      "name": "Vite source assets not counted as export/print side effects",
+      "status": "PASS",
+      "detail": "6 ignored source asset matches"
+    },
+    {
+      "id": "B26-22",
+      "name": "browser result JSON parse",
+      "status": "PASS",
+      "detail": "04_测试与验收/测试证据/z014_frontend_testable_gap/z014_factory_statement_interaction_regression_browser_result.json"
+    },
+    {
+      "id": "B26-23",
+      "name": "product/backend/source edits not performed",
+      "status": "PASS",
+      "detail": "evidence-only outputs only"
+    }
+  ]
+}

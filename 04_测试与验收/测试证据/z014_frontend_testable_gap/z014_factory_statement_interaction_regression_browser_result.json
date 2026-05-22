@@ -1,0 +1,3325 @@
+{
+  "task_id": "TASK-Z014B-26-REGRESSION",
+  "selected_candidate_id": "Z014-CAND-014",
+  "module": "加工厂对账只读视图",
+  "generated_at": "2026-05-22T13:20:22.864Z",
+  "source_head": "8280b1f628c7677c699ee54e28003edf0cdc300b",
+  "code_changed": "NO",
+  "routes": [
+    "http://127.0.0.1:5173/factory-statements/list",
+    "http://127.0.0.1:5173/factory-statements/detail",
+    "http://127.0.0.1:5173/factory-statements/print"
+  ],
+  "route_results": [
+    {
+      "key": "list",
+      "url": "http://127.0.0.1:5173/factory-statements/list",
+      "final_url": "http://127.0.0.1:5173/factory-statements/list",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "key": "detail",
+      "url": "http://127.0.0.1:5173/factory-statements/detail",
+      "final_url": "http://127.0.0.1:5173/factory-statements/detail",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "key": "print",
+      "url": "http://127.0.0.1:5173/factory-statements/print",
+      "final_url": "http://127.0.0.1:5173/factory-statements/print",
+      "status": 200,
+      "ok": true
+    }
+  ],
+  "route_hit_count": "3/3",
+  "screenshot_count": 6,
+  "screenshot_dir": "/tmp/task_z014b26_factory_statement_regression_screenshots",
+  "screenshots": [
+    "/tmp/task_z014b26_factory_statement_regression_screenshots/list_01_initial.png",
+    "/tmp/task_z014b26_factory_statement_regression_screenshots/list_02_after_readonly_probe.png",
+    "/tmp/task_z014b26_factory_statement_regression_screenshots/detail_01_initial.png",
+    "/tmp/task_z014b26_factory_statement_regression_screenshots/detail_02_readonly_detail_state.png",
+    "/tmp/task_z014b26_factory_statement_regression_screenshots/print_01_initial.png",
+    "/tmp/task_z014b26_factory_statement_regression_screenshots/print_02_readonly_print_route.png"
+  ],
+  "request_methods": [
+    "GET"
+  ],
+  "requests": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/factory-statements/list",
+      "resourceType": "document",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementList.vue",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/factory_statement.ts",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementList.vue?vue&type=style&index=0&scoped=add6cf18&lang.css",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "resourceType": "script",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "resourceType": "fetch",
+      "route_key": "list"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/factory-statements/detail",
+      "resourceType": "document",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementDetail.vue",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/factory_statement.ts",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/utils/factoryStatementExport.ts",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementDetail.vue?vue&type=style&index=0&scoped=18bd5a55&lang.css",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "resourceType": "script",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "resourceType": "fetch",
+      "route_key": "detail"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/factory-statements/print",
+      "resourceType": "document",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/factory_statement.ts",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue?vue&type=style&index=0&scoped=791b0e82&lang.css",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "resourceType": "script",
+      "route_key": "print"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "resourceType": "fetch",
+      "route_key": "print"
+    }
+  ],
+  "responses": [
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/factory-statements/list",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementList.vue",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/factory_statement.ts",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementList.vue?vue&type=style&index=0&scoped=add6cf18&lang.css",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/factory-statements/detail",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementDetail.vue",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/utils/factoryStatementExport.ts",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementDetail.vue?vue&type=style&index=0&scoped=18bd5a55&lang.css",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/factory_statement.ts",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/factory-statements/print",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/src/api/factory_statement.ts",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue?vue&type=style&index=0&scoped=791b0e82&lang.css",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 304,
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "method": "GET",
+      "route_key": "print"
+    },
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "method": "GET",
+      "route_key": "print"
+    }
+  ],
+  "response_errors": [
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "method": "GET",
+      "route_key": "list"
+    },
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "method": "GET",
+      "route_key": "detail"
+    },
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "method": "GET",
+      "route_key": "print"
+    }
+  ],
+  "expected_non_blocking_errors": [
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "route_key": "list",
+      "note": "local readback non-blocking only"
+    },
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "route_key": "detail",
+      "note": "local readback non-blocking only"
+    },
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "route_key": "print",
+      "note": "local readback non-blocking only"
+    }
+  ],
+  "expected_console_errors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "location": {
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "route_key": "list"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "location": {
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "route_key": "detail"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "location": {
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "route_key": "print"
+    }
+  ],
+  "unexpected_response_errors": [],
+  "request_failures": [],
+  "console_errors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "location": {
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "route_key": "list"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "location": {
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "route_key": "detail"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "location": {
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "lineNumber": 0,
+        "columnNumber": 0
+      },
+      "route_key": "print"
+    }
+  ],
+  "page_errors": [],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_download_print_sync_called": false,
+  "export_download_print_sync_requests": [],
+  "print_route_access_only_no_system_print_action": true,
+  "classification_notes": {
+    "vite_source_assets_not_counted_as_side_effects": true,
+    "ignored_asset_matches": [
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+        "route_key": "list",
+        "resourceType": "script",
+        "note": "dev source asset or readonly route, not a network side-effect action"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+        "route_key": "detail",
+        "resourceType": "script",
+        "note": "dev source asset or readonly route, not a network side-effect action"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5173/src/utils/factoryStatementExport.ts",
+        "route_key": "detail",
+        "resourceType": "script",
+        "note": "dev source asset or readonly route, not a network side-effect action"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+        "route_key": "print",
+        "resourceType": "script",
+        "note": "dev source asset or readonly route, not a network side-effect action"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue",
+        "route_key": "print",
+        "resourceType": "script",
+        "note": "dev source asset or readonly route, not a network side-effect action"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5173/src/views/factory_statement/FactoryStatementPrint.vue?vue&type=style&index=0&scoped=791b0e82&lang.css",
+        "route_key": "print",
+        "resourceType": "script",
+        "note": "dev source asset or readonly route, not a network side-effect action"
+      }
+    ]
+  },
+  "dom_evidence": [
+    {
+      "route_key": "list",
+      "phase": "initial",
+      "title": "Lingyi PC",
+      "path": "/factory-statements/list",
+      "search": "",
+      "bodyTextSample": "加工厂对账单列表\n创建对账单\n款式打板下单对账表（TASK-Y22B-P1-02）\n\n本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。\n\n当前记录\n0\n列表筛选结果\n草稿单\n0\n待确认/待取消处理\n应付待同步\n0\nOutbox pending/processing\n实付金额汇总\n0.00\n当前页业务金额\n来源条数汇总\n0.00\n对账明细覆盖规模\n供应商\n状态\n请选择状态\n开始日期\n结束日期\nscenario_tag\n操作\n查询\n重置\n打板单号\n款号\n工厂\n下单时间\n-\n金额区间\n~\n状态\n请选择状态\n操作\n筛选\n重置\n样品筛选待操作\n\n无加工厂对账单查看权限\n\n费用(报销)支付（TASK-Y59B-P1-02）\n只读费用(报销)支付语义映射\n\n支付确认、复核、付款、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n支付单号\n报销单号\n对账单号\n供应商\n支付状态\n请选择支付状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无费用(报销)支付查看权限\n\n银行存款（TASK-Y59B-P1-03）\n只读银行存款语义映射\n\n存款确认、复核、入账、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n存款单号\n对账单号\n开户行\n账户名称\n存款状态\n请选择存款状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无银行存款查看权限\n\n银行取款（TASK-Y59B-P1-04）\n只读银行取款语义映射\n\n取款确认、复核、出账、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n取款单号\n对账单号\n开户行\n账户名称\n取款状态\n请选择取款状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无银行取款查看权限\n\n客户评估表（TASK-Y59B-P1-05）\n只读客户评估表语义映射\n\n评估确认、复核、评分调整、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n评估单号\n对账单号\n客户名称\n评估人\n评分等级\n请选择评分等级\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无客户评估表查看权限\n\n客户对账表（TASK-Y64B-P1-01）\n只读客户对账表语义映射\n\n对账确认、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n对账单号\n业务单号\n客户名称\n结算状态\n请选择结算状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无客户对账表查看权限\n\n客户未收款报表（TASK-Y64B-P1-02）\n只读客户未收款报表语义映射\n\n催收、确认收款、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n报表单号\n业务单号\n客户名称\n催收状态\n请选择催收状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无客户未收款报表查看权限\n\n客户应收账款汇总表（TASK-Y64B-P1-03）\n只读客户应收账款汇总表语义映射\n\n对账确认、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n汇总单号\n业务单号\n客户名称\n风险等级\n请选择风险等级\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无客户应收账款汇总表查看权限\n\n加工厂评估表（TASK-Y64B-P1-04）\n只读加工厂评估表语义映射\n\n评估确认、复核、评级调整、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n评估单号\n关联业务单号\n加工厂名称\n评估人\n评分等级\n请选择评分等级\n复核状态\n请选",
+      "hasReadonlyText": true,
+      "hasEmptyOrErrorText": true,
+      "buttons": [
+        {
+          "text": "创建对账单",
+          "disabled": true,
+          "writeGuard": "allowed:factory-statement-create-local-only",
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-reset-button"
+        },
+        {
+          "text": "筛选",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-sample-filter-apply"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-sample-filter-reset"
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-expense-payment-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-expense-payment-reset-button"
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-customer-reconciliation-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-customer-reconciliation-reset-button"
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-reconciliation-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-reconciliation-reset-button"
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-bank-ledger-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-bank-ledger-reset-button"
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "June",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        }
+      ],
+      "links": [],
+      "writeGuardCount": 1,
+      "inputs": [
+        {
+          "tag": "input",
+          "placeholder": "请输入供应商",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "Z005-READBACK-PRECONDITION-YYYYMMDD-NNN",
+          "value": "Z005-READBACK-PRECONDITION-20260522-001",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入打板单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入款号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入工厂",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "最小金额",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "最大金额",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入支付单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入报销单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入供应商",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "支付单号/报销单号/供应商/经办人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入存款单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入开户行",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入账户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "存款单号/开户行/账户名称/经办人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入取款单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入开户行",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入账户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "取款单号/开户行/账户名称/经办人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入评估单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入客户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入评估人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "评估单号/客户名称/客户编码/评估人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入客户对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入关联业务单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入客户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "对账单号/客户名称/客户编码/经办人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入未收款报表单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入关联业务单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入客户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        }
+      ]
+    },
+    {
+      "route_key": "list",
+      "phase": "regression_readonly_filter_reset_refresh_probe",
+      "attempted_click_texts": [
+        "查询",
+        "筛选",
+        "重置",
+        "刷新"
+      ],
+      "clicked": null,
+      "request_delta": 0
+    },
+    {
+      "route_key": "list",
+      "phase": "after_readonly_probe",
+      "title": "Lingyi PC",
+      "path": "/factory-statements/list",
+      "search": "",
+      "bodyTextSample": "加工厂对账单列表\n创建对账单\n款式打板下单对账表（TASK-Y22B-P1-02）\n\n本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。\n\n当前记录\n0\n列表筛选结果\n草稿单\n0\n待确认/待取消处理\n应付待同步\n0\nOutbox pending/processing\n实付金额汇总\n0.00\n当前页业务金额\n来源条数汇总\n0.00\n对账明细覆盖规模\n供应商\n状态\n请选择状态\n开始日期\n结束日期\nscenario_tag\n操作\n查询\n重置\n打板单号\n款号\n工厂\n下单时间\n-\n金额区间\n~\n状态\n请选择状态\n操作\n筛选\n重置\n样品筛选待操作\n\n无加工厂对账单查看权限\n\n费用(报销)支付（TASK-Y59B-P1-02）\n只读费用(报销)支付语义映射\n\n支付确认、复核、付款、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n支付单号\n报销单号\n对账单号\n供应商\n支付状态\n请选择支付状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无费用(报销)支付查看权限\n\n银行存款（TASK-Y59B-P1-03）\n只读银行存款语义映射\n\n存款确认、复核、入账、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n存款单号\n对账单号\n开户行\n账户名称\n存款状态\n请选择存款状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无银行存款查看权限\n\n银行取款（TASK-Y59B-P1-04）\n只读银行取款语义映射\n\n取款确认、复核、出账、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n取款单号\n对账单号\n开户行\n账户名称\n取款状态\n请选择取款状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无银行取款查看权限\n\n客户评估表（TASK-Y59B-P1-05）\n只读客户评估表语义映射\n\n评估确认、复核、评分调整、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n评估单号\n对账单号\n客户名称\n评估人\n评分等级\n请选择评分等级\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无客户评估表查看权限\n\n客户对账表（TASK-Y64B-P1-01）\n只读客户对账表语义映射\n\n对账确认、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n对账单号\n业务单号\n客户名称\n结算状态\n请选择结算状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无客户对账表查看权限\n\n客户未收款报表（TASK-Y64B-P1-02）\n只读客户未收款报表语义映射\n\n催收、确认收款、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n报表单号\n业务单号\n客户名称\n催收状态\n请选择催收状态\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无客户未收款报表查看权限\n\n客户应收账款汇总表（TASK-Y64B-P1-03）\n只读客户应收账款汇总表语义映射\n\n对账确认、复核、结算、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n汇总单号\n业务单号\n客户名称\n风险等级\n请选择风险等级\n复核状态\n请选择复核状态\n关键词\n开始日期\n结束日期\n操作\n查询\n重置\n\n无客户应收账款汇总表查看权限\n\n加工厂评估表（TASK-Y64B-P1-04）\n只读加工厂评估表语义映射\n\n评估确认、复核、评级调整、导出、打印等动作保持 guarded 提示，不触发真实写请求。\n\n评估单号\n关联业务单号\n加工厂名称\n评估人\n评分等级\n请选择评分等级\n复核状态\n请选",
+      "hasReadonlyText": true,
+      "hasEmptyOrErrorText": true,
+      "buttons": [
+        {
+          "text": "创建对账单",
+          "disabled": true,
+          "writeGuard": "allowed:factory-statement-create-local-only",
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-reset-button"
+        },
+        {
+          "text": "筛选",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-sample-filter-apply"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-sample-filter-reset"
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-expense-payment-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-expense-payment-reset-button"
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-customer-reconciliation-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-customer-reconciliation-reset-button"
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-reconciliation-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-reconciliation-reset-button"
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "查询",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-bank-ledger-query-button"
+        },
+        {
+          "text": "重置",
+          "disabled": true,
+          "writeGuard": null,
+          "action": null,
+          "testid": "finance-bank-ledger-reset-button"
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "June",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Year",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Previous Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "2026",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "May",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        },
+        {
+          "text": "Next Month",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": null
+        }
+      ],
+      "links": [],
+      "writeGuardCount": 1,
+      "inputs": [
+        {
+          "tag": "input",
+          "placeholder": "请输入供应商",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "Z005-READBACK-PRECONDITION-YYYYMMDD-NNN",
+          "value": "Z005-READBACK-PRECONDITION-20260522-001",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入打板单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入款号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入工厂",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "最小金额",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "最大金额",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入支付单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入报销单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入供应商",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "支付单号/报销单号/供应商/经办人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入存款单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入开户行",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入账户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "存款单号/开户行/账户名称/经办人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入取款单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入开户行",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入账户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "取款单号/开户行/账户名称/经办人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入评估单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入客户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入评估人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "评估单号/客户名称/客户编码/评估人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入客户对账单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入关联业务单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入客户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": null,
+          "value": "",
+          "disabled": false,
+          "readonly": true
+        },
+        {
+          "tag": "input",
+          "placeholder": "对账单号/客户名称/客户编码/经办人",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择开始日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请选择结束日期",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入未收款报表单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入关联业务单号",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        },
+        {
+          "tag": "input",
+          "placeholder": "请输入客户名称",
+          "value": "",
+          "disabled": false,
+          "readonly": false
+        }
+      ]
+    },
+    {
+      "route_key": "list",
+      "phase": "forbidden_action_observation_only",
+      "forbidden_controls": [],
+      "request_delta": 0
+    },
+    {
+      "route_key": "detail",
+      "phase": "initial",
+      "title": "Lingyi PC",
+      "path": "/factory-statements/detail",
+      "search": "",
+      "bodyTextSample": "加工厂对账单详情\n返回列表\n\n无加工厂对账单查看权限\n\nFailed to execute 'json' on 'Response': Unexpected end of JSON input",
+      "hasReadonlyText": false,
+      "hasEmptyOrErrorText": false,
+      "buttons": [
+        {
+          "text": "返回列表",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-detail-back"
+        }
+      ],
+      "links": [],
+      "writeGuardCount": 0,
+      "inputs": []
+    },
+    {
+      "route_key": "detail",
+      "phase": "regression_detail_readonly_error_or_empty_state",
+      "title": "Lingyi PC",
+      "path": "/factory-statements/detail",
+      "search": "",
+      "bodyTextSample": "加工厂对账单详情\n返回列表\n\n无加工厂对账单查看权限\n\nFailed to execute 'json' on 'Response': Unexpected end of JSON input",
+      "hasReadonlyText": false,
+      "hasEmptyOrErrorText": false,
+      "buttons": [
+        {
+          "text": "返回列表",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-detail-back"
+        }
+      ],
+      "links": [],
+      "writeGuardCount": 0,
+      "inputs": []
+    },
+    {
+      "route_key": "detail",
+      "phase": "forbidden_action_observation_only",
+      "forbidden_controls": [],
+      "request_delta": 0
+    },
+    {
+      "route_key": "print",
+      "phase": "initial",
+      "title": "Lingyi PC",
+      "path": "/factory-statements/print",
+      "search": "",
+      "bodyTextSample": "返回详情\n打印\n\n无加工厂对账单查看权限\n\nFailed to execute 'json' on 'Response': Unexpected end of JSON input",
+      "hasReadonlyText": false,
+      "hasEmptyOrErrorText": false,
+      "buttons": [
+        {
+          "text": "返回详情",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-print-back-button"
+        },
+        {
+          "text": "打印",
+          "disabled": false,
+          "writeGuard": "guarded:readonly-print",
+          "action": null,
+          "testid": "factory-statement-print-guarded-print-button"
+        }
+      ],
+      "links": [],
+      "writeGuardCount": 1,
+      "inputs": []
+    },
+    {
+      "route_key": "print",
+      "phase": "regression_print_route_readonly_observation",
+      "title": "Lingyi PC",
+      "path": "/factory-statements/print",
+      "search": "",
+      "bodyTextSample": "返回详情\n打印\n\n无加工厂对账单查看权限\n\nFailed to execute 'json' on 'Response': Unexpected end of JSON input",
+      "hasReadonlyText": false,
+      "hasEmptyOrErrorText": false,
+      "buttons": [
+        {
+          "text": "返回详情",
+          "disabled": false,
+          "writeGuard": null,
+          "action": null,
+          "testid": "factory-statement-print-back-button"
+        },
+        {
+          "text": "打印",
+          "disabled": false,
+          "writeGuard": "guarded:readonly-print",
+          "action": null,
+          "testid": "factory-statement-print-guarded-print-button"
+        }
+      ],
+      "links": [],
+      "writeGuardCount": 1,
+      "inputs": []
+    },
+    {
+      "route_key": "print",
+      "phase": "forbidden_action_observation_only",
+      "forbidden_controls": [
+        {
+          "text": "打印",
+          "tag": "BUTTON",
+          "disabled": false,
+          "href": null,
+          "dataWriteGuard": "guarded:readonly-print",
+          "dataAction": null
+        }
+      ],
+      "request_delta": 0
+    }
+  ]
+}
