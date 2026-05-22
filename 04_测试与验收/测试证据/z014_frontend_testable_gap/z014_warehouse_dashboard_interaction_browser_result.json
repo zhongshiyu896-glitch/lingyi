@@ -1,0 +1,60 @@
+{
+  "task_id": "TASK-Z014B-18-IMPL",
+  "selected_candidate_id": "Z014-CAND-013",
+  "module": "仓库总览",
+  "generated_at": "2026-05-22T11:56:41.594Z",
+  "route_checks": [
+    "http://127.0.0.1:5173/warehouse"
+  ],
+  "route_hit_count": "1/1",
+  "route_path": "/warehouse",
+  "screenshot_count": 4,
+  "screenshot_dir": "/tmp/task_z014b18_warehouse_dashboard_screenshots",
+  "screenshot_paths": [
+    "/tmp/task_z014b18_warehouse_dashboard_screenshots/01_route_loaded.png",
+    "/tmp/task_z014b18_warehouse_dashboard_screenshots/02_after_filter_search.png",
+    "/tmp/task_z014b18_warehouse_dashboard_screenshots/03_after_reset_or_ledger_guard.png",
+    "/tmp/task_z014b18_warehouse_dashboard_screenshots/04_guarded_actions.png"
+  ],
+  "request_methods": [
+    "GET"
+  ],
+  "request_count": 19,
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_download_print_sync_called": false,
+  "expected_non_blocking_errors": [
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "note": "local auth readback non-blocking only"
+    }
+  ],
+  "dom_evidence": {
+    "page_anchor": true,
+    "filter_anchor": true,
+    "kpi_anchor": true,
+    "main_table_anchor": true,
+    "local_write_section_anchor": true,
+    "guarded_write_anchor_count": 20,
+    "disabled_guarded_button_count": 20,
+    "display_mode_toggle": true,
+    "route_path": "/warehouse",
+    "visible_title": "成品进销存 / 成品库存"
+  },
+  "forbidden_requests": [],
+  "blocking_response_errors": [],
+  "blocking_console_errors": [],
+  "console_errors_observed": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    }
+  ],
+  "request_failures": []
+}

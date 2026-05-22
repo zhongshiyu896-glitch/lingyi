@@ -1,0 +1,121 @@
+{
+  "task_id": "TASK-Z014B-19-REGRESSION",
+  "generated_at": "2026-05-22T12:09:24.402Z",
+  "selected_candidate_id": "Z014-CAND-013",
+  "module": "仓库总览",
+  "source_task_id": "TASK-Z014B-18-IMPL",
+  "source_head": "3813db7fa7fd059a83dcbfc157f54e748f176903",
+  "code_changed": "NO",
+  "b18_impl_result": "17/17 PASS",
+  "result_total": 21,
+  "result_pass": 21,
+  "result_fail": 0,
+  "browser_result_path": "04_测试与验收/测试证据/z014_frontend_testable_gap/z014_warehouse_dashboard_interaction_regression_browser_result.json",
+  "checks": [
+    {
+      "name": "B18 C PASS checked",
+      "status": "PASS",
+      "detail": "Upstream audit handoff states TASK-Z014B-18-IMPL C PASS"
+    },
+    {
+      "name": "CODE_CHANGED is NO",
+      "status": "PASS",
+      "detail": "No product/backend/source edits are authorized or performed"
+    },
+    {
+      "name": "selected_candidate_id is Z014-CAND-013",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "B18 impl JSON/TSV aligned",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "B18 impl JSON/TSV still PASS",
+      "status": "PASS",
+      "detail": "17/17 PASS"
+    },
+    {
+      "name": "B18 browser result parse",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "route_hit_count is 1/1",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "screenshot_count is 4",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "screenshot paths exist",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "request_methods only GET",
+      "status": "PASS",
+      "detail": "[\"GET\"]"
+    },
+    {
+      "name": "write_request_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "unexpected_write_request_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "forbidden_request_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "blocking_console_error_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "blocking_response_error_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "network_error_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "export/download/print/sync not called",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "expected non-blocking errors recorded separately",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "warehouse page anchor exists",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "filters and KPI anchors exist",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "guarded action anchors exist",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}

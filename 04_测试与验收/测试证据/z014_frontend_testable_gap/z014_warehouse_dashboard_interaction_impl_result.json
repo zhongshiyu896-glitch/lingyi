@@ -1,0 +1,81 @@
+{
+  "task_id": "TASK-Z014B-18-IMPL",
+  "generated_at": "2026-05-22T11:56:41.594Z",
+  "selected_candidate_id": "Z014-CAND-013",
+  "module": "仓库总览",
+  "source_head": "3813db7fa7fd059a83dcbfc157f54e748f176903",
+  "result_total": 17,
+  "result_pass": 17,
+  "result_fail": 0,
+  "browser_result_path": "04_测试与验收/测试证据/z014_frontend_testable_gap/z014_warehouse_dashboard_interaction_browser_result.json",
+  "checks": [
+    {
+      "name": "B17 C PASS checked",
+      "status": "PASS"
+    },
+    {
+      "name": "selected_candidate_id is Z014-CAND-013",
+      "status": "PASS"
+    },
+    {
+      "name": "route_hit_count is 1/1",
+      "status": "PASS"
+    },
+    {
+      "name": "screenshot_count is 4",
+      "status": "PASS"
+    },
+    {
+      "name": "screenshot paths exist",
+      "status": "PASS"
+    },
+    {
+      "name": "request_methods only GET",
+      "status": "PASS"
+    },
+    {
+      "name": "write_request_count is 0",
+      "status": "PASS"
+    },
+    {
+      "name": "unexpected_write_request_count is 0",
+      "status": "PASS"
+    },
+    {
+      "name": "forbidden_request_count is 0",
+      "status": "PASS"
+    },
+    {
+      "name": "blocking_console_error_count is 0",
+      "status": "PASS"
+    },
+    {
+      "name": "blocking_response_error_count is 0",
+      "status": "PASS"
+    },
+    {
+      "name": "network_error_count is 0",
+      "status": "PASS"
+    },
+    {
+      "name": "export/download/print/sync not called",
+      "status": "PASS"
+    },
+    {
+      "name": "expected non-blocking errors recorded separately",
+      "status": "PASS"
+    },
+    {
+      "name": "warehouse page anchor exists",
+      "status": "PASS"
+    },
+    {
+      "name": "filters and KPI anchors exist",
+      "status": "PASS"
+    },
+    {
+      "name": "guarded action anchors exist",
+      "status": "PASS"
+    }
+  ]
+}

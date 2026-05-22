@@ -1,0 +1,22 @@
+name	status	detail
+B18 C PASS checked	PASS	Upstream audit handoff states TASK-Z014B-18-IMPL C PASS
+CODE_CHANGED is NO	PASS	No product/backend/source edits are authorized or performed
+selected_candidate_id is Z014-CAND-013	PASS
+B18 impl JSON/TSV aligned	PASS
+B18 impl JSON/TSV still PASS	PASS	17/17 PASS
+B18 browser result parse	PASS
+route_hit_count is 1/1	PASS
+screenshot_count is 4	PASS
+screenshot paths exist	PASS
+request_methods only GET	PASS	["GET"]
+write_request_count is 0	PASS
+unexpected_write_request_count is 0	PASS
+forbidden_request_count is 0	PASS
+blocking_console_error_count is 0	PASS
+blocking_response_error_count is 0	PASS
+network_error_count is 0	PASS
+export/download/print/sync not called	PASS
+expected non-blocking errors recorded separately	PASS
+warehouse page anchor exists	PASS
+filters and KPI anchors exist	PASS
+guarded action anchors exist	PASS
