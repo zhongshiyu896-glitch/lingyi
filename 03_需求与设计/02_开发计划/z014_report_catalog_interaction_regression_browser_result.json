@@ -1,0 +1,251 @@
+{
+  "task_id": "TASK-Z014B-12-REGRESSION",
+  "selected_candidate_id": "Z014-CAND-012",
+  "module": "报表目录",
+  "source_head": "c2a377af239c0c011d1bcd5abe053d9fb7916038",
+  "generated_at": "2026-05-22T10:40:59.923Z",
+  "code_changed": "NO",
+  "allowed_runtime_mode": "READONLY_GET_ONLY_BROWSER_EVIDENCE_ONLY",
+  "route_checks": [
+    {
+      "route": "/reports/catalog",
+      "url": "http://127.0.0.1:5173/reports/catalog",
+      "status": "PASS"
+    }
+  ],
+  "route_hit_count": "1/1",
+  "screenshot_dir": "/tmp/task_z014b12_report_catalog_regression_screenshots",
+  "screenshot_count": 4,
+  "screenshots": [
+    {
+      "path": "/tmp/task_z014b12_report_catalog_regression_screenshots/01_report_catalog_regression_route.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z014b12_report_catalog_regression_screenshots/02_report_catalog_regression_filter_query.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z014b12_report_catalog_regression_screenshots/03_report_catalog_regression_detail_preview.png",
+      "exists": true
+    },
+    {
+      "path": "/tmp/task_z014b12_report_catalog_regression_screenshots/04_report_catalog_regression_guard_reset.png",
+      "exists": true
+    }
+  ],
+  "request_methods": [
+    "GET"
+  ],
+  "request_log": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/reports/catalog",
+      "resource_type": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/reports/ReportCatalog.vue",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/report.ts",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/reports/ReportCatalog.vue?vue&type=style&index=0&scoped=6091977f&lang.css",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "resource_type": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/actions?module=report",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/catalog?source_module=finance&report_type=financial",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/employee-task-statistics",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/approval-reports",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/catalog/factory_product_stock_report",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/catalog?source_module=finance&report_type=financial",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/employee-task-statistics",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/approval-reports",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/catalog/factory_product_stock_report",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/catalog/finance_plan_report",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/catalog?source_module=finance&report_type=financial",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/employee-task-statistics",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/approval-reports",
+      "resource_type": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/reports/catalog/factory_product_stock_report",
+      "resource_type": "fetch"
+    }
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "console_errors": [],
+  "page_errors": [],
+  "response_errors": [],
+  "export_download_called": false,
+  "download_event_count": 0,
+  "interactions": [
+    {
+      "name": "filter_query",
+      "status": "PASS",
+      "network_side_effect": "GET-only reload"
+    },
+    {
+      "name": "detail_preview",
+      "status": "PASS",
+      "network_side_effect": "GET-only detail fetch"
+    },
+    {
+      "name": "export_guard",
+      "status": "PASS",
+      "network_side_effect": "none"
+    },
+    {
+      "name": "employee_confirm_guard",
+      "status": "PASS",
+      "network_side_effect": "none"
+    },
+    {
+      "name": "approval_confirm_guard",
+      "status": "PASS",
+      "network_side_effect": "none"
+    },
+    {
+      "name": "reset",
+      "status": "PASS",
+      "network_side_effect": "GET-only reload"
+    }
+  ],
+  "expected_non_blocking_errors": []
+}

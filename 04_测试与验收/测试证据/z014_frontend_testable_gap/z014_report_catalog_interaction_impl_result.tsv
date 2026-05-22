@@ -1,0 +1,15 @@
+name	status
+B10 C PASS checked	PASS
+selected_candidate_id is Z014-CAND-012	PASS
+route_hit_count is 1/1	PASS
+screenshot paths exist	PASS
+request_methods only GET	PASS
+write_request_count is 0	PASS
+unexpected_write_request_count is 0	PASS
+forbidden_request_count is 0	PASS
+blocking_console_error_count is 0	PASS
+blocking_response_error_count is 0	PASS
+network_error_count is 0	PASS
+export_download_called is false	PASS
+guarded interactions recorded	PASS
+expected_non_blocking_errors empty	PASS
