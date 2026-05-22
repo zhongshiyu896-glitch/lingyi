@@ -1,0 +1,382 @@
+{
+  "task_id": "TASK-Z014B-33-REGRESSION",
+  "generated_at": "2026-05-22T14:30:21.980Z",
+  "selected_candidate_id": "Z014-CAND-015",
+  "module": "客户与仓库基础资料只读引用",
+  "source_task_id": "TASK-Z014B-32-IMPL",
+  "source_head": "95142b50f7e4de3b68e8e41d67b5684abd130848",
+  "code_changed": "NO",
+  "routes": [
+    "http://127.0.0.1:5173/sales-inventory/references"
+  ],
+  "route_results": [
+    {
+      "key": "references",
+      "url": "http://127.0.0.1:5173/sales-inventory/references",
+      "final_url": "http://127.0.0.1:5173/sales-inventory/references",
+      "status": 200,
+      "ok": true
+    }
+  ],
+  "ui_probe_results": [
+    {
+      "probe": "toggle_readonly_guide",
+      "status": "observed",
+      "note": "只读说明按钮可见，点击后未触发写请求。"
+    },
+    {
+      "probe": "refresh_readonly_status",
+      "status": "observed",
+      "note": "刷新只读状态按钮可见；触发的认证读回为 GET-only。"
+    },
+    {
+      "probe": "permission_guard",
+      "status": "observed",
+      "note": "无销售库存查看权限空态可见，页面保持只读 guard。"
+    },
+    {
+      "probe": "customer_query",
+      "status": "not_available",
+      "note": "当前本地认证读回失败，客户表格未开放；未补造行为。"
+    },
+    {
+      "probe": "warehouse_tab",
+      "status": "not_available",
+      "note": "当前本地认证读回失败，仓库标签未开放；未补造行为。"
+    }
+  ],
+  "route_hit_count": "1/1",
+  "screenshot_count": 4,
+  "screenshot_dir": "/tmp/task_z014b33_sales_inventory_references_regression_screenshots",
+  "screenshots": [
+    "/tmp/task_z014b33_sales_inventory_references_regression_screenshots/references_regression_01_initial.png",
+    "/tmp/task_z014b33_sales_inventory_references_regression_screenshots/references_regression_02_readonly_guide.png",
+    "/tmp/task_z014b33_sales_inventory_references_regression_screenshots/references_regression_03_refresh_guard.png",
+    "/tmp/task_z014b33_sales_inventory_references_regression_screenshots/references_regression_04_final_guard_state.png"
+  ],
+  "request_methods": [
+    "GET"
+  ],
+  "requests": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/sales-inventory/references",
+      "resourceType": "document",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/sales_inventory.ts",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/sales_inventory/SalesInventoryReferenceList.vue?vue&type=style&index=0&scoped=e5496e25&lang.css",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "resourceType": "fetch",
+      "route_key": "references"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "resourceType": "fetch",
+      "route_key": "references"
+    }
+  ],
+  "responses": [
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/sales-inventory/references",
+      "method": "GET",
+      "resourceType": "document",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/views/sales_inventory/SalesInventoryReferenceList.vue?vue&type=style&index=0&scoped=e5496e25&lang.css",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/sales_inventory.ts",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "method": "GET",
+      "resourceType": "script",
+      "route_key": "references"
+    },
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "method": "GET",
+      "resourceType": "fetch",
+      "route_key": "references"
+    },
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "method": "GET",
+      "resourceType": "fetch",
+      "route_key": "references"
+    }
+  ],
+  "request_failures": [],
+  "raw_console_errors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "route_key": "references"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "route_key": "references"
+    }
+  ],
+  "expected_non_blocking_console_errors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "route_key": "references",
+      "type": "console",
+      "note": "browser resource warning caused by expected local auth readback 500; non-blocking only"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "route_key": "references",
+      "type": "console",
+      "note": "browser resource warning caused by expected local auth readback 500; non-blocking only"
+    }
+  ],
+  "console_errors": [],
+  "page_errors": [],
+  "expected_non_blocking_errors": [
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "route_key": "references",
+      "note": "local auth readback non-blocking only"
+    },
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "route_key": "references",
+      "note": "local auth readback non-blocking only"
+    }
+  ],
+  "blocking_response_errors": [],
+  "write_requests": [],
+  "forbidden_requests": [],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_download_print_sync_called": false,
+  "notes": [
+    "Only GET requests were observed.",
+    "GET /api/auth/me 500 and corresponding browser resource warnings are recorded as local auth readback non-blocking only and are not production readback.",
+    "No product, backend, router, API, or view source files were edited."
+  ]
+}

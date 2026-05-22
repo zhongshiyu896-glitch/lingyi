@@ -1,0 +1,121 @@
+{
+  "task_id": "TASK-Z014B-33-REGRESSION",
+  "generated_at": "2026-05-22T14:30:21.980Z",
+  "selected_candidate_id": "Z014-CAND-015",
+  "module": "客户与仓库基础资料只读引用",
+  "source_task_id": "TASK-Z014B-32-IMPL",
+  "source_head": "95142b50f7e4de3b68e8e41d67b5684abd130848",
+  "code_changed": "NO",
+  "b32_impl_result": "17/17 PASS",
+  "result_total": 21,
+  "result_pass": 21,
+  "result_fail": 0,
+  "browser_result_path": "04_测试与验收/测试证据/z014_frontend_testable_gap/z014_sales_inventory_references_interaction_regression_browser_result.json",
+  "checks": [
+    {
+      "name": "B32 C PASS checked",
+      "status": "PASS",
+      "detail": "Upstream audit handoff states TASK-Z014B-32-IMPL C PASS"
+    },
+    {
+      "name": "CODE_CHANGED is NO",
+      "status": "PASS",
+      "detail": "No product/backend/source edits are authorized or performed"
+    },
+    {
+      "name": "selected_candidate_id is Z014-CAND-015",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "B32 impl JSON/TSV aligned",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "B32 impl JSON/TSV still PASS",
+      "status": "PASS",
+      "detail": "17/17 PASS"
+    },
+    {
+      "name": "B32 browser result parse",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "route_hit_count is 1/1",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "screenshot_count is 4",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "screenshot paths exist",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "request_methods only GET",
+      "status": "PASS",
+      "detail": "[\"GET\"]"
+    },
+    {
+      "name": "write_request_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "unexpected_write_request_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "forbidden_request_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "blocking_console_error_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "blocking_response_error_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "network_error_count is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "export/download/print/sync not called",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "expected non-blocking errors recorded separately",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "references route source anchor exists",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "readonly guard or permission anchor observed",
+      "status": "PASS",
+      "detail": "toggle_readonly_guide:observed; refresh_readonly_status:observed; permission_guard:observed; customer_query:not_available; warehouse_tab:not_available"
+    },
+    {
+      "name": "customer and warehouse source anchors exist",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}

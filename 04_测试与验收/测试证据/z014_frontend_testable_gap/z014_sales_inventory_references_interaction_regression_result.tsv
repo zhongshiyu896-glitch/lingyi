@@ -1,0 +1,22 @@
+name	status	detail
+B32 C PASS checked	PASS	Upstream audit handoff states TASK-Z014B-32-IMPL C PASS
+CODE_CHANGED is NO	PASS	No product/backend/source edits are authorized or performed
+selected_candidate_id is Z014-CAND-015	PASS	-
+B32 impl JSON/TSV aligned	PASS	-
+B32 impl JSON/TSV still PASS	PASS	17/17 PASS
+B32 browser result parse	PASS	-
+route_hit_count is 1/1	PASS	-
+screenshot_count is 4	PASS	-
+screenshot paths exist	PASS	-
+request_methods only GET	PASS	["GET"]
+write_request_count is 0	PASS	-
+unexpected_write_request_count is 0	PASS	-
+forbidden_request_count is 0	PASS	-
+blocking_console_error_count is 0	PASS	-
+blocking_response_error_count is 0	PASS	-
+network_error_count is 0	PASS	-
+export/download/print/sync not called	PASS	-
+expected non-blocking errors recorded separately	PASS	-
+references route source anchor exists	PASS	-
+readonly guard or permission anchor observed	PASS	toggle_readonly_guide:observed; refresh_readonly_status:observed; permission_guard:observed; customer_query:not_available; warehouse_tab:not_available
+customer and warehouse source anchors exist	PASS	-

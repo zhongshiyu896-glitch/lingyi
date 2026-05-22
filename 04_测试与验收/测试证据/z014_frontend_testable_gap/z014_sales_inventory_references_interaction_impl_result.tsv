@@ -1,0 +1,18 @@
+id	name	status	detail
+B32-01	B31 C PASS checked	PASS	上游 B31 已由审计窗口通过。
+B32-02	selected_candidate_id is Z014-CAND-015	PASS	Z014-CAND-015
+B32-03	route hit count is 1/1	PASS	1/1
+B32-04	screenshot count is 4	PASS	4
+B32-05	all screenshot paths exist	PASS	/tmp/task_z014b32_sales_inventory_references_screenshots/references_01_initial.png; /tmp/task_z014b32_sales_inventory_references_screenshots/references_02_readonly_guide.png; /tmp/task_z014b32_sales_inventory_references_screenshots/references_03_after_refresh_readonly_status.png; /tmp/task_z014b32_sales_inventory_references_screenshots/references_04_final_guard_state.png
+B32-06	request methods only GET	PASS	["GET"]
+B32-07	write_request_count is 0	PASS	0
+B32-08	unexpected_write_request_count is 0	PASS	0
+B32-09	forbidden_request_count is 0	PASS	0
+B32-10	blocking_console_error_count is 0	PASS	0
+B32-11	blocking_response_error_count is 0	PASS	0
+B32-12	network_error_count is 0	PASS	0
+B32-13	export/download/print/sync not called	PASS	false
+B32-14	permission guard or readonly UI anchor observed	PASS	toggle_readonly_guide:observed; refresh_readonly_status:observed; customer_query:not_available; warehouse_tab:not_available; permission_guard:observed
+B32-15	browser result JSON parse	PASS	04_测试与验收/测试证据/z014_frontend_testable_gap/z014_sales_inventory_references_interaction_browser_result.json
+B32-16	product/backend/source edits not performed	PASS	evidence-only outputs only
+B32-17	expected non-blocking errors isolated	PASS	[{"type":"response","status":500,"url":"http://127.0.0.1:5173/api/auth/me","route_key":"references","note":"local auth readback non-blocking only"},{"type":"response","status":500,"url":"http://127.0.0.1:5173/api/auth/me","route_key":"references","note":"local auth readback non-blocking only"}]

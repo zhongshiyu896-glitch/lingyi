@@ -1,0 +1,159 @@
+{
+  "task_id": "TASK-Z014B-32-IMPL",
+  "selected_candidate_id": "Z014-CAND-015",
+  "module": "客户与仓库基础资料只读引用",
+  "generated_at": "2026-05-22T14:19:35.967Z",
+  "source_head": "95142b50f7e4de3b68e8e41d67b5684abd130848",
+  "result": "PASS",
+  "pass_count": 17,
+  "total_count": 17,
+  "summary": {
+    "route_hit_count": "1/1",
+    "screenshot_count": 4,
+    "screenshot_dir": "/tmp/task_z014b32_sales_inventory_references_screenshots",
+    "request_methods": [
+      "GET"
+    ],
+    "write_request_count": 0,
+    "unexpected_write_request_count": 0,
+    "forbidden_request_count": 0,
+    "blocking_console_error_count": 0,
+    "blocking_response_error_count": 0,
+    "network_error_count": 0,
+    "export_download_print_sync_called": false,
+    "expected_non_blocking_errors": [
+      {
+        "type": "response",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "route_key": "references",
+        "note": "local auth readback non-blocking only"
+      },
+      {
+        "type": "response",
+        "status": 500,
+        "url": "http://127.0.0.1:5173/api/auth/me",
+        "route_key": "references",
+        "note": "local auth readback non-blocking only"
+      }
+    ],
+    "expected_non_blocking_console_errors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "route_key": "references",
+        "type": "console",
+        "note": "browser resource warning caused by expected local auth readback 500; non-blocking only"
+      },
+      {
+        "text": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "route_key": "references",
+        "type": "console",
+        "note": "browser resource warning caused by expected local auth readback 500; non-blocking only"
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "B32-01",
+      "name": "B31 C PASS checked",
+      "status": "PASS",
+      "detail": "上游 B31 已由审计窗口通过。"
+    },
+    {
+      "id": "B32-02",
+      "name": "selected_candidate_id is Z014-CAND-015",
+      "status": "PASS",
+      "detail": "Z014-CAND-015"
+    },
+    {
+      "id": "B32-03",
+      "name": "route hit count is 1/1",
+      "status": "PASS",
+      "detail": "1/1"
+    },
+    {
+      "id": "B32-04",
+      "name": "screenshot count is 4",
+      "status": "PASS",
+      "detail": "4"
+    },
+    {
+      "id": "B32-05",
+      "name": "all screenshot paths exist",
+      "status": "PASS",
+      "detail": "/tmp/task_z014b32_sales_inventory_references_screenshots/references_01_initial.png; /tmp/task_z014b32_sales_inventory_references_screenshots/references_02_readonly_guide.png; /tmp/task_z014b32_sales_inventory_references_screenshots/references_03_after_refresh_readonly_status.png; /tmp/task_z014b32_sales_inventory_references_screenshots/references_04_final_guard_state.png"
+    },
+    {
+      "id": "B32-06",
+      "name": "request methods only GET",
+      "status": "PASS",
+      "detail": "[\"GET\"]"
+    },
+    {
+      "id": "B32-07",
+      "name": "write_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B32-08",
+      "name": "unexpected_write_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B32-09",
+      "name": "forbidden_request_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B32-10",
+      "name": "blocking_console_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B32-11",
+      "name": "blocking_response_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B32-12",
+      "name": "network_error_count is 0",
+      "status": "PASS",
+      "detail": "0"
+    },
+    {
+      "id": "B32-13",
+      "name": "export/download/print/sync not called",
+      "status": "PASS",
+      "detail": "false"
+    },
+    {
+      "id": "B32-14",
+      "name": "permission guard or readonly UI anchor observed",
+      "status": "PASS",
+      "detail": "toggle_readonly_guide:observed; refresh_readonly_status:observed; customer_query:not_available; warehouse_tab:not_available; permission_guard:observed"
+    },
+    {
+      "id": "B32-15",
+      "name": "browser result JSON parse",
+      "status": "PASS",
+      "detail": "04_测试与验收/测试证据/z014_frontend_testable_gap/z014_sales_inventory_references_interaction_browser_result.json"
+    },
+    {
+      "id": "B32-16",
+      "name": "product/backend/source edits not performed",
+      "status": "PASS",
+      "detail": "evidence-only outputs only"
+    },
+    {
+      "id": "B32-17",
+      "name": "expected non-blocking errors isolated",
+      "status": "PASS",
+      "detail": "[{\"type\":\"response\",\"status\":500,\"url\":\"http://127.0.0.1:5173/api/auth/me\",\"route_key\":\"references\",\"note\":\"local auth readback non-blocking only\"},{\"type\":\"response\",\"status\":500,\"url\":\"http://127.0.0.1:5173/api/auth/me\",\"route_key\":\"references\",\"note\":\"local auth readback non-blocking only\"}]"
+    }
+  ]
+}
