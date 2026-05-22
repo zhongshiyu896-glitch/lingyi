@@ -1,0 +1,23 @@
+check_id	check_name	status	evidence
+B39-CHECK-001	b38_c_pass_checked	PASS	TASK-Z014B-38-PREP C PASS is the stated prerequisite for B39.
+B39-CHECK-002	selected_candidate_id	PASS	Z014-CAND-016
+B39-CHECK-003	route_hit_count	PASS	1/1
+B39-CHECK-004	screenshot_count_at_least_4	PASS	4
+B39-CHECK-005	screenshot_paths_exist	PASS	/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/01_route_initial.png; /tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/02_after_filter_reset.png; /tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/03_after_pagination_detail.png; /tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/04_guarded_anchors_readonly.png
+B39-CHECK-006	request_methods_get_only	PASS	["GET"]
+B39-CHECK-007	write_request_count_zero	PASS	0
+B39-CHECK-008	unexpected_write_request_count_zero	PASS	0
+B39-CHECK-009	forbidden_request_count_zero	PASS	0
+B39-CHECK-010	blocking_console_error_count_zero	PASS	0
+B39-CHECK-011	blocking_response_error_count_zero	PASS	0
+B39-CHECK-012	network_error_count_zero	PASS	0
+B39-CHECK-013	export_download_print_sync_not_called	PASS	false
+B39-CHECK-014	sales_order_draft_write_not_called	PASS	false
+B39-CHECK-015	stock_adjustment_or_transfer_write_not_called	PASS	false
+B39-CHECK-016	filter_or_query_evidence_recorded	PASS	{"name":"filter_or_query","found":true,"clicked":true,"label":"查询"}
+B39-CHECK-017	reset_evidence_recorded	PASS	{"name":"reset","found":true,"clicked":true,"label":"重置"}
+B39-CHECK-018	pagination_evidence_recorded	PASS	{"name":"pagination_next","found":true,"clicked":true,"label":"Next Month"}
+B39-CHECK-019	detail_drawer_recorded_or_absent	PASS	{"name":"detail_drawer","found":false,"clicked":false}
+B39-CHECK-020	guarded_anchors_inspected_without_clicking	PASS	{"count":71,"note":"guard anchors inspected without clicking dangerous actions"}
+B39-CHECK-021	expected_non_blocking_errors_classified	PASS	[{"type":"response","status":500,"url":"http://127.0.0.1:5173/api/auth/me","note":"local auth readback non-blocking only"},{"type":"response","status":404,"url":"http://127.0.0.1:5173/favicon.ico","note":"browser favicon request non-blocking only"}]
+B39-CHECK-022	code_changed_no	PASS	NO

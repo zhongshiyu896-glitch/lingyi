@@ -1,0 +1,544 @@
+{
+  "task_id": "TASK-Z014B-39-IMPL",
+  "generated_at": "2026-05-22T15:17:12.023Z",
+  "selected_candidate_id": "Z014-CAND-016",
+  "module": "销售库存台账只读视图",
+  "source_head": "0de9b4dad8d76032a5294e15276003fcff243bd7",
+  "route": "http://127.0.0.1:5173/sales-inventory/stock-ledger?parity=material-stock",
+  "final_url": "http://127.0.0.1:5173/sales-inventory/stock-ledger?parity=material-stock",
+  "title": "Lingyi PC",
+  "route_hit_count": "1/1",
+  "screenshot_count": 4,
+  "screenshot_dir": "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots",
+  "screenshots": [
+    {
+      "label": "route_initial",
+      "path": "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/01_route_initial.png"
+    },
+    {
+      "label": "after_filter_reset",
+      "path": "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/02_after_filter_reset.png"
+    },
+    {
+      "label": "after_pagination_detail",
+      "path": "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/03_after_pagination_detail.png"
+    },
+    {
+      "label": "guarded_anchors_readonly",
+      "path": "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/04_guarded_anchors_readonly.png"
+    }
+  ],
+  "request_methods": [
+    "GET"
+  ],
+  "request_count": 20,
+  "requests": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/sales-inventory/stock-ledger?parity=material-stock",
+      "type": "Document",
+      "timestamp": 2177887.403459
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@vite/client",
+      "type": "Script",
+      "timestamp": 2177887.409731
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/main.ts",
+      "type": "Script",
+      "timestamp": 2177887.409862
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue.js?v=2645f498",
+      "type": "Script",
+      "timestamp": 2177887.411905
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "type": "Script",
+      "timestamp": 2177887.411946
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/element-plus/dist/index.css",
+      "type": "Script",
+      "timestamp": 2177887.411969
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/App.vue",
+      "type": "Script",
+      "timestamp": 2177887.411995
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/router/index.ts",
+      "type": "Script",
+      "timestamp": 2177887.412017
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/vite/dist/client/env.mjs",
+      "type": "Script",
+      "timestamp": 2177887.423981
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "type": "Script",
+      "timestamp": 2177887.42423
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/@id/__x00__plugin-vue:export-helper",
+      "type": "Script",
+      "timestamp": 2177887.438346
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "type": "Script",
+      "timestamp": 2177887.441632
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+      "type": "Script",
+      "timestamp": 2177887.501104
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/sales_inventory.ts",
+      "type": "Script",
+      "timestamp": 2177887.748829
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/stores/permission.ts",
+      "type": "Script",
+      "timestamp": 2177887.74888
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/views/sales_inventory/SalesInventoryStockLedger.vue?vue&type=style&index=0&scoped=32ce1aa5&lang.css",
+      "type": "Script",
+      "timestamp": 2177887.748908
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/request.ts",
+      "type": "Script",
+      "timestamp": 2177887.750723
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/src/api/auth.ts",
+      "type": "Script",
+      "timestamp": 2177887.750849
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "type": "Fetch",
+      "timestamp": 2177888.007701
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/favicon.ico",
+      "type": "Other",
+      "timestamp": 2177888.132359
+    }
+  ],
+  "response_errors": [
+    {
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "mimeType": "text/plain",
+      "type": "Fetch"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:5173/favicon.ico",
+      "mimeType": "text/plain",
+      "type": "Other"
+    }
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_download_print_sync_called": false,
+  "sales_order_draft_write_called": false,
+  "stock_adjustment_or_transfer_write_called": false,
+  "expected_non_blocking_errors": [
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "note": "local auth readback non-blocking only"
+    },
+    {
+      "type": "response",
+      "status": 404,
+      "url": "http://127.0.0.1:5173/favicon.ico",
+      "note": "browser favicon request non-blocking only"
+    }
+  ],
+  "page_state_initial": {
+    "url": "http://127.0.0.1:5173/sales-inventory/stock-ledger?parity=material-stock",
+    "title": "Lingyi PC",
+    "bodyTextSample": "物料库存台账\n衣算云 / 物料进销存 / 物料库存（只读交互）\n本地首版\n款号\n公司\n仓库\n关键词\n状态\n开始日期\n结束日期\n重置\n查询\n衣算云 / 物料进销存 / 物料库存（只读交互）\n\n当前为 parity=material-stock，本地仅开放读取、筛选、分页、空态/错误态验证。\n\n下单（本地草稿）\n作废草稿\n对账\n导出\n打印\nscenario_tag\n公司\n客户\n款号\n仓库\n数量\n当前账号无物料库存读取权限，页面仅保留本地只读交互壳层用于验证。\n台账记录：0\n当前筛选结果：0\n变动数量合计：0.00\n在库结存合计：0.00\n聚合项：0\n低于安全库存：0\n过账日期\n\t\n过账时间\n\t\n公司\n\t\n款号\n\t\n仓库\n\t\n凭证类型\n\t\n凭证号\n\t\n状态\n\t\n变动数量\n\t\n结存数量\n\t\n操作\n暂无物料库存台账数据，请调整筛选条件后重试\n1\nTotal 0\n20/page\n物料调仓\nTASK-Y44B-P1-01 / 只读语义\n共享路由增量区块\n物料编码\n关键词\n来源仓\n目标仓\n状态\n全部状态\n开始日期\n结束日期\n重置\n查询\n新建调仓\n审核提示\n校验提示\n导出\n打印\n\n无物料调仓查看权限\n\n",
+    "buttonCount": 286,
+    "guardedAnchorCount": 71,
+    "guardedAnchors": [
+      {
+        "text": "下单（本地草稿）",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "作废草稿",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "对账",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "新建调仓",
+        "disabled": true,
+        "writeGuard": false,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": false,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": false,
+        "href": null
+      },
+      {
+        "text": "盘点提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "复核提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "盘点校验",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "报表提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "报表校验",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "处理提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "滞留校验",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      }
+    ],
+    "hasMaterialStockParityHint": true
+  },
+  "interaction_results": [
+    {
+      "name": "filter_or_query",
+      "found": true,
+      "clicked": true,
+      "label": "查询"
+    },
+    {
+      "name": "reset",
+      "found": true,
+      "clicked": true,
+      "label": "重置"
+    },
+    {
+      "name": "pagination_next",
+      "found": true,
+      "clicked": true,
+      "label": "Next Month"
+    },
+    {
+      "name": "detail_drawer",
+      "found": false,
+      "clicked": false
+    }
+  ],
+  "guard_state": {
+    "guarded_anchor_count": 71,
+    "guarded_anchors": [
+      {
+        "text": "下单（本地草稿）",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "作废草稿",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "对账",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "新建调仓",
+        "disabled": true,
+        "writeGuard": false,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": false,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": false,
+        "href": null
+      },
+      {
+        "text": "盘点提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "复核提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "盘点校验",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "报表提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "报表校验",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "处理提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "滞留校验",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "锁定提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "复核提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "校验",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "打印",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "预约确认提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "预约排程提示",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "校验",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      },
+      {
+        "text": "导出",
+        "disabled": true,
+        "writeGuard": true,
+        "href": null
+      }
+    ],
+    "note": "guard anchors inspected without clicking dangerous actions"
+  },
+  "classification_note": "Only API-side export/download/print/sync/write endpoints or non-GET methods are counted as forbidden side effects; guarded anchors were inspected without clicking dangerous actions.",
+  "code_changed": "NO",
+  "raw_response_error_count": 2,
+  "raw_response_errors_classified_non_blocking": 2,
+  "classification_adjustment": {
+    "browser_rerun": "NO",
+    "evidence_semantics_changed": "NO",
+    "note": "Classified GET /api/auth/me 500 and favicon.ico 404 as local non-blocking browser readback/resource outcomes; no product/backend/source edits."
+  }
+}

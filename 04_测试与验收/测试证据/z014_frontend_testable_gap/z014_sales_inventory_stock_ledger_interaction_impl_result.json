@@ -1,0 +1,179 @@
+{
+  "task_id": "TASK-Z014B-39-IMPL",
+  "generated_at": "2026-05-22T15:17:00Z",
+  "selected_candidate_id": "Z014-CAND-016",
+  "module": "销售库存台账只读视图",
+  "source_head": "0de9b4dad8d76032a5294e15276003fcff243bd7",
+  "result_summary": "22/22 PASS",
+  "b38_c_pass_checked": "PASS",
+  "route_hit_count": "1/1",
+  "screenshot_count": 4,
+  "screenshot_dir": "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots",
+  "screenshot_paths": [
+    "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/01_route_initial.png",
+    "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/02_after_filter_reset.png",
+    "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/03_after_pagination_detail.png",
+    "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/04_guarded_anchors_readonly.png"
+  ],
+  "request_methods": [
+    "GET"
+  ],
+  "write_request_count": 0,
+  "unexpected_write_request_count": 0,
+  "forbidden_request_count": 0,
+  "blocking_console_error_count": 0,
+  "blocking_response_error_count": 0,
+  "network_error_count": 0,
+  "export_download_print_sync_called": false,
+  "sales_order_draft_write_called": false,
+  "stock_adjustment_or_transfer_write_called": false,
+  "expected_non_blocking_errors": [
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "note": "local auth readback non-blocking only"
+    },
+    {
+      "type": "response",
+      "status": 404,
+      "url": "http://127.0.0.1:5173/favicon.ico",
+      "note": "browser favicon request non-blocking only"
+    }
+  ],
+  "browser_result_path": "04_测试与验收/测试证据/z014_frontend_testable_gap/z014_sales_inventory_stock_ledger_interaction_browser_result.json",
+  "checks": [
+    {
+      "check_id": "B39-CHECK-001",
+      "check_name": "b38_c_pass_checked",
+      "status": "PASS",
+      "evidence": "TASK-Z014B-38-PREP C PASS is the stated prerequisite for B39."
+    },
+    {
+      "check_id": "B39-CHECK-002",
+      "check_name": "selected_candidate_id",
+      "status": "PASS",
+      "evidence": "Z014-CAND-016"
+    },
+    {
+      "check_id": "B39-CHECK-003",
+      "check_name": "route_hit_count",
+      "status": "PASS",
+      "evidence": "1/1"
+    },
+    {
+      "check_id": "B39-CHECK-004",
+      "check_name": "screenshot_count_at_least_4",
+      "status": "PASS",
+      "evidence": "4"
+    },
+    {
+      "check_id": "B39-CHECK-005",
+      "check_name": "screenshot_paths_exist",
+      "status": "PASS",
+      "evidence": "/tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/01_route_initial.png; /tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/02_after_filter_reset.png; /tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/03_after_pagination_detail.png; /tmp/task_z014b39_sales_inventory_stock_ledger_screenshots/04_guarded_anchors_readonly.png"
+    },
+    {
+      "check_id": "B39-CHECK-006",
+      "check_name": "request_methods_get_only",
+      "status": "PASS",
+      "evidence": "[\"GET\"]"
+    },
+    {
+      "check_id": "B39-CHECK-007",
+      "check_name": "write_request_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "B39-CHECK-008",
+      "check_name": "unexpected_write_request_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "B39-CHECK-009",
+      "check_name": "forbidden_request_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "B39-CHECK-010",
+      "check_name": "blocking_console_error_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "B39-CHECK-011",
+      "check_name": "blocking_response_error_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "B39-CHECK-012",
+      "check_name": "network_error_count_zero",
+      "status": "PASS",
+      "evidence": "0"
+    },
+    {
+      "check_id": "B39-CHECK-013",
+      "check_name": "export_download_print_sync_not_called",
+      "status": "PASS",
+      "evidence": "false"
+    },
+    {
+      "check_id": "B39-CHECK-014",
+      "check_name": "sales_order_draft_write_not_called",
+      "status": "PASS",
+      "evidence": "false"
+    },
+    {
+      "check_id": "B39-CHECK-015",
+      "check_name": "stock_adjustment_or_transfer_write_not_called",
+      "status": "PASS",
+      "evidence": "false"
+    },
+    {
+      "check_id": "B39-CHECK-016",
+      "check_name": "filter_or_query_evidence_recorded",
+      "status": "PASS",
+      "evidence": "{\"name\":\"filter_or_query\",\"found\":true,\"clicked\":true,\"label\":\"查询\"}"
+    },
+    {
+      "check_id": "B39-CHECK-017",
+      "check_name": "reset_evidence_recorded",
+      "status": "PASS",
+      "evidence": "{\"name\":\"reset\",\"found\":true,\"clicked\":true,\"label\":\"重置\"}"
+    },
+    {
+      "check_id": "B39-CHECK-018",
+      "check_name": "pagination_evidence_recorded",
+      "status": "PASS",
+      "evidence": "{\"name\":\"pagination_next\",\"found\":true,\"clicked\":true,\"label\":\"Next Month\"}"
+    },
+    {
+      "check_id": "B39-CHECK-019",
+      "check_name": "detail_drawer_recorded_or_absent",
+      "status": "PASS",
+      "evidence": "{\"name\":\"detail_drawer\",\"found\":false,\"clicked\":false}"
+    },
+    {
+      "check_id": "B39-CHECK-020",
+      "check_name": "guarded_anchors_inspected_without_clicking",
+      "status": "PASS",
+      "evidence": "{\"count\":71,\"note\":\"guard anchors inspected without clicking dangerous actions\"}"
+    },
+    {
+      "check_id": "B39-CHECK-021",
+      "check_name": "expected_non_blocking_errors_classified",
+      "status": "PASS",
+      "evidence": "[{\"type\":\"response\",\"status\":500,\"url\":\"http://127.0.0.1:5173/api/auth/me\",\"note\":\"local auth readback non-blocking only\"},{\"type\":\"response\",\"status\":404,\"url\":\"http://127.0.0.1:5173/favicon.ico\",\"note\":\"browser favicon request non-blocking only\"}]"
+    },
+    {
+      "check_id": "B39-CHECK-022",
+      "check_name": "code_changed_no",
+      "status": "PASS",
+      "evidence": "NO"
+    }
+  ]
+}
