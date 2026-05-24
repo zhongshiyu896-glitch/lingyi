@@ -1,0 +1,122 @@
+.F.F..FF                                                                 [100%]
+=================================== FAILURES ===================================
+_ FactoryStatementAuditTest.test_cancel_blocked_by_active_payable_outbox_writes_failure_audit _
+
+self = <tests.test_factory_statement_audit.FactoryStatementAuditTest testMethod=test_cancel_blocked_by_active_payable_outbox_writes_failure_audit>
+
+    def test_cancel_blocked_by_active_payable_outbox_writes_failure_audit(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-audit-cancel-active-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        confirmed = self.client.post(
+            f"/api/factory-statements/{statement_id}/confirm",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-audit-cancel-active-confirm", "remark": "ok"},
+        )
+>       self.assertEqual(confirmed.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_audit.py:326: AssertionError
+__ FactoryStatementAuditTest.test_confirm_and_cancel_success_audit_rows_exist __
+
+self = <tests.test_factory_statement_audit.FactoryStatementAuditTest testMethod=test_confirm_and_cancel_success_audit_rows_exist>
+
+    def test_confirm_and_cancel_success_audit_rows_exist(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-audit-confirm-cancel-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        confirmed = self.client.post(
+            f"/api/factory-statements/{statement_id}/confirm",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-audit-confirm-op", "remark": "ok"},
+        )
+>       self.assertEqual(confirmed.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_audit.py:167: AssertionError
+_ FactoryStatementAuditTest.test_payable_idempotency_conflict_writes_failure_audit _
+
+self = <tests.test_factory_statement_audit.FactoryStatementAuditTest testMethod=test_payable_idempotency_conflict_writes_failure_audit>
+
+    def test_payable_idempotency_conflict_writes_failure_audit(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-audit-payable-conflict-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        confirmed = self.client.post(
+            f"/api/factory-statements/{statement_id}/confirm",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-audit-payable-conflict-confirm", "remark": "ok"},
+        )
+>       self.assertEqual(confirmed.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_audit.py:258: AssertionError
+_ FactoryStatementAuditTest.test_payable_permission_denied_writes_failure_audit _
+
+self = <tests.test_factory_statement_audit.FactoryStatementAuditTest testMethod=test_payable_permission_denied_writes_failure_audit>
+
+    def test_payable_permission_denied_writes_failure_audit(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-audit-payable-denied-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        confirmed = self.client.post(
+            f"/api/factory-statements/{statement_id}/confirm",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-audit-payable-denied-confirm", "remark": "ok"},
+        )
+>       self.assertEqual(confirmed.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_audit.py:214: AssertionError
+=============================== warnings summary ===============================
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_active_scope_conflict_is_audited_with_business_error_code
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_active_scope_conflict_is_audited_with_business_error_code
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_cancel_blocked_by_active_payable_outbox_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_commit_failure_is_classified_as_database_write_failed
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_confirm_and_cancel_success_audit_rows_exist
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_operation_audit_failure_row_is_written_without_sensitive_tokens
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_idempotency_conflict_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_permission_denied_writes_failure_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:4017: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_active_scope_conflict_is_audited_with_business_error_code
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_cancel_blocked_by_active_payable_outbox_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_commit_failure_is_classified_as_database_write_failed
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_confirm_and_cancel_success_audit_rows_exist
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_operation_audit_failure_row_is_written_without_sensitive_tokens
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_idempotency_conflict_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_permission_denied_writes_failure_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:377: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    LySubcontractInspection.settlement_locked_at: datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_cancel_blocked_by_active_payable_outbox_writes_failure_audit
+FAILED tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_confirm_and_cancel_success_audit_rows_exist
+FAILED tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_idempotency_conflict_writes_failure_audit
+FAILED tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_permission_denied_writes_failure_audit
+4 failed, 4 passed, 15 warnings in 1.16s

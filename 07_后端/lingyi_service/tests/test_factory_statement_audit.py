@@ -21,6 +21,64 @@ import app.routers.factory_statement as factory_statement_router
 class FactoryStatementAuditTest(FactoryStatementApiBase):
     """Validate write-failure classification and audit boundaries."""
 
+    @classmethod
+    def _scoped_value(cls, value: str) -> str:
+        scenario_tag = cls._SCENARIO_TAG
+        return value if scenario_tag in value else f"{scenario_tag}-{value}"
+
+    def _statement_chain_payload(self, statement_data: dict[str, object]) -> dict[str, str]:
+        return {
+            "scenario_tag": self._SCENARIO_TAG,
+            "company": str(statement_data["company"]),
+            "supplier": str(statement_data["supplier"]),
+            "statement_no": str(statement_data["statement_no"]),
+        }
+
+    def _confirm_payload(self, statement_data: dict[str, object], *, idempotency_key: str, remark: str) -> dict[str, str]:
+        payload = self._statement_chain_payload(statement_data)
+        payload.update(
+            {
+                "idempotency_key": self._scoped_value(idempotency_key),
+                "remark": remark,
+            }
+        )
+        return payload
+
+    def _cancel_payload(self, statement_data: dict[str, object], *, idempotency_key: str, reason: str) -> dict[str, str]:
+        payload = self._statement_chain_payload(statement_data)
+        payload.update(
+            {
+                "idempotency_key": self._scoped_value(idempotency_key),
+                "reason": self._scoped_value(reason),
+            }
+        )
+        return payload
+
+    def _payable_payload(
+        self,
+        statement_data: dict[str, object],
+        *,
+        idempotency_key: str,
+        payable_account: str,
+        cost_center: str,
+        posting_date: str,
+        remark: str,
+    ) -> dict[str, str]:
+        payload = self._statement_chain_payload(statement_data)
+        payload.update(
+            {
+                "idempotency_key": self._scoped_value(idempotency_key),
+                "source_type": "subcontract_inspection",
+                "status_action": "payable_draft",
+                "source_ref": str(statement_data["statement_no"]),
+                "payable_account": payable_account,
+                "cost_center": cost_center,
+                "posting_date": posting_date,
+                "remark": remark,
+            }
+        )
+        return payload
+
     def test_commit_failure_is_classified_as_database_write_failed(self) -> None:
         payload = self._create_payload(idempotency_key="idem-db-write-fail")
 
@@ -157,19 +215,20 @@ class FactoryStatementAuditTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-audit-confirm-cancel-create"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
 
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-audit-confirm-op", "remark": "ok"},
+            json=self._confirm_payload(created_data, idempotency_key="idem-audit-confirm-op", remark="ok"),
         )
         self.assertEqual(confirmed.status_code, 200)
 
         cancelled = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-audit-cancel-op", "reason": "rollback"},
+            json=self._cancel_payload(created_data, idempotency_key="idem-audit-cancel-op", reason="rollback"),
         )
         self.assertEqual(cancelled.status_code, 200)
 
@@ -204,25 +263,27 @@ class FactoryStatementAuditTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-audit-payable-denied-create"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
 
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-audit-payable-denied-confirm", "remark": "ok"},
+            json=self._confirm_payload(created_data, idempotency_key="idem-audit-payable-denied-confirm", remark="ok"),
         )
         self.assertEqual(confirmed.status_code, 200)
 
         denied = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(role="Viewer"),
-            json={
-                "idempotency_key": "idem-audit-payable-denied",
-                "payable_account": "2202 - AP - C",
-                "cost_center": "Main - C",
-                "posting_date": "2026-04-15",
-                "remark": "deny",
-            },
+            json=self._payable_payload(
+                created_data,
+                idempotency_key="idem-audit-payable-denied",
+                payable_account="2202 - AP - C",
+                cost_center="Main - C",
+                posting_date="2026-04-15",
+                remark="deny",
+            ),
         )
         self.assertEqual(denied.status_code, 403)
         self.assertEqual(denied.json()["code"], "FACTORY_STATEMENT_PERMISSION_DENIED")
@@ -248,12 +309,13 @@ class FactoryStatementAuditTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-audit-payable-conflict-create"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
 
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-audit-payable-conflict-confirm", "remark": "ok"},
+            json=self._confirm_payload(created_data, idempotency_key="idem-audit-payable-conflict-confirm", remark="ok"),
         )
         self.assertEqual(confirmed.status_code, 200)
 
@@ -265,26 +327,28 @@ class FactoryStatementAuditTest(FactoryStatementApiBase):
             first = self.client.post(
                 f"/api/factory-statements/{statement_id}/payable-draft",
                 headers=self._headers(),
-                json={
-                    "idempotency_key": "idem-audit-payable-conflict",
-                    "payable_account": "2202 - AP - C",
-                    "cost_center": "Main - C",
-                    "posting_date": "2026-04-15",
-                    "remark": "A",
-                },
+                json=self._payable_payload(
+                    created_data,
+                    idempotency_key="idem-audit-payable-conflict",
+                    payable_account="2202 - AP - C",
+                    cost_center="Main - C",
+                    posting_date="2026-04-15",
+                    remark="A",
+                ),
             )
             self.assertEqual(first.status_code, 200)
 
             conflict = self.client.post(
                 f"/api/factory-statements/{statement_id}/payable-draft",
                 headers=self._headers(),
-                json={
-                    "idempotency_key": "idem-audit-payable-conflict",
-                    "payable_account": "2202 - AP - C",
-                    "cost_center": "Main - C",
-                    "posting_date": "2026-04-16",
-                    "remark": "B",
-                },
+                json=self._payable_payload(
+                    created_data,
+                    idempotency_key="idem-audit-payable-conflict",
+                    payable_account="2202 - AP - C",
+                    cost_center="Main - C",
+                    posting_date="2026-04-16",
+                    remark="B",
+                ),
             )
         self.assertEqual(conflict.status_code, 409)
         self.assertEqual(conflict.json()["code"], "FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT")
@@ -316,12 +380,13 @@ class FactoryStatementAuditTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-audit-cancel-active-create"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
 
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-audit-cancel-active-confirm", "remark": "ok"},
+            json=self._confirm_payload(created_data, idempotency_key="idem-audit-cancel-active-confirm", remark="ok"),
         )
         self.assertEqual(confirmed.status_code, 200)
 
@@ -333,20 +398,21 @@ class FactoryStatementAuditTest(FactoryStatementApiBase):
             payable = self.client.post(
                 f"/api/factory-statements/{statement_id}/payable-draft",
                 headers=self._headers(),
-                json={
-                    "idempotency_key": "idem-audit-cancel-active-payable",
-                    "payable_account": "2202 - AP - C",
-                    "cost_center": "Main - C",
-                    "posting_date": "2026-04-15",
-                    "remark": "pending outbox",
-                },
+                json=self._payable_payload(
+                    created_data,
+                    idempotency_key="idem-audit-cancel-active-payable",
+                    payable_account="2202 - AP - C",
+                    cost_center="Main - C",
+                    posting_date="2026-04-15",
+                    remark="pending outbox",
+                ),
             )
         self.assertEqual(payable.status_code, 200)
 
         cancelled = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-audit-cancel-active-cancel", "reason": "deny"},
+            json=self._cancel_payload(created_data, idempotency_key="idem-audit-cancel-active-cancel", reason="deny"),
         )
         self.assertEqual(cancelled.status_code, 409)
         self.assertEqual(cancelled.json()["code"], "FACTORY_STATEMENT_PAYABLE_OUTBOX_ACTIVE")

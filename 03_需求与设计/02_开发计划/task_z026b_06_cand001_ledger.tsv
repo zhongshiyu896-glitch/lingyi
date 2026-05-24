@@ -1,0 +1,65 @@
+decision	path	reason
+YES	03_需求与设计/02_开发计划/TASK-Z026B-02-PREP_Z026候选001只读验证边界报告.md	CAND001 B02 boundary report
+YES	03_需求与设计/02_开发计划/task_z026b_02_cand001_boundary.json	CAND001 B02 boundary JSON
+YES	03_需求与设计/02_开发计划/task_z026b_02_cand001_boundary.tsv	CAND001 B02 boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z026B-03-IMPL_Z026候选001factory-statement-audit只读验证报告.md	CAND001 B03 initial validation report
+YES	03_需求与设计/02_开发计划/task_z026b_03_cand001_result.json	CAND001 B03 initial validation result JSON
+YES	03_需求与设计/02_开发计划/task_z026b_03_cand001_result.tsv	CAND001 B03 initial validation result TSV
+YES	03_需求与设计/02_开发计划/task_z026b_03_cand001_stdout.txt	CAND001 B03 initial validation stdout
+YES	03_需求与设计/02_开发计划/TASK-Z026B-04-PREP-CAND001-FAILURE-DIAG_Z026候选001失败定位报告.md	CAND001 B04 failure diagnosis report
+YES	03_需求与设计/02_开发计划/task_z026b_04_cand001_failure_diag_boundary.json	CAND001 B04 failure diagnosis boundary JSON
+YES	03_需求与设计/02_开发计划/task_z026b_04_cand001_failure_diag_boundary.tsv	CAND001 B04 failure diagnosis boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z026B-05-FIX-CAND001_Z026候选001factory-statement-audit测试合同修复报告.md	CAND001 B05 fix report
+YES	03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_result.json	CAND001 B05 fix result JSON
+YES	03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_result.tsv	CAND001 B05 fix result TSV
+YES	03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_stdout.txt	CAND001 B05 fix stdout
+YES	07_后端/lingyi_service/tests/test_factory_statement_audit.py	Only allowed backend test fix for CAND001
+YES	03_需求与设计/02_开发计划/TASK-Z026B-06-LEDGER-CAND001_Z026候选001提交候选账本报告.md	CAND001 B06 ledger report
+YES	03_需求与设计/02_开发计划/task_z026b_06_cand001_freeze.json	CAND001 B06 freeze JSON
+YES	03_需求与设计/02_开发计划/task_z026b_06_cand001_ledger.json	CAND001 B06 ledger JSON
+YES	03_需求与设计/02_开发计划/task_z026b_06_cand001_ledger.tsv	CAND001 B06 ledger TSV
+NO	06_前端	Frontend is forbidden
+NO	07_后端/lingyi_service/app	Backend app code is forbidden
+NO	07_后端/lingyi_service/tests/* (except test_factory_statement_audit.py)	Other backend tests are forbidden
+NO	07_后端/* (except 07_后端/lingyi_service/tests/test_factory_statement_audit.py)	No other backend path is allowed
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	Shared engineer log is forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z026B-01-PREP_Z026本地候选池冻结报告.md	Z026 candidate pool is forbidden
+NO	03_需求与设计/02_开发计划/task_z026b_01_candidate_pool.json	Z026 candidate pool is forbidden
+NO	03_需求与设计/02_开发计划/task_z026b_01_candidate_pool.tsv	Z026 candidate pool is forbidden
+NO	03_需求与设计/02_开发计划/*cand002*	Z026-CAND-002 future candidate artifacts are forbidden
+NO	03_需求与设计/02_开发计划/*cand003*	Z026-CAND-003 future candidate artifacts are forbidden
+NO	03_需求与设计/02_开发计划/*cand004*	Z026-CAND-004 future candidate artifacts are forbidden
+NO	03_需求与设计/02_开发计划/*cand005*	Z026-CAND-005 future candidate artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z015*	Z015 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z015*	Z015 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z016*	Z016 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z016*	Z016 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z017*	Z017 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z017*	Z017 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z018*	Z018 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z018*	Z018 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z019*	Z019 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z019*	Z019 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z020*	Z020 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z020*	Z020 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z021*	Z021 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z021*	Z021 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z022*	Z022 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z022*	Z022 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z023*	Z023 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z023*	Z023 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z024*	Z024 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z024*	Z024 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z025*	Z025 prior artifacts are forbidden
+NO	03_需求与设计/02_开发计划/task_z025*	Z025 prior artifacts are forbidden
+NO	07_后端/lingyi_service/.venv	Local runtime is forbidden
+NO	07_后端/lingyi_service/.pytest_cache	Runtime cache is forbidden
+NO	07_后端/lingyi_service/tests/__pycache__	Runtime cache is forbidden
+NO	node_modules	Dependencies are forbidden
+NO	dist	Build artifacts are forbidden
+NO	build	Build artifacts are forbidden
+NO	.github	GitHub configuration is forbidden
+NO	.env	Production or local secret configuration is forbidden
+NO	03_需求与设计/02_开发计划/*审计*	C audit records are forbidden
+NO	03_需求与设计/02_开发计划/*架构*	A architect logs are forbidden
+NO	production	Production configuration or runtime path is forbidden

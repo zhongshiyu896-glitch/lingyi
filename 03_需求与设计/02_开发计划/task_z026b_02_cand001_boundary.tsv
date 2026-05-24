@@ -1,0 +1,30 @@
+field	value
+task_id	TASK-Z026B-02-PREP
+role	B Engineer
+source_task	TASK-Z026B-01-PREP
+selected_candidate	Z026-CAND-001
+candidate_original_fields_copied	YES
+module	factory_statement
+route_or_area	factory statement audit and error envelope boundaries
+target_test	07_后端/lingyi_service/tests/test_factory_statement_audit.py
+recommended_command	.venv/bin/python -m pytest tests/test_factory_statement_audit.py -q
+source_evidence	07_后端/lingyi_service/tests/test_factory_statement_audit.py;07_后端/lingyi_service/app/routers/factory_statement.py;07_后端/lingyi_service/app/services/factory_statement_service.py;07_后端/lingyi_service/app/models/factory_statement.py
+risk_level	LOW
+allowed_scope	Run only the frozen single-file backend readonly pytest command and record evidence artifacts.
+forbidden_scope	No code edits, no test edits, no frontend, no backend app changes, no remote lifecycle, no production account, no push/PR/release.
+why_minimal	Single existing backend pytest file with local in-memory app wiring; no dirty target diff and no prior Z015-Z025 test-entry reuse.
+status	LOCAL_ACTIONABLE_PREP_ONLY
+source_evidence_missing	[]
+recommended_command_target_exists	YES
+target_test_dirty_diff	[]
+next_task	TASK-Z026B-03-IMPL
+run_this_task	NO
+current_head	7624199bcfaaf3ed80c185e1949fd82845c27c76
+git_diff_cached_name_only	empty
+git_diff_check	PASS
+code_edits	NO
+tests_build_typecheck_npm_browser	NO
+stage_commit_push_tag_pr_release	NO
+reset_checkout_stash_cleanup	NO
+production_readback_go_live_project_completion	NO
+next_role	C Auditor

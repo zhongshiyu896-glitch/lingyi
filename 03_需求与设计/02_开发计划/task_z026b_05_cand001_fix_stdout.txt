@@ -1,0 +1,44 @@
+........                                                                 [100%]
+=============================== warnings summary ===============================
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_active_scope_conflict_is_audited_with_business_error_code
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_active_scope_conflict_is_audited_with_business_error_code
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_cancel_blocked_by_active_payable_outbox_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_commit_failure_is_classified_as_database_write_failed
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_confirm_and_cancel_success_audit_rows_exist
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_operation_audit_failure_row_is_written_without_sensitive_tokens
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_idempotency_conflict_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_permission_denied_writes_failure_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:4017: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_active_scope_conflict_is_audited_with_business_error_code
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_cancel_blocked_by_active_payable_outbox_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_commit_failure_is_classified_as_database_write_failed
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_confirm_and_cancel_success_audit_rows_exist
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_operation_audit_failure_row_is_written_without_sensitive_tokens
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_idempotency_conflict_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_permission_denied_writes_failure_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:377: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    LySubcontractInspection.settlement_locked_at: datetime.utcnow(),
+
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_cancel_blocked_by_active_payable_outbox_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_confirm_and_cancel_success_audit_rows_exist
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_idempotency_conflict_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_permission_denied_writes_failure_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:3332: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_cancel_blocked_by_active_payable_outbox_writes_failure_audit
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_payable_idempotency_conflict_writes_failure_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_payable_outbox_service.py:203: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_factory_statement_audit.py::FactoryStatementAuditTest::test_confirm_and_cancel_success_audit_rows_exist
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:3433: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+8 passed, 22 warnings in 1.16s

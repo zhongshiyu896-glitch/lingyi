@@ -1,0 +1,2 @@
+task_id	selected_candidate	source_result_task	failed_summary	failed_cases_count	failure_pattern	classification	allowed_fix_file	recommended_next_task	run_this_task
+TASK-Z026B-04-PREP-CAND001-FAILURE-DIAG	Z026-CAND-001	TASK-Z026B-03-IMPL	4 failed, 4 passed, 15 warnings in 1.16s	4	confirm setup payload uses old minimal contract and now returns 409 before audit assertions	TEST_CONTRACT_UPDATE_ALLOWED	07_后端/lingyi_service/tests/test_factory_statement_audit.py	TASK-Z026B-05-FIX-CAND001	NO

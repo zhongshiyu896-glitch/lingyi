@@ -1,0 +1,72 @@
+{
+  "task_id": "TASK-Z026B-06-LEDGER-CAND001",
+  "role": "B Engineer",
+  "selected_candidate": "Z026-CAND-001",
+  "current_head": "7624199bcfaaf3ed80c185e1949fd82845c27c76",
+  "final_result": "PASS",
+  "final_pytest_summary": "8 passed, 22 warnings in 1.16s",
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_factory_statement_audit.py"
+  ],
+  "evidence_chain": [
+    {
+      "task_id": "TASK-Z026B-02-PREP",
+      "result": "BOUNDARY_FROZEN",
+      "artifacts": [
+        "03_需求与设计/02_开发计划/TASK-Z026B-02-PREP_Z026候选001只读验证边界报告.md",
+        "03_需求与设计/02_开发计划/task_z026b_02_cand001_boundary.json",
+        "03_需求与设计/02_开发计划/task_z026b_02_cand001_boundary.tsv"
+      ]
+    },
+    {
+      "task_id": "TASK-Z026B-03-IMPL",
+      "result": "FAIL",
+      "pytest_summary": "4 failed, 4 passed, 15 warnings in 1.16s",
+      "artifacts": [
+        "03_需求与设计/02_开发计划/TASK-Z026B-03-IMPL_Z026候选001factory-statement-audit只读验证报告.md",
+        "03_需求与设计/02_开发计划/task_z026b_03_cand001_result.json",
+        "03_需求与设计/02_开发计划/task_z026b_03_cand001_result.tsv",
+        "03_需求与设计/02_开发计划/task_z026b_03_cand001_stdout.txt"
+      ]
+    },
+    {
+      "task_id": "TASK-Z026B-04-PREP-CAND001-FAILURE-DIAG",
+      "result": "TEST_CONTRACT_UPDATE_ALLOWED",
+      "allowed_fix_file": "07_后端/lingyi_service/tests/test_factory_statement_audit.py",
+      "artifacts": [
+        "03_需求与设计/02_开发计划/TASK-Z026B-04-PREP-CAND001-FAILURE-DIAG_Z026候选001失败定位报告.md",
+        "03_需求与设计/02_开发计划/task_z026b_04_cand001_failure_diag_boundary.json",
+        "03_需求与设计/02_开发计划/task_z026b_04_cand001_failure_diag_boundary.tsv"
+      ]
+    },
+    {
+      "task_id": "TASK-Z026B-05-FIX-CAND001",
+      "result": "PASS",
+      "pytest_summary": "8 passed, 22 warnings in 1.16s",
+      "artifacts": [
+        "03_需求与设计/02_开发计划/TASK-Z026B-05-FIX-CAND001_Z026候选001factory-statement-audit测试合同修复报告.md",
+        "03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_result.json",
+        "03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_result.tsv",
+        "03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_stdout.txt"
+      ]
+    }
+  ],
+  "ledger": {
+    "yes_count": 19,
+    "no_count": 45,
+    "yes_no_intersection_empty": true,
+    "backend_yes_paths": [
+      "07_后端/lingyi_service/tests/test_factory_statement_audit.py"
+    ],
+    "frontend_yes_paths": []
+  },
+  "gates": {
+    "stage_allowed": false,
+    "commit_allowed": false,
+    "push_allowed": false,
+    "remote_lifecycle_parked": true,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false
+  }
+}
