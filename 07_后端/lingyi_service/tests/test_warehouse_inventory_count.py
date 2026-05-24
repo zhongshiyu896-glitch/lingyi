@@ -26,6 +26,8 @@ from app.routers.warehouse import get_db_session as warehouse_db_dep
 class WarehouseInventoryCountApiBase(unittest.TestCase):
     """In-memory app wiring for warehouse inventory-count APIs."""
 
+    COUNT_SCENARIO_TAG = "Z002-WAREHOUSE-COUNT-20260420-001"
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.engine = create_engine(
@@ -60,7 +62,8 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
@@ -70,11 +73,25 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
             session.query(LySecurityAuditLog).delete()
             session.commit()
 
-    @staticmethod
-    def _headers(roles: str) -> dict[str, str]:
+    @classmethod
+    def _warehouse_code(cls, value: str) -> str:
+        hash_value = 2166136261
+        for byte in value.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"
+
+    @classmethod
+    def _request_id(cls, *, warehouse: str = "WH-A", count_date: str = "2026-04-20") -> str:
+        date_code = date.fromisoformat(count_date).strftime("%Y%m%d")
+        return f"{cls.COUNT_SCENARIO_TAG}-REQ-COUNT-W{cls._warehouse_code(warehouse)}-D{date_code}"
+
+    @classmethod
+    def _headers(cls, roles: str, *, warehouse: str = "WH-A", count_date: str = "2026-04-20") -> dict[str, str]:
         return {
             "X-LY-Dev-User": "warehouse.counter",
             "X-LY-Dev-Roles": roles,
+            "X-Request-ID": cls._request_id(warehouse=warehouse, count_date=count_date),
         }
 
     @staticmethod
@@ -88,6 +105,8 @@ class WarehouseInventoryCountApiBase(unittest.TestCase):
             "company": company,
             "warehouse": warehouse,
             "count_date": count_date,
+            "idempotency_key": WarehouseInventoryCountApiBase._request_id(warehouse=warehouse, count_date=count_date),
+            "source_ref": WarehouseInventoryCountApiBase._request_id(warehouse=warehouse, count_date=count_date),
             "remark": "cycle count",
             "items": [
                 {
@@ -234,7 +253,7 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
         cancel_resp = self.client.post(
             f"/api/warehouse/inventory-counts/{count_id}/cancel",
             headers=self._headers("warehouse:inventory_count"),
-            json={"reason": "manual cancel"},
+            json={"reason": f"{self.COUNT_SCENARIO_TAG} manual cancel"},
         )
         self.assertEqual(cancel_resp.status_code, 200, cancel_resp.text)
         self.assertEqual(cancel_resp.json()["data"]["status"], "cancelled")
@@ -242,7 +261,7 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
         cancel_again = self.client.post(
             f"/api/warehouse/inventory-counts/{count_id}/cancel",
             headers=self._headers("warehouse:inventory_count"),
-            json={"reason": "again"},
+            json={"reason": f"{self.COUNT_SCENARIO_TAG} repeat cancel"},
         )
         self.assertEqual(cancel_again.status_code, 409)
         self.assertEqual(cancel_again.json()["code"], "WAREHOUSE_INVENTORY_COUNT_ALREADY_CANCELLED")
@@ -255,7 +274,7 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
         )
         self.client.post(
             "/api/warehouse/inventory-counts",
-            headers=self._headers("warehouse:inventory_count"),
+            headers=self._headers("warehouse:inventory_count", warehouse="WH-B", count_date="2026-04-21"),
             json=self._payload(company="COMP-B", warehouse="WH-B", count_date="2026-04-21"),
         )
 

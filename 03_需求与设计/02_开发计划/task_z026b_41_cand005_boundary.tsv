@@ -1,0 +1,27 @@
+field	value
+task_id	TASK-Z026B-41-PREP
+role	B Engineer
+current_head	b1e6f81edd168fc45cf8f7b6392f63119ce8e481
+source_candidate_pool	TASK-Z026B-01-PREP
+archived_candidates	Z026-CAND-001,Z026-CAND-002,Z026-CAND-003,Z026-CAND-004
+archived_statuses	COMMITTED_AND_ARCHIVED_LOCAL_ONLY,COMMITTED_AND_ARCHIVED_LOCAL_ONLY,COMMITTED_AND_ARCHIVED_LOCAL_ONLY,COMMITTED_AND_ARCHIVED_LOCAL_ONLY
+candidate_total	5
+remaining_candidate	Z026-CAND-005
+selected_candidate	Z026-CAND-005
+candidate_original_fields_copied	YES
+module	warehouse
+route_or_area	warehouse inventory count baseline
+target_test	07_后端/lingyi_service/tests/test_warehouse_inventory_count.py
+recommended_command	.venv/bin/python -m pytest tests/test_warehouse_inventory_count.py -q
+source_evidence	["07_后端/lingyi_service/tests/test_warehouse_inventory_count.py","07_后端/lingyi_service/app/routers/warehouse.py","07_后端/lingyi_service/app/models/warehouse.py"]
+source_evidence_missing	[]
+recommended_command_target_exists	YES
+target_test_dirty_diff	[]
+next_task	TASK-Z026B-42-IMPL
+run_this_task	NO
+git_diff_cached_name_only	[]
+git_diff_check	PASS
+tests_build_typecheck_npm_browser_run	NO
+stage_commit_push_tag_pr_release	NO
+reset_checkout_stash_cleanup	NO
+production_readback_go_live_project_completion	NO

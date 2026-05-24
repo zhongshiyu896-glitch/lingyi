@@ -1,0 +1,134 @@
+FFFFF...FF                                                               [100%]
+=================================== FAILURES ===================================
+_________ WarehouseInventoryCountApiTest.test_cancel_and_repeat_cancel _________
+
+self = <tests.test_warehouse_inventory_count.WarehouseInventoryCountApiTest testMethod=test_cancel_and_repeat_cancel>
+
+    def test_cancel_and_repeat_cancel(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count"),
+            json=self._payload(),
+        )
+>       count_id = int(create_resp.json()["data"]["id"])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'data'
+
+tests/test_warehouse_inventory_count.py:232: KeyError
+_____ WarehouseInventoryCountApiTest.test_counted_qty_negative_returns_400 _____
+
+self = <tests.test_warehouse_inventory_count.WarehouseInventoryCountApiTest testMethod=test_counted_qty_negative_returns_400>
+
+    def test_counted_qty_negative_returns_400(self) -> None:
+        payload = self._payload()
+        payload["items"][0]["counted_qty"] = "-1"
+        response = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count"),
+            json=payload,
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 422 != 400
+
+tests/test_warehouse_inventory_count.py:145: AssertionError
+_ WarehouseInventoryCountApiTest.test_create_inventory_count_draft_with_permission _
+
+self = <tests.test_warehouse_inventory_count.WarehouseInventoryCountApiTest testMethod=test_create_inventory_count_draft_with_permission>
+
+    def test_create_inventory_count_draft_with_permission(self) -> None:
+        response = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=self._payload(),
+        )
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 422 != 201 : {"detail":[{"type":"missing","loc":["body","idempotency_key"],"msg":"Field required","input":{"company":"COMP-A","warehouse":"WH-A","count_date":"2026-04-20","remark":"cycle count","items":[{"item_code":"ITEM-A","batch_no":null,"serial_no":null,"system_qty":"10","counted_qty":"8","variance_reason":"盘亏"},{"item_code":"ITEM-B","batch_no":null,"serial_no":null,"system_qty":"5","counted_qty":"5","variance_reason":null}]}},{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"company":"COMP-A","warehouse":"WH-A","count_date":"2026-04-20","remark":"cycle count","items":[{"item_code":"ITEM-A","batch_no":null,"serial_no":null,"system_qty":"10","counted_qty":"8","variance_reason":"盘亏"},{"item_code":"ITEM-B","batch_no":null,"serial_no":null,"system_qty":"5","counted_qty":"5","variance_reason":null}]}}]}
+
+tests/test_warehouse_inventory_count.py:122: AssertionError
+_ WarehouseInventoryCountApiTest.test_inventory_write_only_cannot_create_inventory_count _
+
+self = <tests.test_warehouse_inventory_count.WarehouseInventoryCountApiTest testMethod=test_inventory_write_only_cannot_create_inventory_count>
+
+    def test_inventory_write_only_cannot_create_inventory_count(self) -> None:
+        response = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("inventory:write"),
+            json=self._payload(),
+        )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_warehouse_inventory_count.py:135: AssertionError
+__ WarehouseInventoryCountApiTest.test_list_filters_by_company_and_warehouse ___
+
+self = <tests.test_warehouse_inventory_count.WarehouseInventoryCountApiTest testMethod=test_list_filters_by_company_and_warehouse>
+
+    def test_list_filters_by_company_and_warehouse(self) -> None:
+        self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count"),
+            json=self._payload(company="COMP-A", warehouse="WH-A"),
+        )
+        self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count"),
+            json=self._payload(company="COMP-B", warehouse="WH-B", count_date="2026-04-21"),
+        )
+
+        list_resp = self.client.get(
+            "/api/warehouse/inventory-counts?company=COMP-A&warehouse=WH-A",
+            headers=self._headers("warehouse:read"),
+        )
+        self.assertEqual(list_resp.status_code, 200, list_resp.text)
+        rows = list_resp.json()["data"]["items"]
+>       self.assertEqual(len(rows), 1)
+E       AssertionError: 0 != 1
+
+tests/test_warehouse_inventory_count.py:268: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+___ WarehouseInventoryCountApiTest.test_state_machine_submit_review_confirm ____
+
+self = <tests.test_warehouse_inventory_count.WarehouseInventoryCountApiTest testMethod=test_state_machine_submit_review_confirm>
+
+    def test_state_machine_submit_review_confirm(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count,warehouse:read"),
+            json=self._payload(),
+        )
+>       self.assertEqual(create_resp.status_code, 201, create_resp.text)
+E       AssertionError: 422 != 201 : {"detail":[{"type":"missing","loc":["body","idempotency_key"],"msg":"Field required","input":{"company":"COMP-A","warehouse":"WH-A","count_date":"2026-04-20","remark":"cycle count","items":[{"item_code":"ITEM-A","batch_no":null,"serial_no":null,"system_qty":"10","counted_qty":"8","variance_reason":"盘亏"},{"item_code":"ITEM-B","batch_no":null,"serial_no":null,"system_qty":"5","counted_qty":"5","variance_reason":null}]}},{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"company":"COMP-A","warehouse":"WH-A","count_date":"2026-04-20","remark":"cycle count","items":[{"item_code":"ITEM-A","batch_no":null,"serial_no":null,"system_qty":"10","counted_qty":"8","variance_reason":"盘亏"},{"item_code":"ITEM-B","batch_no":null,"serial_no":null,"system_qty":"5","counted_qty":"5","variance_reason":null}]}}]}
+
+tests/test_warehouse_inventory_count.py:165: AssertionError
+___ WarehouseInventoryCountApiTest.test_variance_without_reason_returns_400 ____
+
+self = <tests.test_warehouse_inventory_count.WarehouseInventoryCountApiTest testMethod=test_variance_without_reason_returns_400>
+
+    def test_variance_without_reason_returns_400(self) -> None:
+        payload = self._payload()
+        payload["items"][0]["variance_reason"] = ""
+        response = self.client.post(
+            "/api/warehouse/inventory-counts",
+            headers=self._headers("warehouse:inventory_count"),
+            json=payload,
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 422 != 400
+
+tests/test_warehouse_inventory_count.py:156: AssertionError
+=============================== warnings summary ===============================
+tests/test_warehouse_inventory_count.py::WarehouseInventoryCountApiTest::test_cancel_and_repeat_cancel
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_warehouse_inventory_count.py::WarehouseInventoryCountApiTest::test_cancel_and_repeat_cancel
+FAILED tests/test_warehouse_inventory_count.py::WarehouseInventoryCountApiTest::test_counted_qty_negative_returns_400
+FAILED tests/test_warehouse_inventory_count.py::WarehouseInventoryCountApiTest::test_create_inventory_count_draft_with_permission
+FAILED tests/test_warehouse_inventory_count.py::WarehouseInventoryCountApiTest::test_inventory_write_only_cannot_create_inventory_count
+FAILED tests/test_warehouse_inventory_count.py::WarehouseInventoryCountApiTest::test_list_filters_by_company_and_warehouse
+FAILED tests/test_warehouse_inventory_count.py::WarehouseInventoryCountApiTest::test_state_machine_submit_review_confirm
+FAILED tests/test_warehouse_inventory_count.py::WarehouseInventoryCountApiTest::test_variance_without_reason_returns_400
+7 failed, 3 passed, 1 warning in 1.10s

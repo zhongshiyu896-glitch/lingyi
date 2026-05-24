@@ -1,0 +1,22 @@
+field	value
+task_id	TASK-Z026B-43-PREP-CAND005-FAILURE-DIAG
+role	B Engineer
+current_head	b1e6f81edd168fc45cf8f7b6392f63119ce8e481
+selected_candidate	Z026-CAND-005
+source_result_task	TASK-Z026B-42-IMPL
+failed_command	.venv/bin/python -m pytest tests/test_warehouse_inventory_count.py -q
+failed_summary	7 failed, 3 passed, 1 warning in 1.10s
+failed_cases_count	7
+failure_pattern	TEST_FIXTURE_SCHEMA_PAYLOAD_DRIFT: create payload omits required idempotency_key and source_ref, causing 422 before intended assertions
+readonly_source_evidence	["03_需求与设计/02_开发计划/task_z026b_42_cand005_result.json","03_需求与设计/02_开发计划/task_z026b_42_cand005_stdout.txt","07_后端/lingyi_service/tests/test_warehouse_inventory_count.py","07_后端/lingyi_service/app/schemas/warehouse.py","07_后端/lingyi_service/app/routers/warehouse.py","07_后端/lingyi_service/app/services/warehouse_service.py","07_后端/lingyi_service/app/models/warehouse.py"]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_warehouse_inventory_count.py
+recommended_next_task	TASK-Z026B-44-FIX-CAND005
+run_this_task	NO
+git_diff_cached_name_only	[]
+git_diff_check	PASS
+code_test_edits	NO
+tests_build_typecheck_npm_browser_run	NO
+stage_commit_push_tag_pr_release	NO
+reset_checkout_stash_cleanup	NO
+production_readback_go_live_project_completion	NO
