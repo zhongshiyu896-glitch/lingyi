@@ -1,0 +1,26 @@
+{
+  "task_id": "TASK-Z022B-30-LEDGER-CAND003-SCENARIO-TAG",
+  "source_task_id": "TASK-Z022B-29-FIX-CAND003-SCENARIO-TAG",
+  "selected_candidate_id": "Z022-CAND-003",
+  "initial_revalidate_task_id": "TASK-Z022B-27-IMPL-CAND003-REVALIDATE",
+  "initial_revalidate_result": "FAIL",
+  "failure_classification_task_id": "TASK-Z022B-28-PREP-CAND003-FAILURE-DIAG",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "final_fix_task_id": "TASK-Z022B-29-FIX-CAND003-SCENARIO-TAG",
+  "final_fix_result": "PASS",
+  "pytest_summary": "2 passed, 1 warning in 1.14s",
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_quality_defect_baseline.py"
+  ],
+  "preexisting_test_contract_diff_adopted_after_reanchor": true,
+  "historical_b20_b25_artifacts_reused_as_pass": false,
+  "backend_app_changed": false,
+  "frontend_changed": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "ledger_json": "03_需求与设计/02_开发计划/task_z022b_30_cand003_commit_candidate_ledger.json",
+  "ledger_tsv": "03_需求与设计/02_开发计划/task_z022b_30_cand003_commit_candidate_ledger.tsv",
+  "forbidden_actions_detected": false
+}

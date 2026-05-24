@@ -1,0 +1,24 @@
+field	value
+task_id	TASK-Z022B-25-PREP-CAND003-REANCHOR
+source_task_id	TASK-Z022B-24-ARCHIVE-CAND001-REFREEZE
+current_head	c42a0c45a2b8f3c7c38fa2bdff57b224118fb8c6
+cached_area_empty	true
+cand001_archived_commit	c42a0c45a2b8f3c7c38fa2bdff57b224118fb8c6
+cand002_archived_commit	f42b68581997e9533902292441c3f135c3421d9e
+selected_candidate_id	Z022-CAND-003
+source_evidence_exists	true
+source_evidence	07_后端/lingyi_service/tests/test_quality_defect_baseline.py|07_后端/lingyi_service/app/routers/quality.py|07_后端/lingyi_service/app/services/quality_service.py|07_后端/lingyi_service/app/schemas/quality.py
+preexisting_cand003_artifact_count	21
+preexisting_cand003_artifact_classification	PREEXISTING_OUT_OF_TIGHTENED_MAINLINE
+cand003_test_file_dirty	true
+cand003_backend_app_dirty	false
+cand003_artifacts_dirty_or_present	true
+recommended_next_task_id	TASK-Z022B-26-PREP-CAND003-DIRTY-DIFF-REVIEW
+recommended_next_action	readonly dirty diff and historical artifact review for Z022-CAND-003 before any pytest, fix, ledger, stage, or commit
+run_pytest_next	false
+allow_code_edit_next	false
+allow_stage_commit_next	false
+stage_allowed	false
+commit_allowed	false
+push_allowed	false
+project_completion_claimed	false

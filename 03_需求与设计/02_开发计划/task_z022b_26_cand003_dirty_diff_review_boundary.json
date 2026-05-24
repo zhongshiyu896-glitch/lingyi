@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-Z022B-26-PREP-CAND003-DIRTY-DIFF-REVIEW",
+  "source_task_id": "TASK-Z022B-25-PREP-CAND003-REANCHOR",
+  "current_head": "c42a0c45a2b8f3c7c38fa2bdff57b224118fb8c6",
+  "cached_area_empty": true,
+  "selected_candidate_id": "Z022-CAND-003",
+  "reanchor_json": "03_需求与设计/02_开发计划/task_z022b_25_cand003_reanchor_boundary.json",
+  "preexisting_artifacts_classification": "PREEXISTING_OUT_OF_TIGHTENED_MAINLINE",
+  "historical_b25_reused_as_pass": false,
+  "test_quality_defect_baseline_dirty": true,
+  "quality_defect_backend_app_dirty": false,
+  "quality_defect_backend_app_paths_checked": [
+    "07_后端/lingyi_service/app/routers/quality.py",
+    "07_后端/lingyi_service/app/services/quality_service.py",
+    "07_后端/lingyi_service/app/schemas/quality.py"
+  ],
+  "current_backend_app_dirty_paths": [
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py"
+  ],
+  "dirty_diff_test_contract_only": true,
+  "dirty_diff_summary": [
+    "added unittest.mock.patch import",
+    "wrapped both defect POST calls in patch.dict(os.environ) for APP_ENV=development and LINGYI_DB_URL=sqlite:///./lingyi_service.local.db",
+    "added current quality defect payload contract fields: request_id, idempotency_key, scenario_tag, source_ref, inspection_ref, source_type, item_code, operation, result",
+    "preserved draft create 201 assertion",
+    "preserved non-draft 403 and QUALITY_INVALID_STATUS assertions"
+  ],
+  "skip_xfail_added": false,
+  "skip_xfail_evidence": "rg -n \"skip|xfail|pytest\\.mark\\.skip|pytest\\.mark\\.xfail\" returned no matches",
+  "tests_deleted": false,
+  "tests_deleted_evidence": "current and HEAD both contain test_add_defect_to_draft_returns_201 and test_add_defect_to_non_draft_rejected_with_403",
+  "assertions_weakened": false,
+  "assertions_preserved": [
+    "self.assertEqual(response.status_code, 201, response.text)",
+    "self.assertEqual(response.status_code, 403)",
+    "self.assertEqual(response.json()[\"code\"], \"QUALITY_INVALID_STATUS\")"
+  ],
+  "recommended_next_task_id": "TASK-Z022B-27-IMPL-CAND003-REVALIDATE",
+  "recommended_next_command": ".venv/bin/python -m pytest tests/test_quality_defect_baseline.py -q",
+  "run_pytest_this_task": false,
+  "allow_code_edit_next": false,
+  "allow_stage_commit_next": false,
+  "reason": "Dirty diff is confined to the CAND003 test contract and quality defect router/service/schema have no dirty diff. Existing CAND003/B25 artifacts remain excluded as PREEXISTING_OUT_OF_TIGHTENED_MAINLINE, so the next lawful step is a single readonly revalidation command, not a fix or ledger/stage/commit.",
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "forbidden_actions": {
+    "pytest_npm_browser_build_typecheck_verify_run": false,
+    "product_code_edits": false,
+    "backend_app_edits": false,
+    "test_edits": false,
+    "existing_artifact_edits": false,
+    "engineer_shared_log_edit": false,
+    "stage_commit_push": false,
+    "reset_checkout_cleanup": false,
+    "pr_tag_release": false,
+    "production_or_real_business_write": false,
+    "parked_blockers_released": false
+  }
+}

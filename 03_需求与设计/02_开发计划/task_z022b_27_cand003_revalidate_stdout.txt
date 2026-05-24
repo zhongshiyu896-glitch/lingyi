@@ -1,0 +1,116 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+________ QualityDefectBaselineTest.test_add_defect_to_draft_returns_201 ________
+
+self = <tests.test_quality_defect_baseline.QualityDefectBaselineTest testMethod=test_add_defect_to_draft_returns_201>
+
+    def test_add_defect_to_draft_returns_201(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-DEFECT-001",
+            status="draft",
+            result="partial",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("8"),
+            rejected_qty=Decimal("2"),
+            defect_qty=Decimal("1"),
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "APP_ENV": "development",
+                "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+            },
+        ):
+            response = self.client.post(
+                f"/api/quality/inspections/{int(seeded['id'])}/defects",
+                headers=self._headers(),
+                json={
+                    "request_id": "req-defect-draft",
+                    "idempotency_key": "idem-defect-draft",
+                    "scenario_tag": "quality-defect-baseline",
+                    "source_ref": "QI-DEFECT-001",
+                    "inspection_ref": str(seeded["inspection_no"]),
+                    "source_type": "manual",
+                    "item_code": "ITEM-A",
+                    "operation": "defects",
+                    "result": "partial",
+                    "defects": [
+                        {
+                            "defect_code": "DEF-002",
+                            "defect_name": "破洞",
+                            "defect_qty": "1",
+                            "severity": "major",
+                            "item_line_no": 1,
+                        }
+                    ]
+                },
+            )
+
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 409 != 201 : {"code":"QUALITY_INVALID_SOURCE","message":"LOCAL_GATE_FAIL_CLOSED:invalid_scenario_tag","data":null}
+
+tests/test_quality_defect_baseline.py:60: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+___ QualityDefectBaselineTest.test_add_defect_to_non_draft_rejected_with_403 ___
+
+self = <tests.test_quality_defect_baseline.QualityDefectBaselineTest testMethod=test_add_defect_to_non_draft_rejected_with_403>
+
+    def test_add_defect_to_non_draft_rejected_with_403(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-DEFECT-002",
+            status="confirmed",
+            result="pass",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("10"),
+            rejected_qty=Decimal("0"),
+            defect_qty=Decimal("0"),
+        )
+
+        with patch.dict(
+            "os.environ",
+            {
+                "APP_ENV": "development",
+                "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+            },
+        ):
+            response = self.client.post(
+                f"/api/quality/inspections/{int(seeded['id'])}/defects",
+                headers=self._headers(),
+                json={
+                    "request_id": "req-defect-confirmed",
+                    "idempotency_key": "idem-defect-confirmed",
+                    "scenario_tag": "quality-defect-baseline",
+                    "source_ref": "QI-DEFECT-002",
+                    "inspection_ref": str(seeded["inspection_no"]),
+                    "source_type": "manual",
+                    "item_code": "ITEM-A",
+                    "operation": "defects",
+                    "result": "pass",
+                    "defects": [
+                        {
+                            "defect_code": "DEF-003",
+                            "defect_name": "污渍",
+                            "defect_qty": "1",
+                            "severity": "minor",
+                            "item_line_no": 1,
+                        }
+                    ]
+                },
+            )
+
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 409 != 403
+
+tests/test_quality_defect_baseline.py:117: AssertionError
+=============================== warnings summary ===============================
+tests/test_quality_defect_baseline.py::QualityDefectBaselineTest::test_add_defect_to_draft_returns_201
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_quality_defect_baseline.py::QualityDefectBaselineTest::test_add_defect_to_draft_returns_201
+FAILED tests/test_quality_defect_baseline.py::QualityDefectBaselineTest::test_add_defect_to_non_draft_rejected_with_403
+2 failed, 1 warning in 1.20s

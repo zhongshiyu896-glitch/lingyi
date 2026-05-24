@@ -1,0 +1,25 @@
+field	value
+task_id	TASK-Z022B-26-PREP-CAND003-DIRTY-DIFF-REVIEW
+source_task_id	TASK-Z022B-25-PREP-CAND003-REANCHOR
+current_head	c42a0c45a2b8f3c7c38fa2bdff57b224118fb8c6
+cached_area_empty	true
+selected_candidate_id	Z022-CAND-003
+reanchor_json	03_需求与设计/02_开发计划/task_z022b_25_cand003_reanchor_boundary.json
+preexisting_artifacts_classification	PREEXISTING_OUT_OF_TIGHTENED_MAINLINE
+test_quality_defect_baseline_dirty	true
+quality_defect_backend_app_dirty	false
+dirty_diff_test_contract_only	true
+skip_xfail_added	false
+tests_deleted	false
+assertions_weakened	false
+historical_b25_reused_as_pass	false
+recommended_next_task_id	TASK-Z022B-27-IMPL-CAND003-REVALIDATE
+recommended_next_command	.venv/bin/python -m pytest tests/test_quality_defect_baseline.py -q
+run_pytest_this_task	false
+allow_code_edit_next	false
+allow_stage_commit_next	false
+reason	Dirty diff is confined to the CAND003 test contract and quality defect router/service/schema have no dirty diff.
+stage_allowed	false
+commit_allowed	false
+push_allowed	false
+project_completion_claimed	false

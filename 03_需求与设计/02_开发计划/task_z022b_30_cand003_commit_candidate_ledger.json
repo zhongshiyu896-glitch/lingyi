@@ -1,0 +1,378 @@
+{
+  "task_id": "TASK-Z022B-30-LEDGER-CAND003-SCENARIO-TAG",
+  "source_task_id": "TASK-Z022B-29-FIX-CAND003-SCENARIO-TAG",
+  "selected_candidate_id": "Z022-CAND-003",
+  "ledger_total": 60,
+  "yes_count": 22,
+  "no_count": 38,
+  "yes_no_intersection": [],
+  "yes_backend_paths": [
+    "07_后端/lingyi_service/tests/test_quality_defect_baseline.py"
+  ],
+  "yes_frontend_paths": [],
+  "engineer_log_in_yes": false,
+  "historical_b20_b25_artifacts_in_yes": false,
+  "cand001_cand002_artifacts_in_yes": false,
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-25-PREP-CAND003-REANCHOR_Z022候选003状态重锚报告.md",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_reanchor_evidence",
+      "reason": "B25 reanchor report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_25_cand003_reanchor_boundary.json",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_reanchor_evidence",
+      "reason": "B25 reanchor boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_25_cand003_reanchor_boundary.tsv",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_reanchor_evidence",
+      "reason": "B25 reanchor boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-26-PREP-CAND003-DIRTY-DIFF-REVIEW_Z022候选003dirty评审报告.md",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_dirty_review_evidence",
+      "reason": "B26 dirty review report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_26_cand003_dirty_diff_review_boundary.json",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_dirty_review_evidence",
+      "reason": "B26 dirty review boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_26_cand003_dirty_diff_review_boundary.tsv",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_dirty_review_evidence",
+      "reason": "B26 dirty review boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-27-IMPL-CAND003-REVALIDATE_Z022候选003单文件重验证报告.md",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_revalidate_evidence",
+      "reason": "B27 revalidate report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_27_cand003_revalidate_result.json",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_revalidate_evidence",
+      "reason": "B27 revalidate result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_27_cand003_revalidate_result.tsv",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_revalidate_evidence",
+      "reason": "B27 revalidate result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_27_cand003_revalidate_stdout.txt",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_revalidate_evidence",
+      "reason": "B27 single-file pytest stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-28-PREP-CAND003-FAILURE-DIAG_Z022候选003失败定位报告.md",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_failure_diag_evidence",
+      "reason": "B28 failure diagnosis report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_28_cand003_failure_diag_boundary.json",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_failure_diag_evidence",
+      "reason": "B28 failure diagnosis JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_28_cand003_failure_diag_boundary.tsv",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_failure_diag_evidence",
+      "reason": "B28 failure diagnosis TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-29-FIX-CAND003-SCENARIO-TAG_Z022候选003scenario-tag修复报告.md",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_fix_evidence",
+      "reason": "B29 scenario-tag fix report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_29_cand003_scenario_tag_fix_result.json",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_fix_evidence",
+      "reason": "B29 scenario-tag fix result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_29_cand003_scenario_tag_fix_result.tsv",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_fix_evidence",
+      "reason": "B29 scenario-tag fix result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_29_cand003_scenario_tag_fix_stdout.txt",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_fix_evidence",
+      "reason": "B29 single-file pytest stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-30-LEDGER-CAND003-SCENARIO-TAG_Z022候选003提交候选账本报告.md",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_ledger_evidence",
+      "reason": "B30 ledger report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_30_cand003_scenario_tag_freeze.json",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_ledger_evidence",
+      "reason": "B30 freeze JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_30_cand003_commit_candidate_ledger.json",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_ledger_evidence",
+      "reason": "B30 ledger JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_30_cand003_commit_candidate_ledger.tsv",
+      "decision": "YES",
+      "category": "tightened_mainline_cand003_ledger_evidence",
+      "reason": "B30 ledger TSV"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_defect_baseline.py",
+      "decision": "YES",
+      "category": "allowed_backend_test_contract_fix",
+      "reason": "Only backend test file allowed for CAND003 scenario-tag fix"
+    },
+    {
+      "path": "06_前端",
+      "decision": "NO",
+      "category": "frontend_scope",
+      "reason": "Frontend is forbidden for this candidate ledger"
+    },
+    {
+      "path": "07_后端/lingyi_service/app",
+      "decision": "NO",
+      "category": "backend_app_scope",
+      "reason": "Backend app/source code is forbidden; CAND003 fix is test-contract only"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_bom_permissions.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND003 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND003 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND003 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND003 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_style_profit_api.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND003 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND003 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_workshop_permissions.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND003 allowed test file"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/工程师会话日志.md",
+      "decision": "NO",
+      "category": "shared_log",
+      "reason": "Shared engineer log is forbidden in this candidate YES set"
+    },
+    {
+      "path": "CAND001/CAND002 commit/archive/refreeze/stage artifacts",
+      "decision": "NO",
+      "category": "other_candidate_artifacts",
+      "reason": "Not part of CAND003 tightened mainline evidence"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-20-PREP_Z022候选003本地只读验证边界冻结报告.md",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_20_candidate003_readonly_boundary.json",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_20_candidate003_readonly_boundary.tsv",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-21-IMPL_Z022候选003quality-defect-baseline证据采集报告.md",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_21_quality_defect_baseline_result.json",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_21_quality_defect_baseline_result.tsv",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_21_quality_defect_baseline_stdout.txt",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-22-PREP_Z022候选003quality-defect-baseline失败定位与边界冻结报告.md",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_22_quality_defect_baseline_failure_boundary.json",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_22_quality_defect_baseline_failure_boundary.tsv",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-23-FIX_Z022候选003quality-defect-baseline测试合同修复报告.md",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_23_quality_defect_baseline_fix_result.json",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_23_quality_defect_baseline_fix_result.tsv",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_23_quality_defect_baseline_fix_stdout.txt",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-24-PREP_Z022候选003quality-defect-baseline二次失败定位与边界冻结报告.md",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_24_quality_defect_baseline_second_failure_boundary.json",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_24_quality_defect_baseline_second_failure_boundary.tsv",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-25-FIX_Z022候选003quality-defect-baseline测试合同二次修复报告.md",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_25_quality_defect_baseline_second_fix_result.json",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_25_quality_defect_baseline_second_fix_result.tsv",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_25_quality_defect_baseline_second_fix_stdout.txt",
+      "decision": "NO",
+      "category": "historical_out_of_mainline_cand003_artifact",
+      "reason": "Preexisting B20-B25 artifact classified out of tightened mainline"
+    },
+    {
+      "path": ".pytest_cache",
+      "decision": "NO",
+      "category": "local_cache",
+      "reason": "Local pytest cache is forbidden"
+    },
+    {
+      "path": "07_后端/lingyi_service/.venv",
+      "decision": "NO",
+      "category": "local_environment",
+      "reason": "Virtual environment is forbidden"
+    },
+    {
+      "path": "dist",
+      "decision": "NO",
+      "category": "build_output",
+      "reason": "Build output is forbidden"
+    },
+    {
+      "path": "node_modules",
+      "decision": "NO",
+      "category": "dependency_cache",
+      "reason": "Dependency cache is forbidden"
+    },
+    {
+      "path": "runtime/cache/temp files",
+      "decision": "NO",
+      "category": "local_runtime",
+      "reason": "Local runtime, cache, and temp files are forbidden"
+    },
+    {
+      "path": "non-candidate control-plane files",
+      "decision": "NO",
+      "category": "control_plane",
+      "reason": "Non-candidate control-plane files are forbidden"
+    }
+  ]
+}

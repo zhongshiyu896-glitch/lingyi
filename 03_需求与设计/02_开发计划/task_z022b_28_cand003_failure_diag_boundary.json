@@ -1,0 +1,100 @@
+{
+  "task_id": "TASK-Z022B-28-PREP-CAND003-FAILURE-DIAG",
+  "source_task_id": "TASK-Z022B-27-IMPL-CAND003-REVALIDATE",
+  "selected_candidate_id": "Z022-CAND-003",
+  "current_head": "c42a0c45a2b8f3c7c38fa2bdff57b224118fb8c6",
+  "cached_area_empty": true,
+  "b27_result": "FAIL",
+  "b27_exit_code": 1,
+  "b27_pytest_summary": "2 failed, 1 warning in 1.20s",
+  "failed_cases": [
+    "tests/test_quality_defect_baseline.py::QualityDefectBaselineTest::test_add_defect_to_draft_returns_201",
+    "tests/test_quality_defect_baseline.py::QualityDefectBaselineTest::test_add_defect_to_non_draft_rejected_with_403"
+  ],
+  "expected_vs_actual": [
+    {
+      "case": "test_add_defect_to_draft_returns_201",
+      "expected_status": 201,
+      "actual_status": 409,
+      "actual_error_code": "QUALITY_INVALID_SOURCE",
+      "actual_gate_reason": "LOCAL_GATE_FAIL_CLOSED:invalid_scenario_tag"
+    },
+    {
+      "case": "test_add_defect_to_non_draft_rejected_with_403",
+      "expected_status": 403,
+      "actual_status": 409,
+      "actual_error_code": "QUALITY_INVALID_SOURCE",
+      "actual_gate_reason": "LOCAL_GATE_FAIL_CLOSED:invalid_scenario_tag"
+    }
+  ],
+  "actual_error_code": "QUALITY_INVALID_SOURCE",
+  "actual_gate_reason": "LOCAL_GATE_FAIL_CLOSED:invalid_scenario_tag",
+  "current_test_scenario_tag": "quality-defect-baseline",
+  "current_test_scenario_tag_evidence": [
+    "07_后端/lingyi_service/tests/test_quality_defect_baseline.py:41",
+    "07_后端/lingyi_service/tests/test_quality_defect_baseline.py:98"
+  ],
+  "expected_valid_scenario_tag_or_rule": "QUALITY_SCENARIO_TAG_PATTERN.fullmatch; regex=Z003-QUALITY-INSPECTION-\\d{8}-\\d{3}",
+  "scenario_tag_rule_evidence": [
+    "07_后端/lingyi_service/app/routers/quality.py:79",
+    "07_后端/lingyi_service/app/routers/quality.py:458-460"
+  ],
+  "gate_order_evidence": [
+    "07_后端/lingyi_service/app/routers/quality.py:441-494",
+    "07_后端/lingyi_service/app/routers/quality.py:534-572",
+    "07_后端/lingyi_service/app/routers/quality.py:884-923"
+  ],
+  "request_carrier_rule_evidence": [
+    "07_后端/lingyi_service/app/routers/quality.py:80-84",
+    "07_后端/lingyi_service/app/routers/quality.py:385-438"
+  ],
+  "current_request_carrier_observation": "The current test payload uses req-defect-draft/req-defect-confirmed and _headers() does not set X-Request-ID, but B27 stops earlier at invalid_scenario_tag before request carrier validation.",
+  "current_request_carrier_evidence": [
+    "07_后端/lingyi_service/tests/test_quality_defect_baseline.py:39",
+    "07_后端/lingyi_service/tests/test_quality_defect_baseline.py:96",
+    "07_后端/lingyi_service/tests/test_quality_api.py:86-87"
+  ],
+  "gate_runs_before_permission_or_status_branch": true,
+  "quality_defect_backend_app_dirty": false,
+  "quality_defect_backend_app_dirty_paths": [],
+  "unrelated_backend_app_dirty_paths_observed": [
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py"
+  ],
+  "test_quality_defect_baseline_dirty": true,
+  "test_diff_still_contract_only": true,
+  "skip_xfail_deleted_or_weakened": false,
+  "skip_xfail_added": false,
+  "tests_deleted": false,
+  "assertions_weakened": false,
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_quality_defect_baseline.py"
+  ],
+  "forbidden_files": [
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "07_后端/lingyi_service/tests other than 07_后端/lingyi_service/tests/test_quality_defect_baseline.py",
+    "existing CAND001/CAND002 commit/archive/refreeze/stage artifacts",
+    "existing CAND003/B25/defect baseline artifacts",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "A architect logs",
+    "C audit records",
+    "GitHub/production config"
+  ],
+  "recommended_next_task_id": "TASK-Z022B-29-FIX-CAND003-SCENARIO-TAG",
+  "recommended_next_command": "N/A - next task is a scoped test-contract fix; pytest is not run in TASK-Z022B-28",
+  "run_pytest_this_task": false,
+  "allow_code_edit_next": true,
+  "allow_code_edit_next_scope": [
+    "07_后端/lingyi_service/tests/test_quality_defect_baseline.py"
+  ],
+  "allow_stage_commit_next": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "diagnosis": "B27 failures are caused by the test sending scenario_tag=quality-defect-baseline while the router requires QUALITY_SCENARIO_TAG_PATTERN.fullmatch against Z003-QUALITY-INSPECTION-\\d{8}-\\d{3}. The existing gate is called before the defects status branch, so the observed 409 occurs before the expected 201/403 semantics can execute. The next scoped test-contract fix should align scenario_tag and its request/source carriers without changing backend app code.",
+  "forbidden_actions_detected": false
+}
