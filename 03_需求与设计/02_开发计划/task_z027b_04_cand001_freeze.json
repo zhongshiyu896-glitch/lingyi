@@ -1,0 +1,80 @@
+{
+  "task_id": "TASK-Z027B-04-LEDGER-CAND001",
+  "role": "B Engineer",
+  "current_head": "8c4a002a63e998ccb829c7da1c29a53e09822b6a",
+  "selected_candidate": "Z027-CAND-001",
+  "boundary_task": "TASK-Z027B-02-PREP",
+  "impl_task": "TASK-Z027B-03-IMPL",
+  "final_result": "PASS",
+  "final_pytest_summary": "6 passed, 1 warning in 0.19s",
+  "evidence_chain": [
+    {
+      "task_id": "TASK-Z027B-02-PREP",
+      "type": "boundary",
+      "artifacts": [
+        "03_需求与设计/02_开发计划/TASK-Z027B-02-PREP_Z027候选001只读验证边界报告.md",
+        "03_需求与设计/02_开发计划/task_z027b_02_cand001_boundary.json",
+        "03_需求与设计/02_开发计划/task_z027b_02_cand001_boundary.tsv"
+      ],
+      "selected_candidate": "Z027-CAND-001",
+      "frozen_command": ".venv/bin/python -m pytest tests/test_sales_inventory_adapter.py -q",
+      "next_task": "TASK-Z027B-03-IMPL",
+      "run_this_task": false
+    },
+    {
+      "task_id": "TASK-Z027B-03-IMPL",
+      "type": "readonly_validation",
+      "artifacts": [
+        "03_需求与设计/02_开发计划/TASK-Z027B-03-IMPL_Z027候选001sales-inventory-adapter只读验证报告.md",
+        "03_需求与设计/02_开发计划/task_z027b_03_cand001_result.json",
+        "03_需求与设计/02_开发计划/task_z027b_03_cand001_result.tsv",
+        "03_需求与设计/02_开发计划/task_z027b_03_cand001_stdout.txt"
+      ],
+      "command": ".venv/bin/python -m pytest tests/test_sales_inventory_adapter.py -q",
+      "workdir": "07_后端/lingyi_service",
+      "command_run_count": 1,
+      "exit_code": 0,
+      "result": "PASS",
+      "pytest_summary": "6 passed, 1 warning in 0.19s"
+    },
+    {
+      "task_id": "TASK-Z027B-04-LEDGER-CAND001",
+      "type": "ledger_freeze",
+      "artifacts": [
+        "03_需求与设计/02_开发计划/TASK-Z027B-04-LEDGER-CAND001_Z027候选001提交候选账本报告.md",
+        "03_需求与设计/02_开发计划/task_z027b_04_cand001_freeze.json",
+        "03_需求与设计/02_开发计划/task_z027b_04_cand001_ledger.json",
+        "03_需求与设计/02_开发计划/task_z027b_04_cand001_ledger.tsv"
+      ],
+      "stage_allowed": false,
+      "commit_allowed": false,
+      "push_allowed": false
+    }
+  ],
+  "readonly_validation": {
+    "b03_result_json": "03_需求与设计/02_开发计划/task_z027b_03_cand001_result.json",
+    "b03_stdout": "03_需求与设计/02_开发计划/task_z027b_03_cand001_stdout.txt",
+    "b03_result": "PASS",
+    "b03_stdout_contains_final_summary": true
+  },
+  "ledger": {
+    "ledger_json": "03_需求与设计/02_开发计划/task_z027b_04_cand001_ledger.json",
+    "ledger_tsv": "03_需求与设计/02_开发计划/task_z027b_04_cand001_ledger.tsv",
+    "yes_count": 11,
+    "no_count": 13,
+    "ledger_total": 24
+  },
+  "validation": {
+    "git_diff_cached_name_only": [],
+    "git_diff_check": "PASS"
+  },
+  "forbidden_actions": {
+    "code_test_edits": false,
+    "tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false,
+    "memory_citation_unrelated_reply_blocks": false
+  },
+  "next_role": "C Auditor"
+}

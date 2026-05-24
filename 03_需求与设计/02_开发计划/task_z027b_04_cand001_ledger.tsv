@@ -1,0 +1,25 @@
+path	decision	reason
+03_需求与设计/02_开发计划/TASK-Z027B-02-PREP_Z027候选001只读验证边界报告.md	YES	CAND001 boundary report
+03_需求与设计/02_开发计划/task_z027b_02_cand001_boundary.json	YES	CAND001 boundary JSON
+03_需求与设计/02_开发计划/task_z027b_02_cand001_boundary.tsv	YES	CAND001 boundary TSV
+03_需求与设计/02_开发计划/TASK-Z027B-03-IMPL_Z027候选001sales-inventory-adapter只读验证报告.md	YES	CAND001 readonly validation report
+03_需求与设计/02_开发计划/task_z027b_03_cand001_result.json	YES	CAND001 readonly validation result JSON
+03_需求与设计/02_开发计划/task_z027b_03_cand001_result.tsv	YES	CAND001 readonly validation result TSV
+03_需求与设计/02_开发计划/task_z027b_03_cand001_stdout.txt	YES	CAND001 readonly validation stdout
+03_需求与设计/02_开发计划/TASK-Z027B-04-LEDGER-CAND001_Z027候选001提交候选账本报告.md	YES	current ledger report
+03_需求与设计/02_开发计划/task_z027b_04_cand001_freeze.json	YES	current freeze JSON
+03_需求与设计/02_开发计划/task_z027b_04_cand001_ledger.json	YES	current ledger JSON
+03_需求与设计/02_开发计划/task_z027b_04_cand001_ledger.tsv	YES	current ledger TSV
+06_前端	NO	frontend scope forbidden
+07_后端	NO	all backend code and tests forbidden for CAND001 evidence-only commit candidate
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	shared engineer log forbidden
+03_需求与设计/02_开发计划/TASK-Z027B-01-PREP_Z027本地候选池冻结报告.md	NO	Z027 candidate pool report forbidden
+03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.json	NO	Z027 candidate pool JSON forbidden
+03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.tsv	NO	Z027 candidate pool TSV forbidden
+03_需求与设计/02_开发计划/*cand002*	NO	Z027-CAND-002 artifacts forbidden
+03_需求与设计/02_开发计划/*cand003*	NO	Z027-CAND-003 artifacts forbidden
+03_需求与设计/02_开发计划/*cand004*	NO	Z027-CAND-004 artifacts forbidden
+03_需求与设计/02_开发计划/*cand005*	NO	Z027-CAND-005 artifacts forbidden
+03_需求与设计/02_开发计划/task_z0(15-26)*	NO	Z015-Z026 existing candidate, ledger, archive, and final freeze artifacts forbidden
+cache/runtime/venv	NO	cache/runtime/venv artifacts forbidden
+dist/node_modules	NO	dist/node_modules artifacts forbidden

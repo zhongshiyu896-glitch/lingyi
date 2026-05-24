@@ -1,0 +1,2 @@
+selected_candidate	command	workdir	command_run_count	exit_code	pytest_summary	result	stdout_log	target_test_dirty_diff
+Z027-CAND-001	.venv/bin/python -m pytest tests/test_sales_inventory_adapter.py -q	07_后端/lingyi_service	1	0	6 passed, 1 warning in 0.19s	PASS	03_需求与设计/02_开发计划/task_z027b_03_cand001_stdout.txt	[]
