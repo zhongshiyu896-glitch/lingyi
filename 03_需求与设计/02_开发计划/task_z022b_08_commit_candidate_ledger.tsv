@@ -1,0 +1,62 @@
+path	decision	reason
+03_需求与设计/02_开发计划/TASK-Z022B-02-PREP_Z022候选001本地只读验证边界冻结报告.md	YES	Z022-CAND-001 B02 boundary report
+03_需求与设计/02_开发计划/task_z022b_02_candidate001_readonly_boundary.json	YES	Z022-CAND-001 B02 boundary JSON
+03_需求与设计/02_开发计划/task_z022b_02_candidate001_readonly_boundary.tsv	YES	Z022-CAND-001 B02 boundary TSV
+03_需求与设计/02_开发计划/TASK-Z022B-03-IMPL_Z022候选001quality-create-baseline证据采集报告.md	YES	Z022-CAND-001 B03 initial FAIL report
+03_需求与设计/02_开发计划/task_z022b_03_quality_create_baseline_result.json	YES	Z022-CAND-001 B03 initial FAIL JSON
+03_需求与设计/02_开发计划/task_z022b_03_quality_create_baseline_result.tsv	YES	Z022-CAND-001 B03 initial FAIL TSV
+03_需求与设计/02_开发计划/task_z022b_03_quality_create_baseline_stdout.txt	YES	Z022-CAND-001 B03 initial FAIL stdout
+03_需求与设计/02_开发计划/TASK-Z022B-04-PREP_Z022候选001quality-create-baseline失败定位与边界冻结报告.md	YES	Z022-CAND-001 B04 failure boundary report
+03_需求与设计/02_开发计划/task_z022b_04_quality_create_baseline_failure_boundary.json	YES	Z022-CAND-001 B04 failure boundary JSON
+03_需求与设计/02_开发计划/task_z022b_04_quality_create_baseline_failure_boundary.tsv	YES	Z022-CAND-001 B04 failure boundary TSV
+03_需求与设计/02_开发计划/TASK-Z022B-05-FIX_Z022候选001quality-create-baseline测试合同修复报告.md	YES	Z022-CAND-001 B05 first fix report
+03_需求与设计/02_开发计划/task_z022b_05_quality_create_baseline_fix_result.json	YES	Z022-CAND-001 B05 first fix result JSON
+03_需求与设计/02_开发计划/task_z022b_05_quality_create_baseline_fix_result.tsv	YES	Z022-CAND-001 B05 first fix result TSV
+03_需求与设计/02_开发计划/task_z022b_05_quality_create_baseline_fix_stdout.txt	YES	Z022-CAND-001 B05 first fix stdout
+03_需求与设计/02_开发计划/TASK-Z022B-06-PREP_Z022候选001quality-create-baseline二次失败定位与边界冻结报告.md	YES	Z022-CAND-001 B06 second failure boundary report
+03_需求与设计/02_开发计划/task_z022b_06_quality_create_baseline_second_failure_boundary.json	YES	Z022-CAND-001 B06 second failure boundary JSON
+03_需求与设计/02_开发计划/task_z022b_06_quality_create_baseline_second_failure_boundary.tsv	YES	Z022-CAND-001 B06 second failure boundary TSV
+03_需求与设计/02_开发计划/TASK-Z022B-07-FIX_Z022候选001quality-create-baseline测试合同二次修复报告.md	YES	Z022-CAND-001 B07 final fix report
+03_需求与设计/02_开发计划/task_z022b_07_quality_create_baseline_second_fix_result.json	YES	Z022-CAND-001 B07 final fix result JSON
+03_需求与设计/02_开发计划/task_z022b_07_quality_create_baseline_second_fix_result.tsv	YES	Z022-CAND-001 B07 final fix result TSV
+03_需求与设计/02_开发计划/task_z022b_07_quality_create_baseline_second_fix_stdout.txt	YES	Z022-CAND-001 B07 final fix stdout
+03_需求与设计/02_开发计划/TASK-Z022B-08-LEDGER_Z022候选001quality-create-baseline证据提交候选账本冻结报告.md	YES	Z022-CAND-001 B08 ledger report
+03_需求与设计/02_开发计划/task_z022b_08_quality_create_baseline_freeze.json	YES	Z022-CAND-001 B08 freeze JSON
+03_需求与设计/02_开发计划/task_z022b_08_commit_candidate_ledger.json	YES	Z022-CAND-001 B08 ledger JSON
+03_需求与设计/02_开发计划/task_z022b_08_commit_candidate_ledger.tsv	YES	Z022-CAND-001 B08 ledger TSV
+03_需求与设计/02_开发计划/工程师会话日志.md	YES	Engineer log for Z022-CAND-001 B02-B08
+07_后端/lingyi_service/tests/test_quality_create_baseline.py	YES	Only allowed test contract fix file for Z022-CAND-001
+00_交接与日志/HANDOVER_STATUS.md	NO	Historical dirty control-plane file outside this candidate ledger
+03_需求与设计/01_架构设计/架构师会话日志.md	NO	Non-candidate architect log
+03_需求与设计/02_开发计划/TASK-Z022B-01-PREP_Z022本地候选池重建与下一任务冻结报告.md	NO	Z022 pool-level evidence outside Z022-CAND-001 commit candidate
+03_需求与设计/02_开发计划/task_z022b_01_local_dev_candidate_pool.json	NO	Z022 pool-level evidence outside Z022-CAND-001 commit candidate
+03_需求与设计/02_开发计划/task_z022b_01_local_dev_candidate_pool.tsv	NO	Z022 pool-level evidence outside Z022-CAND-001 commit candidate
+03_需求与设计/02_开发计划/task_z021b_22_final_candidate_pool_freeze.json	NO	Z021 final freeze evidence excluded
+03_需求与设计/02_开发计划/task_z021b_21_permission_governance_audit_export_freeze.json	NO	Z021 non-candidate evidence excluded
+03_需求与设计/02_开发计划/task_z020b_20_final_state_freeze.json	NO	Prior cycle final freeze evidence excluded
+03_需求与设计/02_开发计划/task_z019b_20_final_state_freeze.json	NO	Prior cycle final freeze evidence excluded
+06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	NO	Historical frontend dirty diff excluded
+06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	NO	Historical frontend dirty diff excluded
+06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	NO	Historical frontend dirty diff excluded
+06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	NO	Historical frontend dirty diff excluded
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	NO	Historical frontend dirty diff excluded
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	NO	Historical frontend dirty diff excluded
+07_后端/lingyi_service/app/schemas/report.py	NO	Historical backend dirty diff excluded
+07_后端/lingyi_service/app/services/report_catalog_service.py	NO	Historical backend dirty diff excluded
+07_后端/lingyi_service/app/services/system_config_catalog_service.py	NO	Historical backend dirty diff excluded
+07_后端/lingyi_service/tests/test_bom_permissions.py	NO	Historical backend test dirty diff excluded
+07_后端/lingyi_service/tests/test_logging_sanitization.py	NO	Historical backend test dirty diff excluded
+07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	NO	Z021 allowed test fix file excluded from Z022-CAND-001 ledger
+07_后端/lingyi_service/tests/test_request_id_sanitization.py	NO	Historical backend test dirty diff excluded
+07_后端/lingyi_service/tests/test_style_profit_api.py	NO	Historical backend test dirty diff excluded
+07_后端/lingyi_service/tests/test_subcontract_company_permission.py	NO	Historical backend test dirty diff excluded
+07_后端/lingyi_service/tests/test_workshop_permissions.py	NO	Historical backend test dirty diff excluded
+07_后端/lingyi_service/app/routers/quality.py	NO	Quality create baseline router source evidence excluded
+07_后端/lingyi_service/app/services/quality_service.py	NO	Quality create baseline service source evidence excluded
+07_后端/lingyi_service/app/schemas/quality.py	NO	Quality create baseline schema source evidence excluded
+07_后端/lingyi_service/tests/test_quality_api.py	NO	Quality shared test fixture evidence excluded
+07_后端/lingyi_service/.pytest_cache	NO	Local pytest cache excluded
+07_后端/lingyi_service/.venv	NO	Local virtual environment excluded
+06_前端/lingyi-pc/dist	NO	Frontend build output excluded
+06_前端/lingyi-pc/node_modules	NO	Frontend dependency directory excluded
+07_后端/lingyi_service/runtime	NO	Local backend runtime excluded

@@ -1,0 +1,32 @@
+{
+  "task_id": "TASK-Z022B-03-IMPL",
+  "source_task_id": "TASK-Z022B-02-PREP",
+  "selected_candidate_id": "Z022-CAND-001",
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_quality_create_baseline.py -q",
+  "command_run_count": 1,
+  "exit_code": 1,
+  "result": "FAIL",
+  "pytest_summary": "2 failed, 1 warning in 0.95s",
+  "stdout_log": "03_需求与设计/02_开发计划/task_z022b_03_quality_create_baseline_stdout.txt",
+  "failed_tests": [
+    {
+      "test": "tests/test_quality_create_baseline.py::QualityCreateBaselineTest::test_post_create_requires_permission",
+      "expected": "403",
+      "actual": "422"
+    },
+    {
+      "test": "tests/test_quality_create_baseline.py::QualityCreateBaselineTest::test_post_create_returns_201_and_draft",
+      "expected": "201",
+      "actual": "422",
+      "failure_detail": "request body missing request_id, idempotency_key, scenario_tag, source_ref, inspection_ref, operation"
+    }
+  ],
+  "frontend_diff_unchanged": true,
+  "backend_diff_unchanged": true,
+  "staged_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "service_cleanup_or_kill_run": false,
+  "forbidden_actions_detected": false
+}

@@ -1,0 +1,30 @@
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_______ QualityCreateBaselineTest.test_post_create_returns_201_and_draft _______
+
+self = <tests.test_quality_create_baseline.QualityCreateBaselineTest testMethod=test_post_create_returns_201_and_draft>
+
+    def test_post_create_returns_201_and_draft(self) -> None:
+        with patch(
+            "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+            return_value=self._snapshot(),
+        ):
+            response = self.client.post(
+                "/api/quality/inspections",
+                headers=self._headers(),
+                json=self._create_payload(),
+            )
+
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 409 != 201 : {"code":"QUALITY_INVALID_SOURCE","message":"LOCAL_GATE_FAIL_CLOSED:non_local_dev","data":null}
+
+tests/test_quality_create_baseline.py:49: AssertionError
+=============================== warnings summary ===============================
+tests/test_quality_create_baseline.py::QualityCreateBaselineTest::test_post_create_requires_permission
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_quality_create_baseline.py::QualityCreateBaselineTest::test_post_create_returns_201_and_draft
+1 failed, 1 passed, 1 warning in 0.97s

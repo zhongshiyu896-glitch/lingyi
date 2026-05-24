@@ -1,0 +1,33 @@
+{
+  "task_id": "TASK-Z022B-08-LEDGER",
+  "selected_candidate_id": "Z022-CAND-001",
+  "source_task_id": "TASK-Z022B-07-FIX",
+  "initial_result": "FAIL",
+  "first_failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "first_fix_result": "FAIL",
+  "second_failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "final_fix_result": "PASS",
+  "pytest_summary": "2 passed, 1 warning in 0.92s",
+  "fixed_file_count": 1,
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_quality_create_baseline.py"
+  ],
+  "business_source_changed": false,
+  "frontend_changed": false,
+  "backend_allowed_files_only": true,
+  "test_changed": true,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "service_cleanup_or_kill_run": false,
+  "project_completion_claimed": false,
+  "evidence_chain": {
+    "boundary_task_id": "TASK-Z022B-02-PREP",
+    "initial_impl_task_id": "TASK-Z022B-03-IMPL",
+    "first_failure_boundary_task_id": "TASK-Z022B-04-PREP",
+    "first_fix_task_id": "TASK-Z022B-05-FIX",
+    "second_failure_boundary_task_id": "TASK-Z022B-06-PREP",
+    "second_fix_task_id": "TASK-Z022B-07-FIX"
+  },
+  "forbidden_actions_detected": false
+}

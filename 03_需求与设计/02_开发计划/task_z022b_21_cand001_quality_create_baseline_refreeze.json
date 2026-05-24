@@ -1,0 +1,31 @@
+{
+  "task_id": "TASK-Z022B-21-LEDGER-CAND001-REFREEZE",
+  "source_task_id": "TASK-Z022B-20-PREP",
+  "selected_candidate_id": "Z022-CAND-001",
+  "original_ledger_task_id": "TASK-Z022B-08-LEDGER",
+  "original_ledger_had_engineer_log_in_yes": true,
+  "engineer_log_drift_risk": true,
+  "engineer_log_removed_from_yes": true,
+  "engineer_log_listed_in_no": true,
+  "final_result": "PASS",
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_quality_create_baseline.py"
+  ],
+  "frontend_changed": false,
+  "backend_allowed_files_only": true,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "yes_count": 30,
+  "no_count": 95,
+  "yes_no_intersection_empty": true,
+  "yes_frontend_paths": [],
+  "yes_backend_paths": [
+    "07_后端/lingyi_service/tests/test_quality_create_baseline.py"
+  ],
+  "cand002_artifacts_in_yes": false,
+  "cand003_b25_artifacts_in_yes": false,
+  "yes_files_exist": true,
+  "engineer_log_in_yes": false
+}

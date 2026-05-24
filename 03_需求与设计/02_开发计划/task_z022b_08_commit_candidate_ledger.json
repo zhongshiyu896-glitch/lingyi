@@ -1,0 +1,327 @@
+{
+  "task_id": "TASK-Z022B-08-LEDGER",
+  "source_task_id": "TASK-Z022B-07-FIX",
+  "selected_candidate_id": "Z022-CAND-001",
+  "ledger_total": 61,
+  "yes_count": 27,
+  "no_count": 34,
+  "yes_no_intersection_empty": true,
+  "yes_contains_frontend": false,
+  "yes_backend_files": [
+    "07_后端/lingyi_service/tests/test_quality_create_baseline.py"
+  ],
+  "yes_backend_files_exact_match": true,
+  "yes_files_exist": true,
+  "yes_files_gitignored": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-02-PREP_Z022候选001本地只读验证边界冻结报告.md",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B02 boundary report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_02_candidate001_readonly_boundary.json",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B02 boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_02_candidate001_readonly_boundary.tsv",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B02 boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-03-IMPL_Z022候选001quality-create-baseline证据采集报告.md",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B03 initial FAIL report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_03_quality_create_baseline_result.json",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B03 initial FAIL JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_03_quality_create_baseline_result.tsv",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B03 initial FAIL TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_03_quality_create_baseline_stdout.txt",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B03 initial FAIL stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-04-PREP_Z022候选001quality-create-baseline失败定位与边界冻结报告.md",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B04 failure boundary report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_04_quality_create_baseline_failure_boundary.json",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B04 failure boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_04_quality_create_baseline_failure_boundary.tsv",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B04 failure boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-05-FIX_Z022候选001quality-create-baseline测试合同修复报告.md",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B05 first fix report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_05_quality_create_baseline_fix_result.json",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B05 first fix result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_05_quality_create_baseline_fix_result.tsv",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B05 first fix result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_05_quality_create_baseline_fix_stdout.txt",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B05 first fix stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-06-PREP_Z022候选001quality-create-baseline二次失败定位与边界冻结报告.md",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B06 second failure boundary report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_06_quality_create_baseline_second_failure_boundary.json",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B06 second failure boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_06_quality_create_baseline_second_failure_boundary.tsv",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B06 second failure boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-07-FIX_Z022候选001quality-create-baseline测试合同二次修复报告.md",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B07 final fix report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_07_quality_create_baseline_second_fix_result.json",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B07 final fix result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_07_quality_create_baseline_second_fix_result.tsv",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B07 final fix result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_07_quality_create_baseline_second_fix_stdout.txt",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B07 final fix stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-08-LEDGER_Z022候选001quality-create-baseline证据提交候选账本冻结报告.md",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B08 ledger report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_08_quality_create_baseline_freeze.json",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B08 freeze JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_08_commit_candidate_ledger.json",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B08 ledger JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_08_commit_candidate_ledger.tsv",
+      "decision": "YES",
+      "reason": "Z022-CAND-001 B08 ledger TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/工程师会话日志.md",
+      "decision": "YES",
+      "reason": "Engineer log for Z022-CAND-001 B02-B08"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_create_baseline.py",
+      "decision": "YES",
+      "reason": "Only allowed test contract fix file for Z022-CAND-001"
+    },
+    {
+      "path": "00_交接与日志/HANDOVER_STATUS.md",
+      "decision": "NO",
+      "reason": "Historical dirty control-plane file outside this candidate ledger"
+    },
+    {
+      "path": "03_需求与设计/01_架构设计/架构师会话日志.md",
+      "decision": "NO",
+      "reason": "Non-candidate architect log"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-01-PREP_Z022本地候选池重建与下一任务冻结报告.md",
+      "decision": "NO",
+      "reason": "Z022 pool-level evidence outside Z022-CAND-001 commit candidate"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_01_local_dev_candidate_pool.json",
+      "decision": "NO",
+      "reason": "Z022 pool-level evidence outside Z022-CAND-001 commit candidate"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_01_local_dev_candidate_pool.tsv",
+      "decision": "NO",
+      "reason": "Z022 pool-level evidence outside Z022-CAND-001 commit candidate"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z021b_22_final_candidate_pool_freeze.json",
+      "decision": "NO",
+      "reason": "Z021 final freeze evidence excluded"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z021b_21_permission_governance_audit_export_freeze.json",
+      "decision": "NO",
+      "reason": "Z021 non-candidate evidence excluded"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z020b_20_final_state_freeze.json",
+      "decision": "NO",
+      "reason": "Prior cycle final freeze evidence excluded"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z019b_20_final_state_freeze.json",
+      "decision": "NO",
+      "reason": "Prior cycle final freeze evidence excluded"
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+      "decision": "NO",
+      "reason": "Historical frontend dirty diff excluded"
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+      "decision": "NO",
+      "reason": "Historical frontend dirty diff excluded"
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+      "decision": "NO",
+      "reason": "Historical frontend dirty diff excluded"
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+      "decision": "NO",
+      "reason": "Historical frontend dirty diff excluded"
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+      "decision": "NO",
+      "reason": "Historical frontend dirty diff excluded"
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+      "decision": "NO",
+      "reason": "Historical frontend dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/app/schemas/report.py",
+      "decision": "NO",
+      "reason": "Historical backend dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/report_catalog_service.py",
+      "decision": "NO",
+      "reason": "Historical backend dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+      "decision": "NO",
+      "reason": "Historical backend dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_bom_permissions.py",
+      "decision": "NO",
+      "reason": "Historical backend test dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+      "decision": "NO",
+      "reason": "Historical backend test dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+      "decision": "NO",
+      "reason": "Z021 allowed test fix file excluded from Z022-CAND-001 ledger"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+      "decision": "NO",
+      "reason": "Historical backend test dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_style_profit_api.py",
+      "decision": "NO",
+      "reason": "Historical backend test dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+      "decision": "NO",
+      "reason": "Historical backend test dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_workshop_permissions.py",
+      "decision": "NO",
+      "reason": "Historical backend test dirty diff excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/app/routers/quality.py",
+      "decision": "NO",
+      "reason": "Quality create baseline router source evidence excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/quality_service.py",
+      "decision": "NO",
+      "reason": "Quality create baseline service source evidence excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/app/schemas/quality.py",
+      "decision": "NO",
+      "reason": "Quality create baseline schema source evidence excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_api.py",
+      "decision": "NO",
+      "reason": "Quality shared test fixture evidence excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/.pytest_cache",
+      "decision": "NO",
+      "reason": "Local pytest cache excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/.venv",
+      "decision": "NO",
+      "reason": "Local virtual environment excluded"
+    },
+    {
+      "path": "06_前端/lingyi-pc/dist",
+      "decision": "NO",
+      "reason": "Frontend build output excluded"
+    },
+    {
+      "path": "06_前端/lingyi-pc/node_modules",
+      "decision": "NO",
+      "reason": "Frontend dependency directory excluded"
+    },
+    {
+      "path": "07_后端/lingyi_service/runtime",
+      "decision": "NO",
+      "reason": "Local backend runtime excluded"
+    }
+  ]
+}

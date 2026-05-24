@@ -1,0 +1,57 @@
+{
+  "task_id": "TASK-Z022B-06-PREP",
+  "source_task_id": "TASK-Z022B-05-FIX",
+  "selected_candidate_id": "Z022-CAND-001",
+  "previous_fix_result": {
+    "command": ".venv/bin/python -m pytest tests/test_quality_create_baseline.py -q",
+    "result": "FAIL",
+    "exit_code": 1,
+    "pytest_summary": "1 failed, 1 passed, 1 warning in 0.97s",
+    "b04_initial_status": 422,
+    "b05_actual_status": 409,
+    "b05_error_code": "QUALITY_INVALID_SOURCE",
+    "b05_error_message": "LOCAL_GATE_FAIL_CLOSED:non_local_dev",
+    "business_source_changed": false
+  },
+  "second_failure": {
+    "failed_test": "tests/test_quality_create_baseline.py::QualityCreateBaselineTest::test_post_create_returns_201_and_draft",
+    "expected_status": 201,
+    "actual_status": 409,
+    "error_code": "QUALITY_INVALID_SOURCE",
+    "error_message": "LOCAL_GATE_FAIL_CLOSED:non_local_dev"
+  },
+  "localization": {
+    "test_create_assertion_ref": "07_后端/lingyi_service/tests/test_quality_create_baseline.py:38-49",
+    "test_fixture_env_ref": "07_后端/lingyi_service/tests/test_quality_api.py:70-74",
+    "schema_contract_ref": "07_后端/lingyi_service/app/schemas/quality.py:38-47",
+    "router_gate_prefix_ref": "07_后端/lingyi_service/app/routers/quality.py:76-83",
+    "router_local_gate_ref": "07_后端/lingyi_service/app/routers/quality.py:338-342",
+    "router_carrier_validation_ref": "07_后端/lingyi_service/app/routers/quality.py:381-436",
+    "router_create_gate_ref": "07_后端/lingyi_service/app/routers/quality.py:441-532",
+    "router_create_endpoint_ref": "07_后端/lingyi_service/app/routers/quality.py:590-624",
+    "service_local_mode_ref": "07_后端/lingyi_service/app/services/quality_service.py:82-107",
+    "service_create_ref": "07_后端/lingyi_service/app/services/quality_service.py:182-220",
+    "error_code_ref": "07_后端/lingyi_service/app/core/error_codes.py:121,300",
+    "conclusion": "Observed 409 is raised by router local write gate before service create logic; test fixture/payload carrier contract is stale, not a proven product implementation defect."
+  },
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "classification_reason": "Quality create baseline test still lacks local gate fixture conditions and a fully compliant request carrier for the current router contract.",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_quality_create_baseline.py"
+  ],
+  "recommended_next_task_id": "TASK-Z022B-07-FIX",
+  "single_regression_command": ".venv/bin/python -m pytest tests/test_quality_create_baseline.py -q",
+  "recommended_fix_boundary": [
+    "Keep B05 required payload fields.",
+    "Set local gate environment only within the allowed test scope: APP_ENV=development and LINGYI_DB_URL=sqlite:///./lingyi_service.local.db.",
+    "Build matching X-Request-ID header and body request_id that satisfy the quality request carrier pattern.",
+    "Set source_doc equal to source_ref and keep source_ref/scenario_tag/inspection_ref/idempotency_key consistent with router carrier validation.",
+    "Preserve create 201 assertions and permission 403 assertions."
+  ],
+  "run_this_task": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "forbidden_actions_detected": false
+}

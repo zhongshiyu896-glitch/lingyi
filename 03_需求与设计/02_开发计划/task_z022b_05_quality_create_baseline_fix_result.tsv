@@ -1,0 +1,29 @@
+field	value
+task_id	TASK-Z022B-05-FIX
+source_task_id	TASK-Z022B-04-PREP
+selected_candidate_id	Z022-CAND-001
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+fixed_file	07_后端/lingyi_service/tests/test_quality_create_baseline.py
+changed_file_count	1
+business_source_changed	false
+frontend_changed	false
+backend_allowed_files_only	true
+skip_xfail_or_deleted_cases	false
+weak_assertion_added	false
+required_payload_fields_added	request_id;idempotency_key;scenario_tag;source_ref;inspection_ref;operation
+command	.venv/bin/python -m pytest tests/test_quality_create_baseline.py -q
+command_run_count	1
+exit_code	1
+result	FAIL
+pytest_summary	1 failed, 1 passed, 1 warning in 0.97s
+stdout_log	03_需求与设计/02_开发计划/task_z022b_05_quality_create_baseline_fix_stdout.txt
+post_fix_failed_test	tests/test_quality_create_baseline.py::QualityCreateBaselineTest::test_post_create_returns_201_and_draft
+post_fix_expected_status	201
+post_fix_actual_status	409
+post_fix_response_code	QUALITY_INVALID_SOURCE
+post_fix_response_message	LOCAL_GATE_FAIL_CLOSED:non_local_dev
+staged_performed	false
+commit_performed	false
+push_performed	false
+service_cleanup_or_kill_run	false
+forbidden_actions_detected	false

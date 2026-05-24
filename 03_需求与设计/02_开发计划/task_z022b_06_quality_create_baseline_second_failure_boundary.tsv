@@ -1,0 +1,24 @@
+field	value
+task_id	TASK-Z022B-06-PREP
+source_task_id	TASK-Z022B-05-FIX
+selected_candidate_id	Z022-CAND-001
+previous_command	.venv/bin/python -m pytest tests/test_quality_create_baseline.py -q
+previous_result	FAIL
+previous_exit_code	1
+previous_pytest_summary	1 failed, 1 passed, 1 warning in 0.97s
+failed_test	tests/test_quality_create_baseline.py::QualityCreateBaselineTest::test_post_create_returns_201_and_draft
+expected_status	201
+actual_status	409
+error_code	QUALITY_INVALID_SOURCE
+error_message	LOCAL_GATE_FAIL_CLOSED:non_local_dev
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+classification_reason	Quality create baseline test still lacks local gate fixture conditions and a fully compliant request carrier for the current router contract.
+allowed_fix_files	07_后端/lingyi_service/tests/test_quality_create_baseline.py
+recommended_next_task_id	TASK-Z022B-07-FIX
+single_regression_command	.venv/bin/python -m pytest tests/test_quality_create_baseline.py -q
+run_this_task	false
+stage_allowed	false
+commit_allowed	false
+push_allowed	false
+project_completion_claimed	false
+forbidden_actions_detected	false

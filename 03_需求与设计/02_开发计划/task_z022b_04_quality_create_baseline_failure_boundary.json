@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-Z022B-04-PREP",
+  "source_task_id": "TASK-Z022B-03-IMPL",
+  "selected_candidate_id": "Z022-CAND-001",
+  "command": ".venv/bin/python -m pytest tests/test_quality_create_baseline.py -q",
+  "result": "FAIL",
+  "exit_code": 1,
+  "pytest_summary": "2 failed, 1 warning in 0.95s",
+  "failed_tests": [
+    {
+      "test": "QualityCreateBaselineTest.test_post_create_requires_permission",
+      "expected_status": 403,
+      "actual_status": 422,
+      "assertion_ref": "07_后端/lingyi_service/tests/test_quality_create_baseline.py:57"
+    },
+    {
+      "test": "QualityCreateBaselineTest.test_post_create_returns_201_and_draft",
+      "expected_status": 201,
+      "actual_status": 422,
+      "assertion_ref": "07_后端/lingyi_service/tests/test_quality_create_baseline.py:35"
+    }
+  ],
+  "missing_fields": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "inspection_ref",
+    "operation"
+  ],
+  "failure_root_cause": "test contract payload missing current QualityInspectionCreateRequest required carrier fields",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "localization": {
+    "test_payload_refs": [
+      "07_后端/lingyi_service/tests/test_quality_create_baseline.py:24-35",
+      "07_后端/lingyi_service/tests/test_quality_create_baseline.py:46-57"
+    ],
+    "schema_required_fields_ref": "07_后端/lingyi_service/app/schemas/quality.py:38-47",
+    "router_body_binding_ref": "07_后端/lingyi_service/app/routers/quality.py:590-625",
+    "service_create_ref": "07_后端/lingyi_service/app/services/quality_service.py:182-220",
+    "conclusion": "422 occurs at request body validation before permission checks and service create logic are reached"
+  },
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_quality_create_baseline.py"
+  ],
+  "recommended_next_task_id": "TASK-Z022B-05-FIX",
+  "single_regression_command": ".venv/bin/python -m pytest tests/test_quality_create_baseline.py -q",
+  "run_this_task": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "forbidden_actions_detected": false
+}
