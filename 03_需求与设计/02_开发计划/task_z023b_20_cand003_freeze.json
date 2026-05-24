@@ -1,0 +1,19 @@
+{
+  "task_id": "TASK-Z023B-20-LEDGER-CAND003",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z023B-19-IMPL",
+  "selected_candidate_id": "Z023-CAND-003",
+  "boundary_task_id": "TASK-Z023B-18-PREP",
+  "impl_task_id": "TASK-Z023B-19-IMPL",
+  "impl_result": "PASS",
+  "pytest_summary": "6 passed, 1 warning in 0.32s",
+  "frontend_changed": false,
+  "backend_app_changed": false,
+  "test_changed": false,
+  "fixed_files": [],
+  "evidence_only": true,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false
+}

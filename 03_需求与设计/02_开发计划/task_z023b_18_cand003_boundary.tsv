@@ -1,0 +1,2 @@
+task_id	source_task_id	selected_candidate_id	current_head	cached_area_empty	candidate_original_fields_copied	source_evidence_exists	candidate_pool_recommended_command	recommended_command_target_exists	target_test_dirty_before_task	recommended_next_task_id	workdir	run_this_task
+TASK-Z023B-18-PREP	TASK-Z023B-17-PREP	Z023-CAND-003	3108009942a2fa4efdef4d39f66038a34774ed28	YES	YES	YES	.venv/bin/python -m pytest tests/test_sales_inventory_permissions.py -q	YES	NO	TASK-Z023B-19-IMPL	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service	NO
