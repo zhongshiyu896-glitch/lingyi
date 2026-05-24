@@ -1,0 +1,109 @@
+{
+  "task_id": "TASK-Z022B-37-PREP-CAND004-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z022B-36-IMPL-CAND004-FIX1",
+  "selected_candidate_id": "Z022-CAND-004",
+  "current_head": "e4efb57410ec0643153741fc7260c40b0e1f536e",
+  "cached_area_empty": true,
+  "b36_result": "FAIL",
+  "b36_exit_code": 1,
+  "b36_pytest_summary": "2 failed, 1 warning in 1.16s",
+  "failed_cases": [
+    {
+      "test": "tests/test_quality_confirm_baseline.py::QualityConfirmBaselineTest::test_confirm_draft_success",
+      "expected_status": 200,
+      "actual_status": 422
+    },
+    {
+      "test": "tests/test_quality_confirm_baseline.py::QualityConfirmBaselineTest::test_confirm_on_confirmed_or_cancelled_returns_409",
+      "expected_status": 409,
+      "actual_status": 422
+    }
+  ],
+  "actual_status_codes": [
+    422
+  ],
+  "missing_fields": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "inspection_ref",
+    "source_type",
+    "item_code",
+    "operation",
+    "result"
+  ],
+  "current_test_payload_fields": [
+    "remark"
+  ],
+  "schema_request_model": "QualityInspectionConfirmRequest",
+  "schema_required_fields": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "inspection_ref",
+    "source_type",
+    "item_code",
+    "operation",
+    "result"
+  ],
+  "schema_evidence": {
+    "test_file": "07_后端/lingyi_service/tests/test_quality_confirm_baseline.py",
+    "test_payload_lines": [
+      "40-44",
+      "96-105"
+    ],
+    "router_file": "07_后端/lingyi_service/app/routers/quality.py",
+    "confirm_endpoint_lines": "790-794",
+    "schema_file": "07_后端/lingyi_service/app/schemas/quality.py",
+    "schema_model_lines": "94-106"
+  },
+  "schema_binding_before_permission_or_status_branch": true,
+  "quality_confirm_backend_app_dirty": false,
+  "target_test_dirty_before_task": false,
+  "skip_xfail_deleted_or_weakened": false,
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_quality_confirm_baseline.py"
+  ],
+  "forbidden_files": [
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "07_后端/lingyi_service/tests other than test_quality_confirm_baseline.py",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "CAND001/CAND002/CAND003 commit/archive/refreeze/stage/ledger artifacts",
+    "CAND004/CAND005 source evidence files",
+    "old TASK-Z022B-35-PREP-CAND004 wrong boundary artifacts",
+    "A architect logs",
+    "C audit records",
+    "GitHub/production configuration"
+  ],
+  "recommended_next_task_id": "TASK-Z022B-38-FIX-CAND004-SCHEMA-FIELDS",
+  "recommended_next_command": ".venv/bin/python -m pytest tests/test_quality_confirm_baseline.py -q",
+  "run_pytest_this_task": false,
+  "allow_code_edit_next": true,
+  "allow_code_edit_next_scope": [
+    "07_后端/lingyi_service/tests/test_quality_confirm_baseline.py"
+  ],
+  "reason": "The current tests send only remark while the confirm endpoint binds the body to QualityInspectionConfirmRequest, whose required schema/carrier fields are missing. FastAPI/Pydantic body validation returns 422 before permission, status, or service branch logic runs.",
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "forbidden_actions": {
+    "pytest_npm_browser_build_typecheck_verify_run": false,
+    "product_code_edits": false,
+    "backend_app_edits": false,
+    "test_edits": false,
+    "existing_artifact_edits": false,
+    "engineer_shared_log_edit": false,
+    "stage_commit_push": false,
+    "reset_checkout_cleanup": false,
+    "pr_tag_release": false,
+    "production_or_real_business_write": false,
+    "parked_blockers_released": false,
+    "project_completion_claimed": false
+  }
+}

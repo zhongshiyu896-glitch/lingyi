@@ -1,0 +1,47 @@
+path	decision	category	reason
+03_需求与设计/02_开发计划/TASK-Z022B-35-PREP-CAND004-FIX1_Z022候选004边界修正报告.md	YES	corrected_mainline_cand004_boundary_evidence	B35-FIX1 corrected boundary report
+03_需求与设计/02_开发计划/task_z022b_35_cand004_boundary_fix1.json	YES	corrected_mainline_cand004_boundary_evidence	B35-FIX1 corrected boundary JSON
+03_需求与设计/02_开发计划/task_z022b_35_cand004_boundary_fix1.tsv	YES	corrected_mainline_cand004_boundary_evidence	B35-FIX1 corrected boundary TSV
+03_需求与设计/02_开发计划/TASK-Z022B-36-IMPL-CAND004-FIX1_Z022候选004单文件验证报告.md	YES	corrected_mainline_cand004_initial_impl_evidence	B36 initial single-file pytest report
+03_需求与设计/02_开发计划/task_z022b_36_cand004_result.json	YES	corrected_mainline_cand004_initial_impl_evidence	B36 initial result JSON
+03_需求与设计/02_开发计划/task_z022b_36_cand004_result.tsv	YES	corrected_mainline_cand004_initial_impl_evidence	B36 initial result TSV
+03_需求与设计/02_开发计划/task_z022b_36_cand004_stdout.txt	YES	corrected_mainline_cand004_initial_impl_evidence	B36 initial single-file pytest stdout
+03_需求与设计/02_开发计划/TASK-Z022B-37-PREP-CAND004-FAILURE-DIAG_Z022候选004失败定位报告.md	YES	corrected_mainline_cand004_failure_diag_evidence	B37 failure diagnosis report
+03_需求与设计/02_开发计划/task_z022b_37_cand004_failure_diag_boundary.json	YES	corrected_mainline_cand004_failure_diag_evidence	B37 failure diagnosis JSON
+03_需求与设计/02_开发计划/task_z022b_37_cand004_failure_diag_boundary.tsv	YES	corrected_mainline_cand004_failure_diag_evidence	B37 failure diagnosis TSV
+03_需求与设计/02_开发计划/TASK-Z022B-38-FIX-CAND004-SCHEMA-FIELDS_Z022候选004schema字段修复报告.md	YES	corrected_mainline_cand004_fix_evidence	B38 schema fields fix report
+03_需求与设计/02_开发计划/task_z022b_38_cand004_schema_fields_fix_result.json	YES	corrected_mainline_cand004_fix_evidence	B38 schema fields fix result JSON
+03_需求与设计/02_开发计划/task_z022b_38_cand004_schema_fields_fix_result.tsv	YES	corrected_mainline_cand004_fix_evidence	B38 schema fields fix result TSV
+03_需求与设计/02_开发计划/task_z022b_38_cand004_schema_fields_fix_stdout.txt	YES	corrected_mainline_cand004_fix_evidence	B38 single-file pytest stdout
+03_需求与设计/02_开发计划/TASK-Z022B-39-LEDGER-CAND004-SCHEMA-FIELDS_Z022候选004提交候选账本报告.md	YES	corrected_mainline_cand004_ledger_evidence	B39 ledger report
+03_需求与设计/02_开发计划/task_z022b_39_cand004_schema_fields_freeze.json	YES	corrected_mainline_cand004_ledger_evidence	B39 freeze JSON
+03_需求与设计/02_开发计划/task_z022b_39_cand004_commit_candidate_ledger.json	YES	corrected_mainline_cand004_ledger_evidence	B39 ledger JSON
+03_需求与设计/02_开发计划/task_z022b_39_cand004_commit_candidate_ledger.tsv	YES	corrected_mainline_cand004_ledger_evidence	B39 ledger TSV
+07_后端/lingyi_service/tests/test_quality_confirm_baseline.py	YES	allowed_backend_test_contract_fix	Only backend test file allowed for CAND004 schema/carrier fix
+06_前端	NO	frontend_scope	Frontend is forbidden for this candidate ledger
+07_后端/lingyi_service/app	NO	backend_app_scope	Backend app/source code is forbidden; CAND004 fix is test-contract only
+07_后端/lingyi_service/tests/test_quality_create_baseline.py	NO	other_candidate_test_file	CAND001 test file is not part of CAND004 YES set
+07_后端/lingyi_service/tests/test_quality_update_baseline.py	NO	other_candidate_test_file	CAND002 test file is not part of CAND004 YES set
+07_后端/lingyi_service/tests/test_quality_defect_baseline.py	NO	other_candidate_test_file	CAND003 test file is not part of CAND004 YES set
+07_后端/lingyi_service/tests/test_quality_cancel_baseline.py	NO	cand005_source_evidence	CAND005 source evidence is forbidden for CAND004 ledger
+07_后端/lingyi_service/tests/test_quality_defect_diagnostic.py	NO	old_wrong_command_target	Old wrong B35 command target is superseded and forbidden
+07_后端/lingyi_service/tests/test_bom_permissions.py	NO	other_test_file	Not part of CAND004 allowed test file
+07_后端/lingyi_service/tests/test_logging_sanitization.py	NO	other_test_file	Not part of CAND004 allowed test file
+07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	NO	other_test_file	Not part of CAND004 allowed test file
+07_后端/lingyi_service/tests/test_request_id_sanitization.py	NO	other_test_file	Not part of CAND004 allowed test file
+07_后端/lingyi_service/tests/test_style_profit_api.py	NO	other_test_file	Not part of CAND004 allowed test file
+07_后端/lingyi_service/tests/test_subcontract_company_permission.py	NO	other_test_file	Not part of CAND004 allowed test file
+07_后端/lingyi_service/tests/test_workshop_permissions.py	NO	other_test_file	Not part of CAND004 allowed test file
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	shared_log	Shared engineer log is forbidden in this candidate YES set
+03_需求与设计/02_开发计划/TASK-Z022B-35-PREP-CAND004_Z022候选004边界冻结报告.md	NO	old_wrong_boundary_artifact	Old wrong B35 boundary report is superseded by B35-FIX1
+03_需求与设计/02_开发计划/task_z022b_35_cand004_boundary.json	NO	old_wrong_boundary_artifact	Old wrong B35 boundary JSON is superseded by B35-FIX1
+03_需求与设计/02_开发计划/task_z022b_35_cand004_boundary.tsv	NO	old_wrong_boundary_artifact	Old wrong B35 boundary TSV is superseded by B35-FIX1
+CAND001 commit/archive/refreeze/stage/ledger artifacts	NO	other_candidate_artifacts	CAND001 artifacts are forbidden in CAND004 YES set
+CAND002 commit/archive/stage/ledger artifacts	NO	other_candidate_artifacts	CAND002 artifacts are forbidden in CAND004 YES set
+CAND003 commit/archive/stage/ledger artifacts	NO	other_candidate_artifacts	CAND003 artifacts are forbidden in CAND004 YES set
+.pytest_cache	NO	local_cache	Local pytest cache is forbidden
+.venv	NO	local_environment	Virtual environment is forbidden
+dist	NO	build_output	Build output is forbidden
+node_modules	NO	dependency_cache	Dependency directory is forbidden
+local runtime/cache/temp files	NO	runtime_local	Runtime, cache, and temporary files are forbidden
+non-candidate control-plane files	NO	control_plane_other	Non-candidate control-plane files are outside CAND004 ledger

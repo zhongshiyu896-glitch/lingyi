@@ -22,6 +22,78 @@ class QualityConfirmBaselineTest(QualityApiBase):
             source=None,
         )
 
+    @staticmethod
+    def _local_gate_env() -> dict[str, str]:
+        return {
+            "APP_ENV": "development",
+            "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+        }
+
+    @staticmethod
+    def _carrier_code(value: object) -> str:
+        normalized = str(value).strip()
+        hash_value = 2166136261
+        for byte in normalized.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-3:]
+
+    @classmethod
+    def _request_id(
+        cls,
+        *,
+        scenario_tag: str,
+        idempotency_key: str,
+        source_ref: str,
+        inspection_ref: str,
+        item_code: str,
+        result: str,
+    ) -> str:
+        return (
+            f"{scenario_tag}-QI-F-"
+            f"{cls._carrier_code(idempotency_key)}-"
+            f"{cls._carrier_code(source_ref)}-"
+            f"{cls._carrier_code(inspection_ref)}-"
+            f"{cls._carrier_code(item_code)}-"
+            f"{cls._carrier_code(result)}"
+        )
+
+    def _confirm_payload(
+        self,
+        inspection: dict[str, object],
+        *,
+        scenario_tag: str,
+        result: str,
+        remark: str,
+    ) -> tuple[dict[str, str], dict[str, str]]:
+        inspection_ref = str(inspection["inspection_no"])
+        source_ref = f"{scenario_tag}/{inspection_ref}"
+        item_code = "ITEM-A"
+        idempotency_key = f"{scenario_tag}:confirm"
+        request_id = self._request_id(
+            scenario_tag=scenario_tag,
+            idempotency_key=idempotency_key,
+            source_ref=source_ref,
+            inspection_ref=inspection_ref,
+            item_code=item_code,
+            result=result,
+        )
+        payload = {
+            "request_id": request_id,
+            "idempotency_key": idempotency_key,
+            "scenario_tag": scenario_tag,
+            "source_ref": source_ref,
+            "inspection_ref": inspection_ref,
+            "source_type": "manual",
+            "source_doc": source_ref,
+            "item_code": item_code,
+            "operation": "confirm",
+            "result": result,
+            "remark": remark,
+        }
+        headers = {**self._headers(), "X-Request-ID": request_id}
+        return payload, headers
+
     def test_confirm_draft_success(self) -> None:
         seeded = self._insert_inspection(
             inspection_no="QI-CONFIRM-001",
@@ -32,15 +104,24 @@ class QualityConfirmBaselineTest(QualityApiBase):
             rejected_qty=Decimal("2"),
             defect_qty=Decimal("1"),
         )
+        payload, headers = self._confirm_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-004",
+            result="partial",
+            remark="确认通过",
+        )
 
-        with patch(
-            "app.services.quality_service.QualitySourceValidator.validate_for_payload",
-            return_value=self._snapshot(),
+        with (
+            patch.dict("os.environ", self._local_gate_env()),
+            patch(
+                "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+                return_value=self._snapshot(),
+            ),
         ):
             response = self.client.post(
                 f"/api/quality/inspections/{int(seeded['id'])}/confirm",
-                headers=self._headers(),
-                json={"remark": "确认通过"},
+                headers=headers,
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 200, response.text)
@@ -92,17 +173,30 @@ class QualityConfirmBaselineTest(QualityApiBase):
             rejected_qty=Decimal("5"),
             defect_qty=Decimal("2"),
         )
+        confirmed_payload, confirmed_headers = self._confirm_payload(
+            confirmed,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-005",
+            result="pass",
+            remark="重复确认",
+        )
+        cancelled_payload, cancelled_headers = self._confirm_payload(
+            cancelled,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-006",
+            result="fail",
+            remark="不应允许",
+        )
 
-        confirmed_resp = self.client.post(
-            f"/api/quality/inspections/{int(confirmed['id'])}/confirm",
-            headers=self._headers(),
-            json={"remark": "重复确认"},
-        )
-        cancelled_resp = self.client.post(
-            f"/api/quality/inspections/{int(cancelled['id'])}/confirm",
-            headers=self._headers(),
-            json={"remark": "不应允许"},
-        )
+        with patch.dict("os.environ", self._local_gate_env()):
+            confirmed_resp = self.client.post(
+                f"/api/quality/inspections/{int(confirmed['id'])}/confirm",
+                headers=confirmed_headers,
+                json=confirmed_payload,
+            )
+            cancelled_resp = self.client.post(
+                f"/api/quality/inspections/{int(cancelled['id'])}/confirm",
+                headers=cancelled_headers,
+                json=cancelled_payload,
+            )
 
         self.assertEqual(confirmed_resp.status_code, 409)
         self.assertEqual(confirmed_resp.json()["code"], "QUALITY_INVALID_STATUS")

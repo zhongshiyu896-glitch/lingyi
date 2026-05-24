@@ -1,0 +1,44 @@
+{
+  "task_id": "TASK-Z022B-36-IMPL-CAND004-FIX1",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z022B-35-PREP-CAND004-FIX1",
+  "selected_candidate_id": "Z022-CAND-004",
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_quality_confirm_baseline.py -q",
+  "command_run_count": 1,
+  "exit_code": 1,
+  "result": "FAIL",
+  "pytest_summary": "2 failed, 1 warning in 1.16s",
+  "stdout_log": "03_需求与设计/02_开发计划/task_z022b_36_cand004_stdout.txt",
+  "failed_cases": [
+    {
+      "test": "tests/test_quality_confirm_baseline.py::QualityConfirmBaselineTest::test_confirm_draft_success",
+      "expected_status": 200,
+      "actual_status": 422,
+      "failure_summary": "Missing required body fields: request_id, idempotency_key, scenario_tag, source_ref, inspection_ref, source_type, item_code, operation, result"
+    },
+    {
+      "test": "tests/test_quality_confirm_baseline.py::QualityConfirmBaselineTest::test_confirm_on_confirmed_or_cancelled_returns_409",
+      "expected_status": 409,
+      "actual_status": 422,
+      "failure_summary": "First status assertion failed before cancelled response assertion"
+    }
+  ],
+  "old_wrong_command_run": false,
+  "code_edits": false,
+  "test_edits": false,
+  "backend_app_edits": false,
+  "frontend_edits": false,
+  "existing_artifact_edits": false,
+  "engineer_shared_log_edit": false,
+  "other_pytest_or_full_pytest_run": false,
+  "npm_browser_build_typecheck_verify_run": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "reset_checkout_cleanup_performed": false,
+  "pr_tag_release_performed": false,
+  "production_account_or_erpnext_write": false,
+  "parked_blockers_released": false,
+  "project_completion_claimed": false
+}

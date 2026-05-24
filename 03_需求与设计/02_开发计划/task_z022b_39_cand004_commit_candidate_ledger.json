@@ -1,0 +1,294 @@
+{
+  "task_id": "TASK-Z022B-39-LEDGER-CAND004-SCHEMA-FIELDS",
+  "source_task_id": "TASK-Z022B-38-FIX-CAND004-SCHEMA-FIELDS",
+  "selected_candidate_id": "Z022-CAND-004",
+  "ledger_total": 46,
+  "yes_count": 19,
+  "no_count": 27,
+  "yes_no_intersection": [],
+  "yes_backend_paths": [
+    "07_后端/lingyi_service/tests/test_quality_confirm_baseline.py"
+  ],
+  "yes_frontend_paths": [],
+  "engineer_log_in_yes": false,
+  "old_wrong_b35_boundary_in_yes": false,
+  "cand001_cand002_cand003_artifacts_in_yes": false,
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-35-PREP-CAND004-FIX1_Z022候选004边界修正报告.md",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_boundary_evidence",
+      "reason": "B35-FIX1 corrected boundary report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_35_cand004_boundary_fix1.json",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_boundary_evidence",
+      "reason": "B35-FIX1 corrected boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_35_cand004_boundary_fix1.tsv",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_boundary_evidence",
+      "reason": "B35-FIX1 corrected boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-36-IMPL-CAND004-FIX1_Z022候选004单文件验证报告.md",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_initial_impl_evidence",
+      "reason": "B36 initial single-file pytest report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_36_cand004_result.json",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_initial_impl_evidence",
+      "reason": "B36 initial result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_36_cand004_result.tsv",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_initial_impl_evidence",
+      "reason": "B36 initial result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_36_cand004_stdout.txt",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_initial_impl_evidence",
+      "reason": "B36 initial single-file pytest stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-37-PREP-CAND004-FAILURE-DIAG_Z022候选004失败定位报告.md",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_failure_diag_evidence",
+      "reason": "B37 failure diagnosis report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_37_cand004_failure_diag_boundary.json",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_failure_diag_evidence",
+      "reason": "B37 failure diagnosis JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_37_cand004_failure_diag_boundary.tsv",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_failure_diag_evidence",
+      "reason": "B37 failure diagnosis TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-38-FIX-CAND004-SCHEMA-FIELDS_Z022候选004schema字段修复报告.md",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_fix_evidence",
+      "reason": "B38 schema fields fix report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_38_cand004_schema_fields_fix_result.json",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_fix_evidence",
+      "reason": "B38 schema fields fix result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_38_cand004_schema_fields_fix_result.tsv",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_fix_evidence",
+      "reason": "B38 schema fields fix result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_38_cand004_schema_fields_fix_stdout.txt",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_fix_evidence",
+      "reason": "B38 single-file pytest stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-39-LEDGER-CAND004-SCHEMA-FIELDS_Z022候选004提交候选账本报告.md",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_ledger_evidence",
+      "reason": "B39 ledger report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_39_cand004_schema_fields_freeze.json",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_ledger_evidence",
+      "reason": "B39 freeze JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_39_cand004_commit_candidate_ledger.json",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_ledger_evidence",
+      "reason": "B39 ledger JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_39_cand004_commit_candidate_ledger.tsv",
+      "decision": "YES",
+      "category": "corrected_mainline_cand004_ledger_evidence",
+      "reason": "B39 ledger TSV"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_confirm_baseline.py",
+      "decision": "YES",
+      "category": "allowed_backend_test_contract_fix",
+      "reason": "Only backend test file allowed for CAND004 schema/carrier fix"
+    },
+    {
+      "path": "06_前端",
+      "decision": "NO",
+      "category": "frontend_scope",
+      "reason": "Frontend is forbidden for this candidate ledger"
+    },
+    {
+      "path": "07_后端/lingyi_service/app",
+      "decision": "NO",
+      "category": "backend_app_scope",
+      "reason": "Backend app/source code is forbidden; CAND004 fix is test-contract only"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_create_baseline.py",
+      "decision": "NO",
+      "category": "other_candidate_test_file",
+      "reason": "CAND001 test file is not part of CAND004 YES set"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_update_baseline.py",
+      "decision": "NO",
+      "category": "other_candidate_test_file",
+      "reason": "CAND002 test file is not part of CAND004 YES set"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_defect_baseline.py",
+      "decision": "NO",
+      "category": "other_candidate_test_file",
+      "reason": "CAND003 test file is not part of CAND004 YES set"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_cancel_baseline.py",
+      "decision": "NO",
+      "category": "cand005_source_evidence",
+      "reason": "CAND005 source evidence is forbidden for CAND004 ledger"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_quality_defect_diagnostic.py",
+      "decision": "NO",
+      "category": "old_wrong_command_target",
+      "reason": "Old wrong B35 command target is superseded and forbidden"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_bom_permissions.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND004 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND004 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND004 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND004 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_style_profit_api.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND004 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND004 allowed test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_workshop_permissions.py",
+      "decision": "NO",
+      "category": "other_test_file",
+      "reason": "Not part of CAND004 allowed test file"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/工程师会话日志.md",
+      "decision": "NO",
+      "category": "shared_log",
+      "reason": "Shared engineer log is forbidden in this candidate YES set"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z022B-35-PREP-CAND004_Z022候选004边界冻结报告.md",
+      "decision": "NO",
+      "category": "old_wrong_boundary_artifact",
+      "reason": "Old wrong B35 boundary report is superseded by B35-FIX1"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_35_cand004_boundary.json",
+      "decision": "NO",
+      "category": "old_wrong_boundary_artifact",
+      "reason": "Old wrong B35 boundary JSON is superseded by B35-FIX1"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z022b_35_cand004_boundary.tsv",
+      "decision": "NO",
+      "category": "old_wrong_boundary_artifact",
+      "reason": "Old wrong B35 boundary TSV is superseded by B35-FIX1"
+    },
+    {
+      "path": "CAND001 commit/archive/refreeze/stage/ledger artifacts",
+      "decision": "NO",
+      "category": "other_candidate_artifacts",
+      "reason": "CAND001 artifacts are forbidden in CAND004 YES set"
+    },
+    {
+      "path": "CAND002 commit/archive/stage/ledger artifacts",
+      "decision": "NO",
+      "category": "other_candidate_artifacts",
+      "reason": "CAND002 artifacts are forbidden in CAND004 YES set"
+    },
+    {
+      "path": "CAND003 commit/archive/stage/ledger artifacts",
+      "decision": "NO",
+      "category": "other_candidate_artifacts",
+      "reason": "CAND003 artifacts are forbidden in CAND004 YES set"
+    },
+    {
+      "path": ".pytest_cache",
+      "decision": "NO",
+      "category": "local_cache",
+      "reason": "Local pytest cache is forbidden"
+    },
+    {
+      "path": ".venv",
+      "decision": "NO",
+      "category": "local_environment",
+      "reason": "Virtual environment is forbidden"
+    },
+    {
+      "path": "dist",
+      "decision": "NO",
+      "category": "build_output",
+      "reason": "Build output is forbidden"
+    },
+    {
+      "path": "node_modules",
+      "decision": "NO",
+      "category": "dependency_cache",
+      "reason": "Dependency directory is forbidden"
+    },
+    {
+      "path": "local runtime/cache/temp files",
+      "decision": "NO",
+      "category": "runtime_local",
+      "reason": "Runtime, cache, and temporary files are forbidden"
+    },
+    {
+      "path": "non-candidate control-plane files",
+      "decision": "NO",
+      "category": "control_plane_other",
+      "reason": "Non-candidate control-plane files are outside CAND004 ledger"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+record_type	key	value
+summary	task_id	TASK-Z022B-35-PREP-CAND004-FIX1
+summary	source_task_id	TASK-Z022B-35-PREP-CAND004
+summary	superseded_task_id	TASK-Z022B-35-PREP-CAND004
+summary	superseded_status	SUPERSEDED_BY_FIX1
+summary	selected_candidate_id	Z022-CAND-004
+summary	current_head	e4efb57410ec0643153741fc7260c40b0e1f536e
+summary	cached_area_empty	YES
+old_boundary	old_wrong_command	.venv/bin/python -m pytest tests/test_quality_defect_diagnostic.py -q
+old_boundary	old_wrong_command_target_exists	NO
+candidate_original_field	candidate_id	Z022-CAND-004
+candidate_original_field	module	quality
+candidate_original_field	route_or_area	/api/quality/inspections confirm baseline
+candidate_original_field	source_evidence	07_后端/lingyi_service/tests/test_quality_confirm_baseline.py; 07_后端/lingyi_service/app/routers/quality.py; 07_后端/lingyi_service/app/services/quality_service.py; 07_后端/lingyi_service/app/schemas/quality.py
+candidate_original_field	risk_level	LOW
+candidate_original_field	allowed_scope	single backend readonly pytest evidence collection for tests/test_quality_confirm_baseline.py
+candidate_original_field	forbidden_scope	source/test/config/dependency edits; other pytest; npm/browser/build/typecheck/verify; service lifecycle; stage/commit/push
+candidate_original_field	recommended_next_task_id	TASK-Z022B-14-PREP
+candidate_original_field	why_minimal	single quality confirm baseline test file with direct router/service/schema evidence; no frontend or runtime action required
+summary	candidate_original_fields_copied	YES
+summary	candidate_pool_command	.venv/bin/python -m pytest tests/test_quality_confirm_baseline.py -q
+summary	source_evidence_exists	YES
+summary	target_test_dirty_before_task	NO
+summary	duplicate_with_archived_candidates	NO
+summary	corrected_command	.venv/bin/python -m pytest tests/test_quality_confirm_baseline.py -q
+summary	corrected_command_target_exists	YES
+summary	workdir	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service
+summary	recommended_next_task_id	TASK-Z022B-36-IMPL-CAND004-FIX1
+summary	run_this_task	NO

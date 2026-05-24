@@ -1,0 +1,80 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+____________ QualityConfirmBaselineTest.test_confirm_draft_success _____________
+
+self = <tests.test_quality_confirm_baseline.QualityConfirmBaselineTest testMethod=test_confirm_draft_success>
+
+    def test_confirm_draft_success(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-CONFIRM-001",
+            status="draft",
+            result="partial",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("8"),
+            rejected_qty=Decimal("2"),
+            defect_qty=Decimal("1"),
+        )
+
+        with patch(
+            "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+            return_value=self._snapshot(),
+        ):
+            response = self.client.post(
+                f"/api/quality/inspections/{int(seeded['id'])}/confirm",
+                headers=self._headers(),
+                json={"remark": "确认通过"},
+            )
+
+>       self.assertEqual(response.status_code, 200, response.text)
+E       AssertionError: 422 != 200 : {"detail":[{"type":"missing","loc":["body","request_id"],"msg":"Field required","input":{"remark":"确认通过"}},{"type":"missing","loc":["body","idempotency_key"],"msg":"Field required","input":{"remark":"确认通过"}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"remark":"确认通过"}},{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"remark":"确认通过"}},{"type":"missing","loc":["body","inspection_ref"],"msg":"Field required","input":{"remark":"确认通过"}},{"type":"missing","loc":["body","source_type"],"msg":"Field required","input":{"remark":"确认通过"}},{"type":"missing","loc":["body","item_code"],"msg":"Field required","input":{"remark":"确认通过"}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"remark":"确认通过"}},{"type":"missing","loc":["body","result"],"msg":"Field required","input":{"remark":"确认通过"}}]}
+
+tests/test_quality_confirm_baseline.py:46: AssertionError
+_ QualityConfirmBaselineTest.test_confirm_on_confirmed_or_cancelled_returns_409 _
+
+self = <tests.test_quality_confirm_baseline.QualityConfirmBaselineTest testMethod=test_confirm_on_confirmed_or_cancelled_returns_409>
+
+    def test_confirm_on_confirmed_or_cancelled_returns_409(self) -> None:
+        confirmed = self._insert_inspection(
+            inspection_no="QI-CONFIRM-002",
+            status="confirmed",
+            result="pass",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("10"),
+            rejected_qty=Decimal("0"),
+            defect_qty=Decimal("0"),
+        )
+        cancelled = self._insert_inspection(
+            inspection_no="QI-CONFIRM-003",
+            status="cancelled",
+            result="fail",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("5"),
+            rejected_qty=Decimal("5"),
+            defect_qty=Decimal("2"),
+        )
+
+        confirmed_resp = self.client.post(
+            f"/api/quality/inspections/{int(confirmed['id'])}/confirm",
+            headers=self._headers(),
+            json={"remark": "重复确认"},
+        )
+        cancelled_resp = self.client.post(
+            f"/api/quality/inspections/{int(cancelled['id'])}/confirm",
+            headers=self._headers(),
+            json={"remark": "不应允许"},
+        )
+
+>       self.assertEqual(confirmed_resp.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_quality_confirm_baseline.py:107: AssertionError
+=============================== warnings summary ===============================
+tests/test_quality_confirm_baseline.py::QualityConfirmBaselineTest::test_confirm_draft_success
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_quality_confirm_baseline.py::QualityConfirmBaselineTest::test_confirm_draft_success
+FAILED tests/test_quality_confirm_baseline.py::QualityConfirmBaselineTest::test_confirm_on_confirmed_or_cancelled_returns_409
+2 failed, 1 warning in 1.16s
