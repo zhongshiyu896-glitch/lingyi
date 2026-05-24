@@ -1,0 +1,152 @@
+{
+  "task_id": "TASK-Z025B-35-PREP-CAND005-FAILURE-DIAG",
+  "role": "B Engineer",
+  "selected_candidate": "Z025-CAND-005",
+  "source_result_task": "TASK-Z025B-34-IMPL",
+  "current_head": "2b68102d35be30f12b8accadf2aec935d5b57bdc",
+  "failed_command": ".venv/bin/python -m pytest tests/test_bom_exception_handling.py -q",
+  "failed_summary": "14 failed, 1 passed, 1 warning in 1.16s",
+  "b34_result_json": "03_需求与设计/02_开发计划/task_z025b_34_cand005_result.json",
+  "b34_stdout": "03_需求与设计/02_开发计划/task_z025b_34_cand005_stdout.txt",
+  "failed_cases_count": 14,
+  "failed_cases": [
+    {
+      "case": "BomExceptionHandlingTest::test_activate_bom_returns_database_write_failed_when_commit_raises",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_commit_failure_rollback_failure_does_not_override_database_write_failed",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_create_bom_returns_audit_write_failed_when_operation_audit_fails",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_create_bom_returns_database_write_failed_when_business_write_fails",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_create_bom_returns_database_write_failed_when_commit_raises",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_create_bom_returns_internal_error_when_unknown_runtime_error_occurs",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_deactivate_bom_returns_database_write_failed_when_commit_raises",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_set_default_conflict_returns_bom_default_conflict",
+      "expected_status": 409,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 409"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_set_default_returns_database_write_failed_when_commit_raises",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_set_default_returns_default_conflict_when_commit_integrity_hits_partial_unique_index",
+      "expected_status": 409,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 409"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_snapshot_resource_database_read_failed_returns_database_read_failed",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_snapshot_resource_unknown_error_returns_internal_error",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_update_active_bom_returns_published_locked",
+      "expected_status": 409,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 409"
+    },
+    {
+      "case": "BomExceptionHandlingTest::test_update_bom_returns_database_write_failed_when_commit_raises",
+      "expected_status": 500,
+      "actual_status": 422,
+      "error_type": "AssertionError",
+      "key_failure": "AssertionError: 422 != 500"
+    }
+  ],
+  "failure_pattern": "All 14 failing cases returned HTTP 422 before the intended BOM exception/error-code assertions. The target test payload helpers and action calls do not satisfy the current BOM request schema and local request carrier contract.",
+  "readonly_source_evidence": [
+    {
+      "path": "07_后端/lingyi_service/tests/test_bom_exception_handling.py",
+      "evidence": "_headers omits X-Request-ID; _create_payload omits scenario_tag/idempotency_key/source_ref; _update_payload omits scenario_tag/idempotency_key/source_ref/bom_no/item_code; activate and set-default calls omit required JSON body; deactivate body only includes reason."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/schemas/bom.py",
+      "evidence": "BomCreateRequest requires scenario_tag, idempotency_key, source_ref, item_code, version_no, bom_items, operations; BomUpdateRequest also requires bom_no; BomCarrierRequest requires scenario_tag, idempotency_key, source_ref, bom_no, item_code; BomDeactivateRequest also requires reason."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/routers/bom.py",
+      "evidence": "Write/action endpoints use BomCreateRequest, BomUpdateRequest, BomCarrierRequest, or BomDeactivateRequest and validate request_id/carriers via _validate_local_bom_request_gate before invoking service exception paths."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/bom_service.py",
+      "evidence": "Service methods still implement the business exception paths asserted by tests once a valid request reaches service/audit/commit handling."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/models/bom.py",
+      "evidence": "Model fields support the existing seeded BOM and do not explain the pre-business HTTP 422 failures."
+    }
+  ],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_bom_exception_handling.py",
+  "forbidden_fix_files": [
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "other 07_后端 files",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "Z025 candidate pool",
+    "TASK-Z025B-33-PREP boundary artifacts",
+    "TASK-Z025B-34-IMPL result/stdout artifacts",
+    "existing Z015-Z024/Z025-CAND-001/002/003/004 artifacts"
+  ],
+  "recommended_next_task": "TASK-Z025B-36-FIX-CAND005",
+  "run_this_task": false,
+  "pytest_run": false,
+  "code_or_test_edits": false,
+  "stage_commit_push": false
+}

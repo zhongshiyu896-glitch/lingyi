@@ -1,0 +1,35 @@
+{
+  "task_id": "TASK-Z025B-36-FIX-CAND005",
+  "role": "B Engineer",
+  "source_task": "TASK-Z025B-35-PREP-CAND005-FAILURE-DIAG",
+  "selected_candidate": "Z025-CAND-005",
+  "current_head": "2b68102d35be30f12b8accadf2aec935d5b57bdc",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "fixed_file": "07_后端/lingyi_service/tests/test_bom_exception_handling.py",
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_bom_exception_handling.py -q",
+  "command_run_count": 1,
+  "exit_code": 0,
+  "result": "PASS",
+  "pytest_summary": "15 passed, 1 warning in 1.09s",
+  "stdout_log": "03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_stdout.txt",
+  "result_json": "03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_result.json",
+  "result_tsv": "03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_result.tsv",
+  "contract_fixed": [
+    "Added local BOM scenario tag, request-id carrier helper, and local test DB gate environment for the target exception tests.",
+    "Filled BomCreateRequest and BomUpdateRequest required contract fields: scenario_tag, idempotency_key, source_ref, bom_no, and item_code where required.",
+    "Added BomCarrierRequest/BomDeactivateRequest JSON bodies for activate, set-default, and deactivate action endpoints.",
+    "Aligned seeded BOM and mocked snapshot fixtures with the router local carrier contract so requests reach the original exception paths."
+  ],
+  "assertions_weakened": false,
+  "skip_xfail_deleted_cases": false,
+  "forbidden_actions": {
+    "backend_app_edits": false,
+    "frontend_edits": false,
+    "unrelated_tests_edits": false,
+    "tests_build_typecheck_npm_browser_beyond_allowed_command": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  }
+}

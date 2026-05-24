@@ -1,0 +1,267 @@
+{
+  "task_id": "TASK-Z025B-37-LEDGER-CAND005",
+  "role": "B Engineer",
+  "selected_candidate": "Z025-CAND-005",
+  "final_result": "PASS",
+  "final_pytest_summary": "15 passed, 1 warning in 1.09s",
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_bom_exception_handling.py"
+  ],
+  "ledger_total": 49,
+  "yes_count": 19,
+  "no_count": 30,
+  "yes_no_intersection_empty": true,
+  "yes_files_exist": true,
+  "yes_git_ignored": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_bom_exception_handling.py"
+  ],
+  "frontend_yes_paths": [],
+  "entries": [
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-33-PREP_Z025候选005只读验证边界报告.md",
+      "reason": "CAND005 B33 boundary evidence"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_33_cand005_boundary.json",
+      "reason": "CAND005 B33 boundary JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_33_cand005_boundary.tsv",
+      "reason": "CAND005 B33 boundary TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-34-IMPL_Z025候选005bom-exception-handling只读验证报告.md",
+      "reason": "CAND005 B34 initial validation report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_34_cand005_result.json",
+      "reason": "CAND005 B34 initial validation result JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_34_cand005_result.tsv",
+      "reason": "CAND005 B34 initial validation result TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_34_cand005_stdout.txt",
+      "reason": "CAND005 B34 initial validation stdout"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-35-PREP-CAND005-FAILURE-DIAG_Z025候选005失败定位报告.md",
+      "reason": "CAND005 B35 failure diagnosis report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_35_cand005_failure_diag_boundary.json",
+      "reason": "CAND005 B35 failure boundary JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_35_cand005_failure_diag_boundary.tsv",
+      "reason": "CAND005 B35 failure boundary TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-36-FIX-CAND005_Z025候选005bom-exception-handling测试合同修复报告.md",
+      "reason": "CAND005 B36 fix report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_result.json",
+      "reason": "CAND005 B36 final PASS result JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_result.tsv",
+      "reason": "CAND005 B36 final PASS result TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_stdout.txt",
+      "reason": "CAND005 B36 final PASS stdout"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-37-LEDGER-CAND005_Z025候选005提交候选账本报告.md",
+      "reason": "CAND005 B37 ledger report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_37_cand005_freeze.json",
+      "reason": "CAND005 B37 freeze JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_37_cand005_ledger.json",
+      "reason": "CAND005 B37 ledger JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z025b_37_cand005_ledger.tsv",
+      "reason": "CAND005 B37 ledger TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "07_后端/lingyi_service/tests/test_bom_exception_handling.py",
+      "reason": "Only allowed backend test file fixed by CAND005"
+    },
+    {
+      "decision": "NO",
+      "path": "06_前端",
+      "reason": "Frontend is forbidden for CAND005 ledger"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/app",
+      "reason": "Backend app source is forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_bom_permissions.py",
+      "reason": "Other backend test file"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_bom_audit.py",
+      "reason": "Other backend test file"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+      "reason": "Other backend test file"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+      "reason": "Other backend test file"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_production_plan.py",
+      "reason": "Z025-CAND-004 fixed test file is forbidden here"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_permission_service.py",
+      "reason": "Z025-CAND-001 target test is forbidden here"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_style_profit_source_mapping.py",
+      "reason": "Z025-CAND-002 target test is forbidden here"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_style_profit_snapshot_calculation.py",
+      "reason": "Z025-CAND-003 target test is forbidden here"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_workshop_worker_permissions.py",
+      "reason": "Z024 evidence-only test path is forbidden here"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_sales_inventory_permission.py",
+      "reason": "Z024 evidence-only test path is forbidden here"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/工程师会话日志.md",
+      "reason": "Shared engineer log is forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.json",
+      "reason": "Z025 candidate pool is forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.tsv",
+      "reason": "Z025 candidate pool is forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-01-PREP_Z025本地候选池重建报告.md",
+      "reason": "Z025 candidate pool report is forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_08_remaining_candidate_refresh.json",
+      "reason": "Z025 B08 refresh is outside CAND005 ledger"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_08_remaining_candidate_refresh.tsv",
+      "reason": "Z025 B08 refresh is outside CAND005 ledger"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_15_remaining_candidate_refresh.json",
+      "reason": "Z025 B15 refresh is outside CAND005 ledger"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_15_remaining_candidate_refresh.tsv",
+      "reason": "Z025 B15 refresh is outside CAND005 ledger"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_22_remaining_candidate_refresh.json",
+      "reason": "Z025 B22 refresh is outside CAND005 ledger"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_22_remaining_candidate_refresh.tsv",
+      "reason": "Z025 B22 refresh is outside CAND005 ledger"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-22-PREP_Z025剩余候选刷新报告.md",
+      "reason": "Z025 B22 refresh is outside CAND005 ledger"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/*cand001*",
+      "reason": "Z025-CAND-001 artifacts are forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/*cand002*",
+      "reason": "Z025-CAND-002 artifacts are forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/*cand003*",
+      "reason": "Z025-CAND-003 artifacts are forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/*cand004*",
+      "reason": "Z025-CAND-004 artifacts are forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/.venv",
+      "reason": "Local runtime is forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/__pycache__",
+      "reason": "Runtime cache is forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/.pytest_cache",
+      "reason": "Runtime cache is forbidden"
+    }
+  ]
+}

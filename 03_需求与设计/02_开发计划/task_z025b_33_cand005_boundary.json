@@ -1,0 +1,101 @@
+{
+  "task_id": "TASK-Z025B-33-PREP",
+  "role": "B Engineer",
+  "current_head": "2b68102d35be30f12b8accadf2aec935d5b57bdc",
+  "source_candidate_pool": "03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.json",
+  "candidate_total": 5,
+  "candidate_ids": [
+    "Z025-CAND-001",
+    "Z025-CAND-002",
+    "Z025-CAND-003",
+    "Z025-CAND-004",
+    "Z025-CAND-005"
+  ],
+  "archived_candidates": [
+    "Z025-CAND-001",
+    "Z025-CAND-002",
+    "Z025-CAND-003",
+    "Z025-CAND-004"
+  ],
+  "archive_results_checked": [
+    {
+      "candidate_id": "Z025-CAND-001",
+      "archive_result": "03_需求与设计/02_开发计划/task_z025b_07_cand001_archive_result.json",
+      "status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY"
+    },
+    {
+      "candidate_id": "Z025-CAND-002",
+      "archive_result": "03_需求与设计/02_开发计划/task_z025b_14_cand002_archive_result.json",
+      "status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY"
+    },
+    {
+      "candidate_id": "Z025-CAND-003",
+      "archive_result": "03_需求与设计/02_开发计划/task_z025b_21_cand003_archive_result.json",
+      "status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY"
+    },
+    {
+      "candidate_id": "Z025-CAND-004",
+      "archive_result": "03_需求与设计/02_开发计划/task_z025b_32_cand004_archive_result.json",
+      "status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY"
+    }
+  ],
+  "remaining_candidate": "Z025-CAND-005",
+  "selected_candidate": "Z025-CAND-005",
+  "candidate_original_fields_copied": true,
+  "candidate_original_fields": {
+    "candidate_id": "Z025-CAND-005",
+    "module": "bom",
+    "route_or_area": "BOM exception classification and local error envelope handling",
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_bom_exception_handling.py",
+      "07_后端/lingyi_service/app/routers/bom.py",
+      "07_后端/lingyi_service/app/services/bom_service.py",
+      "07_后端/lingyi_service/app/schemas/bom.py"
+    ],
+    "risk_level": "LOW_LOCAL_READONLY",
+    "allowed_scope": "Freeze a single-file backend readonly pytest evidence boundary for tests/test_bom_exception_handling.py; no pytest run in this task.",
+    "forbidden_scope": "BOM real writes; full pytest; other test files; product/backend/frontend edits; dependency/config changes; stage/commit/push; PR/tag/release; production or ERPNext access",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_bom_exception_handling.py -q",
+    "recommended_next_task_id": "TASK-Z025B-06-PREP",
+    "why_minimal": "Single existing BOM exception test isolates local error classification and envelope behavior using local fixtures, without live ERPNext or production writes."
+  },
+  "source_evidence_checked": [
+    {
+      "path": "07_后端/lingyi_service/tests/test_bom_exception_handling.py",
+      "exists": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/routers/bom.py",
+      "exists": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/bom_service.py",
+      "exists": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/schemas/bom.py",
+      "exists": true
+    }
+  ],
+  "source_evidence_missing": [],
+  "recommended_command": ".venv/bin/python -m pytest tests/test_bom_exception_handling.py -q",
+  "recommended_command_is_single_file_backend_readonly_pytest": true,
+  "recommended_command_target": "07_后端/lingyi_service/tests/test_bom_exception_handling.py",
+  "recommended_command_target_exists": true,
+  "target_test_dirty_diff": false,
+  "next_task": "TASK-Z025B-34-IMPL",
+  "run_this_task": false,
+  "validation": {
+    "current_head_matches_expected": true,
+    "cached_area_empty": true,
+    "git_diff_check": "PASS"
+  },
+  "forbidden_actions": {
+    "code_edits": false,
+    "tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  },
+  "next_role": "C Auditor"
+}

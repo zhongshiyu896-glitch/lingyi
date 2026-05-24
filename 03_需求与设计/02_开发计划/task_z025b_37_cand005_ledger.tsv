@@ -1,0 +1,50 @@
+decision	path	reason
+YES	03_需求与设计/02_开发计划/TASK-Z025B-33-PREP_Z025候选005只读验证边界报告.md	CAND005 B33 boundary evidence
+YES	03_需求与设计/02_开发计划/task_z025b_33_cand005_boundary.json	CAND005 B33 boundary JSON
+YES	03_需求与设计/02_开发计划/task_z025b_33_cand005_boundary.tsv	CAND005 B33 boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z025B-34-IMPL_Z025候选005bom-exception-handling只读验证报告.md	CAND005 B34 initial validation report
+YES	03_需求与设计/02_开发计划/task_z025b_34_cand005_result.json	CAND005 B34 initial validation result JSON
+YES	03_需求与设计/02_开发计划/task_z025b_34_cand005_result.tsv	CAND005 B34 initial validation result TSV
+YES	03_需求与设计/02_开发计划/task_z025b_34_cand005_stdout.txt	CAND005 B34 initial validation stdout
+YES	03_需求与设计/02_开发计划/TASK-Z025B-35-PREP-CAND005-FAILURE-DIAG_Z025候选005失败定位报告.md	CAND005 B35 failure diagnosis report
+YES	03_需求与设计/02_开发计划/task_z025b_35_cand005_failure_diag_boundary.json	CAND005 B35 failure boundary JSON
+YES	03_需求与设计/02_开发计划/task_z025b_35_cand005_failure_diag_boundary.tsv	CAND005 B35 failure boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z025B-36-FIX-CAND005_Z025候选005bom-exception-handling测试合同修复报告.md	CAND005 B36 fix report
+YES	03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_result.json	CAND005 B36 final PASS result JSON
+YES	03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_result.tsv	CAND005 B36 final PASS result TSV
+YES	03_需求与设计/02_开发计划/task_z025b_36_cand005_fix_stdout.txt	CAND005 B36 final PASS stdout
+YES	03_需求与设计/02_开发计划/TASK-Z025B-37-LEDGER-CAND005_Z025候选005提交候选账本报告.md	CAND005 B37 ledger report
+YES	03_需求与设计/02_开发计划/task_z025b_37_cand005_freeze.json	CAND005 B37 freeze JSON
+YES	03_需求与设计/02_开发计划/task_z025b_37_cand005_ledger.json	CAND005 B37 ledger JSON
+YES	03_需求与设计/02_开发计划/task_z025b_37_cand005_ledger.tsv	CAND005 B37 ledger TSV
+YES	07_后端/lingyi_service/tests/test_bom_exception_handling.py	Only allowed backend test file fixed by CAND005
+NO	06_前端	Frontend is forbidden for CAND005 ledger
+NO	07_后端/lingyi_service/app	Backend app source is forbidden
+NO	07_后端/lingyi_service/tests/test_bom_permissions.py	Other backend test file
+NO	07_后端/lingyi_service/tests/test_bom_audit.py	Other backend test file
+NO	07_后端/lingyi_service/tests/test_logging_sanitization.py	Other backend test file
+NO	07_后端/lingyi_service/tests/test_request_id_sanitization.py	Other backend test file
+NO	07_后端/lingyi_service/tests/test_production_plan.py	Z025-CAND-004 fixed test file is forbidden here
+NO	07_后端/lingyi_service/tests/test_permission_service.py	Z025-CAND-001 target test is forbidden here
+NO	07_后端/lingyi_service/tests/test_style_profit_source_mapping.py	Z025-CAND-002 target test is forbidden here
+NO	07_后端/lingyi_service/tests/test_style_profit_snapshot_calculation.py	Z025-CAND-003 target test is forbidden here
+NO	07_后端/lingyi_service/tests/test_workshop_worker_permissions.py	Z024 evidence-only test path is forbidden here
+NO	07_后端/lingyi_service/tests/test_sales_inventory_permission.py	Z024 evidence-only test path is forbidden here
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	Shared engineer log is forbidden
+NO	03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.json	Z025 candidate pool is forbidden
+NO	03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.tsv	Z025 candidate pool is forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z025B-01-PREP_Z025本地候选池重建报告.md	Z025 candidate pool report is forbidden
+NO	03_需求与设计/02_开发计划/task_z025b_08_remaining_candidate_refresh.json	Z025 B08 refresh is outside CAND005 ledger
+NO	03_需求与设计/02_开发计划/task_z025b_08_remaining_candidate_refresh.tsv	Z025 B08 refresh is outside CAND005 ledger
+NO	03_需求与设计/02_开发计划/task_z025b_15_remaining_candidate_refresh.json	Z025 B15 refresh is outside CAND005 ledger
+NO	03_需求与设计/02_开发计划/task_z025b_15_remaining_candidate_refresh.tsv	Z025 B15 refresh is outside CAND005 ledger
+NO	03_需求与设计/02_开发计划/task_z025b_22_remaining_candidate_refresh.json	Z025 B22 refresh is outside CAND005 ledger
+NO	03_需求与设计/02_开发计划/task_z025b_22_remaining_candidate_refresh.tsv	Z025 B22 refresh is outside CAND005 ledger
+NO	03_需求与设计/02_开发计划/TASK-Z025B-22-PREP_Z025剩余候选刷新报告.md	Z025 B22 refresh is outside CAND005 ledger
+NO	03_需求与设计/02_开发计划/*cand001*	Z025-CAND-001 artifacts are forbidden
+NO	03_需求与设计/02_开发计划/*cand002*	Z025-CAND-002 artifacts are forbidden
+NO	03_需求与设计/02_开发计划/*cand003*	Z025-CAND-003 artifacts are forbidden
+NO	03_需求与设计/02_开发计划/*cand004*	Z025-CAND-004 artifacts are forbidden
+NO	07_后端/lingyi_service/.venv	Local runtime is forbidden
+NO	07_后端/lingyi_service/tests/__pycache__	Runtime cache is forbidden
+NO	07_后端/lingyi_service/.pytest_cache	Runtime cache is forbidden

@@ -1,0 +1,25 @@
+field	value
+task_id	TASK-Z025B-33-PREP
+role	B Engineer
+current_head	2b68102d35be30f12b8accadf2aec935d5b57bdc
+candidate_total	5
+archived_candidates	["Z025-CAND-001","Z025-CAND-002","Z025-CAND-003","Z025-CAND-004"]
+remaining_candidate	Z025-CAND-005
+selected_candidate	Z025-CAND-005
+candidate_original_fields_copied	true
+module	bom
+route_or_area	BOM exception classification and local error envelope handling
+source_evidence_missing	[]
+recommended_command	.venv/bin/python -m pytest tests/test_bom_exception_handling.py -q
+recommended_command_target_exists	true
+target_test_dirty_diff	false
+next_task	TASK-Z025B-34-IMPL
+run_this_task	false
+git_diff_cached_name_only	[]
+git_diff_check	PASS
+code_edits	false
+tests_build_typecheck_npm_browser	false
+stage_commit_push_tag_pr_release	false
+reset_checkout_stash_cleanup	false
+production_readback_go_live_project_completion	false
+next_role	C Auditor

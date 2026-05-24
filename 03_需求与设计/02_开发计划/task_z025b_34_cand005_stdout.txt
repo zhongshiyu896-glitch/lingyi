@@ -1,0 +1,297 @@
+FFFFFFF.FFFFFFF                                                          [100%]
+=================================== FAILURES ===================================
+_ BomExceptionHandlingTest.test_activate_bom_returns_database_write_failed_when_commit_raises _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_activate_bom_returns_database_write_failed_when_commit_raises>
+
+    def test_activate_bom_returns_database_write_failed_when_commit_raises(self) -> None:
+        with patch.object(
+            BomService,
+            "activate",
+            return_value=BomActivateData(name="BOM-ITEM-A-V1", status="active", effective_date="2026-04-12"),
+        ), patch.object(
+            AuditService,
+            "snapshot_resource",
+            return_value={"bom": {"bom_no": "BOM-ITEM-A-V1"}},
+        ), patch(
+            "sqlalchemy.orm.session.Session.commit",
+            side_effect=SQLAlchemyError("commit failed"),
+        ):
+            response = self.client.post("/api/bom/1/activate", headers=self._headers(role="BOM Publisher"))
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:261: AssertionError
+_ BomExceptionHandlingTest.test_commit_failure_rollback_failure_does_not_override_database_write_failed _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_commit_failure_rollback_failure_does_not_override_database_write_failed>
+
+    def test_commit_failure_rollback_failure_does_not_override_database_write_failed(self) -> None:
+        with patch.object(BomService, "create_bom", return_value=BomNameData(name="BOM-TEST")), patch.object(
+            BomService,
+            "get_bom_by_no",
+            return_value=SimpleNamespace(id=1),
+        ), patch.object(AuditService, "snapshot_resource", return_value={"bom": {"bom_no": "BOM-TEST"}}), patch(
+            "sqlalchemy.orm.session.Session.commit",
+            side_effect=OperationalError("commit failed", {}, Exception("db down")),
+        ), patch(
+            "sqlalchemy.orm.session.Session.rollback",
+            side_effect=DBAPIError("rollback failed", {}, Exception("rollback error")),
+        ):
+            response = self.client.post("/api/bom/", headers=self._headers(), json=self._create_payload())
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:349: AssertionError
+_ BomExceptionHandlingTest.test_create_bom_returns_audit_write_failed_when_operation_audit_fails _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_create_bom_returns_audit_write_failed_when_operation_audit_fails>
+
+    def test_create_bom_returns_audit_write_failed_when_operation_audit_fails(self) -> None:
+        with patch.object(BomService, "create_bom", return_value=BomNameData(name="BOM-TEST")), patch.object(
+            BomService,
+            "get_bom_by_no",
+            return_value=SimpleNamespace(id=1),
+        ), patch.object(AuditService, "snapshot_resource", return_value={"bom": {"bom_no": "BOM-TEST"}}), patch.object(
+            AuditService,
+            "record_success",
+            side_effect=AuditWriteFailed(),
+        ):
+            response = self.client.post("/api/bom/", headers=self._headers(), json=self._create_payload())
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:196: AssertionError
+_ BomExceptionHandlingTest.test_create_bom_returns_database_write_failed_when_business_write_fails _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_create_bom_returns_database_write_failed_when_business_write_fails>
+
+    def test_create_bom_returns_database_write_failed_when_business_write_fails(self) -> None:
+        with patch.object(BomService, "create_bom", side_effect=DatabaseWriteFailed()):
+            response = self.client.post("/api/bom/", headers=self._headers(), json=self._create_payload())
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:205: AssertionError
+_ BomExceptionHandlingTest.test_create_bom_returns_database_write_failed_when_commit_raises _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_create_bom_returns_database_write_failed_when_commit_raises>
+
+    def test_create_bom_returns_database_write_failed_when_commit_raises(self) -> None:
+        with patch.object(BomService, "create_bom", return_value=BomNameData(name="BOM-TEST")), patch.object(
+            BomService,
+            "get_bom_by_no",
+            return_value=SimpleNamespace(id=1),
+        ), patch.object(AuditService, "snapshot_resource", return_value={"bom": {"bom_no": "BOM-TEST"}}), patch(
+            "sqlalchemy.orm.session.Session.commit",
+            side_effect=SQLAlchemyError("commit failed"),
+        ):
+            response = self.client.post("/api/bom/", headers=self._headers(), json=self._create_payload())
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:221: AssertionError
+_ BomExceptionHandlingTest.test_create_bom_returns_internal_error_when_unknown_runtime_error_occurs _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_create_bom_returns_internal_error_when_unknown_runtime_error_occurs>
+
+    def test_create_bom_returns_internal_error_when_unknown_runtime_error_occurs(self) -> None:
+        with patch.object(BomService, "create_bom", side_effect=RuntimeError("boom")):
+            response = self.client.post("/api/bom/", headers=self._headers(), json=self._create_payload())
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:376: AssertionError
+_ BomExceptionHandlingTest.test_deactivate_bom_returns_database_write_failed_when_commit_raises _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_deactivate_bom_returns_database_write_failed_when_commit_raises>
+
+    def test_deactivate_bom_returns_database_write_failed_when_commit_raises(self) -> None:
+        with patch.object(
+            BomService,
+            "deactivate",
+            return_value=BomDeactivateData(name="BOM-ITEM-A-V1", status="inactive"),
+        ), patch.object(
+            AuditService,
+            "snapshot_resource",
+            return_value={"bom": {"bom_no": "BOM-ITEM-A-V1"}},
+        ), patch(
+            "sqlalchemy.orm.session.Session.commit",
+            side_effect=SQLAlchemyError("commit failed"),
+        ):
+            response = self.client.post(
+                "/api/bom/1/deactivate",
+                headers=self._headers(role="BOM Publisher"),
+                json={"reason": "manual off"},
+            )
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:285: AssertionError
+_ BomExceptionHandlingTest.test_set_default_conflict_returns_bom_default_conflict _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_set_default_conflict_returns_bom_default_conflict>
+
+    def test_set_default_conflict_returns_bom_default_conflict(self) -> None:
+        with patch.object(
+            BomService,
+            "set_default",
+            side_effect=BusinessException(code=BOM_DEFAULT_CONFLICT, message="默认 BOM 冲突，请重试"),
+        ):
+            response = self.client.post("/api/bom/1/set-default", headers=self._headers(role="BOM Publisher"))
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_bom_exception_handling.py:405: AssertionError
+_ BomExceptionHandlingTest.test_set_default_returns_database_write_failed_when_commit_raises _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_set_default_returns_database_write_failed_when_commit_raises>
+
+    def test_set_default_returns_database_write_failed_when_commit_raises(self) -> None:
+        with patch.object(
+            BomService,
+            "set_default",
+            return_value=BomSetDefaultData(name="BOM-ITEM-A-V1", item_code="ITEM-A", is_default=True),
+        ), patch.object(
+            AuditService,
+            "snapshot_resource",
+            return_value={"bom": {"bom_no": "BOM-ITEM-A-V1"}},
+        ), patch(
+            "sqlalchemy.orm.session.Session.commit",
+            side_effect=SQLAlchemyError("commit failed"),
+        ):
+            response = self.client.post("/api/bom/1/set-default", headers=self._headers(role="BOM Publisher"))
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:305: AssertionError
+_ BomExceptionHandlingTest.test_set_default_returns_default_conflict_when_commit_integrity_hits_partial_unique_index _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_set_default_returns_default_conflict_when_commit_integrity_hits_partial_unique_index>
+
+    def test_set_default_returns_default_conflict_when_commit_integrity_hits_partial_unique_index(self) -> None:
+        integrity_exc = IntegrityError(
+            statement="UPDATE ly_schema.ly_apparel_bom ...",
+            params={},
+            orig=Exception('duplicate key value violates unique constraint "uk_ly_apparel_bom_one_active_default"'),
+        )
+        with patch.object(
+            BomService,
+            "set_default",
+            return_value=BomSetDefaultData(name="BOM-ITEM-A-V1", item_code="ITEM-A", is_default=True),
+        ), patch.object(
+            AuditService,
+            "snapshot_resource",
+            return_value={"bom": {"bom_no": "BOM-ITEM-A-V1"}},
+        ), patch(
+            "sqlalchemy.orm.session.Session.commit",
+            side_effect=integrity_exc,
+        ):
+            response = self.client.post("/api/bom/1/set-default", headers=self._headers(role="BOM Publisher"))
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_bom_exception_handling.py:330: AssertionError
+_ BomExceptionHandlingTest.test_snapshot_resource_database_read_failed_returns_database_read_failed _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_snapshot_resource_database_read_failed_returns_database_read_failed>
+
+    def test_snapshot_resource_database_read_failed_returns_database_read_failed(self) -> None:
+        with patch.object(AuditService, "snapshot_resource", side_effect=DatabaseReadFailed()):
+            response = self.client.put("/api/bom/1", headers=self._headers(), json=self._update_payload())
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:358: AssertionError
+_ BomExceptionHandlingTest.test_snapshot_resource_unknown_error_returns_internal_error _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_snapshot_resource_unknown_error_returns_internal_error>
+
+    def test_snapshot_resource_unknown_error_returns_internal_error(self) -> None:
+        with patch.object(AuditService, "snapshot_resource", side_effect=RuntimeError("snapshot boom")):
+            response = self.client.put("/api/bom/1", headers=self._headers(), json=self._update_payload())
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:367: AssertionError
+___ BomExceptionHandlingTest.test_update_active_bom_returns_published_locked ___
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_update_active_bom_returns_published_locked>
+
+    def test_update_active_bom_returns_published_locked(self) -> None:
+        response = self.client.put("/api/bom/1", headers=self._headers(), json=self._update_payload())
+        payload_json = response.json()
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_bom_exception_handling.py:392: AssertionError
+_ BomExceptionHandlingTest.test_update_bom_returns_database_write_failed_when_commit_raises _
+
+self = <tests.test_bom_exception_handling.BomExceptionHandlingTest testMethod=test_update_bom_returns_database_write_failed_when_commit_raises>
+
+    def test_update_bom_returns_database_write_failed_when_commit_raises(self) -> None:
+        with patch.object(
+            BomService,
+            "update_bom_draft",
+            return_value=BomUpdateData(name="BOM-ITEM-A-V1", status="draft", updated_at="2026-04-12T00:00:00"),
+        ), patch.object(
+            AuditService,
+            "snapshot_resource",
+            return_value={"bom": {"bom_no": "BOM-ITEM-A-V1"}},
+        ), patch(
+            "sqlalchemy.orm.session.Session.commit",
+            side_effect=SQLAlchemyError("commit failed"),
+        ):
+            response = self.client.put("/api/bom/1", headers=self._headers(), json=self._update_payload())
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_exception_handling.py:241: AssertionError
+=============================== warnings summary ===============================
+tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_activate_bom_returns_database_write_failed_when_commit_raises
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_activate_bom_returns_database_write_failed_when_commit_raises
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_commit_failure_rollback_failure_does_not_override_database_write_failed
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_create_bom_returns_audit_write_failed_when_operation_audit_fails
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_create_bom_returns_database_write_failed_when_business_write_fails
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_create_bom_returns_database_write_failed_when_commit_raises
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_create_bom_returns_internal_error_when_unknown_runtime_error_occurs
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_deactivate_bom_returns_database_write_failed_when_commit_raises
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_set_default_conflict_returns_bom_default_conflict
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_set_default_returns_database_write_failed_when_commit_raises
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_set_default_returns_default_conflict_when_commit_integrity_hits_partial_unique_index
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_snapshot_resource_database_read_failed_returns_database_read_failed
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_snapshot_resource_unknown_error_returns_internal_error
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_update_active_bom_returns_published_locked
+FAILED tests/test_bom_exception_handling.py::BomExceptionHandlingTest::test_update_bom_returns_database_write_failed_when_commit_raises
+14 failed, 1 passed, 1 warning in 1.16s
