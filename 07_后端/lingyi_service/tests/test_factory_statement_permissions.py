@@ -219,12 +219,21 @@ class FactoryStatementPermissionTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-no-payable-create"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
+        statement_no = str(created_data["statement_no"])
 
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(role="Finance Manager"),
-            json={"idempotency_key": "idem-no-payable-confirm", "remark": "ok"},
+            json={
+                "idempotency_key": f"{self._SCENARIO_TAG}-idem-no-payable-confirm",
+                "scenario_tag": self._SCENARIO_TAG,
+                "company": "COMP-A",
+                "supplier": "SUP-A",
+                "statement_no": statement_no,
+                "remark": "ok",
+            },
         )
         self.assertEqual(confirmed.status_code, 200)
 

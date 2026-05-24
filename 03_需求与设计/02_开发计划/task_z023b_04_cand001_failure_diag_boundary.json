@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-Z023B-04-PREP-CAND001-FAILURE-DIAG",
+  "role": "B Engineer",
+  "task_name": "Z023-CAND-001 factory_statement 权限边界失败只读定位",
+  "source_task_id": "TASK-Z023B-03-IMPL",
+  "selected_candidate_id": "Z023-CAND-001",
+  "current_head": "ba1b3f6c8105af836c3bde132a692d626b708025",
+  "cached_area_empty": true,
+  "b03_result": "FAIL",
+  "b03_pytest_summary": "1 failed, 7 passed, 13 warnings in 1.03s",
+  "failed_case": "tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_no_payable_draft_permission_returns_403_and_no_outbox",
+  "expected_status": 200,
+  "actual_status": 409,
+  "actual_error_code": "FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT",
+  "actual_error_body_summary": "B03 stdout only captured the assertion status. Source mapping shows confirm route maps local gate HTTPException to code FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT with message from the gate; current confirm payload first fails scenario_tag carrier validation because idempotency_key lacks the scenario tag and payload.scenario_tag is missing.",
+  "current_test_payload_or_fixture_issue": "The failing test creates a draft with the shared create helper, then calls /confirm with json={\"idempotency_key\":\"idem-no-payable-confirm\",\"remark\":\"ok\"}. The confirm payload does not include scenario_tag, company, supplier, or statement_no, and its idempotency_key does not carry the valid Z003-FACTORY-STMT scenario tag required by the router local gate.",
+  "failure_gate_or_branch": "factory_statement confirm route runs require_action first, then _validate_local_factory_statement_write_gate before resource-scope permission, chain matching, service status checks, and payable-draft permission assertions. The local gate validates X-Request-ID against scenario carriers [payload.idempotency_key, payload.scenario_tag] and raises 409 FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT for invalid or missing scenario_tag carrier.",
+  "gate_runs_before_permission_or_status_branch": true,
+  "permission_service_or_adapter_failure": false,
+  "backend_app_dirty_for_candidate": false,
+  "backend_app_dirty_paths_all": [
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py"
+  ],
+  "candidate_backend_app_dirty_paths": [],
+  "target_test_dirty_before_task": false,
+  "source_evidence": {
+    "b03_result_json": "03_需求与设计/02_开发计划/task_z023b_03_cand001_result.json",
+    "b03_stdout": "03_需求与设计/02_开发计划/task_z023b_03_cand001_stdout.txt",
+    "test_failure_site": "07_后端/lingyi_service/tests/test_factory_statement_permissions.py:215-229",
+    "test_helper_carrier_site": "07_后端/lingyi_service/tests/test_factory_statement_api.py:107-137",
+    "router_confirm_gate_site": "07_后端/lingyi_service/app/routers/factory_statement.py:460-524",
+    "router_local_gate_site": "07_后端/lingyi_service/app/routers/factory_statement.py:166-223",
+    "confirm_schema_site": "07_后端/lingyi_service/app/schemas/factory_statement.py:584-592",
+    "service_confirm_status_site": "07_后端/lingyi_service/app/services/factory_statement_service.py:3290-3331"
+  },
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_factory_statement_permissions.py"
+  ],
+  "forbidden_files": [
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "07_后端/lingyi_service/tests other than test_factory_statement_permissions.py",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "Z015-Z022 frozen/committed/archived artifacts",
+    "Z023 candidate pool / boundary / result artifacts",
+    "A architect logs",
+    "C audit records",
+    "GitHub/production configuration"
+  ],
+  "recommended_next_task_id": "TASK-Z023B-05-FIX-CAND001",
+  "recommended_next_command": ".venv/bin/python -m pytest tests/test_factory_statement_permissions.py -q",
+  "run_pytest_this_task": false,
+  "allow_code_edit_next": true,
+  "reason": "The 409 is explained by test contract drift against the current confirm local gate/carrier contract. The failing precondition confirm request should carry a valid scenario_tag, scenario-tagged idempotency key, and the header chain fields required by the router. No candidate-specific backend app dirty diff or product-source change is needed for the next minimal fix.",
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "forbidden_actions_detected": false
+}

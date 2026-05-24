@@ -1,0 +1,34 @@
+{
+  "task_id": "TASK-Z023B-06-LEDGER-CAND001",
+  "role": "B Engineer",
+  "task_name": "Z023-CAND-001 factory_statement 权限边界提交候选账本冻结",
+  "source_task_id": "TASK-Z023B-05-FIX-CAND001",
+  "selected_candidate_id": "Z023-CAND-001",
+  "boundary_task_id": "TASK-Z023B-02-PREP",
+  "initial_impl_task_id": "TASK-Z023B-03-IMPL",
+  "initial_impl_result": "FAIL",
+  "failure_classification_task_id": "TASK-Z023B-04-PREP-CAND001-FAILURE-DIAG",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "final_fix_task_id": "TASK-Z023B-05-FIX-CAND001",
+  "final_fix_result": "PASS",
+  "pytest_summary": "8 passed, 14 warnings in 1.05s",
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_factory_statement_permissions.py"
+  ],
+  "fixed_file_count": 1,
+  "backend_app_changed": false,
+  "frontend_changed": false,
+  "backend_allowed_files_only": true,
+  "test_changed": true,
+  "candidate_backend_app_dirty_paths": [],
+  "historical_backend_app_dirty_paths": [
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py"
+  ],
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "forbidden_actions_detected": false
+}

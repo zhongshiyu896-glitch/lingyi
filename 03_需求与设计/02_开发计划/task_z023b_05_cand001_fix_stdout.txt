@@ -1,0 +1,30 @@
+........                                                                 [100%]
+=============================== warnings summary ===============================
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_detail_checks_permission_before_id_lookup
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_detail_checks_permission_before_id_lookup
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_list_is_filtered_by_company_supplier_resource_scope
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_list_is_filtered_by_company_supplier_resource_scope
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_no_cancel_permission_returns_403_and_no_write
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_no_confirm_permission_returns_403_and_no_write
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_no_payable_draft_permission_returns_403_and_no_outbox
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:4017: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_detail_checks_permission_before_id_lookup
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_list_is_filtered_by_company_supplier_resource_scope
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_list_is_filtered_by_company_supplier_resource_scope
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_no_cancel_permission_returns_403_and_no_write
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_no_confirm_permission_returns_403_and_no_write
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_no_payable_draft_permission_returns_403_and_no_outbox
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:377: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    LySubcontractInspection.settlement_locked_at: datetime.utcnow(),
+
+tests/test_factory_statement_permissions.py::FactoryStatementPermissionTest::test_no_payable_draft_permission_returns_403_and_no_outbox
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:3332: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+8 passed, 14 warnings in 1.05s
