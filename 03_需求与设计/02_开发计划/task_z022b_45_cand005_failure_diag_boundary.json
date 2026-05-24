@@ -1,0 +1,113 @@
+{
+  "task_id": "TASK-Z022B-45-PREP-CAND005-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z022B-44-IMPL-CAND005",
+  "selected_candidate_id": "Z022-CAND-005",
+  "current_head": "210b1ed42530f8cd15c3a6b9c0c5893aabd992ee",
+  "cached_area_empty": true,
+  "b44_result": "FAIL",
+  "b44_pytest_summary": "3 failed, 1 warning in 1.19s",
+  "failed_cases": [
+    {
+      "case": "QualityCancelBaselineTest.test_cancel_confirmed_success",
+      "expected_status": 200,
+      "actual_status": 422
+    },
+    {
+      "case": "QualityCancelBaselineTest.test_cancel_on_draft_or_cancelled_returns_409",
+      "expected_status": 409,
+      "actual_status": 422
+    },
+    {
+      "case": "QualityCancelBaselineTest.test_cancelled_rejects_update_defect_confirm_cancel_with_409",
+      "expected_status": 409,
+      "actual_status": 422
+    }
+  ],
+  "actual_status_codes": [
+    422
+  ],
+  "missing_fields": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "inspection_ref",
+    "source_type",
+    "item_code",
+    "operation",
+    "result"
+  ],
+  "current_test_payload_fields": [
+    "reason",
+    "remark",
+    "defects"
+  ],
+  "schema_name": "QualityInspectionCancelRequest",
+  "schema_required_fields": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "inspection_ref",
+    "source_type",
+    "item_code",
+    "operation",
+    "result"
+  ],
+  "schema_optional_fields": [
+    "source_doc",
+    "reason"
+  ],
+  "schema_binding_before_permission_or_status_branch": true,
+  "schema_evidence": [
+    "07_后端/lingyi_service/app/schemas/quality.py:110-122",
+    "07_后端/lingyi_service/app/routers/quality.py:809-824",
+    "07_后端/lingyi_service/app/routers/quality.py:848-890"
+  ],
+  "quality_cancel_backend_app_dirty": false,
+  "quality_cancel_backend_app_dirty_check_paths": [
+    "07_后端/lingyi_service/app/routers/quality.py",
+    "07_后端/lingyi_service/app/schemas/quality.py",
+    "07_后端/lingyi_service/app/services/quality_service.py"
+  ],
+  "target_test_dirty_before_task": false,
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_quality_cancel_baseline.py"
+  ],
+  "forbidden_files": [
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "other tests",
+    "dependencies",
+    "configuration",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "CAND001-CAND004 commit/archive/refreeze/stage/ledger artifacts",
+    "A architect logs",
+    "C audit records",
+    "GitHub/production configuration"
+  ],
+  "recommended_next_task_id": "TASK-Z022B-46-FIX-CAND005-SCHEMA-FIELDS",
+  "recommended_next_command": ".venv/bin/python -m pytest tests/test_quality_cancel_baseline.py -q",
+  "run_pytest_this_task": false,
+  "allow_code_edit_next": true,
+  "reason": "B44 failed at 422 request body validation because the current test payloads do not satisfy QualityInspectionCancelRequest required fields. The cancel endpoint binds this schema before status/service handling, and CAND005 quality router/schema/service files are clean. The smallest next action is a test contract update in the single allowed test file.",
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "forbidden_actions": {
+    "pytest_npm_browser_build_typecheck_verify_run": false,
+    "product_code_edits": false,
+    "backend_app_edits": false,
+    "test_edits": false,
+    "existing_artifact_edits": false,
+    "engineer_shared_log_edit": false,
+    "stage_commit_push": false,
+    "reset_checkout_cleanup": false,
+    "pr_tag_release": false,
+    "production_or_real_business_write": false,
+    "parked_blockers_released": false
+  }
+}

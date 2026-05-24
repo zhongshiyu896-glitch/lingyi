@@ -1,0 +1,128 @@
+FFF [100%]
+=================================== FAILURES ===================================
+___________ QualityCancelBaselineTest.test_cancel_confirmed_success ____________
+
+self = <tests.test_quality_cancel_baseline.QualityCancelBaselineTest testMethod=test_cancel_confirmed_success>
+
+    def test_cancel_confirmed_success(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-CANCEL-001",
+            status="confirmed",
+            result="pass",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("10"),
+            rejected_qty=Decimal("0"),
+            defect_qty=Decimal("0"),
+        )
+
+        response = self.client.post(
+            f"/api/quality/inspections/{int(seeded['id'])}/cancel",
+            headers=self._headers(),
+            json={"reason": "抽检争议"},
+        )
+
+>       self.assertEqual(response.status_code, 200, response.text)
+E       AssertionError: 422 != 200 : {"detail":[{"type":"missing","loc":["body","request_id"],"msg":"Field required","input":{"reason":"抽检争议"}},{"type":"missing","loc":["body","idempotency_key"],"msg":"Field required","input":{"reason":"抽检争议"}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"reason":"抽检争议"}},{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"reason":"抽检争议"}},{"type":"missing","loc":["body","inspection_ref"],"msg":"Field required","input":{"reason":"抽检争议"}},{"type":"missing","loc":["body","source_type"],"msg":"Field required","input":{"reason":"抽检争议"}},{"type":"missing","loc":["body","item_code"],"msg":"Field required","input":{"reason":"抽检争议"}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"reason":"抽检争议"}},{"type":"missing","loc":["body","result"],"msg":"Field required","input":{"reason":"抽检争议"}}]}
+
+tests/test_quality_cancel_baseline.py:33: AssertionError
+___ QualityCancelBaselineTest.test_cancel_on_draft_or_cancelled_returns_409 ____
+
+self = <tests.test_quality_cancel_baseline.QualityCancelBaselineTest testMethod=test_cancel_on_draft_or_cancelled_returns_409>
+
+    def test_cancel_on_draft_or_cancelled_returns_409(self) -> None:
+        draft = self._insert_inspection(
+            inspection_no="QI-CANCEL-002",
+            status="draft",
+            result="pending",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("8"),
+            rejected_qty=Decimal("2"),
+            defect_qty=Decimal("1"),
+        )
+        cancelled = self._insert_inspection(
+            inspection_no="QI-CANCEL-003",
+            status="cancelled",
+            result="fail",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("5"),
+            rejected_qty=Decimal("5"),
+            defect_qty=Decimal("2"),
+        )
+
+        draft_resp = self.client.post(
+            f"/api/quality/inspections/{int(draft['id'])}/cancel",
+            headers=self._headers(),
+            json={"reason": "不应允许"},
+        )
+        cancelled_resp = self.client.post(
+            f"/api/quality/inspections/{int(cancelled['id'])}/cancel",
+            headers=self._headers(),
+            json={"reason": "重复取消"},
+        )
+
+>       self.assertEqual(draft_resp.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_quality_cancel_baseline.py:97: AssertionError
+_ QualityCancelBaselineTest.test_cancelled_rejects_update_defect_confirm_cancel_with_409 _
+
+self = <tests.test_quality_cancel_baseline.QualityCancelBaselineTest testMethod=test_cancelled_rejects_update_defect_confirm_cancel_with_409>
+
+    def test_cancelled_rejects_update_defect_confirm_cancel_with_409(self) -> None:
+        cancelled = self._insert_inspection(
+            inspection_no="QI-CANCEL-004",
+            status="cancelled",
+            result="fail",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("6"),
+            rejected_qty=Decimal("4"),
+            defect_qty=Decimal("2"),
+        )
+        inspection_id = int(cancelled["id"])
+
+        patch_resp = self.client.patch(
+            f"/api/quality/inspections/{inspection_id}",
+            headers=self._headers(),
+            json={"remark": "不应允许"},
+        )
+        defect_resp = self.client.post(
+            f"/api/quality/inspections/{inspection_id}/defects",
+            headers=self._headers(),
+            json={
+                "defects": [
+                    {
+                        "defect_code": "DEF-999",
+                        "defect_name": "不应录入",
+                        "defect_qty": "1",
+                        "severity": "minor",
+                        "item_line_no": 1,
+                    }
+                ]
+            },
+        )
+        confirm_resp = self.client.post(
+            f"/api/quality/inspections/{inspection_id}/confirm",
+            headers=self._headers(),
+            json={"remark": "不应允许"},
+        )
+        cancel_resp = self.client.post(
+            f"/api/quality/inspections/{inspection_id}/cancel",
+            headers=self._headers(),
+            json={"reason": "不应允许"},
+        )
+
+>       self.assertEqual(patch_resp.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_quality_cancel_baseline.py:145: AssertionError
+=============================== warnings summary ===============================
+tests/test_quality_cancel_baseline.py::QualityCancelBaselineTest::test_cancel_confirmed_success
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_quality_cancel_baseline.py::QualityCancelBaselineTest::test_cancel_confirmed_success
+FAILED tests/test_quality_cancel_baseline.py::QualityCancelBaselineTest::test_cancel_on_draft_or_cancelled_returns_409
+FAILED tests/test_quality_cancel_baseline.py::QualityCancelBaselineTest::test_cancelled_rejects_update_defect_confirm_cancel_with_409
+3 failed, 1 warning in 1.19s

@@ -1,0 +1,23 @@
+{
+  "task_id": "TASK-Z022B-47-LEDGER-CAND005-SCHEMA-FIELDS",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z022-CAND-005",
+  "boundary_task_id": "TASK-Z022B-43-PREP-CAND005",
+  "initial_impl_task_id": "TASK-Z022B-44-IMPL-CAND005",
+  "initial_impl_result": "FAIL",
+  "failure_classification_task_id": "TASK-Z022B-45-PREP-CAND005-FAILURE-DIAG",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "final_fix_task_id": "TASK-Z022B-46-FIX-CAND005-SCHEMA-FIELDS",
+  "final_fix_result": "PASS",
+  "pytest_summary": "3 passed, 1 warning in 1.06s",
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_quality_cancel_baseline.py"
+  ],
+  "backend_app_changed": false,
+  "frontend_changed": false,
+  "test_changed": true,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false
+}
