@@ -1,0 +1,17 @@
+field	value
+task_id	TASK-Z026B-35-PREP-CAND004-SECOND-FAILURE-DIAG
+role	B Engineer
+selected_candidate	Z026-CAND-004
+source_result_task	TASK-Z026B-34-FIX-CAND004
+current_head	1f0e1d7bf322cecc7f4d51e93491a282653e6ead
+failed_command	.venv/bin/python -m pytest tests/test_subcontract_exception_handling.py -q
+failed_summary	1 failed, 9 passed, 7 warnings in 1.14s
+remaining_failed_case	test_subcontract_no_fake_stock_entry_name_after_task_002b1
+remaining_failure_pattern	TEST_ASSERTION_CONTRACT_DRIFT: receive now reaches local-dev service path and returns LOCAL-RECEIPT-<receipt_batch_no>, while old assertion expects stock_entry_name None.
+readonly_source_evidence	03_需求与设计/02_开发计划/task_z026b_34_cand004_fix_result.json; 03_需求与设计/02_开发计划/task_z026b_34_cand004_fix_stdout.txt; 07_后端/lingyi_service/tests/test_subcontract_exception_handling.py; 07_后端/lingyi_service/app/routers/subcontract.py; 07_后端/lingyi_service/app/schemas/subcontract.py; 07_后端/lingyi_service/app/services/subcontract_service.py; 07_后端/lingyi_service/app/models/subcontract.py
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_subcontract_exception_handling.py
+recommended_next_task	TASK-Z026B-36-FIX-CAND004-SECOND
+run_this_task	NO
+git_diff_cached_name_only	[]
+git_diff_check	PASS

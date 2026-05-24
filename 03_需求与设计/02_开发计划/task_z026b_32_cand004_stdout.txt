@@ -1,0 +1,219 @@
+FF.FFFFFFF                                                               [100%]
+=================================== FAILURES ===================================
+_ SubcontractExceptionTest.test_create_subcontract_blank_company_returns_company_required_envelope _
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_create_subcontract_blank_company_returns_company_required_envelope>
+
+    def test_create_subcontract_blank_company_returns_company_required_envelope(self) -> None:
+        payload = {
+            "supplier": "SUP-A",
+            "item_code": "ITEM-A",
+            "company": "   ",
+            "bom_id": 1,
+            "planned_qty": "50",
+            "process_name": "外发裁剪",
+        }
+        response = self.client.post("/api/subcontract/", headers=self._headers(), json=payload)
+        self.assertEqual(response.status_code, 422)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_COMPANY_REQUIRED")
+                         ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'code'
+
+tests/test_subcontract_exception_handling.py:349: KeyError
+_ SubcontractExceptionTest.test_create_subcontract_null_company_returns_company_required_envelope _
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_create_subcontract_null_company_returns_company_required_envelope>
+
+    def test_create_subcontract_null_company_returns_company_required_envelope(self) -> None:
+        payload = {
+            "supplier": "SUP-A",
+            "item_code": "ITEM-A",
+            "company": None,
+            "bom_id": 1,
+            "planned_qty": "50",
+            "process_name": "外发裁剪",
+        }
+        response = self.client.post("/api/subcontract/", headers=self._headers(), json=payload)
+        self.assertEqual(response.status_code, 422)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_COMPANY_REQUIRED")
+                         ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'code'
+
+tests/test_subcontract_exception_handling.py:362: KeyError
+_________ SubcontractExceptionTest.test_database_write_failed_mapping __________
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_database_write_failed_mapping>
+
+    def test_database_write_failed_mapping(self) -> None:
+        payload = {
+            "supplier": "SUP-A",
+            "item_code": "ITEM-A",
+            "company": "COMP-A",
+            "bom_id": 1,
+            "planned_qty": "120",
+            "process_name": "外发裁剪",
+        }
+        with patch.object(subcontract_router, "_commit_or_raise_write_error", side_effect=DatabaseWriteFailed()):
+            response = self.client.post("/api/subcontract/", headers=self._headers(), json=payload)
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_subcontract_exception_handling.py:242: AssertionError
+_ SubcontractExceptionTest.test_inspect_database_write_failure_returns_database_write_failed _
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_inspect_database_write_failure_returns_database_write_failed>
+
+    def test_inspect_database_write_failure_returns_database_write_failed(self) -> None:
+        with patch.object(SubcontractService, "inspect", side_effect=DatabaseWriteFailed()):
+            response = self.client.post(
+                "/api/subcontract/50/inspect",
+                headers=self._headers(),
+                json=self._inspect_payload(),
+            )
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_subcontract_exception_handling.py:266: AssertionError
+_ SubcontractExceptionTest.test_receive_database_write_failure_returns_database_write_failed _
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_receive_database_write_failure_returns_database_write_failed>
+
+    def test_receive_database_write_failure_returns_database_write_failed(self) -> None:
+        with patch.object(SubcontractService, "receive", side_effect=DatabaseWriteFailed()):
+            response = self.client.post(
+                "/api/subcontract/51/receive",
+                headers=self._headers(),
+                json={
+                    "idempotency_key": "idem-ex-recv-1",
+                    "receipt_warehouse": "WH-RECV-A",
+                    "received_qty": "10",
+                },
+            )
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_subcontract_exception_handling.py:256: AssertionError
+_ SubcontractExceptionTest.test_service_create_order_does_not_commit_in_service_layer _
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_service_create_order_does_not_commit_in_service_layer>
+
+    def test_service_create_order_does_not_commit_in_service_layer(self) -> None:
+        with self.SessionLocal() as session:
+            service = SubcontractService(session=session)
+            commit_called = False
+
+            def _commit_guard():
+                nonlocal commit_called
+                commit_called = True
+                raise AssertionError("service must not call commit")
+
+            session.commit = _commit_guard  # type: ignore[method-assign]
+            service.create_order(
+>               payload=SubcontractCreateRequest(
+                    supplier="SUP-A",
+                    item_code="ITEM-A",
+                    company="COMP-A",
+                    bom_id=1,
+                    planned_qty=Decimal("10"),
+                    process_name="外发裁剪",
+                ),
+                operator="unit.test",
+            )
+E           pydantic_core._pydantic_core.ValidationError: 10 validation errors for SubcontractCreateRequest
+E           request_id
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           idempotency_key
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           scenario_tag
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           source_ref
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           subcontract_ref
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           supplier_ref
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           work_order_ref
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           operation
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           quantity
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           status_action
+E             Field required [type=missing, input_value={'supplier': 'SUP-A', 'it...s_name': '外发裁剪'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+tests/test_subcontract_exception_handling.py:326: ValidationError
+___ SubcontractExceptionTest.test_subcontract_fail_closed_logs_are_sanitized ___
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_subcontract_fail_closed_logs_are_sanitized>
+
+    def test_subcontract_fail_closed_logs_are_sanitized(self) -> None:
+        logger_name = "app.routers.subcontract"
+        with patch.object(SubcontractService, "inspect", side_effect=RuntimeError("[SQL: UPDATE x] Authorization token")):
+>           with self.assertLogs(logger_name, level=logging.ERROR) as captured:
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_subcontract_exception_handling.py:285:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/_log.py:84: in __exit__
+    self._raiseFailure(
+E   AssertionError: no logs of level ERROR or higher triggered on app.routers.subcontract
+_ SubcontractExceptionTest.test_subcontract_no_fake_stock_entry_name_after_task_002b1 _
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_subcontract_no_fake_stock_entry_name_after_task_002b1>
+
+    def test_subcontract_no_fake_stock_entry_name_after_task_002b1(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/51/receive",
+            headers=self._headers(),
+            json={
+                "idempotency_key": "idem-ex-recv-2",
+                "receipt_warehouse": "WH-RECV-A",
+                "received_qty": "10",
+            },
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_exception_handling.py:308: AssertionError
+_ SubcontractExceptionTest.test_unknown_exception_returns_subcontract_internal_error _
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_unknown_exception_returns_subcontract_internal_error>
+
+    def test_unknown_exception_returns_subcontract_internal_error(self) -> None:
+        with patch.object(SubcontractService, "inspect", side_effect=RuntimeError("unexpected boom")):
+            response = self.client.post(
+                "/api/subcontract/50/inspect",
+                headers=self._headers(),
+                json=self._inspect_payload(idem="idem-ex-inspect-unknown"),
+            )
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_subcontract_exception_handling.py:276: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_create_subcontract_blank_company_returns_company_required_envelope
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_create_subcontract_blank_company_returns_company_required_envelope
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_create_subcontract_null_company_returns_company_required_envelope
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_database_write_failed_mapping
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_inspect_database_write_failure_returns_database_write_failed
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_receive_database_write_failure_returns_database_write_failed
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_service_create_order_does_not_commit_in_service_layer
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_subcontract_fail_closed_logs_are_sanitized
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_subcontract_no_fake_stock_entry_name_after_task_002b1
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_unknown_exception_returns_subcontract_internal_error
+9 failed, 1 passed, 1 warning in 1.15s

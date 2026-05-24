@@ -1,0 +1,49 @@
+........F.                                                               [100%]
+=================================== FAILURES ===================================
+_ SubcontractExceptionTest.test_subcontract_no_fake_stock_entry_name_after_task_002b1 _
+
+self = <tests.test_subcontract_exception_handling.SubcontractExceptionTest testMethod=test_subcontract_no_fake_stock_entry_name_after_task_002b1>
+
+    def test_subcontract_no_fake_stock_entry_name_after_task_002b1(self) -> None:
+        payload = self._receive_payload(idem="idem-ex-recv-2")
+        response = self.client.post(
+            "/api/subcontract/51/receive",
+            headers=self._headers_for_payload(payload),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+>       self.assertIsNone(response.json()["data"]["stock_entry_name"])
+E       AssertionError: 'LOCAL-RECEIPT-SRB-51-20260524191707103052' is not None
+
+tests/test_subcontract_exception_handling.py:420: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_create_subcontract_blank_company_returns_company_required_envelope
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_database_write_failed_mapping
+tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_service_create_order_does_not_commit_in_service_layer
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:134: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_subcontract_no_fake_stock_entry_name_after_task_002b1
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:1746: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_subcontract_no_fake_stock_entry_name_after_task_002b1
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:242: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_subcontract_no_fake_stock_entry_name_after_task_002b1
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:642: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    received_at=datetime.utcnow(),
+
+tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_subcontract_no_fake_stock_entry_name_after_task_002b1
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:666: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.updated_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_exception_handling.py::SubcontractExceptionTest::test_subcontract_no_fake_stock_entry_name_after_task_002b1
+1 failed, 9 passed, 7 warnings in 1.14s

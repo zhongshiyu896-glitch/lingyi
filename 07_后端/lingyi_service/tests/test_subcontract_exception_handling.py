@@ -37,6 +37,8 @@ from app.services.subcontract_service import SubcontractService
 class SubcontractExceptionTest(unittest.TestCase):
     """Validate subcontract exception mapping and service transaction boundary."""
 
+    SCENARIO_TAG = "Z003-SUBCONTRACT-20260525-004"
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.engine = create_engine(
@@ -144,7 +146,8 @@ class SubcontractExceptionTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
@@ -203,24 +206,141 @@ class SubcontractExceptionTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Subcontract Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "exception.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "Subcontract Manager", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "exception.user", "X-LY-Dev-Roles": role}
+        if request_id:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
+    def _carrier_code(value: str) -> str:
+        return subcontract_router._fnv_carrier_code(value)
+
+    def _request_id(
+        self,
+        *,
+        operation: str,
+        idempotency_key: str,
+        source_ref: str,
+        subcontract_ref: str,
+        supplier_ref: str,
+        work_order_ref: str,
+        item_code: str,
+        status_action: str,
+    ) -> str:
+        operation_code = subcontract_router.SUBCONTRACT_OPERATION_CODE_BY_NAME[operation]
+        return (
+            f"{self.SCENARIO_TAG}-SC-{operation_code}-"
+            f"{self._carrier_code(idempotency_key)}-"
+            f"{self._carrier_code(source_ref)}-"
+            f"{self._carrier_code(subcontract_ref)}-"
+            f"{self._carrier_code(supplier_ref)}-"
+            f"{self._carrier_code(work_order_ref)}-"
+            f"{self._carrier_code(item_code)}-"
+            f"{self._carrier_code(status_action)}"
+        )
+
+    def _write_carrier_payload(
+        self,
+        *,
+        operation: str,
+        idempotency_key: str,
+        subcontract_ref: str,
+        quantity: str,
+        supplier_ref: str = "SUP-A",
+        work_order_ref: str = "NO-WORK-ORDER",
+        item_code: str = "ITEM-A",
+        status_action: str | None = None,
+    ) -> dict[str, str]:
+        resolved_status_action = status_action or operation
+        source_ref = f"{self.SCENARIO_TAG}:{operation}:{idempotency_key}"
+        request_id = self._request_id(
+            operation=operation,
+            idempotency_key=idempotency_key,
+            source_ref=source_ref,
+            subcontract_ref=subcontract_ref,
+            supplier_ref=supplier_ref,
+            work_order_ref=work_order_ref,
+            item_code=item_code,
+            status_action=resolved_status_action,
+        )
+        return {
+            "request_id": request_id,
+            "idempotency_key": idempotency_key,
+            "scenario_tag": self.SCENARIO_TAG,
+            "source_ref": source_ref,
+            "subcontract_ref": subcontract_ref,
+            "supplier_ref": supplier_ref,
+            "work_order_ref": work_order_ref,
+            "operation": operation,
+            "item_code": item_code,
+            "quantity": quantity,
+            "status_action": resolved_status_action,
+        }
+
+    def _create_payload(self, *, company: str | None = "COMP-A", planned_qty: str = "120", idem: str) -> dict[str, object]:
+        payload: dict[str, object] = self._write_carrier_payload(
+            operation="create",
+            idempotency_key=idem,
+            subcontract_ref="NEW-SUBCONTRACT",
+            quantity=planned_qty,
+            status_action="create",
+        )
+        payload.update(
+            {
+                "supplier": "SUP-A",
+                "item_code": "ITEM-A",
+                "company": company,
+                "bom_id": 1,
+                "planned_qty": planned_qty,
+                "process_name": "外发裁剪",
+            }
+        )
+        return payload
+
+    def _receive_payload(self, *, idem: str = "idem-ex-recv-1", received_qty: str = "10") -> dict[str, str]:
+        payload = self._write_carrier_payload(
+            operation="receive",
+            idempotency_key=idem,
+            subcontract_ref="SC-EX-51",
+            quantity=received_qty,
+            status_action="receive",
+        )
+        payload.update(
+            {
+                "receipt_warehouse": "WH-RECV-A",
+                "received_qty": received_qty,
+            }
+        )
+        return payload
+
+    def _headers_for_payload(self, payload: dict[str, object]) -> dict[str, str]:
+        return self._headers(request_id=str(payload["request_id"]))
+
     def _inspect_payload(
+        self,
         *,
         idem: str = "idem-ex-inspect-1",
         inspected_qty: str = "100",
         rejected_qty: str = "0",
         deduction_amount_per_piece: str = "0",
     ) -> dict[str, str]:
-        return {
-            "receipt_batch_no": "SRB-EX-5000",
-            "idempotency_key": idem,
-            "inspected_qty": inspected_qty,
-            "rejected_qty": rejected_qty,
-            "deduction_amount_per_piece": deduction_amount_per_piece,
-        }
+        payload = self._write_carrier_payload(
+            operation="inspect",
+            idempotency_key=idem,
+            subcontract_ref="SC-EX-50",
+            quantity=inspected_qty,
+            status_action="inspect",
+        )
+        payload.update(
+            {
+                "receipt_batch_no": "SRB-EX-5000",
+                "inspected_qty": inspected_qty,
+                "rejected_qty": rejected_qty,
+                "deduction_amount_per_piece": deduction_amount_per_piece,
+            }
+        )
+        return payload
 
     def test_database_read_failed_mapping(self) -> None:
         with patch.object(SubcontractService, "list_orders", side_effect=DatabaseReadFailed()):
@@ -229,49 +349,41 @@ class SubcontractExceptionTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "DATABASE_READ_FAILED")
 
     def test_database_write_failed_mapping(self) -> None:
-        payload = {
-            "supplier": "SUP-A",
-            "item_code": "ITEM-A",
-            "company": "COMP-A",
-            "bom_id": 1,
-            "planned_qty": "120",
-            "process_name": "外发裁剪",
-        }
+        payload = self._create_payload(idem="idem-ex-create-db-write")
         with patch.object(subcontract_router, "_commit_or_raise_write_error", side_effect=DatabaseWriteFailed()):
-            response = self.client.post("/api/subcontract/", headers=self._headers(), json=payload)
+            response = self.client.post("/api/subcontract/", headers=self._headers_for_payload(payload), json=payload)
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "DATABASE_WRITE_FAILED")
 
     def test_receive_database_write_failure_returns_database_write_failed(self) -> None:
+        payload = self._receive_payload(idem="idem-ex-recv-1")
         with patch.object(SubcontractService, "receive", side_effect=DatabaseWriteFailed()):
             response = self.client.post(
                 "/api/subcontract/51/receive",
-                headers=self._headers(),
-                json={
-                    "idempotency_key": "idem-ex-recv-1",
-                    "receipt_warehouse": "WH-RECV-A",
-                    "received_qty": "10",
-                },
+                headers=self._headers_for_payload(payload),
+                json=payload,
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "DATABASE_WRITE_FAILED")
 
     def test_inspect_database_write_failure_returns_database_write_failed(self) -> None:
+        payload = self._inspect_payload()
         with patch.object(SubcontractService, "inspect", side_effect=DatabaseWriteFailed()):
             response = self.client.post(
                 "/api/subcontract/50/inspect",
-                headers=self._headers(),
-                json=self._inspect_payload(),
+                headers=self._headers_for_payload(payload),
+                json=payload,
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "DATABASE_WRITE_FAILED")
 
     def test_unknown_exception_returns_subcontract_internal_error(self) -> None:
+        payload = self._inspect_payload(idem="idem-ex-inspect-unknown")
         with patch.object(SubcontractService, "inspect", side_effect=RuntimeError("unexpected boom")):
             response = self.client.post(
                 "/api/subcontract/50/inspect",
-                headers=self._headers(),
-                json=self._inspect_payload(idem="idem-ex-inspect-unknown"),
+                headers=self._headers_for_payload(payload),
+                json=payload,
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_INTERNAL_ERROR")
@@ -281,12 +393,13 @@ class SubcontractExceptionTest(unittest.TestCase):
 
     def test_subcontract_fail_closed_logs_are_sanitized(self) -> None:
         logger_name = "app.routers.subcontract"
+        payload = self._inspect_payload(idem="idem-ex-inspect-log")
         with patch.object(SubcontractService, "inspect", side_effect=RuntimeError("[SQL: UPDATE x] Authorization token")):
             with self.assertLogs(logger_name, level=logging.ERROR) as captured:
                 response = self.client.post(
                     "/api/subcontract/50/inspect",
-                    headers=self._headers(),
-                    json=self._inspect_payload(idem="idem-ex-inspect-log"),
+                    headers=self._headers_for_payload(payload),
+                    json=payload,
                 )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_INTERNAL_ERROR")
@@ -296,18 +409,15 @@ class SubcontractExceptionTest(unittest.TestCase):
         self.assertNotIn("token", joined.lower())
 
     def test_subcontract_no_fake_stock_entry_name_after_task_002b1(self) -> None:
+        payload = self._receive_payload(idem="idem-ex-recv-2")
         response = self.client.post(
             "/api/subcontract/51/receive",
-            headers=self._headers(),
-            json={
-                "idempotency_key": "idem-ex-recv-2",
-                "receipt_warehouse": "WH-RECV-A",
-                "received_qty": "10",
-            },
+            headers=self._headers_for_payload(payload),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
-        self.assertIsNone(response.json()["data"]["stock_entry_name"])
+        self.assertTrue(response.json()["data"]["stock_entry_name"].startswith("LOCAL-RECEIPT-SRB-51-"))
         self.assertNotIn("STE-ISS", str(response.json()))
         self.assertNotIn("STE-REC", str(response.json()))
 
@@ -322,42 +432,22 @@ class SubcontractExceptionTest(unittest.TestCase):
                 raise AssertionError("service must not call commit")
 
             session.commit = _commit_guard  # type: ignore[method-assign]
+            payload = self._create_payload(idem="idem-ex-service-create", planned_qty="10")
             service.create_order(
-                payload=SubcontractCreateRequest(
-                    supplier="SUP-A",
-                    item_code="ITEM-A",
-                    company="COMP-A",
-                    bom_id=1,
-                    planned_qty=Decimal("10"),
-                    process_name="外发裁剪",
-                ),
+                payload=SubcontractCreateRequest(**payload),
                 operator="unit.test",
             )
             self.assertFalse(commit_called)
 
     def test_create_subcontract_blank_company_returns_company_required_envelope(self) -> None:
-        payload = {
-            "supplier": "SUP-A",
-            "item_code": "ITEM-A",
-            "company": "   ",
-            "bom_id": 1,
-            "planned_qty": "50",
-            "process_name": "外发裁剪",
-        }
-        response = self.client.post("/api/subcontract/", headers=self._headers(), json=payload)
+        payload = self._create_payload(company="   ", planned_qty="50", idem="idem-ex-create-blank-company")
+        response = self.client.post("/api/subcontract/", headers=self._headers_for_payload(payload), json=payload)
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_COMPANY_REQUIRED")
 
     def test_create_subcontract_null_company_returns_company_required_envelope(self) -> None:
-        payload = {
-            "supplier": "SUP-A",
-            "item_code": "ITEM-A",
-            "company": None,
-            "bom_id": 1,
-            "planned_qty": "50",
-            "process_name": "外发裁剪",
-        }
-        response = self.client.post("/api/subcontract/", headers=self._headers(), json=payload)
+        payload = self._create_payload(company=None, planned_qty="50", idem="idem-ex-create-null-company")
+        response = self.client.post("/api/subcontract/", headers=self._headers_for_payload(payload), json=payload)
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_COMPANY_REQUIRED")
 

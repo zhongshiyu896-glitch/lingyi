@@ -1,0 +1,17 @@
+field	value
+task_id	TASK-Z026B-33-PREP-CAND004-FAILURE-DIAG
+role	B Engineer
+selected_candidate	Z026-CAND-004
+source_result_task	TASK-Z026B-32-IMPL
+current_head	1f0e1d7bf322cecc7f4d51e93491a282653e6ead
+failed_command	.venv/bin/python -m pytest tests/test_subcontract_exception_handling.py -q
+failed_summary	9 failed, 1 passed, 1 warning in 1.15s
+failed_cases_count	9
+failure_pattern	TEST_CONTRACT_AND_FIXTURE_DRIFT: old test payloads miss SubcontractWriteCarrierBase fields, X-Request-ID carrier contract, local-dev write gate env, and current receive/inspect fixture prerequisites; requests stop at 422 schema validation or 409 local gate before intended exception assertions.
+readonly_source_evidence	03_需求与设计/02_开发计划/task_z026b_32_cand004_result.json; 03_需求与设计/02_开发计划/task_z026b_32_cand004_stdout.txt; 07_后端/lingyi_service/tests/test_subcontract_exception_handling.py; 07_后端/lingyi_service/app/routers/subcontract.py; 07_后端/lingyi_service/app/schemas/subcontract.py; 07_后端/lingyi_service/app/services/subcontract_service.py; 07_后端/lingyi_service/app/models/subcontract.py
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_subcontract_exception_handling.py
+recommended_next_task	TASK-Z026B-34-FIX-CAND004
+run_this_task	NO
+git_diff_cached_name_only	[]
+git_diff_check	PASS

@@ -1,0 +1,30 @@
+field	value
+task_id	TASK-Z026B-31-PREP
+role	B Engineer
+source_task	TASK-Z026B-30-PREP
+current_head	1f0e1d7bf322cecc7f4d51e93491a282653e6ead
+selected_candidate	Z026-CAND-004
+candidate_original_fields_copied	YES
+module	subcontract
+route_or_area	subcontract exception classification and transaction boundary
+target_test	07_后端/lingyi_service/tests/test_subcontract_exception_handling.py
+recommended_command	.venv/bin/python -m pytest tests/test_subcontract_exception_handling.py -q
+source_evidence	07_后端/lingyi_service/tests/test_subcontract_exception_handling.py;07_后端/lingyi_service/app/routers/subcontract.py;07_后端/lingyi_service/app/services/subcontract_service.py;07_后端/lingyi_service/app/models/subcontract.py
+source_evidence_missing	[]
+risk_level	LOW
+allowed_scope	Run only the frozen single-file backend readonly pytest command and record evidence artifacts.
+forbidden_scope	No code edits, no test edits, no frontend, no backend app changes, no remote lifecycle, no production account, no push/PR/release.
+why_minimal	Single backend pytest file for exception behavior with local fixtures; no dirty target diff and no prior candidate reuse.
+candidate_status	LOCAL_ACTIONABLE_PREP_ONLY
+recommended_command_target_exists	YES
+target_test_dirty_diff	[]
+next_task	TASK-Z026B-32-IMPL
+run_this_task	NO
+git_diff_cached_name_only	EMPTY
+git_diff_check	PASS
+code_edits	NO
+tests_build_typecheck_npm_browser	NO
+stage_commit_push_tag_pr_release	NO
+reset_checkout_stash_cleanup	NO
+production_readback_go_live_project_completion	NO
+next_role	C Auditor

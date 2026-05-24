@@ -1,0 +1,83 @@
+{
+  "task_id": "TASK-Z026B-33-PREP-CAND004-FAILURE-DIAG",
+  "role": "B Engineer",
+  "selected_candidate": "Z026-CAND-004",
+  "source_result_task": "TASK-Z026B-32-IMPL",
+  "current_head": "1f0e1d7bf322cecc7f4d51e93491a282653e6ead",
+  "failed_command": ".venv/bin/python -m pytest tests/test_subcontract_exception_handling.py -q",
+  "failed_summary": "9 failed, 1 passed, 1 warning in 1.15s",
+  "failed_cases_count": 9,
+  "failed_cases": [
+    {
+      "name": "test_create_subcontract_blank_company_returns_company_required_envelope",
+      "observed": "status 422, response lacks legacy code envelope, KeyError: code",
+      "expected": "SUBCONTRACT_COMPANY_REQUIRED envelope"
+    },
+    {
+      "name": "test_create_subcontract_null_company_returns_company_required_envelope",
+      "observed": "status 422, response lacks legacy code envelope, KeyError: code",
+      "expected": "SUBCONTRACT_COMPANY_REQUIRED envelope"
+    },
+    {
+      "name": "test_database_write_failed_mapping",
+      "observed": "status 422 before target database-write mapping",
+      "expected": "status 500"
+    },
+    {
+      "name": "test_inspect_database_write_failure_returns_database_write_failed",
+      "observed": "status 409 before target database-write mapping",
+      "expected": "status 500"
+    },
+    {
+      "name": "test_receive_database_write_failure_returns_database_write_failed",
+      "observed": "status 409 before target database-write mapping",
+      "expected": "status 500"
+    },
+    {
+      "name": "test_service_create_order_does_not_commit_in_service_layer",
+      "observed": "Pydantic ValidationError for 10 missing SubcontractWriteCarrierBase fields",
+      "expected": "service call reaches create_order without committing"
+    },
+    {
+      "name": "test_subcontract_fail_closed_logs_are_sanitized",
+      "observed": "assertLogs saw no ERROR logs because request failed before RuntimeError mapping",
+      "expected": "sanitized fail-closed error log"
+    },
+    {
+      "name": "test_subcontract_no_fake_stock_entry_name_after_task_002b1",
+      "observed": "status 409 before target success branch",
+      "expected": "status 200 with no fake stock entry"
+    },
+    {
+      "name": "test_unknown_exception_returns_subcontract_internal_error",
+      "observed": "status 409 before target unknown-exception mapping",
+      "expected": "status 500"
+    }
+  ],
+  "failure_pattern": "TEST_CONTRACT_AND_FIXTURE_DRIFT: old test payloads miss SubcontractWriteCarrierBase fields, X-Request-ID carrier contract, local-dev write gate env, and current receive/inspect fixture prerequisites, so requests stop at 422 schema validation or 409 local gate before the intended exception assertions.",
+  "readonly_source_evidence": [
+    "03_需求与设计/02_开发计划/task_z026b_32_cand004_result.json",
+    "03_需求与设计/02_开发计划/task_z026b_32_cand004_stdout.txt",
+    "07_后端/lingyi_service/tests/test_subcontract_exception_handling.py",
+    "07_后端/lingyi_service/app/routers/subcontract.py",
+    "07_后端/lingyi_service/app/schemas/subcontract.py",
+    "07_后端/lingyi_service/app/services/subcontract_service.py",
+    "07_后端/lingyi_service/app/models/subcontract.py"
+  ],
+  "source_evidence_checked": true,
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_subcontract_exception_handling.py",
+  "recommended_next_task": "TASK-Z026B-34-FIX-CAND004",
+  "run_this_task": false,
+  "validation": {
+    "git_diff_cached_name_only": [],
+    "git_diff_check": "PASS"
+  },
+  "forbidden_actions": {
+    "code_test_edits": false,
+    "tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "task_id": "TASK-Z026B-32-IMPL",
+  "role": "B Engineer",
+  "source_task": "TASK-Z026B-31-PREP",
+  "selected_candidate": "Z026-CAND-004",
+  "current_head": "1f0e1d7bf322cecc7f4d51e93491a282653e6ead",
+  "workdir": "07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_subcontract_exception_handling.py -q",
+  "boundary_command_match": true,
+  "command_run_count": 1,
+  "exit_code": 1,
+  "pytest_summary": "9 failed, 1 passed, 1 warning in 1.15s",
+  "result": "FAIL",
+  "stdout_log": "03_需求与设计/02_开发计划/task_z026b_32_cand004_stdout.txt",
+  "failed_cases": [
+    "test_create_subcontract_blank_company_returns_company_required_envelope",
+    "test_create_subcontract_null_company_returns_company_required_envelope",
+    "test_database_write_failed_mapping",
+    "test_inspect_database_write_failure_returns_database_write_failed",
+    "test_receive_database_write_failure_returns_database_write_failed",
+    "test_service_create_order_does_not_commit_in_service_layer",
+    "test_subcontract_fail_closed_logs_are_sanitized",
+    "test_subcontract_no_fake_stock_entry_name_after_task_002b1",
+    "test_unknown_exception_returns_subcontract_internal_error"
+  ],
+  "target_test_dirty_diff": [],
+  "git_diff_cached_name_only": [],
+  "git_diff_check": "PASS",
+  "forbidden_actions": {
+    "code_test_edits": false,
+    "other_tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  },
+  "next_role": "C Auditor"
+}

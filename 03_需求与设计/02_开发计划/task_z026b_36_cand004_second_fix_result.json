@@ -1,0 +1,32 @@
+{
+  "task_id": "TASK-Z026B-36-FIX-CAND004-SECOND",
+  "role": "B Engineer",
+  "selected_candidate": "Z026-CAND-004",
+  "source_task": "TASK-Z026B-35-PREP-CAND004-SECOND-FAILURE-DIAG",
+  "fixed_file": "07_后端/lingyi_service/tests/test_subcontract_exception_handling.py",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "stock_entry_name_contract_fixed": true,
+  "assertions_weakened": false,
+  "skip_xfail_deleted_cases": false,
+  "workdir": "07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_subcontract_exception_handling.py -q",
+  "command_run_count": 1,
+  "exit_code": 0,
+  "pytest_summary": "10 passed, 7 warnings in 1.09s",
+  "result": "PASS",
+  "stdout_log": "03_需求与设计/02_开发计划/task_z026b_36_cand004_second_fix_stdout.txt",
+  "changed_files": [
+    "07_后端/lingyi_service/tests/test_subcontract_exception_handling.py"
+  ],
+  "git_diff_cached_name_only": [],
+  "git_diff_check": "PASS",
+  "forbidden_actions": {
+    "backend_app_edits": false,
+    "frontend_edits": false,
+    "unrelated_tests_edits": false,
+    "other_tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  }
+}
