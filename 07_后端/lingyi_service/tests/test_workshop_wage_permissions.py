@@ -7,8 +7,9 @@ import os
 import unittest
 from unittest.mock import patch
 
-os.environ["APP_ENV"] = "test"
+os.environ["APP_ENV"] = "development"
 os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
+os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
 os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
 os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
 
@@ -35,6 +36,8 @@ from app.services.erpnext_permission_adapter import UserPermissionResult
 
 class WorkshopWagePermissionTest(unittest.TestCase):
     """Verify wage-rate item/company resource boundary enforcement."""
+
+    WAGE_SCENARIO_TAG = "Z002-WORKSHOP-WAGE-20260524-005"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -120,8 +123,66 @@ class WorkshopWagePermissionTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Workshop Wage Clerk") -> dict[str, str]:
-        return {"X-LY-Dev-User": "wage.perm.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "Workshop Wage Clerk", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "wage.perm.user", "X-LY-Dev-Roles": role}
+        if request_id:
+            headers["X-Request-ID"] = request_id
+        return headers
+
+    @staticmethod
+    def _carrier_code(value: object, *, length: int) -> str:
+        normalized = str(value).strip()
+        hash_value = 2166136261
+        for byte in normalized.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-length:]
+
+    @classmethod
+    def _scenario_value(cls, value: str) -> str:
+        return value if cls.WAGE_SCENARIO_TAG in value else f"{cls.WAGE_SCENARIO_TAG}-{value}"
+
+    @classmethod
+    def _wage_payload(
+        cls,
+        *,
+        item_code: str | None,
+        company: str | None,
+        process_name: str = "sew",
+        wage_rate: str = "0.9",
+        effective_from: str = "2026-05-01",
+        effective_to: str | None = None,
+    ) -> dict[str, str | None]:
+        item_scope = item_code or "GLOBAL"
+        company_scope = company or "GLOBAL"
+        return {
+            "scenario_tag": cls.WAGE_SCENARIO_TAG,
+            "idempotency_key": cls._scenario_value(f"IDEMP-{item_scope}-{company_scope}-{wage_rate}"),
+            "source_ref": cls._scenario_value(f"REF-{item_scope}-{company_scope}-{wage_rate}"),
+            "item_code": item_code,
+            "company": company,
+            "process_name": process_name,
+            "wage_rate": wage_rate,
+            "effective_from": effective_from,
+            "effective_to": effective_to,
+        }
+
+    @classmethod
+    def _wage_request_id(cls, payload: dict[str, object]) -> str:
+        company = payload.get("company") or "GLOBAL"
+        item_scope = payload.get("item_code") or "GLOBAL"
+        effective_from = str(payload["effective_from"]).replace("-", "")
+        return (
+            f"{payload['scenario_tag']}-RW-"
+            f"C{cls._carrier_code(company, length=4)}-"
+            f"P{cls._carrier_code(payload['process_name'], length=4)}-"
+            f"I{cls._carrier_code(item_scope, length=4)}-"
+            f"D{effective_from}"
+        )
+
+    @classmethod
+    def _headers_for_wage_payload(cls, payload: dict[str, object], role: str = "Workshop Wage Clerk") -> dict[str, str]:
+        return cls._headers(role=role, request_id=cls._wage_request_id(payload))
 
     def _latest_security_log(self) -> LySecurityAuditLog:
         with self.SessionLocal() as session:
@@ -220,17 +281,11 @@ class WorkshopWagePermissionTest(unittest.TestCase):
             "get_company",
             return_value=CompanyInfo(name="COMP-A", disabled=False),
         ):
+            payload = self._wage_payload(item_code="ITEM-Z", company="COMP-A", wage_rate="0.8")
             response = self.client.post(
                 "/api/workshop/wage-rates",
-                headers=self._headers(),
-                json={
-                    "item_code": "ITEM-Z",
-                    "company": "COMP-A",
-                    "process_name": "sew",
-                    "wage_rate": "0.8",
-                    "effective_from": "2026-05-01",
-                    "effective_to": None,
-                },
+                headers=self._headers_for_wage_payload(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 403)
@@ -255,17 +310,11 @@ class WorkshopWagePermissionTest(unittest.TestCase):
             "get_company",
             return_value=CompanyInfo(name="COMP-A", disabled=False),
         ):
+            payload = self._wage_payload(item_code="ITEM-Z", company="COMP-A", wage_rate="0.9")
             response = self.client.post(
                 "/api/workshop/wage-rates",
-                headers=self._headers(),
-                json={
-                    "item_code": "ITEM-Z",
-                    "company": "COMP-A",
-                    "process_name": "sew",
-                    "wage_rate": "0.9",
-                    "effective_from": "2026-05-01",
-                    "effective_to": None,
-                },
+                headers=self._headers_for_wage_payload(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 403)
@@ -284,16 +333,11 @@ class WorkshopWagePermissionTest(unittest.TestCase):
             "get_item",
             return_value=self._active_item("ITEM-Z", tuple()),
         ):
+            payload = self._wage_payload(item_code="ITEM-Z", company=None, wage_rate="0.9")
             response = self.client.post(
                 "/api/workshop/wage-rates",
-                headers=self._headers(),
-                json={
-                    "item_code": "ITEM-Z",
-                    "process_name": "sew",
-                    "wage_rate": "0.9",
-                    "effective_from": "2026-05-01",
-                    "effective_to": None,
-                },
+                headers=self._headers_for_wage_payload(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 422)
@@ -312,17 +356,11 @@ class WorkshopWagePermissionTest(unittest.TestCase):
             "get_item",
             return_value=self._active_item("ITEM-Z", ("COMP-A",)),
         ):
+            payload = self._wage_payload(item_code="ITEM-Z", company="", wage_rate="0.9")
             response = self.client.post(
                 "/api/workshop/wage-rates",
-                headers=self._headers(),
-                json={
-                    "item_code": "ITEM-Z",
-                    "company": "",
-                    "process_name": "sew",
-                    "wage_rate": "0.9",
-                    "effective_from": "2026-05-01",
-                    "effective_to": None,
-                },
+                headers=self._headers_for_wage_payload(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 422)
@@ -338,17 +376,11 @@ class WorkshopWagePermissionTest(unittest.TestCase):
             "get_item",
             return_value=self._active_item("ITEM-Z", ("COMP-A",)),
         ):
+            payload = self._wage_payload(item_code="ITEM-Z", company="   ", wage_rate="0.9")
             response = self.client.post(
                 "/api/workshop/wage-rates",
-                headers=self._headers(),
-                json={
-                    "item_code": "ITEM-Z",
-                    "company": "   ",
-                    "process_name": "sew",
-                    "wage_rate": "0.9",
-                    "effective_from": "2026-05-01",
-                    "effective_to": None,
-                },
+                headers=self._headers_for_wage_payload(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 422)

@@ -1,0 +1,80 @@
+{
+  "task_id": "TASK-Z023B-37-PREP-CAND005",
+  "role": "B Engineer",
+  "current_head": "8ee67f9c24073a43530b0fd7ee95e4a88dcfb640",
+  "cached_area_empty": true,
+  "candidate_pool_json": "03_需求与设计/02_开发计划/task_z023b_01_local_candidate_pool.json",
+  "candidate_total": 5,
+  "archived_candidates": [
+    "Z023-CAND-001",
+    "Z023-CAND-002",
+    "Z023-CAND-003",
+    "Z023-CAND-004"
+  ],
+  "archive_results_checked": [
+    "03_需求与设计/02_开发计划/task_z023b_09_cand001_archive_result.json",
+    "03_需求与设计/02_开发计划/task_z023b_16_cand002_archive_result.json",
+    "03_需求与设计/02_开发计划/task_z023b_23_cand003_archive_result.json",
+    "03_需求与设计/02_开发计划/task_z023b_36_cand004_archive_result.json"
+  ],
+  "remaining_candidates": [
+    "Z023-CAND-005"
+  ],
+  "selected_candidate_id": "Z023-CAND-005",
+  "selected_candidate_original_fields_copied": true,
+  "selected_candidate_original_fields": {
+    "candidate_id": "Z023-CAND-005",
+    "module": "workshop",
+    "route_or_area": "/api/workshop wage permissions and resource-scope boundary",
+    "source_evidence": "07_后端/lingyi_service/tests/test_workshop_wage_permissions.py; 07_后端/lingyi_service/app/routers/workshop.py; 07_后端/lingyi_service/app/core/permissions.py; 07_后端/lingyi_service/app/services/permission_service.py; 07_后端/lingyi_service/app/services/erpnext_permission_adapter.py",
+    "risk_level": "LOW_LOCAL_PREP",
+    "allowed_scope": "PREP only: freeze one backend single-file readonly pytest evidence boundary for tests/test_workshop_wage_permissions.py; no test run in this task",
+    "forbidden_scope": "source/test/config/dependency edits; other pytest; npm/browser/build/typecheck/verify; service lifecycle; production account; ERPNext production; real business write; stage/commit/push/PR/tag/release",
+    "recommended_next_task_id": "TASK-Z023B-06-PREP",
+    "recommended_workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_workshop_wage_permissions.py -q",
+    "why_minimal": "single existing backend workshop wage permission test with direct router/permission-service evidence; target test and source evidence files exist and are not dirty"
+  },
+  "source_evidence_checked": [
+    {
+      "path": "07_后端/lingyi_service/tests/test_workshop_wage_permissions.py",
+      "exists": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/routers/workshop.py",
+      "exists": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/core/permissions.py",
+      "exists": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/permission_service.py",
+      "exists": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/erpnext_permission_adapter.py",
+      "exists": true
+    }
+  ],
+  "source_evidence_exists": true,
+  "recommended_command": ".venv/bin/python -m pytest tests/test_workshop_wage_permissions.py -q",
+  "recommended_command_target": "07_后端/lingyi_service/tests/test_workshop_wage_permissions.py",
+  "recommended_command_target_exists": true,
+  "target_test_in_dirty_diff": false,
+  "recommended_next_task_id": "TASK-Z023B-38-IMPL-CAND005",
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "run_this_task": false,
+  "git_diff_cached_name_only": [],
+  "git_diff_check": "PASS",
+  "forbidden_actions": {
+    "pytest_npm_browser_build_typecheck_verify_run": false,
+    "code_edits": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_performed": false,
+    "pr_tag_release_cleanup": false,
+    "production_or_real_business_write": false,
+    "parked_blockers_released": false
+  }
+}

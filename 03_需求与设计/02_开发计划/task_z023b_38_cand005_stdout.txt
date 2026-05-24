@@ -1,0 +1,183 @@
+F.F..FFF.....                                                            [100%]
+=================================== FAILURES ===================================
+_ WorkshopWagePermissionTest.test_company_only_user_cannot_create_item_wage_rate _
+
+self = <tests.test_workshop_wage_permissions.WorkshopWagePermissionTest testMethod=test_company_only_user_cannot_create_item_wage_rate>
+
+    def test_company_only_user_cannot_create_item_wage_rate(self) -> None:
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=self._perm(items=set(), companies={"COMP-A"}),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_item",
+            return_value=self._active_item("ITEM-Z", ("COMP-A",)),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_company",
+            return_value=CompanyInfo(name="COMP-A", disabled=False),
+        ):
+            response = self.client.post(
+                "/api/workshop/wage-rates",
+                headers=self._headers(),
+                json={
+                    "item_code": "ITEM-Z",
+                    "company": "COMP-A",
+                    "process_name": "sew",
+                    "wage_rate": "0.8",
+                    "effective_from": "2026-05-01",
+                    "effective_to": None,
+                },
+            )
+
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_workshop_wage_permissions.py:236: AssertionError
+_ WorkshopWagePermissionTest.test_item_allowed_but_company_forbidden_returns_403 _
+
+self = <tests.test_workshop_wage_permissions.WorkshopWagePermissionTest testMethod=test_item_allowed_but_company_forbidden_returns_403>
+
+    def test_item_allowed_but_company_forbidden_returns_403(self) -> None:
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=self._perm(items={"ITEM-Z"}, companies={"COMP-B"}),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_item",
+            return_value=self._active_item("ITEM-Z", ("COMP-A",)),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_company",
+            return_value=CompanyInfo(name="COMP-A", disabled=False),
+        ):
+            response = self.client.post(
+                "/api/workshop/wage-rates",
+                headers=self._headers(),
+                json={
+                    "item_code": "ITEM-Z",
+                    "company": "COMP-A",
+                    "process_name": "sew",
+                    "wage_rate": "0.9",
+                    "effective_from": "2026-05-01",
+                    "effective_to": None,
+                },
+            )
+
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_workshop_wage_permissions.py:271: AssertionError
+_ WorkshopWagePermissionTest.test_wage_rate_create_rejects_empty_company_for_item_rate _
+
+self = <tests.test_workshop_wage_permissions.WorkshopWagePermissionTest testMethod=test_wage_rate_create_rejects_empty_company_for_item_rate>
+
+    def test_wage_rate_create_rejects_empty_company_for_item_rate(self) -> None:
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=self._perm(items={"ITEM-Z"}, companies={"COMP-A"}),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_item",
+            return_value=self._active_item("ITEM-Z", ("COMP-A",)),
+        ):
+            response = self.client.post(
+                "/api/workshop/wage-rates",
+                headers=self._headers(),
+                json={
+                    "item_code": "ITEM-Z",
+                    "company": "",
+                    "process_name": "sew",
+                    "wage_rate": "0.9",
+                    "effective_from": "2026-05-01",
+                    "effective_to": None,
+                },
+            )
+
+        self.assertEqual(response.status_code, 422)
+>       self.assertEqual(response.json()["code"], "WORKSHOP_WAGE_RATE_COMPANY_REQUIRED")
+                         ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'code'
+
+tests/test_workshop_wage_permissions.py:329: KeyError
+_ WorkshopWagePermissionTest.test_wage_rate_create_rejects_whitespace_company_for_item_rate _
+
+self = <tests.test_workshop_wage_permissions.WorkshopWagePermissionTest testMethod=test_wage_rate_create_rejects_whitespace_company_for_item_rate>
+
+    def test_wage_rate_create_rejects_whitespace_company_for_item_rate(self) -> None:
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=self._perm(items={"ITEM-Z"}, companies={"COMP-A"}),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_item",
+            return_value=self._active_item("ITEM-Z", ("COMP-A",)),
+        ):
+            response = self.client.post(
+                "/api/workshop/wage-rates",
+                headers=self._headers(),
+                json={
+                    "item_code": "ITEM-Z",
+                    "company": "   ",
+                    "process_name": "sew",
+                    "wage_rate": "0.9",
+                    "effective_from": "2026-05-01",
+                    "effective_to": None,
+                },
+            )
+
+        self.assertEqual(response.status_code, 422)
+>       self.assertEqual(response.json()["code"], "WORKSHOP_WAGE_RATE_COMPANY_REQUIRED")
+                         ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'code'
+
+tests/test_workshop_wage_permissions.py:355: KeyError
+_ WorkshopWagePermissionTest.test_wage_rate_create_requires_company_for_item_specific_rate _
+
+self = <tests.test_workshop_wage_permissions.WorkshopWagePermissionTest testMethod=test_wage_rate_create_requires_company_for_item_specific_rate>
+
+    def test_wage_rate_create_requires_company_for_item_specific_rate(self) -> None:
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=self._perm(items={"ITEM-Z"}, companies={"COMP-A"}),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_item",
+            return_value=self._active_item("ITEM-Z", tuple()),
+        ):
+            response = self.client.post(
+                "/api/workshop/wage-rates",
+                headers=self._headers(),
+                json={
+                    "item_code": "ITEM-Z",
+                    "process_name": "sew",
+                    "wage_rate": "0.9",
+                    "effective_from": "2026-05-01",
+                    "effective_to": None,
+                },
+            )
+
+        self.assertEqual(response.status_code, 422)
+>       self.assertEqual(response.json()["code"], "WORKSHOP_WAGE_RATE_COMPANY_REQUIRED")
+                         ^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'code'
+
+tests/test_workshop_wage_permissions.py:300: KeyError
+=============================== warnings summary ===============================
+tests/test_workshop_wage_permissions.py::WorkshopWagePermissionTest::test_company_only_user_cannot_create_item_wage_rate
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_workshop_wage_permissions.py::WorkshopWagePermissionTest::test_company_only_user_cannot_create_item_wage_rate
+FAILED tests/test_workshop_wage_permissions.py::WorkshopWagePermissionTest::test_item_allowed_but_company_forbidden_returns_403
+FAILED tests/test_workshop_wage_permissions.py::WorkshopWagePermissionTest::test_wage_rate_create_rejects_empty_company_for_item_rate
+FAILED tests/test_workshop_wage_permissions.py::WorkshopWagePermissionTest::test_wage_rate_create_rejects_whitespace_company_for_item_rate
+FAILED tests/test_workshop_wage_permissions.py::WorkshopWagePermissionTest::test_wage_rate_create_requires_company_for_item_specific_rate
+5 failed, 8 passed, 1 warning in 1.00s

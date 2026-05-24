@@ -1,0 +1,95 @@
+{
+  "task_id": "TASK-Z023B-39-PREP-CAND005-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z023B-38-IMPL-CAND005",
+  "selected_candidate_id": "Z023-CAND-005",
+  "current_head": "8ee67f9c24073a43530b0fd7ee95e4a88dcfb640",
+  "b38_result": "FAIL",
+  "b38_pytest_summary": "5 failed, 8 passed, 1 warning in 1.00s",
+  "failed_case_count": 5,
+  "failed_cases": [
+    {
+      "name": "test_company_only_user_cannot_create_item_wage_rate",
+      "expected_status": 403,
+      "actual_status": 422,
+      "actual_error_code": "NO_APP_CODE_FASTAPI_SCHEMA_VALIDATION",
+      "key_reason": "POST /api/workshop/wage-rates payload omits required OperationWageRateCreateRequest carrier fields scenario_tag/idempotency_key/source_ref, so body schema validation runs before permission denial."
+    },
+    {
+      "name": "test_item_allowed_but_company_forbidden_returns_403",
+      "expected_status": 403,
+      "actual_status": 422,
+      "actual_error_code": "NO_APP_CODE_FASTAPI_SCHEMA_VALIDATION",
+      "key_reason": "POST /api/workshop/wage-rates payload omits required OperationWageRateCreateRequest carrier fields scenario_tag/idempotency_key/source_ref, so body schema validation runs before permission denial."
+    },
+    {
+      "name": "test_wage_rate_create_rejects_empty_company_for_item_rate",
+      "expected_status": 422,
+      "expected_error_code": "WORKSHOP_WAGE_RATE_COMPANY_REQUIRED",
+      "actual_status": 422,
+      "actual_error_code": "NO_APP_CODE_FASTAPI_SCHEMA_VALIDATION",
+      "key_reason": "Response body has no application code because request body schema validation fails before WorkshopService company validation."
+    },
+    {
+      "name": "test_wage_rate_create_rejects_whitespace_company_for_item_rate",
+      "expected_status": 422,
+      "expected_error_code": "WORKSHOP_WAGE_RATE_COMPANY_REQUIRED",
+      "actual_status": 422,
+      "actual_error_code": "NO_APP_CODE_FASTAPI_SCHEMA_VALIDATION",
+      "key_reason": "Response body has no application code because request body schema validation fails before WorkshopService company validation."
+    },
+    {
+      "name": "test_wage_rate_create_requires_company_for_item_specific_rate",
+      "expected_status": 422,
+      "expected_error_code": "WORKSHOP_WAGE_RATE_COMPANY_REQUIRED",
+      "actual_status": 422,
+      "actual_error_code": "NO_APP_CODE_FASTAPI_SCHEMA_VALIDATION",
+      "key_reason": "Response body has no application code because request body schema validation fails before WorkshopService company validation."
+    }
+  ],
+  "target_endpoint": "POST /api/workshop/wage-rates",
+  "target_schema": "OperationWageRateCreateRequest",
+  "schema_required_fields_relevant_to_failure": [
+    "scenario_tag",
+    "idempotency_key",
+    "source_ref"
+  ],
+  "business_fields_already_present_in_failed_payloads": [
+    "item_code",
+    "company",
+    "process_name",
+    "wage_rate",
+    "effective_from",
+    "effective_to"
+  ],
+  "current_test_payload_or_fixture_issue": "The failed POST payloads only carry wage-rate business fields and omit required local carrier fields. They therefore do not reach permission, service, or local wage gate assertions.",
+  "source_semantics_checked": {
+    "schema_body_binding_before_router_branch": true,
+    "router_calls_local_wage_gate_after_schema_binding": true,
+    "local_gate_requires_x_request_id_and_matching_wage_scenario_carriers": true,
+    "workshop_source_dirty_for_candidate": false,
+    "target_test_dirty_before_task": false
+  },
+  "failure_gate_or_branch": "FastAPI/Pydantic body schema validation before permission/service/local wage gate",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_workshop_wage_permissions.py"
+  ],
+  "forbidden_files": [
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "other tests",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "Z015-Z022 frozen/committed/archived artifacts",
+    "Z023-CAND-001/002/003/004 committed/archived artifacts",
+    "Z023 candidate pool and B37/B38 artifacts",
+    "A architect logs",
+    "C audit records",
+    "GitHub/production configuration"
+  ],
+  "recommended_next_task_id": "TASK-Z023B-40-FIX-CAND005",
+  "recommended_next_command": ".venv/bin/python -m pytest tests/test_workshop_wage_permissions.py -q",
+  "run_pytest_this_task": false,
+  "allow_code_edit_next": "target test only",
+  "reason": "All five remaining failures are caused by the target test not satisfying the current workshop wage request schema/carrier contract. The business source supports the original permission and company validation branches once schema/carrier prerequisites are met."
+}

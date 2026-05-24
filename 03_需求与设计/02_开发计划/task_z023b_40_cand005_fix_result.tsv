@@ -1,0 +1,30 @@
+field	value
+task_id	TASK-Z023B-40-FIX-CAND005
+role	B Engineer
+source_task_id	TASK-Z023B-39-PREP-CAND005-FAILURE-DIAG
+selected_candidate_id	Z023-CAND-005
+fixed_file	07_后端/lingyi_service/tests/test_workshop_wage_permissions.py
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+contract_fixed	YES
+failure_cases_addressed	test_company_only_user_cannot_create_item_wage_rate; test_item_allowed_but_company_forbidden_returns_403; test_wage_rate_create_rejects_empty_company_for_item_rate; test_wage_rate_create_rejects_whitespace_company_for_item_rate; test_wage_rate_create_requires_company_for_item_specific_rate
+assertions_weakened	NO
+skip_xfail_deleted_cases	NO
+backend_app_edited	NO
+unrelated_tests_edited	NO
+workdir	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service
+command	.venv/bin/python -m pytest tests/test_workshop_wage_permissions.py -q
+command_run_count	1
+exit_code	0
+result	PASS
+pytest_summary	13 passed, 1 warning in 0.96s
+stdout_log	03_需求与设计/02_开发计划/task_z023b_40_cand005_fix_stdout.txt
+other_pytest_npm_browser_build_typecheck_verify	NO
+stage_performed	NO
+commit_performed	NO
+push_performed	NO
+tag_performed	NO
+pr_performed	NO
+release_performed	NO
+cleanup_performed	NO
+production_or_real_business_write	NO
+parked_blockers_released	NO

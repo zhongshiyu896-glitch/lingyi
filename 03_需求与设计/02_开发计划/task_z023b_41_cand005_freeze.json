@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-Z023B-41-LEDGER-CAND005",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z023-CAND-005",
+  "current_head": "8ee67f9c24073a43530b0fd7ee95e4a88dcfb640",
+  "boundary_task_id": "TASK-Z023B-37-PREP-CAND005",
+  "initial_impl_task_id": "TASK-Z023B-38-IMPL-CAND005",
+  "initial_impl_result": "FAIL",
+  "failure_classification_task_id": "TASK-Z023B-39-PREP-CAND005-FAILURE-DIAG",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "final_fix_task_id": "TASK-Z023B-40-FIX-CAND005",
+  "final_fix_result": "PASS",
+  "source_pass_task_id": "TASK-Z023B-40-FIX-CAND005",
+  "pytest_summary": "13 passed, 1 warning in 0.96s",
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_workshop_wage_permissions.py"
+  ],
+  "frontend_changed": false,
+  "backend_app_changed": false,
+  "shared_engineer_log_changed": false,
+  "other_candidates_included": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "pytest_npm_browser_build_typecheck_verify_run": false,
+  "production_or_real_business_write": false,
+  "parked_blockers_released": false
+}
