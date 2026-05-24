@@ -1,0 +1,29 @@
+field	value
+task_id	TASK-Z023B-29-PREP-CAND004-SECOND-FAILURE-DIAG
+source_task_id	TASK-Z023B-28-FIX-CAND004
+selected_candidate_id	Z023-CAND-004
+current_head	c87806fd82caf08197bc6588fee112cfeff8c2d3
+cached_area_empty	YES
+b28_result	FAIL
+b28_pytest_summary	7 failed, 11 passed, 8 warnings in 1.11s
+failed_case_count	7
+helper_binding_failure	YES
+helper_binding_failure_is_test_helper_error	YES
+receive_sync_status_failure	YES
+receive_sync_status_supported_by_current_service	YES
+backend_app_change_required	NO
+target_test_contract_change_required	YES
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_files	07_后端/lingyi_service/tests/test_subcontract_permissions.py
+recommended_next_task_id	TASK-Z023B-30-FIX-CAND004-SECOND
+recommended_next_command	.venv/bin/python -m pytest tests/test_subcontract_permissions.py -q
+run_pytest_this_task	NO
+allow_code_edit_next	YES
+pytest_npm_browser_build_typecheck_verify_run	NO
+code_edits	NO
+target_test_edits	NO
+stage_performed	NO
+commit_performed	NO
+push_performed	NO
+production_or_real_business_write	NO
+parked_blockers_released	NO

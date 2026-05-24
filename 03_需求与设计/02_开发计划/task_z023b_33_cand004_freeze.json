@@ -1,0 +1,65 @@
+{
+  "task_id": "TASK-Z023B-33-LEDGER-CAND004",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z023-CAND-004",
+  "current_head": "c87806fd82caf08197bc6588fee112cfeff8c2d3",
+  "source_pass_task_id": "TASK-Z023B-32-FIX-CAND004-THIRD",
+  "final_pytest_summary": "18 passed, 8 warnings in 1.07s",
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_subcontract_permissions.py"
+  ],
+  "evidence_chain": [
+    {
+      "task_id": "TASK-Z023B-26-IMPL",
+      "result": "FAIL"
+    },
+    {
+      "task_id": "TASK-Z023B-27-PREP-CAND004-FAILURE-DIAG",
+      "classification": "TEST_CONTRACT_UPDATE_ALLOWED"
+    },
+    {
+      "task_id": "TASK-Z023B-28-FIX-CAND004",
+      "result": "FAIL"
+    },
+    {
+      "task_id": "TASK-Z023B-29-PREP-CAND004-SECOND-FAILURE-DIAG",
+      "classification": "TEST_CONTRACT_UPDATE_ALLOWED"
+    },
+    {
+      "task_id": "TASK-Z023B-30-FIX-CAND004-SECOND",
+      "result": "FAIL"
+    },
+    {
+      "task_id": "TASK-Z023B-31-PREP-CAND004-THIRD-FAILURE-DIAG",
+      "classification": "TEST_CONTRACT_UPDATE_ALLOWED"
+    },
+    {
+      "task_id": "TASK-Z023B-32-FIX-CAND004-THIRD",
+      "result": "PASS",
+      "pytest_summary": "18 passed, 8 warnings in 1.07s"
+    }
+  ],
+  "yes_count": 33,
+  "no_count": 30,
+  "yes_no_intersection_empty": true,
+  "yes_contains_frontend": false,
+  "yes_contains_backend_app": false,
+  "yes_contains_shared_engineer_log": false,
+  "yes_contains_other_candidates": false,
+  "backend_app_changed": false,
+  "frontend_changed": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "pytest_npm_browser_build_typecheck_verify_run": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "cleanup_performed": false,
+  "production_or_real_business_write": false,
+  "parked_blockers_released": false
+}

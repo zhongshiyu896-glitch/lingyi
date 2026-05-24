@@ -1,0 +1,2 @@
+task_id	source_task_id	selected_candidate_id	current_head	cached_area_empty	candidate_original_fields_copied	source_evidence_exists	candidate_pool_recommended_command	recommended_command_target_exists	target_test_dirty_before_task	recommended_next_task_id	workdir	run_this_task
+TASK-Z023B-25-PREP	TASK-Z023B-24-PREP	Z023-CAND-004	c87806fd82caf08197bc6588fee112cfeff8c2d3	true	true	true	.venv/bin/python -m pytest tests/test_subcontract_permissions.py -q	true	false	TASK-Z023B-26-IMPL	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service	false

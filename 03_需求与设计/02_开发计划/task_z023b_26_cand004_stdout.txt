@@ -1,0 +1,297 @@
+FFFFFF.FFF..F.FFF.                                                       [100%]
+=================================== FAILURES ===================================
+__ SubcontractPermissionTest.test_create_forbidden_without_create_permission ___
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_create_forbidden_without_create_permission>
+
+    def test_create_forbidden_without_create_permission(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(role="Subcontract Viewer"),
+            json=self._create_payload(),
+        )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_subcontract_permissions.py:314: AssertionError
+____ SubcontractPermissionTest.test_create_item_scope_forbidden_returns_403 ____
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_create_item_scope_forbidden_returns_403>
+
+    def test_create_item_scope_forbidden_returns_403(self) -> None:
+        with self.SessionLocal() as session:
+            before_total = session.query(LySubcontractOrder).filter(LySubcontractOrder.id > 11).count()
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-B"},
+                allowed_companies=set(),
+                allowed_suppliers={"SUP-A"},
+                allowed_warehouses={"WH-A"},
+            ),
+        ):
+            response = self.client.post(
+                "/api/subcontract/",
+                headers=self._headers(role="Subcontract Manager"),
+                json=self._create_payload(item_code="ITEM-A", supplier="SUP-A"),
+            )
+
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_subcontract_permissions.py:342: AssertionError
+_ SubcontractPermissionTest.test_create_subcontract_bom_item_mismatch_does_not_insert_order _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_create_subcontract_bom_item_mismatch_does_not_insert_order>
+
+    def test_create_subcontract_bom_item_mismatch_does_not_insert_order(self) -> None:
+        payload = self._create_payload(item_code="ITEM-A", supplier="SUP-A")
+        payload["bom_id"] = 2
+        with self.SessionLocal() as session:
+            before_total = session.query(LySubcontractOrder).count()
+        response = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(role="Subcontract Manager"),
+            json=payload,
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 422 != 400
+
+tests/test_subcontract_permissions.py:418: AssertionError
+_ SubcontractPermissionTest.test_create_subcontract_bom_item_mismatch_does_not_write_success_audit _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_create_subcontract_bom_item_mismatch_does_not_write_success_audit>
+
+    def test_create_subcontract_bom_item_mismatch_does_not_write_success_audit(self) -> None:
+        payload = self._create_payload(item_code="ITEM-A", supplier="SUP-A")
+        payload["bom_id"] = 2
+        with self.SessionLocal() as session:
+            before_success = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "subcontract",
+                    LyOperationAuditLog.action == "subcontract:create",
+                    LyOperationAuditLog.result == "success",
+                )
+                .count()
+            )
+        response = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(role="Subcontract Manager"),
+            json=payload,
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 422 != 400
+
+tests/test_subcontract_permissions.py:442: AssertionError
+_ SubcontractPermissionTest.test_create_subcontract_rejects_bom_item_mismatch __
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_create_subcontract_rejects_bom_item_mismatch>
+
+    def test_create_subcontract_rejects_bom_item_mismatch(self) -> None:
+        payload = self._create_payload(item_code="ITEM-A", supplier="SUP-A")
+        payload["bom_id"] = 2
+        response = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(role="Subcontract Manager"),
+            json=payload,
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 422 != 400
+
+tests/test_subcontract_permissions.py:405: AssertionError
+____ SubcontractPermissionTest.test_draft_order_cannot_receive_successfully ____
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_draft_order_cannot_receive_successfully>
+
+    def test_draft_order_cannot_receive_successfully(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/10/receive",
+            headers=self._headers(role="Subcontract Manager"),
+            json={
+                "idempotency_key": "idem-recv-draft",
+                "receipt_warehouse": "WH-RECV-A",
+                "received_qty": "10",
+            },
+        )
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_STATUS_INVALID")
+E       AssertionError: 'SUBCONTRACT_STOCK_OUTBOX_CONFLICT' != 'SUBCONTRACT_STATUS_INVALID'
+E       - SUBCONTRACT_STOCK_OUTBOX_CONFLICT
+E       + SUBCONTRACT_STATUS_INVALID
+
+tests/test_subcontract_permissions.py:587: AssertionError
+_ SubcontractPermissionTest.test_inspect_creates_fact_and_keeps_order_not_completed _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_inspect_creates_fact_and_keeps_order_not_completed>
+
+    def test_inspect_creates_fact_and_keeps_order_not_completed(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/12/inspect",
+            headers=self._headers(role="Subcontract Manager"),
+            json=self._inspect_payload(),
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_permissions.py:508: AssertionError
+_ SubcontractPermissionTest.test_inspect_forbidden_when_receipt_warehouse_not_allowed _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_inspect_forbidden_when_receipt_warehouse_not_allowed>
+
+    def test_inspect_forbidden_when_receipt_warehouse_not_allowed(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-A"},
+                allowed_companies={"COMP-A"},
+                allowed_suppliers={"SUP-A"},
+                allowed_warehouses={"WH-OTHER"},
+            ),
+        ):
+            response = self.client.post(
+                "/api/subcontract/12/inspect",
+                headers=self._headers(role="Subcontract Manager"),
+                json=self._inspect_payload(idem="idem-inspect-no-wh"),
+            )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 409 != 403
+
+tests/test_subcontract_permissions.py:548: AssertionError
+_ SubcontractPermissionTest.test_inspect_permission_source_unavailable_fails_closed _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_inspect_permission_source_unavailable_fails_closed>
+
+    def test_inspect_permission_source_unavailable_fails_closed(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            side_effect=PermissionSourceUnavailable(
+                message="permission source unavailable",
+                exception_type="TimeoutError",
+                exception_message="timeout",
+            ),
+        ):
+            response = self.client.post(
+                "/api/subcontract/12/inspect",
+                headers=self._headers(role="Subcontract Manager"),
+                json=self._inspect_payload(idem="idem-inspect-perm-source-unavailable"),
+            )
+>       self.assertEqual(response.status_code, 503)
+E       AssertionError: 409 != 503
+
+tests/test_subcontract_permissions.py:570: AssertionError
+_ SubcontractPermissionTest.test_permission_source_unavailable_returns_503_without_writes _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_permission_source_unavailable_returns_503_without_writes>
+
+    def test_permission_source_unavailable_returns_503_without_writes(self) -> None:
+        with self.SessionLocal() as session:
+            before_total = session.query(LySubcontractOrder).filter(LySubcontractOrder.id > 11).count()
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            side_effect=PermissionSourceUnavailable(
+                message="permission source unavailable",
+                exception_type="TimeoutError",
+                exception_message="timeout",
+            ),
+        ):
+            response = self.client.post(
+                "/api/subcontract/",
+                headers=self._headers(role="Subcontract Manager"),
+                json=self._create_payload(item_code="ITEM-A", supplier="SUP-A"),
+            )
+>       self.assertEqual(response.status_code, 503)
+E       AssertionError: 422 != 503
+
+tests/test_subcontract_permissions.py:369: AssertionError
+_ SubcontractPermissionTest.test_receive_fail_closed_after_auth_does_not_create_receipt _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_receive_fail_closed_after_auth_does_not_create_receipt>
+
+    def test_receive_fail_closed_after_auth_does_not_create_receipt(self) -> None:
+        with self.SessionLocal() as session:
+            before_count = session.query(LySubcontractReceipt).count()
+        response = self.client.post(
+            "/api/subcontract/13/receive",
+            headers=self._headers(role="Subcontract Manager"),
+            json={
+                "idempotency_key": "idem-recv-perm-1",
+                "receipt_warehouse": "WH-RECV-A",
+                "received_qty": "10",
+            },
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_permissions.py:480: AssertionError
+_ SubcontractPermissionTest.test_receive_permission_is_checked_before_payload_validation_when_forbidden _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_receive_permission_is_checked_before_payload_validation_when_forbidden>
+
+    def test_receive_permission_is_checked_before_payload_validation_when_forbidden(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/13/receive",
+            headers=self._headers(role="NoRole"),
+            json={},
+        )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 409 != 403
+
+tests/test_subcontract_permissions.py:600: AssertionError
+_ SubcontractPermissionTest.test_receive_permission_source_unavailable_before_payload_validation _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_receive_permission_source_unavailable_before_payload_validation>
+
+    def test_receive_permission_source_unavailable_before_payload_validation(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            side_effect=PermissionSourceUnavailable(
+                message="permission source unavailable",
+                exception_type="TimeoutError",
+                exception_message="timeout",
+            ),
+        ):
+            response = self.client.post(
+                "/api/subcontract/13/receive",
+                headers=self._headers(role="Subcontract Manager"),
+                json={},
+            )
+>       self.assertEqual(response.status_code, 503)
+E       AssertionError: 409 != 503
+
+tests/test_subcontract_permissions.py:619: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_forbidden_without_create_permission
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_forbidden_without_create_permission
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_item_scope_forbidden_returns_403
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_subcontract_bom_item_mismatch_does_not_insert_order
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_subcontract_bom_item_mismatch_does_not_write_success_audit
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_subcontract_rejects_bom_item_mismatch
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_draft_order_cannot_receive_successfully
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_creates_fact_and_keeps_order_not_completed
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_forbidden_when_receipt_warehouse_not_allowed
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_permission_source_unavailable_fails_closed
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_permission_source_unavailable_returns_503_without_writes
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_fail_closed_after_auth_does_not_create_receipt
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_permission_is_checked_before_payload_validation_when_forbidden
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_permission_source_unavailable_before_payload_validation
+13 failed, 5 passed, 1 warning in 1.15s

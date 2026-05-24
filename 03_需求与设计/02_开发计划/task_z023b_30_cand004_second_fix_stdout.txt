@@ -1,0 +1,76 @@
+..............F...                                                       [100%]
+=================================== FAILURES ===================================
+_ SubcontractPermissionTest.test_receive_fail_closed_after_auth_does_not_create_receipt _
+
+self = <tests.test_subcontract_permissions.SubcontractPermissionTest testMethod=test_receive_fail_closed_after_auth_does_not_create_receipt>
+
+    def test_receive_fail_closed_after_auth_does_not_create_receipt(self) -> None:
+        with self.SessionLocal() as session:
+            before_count = session.query(LySubcontractReceipt).count()
+        payload = self._receive_payload(order_id=13, idem="idem-recv-perm-1")
+        response = self.client.post(
+            "/api/subcontract/13/receive",
+            headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+        self.assertEqual(response.json()["data"]["sync_status"], "succeeded")
+        self.assertTrue(str(response.json()["data"]["stock_entry_name"]).startswith("LOCAL-RECEIPT-"))
+        with self.SessionLocal() as session:
+            after_count = session.query(LySubcontractReceipt).count()
+            outbox = (
+                session.query(LySubcontractStockOutbox)
+                .filter(
+                    LySubcontractStockOutbox.subcontract_id == 13,
+                    LySubcontractStockOutbox.stock_action == "receipt",
+                )
+                .order_by(LySubcontractStockOutbox.id.desc())
+                .first()
+            )
+            order = session.query(LySubcontractOrder).filter(LySubcontractOrder.id == 13).first()
+        self.assertEqual(after_count, before_count + 1)
+        self.assertIsNotNone(outbox)
+>       self.assertEqual(outbox.status, "pending")
+E       AssertionError: 'succeeded' != 'pending'
+E       - succeeded
+E       + pending
+
+tests/test_subcontract_permissions.py:611: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_forbidden_without_create_permission
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_creates_fact_and_keeps_order_not_completed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:1457: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_creates_fact_and_keeps_order_not_completed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:823: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    inspected_at=datetime.utcnow(),
+
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_creates_fact_and_keeps_order_not_completed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:843: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.updated_at = datetime.utcnow()
+
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_fail_closed_after_auth_does_not_create_receipt
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:1746: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_fail_closed_after_auth_does_not_create_receipt
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:242: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_fail_closed_after_auth_does_not_create_receipt
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:642: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    received_at=datetime.utcnow(),
+
+tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_fail_closed_after_auth_does_not_create_receipt
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:666: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.updated_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_fail_closed_after_auth_does_not_create_receipt
+1 failed, 17 passed, 8 warnings in 1.10s

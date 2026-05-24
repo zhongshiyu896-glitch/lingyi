@@ -1,0 +1,395 @@
+{
+  "task_id": "TASK-Z023B-33-LEDGER-CAND004",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z023-CAND-004",
+  "source_pass_task_id": "TASK-Z023B-32-FIX-CAND004-THIRD",
+  "final_pytest_summary": "18 passed, 8 warnings in 1.07s",
+  "fixed_file": "07_后端/lingyi_service/tests/test_subcontract_permissions.py",
+  "yes_count": 33,
+  "no_count": 30,
+  "yes_no_intersection_empty": true,
+  "yes_contains_frontend": false,
+  "yes_contains_backend_app": false,
+  "yes_contains_shared_engineer_log": false,
+  "yes_contains_other_candidates": false,
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-25-PREP_Z023候选004边界冻结报告.md",
+      "decision": "YES",
+      "category": "B25_BOUNDARY",
+      "reason": "CAND004 boundary report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_25_cand004_boundary.json",
+      "decision": "YES",
+      "category": "B25_BOUNDARY",
+      "reason": "CAND004 boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_25_cand004_boundary.tsv",
+      "decision": "YES",
+      "category": "B25_BOUNDARY",
+      "reason": "CAND004 boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-26-IMPL_Z023候选004单文件验证报告.md",
+      "decision": "YES",
+      "category": "B26_INITIAL_IMPL",
+      "reason": "CAND004 initial validation report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_26_cand004_result.json",
+      "decision": "YES",
+      "category": "B26_INITIAL_IMPL",
+      "reason": "CAND004 initial validation JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_26_cand004_result.tsv",
+      "decision": "YES",
+      "category": "B26_INITIAL_IMPL",
+      "reason": "CAND004 initial validation TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_26_cand004_stdout.txt",
+      "decision": "YES",
+      "category": "B26_INITIAL_IMPL",
+      "reason": "CAND004 initial validation stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-27-PREP-CAND004-FAILURE-DIAG_Z023候选004失败定位报告.md",
+      "decision": "YES",
+      "category": "B27_FAILURE_DIAG",
+      "reason": "CAND004 failure diagnosis report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_27_cand004_failure_diag_boundary.json",
+      "decision": "YES",
+      "category": "B27_FAILURE_DIAG",
+      "reason": "CAND004 failure diagnosis JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_27_cand004_failure_diag_boundary.tsv",
+      "decision": "YES",
+      "category": "B27_FAILURE_DIAG",
+      "reason": "CAND004 failure diagnosis TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-28-FIX-CAND004_Z023候选004subcontract权限测试合同修复报告.md",
+      "decision": "YES",
+      "category": "B28_FIX_ATTEMPT",
+      "reason": "CAND004 first fix report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_28_cand004_fix_result.json",
+      "decision": "YES",
+      "category": "B28_FIX_ATTEMPT",
+      "reason": "CAND004 first fix JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_28_cand004_fix_result.tsv",
+      "decision": "YES",
+      "category": "B28_FIX_ATTEMPT",
+      "reason": "CAND004 first fix TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_28_cand004_fix_stdout.txt",
+      "decision": "YES",
+      "category": "B28_FIX_ATTEMPT",
+      "reason": "CAND004 first fix stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-29-PREP-CAND004-SECOND-FAILURE-DIAG_Z023候选004二次失败定位报告.md",
+      "decision": "YES",
+      "category": "B29_SECOND_FAILURE_DIAG",
+      "reason": "CAND004 second failure diagnosis report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_29_cand004_second_failure_boundary.json",
+      "decision": "YES",
+      "category": "B29_SECOND_FAILURE_DIAG",
+      "reason": "CAND004 second failure diagnosis JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_29_cand004_second_failure_boundary.tsv",
+      "decision": "YES",
+      "category": "B29_SECOND_FAILURE_DIAG",
+      "reason": "CAND004 second failure diagnosis TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-30-FIX-CAND004-SECOND_Z023候选004二次测试合同修复报告.md",
+      "decision": "YES",
+      "category": "B30_SECOND_FIX_ATTEMPT",
+      "reason": "CAND004 second fix report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_30_cand004_second_fix_result.json",
+      "decision": "YES",
+      "category": "B30_SECOND_FIX_ATTEMPT",
+      "reason": "CAND004 second fix JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_30_cand004_second_fix_result.tsv",
+      "decision": "YES",
+      "category": "B30_SECOND_FIX_ATTEMPT",
+      "reason": "CAND004 second fix TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_30_cand004_second_fix_stdout.txt",
+      "decision": "YES",
+      "category": "B30_SECOND_FIX_ATTEMPT",
+      "reason": "CAND004 second fix stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-31-PREP-CAND004-THIRD-FAILURE-DIAG_Z023候选004第三次失败定位报告.md",
+      "decision": "YES",
+      "category": "B31_THIRD_FAILURE_DIAG",
+      "reason": "CAND004 third failure diagnosis report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_31_cand004_third_failure_boundary.json",
+      "decision": "YES",
+      "category": "B31_THIRD_FAILURE_DIAG",
+      "reason": "CAND004 third failure diagnosis JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_31_cand004_third_failure_boundary.tsv",
+      "decision": "YES",
+      "category": "B31_THIRD_FAILURE_DIAG",
+      "reason": "CAND004 third failure diagnosis TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-32-FIX-CAND004-THIRD_Z023候选004第三次测试合同修复报告.md",
+      "decision": "YES",
+      "category": "B32_FINAL_FIX_PASS",
+      "reason": "CAND004 final fix report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_32_cand004_third_fix_result.json",
+      "decision": "YES",
+      "category": "B32_FINAL_FIX_PASS",
+      "reason": "CAND004 final fix JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_32_cand004_third_fix_result.tsv",
+      "decision": "YES",
+      "category": "B32_FINAL_FIX_PASS",
+      "reason": "CAND004 final fix TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_32_cand004_third_fix_stdout.txt",
+      "decision": "YES",
+      "category": "B32_FINAL_FIX_PASS",
+      "reason": "CAND004 final fix stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-33-LEDGER-CAND004_Z023候选004subcontract权限边界账本冻结报告.md",
+      "decision": "YES",
+      "category": "B33_LEDGER",
+      "reason": "CAND004 ledger report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_33_cand004_freeze.json",
+      "decision": "YES",
+      "category": "B33_LEDGER",
+      "reason": "CAND004 freeze JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_33_cand004_ledger.json",
+      "decision": "YES",
+      "category": "B33_LEDGER",
+      "reason": "CAND004 ledger JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_33_cand004_ledger.tsv",
+      "decision": "YES",
+      "category": "B33_LEDGER",
+      "reason": "CAND004 ledger TSV"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_subcontract_permissions.py",
+      "decision": "YES",
+      "category": "TARGET_TEST",
+      "reason": "CAND004 fixed subcontract permission test"
+    },
+    {
+      "path": "06_前端",
+      "decision": "NO",
+      "category": "FRONTEND_SCOPE",
+      "reason": "Frontend is out of CAND004 ledger scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/app",
+      "decision": "NO",
+      "category": "BACKEND_APP_SCOPE",
+      "reason": "Backend app code is out of CAND004 ledger scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_factory_statement_permissions.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Z023-CAND-001 test is out of CAND004 scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_production_permissions.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Z023-CAND-002 test is out of CAND004 scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_sales_inventory_permissions.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Z023-CAND-003 test is out of CAND004 scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_bom_permissions.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Other test file is out of CAND004 scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Other test file is out of CAND004 scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Other test file is out of CAND004 scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Other test file is out of CAND004 scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_style_profit_api.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Other test file is out of CAND004 scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Other subcontract test is not the selected CAND004 target"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_workshop_permissions.py",
+      "decision": "NO",
+      "category": "OTHER_TEST",
+      "reason": "Other test file is out of CAND004 scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/工程师会话日志.md",
+      "decision": "NO",
+      "category": "SHARED_LOG",
+      "reason": "Shared engineer log is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-01-PREP_Z023本地候选池报告.md",
+      "decision": "NO",
+      "category": "CANDIDATE_POOL",
+      "reason": "Z023 candidate pool is excluded from CAND004 ledger YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_01_local_candidate_pool.json",
+      "decision": "NO",
+      "category": "CANDIDATE_POOL",
+      "reason": "Z023 candidate pool JSON is excluded from CAND004 ledger YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_01_local_candidate_pool.tsv",
+      "decision": "NO",
+      "category": "CANDIDATE_POOL",
+      "reason": "Z023 candidate pool TSV is excluded from CAND004 ledger YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-24-PREP_Z023剩余候选刷新报告.md",
+      "decision": "NO",
+      "category": "CANDIDATE_POOL",
+      "reason": "B24 refresh is excluded by task boundary"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_24_remaining_candidate_refresh.json",
+      "decision": "NO",
+      "category": "CANDIDATE_POOL",
+      "reason": "B24 refresh JSON is excluded by task boundary"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_24_remaining_candidate_refresh.tsv",
+      "decision": "NO",
+      "category": "CANDIDATE_POOL",
+      "reason": "B24 refresh TSV is excluded by task boundary"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-09-ARCHIVE-CAND001_Z023候选001归档确认报告.md",
+      "decision": "NO",
+      "category": "PRIOR_CANDIDATE",
+      "reason": "Z023-CAND-001 archive artifact is out of CAND004 scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_09_cand001_archive_result.json",
+      "decision": "NO",
+      "category": "PRIOR_CANDIDATE",
+      "reason": "Z023-CAND-001 archive JSON is out of CAND004 scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_16_cand002_archive_result.json",
+      "decision": "NO",
+      "category": "PRIOR_CANDIDATE",
+      "reason": "Z023-CAND-002 archive JSON is out of CAND004 scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_23_cand003_archive_result.json",
+      "decision": "NO",
+      "category": "PRIOR_CANDIDATE",
+      "reason": "Z023-CAND-003 archive JSON is out of CAND004 scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-43-PREP-CAND005_Z023候选005边界冻结报告.md",
+      "decision": "NO",
+      "category": "FUTURE_CANDIDATE",
+      "reason": "Z023-CAND-005 future candidate scope is excluded"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_43_cand005_boundary.json",
+      "decision": "NO",
+      "category": "FUTURE_CANDIDATE",
+      "reason": "Z023-CAND-005 future candidate JSON is excluded"
+    },
+    {
+      "path": ".pytest_cache",
+      "decision": "NO",
+      "category": "CACHE_DEPENDENCY",
+      "reason": "Local cache is excluded"
+    },
+    {
+      "path": ".venv",
+      "decision": "NO",
+      "category": "CACHE_DEPENDENCY",
+      "reason": "Local dependency environment is excluded"
+    },
+    {
+      "path": "dist",
+      "decision": "NO",
+      "category": "CACHE_DEPENDENCY",
+      "reason": "Build output is excluded"
+    },
+    {
+      "path": "node_modules",
+      "decision": "NO",
+      "category": "CACHE_DEPENDENCY",
+      "reason": "Local dependencies are excluded"
+    },
+    {
+      "path": ".git",
+      "decision": "NO",
+      "category": "GIT_INTERNAL",
+      "reason": "Git internal state is excluded"
+    }
+  ]
+}

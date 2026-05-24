@@ -191,7 +191,8 @@ class SubcontractPermissionTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
@@ -253,12 +254,64 @@ class SubcontractPermissionTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Subcontract Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "subcontract.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "Subcontract Manager", *, request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "subcontract.user", "X-LY-Dev-Roles": role}
+        if request_id is not None:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
-    def _create_payload(item_code: str = "ITEM-A", supplier: str = "SUP-A") -> dict:
+    def _fnv_carrier_code(value: str) -> str:
+        hash_value = 2166136261
+        for byte in value.strip().encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-3:]
+
+    @classmethod
+    def _write_carrier(
+        cls,
+        *,
+        operation: str,
+        idempotency_key: str,
+        source_suffix: str,
+        subcontract_ref: str,
+        supplier_ref: str,
+        work_order_ref: str,
+        item_code: str,
+        quantity: str,
+        status_action: str,
+    ) -> dict[str, str]:
+        scenario_tag = "Z003-SUBCONTRACT-20260524-004"
+        source_ref = f"{scenario_tag}-SRC-{source_suffix}"
+        operation_codes = {"create": "CR", "receive": "RV", "inspect": "IN"}
+        request_id = (
+            f"{scenario_tag}-SC-{operation_codes[operation]}-"
+            f"{cls._fnv_carrier_code(idempotency_key)}-"
+            f"{cls._fnv_carrier_code(source_ref)}-"
+            f"{cls._fnv_carrier_code(subcontract_ref)}-"
+            f"{cls._fnv_carrier_code(supplier_ref)}-"
+            f"{cls._fnv_carrier_code(work_order_ref)}-"
+            f"{cls._fnv_carrier_code(item_code)}-"
+            f"{cls._fnv_carrier_code(status_action)}"
+        )
         return {
+            "request_id": request_id,
+            "idempotency_key": idempotency_key,
+            "scenario_tag": scenario_tag,
+            "source_ref": source_ref,
+            "subcontract_ref": subcontract_ref,
+            "supplier_ref": supplier_ref,
+            "work_order_ref": work_order_ref,
+            "operation": operation,
+            "item_code": item_code,
+            "quantity": quantity,
+            "status_action": status_action,
+        }
+
+    @classmethod
+    def _create_payload(cls, item_code: str = "ITEM-A", supplier: str = "SUP-A") -> dict:
+        payload = {
             "supplier": supplier,
             "item_code": item_code,
             "company": "COMP-A",
@@ -266,22 +319,82 @@ class SubcontractPermissionTest(unittest.TestCase):
             "planned_qty": "100",
             "process_name": "外发裁剪",
         }
+        payload.update(
+            cls._write_carrier(
+                operation="create",
+                idempotency_key=f"idem-create-{item_code}-{supplier}",
+                source_suffix=f"CREATE-{item_code}-{supplier}",
+                subcontract_ref=f"NEW-{item_code}-{supplier}",
+                supplier_ref=supplier,
+                work_order_ref="NO-WORK-ORDER",
+                item_code=item_code,
+                quantity="100",
+                status_action="create",
+            )
+        )
+        return payload
 
-    @staticmethod
+    @classmethod
+    def _receive_payload(
+        cls,
+        *,
+        order_id: int,
+        idem: str,
+        received_qty: str = "10",
+        receipt_warehouse: str = "WH-RECV-A",
+    ) -> dict[str, str]:
+        subcontract_refs = {
+            10: "SC-SEED-A",
+            13: "SC-SEED-PROCESSING",
+        }
+        payload = {
+            "receipt_warehouse": receipt_warehouse,
+            "received_qty": received_qty,
+        }
+        payload.update(
+            cls._write_carrier(
+                operation="receive",
+                idempotency_key=idem,
+                source_suffix=f"RECEIVE-{order_id}",
+                subcontract_ref=subcontract_refs[order_id],
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                quantity=received_qty,
+                status_action="receive",
+            )
+        )
+        return payload
+
+    @classmethod
     def _inspect_payload(
+        cls,
         *,
         idem: str = "idem-inspect-perm-1",
         inspected_qty: str = "20",
         rejected_qty: str = "1",
         deduction_amount_per_piece: str = "0.1",
     ) -> dict[str, str]:
-        return {
+        payload = {
             "receipt_batch_no": "SRB-PERM-1000",
-            "idempotency_key": idem,
             "inspected_qty": inspected_qty,
             "rejected_qty": rejected_qty,
             "deduction_amount_per_piece": deduction_amount_per_piece,
         }
+        payload.update(
+            cls._write_carrier(
+                operation="inspect",
+                idempotency_key=idem,
+                source_suffix="INSPECT-12",
+                subcontract_ref="SC-SEED-WAIT-INSPECT",
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                quantity=inspected_qty,
+                status_action="inspect",
+            )
+        )
+        return payload
 
     def _latest_security_log(self) -> LySecurityAuditLog:
         with self.SessionLocal() as session:
@@ -306,10 +419,11 @@ class SubcontractPermissionTest(unittest.TestCase):
         self.assertEqual(row.action, "subcontract:read")
 
     def test_create_forbidden_without_create_permission(self) -> None:
+        payload = self._create_payload()
         response = self.client.post(
             "/api/subcontract/",
-            headers=self._headers(role="Subcontract Viewer"),
-            json=self._create_payload(),
+            headers=self._headers(role="Subcontract Viewer", request_id=payload["request_id"]),
+            json=payload,
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
@@ -333,10 +447,11 @@ class SubcontractPermissionTest(unittest.TestCase):
                 allowed_warehouses={"WH-A"},
             ),
         ):
+            payload = self._create_payload(item_code="ITEM-A", supplier="SUP-A")
             response = self.client.post(
                 "/api/subcontract/",
-                headers=self._headers(role="Subcontract Manager"),
-                json=self._create_payload(item_code="ITEM-A", supplier="SUP-A"),
+                headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 403)
@@ -361,10 +476,11 @@ class SubcontractPermissionTest(unittest.TestCase):
                 exception_message="timeout",
             ),
         ):
+            payload = self._create_payload(item_code="ITEM-A", supplier="SUP-A")
             response = self.client.post(
                 "/api/subcontract/",
-                headers=self._headers(role="Subcontract Manager"),
-                json=self._create_payload(item_code="ITEM-A", supplier="SUP-A"),
+                headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+                json=payload,
             )
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
@@ -399,7 +515,7 @@ class SubcontractPermissionTest(unittest.TestCase):
         payload["bom_id"] = 2
         response = self.client.post(
             "/api/subcontract/",
-            headers=self._headers(role="Subcontract Manager"),
+            headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
             json=payload,
         )
         self.assertEqual(response.status_code, 400)
@@ -412,7 +528,7 @@ class SubcontractPermissionTest(unittest.TestCase):
             before_total = session.query(LySubcontractOrder).count()
         response = self.client.post(
             "/api/subcontract/",
-            headers=self._headers(role="Subcontract Manager"),
+            headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
             json=payload,
         )
         self.assertEqual(response.status_code, 400)
@@ -436,7 +552,7 @@ class SubcontractPermissionTest(unittest.TestCase):
             )
         response = self.client.post(
             "/api/subcontract/",
-            headers=self._headers(role="Subcontract Manager"),
+            headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
             json=payload,
         )
         self.assertEqual(response.status_code, 400)
@@ -468,19 +584,16 @@ class SubcontractPermissionTest(unittest.TestCase):
     def test_receive_fail_closed_after_auth_does_not_create_receipt(self) -> None:
         with self.SessionLocal() as session:
             before_count = session.query(LySubcontractReceipt).count()
+        payload = self._receive_payload(order_id=13, idem="idem-recv-perm-1")
         response = self.client.post(
             "/api/subcontract/13/receive",
-            headers=self._headers(role="Subcontract Manager"),
-            json={
-                "idempotency_key": "idem-recv-perm-1",
-                "receipt_warehouse": "WH-RECV-A",
-                "received_qty": "10",
-            },
+            headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
-        self.assertEqual(response.json()["data"]["sync_status"], "pending")
-        self.assertIsNone(response.json()["data"]["stock_entry_name"])
+        self.assertEqual(response.json()["data"]["sync_status"], "succeeded")
+        self.assertTrue(str(response.json()["data"]["stock_entry_name"]).startswith("LOCAL-RECEIPT-"))
         with self.SessionLocal() as session:
             after_count = session.query(LySubcontractReceipt).count()
             outbox = (
@@ -495,15 +608,16 @@ class SubcontractPermissionTest(unittest.TestCase):
             order = session.query(LySubcontractOrder).filter(LySubcontractOrder.id == 13).first()
         self.assertEqual(after_count, before_count + 1)
         self.assertIsNotNone(outbox)
-        self.assertEqual(outbox.status, "pending")
+        self.assertEqual(outbox.status, "succeeded")
         self.assertIsNotNone(order)
         self.assertEqual(order.status, "waiting_inspection")
 
     def test_inspect_creates_fact_and_keeps_order_not_completed(self) -> None:
+        payload = self._inspect_payload()
         response = self.client.post(
             "/api/subcontract/12/inspect",
-            headers=self._headers(role="Subcontract Manager"),
-            json=self._inspect_payload(),
+            headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
@@ -540,10 +654,11 @@ class SubcontractPermissionTest(unittest.TestCase):
                 allowed_warehouses={"WH-OTHER"},
             ),
         ):
+            payload = self._inspect_payload(idem="idem-inspect-no-wh")
             response = self.client.post(
                 "/api/subcontract/12/inspect",
-                headers=self._headers(role="Subcontract Manager"),
-                json=self._inspect_payload(idem="idem-inspect-no-wh"),
+                headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+                json=payload,
             )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
@@ -562,10 +677,11 @@ class SubcontractPermissionTest(unittest.TestCase):
                 exception_message="timeout",
             ),
         ):
+            payload = self._inspect_payload(idem="idem-inspect-perm-source-unavailable")
             response = self.client.post(
                 "/api/subcontract/12/inspect",
-                headers=self._headers(role="Subcontract Manager"),
-                json=self._inspect_payload(idem="idem-inspect-perm-source-unavailable"),
+                headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+                json=payload,
             )
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
@@ -574,14 +690,11 @@ class SubcontractPermissionTest(unittest.TestCase):
         self.assertEqual(count, 0)
 
     def test_draft_order_cannot_receive_successfully(self) -> None:
+        payload = self._receive_payload(order_id=10, idem="idem-recv-draft")
         response = self.client.post(
             "/api/subcontract/10/receive",
-            headers=self._headers(role="Subcontract Manager"),
-            json={
-                "idempotency_key": "idem-recv-draft",
-                "receipt_warehouse": "WH-RECV-A",
-                "received_qty": "10",
-            },
+            headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+            json=payload,
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_STATUS_INVALID")
@@ -592,10 +705,11 @@ class SubcontractPermissionTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
 
     def test_receive_permission_is_checked_before_payload_validation_when_forbidden(self) -> None:
+        payload = self._receive_payload(order_id=13, idem="idem-recv-forbidden")
         response = self.client.post(
             "/api/subcontract/13/receive",
-            headers=self._headers(role="NoRole"),
-            json={},
+            headers=self._headers(role="NoRole", request_id=payload["request_id"]),
+            json=payload,
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
@@ -611,10 +725,11 @@ class SubcontractPermissionTest(unittest.TestCase):
                 exception_message="timeout",
             ),
         ):
+            payload = self._receive_payload(order_id=13, idem="idem-recv-permission-source-unavailable")
             response = self.client.post(
                 "/api/subcontract/13/receive",
-                headers=self._headers(role="Subcontract Manager"),
-                json={},
+                headers=self._headers(role="Subcontract Manager", request_id=payload["request_id"]),
+                json=payload,
             )
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")

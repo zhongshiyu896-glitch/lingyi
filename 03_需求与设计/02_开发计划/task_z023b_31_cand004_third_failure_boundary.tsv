@@ -1,0 +1,28 @@
+field	value
+task_id	TASK-Z023B-31-PREP-CAND004-THIRD-FAILURE-DIAG
+source_task_id	TASK-Z023B-30-FIX-CAND004-SECOND
+selected_candidate_id	Z023-CAND-004
+current_head	c87806fd82caf08197bc6588fee112cfeff8c2d3
+cached_area_empty	YES
+b30_result	FAIL
+b30_pytest_summary	1 failed, 17 passed, 8 warnings in 1.10s
+remaining_failed_case	test_receive_fail_closed_after_auth_does_not_create_receipt
+expected_outbox_status	pending
+actual_outbox_status	succeeded
+source_semantics_support_succeeded	YES
+backend_app_change_required	NO
+target_test_assertion_change_required	YES
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_files	07_后端/lingyi_service/tests/test_subcontract_permissions.py
+recommended_next_task_id	TASK-Z023B-32-FIX-CAND004-THIRD
+recommended_next_command	.venv/bin/python -m pytest tests/test_subcontract_permissions.py -q
+run_pytest_this_task	NO
+allow_code_edit_next	YES
+pytest_npm_browser_build_typecheck_verify_run	NO
+code_edits	NO
+target_test_edits	NO
+stage_performed	NO
+commit_performed	NO
+push_performed	NO
+production_or_real_business_write	NO
+parked_blockers_released	NO

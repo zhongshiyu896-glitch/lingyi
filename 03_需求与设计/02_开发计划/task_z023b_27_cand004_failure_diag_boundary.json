@@ -1,0 +1,119 @@
+{
+  "task_id": "TASK-Z023B-27-PREP-CAND004-FAILURE-DIAG",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z023-CAND-004",
+  "source_task_id": "TASK-Z023B-26-IMPL",
+  "current_head": "c87806fd82caf08197bc6588fee112cfeff8c2d3",
+  "cached_area_empty": true,
+  "b26_result": "FAIL",
+  "b26_pytest_summary": "13 failed, 5 passed, 1 warning in 1.15s",
+  "failed_case_count": 13,
+  "failed_cases": [
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_forbidden_without_create_permission",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_item_scope_forbidden_returns_403",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_subcontract_bom_item_mismatch_does_not_insert_order",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_subcontract_bom_item_mismatch_does_not_write_success_audit",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_create_subcontract_rejects_bom_item_mismatch",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_draft_order_cannot_receive_successfully",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_creates_fact_and_keeps_order_not_completed",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_forbidden_when_receipt_warehouse_not_allowed",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_inspect_permission_source_unavailable_fails_closed",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_permission_source_unavailable_returns_503_without_writes",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_fail_closed_after_auth_does_not_create_receipt",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_permission_is_checked_before_payload_validation_when_forbidden",
+    "tests/test_subcontract_permissions.py::SubcontractPermissionTest::test_receive_permission_source_unavailable_before_payload_validation"
+  ],
+  "actual_status_by_group": {
+    "create_payload_cases": 422,
+    "receive_inspect_payload_or_gate_cases": 409
+  },
+  "dominant_actual_status_codes": [
+    422,
+    409
+  ],
+  "dominant_error_codes": [
+    "REQUEST_VALIDATION_422",
+    "SUBCONTRACT_STOCK_OUTBOX_CONFLICT"
+  ],
+  "current_test_payload_or_fixture_issue": "test helpers and inline payloads do not satisfy current SubcontractWriteCarrierBase carrier contract; _headers lacks X-Request-ID; setUp uses APP_ENV=test and does not set LINGYI_DB_URL to the subcontract local DB gate value",
+  "schema_required_fields_if_applicable": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "subcontract_ref",
+    "supplier_ref",
+    "work_order_ref",
+    "operation",
+    "item_code",
+    "quantity",
+    "status_action"
+  ],
+  "endpoint_specific_required_fields": {
+    "create": [
+      "supplier",
+      "item_code",
+      "bom_id",
+      "planned_qty",
+      "process_name"
+    ],
+    "receive": [
+      "receipt_warehouse",
+      "received_qty"
+    ],
+    "inspect": [
+      "receipt_batch_no",
+      "inspected_qty",
+      "rejected_qty"
+    ]
+  },
+  "failure_gate_or_branch": "create endpoint body binding uses SubcontractCreateRequest before permission branch, causing 422 when carrier fields are absent; receive/inspect parse ReceiveRequest or InspectRequest and then validate local/carrier gate before permission/service branch, causing SUBCONTRACT_STOCK_OUTBOX_CONFLICT 409 for invalid or missing write carriers",
+  "subcontract_gate_contract": {
+    "scenario_tag_pattern": "Z003-SUBCONTRACT-\\d{8}-\\d{3}",
+    "request_id_carrier_pattern": "Z003-SUBCONTRACT-<date>-<seq>-SC-<operation_code>-<idempotency_hash>-<source_ref_hash>-<subcontract_ref_hash>-<supplier_ref_hash>-<work_order_ref_hash>-<item_code_hash>-<status_action_hash>",
+    "required_header": "X-Request-ID",
+    "local_gate": {
+      "APP_ENV": "development",
+      "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db"
+    }
+  },
+  "permission_service_or_adapter_reached": false,
+  "backend_app_dirty_for_candidate": false,
+  "target_test_dirty_before_task": false,
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_subcontract_permissions.py"
+  ],
+  "forbidden_files": [
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "Z015-Z022 artifacts",
+    "Z023-CAND-001/002/003 artifacts",
+    "Z023 candidate pool / B24 / B25 / B26 artifacts",
+    "A architect logs",
+    "C audit records",
+    "GitHub/production configuration"
+  ],
+  "recommended_next_task_id": "TASK-Z023B-28-FIX-CAND004",
+  "recommended_next_command": ".venv/bin/python -m pytest tests/test_subcontract_permissions.py -q",
+  "run_pytest_this_task": false,
+  "allow_code_edit_next": true,
+  "reason": "Evidence points to stale test contract and fixtures rather than a subcontract app source change: target test is clean, subcontract router/schema/service/permission files have no candidate dirty diff, and failures occur before intended permission/status/service assertions because required carrier/schema/local-gate fields are missing.",
+  "pytest_npm_browser_build_typecheck_verify_run": false,
+  "product_code_edits": false,
+  "backend_app_edits": false,
+  "test_edits": false,
+  "existing_artifact_edits": false,
+  "engineer_shared_log_edit": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "reset_checkout_cleanup_performed": false,
+  "production_or_real_business_write": false,
+  "parked_blockers_released": false,
+  "project_completion_claimed": false
+}

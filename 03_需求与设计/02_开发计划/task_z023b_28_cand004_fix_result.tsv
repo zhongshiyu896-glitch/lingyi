@@ -1,0 +1,25 @@
+field	value
+task_id	TASK-Z023B-28-FIX-CAND004
+selected_candidate_id	Z023-CAND-004
+fixed_file	07_后端/lingyi_service/tests/test_subcontract_permissions.py
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+contract_fixed	PARTIAL
+carrier_fields_fixed	PARTIAL
+local_gate_fixed	YES
+assertions_weakened	NO
+skip_xfail_deleted_cases	NO
+command	.venv/bin/python -m pytest tests/test_subcontract_permissions.py -q
+command_run_count	1
+exit_code	1
+result	FAIL
+pytest_summary	7 failed, 11 passed, 8 warnings in 1.11s
+stdout_log	03_需求与设计/02_开发计划/task_z023b_28_cand004_fix_stdout.txt
+stopped_after_fail	YES
+continued_fix_after_fail	NO
+git_diff_cached_name_only	EMPTY
+git_diff_check	PASS
+stage_performed	NO
+commit_performed	NO
+push_performed	NO
+production_or_real_business_write	NO
+parked_blockers_released	NO
