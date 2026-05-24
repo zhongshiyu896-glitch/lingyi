@@ -1,0 +1,16 @@
+field	value
+task_id	TASK-Z024B-18-PREP
+role	B Engineer
+source_task_id	TASK-Z024B-17-PREP
+selected_candidate_id	Z024-CAND-003
+candidate_original_fields_copied	YES
+module	style_profit
+route_or_area	app.models.style_profit; tests/test_style_profit_models.py
+source_evidence_exists	YES
+recommended_command	.venv/bin/python -m pytest tests/test_style_profit_models.py -q
+recommended_command_target_exists	YES
+target_test_in_dirty_diff	NO
+recommended_next_task_id	TASK-Z024B-19-IMPL
+run_this_task	NO
+git_diff_cached_name_only	[]
+git_diff_check	PASS

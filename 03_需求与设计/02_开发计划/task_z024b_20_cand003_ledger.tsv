@@ -1,0 +1,88 @@
+path	decision	category	reason	exists
+03_需求与设计/02_开发计划/TASK-Z024B-18-PREP_Z024候选003边界冻结报告.md	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/task_z024b_18_cand003_boundary.json	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/task_z024b_18_cand003_boundary.tsv	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/TASK-Z024B-19-IMPL_Z024候选003单文件验证报告.md	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/task_z024b_19_cand003_result.json	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/task_z024b_19_cand003_result.tsv	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/task_z024b_19_cand003_stdout.txt	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/TASK-Z024B-20-LEDGER-CAND003_Z024候选003账本冻结报告.md	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/task_z024b_20_cand003_freeze.json	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/task_z024b_20_cand003_ledger.json	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+03_需求与设计/02_开发计划/task_z024b_20_cand003_ledger.tsv	YES	cand003_evidence	CAND003 B18/B19/B20 evidence-only artifact allowed for ledger	YES
+06_前端	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+07_后端	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+07_后端/lingyi_service/tests/test_style_profit_models.py	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+07_后端/lingyi_service/app/models/style_profit.py	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-01-PREP_Z024本地候选池重建报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_01_candidate_pool.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_01_candidate_pool.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-17-PREP_Z024剩余候选刷新报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_17_remaining_candidate_refresh.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_17_remaining_candidate_refresh.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-02-PREP_Z024候选001边界冻结报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_02_cand001_boundary.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_02_cand001_boundary.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-03-IMPL_Z024候选001单文件验证报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_03_cand001_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_03_cand001_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_03_cand001_stdout.txt	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-04-LEDGER-CAND001_Z024候选001账本冻结报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_04_cand001_freeze.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_04_cand001_ledger.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_04_cand001_ledger.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-05-STAGE-CAND001_Z024候选001显式暂存报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_05_cand001_stage_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_05_cand001_stage_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-06-COMMIT-CAND001_Z024候选001提交报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_06_cand001_commit_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_06_cand001_commit_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-07-ARCHIVE-CAND001_Z024候选001归档确认报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_07_cand001_archive_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_07_cand001_archive_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-08-PREP_Z024剩余候选刷新报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_08_remaining_candidate_refresh.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_08_remaining_candidate_refresh.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-09-PREP_Z024候选002边界冻结报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_09_cand002_boundary.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_09_cand002_boundary.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-10-IMPL_Z024候选002单文件验证报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_10_cand002_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_10_cand002_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_10_cand002_stdout.txt	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-11-PREP-CAND002-FAILURE-DIAG_Z024候选002失败定位报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_11_cand002_failure_boundary.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_11_cand002_failure_boundary.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-12-FIX-CAND002_Z024候选002quality-models测试合同修复报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_12_cand002_fix_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_12_cand002_fix_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_12_cand002_fix_stdout.txt	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-13-LEDGER-CAND002_Z024候选002账本冻结报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_13_cand002_freeze.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_13_cand002_ledger.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_13_cand002_ledger.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-14-STAGE-CAND002_Z024候选002显式暂存报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_14_cand002_stage_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_14_cand002_stage_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-15-COMMIT-CAND002_Z024候选002提交报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_15_cand002_commit_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_15_cand002_commit_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/TASK-Z024B-16-ARCHIVE-CAND002_Z024候选002归档确认报告.md	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_16_cand002_archive_result.json	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+03_需求与设计/02_开发计划/task_z024b_16_cand002_archive_result.tsv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+07_后端/lingyi_service/tests/test_sales_inventory_permission.py	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+07_后端/lingyi_service/app/routers/sales_inventory.py	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+07_后端/lingyi_service/tests/test_workshop_worker_permissions.py	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+07_后端/lingyi_service/app/routers/workshop.py	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+07_后端/lingyi_service/app/services/workshop_outbox_service.py	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+.pytest_cache	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO
+.venv	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO
+dist	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO
+node_modules	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO
+tmp	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO
+logs	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO
+.env	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO
+.github	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	YES
+A_ARCHITECT_LOG	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO
+C_AUDIT_RECORDS	NO	excluded_scope	Outside CAND003 evidence-only ledger scope	NO

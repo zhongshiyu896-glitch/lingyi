@@ -1,0 +1,76 @@
+{
+  "task_id": "TASK-Z024B-18-PREP",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z024B-17-PREP",
+  "source_candidate_pool_task_id": "TASK-Z024B-01-PREP",
+  "selected_candidate_id": "Z024-CAND-003",
+  "current_head": "af5fb831bd6dae61eef5dbabbd75c6b0300391d1",
+  "cached_area_empty": true,
+  "refresh_selected_candidate_id": "Z024-CAND-003",
+  "candidate_original_fields_copied": true,
+  "candidate_original_fields": {
+    "candidate_id": "Z024-CAND-003",
+    "module": "style_profit",
+    "route_or_area": "app.models.style_profit; tests/test_style_profit_models.py",
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_style_profit_models.py",
+      "07_后端/lingyi_service/app/models/style_profit.py"
+    ],
+    "risk_level": "LOW",
+    "allowed_scope": "PREP only: freeze one backend service-workdir readonly pytest command for tests/test_style_profit_models.py; no pytest run in this task",
+    "forbidden_scope": "No code edits, no frontend edits, no backend app edits, no test edits, no stage/commit/push/tag/PR/release, no production or ERPNext production writes",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_style_profit_models.py -q",
+    "recommended_next_task_id": "TASK-Z024B-04-PREP",
+    "why_minimal": "Single tracked backend model test file, source evidence exists, target file is clean, and no Z015-Z023 artifact scan hit for this test entry."
+  },
+  "module": "style_profit",
+  "route_or_area": "app.models.style_profit; tests/test_style_profit_models.py",
+  "source_evidence_exists": true,
+  "source_evidence_checked": [
+    {
+      "path": "07_后端/lingyi_service/tests/test_style_profit_models.py",
+      "exists": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/models/style_profit.py",
+      "exists": true
+    }
+  ],
+  "recommended_command": ".venv/bin/python -m pytest tests/test_style_profit_models.py -q",
+  "recommended_command_is_single_file_backend_readonly_pytest": true,
+  "recommended_command_target": "07_后端/lingyi_service/tests/test_style_profit_models.py",
+  "recommended_command_target_exists": true,
+  "target_test_in_dirty_diff": false,
+  "target_test_dirty_diff": [],
+  "recommended_next_task_id": "TASK-Z024B-19-IMPL",
+  "run_this_task": false,
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "git_diff_cached_name_only": [],
+  "git_diff_name_only_frontend": [
+    "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue"
+  ],
+  "git_diff_name_only_backend": [
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+    "07_后端/lingyi_service/tests/test_bom_permissions.py",
+    "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+    "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+    "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+    "07_后端/lingyi_service/tests/test_style_profit_api.py",
+    "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+    "07_后端/lingyi_service/tests/test_workshop_permissions.py"
+  ],
+  "git_diff_check": "PASS",
+  "pytest_npm_browser_build_typecheck_verify_run": false,
+  "code_edits": false,
+  "stage_commit_push": false,
+  "pr_tag_release_cleanup": false,
+  "production_account_erpnext_production_real_business_write": false,
+  "parked_blockers_released": false
+}
