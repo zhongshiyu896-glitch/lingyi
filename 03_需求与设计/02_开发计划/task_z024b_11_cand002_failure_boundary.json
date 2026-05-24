@@ -1,0 +1,101 @@
+{
+  "task_id": "TASK-Z024B-11-PREP-CAND002-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z024B-10-IMPL",
+  "selected_candidate_id": "Z024-CAND-002",
+  "current_head": "c610b646717c3f9ab81fbb88a9e7a1985d65e9b3",
+  "b10_result": "FAIL",
+  "b10_pytest_summary": "6 failed, 2 passed, 1 warning in 0.42s",
+  "failed_case_count": 6,
+  "failed_cases": [
+    {
+      "case": "tests/test_quality_models.py::QualityModelServiceTest::test_finished_goods_source_requires_item_evidence",
+      "error_type": "AttributeError",
+      "key_reason": "_OwnershipSourceValidator overrides QualitySourceValidator.__init__ and does not initialize local_dev_mode before validate_for_payload reads it"
+    },
+    {
+      "case": "tests/test_quality_models.py::QualityModelServiceTest::test_incoming_material_source_requires_company_and_item_ownership",
+      "error_type": "AttributeError",
+      "key_reason": "_OwnershipSourceValidator overrides QualitySourceValidator.__init__ and does not initialize local_dev_mode before validate_for_payload reads it"
+    },
+    {
+      "case": "tests/test_quality_models.py::QualityModelServiceTest::test_invalid_result_fails_closed",
+      "error_type": "pydantic_core.ValidationError",
+      "key_reason": "test helper _request constructs QualityInspectionCreateRequest without current required carrier/schema fields"
+    },
+    {
+      "case": "tests/test_quality_models.py::QualityModelServiceTest::test_qty_mismatch_fails_before_insert",
+      "error_type": "pydantic_core.ValidationError",
+      "key_reason": "test helper _request constructs QualityInspectionCreateRequest without current required carrier/schema fields"
+    },
+    {
+      "case": "tests/test_quality_models.py::QualityModelServiceTest::test_rates_are_zero_when_inspected_qty_is_zero",
+      "error_type": "pydantic_core.ValidationError",
+      "key_reason": "test helper _request constructs QualityInspectionCreateRequest without current required carrier/schema fields"
+    },
+    {
+      "case": "tests/test_quality_models.py::QualityModelServiceTest::test_source_unavailable_fails_closed",
+      "error_type": "pydantic_core.ValidationError",
+      "key_reason": "test helper _request constructs QualityInspectionCreateRequest without current required carrier/schema fields"
+    }
+  ],
+  "missing_fields": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "inspection_ref",
+    "operation"
+  ],
+  "test_contract_issues": [
+    "QualityModelServiceTest._request payload omits current QualityInspectionCreateRequest required fields: request_id, idempotency_key, scenario_tag, source_ref, inspection_ref, operation",
+    "_OwnershipSourceValidator test double does not preserve the QualitySourceValidator local_dev_mode initialization contract"
+  ],
+  "readonly_source_findings": [
+    "app/schemas/quality.py defines QualityInspectionCreateRequest request_id/idempotency_key/scenario_tag/source_ref/inspection_ref/operation as required fields",
+    "app/services/quality_service.py QualitySourceValidator.__init__ initializes local_dev_mode; validate_for_payload reads self.local_dev_mode before source-specific validation",
+    "tests/test_quality_models.py _request helper currently supplies only business model fields and result, not current carrier/schema fields"
+  ],
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_quality_models.py"
+  ],
+  "forbidden_files": [
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "Z015-Z023 已冻结/已提交/已归档产物",
+    "Z024-CAND-001 已提交/已归档产物",
+    "Z024 candidate pool / B08/B09/B10 产物",
+    "A 架构师日志",
+    "C 审计记录",
+    "GitHub/生产配置"
+  ],
+  "recommended_next_task_id": "TASK-Z024B-12-FIX-CAND002",
+  "recommended_next_command": ".venv/bin/python -m pytest tests/test_quality_models.py -q",
+  "run_pytest_this_task": false,
+  "allow_code_edit_next": "ONLY_ALLOWED_FIX_FILE",
+  "readonly_files_checked": [
+    "03_需求与设计/02_开发计划/task_z024b_10_cand002_result.json",
+    "03_需求与设计/02_开发计划/task_z024b_10_cand002_stdout.txt",
+    "03_需求与设计/02_开发计划/task_z024b_10_cand002_result.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z024B-10-IMPL_Z024候选002单文件验证报告.md",
+    "07_后端/lingyi_service/tests/test_quality_models.py",
+    "07_后端/lingyi_service/app/models/quality.py",
+    "07_后端/lingyi_service/app/services/quality_service.py",
+    "07_后端/lingyi_service/app/schemas/quality.py"
+  ],
+  "target_test_dirty_diff": [],
+  "target_app_source_dirty_diff": [],
+  "git_diff_cached_name_only": [],
+  "git_diff_check": "PASS",
+  "forbidden_actions": {
+    "pytest_npm_browser_build_typecheck_verify_run": false,
+    "code_edits": false,
+    "target_test_edits": false,
+    "stage_commit_push": false,
+    "pr_tag_release_cleanup": false,
+    "production_or_real_business_write": false,
+    "parked_blockers_released": false
+  }
+}

@@ -1,0 +1,330 @@
+.FFFF.FF                                                                 [100%]
+=================================== FAILURES ===================================
+__ QualityModelServiceTest.test_finished_goods_source_requires_item_evidence ___
+
+self = <tests.test_quality_models.QualityModelServiceTest testMethod=test_finished_goods_source_requires_item_evidence>
+
+    def test_finished_goods_source_requires_item_evidence(self) -> None:
+        docs = {
+            ("Company", "COMP-A"): {"name": "COMP-A"},
+            ("Item", "ITEM-A"): {"name": "ITEM-A"},
+            ("Stock Entry", "SE-1"): {
+                "name": "SE-1",
+                "company": "COMP-A",
+                "docstatus": 1,
+                "items": [{"item_code": "ITEM-B"}],
+            },
+        }
+        with self.assertRaises(BusinessException) as ctx:
+>           _OwnershipSourceValidator(docs).validate_for_payload(
+                company="COMP-A",
+                item_code="ITEM-A",
+                supplier=None,
+                warehouse=None,
+                source_type="finished_goods",
+                source_id="SE-1",
+            )
+
+tests/test_quality_models.py:211:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def validate_for_payload(
+        self,
+        *,
+        company: str,
+        item_code: str,
+        supplier: str | None,
+        warehouse: str | None,
+        source_type: str,
+        source_id: str | None,
+    ) -> QualitySourceValidationSnapshot:
+        """Validate ERPNext master data and optional external source."""
+>       if self.local_dev_mode:
+           ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: '_OwnershipSourceValidator' object has no attribute 'local_dev_mode'
+
+app/services/quality_service.py:99: AttributeError
+_ QualityModelServiceTest.test_incoming_material_source_requires_company_and_item_ownership _
+
+self = <tests.test_quality_models.QualityModelServiceTest testMethod=test_incoming_material_source_requires_company_and_item_ownership>
+
+    def test_incoming_material_source_requires_company_and_item_ownership(self) -> None:
+        docs = {
+            ("Company", "COMP-A"): {"name": "COMP-A"},
+            ("Item", "ITEM-A"): {"name": "ITEM-A"},
+            ("Supplier", "SUP-A"): {"name": "SUP-A"},
+            ("Purchase Receipt", "PR-1"): {
+                "name": "PR-1",
+                "company": "COMP-A",
+                "supplier": "SUP-A",
+                "docstatus": 1,
+                "items": [{"item_code": "ITEM-A"}],
+            },
+        }
+>       snapshot = _OwnershipSourceValidator(docs).validate_for_payload(
+            company="COMP-A",
+            item_code="ITEM-A",
+            supplier="SUP-A",
+            warehouse=None,
+            source_type="incoming_material",
+            source_id="PR-1",
+        )
+
+tests/test_quality_models.py:177:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_quality_models._OwnershipSourceValidator object at 0x10ac19bd0>
+
+    def validate_for_payload(
+        self,
+        *,
+        company: str,
+        item_code: str,
+        supplier: str | None,
+        warehouse: str | None,
+        source_type: str,
+        source_id: str | None,
+    ) -> QualitySourceValidationSnapshot:
+        """Validate ERPNext master data and optional external source."""
+>       if self.local_dev_mode:
+           ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: '_OwnershipSourceValidator' object has no attribute 'local_dev_mode'
+
+app/services/quality_service.py:99: AttributeError
+___________ QualityModelServiceTest.test_invalid_result_fails_closed ___________
+
+self = <tests.test_quality_models.QualityModelServiceTest testMethod=test_invalid_result_fails_closed>
+
+    def test_invalid_result_fails_closed(self) -> None:
+        with self.SessionLocal() as session:
+            service = QualityService(session=session, source_validator=_FakeSourceValidator())
+            with self.assertRaises(BusinessException) as ctx:
+                service.create_inspection(
+>                   payload=self._request(result="approved"),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    operator="quality.user",
+                    request_id="req-result",
+                )
+
+tests/test_quality_models.py:118:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_quality_models.py:88: in _request
+    return QualityInspectionCreateRequest(**payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def __init__(self, /, **data: Any) -> None:
+        """Create a new model by parsing and validating input data from keyword arguments.
+
+        Raises [`ValidationError`][pydantic_core.ValidationError] if the input data cannot be
+        validated to form a valid model.
+
+        `self` is explicitly positional-only to allow `self` as a field name.
+        """
+        # `__tracebackhide__` tells pytest and some other tools to omit this function from tracebacks
+        __tracebackhide__ = True
+>       validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 6 validation errors for QualityInspectionCreateRequest
+E       request_id
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...), 'result': 'approved'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       idempotency_key
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...), 'result': 'approved'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       scenario_tag
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...), 'result': 'approved'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       source_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...), 'result': 'approved'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       inspection_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...), 'result': 'approved'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       operation
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...), 'result': 'approved'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+.venv/lib/python3.14/site-packages/pydantic/main.py:250: ValidationError
+________ QualityModelServiceTest.test_qty_mismatch_fails_before_insert _________
+
+self = <tests.test_quality_models.QualityModelServiceTest testMethod=test_qty_mismatch_fails_before_insert>
+
+    def test_qty_mismatch_fails_before_insert(self) -> None:
+        with self.SessionLocal() as session:
+            service = QualityService(session=session, source_validator=_FakeSourceValidator())
+            with self.assertRaises(BusinessException) as ctx:
+                service.create_inspection(
+>                   payload=self._request(accepted_qty=Decimal("3"), rejected_qty=Decimal("1")),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    operator="quality.user",
+                    request_id="req-mismatch",
+                )
+
+tests/test_quality_models.py:106:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_quality_models.py:88: in _request
+    return QualityInspectionCreateRequest(**payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def __init__(self, /, **data: Any) -> None:
+        """Create a new model by parsing and validating input data from keyword arguments.
+
+        Raises [`ValidationError`][pydantic_core.ValidationError] if the input data cannot be
+        validated to form a valid model.
+
+        `self` is explicitly positional-only to allow `self` as a field name.
+        """
+        # `__tracebackhide__` tells pytest and some other tools to omit this function from tracebacks
+        __tracebackhide__ = True
+>       validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 6 validation errors for QualityInspectionCreateRequest
+E       request_id
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       idempotency_key
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       scenario_tag
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       source_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       inspection_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       operation
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+.venv/lib/python3.14/site-packages/pydantic/main.py:250: ValidationError
+____ QualityModelServiceTest.test_rates_are_zero_when_inspected_qty_is_zero ____
+
+self = <tests.test_quality_models.QualityModelServiceTest testMethod=test_rates_are_zero_when_inspected_qty_is_zero>
+
+    def test_rates_are_zero_when_inspected_qty_is_zero(self) -> None:
+        with self.SessionLocal() as session:
+            service = QualityService(session=session, source_validator=_FakeSourceValidator())
+            data = service.create_inspection(
+>               payload=self._request(inspected_qty=Decimal("0"), accepted_qty=Decimal("0"), rejected_qty=Decimal("0"), defect_qty=Decimal("0")),
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                operator="quality.user",
+                request_id="req-zero",
+            )
+
+tests/test_quality_models.py:94:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+overrides = {'accepted_qty': Decimal('0'), 'defect_qty': Decimal('0'), 'inspected_qty': Decimal('0'), 'rejected_qty': Decimal('0')}
+payload = {'accepted_qty': Decimal('0'), 'company': 'COMP-A', 'defect_qty': Decimal('0'), 'inspected_qty': Decimal('0'), ...}
+
+    @staticmethod
+    def _request(**overrides) -> QualityInspectionCreateRequest:
+        payload = {
+            "company": "COMP-A",
+            "source_type": "manual",
+            "item_code": "ITEM-A",
+            "inspection_date": date(2026, 4, 16),
+            "inspected_qty": Decimal("5"),
+            "accepted_qty": Decimal("4"),
+            "rejected_qty": Decimal("1"),
+            "defect_qty": Decimal("1"),
+            "result": "partial",
+        }
+        payload.update(overrides)
+>       return QualityInspectionCreateRequest(**payload)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 6 validation errors for QualityInspectionCreateRequest
+E       request_id
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       idempotency_key
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       scenario_tag
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       source_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       inspection_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       operation
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+tests/test_quality_models.py:88: ValidationError
+_________ QualityModelServiceTest.test_source_unavailable_fails_closed _________
+
+self = <tests.test_quality_models.QualityModelServiceTest testMethod=test_source_unavailable_fails_closed>
+
+    def test_source_unavailable_fails_closed(self) -> None:
+        with self.SessionLocal() as session:
+            validator = _FakeSourceValidator(fail=True)
+            service = QualityService(session=session, source_validator=validator)
+            with self.assertRaises(BusinessException) as ctx:
+                service.create_inspection(
+>                   payload=self._request(),
+                            ^^^^^^^^^^^^^^^
+                    operator="quality.user",
+                    request_id="req-source",
+                )
+
+tests/test_quality_models.py:130:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_quality_models.py:88: in _request
+    return QualityInspectionCreateRequest(**payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def __init__(self, /, **data: Any) -> None:
+        """Create a new model by parsing and validating input data from keyword arguments.
+
+        Raises [`ValidationError`][pydantic_core.ValidationError] if the input data cannot be
+        validated to form a valid model.
+
+        `self` is explicitly positional-only to allow `self` as a field name.
+        """
+        # `__tracebackhide__` tells pytest and some other tools to omit this function from tracebacks
+        __tracebackhide__ = True
+>       validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 6 validation errors for QualityInspectionCreateRequest
+E       request_id
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       idempotency_key
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       scenario_tag
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       source_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       inspection_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       operation
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...'), 'result': 'partial'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+.venv/lib/python3.14/site-packages/pydantic/main.py:250: ValidationError
+=============================== warnings summary ===============================
+tests/test_quality_models.py::QualityModelServiceTest::test_db_constraint_rejects_invalid_status
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_quality_models.py::QualityModelServiceTest::test_finished_goods_source_requires_item_evidence
+FAILED tests/test_quality_models.py::QualityModelServiceTest::test_incoming_material_source_requires_company_and_item_ownership
+FAILED tests/test_quality_models.py::QualityModelServiceTest::test_invalid_result_fails_closed
+FAILED tests/test_quality_models.py::QualityModelServiceTest::test_qty_mismatch_fails_before_insert
+FAILED tests/test_quality_models.py::QualityModelServiceTest::test_rates_are_zero_when_inspected_qty_is_zero
+FAILED tests/test_quality_models.py::QualityModelServiceTest::test_source_unavailable_fails_closed
+6 failed, 2 passed, 1 warning in 0.42s

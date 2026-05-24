@@ -1,0 +1,21 @@
+field	value
+task_id	TASK-Z024B-11-PREP-CAND002-FAILURE-DIAG
+role	B Engineer
+source_task_id	TASK-Z024B-10-IMPL
+selected_candidate_id	Z024-CAND-002
+current_head	c610b646717c3f9ab81fbb88a9e7a1985d65e9b3
+b10_result	FAIL
+b10_pytest_summary	6 failed, 2 passed, 1 warning in 0.42s
+failed_case_count	6
+missing_fields	request_id,idempotency_key,scenario_tag,source_ref,inspection_ref,operation
+helper_binding_issue	_OwnershipSourceValidator missing local_dev_mode initialization
+schema_payload_issue	QualityModelServiceTest._request missing current QualityInspectionCreateRequest required carrier/schema fields
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_files	07_后端/lingyi_service/tests/test_quality_models.py
+recommended_next_task_id	TASK-Z024B-12-FIX-CAND002
+recommended_next_command	.venv/bin/python -m pytest tests/test_quality_models.py -q
+run_pytest_this_task	false
+pytest_npm_browser_build_typecheck_verify_run	false
+code_edits	false
+target_test_edits	false
+stage_commit_push	false

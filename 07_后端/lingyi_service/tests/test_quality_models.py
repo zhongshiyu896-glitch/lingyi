@@ -39,6 +39,7 @@ class _FakeSourceValidator:
 class _OwnershipSourceValidator(QualitySourceValidator):
     def __init__(self, docs: dict[tuple[str, str], dict]):
         self.docs = docs
+        self.local_dev_mode = False
 
     def _require_resource(self, doctype: str, name: str, *, require_submitted: bool) -> dict:
         return dict(self.docs[(doctype, name)])
@@ -74,6 +75,12 @@ class QualityModelServiceTest(unittest.TestCase):
     @staticmethod
     def _request(**overrides) -> QualityInspectionCreateRequest:
         payload = {
+            "request_id": "req-quality-model",
+            "idempotency_key": "idem-quality-model",
+            "scenario_tag": "Z003-QUALITY-INSPECTION-20260416-001",
+            "source_ref": "quality-model-source",
+            "inspection_ref": "quality-model-inspection",
+            "operation": "create",
             "company": "COMP-A",
             "source_type": "manual",
             "item_code": "ITEM-A",

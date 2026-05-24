@@ -1,0 +1,38 @@
+{
+  "task_id": "TASK-Z024B-12-FIX-CAND002",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z024-CAND-002",
+  "source_task_id": "TASK-Z024B-11-PREP-CAND002-FAILURE-DIAG",
+  "fixed_file": "07_后端/lingyi_service/tests/test_quality_models.py",
+  "schema_required_fields_fixed": true,
+  "schema_required_fields": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "inspection_ref",
+    "operation"
+  ],
+  "ownership_validator_helper_fixed": true,
+  "assertions_weakened": false,
+  "skip_xfail_deleted_cases": false,
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_quality_models.py -q",
+  "command_run_count": 1,
+  "exit_code": 0,
+  "result": "PASS",
+  "pytest_summary": "8 passed, 1 warning in 0.34s",
+  "stdout_log": "03_需求与设计/02_开发计划/task_z024b_12_cand002_fix_stdout.txt",
+  "git_diff_cached_name_only": [],
+  "git_diff_check": "PASS",
+  "forbidden_actions": {
+    "product_code_edits": false,
+    "backend_app_edits": false,
+    "unrelated_tests_edits": false,
+    "control_plane_edits_outside_allowed_files": false,
+    "stage_commit_push": false,
+    "pr_tag_release_cleanup": false,
+    "production_or_real_business_write": false,
+    "parked_blockers_released": false
+  }
+}

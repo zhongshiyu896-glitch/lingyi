@@ -1,0 +1,24 @@
+field	value
+task_id	TASK-Z024B-09-PREP
+role	B Engineer
+source_task_id	TASK-Z024B-01-PREP
+source_refresh_task_id	TASK-Z024B-08-PREP
+current_head	c610b646717c3f9ab81fbb88a9e7a1985d65e9b3
+cached_area_empty	true
+selected_candidate_id	Z024-CAND-002
+candidate_original_fields_copied	true
+module	quality
+route_or_area	app.models.quality / app.services.quality_service; tests/test_quality_models.py
+source_evidence_exists	true
+recommended_command	.venv/bin/python -m pytest tests/test_quality_models.py -q
+recommended_command_is_single_file_backend_readonly_pytest	true
+recommended_command_target_exists	true
+target_test_in_dirty_diff	false
+candidate_pool_recommended_next_task_id	TASK-Z024B-03-PREP
+recommended_next_task_id	TASK-Z024B-10-IMPL
+run_this_task	false
+git_diff_cached_name_only	[]
+git_diff_check	PASS
+pytest_npm_browser_build_typecheck_verify_run	false
+stage_commit_push	false
+production_or_real_business_write	false
