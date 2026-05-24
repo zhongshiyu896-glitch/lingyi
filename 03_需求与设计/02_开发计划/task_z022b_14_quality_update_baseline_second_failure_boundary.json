@@ -1,0 +1,107 @@
+{
+  "task_id": "TASK-Z022B-14-PREP",
+  "source_task_id": "TASK-Z022B-13-FIX",
+  "selected_candidate_id": "Z022-CAND-002",
+  "command": ".venv/bin/python -m pytest tests/test_quality_update_baseline.py -q",
+  "result": "FAIL",
+  "exit_code": 1,
+  "pytest_summary": "2 failed, 1 warning in 1.04s",
+  "b13_scope_confirmation": {
+    "business_source_changed": false,
+    "backend_allowed_files_only": true,
+    "stopped_without_expanding_scope": true
+  },
+  "second_failure_tests": [
+    {
+      "test": "tests/test_quality_update_baseline.py::QualityUpdateBaselineTest::test_patch_confirmed_rejected_with_403_cancelled_rejected_with_409",
+      "expected_status": 403,
+      "actual_status": 409,
+      "error_code": "QUALITY_INVALID_SOURCE",
+      "likely_message": "LOCAL_GATE_FAIL_CLOSED before status branch",
+      "assertion": "self.assertEqual(confirmed_resp.status_code, 403)"
+    },
+    {
+      "test": "tests/test_quality_update_baseline.py::QualityUpdateBaselineTest::test_patch_draft_inspection_success",
+      "expected_status": 200,
+      "actual_status": 409,
+      "error_code": "QUALITY_INVALID_SOURCE",
+      "message": "LOCAL_GATE_FAIL_CLOSED:non_local_dev",
+      "assertion": "self.assertEqual(response.status_code, 200, response.text)"
+    }
+  ],
+  "failure_localization": {
+    "classification_reason": "B13 filled the update schema required body fields, but the test fixture still does not satisfy the current local write gate. quality.py requires APP_ENV=development and LINGYI_DB_URL=sqlite:///./lingyi_service.local.db before validating carrier fields or reaching the update status branch. The current test helper also lacks source_doc and does not build request_id/X-Request-ID with the Z003 carrier pattern expected by the router, so the remaining boundary is a test contract/fixture update rather than a product implementation change.",
+    "test_contract_or_fixture_gap": true,
+    "local_gate_condition_missing": true,
+    "payload_source_ref_or_source_doc_gap": true,
+    "permission_status_expectation_outdated": false,
+    "business_source_defect": false,
+    "evidence_sufficient": true,
+    "references": [
+      {
+        "file": "07_后端/lingyi_service/tests/test_quality_update_baseline.py",
+        "functions": [
+          "QualityUpdateBaselineTest._required_update_fields",
+          "QualityUpdateBaselineTest.test_patch_draft_inspection_success",
+          "QualityUpdateBaselineTest.test_patch_confirmed_rejected_with_403_cancelled_rejected_with_409"
+        ],
+        "finding": "B13 added required body fields, but the test still has no isolated local gate environment and no source_doc/current request carrier construction."
+      },
+      {
+        "file": "07_后端/lingyi_service/app/routers/quality.py",
+        "functions": [
+          "_ensure_local_dev_write_gate",
+          "_validate_quality_gate_common",
+          "_validate_quality_request_id_gate"
+        ],
+        "finding": "Local write gate requires APP_ENV=development and LINGYI_DB_URL=sqlite:///./lingyi_service.local.db; current gate also validates source_doc and request carrier format before status branches."
+      },
+      {
+        "file": "07_后端/lingyi_service/app/routers/quality.py",
+        "functions": [
+          "_write_existing"
+        ],
+        "finding": "_validate_quality_existing_gate runs before the confirmed/cancelled/draft status branch that would return 403/409/200."
+      },
+      {
+        "file": "07_后端/lingyi_service/app/schemas/quality.py",
+        "schema": "QualityInspectionUpdateRequest",
+        "finding": "source_doc remains optional at schema level but required by router gate common validation as missing_source_doc if absent."
+      },
+      {
+        "file": "07_后端/lingyi_service/app/services/quality_service.py",
+        "functions": [
+          "QualityService.update_inspection"
+        ],
+        "finding": "Draft update service path is not reached while local gate fails closed."
+      }
+    ]
+  },
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_quality_update_baseline.py"
+  ],
+  "recommended_next_task_id": "TASK-Z022B-15-FIX",
+  "single_regression_command": ".venv/bin/python -m pytest tests/test_quality_update_baseline.py -q",
+  "recommended_fix_boundary": {
+    "allowed": [
+      "Add isolated local gate environment for this test only: APP_ENV=development and LINGYI_DB_URL=sqlite:///./lingyi_service.local.db",
+      "Align update test payload carriers with current router gate, including source_doc/source_ref and request_id/X-Request-ID carrier pattern",
+      "Preserve existing semantic assertions for confirmed 403, cancelled 409, and draft 200"
+    ],
+    "forbidden": [
+      "Do not modify quality router/schema/service/model/crud",
+      "Do not delete tests or add skip/xfail",
+      "Do not weaken assertions to arbitrary 2xx/4xx"
+    ]
+  },
+  "run_this_task": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "pytest_or_npm_run": false,
+  "source_or_test_edited": false,
+  "service_cleanup_or_kill_run": false,
+  "forbidden_actions_detected": false
+}

@@ -1,0 +1,26 @@
+field	value
+task_id	TASK-Z022B-13-FIX
+source_task_id	TASK-Z022B-12-PREP
+selected_candidate_id	Z022-CAND-002
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+fixed_file	07_后端/lingyi_service/tests/test_quality_update_baseline.py
+changed_file_count	1
+business_source_changed	false
+frontend_changed	false
+backend_allowed_files_only	true
+skip_xfail_or_deleted_cases	false
+weak_assertion_added	false
+command	.venv/bin/python -m pytest tests/test_quality_update_baseline.py -q
+command_run_count	1
+exit_code	1
+result	FAIL
+pytest_summary	2 failed, 1 warning in 1.04s
+stdout_log	03_需求与设计/02_开发计划/task_z022b_13_quality_update_baseline_fix_stdout.txt
+post_fix_failed_tests	tests/test_quality_update_baseline.py::QualityUpdateBaselineTest::test_patch_confirmed_rejected_with_403_cancelled_rejected_with_409; tests/test_quality_update_baseline.py::QualityUpdateBaselineTest::test_patch_draft_inspection_success
+post_fix_status_delta	confirmed expected 403 actual 409; draft expected 200 actual 409 QUALITY_INVALID_SOURCE LOCAL_GATE_FAIL_CLOSED:non_local_dev
+stopped_without_expanding_scope	true
+staged_performed	false
+commit_performed	false
+push_performed	false
+service_cleanup_or_kill_run	false
+forbidden_actions_detected	false

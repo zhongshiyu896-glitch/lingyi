@@ -1,0 +1,32 @@
+field	value
+task_id	TASK-Z022B-10-PREP
+source_task_id	TASK-Z022B-09-PREP-FIX1
+selected_candidate_id	Z022-CAND-002
+boundary_status	BOUNDARY_FROZEN_NOT_RUN
+z022_cand_001_status	LEDGER_FROZEN_NOT_STAGED
+b09_fix1_selected_candidate_id	Z022-CAND-002
+b09_fix1_recommended_next_task_id	TASK-Z022B-10-PREP
+b09_fix1_json_tsv_alignment	PASS
+candidate_original_fields_copied	true
+candidate_id	Z022-CAND-002
+module	quality
+route_or_area	/api/quality/inspections update baseline
+source_evidence	07_后端/lingyi_service/tests/test_quality_update_baseline.py; 07_后端/lingyi_service/app/routers/quality.py; 07_后端/lingyi_service/app/services/quality_service.py; 07_后端/lingyi_service/app/schemas/quality.py
+risk_level	LOW
+allowed_scope	single backend readonly pytest evidence collection for tests/test_quality_update_baseline.py
+forbidden_scope	source/test/config/dependency edits; other pytest; npm/browser/build/typecheck/verify; service lifecycle; stage/commit/push
+candidate_pool_recommended_next_task_id	TASK-Z022B-06-PREP
+why_minimal	single quality update baseline test file with direct router/service/schema evidence; no frontend or runtime action required
+source_evidence_files	07_后端/lingyi_service/tests/test_quality_update_baseline.py; 07_后端/lingyi_service/app/routers/quality.py; 07_后端/lingyi_service/app/services/quality_service.py; 07_后端/lingyi_service/app/schemas/quality.py
+source_evidence_exists	true
+duplicate_with_frozen_candidates	false
+recommended_next_task_id	TASK-Z022B-11-IMPL
+recommended_workdir	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service
+recommended_command	.venv/bin/python -m pytest tests/test_quality_update_baseline.py -q
+recommended_next_command	.venv/bin/python -m pytest tests/test_quality_update_baseline.py -q
+expected_evidence_type	single-file backend readonly pytest result
+run_this_task	false
+stage_allowed	false
+commit_allowed	false
+push_allowed	false
+project_completion_claimed	false

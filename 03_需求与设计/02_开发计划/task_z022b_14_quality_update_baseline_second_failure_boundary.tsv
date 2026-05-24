@@ -1,0 +1,28 @@
+field	value
+task_id	TASK-Z022B-14-PREP
+source_task_id	TASK-Z022B-13-FIX
+selected_candidate_id	Z022-CAND-002
+command	.venv/bin/python -m pytest tests/test_quality_update_baseline.py -q
+result	FAIL
+exit_code	1
+pytest_summary	2 failed, 1 warning in 1.04s
+b13_business_source_changed	false
+b13_backend_allowed_files_only	true
+failed_test_1	tests/test_quality_update_baseline.py::QualityUpdateBaselineTest::test_patch_confirmed_rejected_with_403_cancelled_rejected_with_409
+failed_test_1_expected_actual	403/409
+failed_test_1_error_code	QUALITY_INVALID_SOURCE
+failed_test_2	tests/test_quality_update_baseline.py::QualityUpdateBaselineTest::test_patch_draft_inspection_success
+failed_test_2_expected_actual	200/409
+failed_test_2_error_code	QUALITY_INVALID_SOURCE
+failed_test_2_message	LOCAL_GATE_FAIL_CLOSED:non_local_dev
+localization_conclusion	TEST_FIXTURE_LOCAL_GATE_AND_CARRIER_CONTRACT_GAP
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_files	07_后端/lingyi_service/tests/test_quality_update_baseline.py
+recommended_next_task_id	TASK-Z022B-15-FIX
+single_regression_command	.venv/bin/python -m pytest tests/test_quality_update_baseline.py -q
+recommended_fix_boundary	Add isolated APP_ENV/LINGYI_DB_URL local gate env and align source_doc/source_ref/request carrier in test file only
+run_this_task	false
+stage_allowed	false
+commit_allowed	false
+push_allowed	false
+project_completion_claimed	false

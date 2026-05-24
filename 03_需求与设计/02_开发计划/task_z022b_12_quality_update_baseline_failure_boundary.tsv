@@ -1,0 +1,25 @@
+field	value
+task_id	TASK-Z022B-12-PREP
+source_task_id	TASK-Z022B-11-IMPL
+selected_candidate_id	Z022-CAND-002
+command	.venv/bin/python -m pytest tests/test_quality_update_baseline.py -q
+result	FAIL
+exit_code	1
+pytest_summary	2 failed, 1 warning in 0.92s
+failed_test_1	tests/test_quality_update_baseline.py::QualityUpdateBaselineTest::test_patch_confirmed_rejected_with_403_cancelled_rejected_with_409
+failed_test_1_expected_actual	403/422
+failed_test_1_assertion	self.assertEqual(confirmed_resp.status_code, 403)
+failed_test_2	tests/test_quality_update_baseline.py::QualityUpdateBaselineTest::test_patch_draft_inspection_success
+failed_test_2_expected_actual	200/422
+failed_test_2_assertion	self.assertEqual(response.status_code, 200, response.text)
+missing_fields	request_id; idempotency_key; scenario_tag; source_ref; inspection_ref; source_type; item_code; operation
+localization_conclusion	TEST_CONTRACT_STALE_REQUIRED_CARRIER_FIELDS
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_files	07_后端/lingyi_service/tests/test_quality_update_baseline.py
+recommended_next_task_id	TASK-Z022B-13-FIX
+single_regression_command	.venv/bin/python -m pytest tests/test_quality_update_baseline.py -q
+run_this_task	false
+stage_allowed	false
+commit_allowed	false
+push_allowed	false
+project_completion_claimed	false

@@ -1,0 +1,42 @@
+{
+  "task_id": "TASK-Z022B-16-LEDGER-RETRY1",
+  "freeze_status": "LEDGER_FROZEN_NOT_STAGED",
+  "selected_candidate_id": "Z022-CAND-002",
+  "source_task_id": "TASK-Z022B-15-FIX-RETRY1",
+  "initial_result": "FAIL",
+  "first_failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "first_fix_result": "FAIL",
+  "second_failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "final_fix_result": "PASS",
+  "pytest_summary": "2 passed, 1 warning in 0.98s",
+  "fixed_file_count": 1,
+  "fixed_files": [
+    "07_后端/lingyi_service/tests/test_quality_update_baseline.py"
+  ],
+  "business_source_changed": false,
+  "frontend_changed": false,
+  "backend_allowed_files_only": true,
+  "test_changed": true,
+  "wrong_task_artifacts_reused": false,
+  "defect_baseline_artifacts_included": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "project_completion_claimed": false,
+  "service_cleanup_or_kill_run": false,
+  "evidence_chain": {
+    "boundary": "03_需求与设计/02_开发计划/task_z022b_10_candidate002_readonly_boundary.json",
+    "initial_result": "03_需求与设计/02_开发计划/task_z022b_11_quality_update_baseline_result.json",
+    "first_failure_boundary": "03_需求与设计/02_开发计划/task_z022b_12_quality_update_baseline_failure_boundary.json",
+    "first_fix_result": "03_需求与设计/02_开发计划/task_z022b_13_quality_update_baseline_fix_result.json",
+    "second_failure_boundary": "03_需求与设计/02_开发计划/task_z022b_14_quality_update_baseline_second_failure_boundary.json",
+    "final_fix_result": "03_需求与设计/02_开发计划/task_z022b_15_retry1_quality_update_baseline_second_fix_result.json"
+  },
+  "ledger": {
+    "ledger_json": "03_需求与设计/02_开发计划/task_z022b_16_retry1_commit_candidate_ledger.json",
+    "ledger_tsv": "03_需求与设计/02_开发计划/task_z022b_16_retry1_commit_candidate_ledger.tsv",
+    "yes_count": 27,
+    "no_count": 37,
+    "yes_no_intersection_empty": true
+  }
+}
