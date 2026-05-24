@@ -1,0 +1,40 @@
+{
+  "task_id": "TASK-Z025B-11-LEDGER-CAND002",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z025-CAND-002",
+  "boundary_task_id": "TASK-Z025B-09-PREP",
+  "impl_task_id": "TASK-Z025B-10-IMPL",
+  "source_pass_task_id": "TASK-Z025B-10-IMPL",
+  "impl_result": "PASS",
+  "final_pytest_summary": "37 passed, 1 warning in 0.20s",
+  "target_test": "07_后端/lingyi_service/tests/test_style_profit_source_mapping.py",
+  "evidence_only": true,
+  "frontend_changed": false,
+  "backend_changed": false,
+  "shared_engineer_log_changed": false,
+  "stage_allowed": false,
+  "commit_allowed": false,
+  "push_allowed": false,
+  "evidence_chain": [
+    {
+      "task_id": "TASK-Z025B-09-PREP",
+      "type": "boundary",
+      "result": "BOUNDARY_FROZEN"
+    },
+    {
+      "task_id": "TASK-Z025B-10-IMPL",
+      "type": "single_file_pytest",
+      "result": "PASS",
+      "pytest_summary": "37 passed, 1 warning in 0.20s"
+    }
+  ],
+  "forbidden_actions": {
+    "pytest_npm_browser_build_typecheck_verify_run": false,
+    "code_edits_beyond_ledger_artifacts": false,
+    "stage_commit_push": false,
+    "pr_tag_release_cleanup": false,
+    "production_or_real_business_write": false,
+    "parked_blockers_released": false
+  },
+  "next_role": "C Auditor"
+}

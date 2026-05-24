@@ -1,0 +1,42 @@
+path	decision	category	reason	exists
+03_需求与设计/02_开发计划/TASK-Z025B-09-PREP_Z025候选002边界冻结报告.md	YES	cand002_boundary_evidence	CAND002 B09 boundary report	true
+03_需求与设计/02_开发计划/task_z025b_09_cand002_boundary.json	YES	cand002_boundary_evidence	CAND002 B09 boundary JSON	true
+03_需求与设计/02_开发计划/task_z025b_09_cand002_boundary.tsv	YES	cand002_boundary_evidence	CAND002 B09 boundary TSV	true
+03_需求与设计/02_开发计划/TASK-Z025B-10-IMPL_Z025候选002单文件验证报告.md	YES	cand002_impl_evidence	CAND002 B10 single-file pytest report	true
+03_需求与设计/02_开发计划/task_z025b_10_cand002_result.json	YES	cand002_impl_evidence	CAND002 B10 result JSON	true
+03_需求与设计/02_开发计划/task_z025b_10_cand002_result.tsv	YES	cand002_impl_evidence	CAND002 B10 result TSV	true
+03_需求与设计/02_开发计划/task_z025b_10_cand002_stdout.txt	YES	cand002_impl_evidence	CAND002 B10 pytest stdout evidence	true
+03_需求与设计/02_开发计划/TASK-Z025B-11-LEDGER-CAND002_Z025候选002账本冻结报告.md	YES	cand002_ledger_evidence	CAND002 B11 ledger report	true
+03_需求与设计/02_开发计划/task_z025b_11_cand002_freeze.json	YES	cand002_ledger_evidence	CAND002 B11 freeze JSON	true
+03_需求与设计/02_开发计划/task_z025b_11_cand002_ledger.json	YES	cand002_ledger_evidence	CAND002 B11 ledger JSON	true
+03_需求与设计/02_开发计划/task_z025b_11_cand002_ledger.tsv	YES	cand002_ledger_evidence	CAND002 B11 ledger TSV	true
+06_前端/**	NO	frontend_scope	Frontend files forbidden for evidence-only CAND002 ledger	n/a
+07_后端/**	NO	backend_scope	Backend files forbidden for evidence-only CAND002 ledger	n/a
+07_后端/lingyi_service/tests/test_style_profit_source_mapping.py	NO	target_test_scope	Target test was read-only validated, not part of evidence-only ledger YES	true
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	shared_engineer_log	Shared engineer log is forbidden	true
+03_需求与设计/02_开发计划/TASK-Z0{15..24}*	NO	prior_z015_z024_artifacts	Prior frozen/committed/archived artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/task_z0{15..24}*	NO	prior_z015_z024_artifacts	Prior frozen/committed/archived artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/*Z025候选001*	NO	z025_cand001_artifacts	Z025-CAND-001 already committed/archive artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/task_z025b_02_cand001_*	NO	z025_cand001_artifacts	Z025-CAND-001 boundary artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/task_z025b_03_cand001_*	NO	z025_cand001_artifacts	Z025-CAND-001 impl artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/task_z025b_04_cand001_*	NO	z025_cand001_artifacts	Z025-CAND-001 ledger artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/task_z025b_05_cand001_*	NO	z025_cand001_artifacts	Z025-CAND-001 stage artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/task_z025b_06_cand001_*	NO	z025_cand001_artifacts	Z025-CAND-001 commit artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/task_z025b_07_cand001_*	NO	z025_cand001_artifacts	Z025-CAND-001 archive artifacts are out of CAND002 scope	pattern
+03_需求与设计/02_开发计划/TASK-Z025B-01-PREP_Z025本地候选池重建报告.md	NO	z025_candidate_pool	Z025 candidate pool is forbidden for CAND002 ledger YES	true
+03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.json	NO	z025_candidate_pool	Z025 candidate pool JSON is forbidden for CAND002 ledger YES	true
+03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.tsv	NO	z025_candidate_pool	Z025 candidate pool TSV is forbidden for CAND002 ledger YES	true
+03_需求与设计/02_开发计划/TASK-Z025B-08-PREP_Z025剩余候选刷新报告.md	NO	z025_refresh	B08 refresh is excluded by task boundary	true
+03_需求与设计/02_开发计划/task_z025b_08_remaining_candidate_refresh.json	NO	z025_refresh	B08 refresh JSON is excluded by task boundary	true
+03_需求与设计/02_开发计划/task_z025b_08_remaining_candidate_refresh.tsv	NO	z025_refresh	B08 refresh TSV is excluded by task boundary	true
+Z025-CAND-003 future candidate scope	NO	future_candidate_scope	Future candidate artifacts and evidence are out of CAND002 scope	n/a
+Z025-CAND-004 future candidate scope	NO	future_candidate_scope	Future candidate artifacts and evidence are out of CAND002 scope	n/a
+Z025-CAND-005 future candidate scope	NO	future_candidate_scope	Future candidate artifacts and evidence are out of CAND002 scope	n/a
+.pytest_cache/**	NO	cache_runtime	Pytest cache is forbidden	pattern
+.venv/**	NO	dependency_runtime	Virtualenv dependency tree is forbidden	pattern
+node_modules/**	NO	dependency_runtime	Node dependency tree is forbidden	pattern
+dist/**	NO	build_output	Build output is forbidden	pattern
+07_后端/lingyi_service/*.db	NO	local_runtime	Local runtime databases are forbidden	pattern
+03_需求与设计/01_架构设计/*	NO	architect_records	A architect logs and records are out of B evidence scope	pattern
+03_需求与设计/05_审计记录/*	NO	auditor_records	C audit records are out of B evidence scope	pattern
+.github/**	NO	github_config	GitHub configuration is forbidden	pattern
