@@ -1,0 +1,277 @@
+{
+  "task_id": "TASK-Z023B-13-LEDGER-CAND002",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z023-CAND-002",
+  "source_task_id": "TASK-Z023B-12-IMPL",
+  "freeze_json": "03_需求与设计/02_开发计划/task_z023b_13_cand002_freeze.json",
+  "ledger_total": 43,
+  "yes_count": 11,
+  "no_count": 32,
+  "yes_no_intersection": [],
+  "yes_backend_paths": [],
+  "yes_frontend_paths": [],
+  "engineer_log_in_yes": false,
+  "z015_z022_artifacts_in_yes": false,
+  "cand001_artifacts_in_yes": false,
+  "cand003_cand005_artifacts_in_yes": false,
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-11-PREP_Z023候选002边界冻结报告.md",
+      "decision": "YES",
+      "category": "cand002_b11_report",
+      "reason": "CAND002 boundary evidence report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_11_cand002_boundary.json",
+      "decision": "YES",
+      "category": "cand002_b11_json",
+      "reason": "CAND002 boundary evidence JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_11_cand002_boundary.tsv",
+      "decision": "YES",
+      "category": "cand002_b11_tsv",
+      "reason": "CAND002 boundary evidence TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-12-IMPL_Z023候选002单文件验证报告.md",
+      "decision": "YES",
+      "category": "cand002_b12_report",
+      "reason": "CAND002 single-file pytest validation report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_12_cand002_result.json",
+      "decision": "YES",
+      "category": "cand002_b12_json",
+      "reason": "CAND002 single-file pytest result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_12_cand002_result.tsv",
+      "decision": "YES",
+      "category": "cand002_b12_tsv",
+      "reason": "CAND002 single-file pytest result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_12_cand002_stdout.txt",
+      "decision": "YES",
+      "category": "cand002_b12_stdout",
+      "reason": "CAND002 single-file pytest stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-13-LEDGER-CAND002_Z023候选002提交候选账本报告.md",
+      "decision": "YES",
+      "category": "cand002_b13_report",
+      "reason": "CAND002 evidence-only ledger report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_13_cand002_freeze.json",
+      "decision": "YES",
+      "category": "cand002_b13_freeze_json",
+      "reason": "CAND002 freeze JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_13_cand002_commit_candidate_ledger.json",
+      "decision": "YES",
+      "category": "cand002_b13_ledger_json",
+      "reason": "CAND002 commit candidate ledger JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_13_cand002_commit_candidate_ledger.tsv",
+      "decision": "YES",
+      "category": "cand002_b13_ledger_tsv",
+      "reason": "CAND002 commit candidate ledger TSV"
+    },
+    {
+      "path": "06_前端",
+      "decision": "NO",
+      "category": "frontend",
+      "reason": "Frontend is out of CAND002 evidence-only ledger scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/app",
+      "decision": "NO",
+      "category": "backend_app",
+      "reason": "Backend app/product code is forbidden for CAND002 evidence-only ledger"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_production_permissions.py",
+      "decision": "NO",
+      "category": "cand002_target_test",
+      "reason": "CAND002 was readonly PASS; target test was not changed and is excluded from evidence-only YES"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_bom_permissions.py",
+      "decision": "NO",
+      "category": "other_test",
+      "reason": "Unrelated historical dirty test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+      "decision": "NO",
+      "category": "other_test",
+      "reason": "Unrelated historical dirty test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+      "decision": "NO",
+      "category": "other_test",
+      "reason": "Unrelated historical dirty test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+      "decision": "NO",
+      "category": "other_test",
+      "reason": "Unrelated historical dirty test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_style_profit_api.py",
+      "decision": "NO",
+      "category": "other_test",
+      "reason": "Unrelated historical dirty test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+      "decision": "NO",
+      "category": "other_test",
+      "reason": "Unrelated historical dirty test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_workshop_permissions.py",
+      "decision": "NO",
+      "category": "other_test",
+      "reason": "Unrelated historical dirty test file"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_sales_inventory_permissions.py",
+      "decision": "NO",
+      "category": "cand003_source_evidence",
+      "reason": "Z023-CAND-003 source evidence is out of CAND002 ledger scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_subcontract_permissions.py",
+      "decision": "NO",
+      "category": "cand004_source_evidence",
+      "reason": "Z023-CAND-004 source evidence is out of CAND002 ledger scope"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_workshop_wage_permissions.py",
+      "decision": "NO",
+      "category": "cand005_source_evidence",
+      "reason": "Z023-CAND-005 source evidence is out of CAND002 ledger scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/工程师会话日志.md",
+      "decision": "NO",
+      "category": "shared_engineer_log",
+      "reason": "Shared engineer log is explicitly excluded"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z015..TASK-Z022*",
+      "decision": "NO",
+      "category": "z015_z022_artifacts",
+      "reason": "Prior frozen/committed/archived artifacts are out of CAND002 ledger scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z015..task_z022*",
+      "decision": "NO",
+      "category": "z015_z022_artifacts",
+      "reason": "Prior frozen/committed/archived artifacts are out of CAND002 ledger scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-02..09*",
+      "decision": "NO",
+      "category": "cand001_artifacts",
+      "reason": "Z023-CAND-001 committed/archive artifacts are out of CAND002 ledger scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_02..09*",
+      "decision": "NO",
+      "category": "cand001_artifacts",
+      "reason": "Z023-CAND-001 committed/archive artifacts are out of CAND002 ledger scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-01-PREP_Z023本地候选池报告.md",
+      "decision": "NO",
+      "category": "z023_candidate_pool",
+      "reason": "Z023 candidate pool is excluded from CAND002 ledger YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_01_local_candidate_pool.json",
+      "decision": "NO",
+      "category": "z023_candidate_pool",
+      "reason": "Z023 candidate pool JSON is excluded from CAND002 ledger YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_01_local_candidate_pool.tsv",
+      "decision": "NO",
+      "category": "z023_candidate_pool",
+      "reason": "Z023 candidate pool TSV is excluded from CAND002 ledger YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z023B-10-PREP_Z023剩余候选刷新报告.md",
+      "decision": "NO",
+      "category": "remaining_refresh",
+      "reason": "Remaining refresh control artifact is excluded from CAND002 ledger YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_10_remaining_candidate_refresh.json",
+      "decision": "NO",
+      "category": "remaining_refresh",
+      "reason": "Remaining refresh JSON is excluded from CAND002 ledger YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z023b_10_remaining_candidate_refresh.tsv",
+      "decision": "NO",
+      "category": "remaining_refresh",
+      "reason": "Remaining refresh TSV is excluded from CAND002 ledger YES"
+    },
+    {
+      "path": ".pytest_cache",
+      "decision": "NO",
+      "category": "cache",
+      "reason": "Cache/runtime files must not be committed"
+    },
+    {
+      "path": "07_后端/lingyi_service/.pytest_cache",
+      "decision": "NO",
+      "category": "cache",
+      "reason": "Pytest cache must not be committed"
+    },
+    {
+      "path": "07_后端/lingyi_service/.venv",
+      "decision": "NO",
+      "category": "dependency_runtime",
+      "reason": "Virtual environment must not be committed"
+    },
+    {
+      "path": "07_后端/lingyi_service/lingyi_service.local.db",
+      "decision": "NO",
+      "category": "local_runtime",
+      "reason": "Local runtime database must not be committed"
+    },
+    {
+      "path": "dist",
+      "decision": "NO",
+      "category": "build_output",
+      "reason": "Build output must not be committed"
+    },
+    {
+      "path": "node_modules",
+      "decision": "NO",
+      "category": "dependency_runtime",
+      "reason": "Node dependencies must not be committed"
+    },
+    {
+      "path": "00_交接与日志/HANDOVER_STATUS.md",
+      "decision": "NO",
+      "category": "control_plane",
+      "reason": "Non-candidate control-plane file is out of scope"
+    },
+    {
+      "path": "03_需求与设计/01_架构设计/架构师会话日志.md",
+      "decision": "NO",
+      "category": "architect_log",
+      "reason": "A architect log is explicitly excluded"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+path	decision	category	reason
+03_需求与设计/02_开发计划/TASK-Z023B-11-PREP_Z023候选002边界冻结报告.md	YES	cand002_b11_report	CAND002 boundary evidence report
+03_需求与设计/02_开发计划/task_z023b_11_cand002_boundary.json	YES	cand002_b11_json	CAND002 boundary evidence JSON
+03_需求与设计/02_开发计划/task_z023b_11_cand002_boundary.tsv	YES	cand002_b11_tsv	CAND002 boundary evidence TSV
+03_需求与设计/02_开发计划/TASK-Z023B-12-IMPL_Z023候选002单文件验证报告.md	YES	cand002_b12_report	CAND002 single-file pytest validation report
+03_需求与设计/02_开发计划/task_z023b_12_cand002_result.json	YES	cand002_b12_json	CAND002 single-file pytest result JSON
+03_需求与设计/02_开发计划/task_z023b_12_cand002_result.tsv	YES	cand002_b12_tsv	CAND002 single-file pytest result TSV
+03_需求与设计/02_开发计划/task_z023b_12_cand002_stdout.txt	YES	cand002_b12_stdout	CAND002 single-file pytest stdout
+03_需求与设计/02_开发计划/TASK-Z023B-13-LEDGER-CAND002_Z023候选002提交候选账本报告.md	YES	cand002_b13_report	CAND002 evidence-only ledger report
+03_需求与设计/02_开发计划/task_z023b_13_cand002_freeze.json	YES	cand002_b13_freeze_json	CAND002 freeze JSON
+03_需求与设计/02_开发计划/task_z023b_13_cand002_commit_candidate_ledger.json	YES	cand002_b13_ledger_json	CAND002 commit candidate ledger JSON
+03_需求与设计/02_开发计划/task_z023b_13_cand002_commit_candidate_ledger.tsv	YES	cand002_b13_ledger_tsv	CAND002 commit candidate ledger TSV
+06_前端	NO	frontend	Frontend is out of CAND002 evidence-only ledger scope
+07_后端/lingyi_service/app	NO	backend_app	Backend app/product code is forbidden for CAND002 evidence-only ledger
+07_后端/lingyi_service/tests/test_production_permissions.py	NO	cand002_target_test	CAND002 was readonly PASS; target test was not changed and is excluded from evidence-only YES
+07_后端/lingyi_service/tests/test_bom_permissions.py	NO	other_test	Unrelated historical dirty test file
+07_后端/lingyi_service/tests/test_logging_sanitization.py	NO	other_test	Unrelated historical dirty test file
+07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	NO	other_test	Unrelated historical dirty test file
+07_后端/lingyi_service/tests/test_request_id_sanitization.py	NO	other_test	Unrelated historical dirty test file
+07_后端/lingyi_service/tests/test_style_profit_api.py	NO	other_test	Unrelated historical dirty test file
+07_后端/lingyi_service/tests/test_subcontract_company_permission.py	NO	other_test	Unrelated historical dirty test file
+07_后端/lingyi_service/tests/test_workshop_permissions.py	NO	other_test	Unrelated historical dirty test file
+07_后端/lingyi_service/tests/test_sales_inventory_permissions.py	NO	cand003_source_evidence	Z023-CAND-003 source evidence is out of CAND002 ledger scope
+07_后端/lingyi_service/tests/test_subcontract_permissions.py	NO	cand004_source_evidence	Z023-CAND-004 source evidence is out of CAND002 ledger scope
+07_后端/lingyi_service/tests/test_workshop_wage_permissions.py	NO	cand005_source_evidence	Z023-CAND-005 source evidence is out of CAND002 ledger scope
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	shared_engineer_log	Shared engineer log is explicitly excluded
+03_需求与设计/02_开发计划/TASK-Z015..TASK-Z022*	NO	z015_z022_artifacts	Prior frozen/committed/archived artifacts are out of CAND002 ledger scope
+03_需求与设计/02_开发计划/task_z015..task_z022*	NO	z015_z022_artifacts	Prior frozen/committed/archived artifacts are out of CAND002 ledger scope
+03_需求与设计/02_开发计划/TASK-Z023B-02..09*	NO	cand001_artifacts	Z023-CAND-001 committed/archive artifacts are out of CAND002 ledger scope
+03_需求与设计/02_开发计划/task_z023b_02..09*	NO	cand001_artifacts	Z023-CAND-001 committed/archive artifacts are out of CAND002 ledger scope
+03_需求与设计/02_开发计划/TASK-Z023B-01-PREP_Z023本地候选池报告.md	NO	z023_candidate_pool	Z023 candidate pool is excluded from CAND002 ledger YES
+03_需求与设计/02_开发计划/task_z023b_01_local_candidate_pool.json	NO	z023_candidate_pool	Z023 candidate pool JSON is excluded from CAND002 ledger YES
+03_需求与设计/02_开发计划/task_z023b_01_local_candidate_pool.tsv	NO	z023_candidate_pool	Z023 candidate pool TSV is excluded from CAND002 ledger YES
+03_需求与设计/02_开发计划/TASK-Z023B-10-PREP_Z023剩余候选刷新报告.md	NO	remaining_refresh	Remaining refresh control artifact is excluded from CAND002 ledger YES
+03_需求与设计/02_开发计划/task_z023b_10_remaining_candidate_refresh.json	NO	remaining_refresh	Remaining refresh JSON is excluded from CAND002 ledger YES
+03_需求与设计/02_开发计划/task_z023b_10_remaining_candidate_refresh.tsv	NO	remaining_refresh	Remaining refresh TSV is excluded from CAND002 ledger YES
+.pytest_cache	NO	cache	Cache/runtime files must not be committed
+07_后端/lingyi_service/.pytest_cache	NO	cache	Pytest cache must not be committed
+07_后端/lingyi_service/.venv	NO	dependency_runtime	Virtual environment must not be committed
+07_后端/lingyi_service/lingyi_service.local.db	NO	local_runtime	Local runtime database must not be committed
+dist	NO	build_output	Build output must not be committed
+node_modules	NO	dependency_runtime	Node dependencies must not be committed
+00_交接与日志/HANDOVER_STATUS.md	NO	control_plane	Non-candidate control-plane file is out of scope
+03_需求与设计/01_架构设计/架构师会话日志.md	NO	architect_log	A architect log is explicitly excluded

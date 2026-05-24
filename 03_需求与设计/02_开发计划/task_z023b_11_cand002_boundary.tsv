@@ -1,0 +1,2 @@
+selected_candidate_id	source_task_id	current_head	cached_area_empty	candidate_original_fields_copied	source_evidence_exists	candidate_pool_recommended_command	recommended_command_target_exists	target_test_dirty_before_task	recommended_next_task_id	workdir	run_this_task
+Z023-CAND-002	TASK-Z023B-10-PREP	184b25623c8a26ba9fc7b6b9cbfe7a262ed04589	YES	YES	YES	.venv/bin/python -m pytest tests/test_production_permissions.py -q	YES	NO	TASK-Z023B-12-IMPL	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service	NO
