@@ -1,0 +1,22 @@
+field	value
+task_id	TASK-Z025B-28-FIX-CAND004-SECOND
+role	B Engineer
+selected_candidate	Z025-CAND-004
+source_task	TASK-Z025B-27-PREP-CAND004-SECOND-FAILURE-DIAG
+current_head	c6f375b6113e2c9a7d2a9caaf646936ac8976818
+fixed_file	07_后端/lingyi_service/tests/test_production_plan.py
+failure_classification	TEST_CONTRACT_UPDATE_ALLOWED
+remaining_contract_fixed	YES
+command	.venv/bin/python -m pytest tests/test_production_plan.py -q
+command_run_count	1
+exit_code	0
+pytest_summary	17 passed, 18 warnings in 1.15s
+result	PASS
+stdout_log	03_需求与设计/02_开发计划/task_z025b_28_cand004_second_fix_stdout.txt
+assertions_weakened	NO
+skip_xfail_deleted_cases	NO
+backend_app_edits	NO
+frontend_edits	NO
+unrelated_tests_edits	NO
+stage_commit_push_tag_pr_release	NO
+reset_checkout_stash_cleanup	NO

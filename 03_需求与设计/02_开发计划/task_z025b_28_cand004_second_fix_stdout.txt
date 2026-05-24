@@ -1,0 +1,20 @@
+.................                                                        [100%]
+=============================== warnings summary ===============================
+tests/test_production_plan.py::ProductionPlanTest::test_create_plan_audit_write_failed_returns_audit_write_failed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_production_plan.py: 12 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_service.py:2148: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_and_create_work_order_creates_local_outbox_candidate
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_service.py:1279: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    checked_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+17 passed, 18 warnings in 1.15s

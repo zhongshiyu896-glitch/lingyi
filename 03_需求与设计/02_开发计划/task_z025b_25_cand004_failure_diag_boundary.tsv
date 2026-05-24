@@ -1,0 +1,31 @@
+field	value
+task_id	TASK-Z025B-25-PREP-CAND004-FAILURE-DIAG
+role	B Engineer
+selected_candidate	Z025-CAND-004
+source_result_task	TASK-Z025B-24-IMPL
+current_head	c6f375b6113e2c9a7d2a9caaf646936ac8976818
+failed_command	.venv/bin/python -m pytest tests/test_production_plan.py -q
+failed_summary	17 failed, 1 warning in 1.08s
+failed_cases_count	17
+failure_pattern	HTTP 409 PRODUCTION_IDEMPOTENCY_CONFLICT dominates before intended production branches; downstream cases miss plan_id after create conflict.
+readonly_source_evidence	B24 result/stdout; test_production_plan.py; production router/service/model/schema
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_production_plan.py
+recommended_next_task	TASK-Z025B-26-FIX-CAND004
+run_this_task	NO
+test_helper_sets_app_env_test	YES
+test_headers_omit_x_request_id	YES
+test_create_payload_omits_scenario_tag	YES
+test_create_payload_omits_operation	YES
+test_create_payload_omits_bom_id	YES
+test_create_payload_omits_sales_order_item	YES
+test_idempotency_key_does_not_include_scenario_tag	YES
+service_requires_local_dev_gate	APP_ENV=development and LINGYI_DB_URL=sqlite:///./lingyi_service.local.db
+service_requires_create_carriers	scenario_tag,bom_id,operation=create,sales_order_item,idempotency_key containing scenario_tag,X-Request-ID containing scenario_tag
+business_source_change_required	NO
+code_test_edits	NO
+tests_build_typecheck_npm_browser	NO
+stage_commit_push_tag_pr_release	NO
+reset_checkout_stash_cleanup	NO
+production_readback_go_live_project_completion	NO
+next_role	C Auditor

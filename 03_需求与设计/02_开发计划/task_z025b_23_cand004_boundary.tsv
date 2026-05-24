@@ -1,0 +1,25 @@
+field	value
+task_id	TASK-Z025B-23-PREP
+role	B Engineer
+source_task	TASK-Z025B-22-PREP
+current_head	c6f375b6113e2c9a7d2a9caaf646936ac8976818
+selected_candidate	Z025-CAND-004
+candidate_original_fields_copied	YES
+module	production
+route_or_area	production plan local API and outbox baseline
+risk_level	LOW_LOCAL_READONLY
+source_evidence_missing	[]
+recommended_command	.venv/bin/python -m pytest tests/test_production_plan.py -q
+recommended_command_target	07_后端/lingyi_service/tests/test_production_plan.py
+recommended_command_target_exists	YES
+target_test_dirty_diff	NO
+candidate_pool_recommended_next_task_id	TASK-Z025B-05-PREP
+next_task	TASK-Z025B-24-IMPL
+run_this_task	NO
+git_diff_check	PASS
+code_edits	NO
+tests_build_typecheck_npm_browser	NO
+stage_commit_push_tag_pr_release	NO
+reset_checkout_stash_cleanup	NO
+production_readback_go_live_project_completion	NO
+next_role	C Auditor

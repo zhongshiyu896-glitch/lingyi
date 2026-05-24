@@ -1,0 +1,193 @@
+......F....F.F..F                                                        [100%]
+=================================== FAILURES ===================================
+_ ProductionPlanTest.test_create_plan_rejects_missing_sales_order_item_carrier _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_rejects_missing_sales_order_item_carrier>
+
+    def test_create_plan_rejects_missing_sales_order_item_carrier(self) -> None:
+        so = ERPNextSalesOrder(
+            name="SO-TEST-001",
+            docstatus=1,
+            status="To Deliver",
+            company="COMP-A",
+            customer="CUST-A",
+            items=(
+                ERPNextSalesOrderItem(name="SOI-001", item_code="ITEM-A", qty=Decimal("10")),
+                ERPNextSalesOrderItem(name="SOI-002", item_code="ITEM-A", qty=Decimal("20")),
+            ),
+        )
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=so):
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(
+                    idempotency_key="idem-pp-004",
+                    planned_qty="10",
+                    sales_order_item="SOI-MISSING",
+                ),
+            )
+
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 404 != 409
+
+tests/test_production_plan.py:393: AssertionError
+_ ProductionPlanTest.test_create_work_order_candidate_returns_unified_envelope _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_work_order_candidate_returns_unified_envelope>
+
+    def test_create_work_order_candidate_returns_unified_envelope(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-create-wo-required", planned_qty="12"),
+            )
+        plan_id = create_response.json()["data"]["plan_id"]
+
+        frozen_response = self.client.post(
+            f"/api/production/plans/{plan_id}/create-work-order",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json={
+                **self._create_work_order_payload(
+                    plan_id=plan_id,
+                    idempotency_key="idem-create-wo-frozen",
+                ),
+                "fg_warehouse": "FG-WH",
+                "wip_warehouse": "WIP-WH",
+                "start_date": "2026-04-13",
+            },
+        )
+        self.assertEqual(frozen_response.status_code, 200)
+        payload = frozen_response.json()
+        self.assertEqual(payload["code"], "0")
+        self.assertEqual(payload["message"], "success")
+        self.assertIn("data", payload)
+        self.assertGreater(int(payload["data"]["outbox_id"]), 0)
+
+        detail_response = self.client.get(
+            f"/api/production/plans/{plan_id}",
+            headers=self._headers(),
+        )
+        self.assertEqual(detail_response.status_code, 200)
+        detail = detail_response.json()["data"]
+        self.assertTrue(detail["write_entry_frozen"])
+>       self.assertIn("TASK-015E", detail["write_entry_frozen_reason"])
+E       AssertionError: 'TASK-015E' not found in '受控写门禁：create-work-order 与 sync-job-cards 仅允许 local-dev + local sqlite + scenario carrier 完整校验。'
+
+tests/test_production_plan.py:665: AssertionError
+_ ProductionPlanTest.test_material_check_and_create_work_order_creates_local_outbox_candidate _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_material_check_and_create_work_order_creates_local_outbox_candidate>
+
+    def test_material_check_and_create_work_order_creates_local_outbox_candidate(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-006", planned_qty="12"),
+            )
+
+        self.assertEqual(create_response.status_code, 200)
+        plan_id = create_response.json()["data"]["plan_id"]
+
+        check_response = self.client.post(
+            f"/api/production/plans/{plan_id}/material-check",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._material_check_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-material-check-001",
+            ),
+        )
+        self.assertEqual(check_response.status_code, 200)
+        self.assertEqual(check_response.json()["data"]["snapshot_count"], 1)
+        self.assertEqual(check_response.json()["data"]["items"][0]["warehouse"], "WIP Warehouse - LY")
+        self.assertIsNotNone(check_response.json()["data"]["items"][0]["checked_at"])
+
+        outbox_response = self.client.post(
+            f"/api/production/plans/{plan_id}/create-work-order",
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._create_work_order_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-create-wo-001",
+            ),
+        )
+        self.assertEqual(outbox_response.status_code, 200)
+        self.assertEqual(outbox_response.json()["code"], "0")
+>       self.assertGreater(int(outbox_response.json()["data"]["outbox_id"]), 0)
+E       AssertionError: 0 not greater than 0
+
+tests/test_production_plan.py:502: AssertionError
+______ ProductionPlanTest.test_plan_detail_returns_work_order_link_fields ______
+
+self = <sqlalchemy.engine.base.Connection object at 0x10cd97110>
+dialect = <sqlalchemy.dialects.sqlite.pysqlite.SQLiteDialect_pysqlite object at 0x1089047d0>
+context = <sqlalchemy.dialects.sqlite.base.SQLiteExecutionContext object at 0x10cd74750>
+statement = <sqlalchemy.dialects.sqlite.base.SQLiteCompiler object at 0x10cc038a0>
+parameters = [(1, 'WO-DETAIL-001', 1, 'Submitted', 'succeeded', '2026-04-13 09:30:00.000000', ...)]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        effective_parameters = parameters[0]
+>       self.dialect.do_execute(cursor, str_statement, effective_parameters, context)
+E       sqlite3.IntegrityError: UNIQUE constraint failed: ly_production_work_order_link.plan_id
+
+.venv/lib/python3.14/site-packages/sqlalchemy/engine/base.py:1967:
+
+The above exception was the direct cause of the following exception:
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_plan_detail_returns_work_order_link_fields>
+
+    def test_plan_detail_returns_work_order_link_fields(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-wo-link-detail", planned_qty="12"),
+            )
+        plan_id = int(create_response.json()["data"]["plan_id"])
+
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionWorkOrderLink(
+                    plan_id=plan_id,
+                    work_order="WO-DETAIL-001",
+                    erpnext_docstatus=1,
+                    erpnext_status="Submitted",
+                    sync_status="succeeded",
+                    last_synced_at=datetime(2026, 4, 13, 9, 30, 0),
+                    created_by="seed",
+                )
+            )
+>           session.commit()
+E           sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) UNIQUE constraint failed: ly_production_work_order_link.plan_id
+
+tests/test_production_plan.py:536: IntegrityError
+=============================== warnings summary ===============================
+tests/test_production_plan.py::ProductionPlanTest::test_create_plan_audit_write_failed_returns_audit_write_failed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_production_plan.py: 12 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_service.py:2148: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+tests/test_production_plan.py::ProductionPlanTest::test_material_check_and_create_work_order_creates_local_outbox_candidate
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_service.py:1279: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    checked_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_rejects_missing_sales_order_item_carrier
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_work_order_candidate_returns_unified_envelope
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_material_check_and_create_work_order_creates_local_outbox_candidate
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_plan_detail_returns_work_order_link_fields
+4 failed, 13 passed, 18 warnings in 1.45s

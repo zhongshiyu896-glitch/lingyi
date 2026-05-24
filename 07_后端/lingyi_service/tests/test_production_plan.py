@@ -36,6 +36,9 @@ from app.services.erpnext_production_adapter import ERPNextSalesOrderItem
 class ProductionPlanTest(unittest.TestCase):
     """Validate production plan creation rules and outbox baseline."""
 
+    CREATE_SCENARIO_TAG = "Z003-PROD-PLAN-20260413-001"
+    DETAIL_SCENARIO_TAG = "Z003-PROD-PLAN-DETAIL-20260413-001"
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.engine = create_engine(
@@ -97,7 +100,8 @@ class ProductionPlanTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
@@ -105,12 +109,26 @@ class ProductionPlanTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyProductionPlanMaterial).delete()
             session.query(LyProductionWorkOrderOutbox).delete()
+            session.query(LyProductionWorkOrderLink).delete()
             session.query(LyProductionPlan).delete()
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Production Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "prod.plan.user", "X-LY-Dev-Roles": role}
+    def _request_id(scenario_tag: str) -> str:
+        return f"req-{scenario_tag}"
+
+    @staticmethod
+    def _headers(
+        role: str = "Production Manager",
+        *,
+        scenario_tag: str | None = None,
+    ) -> dict[str, str]:
+        tag = scenario_tag or ProductionPlanTest.CREATE_SCENARIO_TAG
+        return {
+            "X-LY-Dev-User": "prod.plan.user",
+            "X-LY-Dev-Roles": role,
+            "X-Request-ID": ProductionPlanTest._request_id(tag),
+        }
 
     @staticmethod
     def _sales_order(*, qty: str = "100", docstatus: int = 1, status: str = "To Deliver") -> ERPNextSalesOrder:
@@ -131,24 +149,74 @@ class ProductionPlanTest(unittest.TestCase):
         idempotency_key: str,
         planned_qty: str = "10",
         planned_start_date: str | None = None,
-    ) -> dict[str, str]:
+        scenario_tag: str | None = None,
+        sales_order_item: str = "SOI-001",
+        bom_id: int = 101,
+    ) -> dict[str, str | int]:
+        tag = scenario_tag or ProductionPlanTest.CREATE_SCENARIO_TAG
         payload = {
             "sales_order": "SO-TEST-001",
+            "sales_order_item": sales_order_item,
             "item_code": "ITEM-A",
+            "bom_id": bom_id,
             "planned_qty": planned_qty,
-            "idempotency_key": idempotency_key,
+            "scenario_tag": tag,
+            "operation": "create",
+            "idempotency_key": f"{tag}-{idempotency_key}",
+            "company": "COMP-A",
         }
         if planned_start_date:
             payload["planned_start_date"] = planned_start_date
         return payload
 
     @staticmethod
-    def _create_work_order_payload(*, idempotency_key: str) -> dict[str, str]:
+    def _plan_action_carriers(
+        *,
+        plan_id: int,
+        idempotency_key: str,
+        operation: str,
+        scenario_tag: str | None = None,
+    ) -> dict[str, str | int]:
+        tag = scenario_tag or ProductionPlanTest.DETAIL_SCENARIO_TAG
         return {
+            "scenario_tag": tag,
+            "operation": operation,
+            "plan_id": int(plan_id),
+            "sales_order": "SO-TEST-001",
+            "sales_order_item": "SOI-001",
+            "item_code": "ITEM-A",
+            "bom_id": 101,
+            "idempotency_key": f"{tag}-{idempotency_key}",
+            "request_id": ProductionPlanTest._request_id(tag),
+        }
+
+    @staticmethod
+    def _material_check_payload(
+        *,
+        plan_id: int,
+        idempotency_key: str,
+        warehouse: str | None = "WIP Warehouse - LY",
+    ) -> dict[str, str | int | None]:
+        return {
+            **ProductionPlanTest._plan_action_carriers(
+                plan_id=plan_id,
+                idempotency_key=idempotency_key,
+                operation="material_check",
+            ),
+            "warehouse": warehouse,
+        }
+
+    @staticmethod
+    def _create_work_order_payload(*, plan_id: int, idempotency_key: str) -> dict[str, str | int]:
+        return {
+            **ProductionPlanTest._plan_action_carriers(
+                plan_id=plan_id,
+                idempotency_key=idempotency_key,
+                operation="create_work_order",
+            ),
             "fg_warehouse": "FG-WH-001",
             "wip_warehouse": "WIP-WH-001",
             "start_date": "2026-04-13",
-            "idempotency_key": idempotency_key,
         }
 
     def _set_plan_status(self, *, plan_id: int, status: str) -> None:
@@ -300,7 +368,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(cancelled_response.status_code, 409)
         self.assertEqual(cancelled_response.json()["code"], "PRODUCTION_SO_CLOSED_OR_CANCELLED")
 
-    def test_create_plan_rejects_ambiguous_sales_order_item(self) -> None:
+    def test_create_plan_rejects_missing_sales_order_item_carrier(self) -> None:
         so = ERPNextSalesOrder(
             name="SO-TEST-001",
             docstatus=1,
@@ -316,11 +384,15 @@ class ProductionPlanTest(unittest.TestCase):
             response = self.client.post(
                 "/api/production/plans",
                 headers=self._headers(),
-                json=self._payload(idempotency_key="idem-pp-004", planned_qty="10"),
+                json=self._payload(
+                    idempotency_key="idem-pp-004",
+                    planned_qty="10",
+                    sales_order_item="SOI-MISSING",
+                ),
             )
 
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.json()["code"], "PRODUCTION_SO_ITEM_AMBIGUOUS")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["code"], "PRODUCTION_SO_ITEM_NOT_FOUND")
 
     def test_create_plan_rejects_when_planned_qty_exceeded(self) -> None:
         with patch.object(
@@ -407,8 +479,11 @@ class ProductionPlanTest(unittest.TestCase):
 
         check_response = self.client.post(
             f"/api/production/plans/{plan_id}/material-check",
-            headers=self._headers(),
-            json={"warehouse": "WIP Warehouse - LY"},
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._material_check_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-material-check-001",
+            ),
         )
         self.assertEqual(check_response.status_code, 200)
         self.assertEqual(check_response.json()["data"]["snapshot_count"], 1)
@@ -417,8 +492,11 @@ class ProductionPlanTest(unittest.TestCase):
 
         outbox_response = self.client.post(
             f"/api/production/plans/{plan_id}/create-work-order",
-            headers=self._headers(),
-            json=self._create_work_order_payload(idempotency_key="idem-create-wo-001"),
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._create_work_order_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-create-wo-001",
+            ),
         )
         self.assertEqual(outbox_response.status_code, 200)
         self.assertEqual(outbox_response.json()["code"], "0")
@@ -470,7 +548,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(data["sync_status"], "succeeded")
         self.assertIsNotNone(data["last_synced_at"])
         self.assertTrue(data["write_entry_frozen"])
-        self.assertIn("TASK-015E", data["write_entry_frozen_reason"])
+        self.assertIn("受控写门禁", data["write_entry_frozen_reason"])
         self.assertIn("sync-job-cards", data["write_entry_frozen_reason"])
         self.assertIn("create-work-order", data["write_entry_frozen_reason"])
         self.assertNotIn("普通前端仍冻结 create-work-order / sync-job-cards", data["write_entry_frozen_reason"])
@@ -486,8 +564,12 @@ class ProductionPlanTest(unittest.TestCase):
 
         response = self.client.post(
             f"/api/production/plans/{plan_id}/material-check",
-            headers=self._headers(),
-            json={},
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._material_check_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-material-warehouse-required",
+                warehouse=None,
+            ),
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "PRODUCTION_WAREHOUSE_REQUIRED")
@@ -512,8 +594,11 @@ class ProductionPlanTest(unittest.TestCase):
             self._set_plan_status(plan_id=plan_id, status=status)
             response = self.client.post(
                 f"/api/production/plans/{plan_id}/material-check",
-                headers=self._headers(),
-                json={"warehouse": "WIP Warehouse - LY"},
+                headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+                json=self._material_check_payload(
+                    plan_id=plan_id,
+                    idempotency_key=f"idem-material-status-{status}",
+                ),
             )
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["code"], "0")
@@ -532,8 +617,11 @@ class ProductionPlanTest(unittest.TestCase):
         self._set_plan_status(plan_id=plan_id, status="cancelled")
         response = self.client.post(
             f"/api/production/plans/{plan_id}/material-check",
-            headers=self._headers(),
-            json={"warehouse": "WIP Warehouse - LY"},
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
+            json=self._material_check_payload(
+                plan_id=plan_id,
+                idempotency_key="idem-material-status-invalid",
+            ),
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "PRODUCTION_MATERIAL_CHECK_STATUS_INVALID")
@@ -550,12 +638,15 @@ class ProductionPlanTest(unittest.TestCase):
 
         frozen_response = self.client.post(
             f"/api/production/plans/{plan_id}/create-work-order",
-            headers=self._headers(),
+            headers=self._headers(scenario_tag=self.DETAIL_SCENARIO_TAG),
             json={
+                **self._create_work_order_payload(
+                    plan_id=plan_id,
+                    idempotency_key="idem-create-wo-frozen",
+                ),
                 "fg_warehouse": "FG-WH",
                 "wip_warehouse": "WIP-WH",
                 "start_date": "2026-04-13",
-                "idempotency_key": "idem-create-wo-frozen",
             },
         )
         self.assertEqual(frozen_response.status_code, 200)
@@ -572,7 +663,7 @@ class ProductionPlanTest(unittest.TestCase):
         self.assertEqual(detail_response.status_code, 200)
         detail = detail_response.json()["data"]
         self.assertTrue(detail["write_entry_frozen"])
-        self.assertIn("TASK-015E", detail["write_entry_frozen_reason"])
+        self.assertIn("受控写门禁", detail["write_entry_frozen_reason"])
         self.assertIn("sync-job-cards", detail["write_entry_frozen_reason"])
         self.assertIn("create-work-order", detail["write_entry_frozen_reason"])
         self.assertNotIn("普通前端仍冻结 create-work-order / sync-job-cards", detail["write_entry_frozen_reason"])

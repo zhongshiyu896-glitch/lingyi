@@ -1,0 +1,157 @@
+{
+  "task_id": "TASK-Z025B-25-PREP-CAND004-FAILURE-DIAG",
+  "role": "B Engineer",
+  "selected_candidate": "Z025-CAND-004",
+  "source_result_task": "TASK-Z025B-24-IMPL",
+  "current_head": "c6f375b6113e2c9a7d2a9caaf646936ac8976818",
+  "failed_command": ".venv/bin/python -m pytest tests/test_production_plan.py -q",
+  "failed_summary": "17 failed, 1 warning in 1.08s",
+  "failed_cases_count": 17,
+  "failure_pattern": "All create-plan dependent cases fail before the intended production business branch. Actual responses are dominated by HTTP 409 with PRODUCTION_IDEMPOTENCY_CONFLICT; downstream material/work-order/detail cases then fail with missing plan_id because the create response is a conflict envelope.",
+  "failed_cases": [
+    {
+      "name": "ProductionPlanTest.test_create_plan_audit_write_failed_returns_audit_write_failed",
+      "expected": "HTTP 500 / AUDIT_WRITE_FAILED",
+      "actual": "HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 500"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_database_write_failed_returns_database_write_failed",
+      "expected": "HTTP 500 / DATABASE_WRITE_FAILED",
+      "actual": "HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 500"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_idempotency_conflict_when_payload_changed",
+      "expected": "first create HTTP 200",
+      "actual": "first create HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 200"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_idempotency_conflict_when_planned_start_date_changed",
+      "expected": "first create HTTP 200",
+      "actual": "first create HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 200"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_rejects_ambiguous_sales_order_item",
+      "expected": "PRODUCTION_SO_ITEM_AMBIGUOUS",
+      "actual": "PRODUCTION_IDEMPOTENCY_CONFLICT",
+      "key_assertion_or_error": "wrong error code"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_rejects_bom_item_mismatch",
+      "expected": "PRODUCTION_BOM_ITEM_MISMATCH",
+      "actual": "PRODUCTION_IDEMPOTENCY_CONFLICT",
+      "key_assertion_or_error": "wrong error code"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_rejects_closed_or_cancelled_sales_order",
+      "expected": "PRODUCTION_SO_CLOSED_OR_CANCELLED",
+      "actual": "PRODUCTION_IDEMPOTENCY_CONFLICT",
+      "key_assertion_or_error": "wrong error code"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_rejects_unapproved_sales_order",
+      "expected": "PRODUCTION_SO_NOT_APPROVED",
+      "actual": "PRODUCTION_IDEMPOTENCY_CONFLICT",
+      "key_assertion_or_error": "wrong error code"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_rejects_when_planned_qty_exceeded",
+      "expected": "PRODUCTION_PLANNED_QTY_EXCEEDED",
+      "actual": "PRODUCTION_IDEMPOTENCY_CONFLICT",
+      "key_assertion_or_error": "wrong error code"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_success_and_idempotent_retry",
+      "expected": "HTTP 200",
+      "actual": "HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 200"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_plan_with_planned_start_date_returns_in_list_and_detail",
+      "expected": "HTTP 200",
+      "actual": "HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 200"
+    },
+    {
+      "name": "ProductionPlanTest.test_create_work_order_candidate_returns_unified_envelope",
+      "expected": "create response data.plan_id",
+      "actual": "missing plan_id after conflict response",
+      "key_assertion_or_error": "KeyError: 'plan_id'"
+    },
+    {
+      "name": "ProductionPlanTest.test_material_check_allows_frozen_status_whitelist",
+      "expected": "create response HTTP 200",
+      "actual": "create response HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 200"
+    },
+    {
+      "name": "ProductionPlanTest.test_material_check_and_create_work_order_creates_local_outbox_candidate",
+      "expected": "create response HTTP 200",
+      "actual": "create response HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 200"
+    },
+    {
+      "name": "ProductionPlanTest.test_material_check_rejects_status_outside_whitelist",
+      "expected": "create response HTTP 200",
+      "actual": "create response HTTP 409",
+      "key_assertion_or_error": "AssertionError: 409 != 200"
+    },
+    {
+      "name": "ProductionPlanTest.test_material_check_requires_warehouse",
+      "expected": "create response data.plan_id",
+      "actual": "missing plan_id after conflict response",
+      "key_assertion_or_error": "KeyError: 'plan_id'"
+    },
+    {
+      "name": "ProductionPlanTest.test_plan_detail_returns_work_order_link_fields",
+      "expected": "create response data.plan_id",
+      "actual": "missing plan_id after conflict response",
+      "key_assertion_or_error": "KeyError: 'plan_id'"
+    }
+  ],
+  "readonly_source_evidence": [
+    "03_需求与设计/02_开发计划/task_z025b_24_cand004_result.json",
+    "03_需求与设计/02_开发计划/task_z025b_24_cand004_stdout.txt",
+    "07_后端/lingyi_service/tests/test_production_plan.py",
+    "07_后端/lingyi_service/app/routers/production.py",
+    "07_后端/lingyi_service/app/services/production_service.py",
+    "07_后端/lingyi_service/app/models/production.py",
+    "07_后端/lingyi_service/app/schemas/production.py"
+  ],
+  "diagnosis": {
+    "test_contract_issue": true,
+    "test_helper_sets_app_env_test": true,
+    "test_helper_omits_lingyi_db_url_local_gate": true,
+    "test_headers_omit_x_request_id": true,
+    "test_create_payload_omits_scenario_tag": true,
+    "test_create_payload_omits_operation": true,
+    "test_create_payload_omits_bom_id": true,
+    "test_create_payload_omits_sales_order_item": true,
+    "test_idempotency_key_does_not_include_scenario_tag": true,
+    "service_requires_local_dev_gate": "APP_ENV=development and LINGYI_DB_URL=sqlite:///./lingyi_service.local.db",
+    "service_requires_create_carriers": [
+      "scenario_tag matching ^Z003-PROD-PLAN-\\d{8}-\\d{3}$",
+      "bom_id",
+      "operation=create",
+      "sales_order_item",
+      "idempotency_key containing scenario_tag",
+      "X-Request-ID containing scenario_tag"
+    ],
+    "business_source_change_required": false
+  },
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_production_plan.py",
+  "recommended_next_task": "TASK-Z025B-26-FIX-CAND004",
+  "run_this_task": false,
+  "forbidden_actions": {
+    "code_test_edits": false,
+    "tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  },
+  "next_role": "C Auditor"
+}

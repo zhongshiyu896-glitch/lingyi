@@ -1,0 +1,55 @@
+{
+  "task_id": "TASK-Z025B-26-FIX-CAND004",
+  "role": "B Engineer",
+  "selected_candidate": "Z025-CAND-004",
+  "source_task": "TASK-Z025B-25-PREP-CAND004-FAILURE-DIAG",
+  "current_head": "c6f375b6113e2c9a7d2a9caaf646936ac8976818",
+  "fixed_file": "07_后端/lingyi_service/tests/test_production_plan.py",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "contract_fixed": "PARTIAL_BEFORE_SINGLE_RUN_STOP",
+  "contract_changes": [
+    "set local-dev write gate environment for production plan tests",
+    "added X-Request-ID containing scenario_tag",
+    "added create-plan scenario_tag, operation, sales_order_item, bom_id, company, and scenario-bound idempotency_key",
+    "added material-check and create-work-order plan carrier payload helpers"
+  ],
+  "assertions_weakened": false,
+  "skip_xfail_deleted_cases": false,
+  "validation": {
+    "workdir": "07_后端/lingyi_service",
+    "command": ".venv/bin/python -m pytest tests/test_production_plan.py -q",
+    "command_run_count": 1,
+    "exit_code": 1,
+    "pytest_summary": "4 failed, 13 passed, 18 warnings in 1.45s",
+    "result": "FAIL",
+    "stdout_log": "03_需求与设计/02_开发计划/task_z025b_26_cand004_fix_stdout.txt"
+  },
+  "remaining_failures": [
+    {
+      "test": "ProductionPlanTest.test_create_plan_rejects_missing_sales_order_item_carrier",
+      "summary": "expected 409 but actual status was 404"
+    },
+    {
+      "test": "ProductionPlanTest.test_material_check_and_create_work_order_creates_local_outbox_candidate",
+      "summary": "create-work-order returned outbox_id 0 where the old assertion expected > 0"
+    },
+    {
+      "test": "ProductionPlanTest.test_plan_detail_returns_work_order_link_fields",
+      "summary": "manual insert hit UNIQUE constraint on ly_production_work_order_link.plan_id after prior local work-order link state"
+    },
+    {
+      "test": "ProductionPlanTest.test_create_work_order_candidate_returns_unified_envelope",
+      "summary": "write_entry_frozen_reason no longer contains TASK-015E literal"
+    }
+  ],
+  "forbidden_actions": {
+    "backend_app_edits": false,
+    "frontend_edits": false,
+    "unrelated_tests_edits": false,
+    "tests_build_typecheck_npm_browser_beyond_allowed_command": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  },
+  "next_role": "C Auditor"
+}

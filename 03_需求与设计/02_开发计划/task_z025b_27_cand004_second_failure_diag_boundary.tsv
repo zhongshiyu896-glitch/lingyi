@@ -1,0 +1,19 @@
+field	value
+task_id	TASK-Z025B-27-PREP-CAND004-SECOND-FAILURE-DIAG
+role	B Engineer
+selected_candidate	Z025-CAND-004
+source_result_task	TASK-Z025B-26-FIX-CAND004
+current_head	c6f375b6113e2c9a7d2a9caaf646936ac8976818
+failed_command	.venv/bin/python -m pytest tests/test_production_plan.py -q
+failed_summary	4 failed, 13 passed, 18 warnings in 1.45s
+remaining_failed_cases_count	4
+remaining_failure_pattern	status assertion drift; stale work_order_link fixture state; frozen reason literal drift
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_production_plan.py
+recommended_next_task	TASK-Z025B-28-FIX-CAND004-SECOND
+run_this_task	NO
+backend_source_change_required	NO
+pytest_run	NO
+code_test_edits	NO
+stage_commit_push_tag_pr_release	NO
+reset_checkout_stash_cleanup	NO

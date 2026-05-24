@@ -1,0 +1,387 @@
+FFFFFFFFFFFFFFFFF                                                        [100%]
+=================================== FAILURES ===================================
+_ ProductionPlanTest.test_create_plan_audit_write_failed_returns_audit_write_failed _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_audit_write_failed_returns_audit_write_failed>
+
+    def test_create_plan_audit_write_failed_returns_audit_write_failed(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()), patch(
+            "app.routers.production.AuditService.record_success",
+            side_effect=AuditWriteFailed(),
+        ):
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-audit-failed", planned_qty="10"),
+            )
+
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_production_plan.py:394: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+_ ProductionPlanTest.test_create_plan_database_write_failed_returns_database_write_failed _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_database_write_failed_returns_database_write_failed>
+
+    def test_create_plan_database_write_failed_returns_database_write_failed(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()), patch(
+            "app.routers.production._commit_or_raise_write_error",
+            side_effect=DatabaseWriteFailed(),
+        ):
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-db-failed", planned_qty="10"),
+            )
+
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_production_plan.py:380: AssertionError
+_ ProductionPlanTest.test_create_plan_idempotency_conflict_when_payload_changed _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_idempotency_conflict_when_payload_changed>
+
+    def test_create_plan_idempotency_conflict_when_payload_changed(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            first = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-002", planned_qty="10"),
+            )
+            second = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-002", planned_qty="11"),
+            )
+
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_plan.py:197: AssertionError
+_ ProductionPlanTest.test_create_plan_idempotency_conflict_when_planned_start_date_changed _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_idempotency_conflict_when_planned_start_date_changed>
+
+    def test_create_plan_idempotency_conflict_when_planned_start_date_changed(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            first = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(
+                    idempotency_key="idem-pp-start-date-conflict",
+                    planned_qty="10",
+                    planned_start_date="2026-04-13",
+                ),
+            )
+            second = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(
+                    idempotency_key="idem-pp-start-date-conflict",
+                    planned_qty="10",
+                    planned_start_date="2026-04-14",
+                ),
+            )
+
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_plan.py:222: AssertionError
+____ ProductionPlanTest.test_create_plan_rejects_ambiguous_sales_order_item ____
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_rejects_ambiguous_sales_order_item>
+
+    def test_create_plan_rejects_ambiguous_sales_order_item(self) -> None:
+        so = ERPNextSalesOrder(
+            name="SO-TEST-001",
+            docstatus=1,
+            status="To Deliver",
+            company="COMP-A",
+            customer="CUST-A",
+            items=(
+                ERPNextSalesOrderItem(name="SOI-001", item_code="ITEM-A", qty=Decimal("10")),
+                ERPNextSalesOrderItem(name="SOI-002", item_code="ITEM-A", qty=Decimal("20")),
+            ),
+        )
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=so):
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-004", planned_qty="10"),
+            )
+
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "PRODUCTION_SO_ITEM_AMBIGUOUS")
+E       AssertionError: 'PRODUCTION_IDEMPOTENCY_CONFLICT' != 'PRODUCTION_SO_ITEM_AMBIGUOUS'
+E       - PRODUCTION_IDEMPOTENCY_CONFLICT
+E       + PRODUCTION_SO_ITEM_AMBIGUOUS
+
+tests/test_production_plan.py:323: AssertionError
+________ ProductionPlanTest.test_create_plan_rejects_bom_item_mismatch _________
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_rejects_bom_item_mismatch>
+
+    def test_create_plan_rejects_bom_item_mismatch(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyApparelBom(
+                    id=102,
+                    bom_no="BOM-PROD-002",
+                    item_code="ITEM-B",
+                    version_no="v1",
+                    is_default=False,
+                    status="active",
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
+
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json={
+                    **self._payload(idempotency_key="idem-pp-bom-mismatch", planned_qty="10"),
+                    "bom_id": 102,
+                },
+            )
+
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "PRODUCTION_BOM_ITEM_MISMATCH")
+E       AssertionError: 'PRODUCTION_IDEMPOTENCY_CONFLICT' != 'PRODUCTION_BOM_ITEM_MISMATCH'
+E       - PRODUCTION_IDEMPOTENCY_CONFLICT
+E       + PRODUCTION_BOM_ITEM_MISMATCH
+
+tests/test_production_plan.py:367: AssertionError
+_ ProductionPlanTest.test_create_plan_rejects_closed_or_cancelled_sales_order __
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_rejects_closed_or_cancelled_sales_order>
+
+    def test_create_plan_rejects_closed_or_cancelled_sales_order(self) -> None:
+        with patch.object(
+            ERPNextProductionAdapter,
+            "get_sales_order",
+            return_value=self._sales_order(docstatus=1, status="Closed"),
+        ):
+            closed_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-closed", planned_qty="10"),
+            )
+        self.assertEqual(closed_response.status_code, 409)
+>       self.assertEqual(closed_response.json()["code"], "PRODUCTION_SO_CLOSED_OR_CANCELLED")
+E       AssertionError: 'PRODUCTION_IDEMPOTENCY_CONFLICT' != 'PRODUCTION_SO_CLOSED_OR_CANCELLED'
+E       - PRODUCTION_IDEMPOTENCY_CONFLICT
+E       + PRODUCTION_SO_CLOSED_OR_CANCELLED
+
+tests/test_production_plan.py:288: AssertionError
+______ ProductionPlanTest.test_create_plan_rejects_unapproved_sales_order ______
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_rejects_unapproved_sales_order>
+
+    def test_create_plan_rejects_unapproved_sales_order(self) -> None:
+        with patch.object(
+            ERPNextProductionAdapter,
+            "get_sales_order",
+            return_value=self._sales_order(docstatus=0, status="Draft"),
+        ):
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-003", planned_qty="10"),
+            )
+
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "PRODUCTION_SO_NOT_APPROVED")
+E       AssertionError: 'PRODUCTION_IDEMPOTENCY_CONFLICT' != 'PRODUCTION_SO_NOT_APPROVED'
+E       - PRODUCTION_IDEMPOTENCY_CONFLICT
+E       + PRODUCTION_SO_NOT_APPROVED
+
+tests/test_production_plan.py:272: AssertionError
+____ ProductionPlanTest.test_create_plan_rejects_when_planned_qty_exceeded _____
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_rejects_when_planned_qty_exceeded>
+
+    def test_create_plan_rejects_when_planned_qty_exceeded(self) -> None:
+        with patch.object(
+            ERPNextProductionAdapter,
+            "get_sales_order",
+            return_value=self._sales_order(qty="8"),
+        ):
+            response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-005", planned_qty="10"),
+            )
+
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "PRODUCTION_PLANNED_QTY_EXCEEDED")
+E       AssertionError: 'PRODUCTION_IDEMPOTENCY_CONFLICT' != 'PRODUCTION_PLANNED_QTY_EXCEEDED'
+E       - PRODUCTION_IDEMPOTENCY_CONFLICT
+E       + PRODUCTION_PLANNED_QTY_EXCEEDED
+
+tests/test_production_plan.py:338: AssertionError
+_______ ProductionPlanTest.test_create_plan_success_and_idempotent_retry _______
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_success_and_idempotent_retry>
+
+    def test_create_plan_success_and_idempotent_retry(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            response_1 = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-001", planned_qty="10"),
+            )
+            response_2 = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-001", planned_qty="10"),
+            )
+
+>       self.assertEqual(response_1.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_plan.py:174: AssertionError
+_ ProductionPlanTest.test_create_plan_with_planned_start_date_returns_in_list_and_detail _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_plan_with_planned_start_date_returns_in_list_and_detail>
+
+    def test_create_plan_with_planned_start_date_returns_in_list_and_detail(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(
+                    idempotency_key="idem-pp-with-start-date",
+                    planned_qty="10",
+                    planned_start_date="2026-04-13",
+                ),
+            )
+
+>       self.assertEqual(create_response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_plan.py:238: AssertionError
+_ ProductionPlanTest.test_create_work_order_candidate_returns_unified_envelope _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_create_work_order_candidate_returns_unified_envelope>
+
+    def test_create_work_order_candidate_returns_unified_envelope(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-create-wo-required", planned_qty="12"),
+            )
+>       plan_id = create_response.json()["data"]["plan_id"]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'plan_id'
+
+tests/test_production_plan.py:549: KeyError
+____ ProductionPlanTest.test_material_check_allows_frozen_status_whitelist _____
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_material_check_allows_frozen_status_whitelist>
+
+    def test_material_check_allows_frozen_status_whitelist(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-material-status-whitelist", planned_qty="12"),
+            )
+>       self.assertEqual(create_response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_plan.py:502: AssertionError
+_ ProductionPlanTest.test_material_check_and_create_work_order_creates_local_outbox_candidate _
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_material_check_and_create_work_order_creates_local_outbox_candidate>
+
+    def test_material_check_and_create_work_order_creates_local_outbox_candidate(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-006", planned_qty="12"),
+            )
+
+>       self.assertEqual(create_response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_plan.py:405: AssertionError
+___ ProductionPlanTest.test_material_check_rejects_status_outside_whitelist ____
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_material_check_rejects_status_outside_whitelist>
+
+    def test_material_check_rejects_status_outside_whitelist(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-material-status-invalid", planned_qty="12"),
+            )
+>       self.assertEqual(create_response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_plan.py:529: AssertionError
+__________ ProductionPlanTest.test_material_check_requires_warehouse ___________
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_material_check_requires_warehouse>
+
+    def test_material_check_requires_warehouse(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-warehouse-required", planned_qty="12"),
+            )
+>       plan_id = create_response.json()["data"]["plan_id"]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'plan_id'
+
+tests/test_production_plan.py:485: KeyError
+______ ProductionPlanTest.test_plan_detail_returns_work_order_link_fields ______
+
+self = <tests.test_production_plan.ProductionPlanTest testMethod=test_plan_detail_returns_work_order_link_fields>
+
+    def test_plan_detail_returns_work_order_link_fields(self) -> None:
+        with patch.object(ERPNextProductionAdapter, "get_sales_order", return_value=self._sales_order()):
+            create_response = self.client.post(
+                "/api/production/plans",
+                headers=self._headers(),
+                json=self._payload(idempotency_key="idem-pp-wo-link-detail", planned_qty="12"),
+            )
+>       plan_id = int(create_response.json()["data"]["plan_id"])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'plan_id'
+
+tests/test_production_plan.py:445: KeyError
+=============================== warnings summary ===============================
+tests/test_production_plan.py::ProductionPlanTest::test_create_plan_audit_write_failed_returns_audit_write_failed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_audit_write_failed_returns_audit_write_failed
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_database_write_failed_returns_database_write_failed
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_idempotency_conflict_when_payload_changed
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_idempotency_conflict_when_planned_start_date_changed
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_rejects_ambiguous_sales_order_item
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_rejects_bom_item_mismatch
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_rejects_closed_or_cancelled_sales_order
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_rejects_unapproved_sales_order
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_rejects_when_planned_qty_exceeded
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_success_and_idempotent_retry
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_plan_with_planned_start_date_returns_in_list_and_detail
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_create_work_order_candidate_returns_unified_envelope
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_material_check_allows_frozen_status_whitelist
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_material_check_and_create_work_order_creates_local_outbox_candidate
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_material_check_rejects_status_outside_whitelist
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_material_check_requires_warehouse
+FAILED tests/test_production_plan.py::ProductionPlanTest::test_plan_detail_returns_work_order_link_fields
+17 failed, 1 warning in 1.08s
