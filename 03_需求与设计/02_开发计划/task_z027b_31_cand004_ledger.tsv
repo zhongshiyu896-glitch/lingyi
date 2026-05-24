@@ -1,0 +1,29 @@
+path	decision	reason
+03_需求与设计/02_开发计划/TASK-Z027B-29-PREP_CAND004边界冻结报告.md	YES	CAND004 B29 boundary report
+03_需求与设计/02_开发计划/task_z027b_29_cand004_boundary.json	YES	CAND004 B29 boundary JSON
+03_需求与设计/02_开发计划/task_z027b_29_cand004_boundary.tsv	YES	CAND004 B29 boundary TSV
+03_需求与设计/02_开发计划/TASK-Z027B-30-IMPL_CAND004单文件验证报告.md	YES	CAND004 B30 readonly pytest report
+03_需求与设计/02_开发计划/task_z027b_30_cand004_result.json	YES	CAND004 B30 result JSON
+03_需求与设计/02_开发计划/task_z027b_30_cand004_result.tsv	YES	CAND004 B30 result TSV
+03_需求与设计/02_开发计划/task_z027b_30_cand004_stdout.txt	YES	CAND004 B30 stdout evidence
+03_需求与设计/02_开发计划/TASK-Z027B-31-LEDGER-CAND004_subcontract_list_summary证据账本报告.md	YES	CAND004 B31 ledger report
+03_需求与设计/02_开发计划/task_z027b_31_cand004_freeze.json	YES	CAND004 B31 freeze JSON
+03_需求与设计/02_开发计划/task_z027b_31_cand004_ledger.json	YES	CAND004 B31 ledger JSON
+03_需求与设计/02_开发计划/task_z027b_31_cand004_ledger.tsv	YES	CAND004 B31 ledger TSV
+06_前端/**	NO	Frontend is forbidden for evidence-only CAND004 ledger
+07_后端/**	NO	All backend paths are forbidden for evidence-only CAND004 ledger
+07_后端/lingyi_service/tests/test_subcontract_list_summary.py	NO	Target test is explicitly excluded because B30 passed without test edits
+00_交接与日志/**	NO	Shared engineer logs are forbidden
+03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.json	NO	Z027 candidate pool is forbidden
+03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.tsv	NO	Z027 candidate pool TSV is forbidden
+03_需求与设计/02_开发计划/TASK-Z027B-01-PREP_Z027本地候选池冻结报告.md	NO	Z027 candidate pool report is forbidden
+03_需求与设计/02_开发计划/TASK-Z027B-28-PREP_Z027剩余候选刷新报告.md	NO	B28 refresh is outside CAND004 commit evidence scope
+03_需求与设计/02_开发计划/task_z027b_28_remaining_refresh.json	NO	B28 refresh JSON is outside CAND004 commit evidence scope
+03_需求与设计/02_开发计划/task_z027b_28_remaining_refresh.tsv	NO	B28 refresh TSV is outside CAND004 commit evidence scope
+03_需求与设计/02_开发计划/*cand001*	NO	CAND001 archive/evidence is forbidden
+03_需求与设计/02_开发计划/*cand002*	NO	CAND002 archive/evidence is forbidden
+03_需求与设计/02_开发计划/*cand003*	NO	CAND003 archive/evidence is forbidden
+03_需求与设计/02_开发计划/*cand005*	NO	CAND005 scope is forbidden
+03_需求与设计/02_开发计划/task_z026b_*	NO	Prior cycle Z026 artifacts are forbidden
+03_需求与设计/02_开发计划/task_z015*	NO	Prior cycle Z015 artifacts are forbidden
+**/{cache,runtime,venv,dist,node_modules}/**	NO	Runtime/cache/generated dependency directories are forbidden

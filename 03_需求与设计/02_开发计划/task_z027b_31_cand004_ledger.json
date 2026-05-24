@@ -1,0 +1,175 @@
+{
+  "task_id": "TASK-Z027B-31-LEDGER-CAND004",
+  "role": "B Engineer",
+  "candidate_id": "Z027-CAND-004",
+  "source_boundary_task": "TASK-Z027B-29-PREP",
+  "source_impl_task": "TASK-Z027B-30-IMPL",
+  "current_head": "a5d385b1fff92820a79efec3482a5c34b63e020e",
+  "ledger_total": 28,
+  "yes_count": 11,
+  "no_count": 17,
+  "yes_no_intersection": [],
+  "yes_no_intersection_empty": true,
+  "yes_files_exist": true,
+  "yes_missing_files": [],
+  "yes_git_ignored": [],
+  "backend_yes_paths": [],
+  "frontend_yes_paths": [],
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-29-PREP_CAND004边界冻结报告.md",
+      "decision": "YES",
+      "reason": "CAND004 B29 boundary report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_29_cand004_boundary.json",
+      "decision": "YES",
+      "reason": "CAND004 B29 boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_29_cand004_boundary.tsv",
+      "decision": "YES",
+      "reason": "CAND004 B29 boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-30-IMPL_CAND004单文件验证报告.md",
+      "decision": "YES",
+      "reason": "CAND004 B30 readonly pytest report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_30_cand004_result.json",
+      "decision": "YES",
+      "reason": "CAND004 B30 result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_30_cand004_result.tsv",
+      "decision": "YES",
+      "reason": "CAND004 B30 result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_30_cand004_stdout.txt",
+      "decision": "YES",
+      "reason": "CAND004 B30 stdout evidence"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-31-LEDGER-CAND004_subcontract_list_summary证据账本报告.md",
+      "decision": "YES",
+      "reason": "CAND004 B31 ledger report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_31_cand004_freeze.json",
+      "decision": "YES",
+      "reason": "CAND004 B31 freeze JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_31_cand004_ledger.json",
+      "decision": "YES",
+      "reason": "CAND004 B31 ledger JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_31_cand004_ledger.tsv",
+      "decision": "YES",
+      "reason": "CAND004 B31 ledger TSV"
+    },
+    {
+      "path": "06_前端/**",
+      "decision": "NO",
+      "reason": "Frontend is forbidden for evidence-only CAND004 ledger"
+    },
+    {
+      "path": "07_后端/**",
+      "decision": "NO",
+      "reason": "All backend paths are forbidden for evidence-only CAND004 ledger"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_subcontract_list_summary.py",
+      "decision": "NO",
+      "reason": "Target test is explicitly excluded because B30 passed without test edits"
+    },
+    {
+      "path": "00_交接与日志/**",
+      "decision": "NO",
+      "reason": "Shared engineer logs are forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.json",
+      "decision": "NO",
+      "reason": "Z027 candidate pool is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.tsv",
+      "decision": "NO",
+      "reason": "Z027 candidate pool TSV is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-01-PREP_Z027本地候选池冻结报告.md",
+      "decision": "NO",
+      "reason": "Z027 candidate pool report is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-28-PREP_Z027剩余候选刷新报告.md",
+      "decision": "NO",
+      "reason": "B28 refresh is outside CAND004 commit evidence scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_28_remaining_refresh.json",
+      "decision": "NO",
+      "reason": "B28 refresh JSON is outside CAND004 commit evidence scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z027b_28_remaining_refresh.tsv",
+      "decision": "NO",
+      "reason": "B28 refresh TSV is outside CAND004 commit evidence scope"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/*cand001*",
+      "decision": "NO",
+      "reason": "CAND001 archive/evidence is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/*cand002*",
+      "decision": "NO",
+      "reason": "CAND002 archive/evidence is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/*cand003*",
+      "decision": "NO",
+      "reason": "CAND003 archive/evidence is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/*cand005*",
+      "decision": "NO",
+      "reason": "CAND005 scope is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z026b_*",
+      "decision": "NO",
+      "reason": "Prior cycle Z026 artifacts are forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z015*",
+      "decision": "NO",
+      "reason": "Prior cycle Z015 artifacts are forbidden"
+    },
+    {
+      "path": "**/{cache,runtime,venv,dist,node_modules}/**",
+      "decision": "NO",
+      "reason": "Runtime/cache/generated dependency directories are forbidden"
+    }
+  ],
+  "validation": {
+    "cached_empty": true,
+    "git_diff_check": "PASS",
+    "target_test_dirty_diff": []
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pull_request": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

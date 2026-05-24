@@ -1,0 +1,49 @@
+{
+  "task_id": "TASK-Z027B-31-LEDGER-CAND004",
+  "role": "B Engineer",
+  "candidate_id": "Z027-CAND-004",
+  "current_head": "a5d385b1fff92820a79efec3482a5c34b63e020e",
+  "freeze_summary": "B29 boundary -> B30 PASS -> B31 ledger",
+  "evidence_chain": [
+    {
+      "task_id": "TASK-Z027B-29-PREP",
+      "type": "boundary",
+      "result": "FROZEN",
+      "frozen_command": ".venv/bin/python -m pytest tests/test_subcontract_list_summary.py -q",
+      "target_test": "07_后端/lingyi_service/tests/test_subcontract_list_summary.py"
+    },
+    {
+      "task_id": "TASK-Z027B-30-IMPL",
+      "type": "readonly_pytest",
+      "result": "PASS",
+      "command_run_count": 1,
+      "pytest_summary": "2 passed, 1 warning in 1.03s"
+    },
+    {
+      "task_id": "TASK-Z027B-31-LEDGER-CAND004",
+      "type": "ledger",
+      "result": "FROZEN",
+      "ledger_scope": "evidence-only"
+    }
+  ],
+  "final_result": "PASS",
+  "final_pytest_summary": "2 passed, 1 warning in 1.03s",
+  "target_test_path": "07_后端/lingyi_service/tests/test_subcontract_list_summary.py",
+  "target_test_dirty_diff": [],
+  "backend_files_in_yes": [],
+  "frontend_files_in_yes": [],
+  "cached_empty": true,
+  "git_diff_check": "PASS",
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pull_request": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "tests_build_typecheck_npm_browser": false,
+  "cleanup_reset_checkout_stash": false
+}
