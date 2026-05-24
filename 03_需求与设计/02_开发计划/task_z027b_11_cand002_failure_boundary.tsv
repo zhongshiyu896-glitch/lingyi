@@ -1,0 +1,32 @@
+field	value
+task_id	TASK-Z027B-11-PREP-CAND002-FAILURE-DIAG
+role	B Engineer
+candidate_id	Z027-CAND-002
+source_boundary_task	TASK-Z027B-09-PREP
+source_impl_task	TASK-Z027B-10-IMPL
+current_head	d924557791f94d151d805797b4a4be8ee298f0cb
+cached_empty	true
+failed_summary	1 failed, 1 passed, 1 warning in 1.05s
+failed_case	tests/test_bom_audit.py::BomAuditBehaviorTest::test_operation_audit_failure_returns_audit_write_failed_and_rolls_back
+observed_status	422
+expected_status	500
+failure_pattern	Schema validation returns 422 before intended audit failure branch due stale create BOM test payload missing required carrier fields.
+source_evidence_missing	[]
+target_test_dirty_diff	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_bom_audit.py
+next_task	TASK-Z027B-12-FIX-CAND002
+run_this_task	false
+git_diff_check	PASS
+pytest_run	false
+fix_attempt	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_performed	false
+go_live_performed	false
+project_completion_claimed	false

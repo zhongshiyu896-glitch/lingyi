@@ -38,6 +38,8 @@ class BomAuditBehaviorTest(unittest.TestCase):
     """Validate audit failure behavior for BOM APIs."""
 
     REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+    BOM_SCENARIO_TAG = "Z002-BOM-20260524-002"
+    BOM_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -45,6 +47,7 @@ class BomAuditBehaviorTest(unittest.TestCase):
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ["LINGYI_DB_URL"] = cls.BOM_LOCAL_ALLOWED_DB_URL
 
         cls.engine = create_engine(
             "sqlite+pysqlite://",
@@ -112,13 +115,40 @@ class BomAuditBehaviorTest(unittest.TestCase):
             headers["X-Request-ID"] = request_id
         return headers
 
+    @staticmethod
+    def _carrier_code(value: str) -> str:
+        hash_value = 2166136261
+        for byte in value.strip().encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-4:]
+
+    @classmethod
+    def _create_source_ref(cls) -> str:
+        return f"{cls.BOM_SCENARIO_TAG}-SRC-ITEM-NEW"
+
+    @classmethod
+    def _request_id(cls, *, item_code: str, bom_ref: str, reason: str | None = None) -> str:
+        reason_scope = reason or "NONE"
+        return (
+            f"{cls.BOM_SCENARIO_TAG}-RQ-"
+            f"I{cls._carrier_code(item_code)}-"
+            f"B{cls._carrier_code(bom_ref)}-"
+            f"R{cls._carrier_code(reason_scope)}"
+        )
+
     def _count_bom_rows(self) -> int:
         with self.SessionLocal() as session:
             return session.query(LyApparelBom).count()
 
     def test_operation_audit_failure_returns_audit_write_failed_and_rolls_back(self) -> None:
         before_count = self._count_bom_rows()
+        source_ref = self._create_source_ref()
+        request_id = self._request_id(item_code="ITEM-NEW", bom_ref=source_ref)
         payload = {
+            "scenario_tag": self.BOM_SCENARIO_TAG,
+            "idempotency_key": f"{self.BOM_SCENARIO_TAG}-IDEMP-AUDIT-FAILURE",
+            "source_ref": source_ref,
             "item_code": "ITEM-NEW",
             "version_no": "V1",
             "bom_items": [
@@ -147,7 +177,7 @@ class BomAuditBehaviorTest(unittest.TestCase):
             "record_success",
             side_effect=AuditWriteFailed(),
         ):
-            response = self.client.post("/api/bom/", headers=self._headers(), json=payload)
+            response = self.client.post("/api/bom/", headers=self._headers(request_id=request_id), json=payload)
 
         payload_json = response.json()
         self.assertEqual(response.status_code, 500)

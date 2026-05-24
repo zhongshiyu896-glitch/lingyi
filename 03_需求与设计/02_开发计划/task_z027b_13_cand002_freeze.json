@@ -1,0 +1,55 @@
+{
+  "task_id": "TASK-Z027B-13-LEDGER-CAND002",
+  "role": "B Engineer",
+  "candidate_id": "Z027-CAND-002",
+  "current_head": "d924557791f94d151d805797b4a4be8ee298f0cb",
+  "freeze_summary": {
+    "boundary": {
+      "task": "TASK-Z027B-09-PREP",
+      "frozen_command": ".venv/bin/python -m pytest tests/test_bom_audit.py -q",
+      "target_test": "07_后端/lingyi_service/tests/test_bom_audit.py"
+    },
+    "initial_impl": {
+      "task": "TASK-Z027B-10-IMPL",
+      "result": "FAIL",
+      "pytest_summary": "1 failed, 1 passed, 1 warning in 1.05s",
+      "observed_status": 422,
+      "expected_status": 500
+    },
+    "failure_diag": {
+      "task": "TASK-Z027B-11-PREP-CAND002-FAILURE-DIAG",
+      "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+      "allowed_fix_file": "07_后端/lingyi_service/tests/test_bom_audit.py"
+    },
+    "fix": {
+      "task": "TASK-Z027B-12-FIX-CAND002",
+      "result": "PASS",
+      "pytest_summary": "2 passed, 1 warning in 1.02s",
+      "fixed_file": "07_后端/lingyi_service/tests/test_bom_audit.py"
+    }
+  },
+  "assertion_contract_preserved": {
+    "status_500_assertion_present": true,
+    "audit_write_failed_assertion_present": true,
+    "skip_xfail_deleted_cases": false
+  },
+  "ledger": {
+    "ledger_json": "03_需求与设计/02_开发计划/task_z027b_13_cand002_ledger.json",
+    "ledger_tsv": "03_需求与设计/02_开发计划/task_z027b_13_cand002_ledger.tsv",
+    "yes_count": 19,
+    "no_count": 25,
+    "yes_no_intersection_empty": true
+  },
+  "cached_empty": true,
+  "git_diff_check": "PASS",
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_performed": false,
+  "go_live_performed": false,
+  "project_completion_claimed": false
+}

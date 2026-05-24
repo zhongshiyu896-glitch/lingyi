@@ -1,0 +1,53 @@
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+_ BomAuditBehaviorTest.test_operation_audit_failure_returns_audit_write_failed_and_rolls_back _
+
+self = <tests.test_bom_audit.BomAuditBehaviorTest testMethod=test_operation_audit_failure_returns_audit_write_failed_and_rolls_back>
+
+    def test_operation_audit_failure_returns_audit_write_failed_and_rolls_back(self) -> None:
+        before_count = self._count_bom_rows()
+        payload = {
+            "item_code": "ITEM-NEW",
+            "version_no": "V1",
+            "bom_items": [
+                {
+                    "material_item_code": "MAT-NEW",
+                    "qty_per_piece": "1",
+                    "loss_rate": "0",
+                    "uom": "PCS",
+                }
+            ],
+            "operations": [
+                {
+                    "process_name": "sew",
+                    "sequence_no": 1,
+                    "is_subcontract": False,
+                    "wage_rate": "1",
+                }
+            ],
+        }
+        with patch.object(BomService, "create_bom", return_value=BomNameData(name="BOM-TEST")), patch.object(
+            BomService,
+            "get_bom_by_no",
+            return_value=SimpleNamespace(id=1),
+        ), patch.object(AuditService, "snapshot_resource", return_value={"bom": {"bom_no": "BOM-TEST"}}), patch.object(
+            AuditService,
+            "record_success",
+            side_effect=AuditWriteFailed(),
+        ):
+            response = self.client.post("/api/bom/", headers=self._headers(), json=payload)
+
+        payload_json = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_bom_audit.py:153: AssertionError
+=============================== warnings summary ===============================
+tests/test_bom_audit.py::BomAuditBehaviorTest::test_operation_audit_failure_returns_audit_write_failed_and_rolls_back
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_bom_audit.py::BomAuditBehaviorTest::test_operation_audit_failure_returns_audit_write_failed_and_rolls_back
+1 failed, 1 passed, 1 warning in 1.05s

@@ -1,0 +1,45 @@
+decision	path	reason
+YES	03_需求与设计/02_开发计划/TASK-Z027B-09-PREP_CAND002边界冻结报告.md	Z027-CAND-002 B09 boundary report
+YES	03_需求与设计/02_开发计划/task_z027b_09_cand002_boundary.json	Z027-CAND-002 B09 boundary JSON
+YES	03_需求与设计/02_开发计划/task_z027b_09_cand002_boundary.tsv	Z027-CAND-002 B09 boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z027B-10-IMPL_CAND002单文件验证报告.md	Z027-CAND-002 B10 readonly pytest report
+YES	03_需求与设计/02_开发计划/task_z027b_10_cand002_result.json	Z027-CAND-002 B10 result JSON
+YES	03_需求与设计/02_开发计划/task_z027b_10_cand002_result.tsv	Z027-CAND-002 B10 result TSV
+YES	03_需求与设计/02_开发计划/task_z027b_10_cand002_stdout.txt	Z027-CAND-002 B10 stdout evidence
+YES	03_需求与设计/02_开发计划/TASK-Z027B-11-PREP-CAND002-FAILURE-DIAG_失败定位报告.md	Z027-CAND-002 B11 failure diagnosis report
+YES	03_需求与设计/02_开发计划/task_z027b_11_cand002_failure_boundary.json	Z027-CAND-002 B11 failure boundary JSON
+YES	03_需求与设计/02_开发计划/task_z027b_11_cand002_failure_boundary.tsv	Z027-CAND-002 B11 failure boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z027B-12-FIX-CAND002_BOM_audit测试合同修复报告.md	Z027-CAND-002 B12 fix report
+YES	03_需求与设计/02_开发计划/task_z027b_12_cand002_fix_result.json	Z027-CAND-002 B12 fix result JSON
+YES	03_需求与设计/02_开发计划/task_z027b_12_cand002_fix_result.tsv	Z027-CAND-002 B12 fix result TSV
+YES	03_需求与设计/02_开发计划/task_z027b_12_cand002_fix_stdout.txt	Z027-CAND-002 B12 stdout evidence
+YES	03_需求与设计/02_开发计划/TASK-Z027B-13-LEDGER-CAND002_BOM_audit提交候选账本报告.md	Z027-CAND-002 B13 ledger report
+YES	03_需求与设计/02_开发计划/task_z027b_13_cand002_freeze.json	Z027-CAND-002 B13 freeze JSON
+YES	03_需求与设计/02_开发计划/task_z027b_13_cand002_ledger.json	Z027-CAND-002 B13 ledger JSON
+YES	03_需求与设计/02_开发计划/task_z027b_13_cand002_ledger.tsv	Z027-CAND-002 B13 ledger TSV
+YES	07_后端/lingyi_service/tests/test_bom_audit.py	Only allowed backend test file for Z027-CAND-002
+NO	06_前端/**	Frontend is outside Z027-CAND-002 ledger scope
+NO	07_后端/lingyi_service/app/**	Backend app source is outside Z027-CAND-002 ledger scope
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	Shared engineer log is excluded
+NO	03_需求与设计/01_架构设计/架构师会话日志.md	Shared architect log is excluded
+NO	03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.json	Z027 candidate pool is excluded
+NO	03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.tsv	Z027 candidate pool is excluded
+NO	03_需求与设计/02_开发计划/TASK-Z027B-01-PREP_Z027本地候选池冻结报告.md	Z027 candidate pool report is excluded
+NO	03_需求与设计/02_开发计划/TASK-Z027B-08-*	B08 refresh is excluded
+NO	03_需求与设计/02_开发计划/task_z027b_08_*	B08 refresh is excluded
+NO	03_需求与设计/02_开发计划/*CAND001*	Z027-CAND-001 archive/evidence is excluded
+NO	03_需求与设计/02_开发计划/*cand001*	Z027-CAND-001 archive/evidence is excluded
+NO	03_需求与设计/02_开发计划/*CAND003*	Z027-CAND-003 scope is excluded
+NO	03_需求与设计/02_开发计划/*cand003*	Z027-CAND-003 scope is excluded
+NO	03_需求与设计/02_开发计划/*CAND004*	Z027-CAND-004 scope is excluded
+NO	03_需求与设计/02_开发计划/*cand004*	Z027-CAND-004 scope is excluded
+NO	03_需求与设计/02_开发计划/*CAND005*	Z027-CAND-005 scope is excluded
+NO	03_需求与设计/02_开发计划/*cand005*	Z027-CAND-005 scope is excluded
+NO	03_需求与设计/02_开发计划/task_z02[0-6]*	Old cycle artifacts are excluded
+NO	03_需求与设计/02_开发计划/TASK-Z02[0-6]*	Old cycle artifacts are excluded
+NO	.pytest_cache/**	Runtime/cache directory is excluded
+NO	**/__pycache__/**	Runtime/cache directory is excluded
+NO	07_后端/lingyi_service/.venv/**	Runtime/cache directory is excluded
+NO	node_modules/**	Runtime/cache directory is excluded
+NO	dist/**	Runtime/build output is excluded
+NO	build/**	Runtime/build output is excluded

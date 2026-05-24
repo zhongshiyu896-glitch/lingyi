@@ -1,0 +1,30 @@
+field	value
+task_id	TASK-Z027B-12-FIX-CAND002
+role	B Engineer
+candidate_id	Z027-CAND-002
+source_failure_task	TASK-Z027B-11-PREP-CAND002-FAILURE-DIAG
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+fixed_file	07_后端/lingyi_service/tests/test_bom_audit.py
+command	.venv/bin/python -m pytest tests/test_bom_audit.py -q
+workdir	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service
+command_run_count	1
+exit_code	0
+result	PASS
+pytest_summary	2 passed, 1 warning in 1.02s
+assertions_preserved	true
+skip_xfail_deleted_cases	false
+backend_app_changed	false
+frontend_changed	false
+unrelated_tests_changed	false
+cached_empty	true
+git_diff_check	PASS
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_performed	false
+go_live_performed	false
+project_completion_claimed	false
