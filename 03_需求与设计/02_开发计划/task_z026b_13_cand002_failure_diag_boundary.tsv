@@ -1,0 +1,16 @@
+field	value
+task_id	TASK-Z026B-13-PREP-CAND002-FAILURE-DIAG
+role	B Engineer
+selected_candidate	Z026-CAND-002
+source_result_task	TASK-Z026B-12-IMPL
+current_head	f57cffd1983e958ecfaed4731174756398b19655
+failed_command	.venv/bin/python -m pytest tests/test_quality_api.py -q
+failed_summary	3 failed, 4 passed, 1 warning in 1.12s
+failed_cases_count	3
+failed_cases	tests/test_quality_api.py::QualityApiTest::test_action_permission_denied_before_frozen_response;tests/test_quality_api.py::QualityApiTest::test_cancelled_status_rejects_followup_writes;tests/test_quality_api.py::QualityApiTest::test_create_endpoint_returns_201_with_draft
+failure_pattern	TEST_PAYLOAD_CONTRACT_DRIFT_TO_CURRENT_QUALITY_SCHEMA_GATE
+readonly_source_evidence	03_需求与设计/02_开发计划/task_z026b_12_cand002_result.json;03_需求与设计/02_开发计划/task_z026b_12_cand002_stdout.txt;07_后端/lingyi_service/tests/test_quality_api.py;07_后端/lingyi_service/app/routers/quality.py;07_后端/lingyi_service/app/schemas/quality.py;07_后端/lingyi_service/app/services/quality_service.py;07_后端/lingyi_service/app/models/quality.py
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_quality_api.py
+recommended_next_task	TASK-Z026B-14-FIX-CAND002
+run_this_task	false

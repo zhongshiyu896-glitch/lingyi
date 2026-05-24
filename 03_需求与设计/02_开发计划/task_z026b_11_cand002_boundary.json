@@ -1,0 +1,41 @@
+{
+  "task_id": "TASK-Z026B-11-PREP",
+  "role": "B Engineer",
+  "source_task": "TASK-Z026B-10-PREP",
+  "current_head": "f57cffd1983e958ecfaed4731174756398b19655",
+  "selected_candidate": "Z026-CAND-002",
+  "candidate_original_fields_copied": true,
+  "candidate_original_fields": {
+    "candidate_id": "Z026-CAND-002",
+    "module": "quality",
+    "route_or_area": "quality API baseline and status-machine contracts",
+    "target_test": "07_后端/lingyi_service/tests/test_quality_api.py",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_quality_api.py -q",
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_quality_api.py",
+      "07_后端/lingyi_service/app/routers/quality.py",
+      "07_后端/lingyi_service/app/services/quality_service.py",
+      "07_后端/lingyi_service/app/models/quality.py"
+    ],
+    "risk_level": "LOW",
+    "allowed_scope": "Run only the frozen single-file backend readonly pytest command and record evidence artifacts.",
+    "forbidden_scope": "No code edits, no test edits, no frontend, no backend app changes, no remote lifecycle, no production account, no push/PR/release.",
+    "why_minimal": "Single existing backend pytest file covering one module boundary with local fixtures; target is clean and not reused from Z015-Z025.",
+    "status": "LOCAL_ACTIONABLE_PREP_ONLY"
+  },
+  "source_evidence_missing": [],
+  "recommended_command": ".venv/bin/python -m pytest tests/test_quality_api.py -q",
+  "recommended_command_target_exists": true,
+  "target_test_dirty_diff": false,
+  "next_task": "TASK-Z026B-12-IMPL",
+  "run_this_task": false,
+  "gates": {
+    "stage_allowed": false,
+    "commit_allowed": false,
+    "push_allowed": false,
+    "remote_lifecycle_parked": true,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false
+  }
+}

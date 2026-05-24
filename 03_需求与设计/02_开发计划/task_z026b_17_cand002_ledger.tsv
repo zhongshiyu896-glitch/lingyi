@@ -1,0 +1,57 @@
+path	decision	reason
+03_需求与设计/02_开发计划/TASK-Z026B-11-PREP_Z026候选002只读验证边界报告.md	YES	CAND002 boundary evidence
+03_需求与设计/02_开发计划/task_z026b_11_cand002_boundary.json	YES	CAND002 boundary evidence
+03_需求与设计/02_开发计划/task_z026b_11_cand002_boundary.tsv	YES	CAND002 boundary evidence
+03_需求与设计/02_开发计划/TASK-Z026B-12-IMPL_Z026候选002quality-api只读验证报告.md	YES	CAND002 initial validation evidence
+03_需求与设计/02_开发计划/task_z026b_12_cand002_result.json	YES	CAND002 initial validation evidence
+03_需求与设计/02_开发计划/task_z026b_12_cand002_result.tsv	YES	CAND002 initial validation evidence
+03_需求与设计/02_开发计划/task_z026b_12_cand002_stdout.txt	YES	CAND002 initial validation stdout
+03_需求与设计/02_开发计划/TASK-Z026B-13-PREP-CAND002-FAILURE-DIAG_Z026候选002失败定位报告.md	YES	CAND002 first failure diagnosis evidence
+03_需求与设计/02_开发计划/task_z026b_13_cand002_failure_diag_boundary.json	YES	CAND002 first failure diagnosis evidence
+03_需求与设计/02_开发计划/task_z026b_13_cand002_failure_diag_boundary.tsv	YES	CAND002 first failure diagnosis evidence
+03_需求与设计/02_开发计划/TASK-Z026B-14-FIX-CAND002_Z026候选002quality-api测试合同修复报告.md	YES	CAND002 first fix evidence
+03_需求与设计/02_开发计划/task_z026b_14_cand002_fix_result.json	YES	CAND002 first fix evidence
+03_需求与设计/02_开发计划/task_z026b_14_cand002_fix_result.tsv	YES	CAND002 first fix evidence
+03_需求与设计/02_开发计划/task_z026b_14_cand002_fix_stdout.txt	YES	CAND002 first fix stdout
+03_需求与设计/02_开发计划/TASK-Z026B-15-PREP-CAND002-SECOND-FAILURE-DIAG_Z026候选002二次失败定位报告.md	YES	CAND002 second failure diagnosis evidence
+03_需求与设计/02_开发计划/task_z026b_15_cand002_second_failure_diag_boundary.json	YES	CAND002 second failure diagnosis evidence
+03_需求与设计/02_开发计划/task_z026b_15_cand002_second_failure_diag_boundary.tsv	YES	CAND002 second failure diagnosis evidence
+03_需求与设计/02_开发计划/TASK-Z026B-16-FIX-CAND002-SECOND_Z026候选002quality-api二次测试合同修复报告.md	YES	CAND002 final fix evidence
+03_需求与设计/02_开发计划/task_z026b_16_cand002_second_fix_result.json	YES	CAND002 final fix evidence
+03_需求与设计/02_开发计划/task_z026b_16_cand002_second_fix_result.tsv	YES	CAND002 final fix evidence
+03_需求与设计/02_开发计划/task_z026b_16_cand002_second_fix_stdout.txt	YES	CAND002 final fix stdout
+03_需求与设计/02_开发计划/TASK-Z026B-17-LEDGER-CAND002_Z026候选002提交候选账本报告.md	YES	CAND002 ledger freeze artifact
+03_需求与设计/02_开发计划/task_z026b_17_cand002_freeze.json	YES	CAND002 ledger freeze artifact
+03_需求与设计/02_开发计划/task_z026b_17_cand002_ledger.json	YES	CAND002 ledger freeze artifact
+03_需求与设计/02_开发计划/task_z026b_17_cand002_ledger.tsv	YES	CAND002 ledger freeze artifact
+07_后端/lingyi_service/tests/test_quality_api.py	YES	Only allowed backend test fix file
+06_前端	NO	Frontend forbidden
+07_后端/lingyi_service/app	NO	Backend app forbidden
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	Shared engineer log forbidden
+03_需求与设计/02_开发计划/task_z026b_01_candidate_pool.json	NO	Z026 candidate pool forbidden
+03_需求与设计/02_开发计划/task_z026b_01_candidate_pool.tsv	NO	Z026 candidate pool forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-10-PREP_Z026剩余候选刷新报告.md	NO	B10 refresh forbidden
+03_需求与设计/02_开发计划/task_z026b_10_remaining_candidate_refresh.json	NO	B10 refresh forbidden
+03_需求与设计/02_开发计划/task_z026b_10_remaining_candidate_refresh.tsv	NO	B10 refresh forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-02-PREP_Z026候选001只读验证边界报告.md	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_02_cand001_boundary.json	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_02_cand001_boundary.tsv	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-03-IMPL_Z026候选001factory-statement-audit只读验证报告.md	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_03_cand001_result.json	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_03_cand001_result.tsv	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_03_cand001_stdout.txt	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-04-PREP-CAND001-FAILURE-DIAG_Z026候选001失败定位报告.md	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_04_cand001_failure_diag_boundary.json	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_04_cand001_failure_diag_boundary.tsv	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-05-FIX-CAND001_Z026候选001factory-statement-audit测试合同修复报告.md	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_result.json	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_result.tsv	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_05_cand001_fix_stdout.txt	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-06-LEDGER-CAND001_Z026候选001提交候选账本报告.md	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_06_cand001_ledger.json	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/task_z026b_09_cand001_archive_result.json	NO	CAND001 artifact forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-18-PREP_Z026候选003只读验证边界报告.md	NO	Future CAND003 forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-25-PREP_Z026候选004只读验证边界报告.md	NO	Future CAND004 forbidden
+03_需求与设计/02_开发计划/TASK-Z026B-33-PREP_Z026候选005只读验证边界报告.md	NO	Future CAND005 forbidden
+07_后端/lingyi_service/tests/test_factory_statement_audit.py	NO	Other backend test forbidden
+07_后端/lingyi_service/tests/test_bom_exception_handling.py	NO	Other backend test forbidden

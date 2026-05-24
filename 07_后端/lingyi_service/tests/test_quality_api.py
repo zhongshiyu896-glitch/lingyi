@@ -34,6 +34,16 @@ from app.services.quality_service import QualitySourceValidationSnapshot
 class QualityApiBase(unittest.TestCase):
     """Shared in-memory app wiring for quality API tests."""
 
+    QUALITY_SCENARIO_TAG = "Z003-QUALITY-INSPECTION-20260524-101"
+    QUALITY_LOCAL_DB_URL = "sqlite:///./lingyi_service.local.db"
+    QUALITY_OPERATION_CODE_BY_NAME = {
+        "create": "C",
+        "update": "U",
+        "confirm": "F",
+        "cancel": "X",
+        "defects": "D",
+    }
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.engine = create_engine(
@@ -86,9 +96,63 @@ class QualityApiBase(unittest.TestCase):
     def _headers(role: str = "Quality Manager") -> dict[str, str]:
         return {"X-LY-Dev-User": "quality.user", "X-LY-Dev-Roles": role}
 
+    @classmethod
+    def _local_gate_env(cls) -> dict[str, str]:
+        return {
+            "APP_ENV": "development",
+            "LINGYI_DB_URL": cls.QUALITY_LOCAL_DB_URL,
+        }
+
     @staticmethod
-    def _payload(**overrides) -> dict:
+    def _carrier_code(value: object) -> str:
+        normalized = str(value).strip()
+        hash_value = 2166136261
+        for byte in normalized.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-3:]
+
+    @classmethod
+    def _request_id(
+        cls,
+        *,
+        scenario_tag: str,
+        operation: str,
+        idempotency_key: str,
+        source_ref: str,
+        inspection_ref: str,
+        item_code: str,
+        result: str,
+    ) -> str:
+        operation_code = cls.QUALITY_OPERATION_CODE_BY_NAME[operation]
+        return (
+            f"{scenario_tag}-QI-{operation_code}-"
+            f"{cls._carrier_code(idempotency_key)}-"
+            f"{cls._carrier_code(source_ref)}-"
+            f"{cls._carrier_code(inspection_ref)}-"
+            f"{cls._carrier_code(item_code)}-"
+            f"{cls._carrier_code(result)}"
+        )
+
+    @classmethod
+    def _headers_for_payload(cls, payload: dict, *, role: str = "Quality Manager") -> dict[str, str]:
+        headers = cls._headers(role=role)
+        headers["X-Request-ID"] = str(payload["request_id"])
+        return headers
+
+    @classmethod
+    def _payload(cls, **overrides) -> dict:
+        scenario_tag = str(overrides.get("scenario_tag") or cls.QUALITY_SCENARIO_TAG)
+        idempotency_key = str(overrides.get("idempotency_key") or f"{scenario_tag}:quality-api:create")
+        source_ref = str(overrides.get("source_ref") or f"manual:{scenario_tag}:quality-api")
+        inspection_ref = str(overrides.get("inspection_ref") or f"QI:{scenario_tag}:quality-api")
         payload = {
+            "idempotency_key": idempotency_key,
+            "scenario_tag": scenario_tag,
+            "source_ref": source_ref,
+            "inspection_ref": inspection_ref,
+            "source_doc": source_ref,
+            "operation": "create",
             "company": "COMP-A",
             "source_type": "manual",
             "source_id": None,
@@ -122,6 +186,52 @@ class QualityApiBase(unittest.TestCase):
             ],
         }
         payload.update(overrides)
+        if "request_id" not in overrides:
+            payload["request_id"] = cls._request_id(
+                scenario_tag=str(payload["scenario_tag"]),
+                operation=str(payload["operation"]),
+                idempotency_key=str(payload["idempotency_key"]),
+                source_ref=str(payload["source_ref"]),
+                inspection_ref=str(payload["inspection_ref"]),
+                item_code=str(payload["item_code"]),
+                result=str(payload["result"]),
+            )
+        return payload
+
+    @classmethod
+    def _action_payload(
+        cls,
+        seeded: dict[str, int | str],
+        *,
+        scenario_tag: str,
+        operation: str,
+        idempotency_key: str,
+        result: str,
+        **extra,
+    ) -> dict:
+        source_ref = f"{scenario_tag}/{seeded['inspection_no']}"
+        inspection_ref = str(seeded["id"])
+        payload = {
+            "idempotency_key": idempotency_key,
+            "scenario_tag": scenario_tag,
+            "source_ref": source_ref,
+            "inspection_ref": inspection_ref,
+            "source_type": "manual",
+            "source_doc": source_ref,
+            "item_code": "ITEM-A",
+            "operation": operation,
+            "result": result,
+        }
+        payload["request_id"] = cls._request_id(
+            scenario_tag=scenario_tag,
+            operation=operation,
+            idempotency_key=idempotency_key,
+            source_ref=source_ref,
+            inspection_ref=inspection_ref,
+            item_code=str(payload["item_code"]),
+            result=result,
+        )
+        payload.update(extra)
         return payload
 
     def _insert_inspection(
@@ -207,14 +317,18 @@ class QualityApiTest(QualityApiBase):
         )
 
     def test_create_endpoint_returns_201_with_draft(self) -> None:
+        payload = self._payload()
         with patch(
             "app.services.quality_service.QualitySourceValidator.validate_for_payload",
             return_value=self._source_snapshot(),
+        ), patch.dict(
+            "os.environ",
+            self._local_gate_env(),
         ):
             response = self.client.post(
                 "/api/quality/inspections",
-                headers=self._headers(),
-                json=self._payload(),
+                headers=self._headers_for_payload(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 201, response.text)
@@ -235,66 +349,120 @@ class QualityApiTest(QualityApiBase):
             defect_qty=Decimal("1"),
         )
         inspection_id = int(seeded["id"])
+        confirm_payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-102",
+            operation="confirm",
+            idempotency_key="quality-api-confirm-state",
+            result="partial",
+            remark="确认",
+        )
 
-        with patch(
+        with patch.dict(
+            "os.environ",
+            self._local_gate_env(),
+        ), patch(
             "app.services.quality_service.QualitySourceValidator.validate_for_payload",
             return_value=self._source_snapshot(),
         ):
             confirm = self.client.post(
                 f"/api/quality/inspections/{inspection_id}/confirm",
-                headers=self._headers(),
-                json={"remark": "确认"},
+                headers=self._headers_for_payload(confirm_payload),
+                json=confirm_payload,
             )
         self.assertEqual(confirm.status_code, 200, confirm.text)
         self.assertEqual(confirm.json()["data"]["status"], "confirmed")
 
-        cancel = self.client.post(
-            f"/api/quality/inspections/{inspection_id}/cancel",
-            headers=self._headers(),
-            json={"reason": "取消"},
+        cancel_payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-103",
+            operation="cancel",
+            idempotency_key="quality-api-cancel-state",
+            result="partial",
+            reason="取消",
         )
+        with patch.dict("os.environ", self._local_gate_env()):
+            cancel = self.client.post(
+                f"/api/quality/inspections/{inspection_id}/cancel",
+                headers=self._headers_for_payload(cancel_payload),
+                json=cancel_payload,
+            )
         self.assertEqual(cancel.status_code, 200, cancel.text)
         self.assertEqual(cancel.json()["data"]["status"], "cancelled")
 
-        update = self.client.patch(
-            f"/api/quality/inspections/{inspection_id}",
-            headers=self._headers(),
-            json={"remark": "不应更新"},
+        update_payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-104",
+            operation="update",
+            idempotency_key="quality-api-update-cancelled",
+            result="partial",
+            remark="不应更新",
         )
+        with patch.dict("os.environ", self._local_gate_env()):
+            update = self.client.patch(
+                f"/api/quality/inspections/{inspection_id}",
+                headers=self._headers_for_payload(update_payload),
+                json=update_payload,
+            )
         self.assertEqual(update.status_code, 409)
         self.assertEqual(update.json()["code"], "QUALITY_INVALID_STATUS")
 
-        defects = self.client.post(
-            f"/api/quality/inspections/{inspection_id}/defects",
-            headers=self._headers(),
-            json={
-                "defects": [
-                    {
-                        "defect_code": "DEF-999",
-                        "defect_name": "不应录入",
-                        "defect_qty": "1",
-                        "severity": "minor",
-                        "item_line_no": 1,
-                    }
-                ]
-            },
+        defects_payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-105",
+            operation="defects",
+            idempotency_key="quality-api-defects-cancelled",
+            result="partial",
+            defects=[
+                {
+                    "defect_code": "DEF-999",
+                    "defect_name": "不应录入",
+                    "defect_qty": "1",
+                    "severity": "minor",
+                    "item_line_no": 1,
+                }
+            ],
         )
+        with patch.dict("os.environ", self._local_gate_env()):
+            defects = self.client.post(
+                f"/api/quality/inspections/{inspection_id}/defects",
+                headers=self._headers_for_payload(defects_payload),
+                json=defects_payload,
+            )
         self.assertEqual(defects.status_code, 409)
         self.assertEqual(defects.json()["code"], "QUALITY_INVALID_STATUS")
 
-        confirm = self.client.post(
-            f"/api/quality/inspections/{inspection_id}/confirm",
-            headers=self._headers(),
-            json={"remark": "不应确认"},
+        confirm_again_payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-106",
+            operation="confirm",
+            idempotency_key="quality-api-confirm-cancelled",
+            result="partial",
+            remark="不应确认",
         )
+        with patch.dict("os.environ", self._local_gate_env()):
+            confirm = self.client.post(
+                f"/api/quality/inspections/{inspection_id}/confirm",
+                headers=self._headers_for_payload(confirm_again_payload),
+                json=confirm_again_payload,
+            )
         self.assertEqual(confirm.status_code, 409)
         self.assertEqual(confirm.json()["code"], "QUALITY_INVALID_STATUS")
 
-        cancel = self.client.post(
-            f"/api/quality/inspections/{inspection_id}/cancel",
-            headers=self._headers(),
-            json={"reason": "不应取消"},
+        cancel_again_payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-107",
+            operation="cancel",
+            idempotency_key="quality-api-cancel-cancelled",
+            result="partial",
+            reason="不应取消",
         )
+        with patch.dict("os.environ", self._local_gate_env()):
+            cancel = self.client.post(
+                f"/api/quality/inspections/{inspection_id}/cancel",
+                headers=self._headers_for_payload(cancel_again_payload),
+                json=cancel_again_payload,
+            )
         self.assertEqual(cancel.status_code, 409)
         self.assertEqual(cancel.json()["code"], "QUALITY_INVALID_STATUS")
 
@@ -363,10 +531,16 @@ class QualityApiTest(QualityApiBase):
             self.assertGreaterEqual(session.query(LySecurityAuditLog).count(), 1)
 
     def test_action_permission_denied_before_frozen_response(self) -> None:
+        payload = self._payload(
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-108",
+            idempotency_key="quality-api-viewer-denied",
+            source_ref="manual:Z003-QUALITY-INSPECTION-20260524-108:quality-api",
+            inspection_ref="QI:Z003-QUALITY-INSPECTION-20260524-108:quality-api",
+        )
         response = self.client.post(
             "/api/quality/inspections",
-            headers=self._headers(role="Quality Viewer"),
-            json=self._payload(),
+            headers=self._headers_for_payload(payload, role="Quality Viewer"),
+            json=payload,
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")

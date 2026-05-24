@@ -1,0 +1,75 @@
+FFF....                                                                  [100%]
+=================================== FAILURES ===================================
+_____ QualityApiTest.test_action_permission_denied_before_frozen_response ______
+
+self = <tests.test_quality_api.QualityApiTest testMethod=test_action_permission_denied_before_frozen_response>
+
+    def test_action_permission_denied_before_frozen_response(self) -> None:
+        response = self.client.post(
+            "/api/quality/inspections",
+            headers=self._headers(role="Quality Viewer"),
+            json=self._payload(),
+        )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_quality_api.py:371: AssertionError
+_________ QualityApiTest.test_cancelled_status_rejects_followup_writes _________
+
+self = <tests.test_quality_api.QualityApiTest testMethod=test_cancelled_status_rejects_followup_writes>
+
+    def test_cancelled_status_rejects_followup_writes(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-STATE-001",
+            status="draft",
+            result="partial",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("8"),
+            rejected_qty=Decimal("2"),
+            defect_qty=Decimal("1"),
+        )
+        inspection_id = int(seeded["id"])
+
+        with patch(
+            "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+            return_value=self._source_snapshot(),
+        ):
+            confirm = self.client.post(
+                f"/api/quality/inspections/{inspection_id}/confirm",
+                headers=self._headers(),
+                json={"remark": "确认"},
+            )
+>       self.assertEqual(confirm.status_code, 200, confirm.text)
+E       AssertionError: 422 != 200 : {"detail":[{"type":"missing","loc":["body","request_id"],"msg":"Field required","input":{"remark":"确认"}},{"type":"missing","loc":["body","idempotency_key"],"msg":"Field required","input":{"remark":"确认"}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"remark":"确认"}},{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"remark":"确认"}},{"type":"missing","loc":["body","inspection_ref"],"msg":"Field required","input":{"remark":"确认"}},{"type":"missing","loc":["body","source_type"],"msg":"Field required","input":{"remark":"确认"}},{"type":"missing","loc":["body","item_code"],"msg":"Field required","input":{"remark":"确认"}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"remark":"确认"}},{"type":"missing","loc":["body","result"],"msg":"Field required","input":{"remark":"确认"}}]}
+
+tests/test_quality_api.py:248: AssertionError
+__________ QualityApiTest.test_create_endpoint_returns_201_with_draft __________
+
+self = <tests.test_quality_api.QualityApiTest testMethod=test_create_endpoint_returns_201_with_draft>
+
+    def test_create_endpoint_returns_201_with_draft(self) -> None:
+        with patch(
+            "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+            return_value=self._source_snapshot(),
+        ):
+            response = self.client.post(
+                "/api/quality/inspections",
+                headers=self._headers(),
+                json=self._payload(),
+            )
+
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 422 != 201 : {"detail":[{"type":"missing","loc":["body","request_id"],"msg":"Field required","input":{"company":"COMP-A","source_type":"manual","source_id":null,"item_code":"ITEM-A","supplier":"SUP-A","warehouse":"WH-A","inspection_date":"2026-04-16","inspected_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial","items":[{"item_code":"ITEM-A","sample_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial"}],"defects":[{"defect_code":"DEF-001","defect_name":"线头","defect_qty":"1","severity":"minor","item_line_no":1}]}},{"type":"missing","loc":["body","idempotency_key"],"msg":"Field required","input":{"company":"COMP-A","source_type":"manual","source_id":null,"item_code":"ITEM-A","supplier":"SUP-A","warehouse":"WH-A","inspection_date":"2026-04-16","inspected_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial","items":[{"item_code":"ITEM-A","sample_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial"}],"defects":[{"defect_code":"DEF-001","defect_name":"线头","defect_qty":"1","severity":"minor","item_line_no":1}]}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"company":"COMP-A","source_type":"manual","source_id":null,"item_code":"ITEM-A","supplier":"SUP-A","warehouse":"WH-A","inspection_date":"2026-04-16","inspected_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial","items":[{"item_code":"ITEM-A","sample_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial"}],"defects":[{"defect_code":"DEF-001","defect_name":"线头","defect_qty":"1","severity":"minor","item_line_no":1}]}},{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"company":"COMP-A","source_type":"manual","source_id":null,"item_code":"ITEM-A","supplier":"SUP-A","warehouse":"WH-A","inspection_date":"2026-04-16","inspected_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial","items":[{"item_code":"ITEM-A","sample_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial"}],"defects":[{"defect_code":"DEF-001","defect_name":"线头","defect_qty":"1","severity":"minor","item_line_no":1}]}},{"type":"missing","loc":["body","inspection_ref"],"msg":"Field required","input":{"company":"COMP-A","source_type":"manual","source_id":null,"item_code":"ITEM-A","supplier":"SUP-A","warehouse":"WH-A","inspection_date":"2026-04-16","inspected_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial","items":[{"item_code":"ITEM-A","sample_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial"}],"defects":[{"defect_code":"DEF-001","defect_name":"线头","defect_qty":"1","severity":"minor","item_line_no":1}]}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"company":"COMP-A","source_type":"manual","source_id":null,"item_code":"ITEM-A","supplier":"SUP-A","warehouse":"WH-A","inspection_date":"2026-04-16","inspected_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial","items":[{"item_code":"ITEM-A","sample_qty":"10","accepted_qty":"8","rejected_qty":"2","defect_qty":"1","result":"partial"}],"defects":[{"defect_code":"DEF-001","defect_name":"线头","defect_qty":"1","severity":"minor","item_line_no":1}]}}]}
+
+tests/test_quality_api.py:220: AssertionError
+=============================== warnings summary ===============================
+tests/test_quality_api.py::QualityApiTest::test_action_permission_denied_before_frozen_response
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_quality_api.py::QualityApiTest::test_action_permission_denied_before_frozen_response
+FAILED tests/test_quality_api.py::QualityApiTest::test_cancelled_status_rejects_followup_writes
+FAILED tests/test_quality_api.py::QualityApiTest::test_create_endpoint_returns_201_with_draft
+3 failed, 4 passed, 1 warning in 1.12s

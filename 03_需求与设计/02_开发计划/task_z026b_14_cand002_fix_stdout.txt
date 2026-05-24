@@ -1,0 +1,71 @@
+.F.....                                                                  [100%]
+=================================== FAILURES ===================================
+_________ QualityApiTest.test_cancelled_status_rejects_followup_writes _________
+
+self = <tests.test_quality_api.QualityApiTest testMethod=test_cancelled_status_rejects_followup_writes>
+
+    def test_cancelled_status_rejects_followup_writes(self) -> None:
+        seeded = self._insert_inspection(
+            inspection_no="QI-STATE-001",
+            status="draft",
+            result="partial",
+            inspected_qty=Decimal("10"),
+            accepted_qty=Decimal("8"),
+            rejected_qty=Decimal("2"),
+            defect_qty=Decimal("1"),
+        )
+        inspection_id = int(seeded["id"])
+        confirm_payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-102",
+            operation="confirm",
+            idempotency_key="quality-api-confirm-state",
+            result="partial",
+            remark="确认",
+        )
+
+        with patch.dict(
+            "os.environ",
+            self._local_gate_env(),
+        ), patch(
+            "app.services.quality_service.QualitySourceValidator.validate_for_payload",
+            return_value=self._source_snapshot(),
+        ):
+            confirm = self.client.post(
+                f"/api/quality/inspections/{inspection_id}/confirm",
+                headers=self._headers_for_payload(confirm_payload),
+                json=confirm_payload,
+            )
+        self.assertEqual(confirm.status_code, 200, confirm.text)
+        self.assertEqual(confirm.json()["data"]["status"], "confirmed")
+
+        cancel_payload = self._action_payload(
+            seeded,
+            scenario_tag="Z003-QUALITY-INSPECTION-20260524-103",
+            operation="cancel",
+            idempotency_key="quality-api-cancel-state",
+            result="partial",
+            reason="取消",
+        )
+        cancel = self.client.post(
+            f"/api/quality/inspections/{inspection_id}/cancel",
+            headers=self._headers_for_payload(cancel_payload),
+            json=cancel_payload,
+        )
+>       self.assertEqual(cancel.status_code, 200, cancel.text)
+E       AssertionError: 409 != 200 : {"code":"QUALITY_INVALID_SOURCE","message":"LOCAL_GATE_FAIL_CLOSED:non_local_dev","data":null}
+
+tests/test_quality_api.py:389: AssertionError
+=============================== warnings summary ===============================
+tests/test_quality_api.py::QualityApiTest::test_action_permission_denied_before_frozen_response
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_quality_api.py::QualityApiTest::test_cancelled_status_rejects_followup_writes
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/quality_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_quality_api.py::QualityApiTest::test_cancelled_status_rejects_followup_writes
+1 failed, 6 passed, 2 warnings in 1.15s

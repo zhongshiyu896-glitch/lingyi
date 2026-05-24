@@ -1,0 +1,12 @@
+.......                                                                  [100%]
+=============================== warnings summary ===============================
+tests/test_quality_api.py::QualityApiTest::test_action_permission_denied_before_frozen_response
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_quality_api.py::QualityApiTest::test_cancelled_status_rejects_followup_writes
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/quality_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+7 passed, 2 warnings in 1.10s

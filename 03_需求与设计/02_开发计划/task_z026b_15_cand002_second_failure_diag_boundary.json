@@ -1,0 +1,39 @@
+{
+  "task_id": "TASK-Z026B-15-PREP-CAND002-SECOND-FAILURE-DIAG",
+  "role": "B Engineer",
+  "selected_candidate": "Z026-CAND-002",
+  "source_result_task": "TASK-Z026B-14-FIX-CAND002",
+  "current_head": "f57cffd1983e958ecfaed4731174756398b19655",
+  "failed_command": ".venv/bin/python -m pytest tests/test_quality_api.py -q",
+  "failed_summary": "1 failed, 6 passed, 2 warnings in 1.15s",
+  "remaining_failed_cases_count": 1,
+  "remaining_failed_cases": [
+    "tests/test_quality_api.py::QualityApiTest::test_cancelled_status_rejects_followup_writes"
+  ],
+  "remaining_failure_pattern": "B14 fixed schema payloads and wrapped confirm in the local gate env, but the following cancel request runs outside patch.dict(os.environ, local_gate_env) and is rejected before target cancelled-state assertions with 409 QUALITY_INVALID_SOURCE / LOCAL_GATE_FAIL_CLOSED:non_local_dev.",
+  "actual_status_or_exception": "409 QUALITY_INVALID_SOURCE",
+  "key_assertion_or_error_type": "AssertionError: 409 != 200; LOCAL_GATE_FAIL_CLOSED:non_local_dev",
+  "current_dirty_allowed_file": "07_后端/lingyi_service/tests/test_quality_api.py",
+  "b14_dirty_diff_relationship": "The B14 diff added payload helpers, request-id carriers, and local gate env wrapping for create/confirm, but cancel/update/defects/confirm-again/cancel-again calls in the cancelled-state test remain outside the env patch.",
+  "readonly_source_evidence": [
+    "03_需求与设计/02_开发计划/task_z026b_14_cand002_fix_result.json",
+    "03_需求与设计/02_开发计划/task_z026b_14_cand002_fix_stdout.txt",
+    "07_后端/lingyi_service/tests/test_quality_api.py",
+    "07_后端/lingyi_service/app/routers/quality.py",
+    "07_后端/lingyi_service/app/schemas/quality.py",
+    "07_后端/lingyi_service/app/services/quality_service.py",
+    "07_后端/lingyi_service/app/models/quality.py"
+  ],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_quality_api.py",
+  "recommended_next_task": "TASK-Z026B-16-FIX-CAND002-SECOND",
+  "run_this_task": false,
+  "forbidden_actions": {
+    "code_test_edits": false,
+    "tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  },
+  "next_role": "C Auditor"
+}
