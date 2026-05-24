@@ -1,0 +1,33 @@
+field	value
+task_id	TASK-Z025B-16-PREP
+role	B Engineer
+source_task_id	TASK-Z025B-15-PREP
+source_candidate_pool	03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.json
+source_refresh	03_需求与设计/02_开发计划/task_z025b_15_remaining_candidate_refresh.json
+current_head	a401ca44a7f2eaf6077bb62c330880703b770ea9
+selected_candidate_id	Z025-CAND-003
+candidate_original_fields_copied	YES
+module	style_profit
+route_or_area	style profit snapshot calculation rules
+source_evidence	07_后端/lingyi_service/tests/test_style_profit_snapshot_calculation.py;07_后端/lingyi_service/app/services/style_profit_service.py;07_后端/lingyi_service/app/models/style_profit.py;07_后端/lingyi_service/app/schemas/style_profit.py
+risk_level	LOW_LOCAL_READONLY
+allowed_scope	Freeze a single-file backend readonly pytest evidence boundary for tests/test_style_profit_snapshot_calculation.py; no pytest run in this task.
+forbidden_scope	style profit API writes; full pytest; other test files; product/backend/frontend edits; dependency/config changes; stage/commit/push; PR/tag/release; production or ERPNext access
+candidate_pool_recommended_command	.venv/bin/python -m pytest tests/test_style_profit_snapshot_calculation.py -q
+candidate_pool_recommended_next_task_id	TASK-Z025B-04-PREP
+why_minimal	Single existing calculation test covers snapshot formula behavior in local sqlite fixtures, separate from API/browser/production lifecycle.
+source_evidence_exists	YES
+recommended_command	.venv/bin/python -m pytest tests/test_style_profit_snapshot_calculation.py -q
+recommended_command_target_exists	YES
+target_test_in_dirty_diff	NO
+recommended_next_task_id	TASK-Z025B-17-IMPL
+run_this_task	NO
+git_diff_cached_name_only	[]
+git_diff_check	PASS
+pytest_npm_browser_build_typecheck_verify_run	NO
+code_edits	NO
+stage_commit_push	NO
+pr_tag_release_cleanup	NO
+production_or_real_business_write	NO
+parked_blockers_released	NO
+next_role	C Auditor

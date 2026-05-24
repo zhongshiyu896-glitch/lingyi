@@ -1,0 +1,28 @@
+{
+  "task_id": "TASK-Z025B-17-IMPL",
+  "role": "B Engineer",
+  "source_task_id": "TASK-Z025B-16-PREP",
+  "selected_candidate_id": "Z025-CAND-003",
+  "current_head": "a401ca44a7f2eaf6077bb62c330880703b770ea9",
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_style_profit_snapshot_calculation.py -q",
+  "command_run_count": 1,
+  "exit_code": 0,
+  "result": "PASS",
+  "pytest_summary": "42 passed, 1 warning in 0.50s",
+  "stdout_log": "03_需求与设计/02_开发计划/task_z025b_17_cand003_stdout.txt",
+  "result_json": "03_需求与设计/02_开发计划/task_z025b_17_cand003_result.json",
+  "result_tsv": "03_需求与设计/02_开发计划/task_z025b_17_cand003_result.tsv",
+  "target_test": "07_后端/lingyi_service/tests/test_style_profit_snapshot_calculation.py",
+  "target_test_dirty_diff": false,
+  "forbidden_actions": {
+    "code_edits": false,
+    "fix_attempt": false,
+    "other_pytest_npm_browser_build_typecheck_verify": false,
+    "stage_commit_push": false,
+    "pr_tag_release_cleanup": false,
+    "production_or_real_business_write": false,
+    "parked_blockers_released": false
+  },
+  "next_role": "C Auditor"
+}
