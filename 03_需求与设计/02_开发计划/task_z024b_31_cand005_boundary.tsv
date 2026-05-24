@@ -1,0 +1,15 @@
+field	value
+task_id	TASK-Z024B-31-PREP
+current_head	0c1a95152d5f04462f291c83a6428c97cfa47be7
+archived_candidates	["Z024-CAND-001","Z024-CAND-002","Z024-CAND-003","Z024-CAND-004"]
+remaining_candidates	["Z024-CAND-005"]
+selected_candidate_id	Z024-CAND-005
+candidate_original_fields_copied	YES
+module	workshop
+route_or_area	app.routers.workshop / app.services.workshop_outbox_service worker permission boundary; tests/test_workshop_worker_permissions.py
+source_evidence_exists	YES
+recommended_command	.venv/bin/python -m pytest tests/test_workshop_worker_permissions.py -q
+recommended_command_target_exists	YES
+target_test_in_dirty_diff	NO
+recommended_next_task_id	TASK-Z024B-32-IMPL
+run_this_task	NO
