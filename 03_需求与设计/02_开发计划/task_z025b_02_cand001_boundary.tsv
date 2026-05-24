@@ -1,0 +1,2 @@
+task_id	role	source_task_id	selected_candidate_id	candidate_original_fields_copied	module	route_or_area	source_evidence_exists	recommended_command	recommended_command_target_exists	target_test_in_dirty_diff	recommended_next_task_id	run_this_task
+TASK-Z025B-02-PREP	B Engineer	TASK-Z025B-01-PREP	Z025-CAND-001	true	permission	permission service aggregation and fail-closed source handling	true	.venv/bin/python -m pytest tests/test_permission_service.py -q	true	false	TASK-Z025B-03-IMPL	false

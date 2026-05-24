@@ -1,0 +1,228 @@
+{
+  "task_id": "TASK-Z025B-04-LEDGER-CAND001",
+  "role": "B Engineer",
+  "selected_candidate_id": "Z025-CAND-001",
+  "source_pass_task_id": "TASK-Z025B-03-IMPL",
+  "final_pytest_summary": "6 passed, 1 warning in 0.32s",
+  "evidence_only": true,
+  "yes_count": 11,
+  "no_count": 22,
+  "total": 33,
+  "yes_no_intersection": [],
+  "yes_no_intersection_empty": true,
+  "yes_contains_frontend": false,
+  "yes_contains_backend": false,
+  "yes_contains_shared_engineer_log": false,
+  "yes_contains_other_candidates": false,
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-02-PREP_Z025候选001边界冻结报告.md",
+      "decision": "YES",
+      "category": "cand001_evidence",
+      "reason": "CAND001 B02 boundary report evidence",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_02_cand001_boundary.json",
+      "decision": "YES",
+      "category": "cand001_evidence",
+      "reason": "CAND001 B02 boundary JSON evidence",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_02_cand001_boundary.tsv",
+      "decision": "YES",
+      "category": "cand001_evidence",
+      "reason": "CAND001 B02 boundary TSV evidence",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-03-IMPL_Z025候选001单文件验证报告.md",
+      "decision": "YES",
+      "category": "cand001_evidence",
+      "reason": "CAND001 B03 validation report evidence",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_03_cand001_result.json",
+      "decision": "YES",
+      "category": "cand001_evidence",
+      "reason": "CAND001 B03 validation result JSON evidence",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_03_cand001_result.tsv",
+      "decision": "YES",
+      "category": "cand001_evidence",
+      "reason": "CAND001 B03 validation result TSV evidence",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_03_cand001_stdout.txt",
+      "decision": "YES",
+      "category": "cand001_evidence",
+      "reason": "CAND001 B03 pytest stdout evidence",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-04-LEDGER-CAND001_Z025候选001账本冻结报告.md",
+      "decision": "YES",
+      "category": "cand001_ledger",
+      "reason": "CAND001 B04 ledger freeze report",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_04_cand001_freeze.json",
+      "decision": "YES",
+      "category": "cand001_ledger",
+      "reason": "CAND001 B04 freeze JSON",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_04_cand001_ledger.json",
+      "decision": "YES",
+      "category": "cand001_ledger",
+      "reason": "CAND001 B04 ledger JSON",
+      "exists": true
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_04_cand001_ledger.tsv",
+      "decision": "YES",
+      "category": "cand001_ledger",
+      "reason": "CAND001 B04 ledger TSV",
+      "exists": true
+    },
+    {
+      "path": "06_前端",
+      "decision": "NO",
+      "category": "frontend_scope",
+      "reason": "Frontend scope is forbidden for this evidence-only candidate"
+    },
+    {
+      "path": "07_后端",
+      "decision": "NO",
+      "category": "backend_scope",
+      "reason": "Backend source/test paths are forbidden in evidence-only ledger YES"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_permission_service.py",
+      "decision": "NO",
+      "category": "backend_test_readonly",
+      "reason": "Target test was executed only and not modified; evidence-only YES excludes backend paths"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/工程师会话日志.md",
+      "decision": "NO",
+      "category": "shared_engineer_log",
+      "reason": "Shared engineer log is forbidden"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.json",
+      "decision": "NO",
+      "category": "z025_candidate_pool",
+      "reason": "Z025 candidate pool is frozen prior artifact and not CAND001 evidence YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z025b_01_candidate_pool.tsv",
+      "decision": "NO",
+      "category": "z025_candidate_pool",
+      "reason": "Z025 candidate pool TSV is frozen prior artifact and not CAND001 evidence YES"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-01-PREP_Z025本地候选池重建报告.md",
+      "decision": "NO",
+      "category": "z025_candidate_pool",
+      "reason": "Z025 candidate pool report is frozen prior artifact and not CAND001 evidence YES"
+    },
+    {
+      "path": "Z025-CAND-002",
+      "decision": "NO",
+      "category": "future_candidate_scope",
+      "reason": "Future Z025 candidate scope is forbidden"
+    },
+    {
+      "path": "Z025-CAND-003",
+      "decision": "NO",
+      "category": "future_candidate_scope",
+      "reason": "Future Z025 candidate scope is forbidden"
+    },
+    {
+      "path": "Z025-CAND-004",
+      "decision": "NO",
+      "category": "future_candidate_scope",
+      "reason": "Future Z025 candidate scope is forbidden"
+    },
+    {
+      "path": "Z025-CAND-005",
+      "decision": "NO",
+      "category": "future_candidate_scope",
+      "reason": "Future Z025 candidate scope is forbidden"
+    },
+    {
+      "path": "Z015-Z024 artifacts",
+      "decision": "NO",
+      "category": "prior_candidate_artifacts",
+      "reason": "Z015-Z024 frozen/committed/archived artifacts are forbidden"
+    },
+    {
+      "path": ".pytest_cache",
+      "decision": "NO",
+      "category": "cache",
+      "reason": "Local pytest cache is forbidden"
+    },
+    {
+      "path": "07_后端/lingyi_service/.pytest_cache",
+      "decision": "NO",
+      "category": "cache",
+      "reason": "Backend pytest cache is forbidden"
+    },
+    {
+      "path": ".venv",
+      "decision": "NO",
+      "category": "dependency_runtime",
+      "reason": "Virtual environment is forbidden"
+    },
+    {
+      "path": "07_后端/lingyi_service/.venv",
+      "decision": "NO",
+      "category": "dependency_runtime",
+      "reason": "Backend virtual environment is forbidden"
+    },
+    {
+      "path": "dist",
+      "decision": "NO",
+      "category": "build_artifact",
+      "reason": "Build outputs are forbidden"
+    },
+    {
+      "path": "node_modules",
+      "decision": "NO",
+      "category": "dependency_runtime",
+      "reason": "Node dependencies are forbidden"
+    },
+    {
+      "path": "03_需求与设计/01_架构设计/架构师会话日志.md",
+      "decision": "NO",
+      "category": "architect_log",
+      "reason": "Architect log is forbidden"
+    },
+    {
+      "path": "C audit records",
+      "decision": "NO",
+      "category": "audit_records",
+      "reason": "C audit records are forbidden"
+    },
+    {
+      "path": ".github",
+      "decision": "NO",
+      "category": "github_config",
+      "reason": "GitHub configuration is forbidden"
+    },
+    {
+      "path": ".env",
+      "decision": "NO",
+      "category": "production_config",
+      "reason": "Environment and production configuration are forbidden"
+    }
+  ]
+}
