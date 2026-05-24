@@ -1,0 +1,2 @@
+task_id	current_head	source_task	selected_candidate	candidate_original_fields_copied	source_evidence_missing	recommended_command	recommended_command_target_exists	target_test_dirty_diff	next_task	run_this_task	git_diff_check	next_role
+TASK-Z026B-22-PREP	6579595c792ad2173cdfb312d449f19eed783146	TASK-Z026B-21-PREP	Z026-CAND-003	true	[]	.venv/bin/python -m pytest tests/test_sales_inventory_api.py -q	true	[]	TASK-Z026B-23-IMPL	false	PASS	C Auditor

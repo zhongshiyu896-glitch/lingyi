@@ -1,0 +1,48 @@
+{
+  "task_id": "TASK-Z026B-22-PREP",
+  "role": "B Engineer",
+  "current_head": "6579595c792ad2173cdfb312d449f19eed783146",
+  "source_task": "TASK-Z026B-21-PREP",
+  "source_candidate_pool": "TASK-Z026B-01-PREP",
+  "selected_candidate": "Z026-CAND-003",
+  "candidate_original_fields_copied": true,
+  "candidate_original_fields": {
+    "candidate_id": "Z026-CAND-003",
+    "module": "sales_inventory",
+    "route_or_area": "sales inventory read-only API integration",
+    "target_test": "07_后端/lingyi_service/tests/test_sales_inventory_api.py",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_sales_inventory_api.py -q",
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_sales_inventory_api.py",
+      "07_后端/lingyi_service/app/routers/sales_inventory.py",
+      "07_后端/lingyi_service/app/schemas/sales_inventory.py",
+      "07_后端/lingyi_service/app/services/erpnext_sales_inventory_adapter.py"
+    ],
+    "risk_level": "LOW",
+    "allowed_scope": "Run only the frozen single-file backend readonly pytest command and record evidence artifacts.",
+    "forbidden_scope": "No code edits, no test edits, no frontend, no backend app changes, no remote lifecycle, no production account, no push/PR/release.",
+    "why_minimal": "Single backend pytest entrypoint focused on read-only integration behavior; target file exists, is clean, and is new relative to Z015-Z025.",
+    "status": "LOCAL_ACTIONABLE_PREP_ONLY"
+  },
+  "source_evidence_missing": [],
+  "recommended_command": ".venv/bin/python -m pytest tests/test_sales_inventory_api.py -q",
+  "recommended_command_target": "07_后端/lingyi_service/tests/test_sales_inventory_api.py",
+  "recommended_command_target_exists": true,
+  "target_test_dirty_diff": [],
+  "next_task": "TASK-Z026B-23-IMPL",
+  "run_this_task": false,
+  "validation": {
+    "b21_selected_candidate": "Z026-CAND-003",
+    "b21_recommended_next_task": "TASK-Z026B-22-PREP",
+    "cached_empty": true,
+    "git_diff_check": "PASS"
+  },
+  "forbidden_actions": {
+    "code_edits": false,
+    "tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  },
+  "next_role": "C Auditor"
+}

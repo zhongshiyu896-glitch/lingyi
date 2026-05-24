@@ -1,0 +1,2 @@
+task_id	selected_candidate	workdir	command	command_run_count	exit_code	pytest_summary	result	stdout_log	target_test_dirty_diff	cached_empty	git_diff_check	next_role
+TASK-Z026B-23-IMPL	Z026-CAND-003	07_后端/lingyi_service	.venv/bin/python -m pytest tests/test_sales_inventory_api.py -q	1	1	1 failed, 14 passed, 1 warning in 1.08s	FAIL	03_需求与设计/02_开发计划/task_z026b_23_cand003_stdout.txt	[]	true	PASS	C Auditor

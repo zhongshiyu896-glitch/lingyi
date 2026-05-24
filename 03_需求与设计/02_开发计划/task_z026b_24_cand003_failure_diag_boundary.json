@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-Z026B-24-PREP-CAND003-FAILURE-DIAG",
+  "role": "B Engineer",
+  "current_head": "6579595c792ad2173cdfb312d449f19eed783146",
+  "selected_candidate": "Z026-CAND-003",
+  "source_result_task": "TASK-Z026B-23-IMPL",
+  "failed_command": ".venv/bin/python -m pytest tests/test_sales_inventory_api.py -q",
+  "failed_summary": "1 failed, 14 passed, 1 warning in 1.08s",
+  "failed_case": "test_only_get_routes_are_exposed",
+  "failure_pattern": "Route inventory assertion drift: the test asserts every /api/sales-inventory route is limited to GET/HEAD/OPTIONS, while the current router source includes POST sales order draft endpoints protected by local write/idempotency gates.",
+  "failed_assertion": "self.assertLessEqual(set(methods), {\"GET\", \"HEAD\", \"OPTIONS\"})",
+  "actual_exposed_routes": [
+    {
+      "path": "/api/sales-inventory/sales-orders/drafts",
+      "methods": [
+        "POST"
+      ],
+      "source": "07_后端/lingyi_service/app/routers/sales_inventory.py:617"
+    },
+    {
+      "path": "/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+      "methods": [
+        "POST"
+      ],
+      "source": "07_后端/lingyi_service/app/routers/sales_inventory.py:659"
+    }
+  ],
+  "expected_difference": "The test expectation omits current local-gated sales order draft POST routes.",
+  "readonly_source_evidence": [
+    "03_需求与设计/02_开发计划/task_z026b_23_cand003_result.json",
+    "03_需求与设计/02_开发计划/task_z026b_23_cand003_stdout.txt",
+    "07_后端/lingyi_service/tests/test_sales_inventory_api.py",
+    "07_后端/lingyi_service/app/routers/sales_inventory.py",
+    "07_后端/lingyi_service/app/schemas/sales_inventory.py",
+    "07_后端/lingyi_service/app/services/erpnext_sales_inventory_adapter.py",
+    "07_后端/lingyi_service/app/services/sales_inventory_service.py"
+  ],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_sales_inventory_api.py",
+  "recommended_next_task": "TASK-Z026B-25-FIX-CAND003",
+  "run_this_task": false,
+  "validation": {
+    "cached_empty": true,
+    "git_diff_check": "PASS"
+  },
+  "forbidden_actions": {
+    "code_test_edits": false,
+    "tests_build_typecheck_npm_browser": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  },
+  "next_role": "C Auditor"
+}

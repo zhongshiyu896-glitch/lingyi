@@ -1,0 +1,34 @@
+{
+  "task_id": "TASK-Z026B-25-FIX-CAND003",
+  "role": "B Engineer",
+  "source_task": "TASK-Z026B-24-PREP-CAND003-FAILURE-DIAG",
+  "selected_candidate": "Z026-CAND-003",
+  "current_head": "6579595c792ad2173cdfb312d449f19eed783146",
+  "fixed_file": "07_后端/lingyi_service/tests/test_sales_inventory_api.py",
+  "failure_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "route_method_contract_fixed": true,
+  "assertions_weakened": false,
+  "skip_xfail_deleted_cases": false,
+  "workdir": "07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_sales_inventory_api.py -q",
+  "command_run_count": 1,
+  "exit_code": 0,
+  "pytest_summary": "15 passed, 1 warning in 1.05s",
+  "result": "PASS",
+  "stdout_log": "03_需求与设计/02_开发计划/task_z026b_25_cand003_fix_stdout.txt",
+  "changed_files": [
+    "07_后端/lingyi_service/tests/test_sales_inventory_api.py"
+  ],
+  "git_diff_cached_name_only": [],
+  "git_diff_check": "PASS",
+  "forbidden_actions": {
+    "backend_app_edits": false,
+    "frontend_edits": false,
+    "unrelated_tests_edits": false,
+    "tests_build_typecheck_npm_browser_beyond_allowed_command": false,
+    "stage_commit_push_tag_pr_release": false,
+    "reset_checkout_stash_cleanup": false,
+    "production_readback_go_live_project_completion": false
+  },
+  "next_role": "C Auditor"
+}

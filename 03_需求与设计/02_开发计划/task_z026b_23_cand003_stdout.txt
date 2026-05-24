@@ -1,0 +1,27 @@
+..........F....                                                          [100%]
+=================================== FAILURES ===================================
+____________ SalesInventoryApiTest.test_only_get_routes_are_exposed ____________
+
+self = <tests.test_sales_inventory_api.SalesInventoryApiTest testMethod=test_only_get_routes_are_exposed>
+
+    def test_only_get_routes_are_exposed(self) -> None:
+        methods_by_path = {
+            route.path: route.methods
+            for route in app.routes
+            if getattr(route, "path", "").startswith("/api/sales-inventory")
+        }
+        self.assertTrue(methods_by_path)
+        for methods in methods_by_path.values():
+>           self.assertLessEqual(set(methods), {"GET", "HEAD", "OPTIONS"})
+E           AssertionError: {'POST'} not less than or equal to {'HEAD', 'OPTIONS', 'GET'}
+
+tests/test_sales_inventory_api.py:423: AssertionError
+=============================== warnings summary ===============================
+tests/test_sales_inventory_api.py::SalesInventoryApiTest::test_aggregation_filter_by_allowed_warehouses
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_sales_inventory_api.py::SalesInventoryApiTest::test_only_get_routes_are_exposed
+1 failed, 14 passed, 1 warning in 1.08s

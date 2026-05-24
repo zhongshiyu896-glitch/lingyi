@@ -419,5 +419,12 @@ class SalesInventoryApiTest(SalesInventoryApiBase):
             if getattr(route, "path", "").startswith("/api/sales-inventory")
         }
         self.assertTrue(methods_by_path)
-        for methods in methods_by_path.values():
-            self.assertLessEqual(set(methods), {"GET", "HEAD", "OPTIONS"})
+        local_write_routes = {
+            "/api/sales-inventory/sales-orders/drafts",
+            "/api/sales-inventory/sales-orders/drafts/{draft_id}/cancel",
+        }
+        post_routes = {path for path, methods in methods_by_path.items() if "POST" in methods}
+        self.assertEqual(post_routes, local_write_routes)
+        for path, methods in methods_by_path.items():
+            expected_methods = {"POST"} if path in local_write_routes else {"GET", "HEAD", "OPTIONS"}
+            self.assertLessEqual(set(methods), expected_methods, path)
