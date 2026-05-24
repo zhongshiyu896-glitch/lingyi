@@ -1,0 +1,299 @@
+{
+  "task_id": "TASK-Z027B-24-LEDGER-CAND003",
+  "role": "B Engineer",
+  "candidate_id": "Z027-CAND-003",
+  "ledger_total": 56,
+  "yes_count": 26,
+  "no_count": 30,
+  "yes_no_intersection_empty": true,
+  "yes_files_exist": true,
+  "yes_git_ignored": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_security_audit.py"
+  ],
+  "frontend_yes_paths": [],
+  "yes": [
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-18-PREP_CAND003边界冻结报告.md",
+      "reason": "Z027-CAND-003 B18 boundary report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_18_cand003_boundary.json",
+      "reason": "Z027-CAND-003 B18 boundary JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_18_cand003_boundary.tsv",
+      "reason": "Z027-CAND-003 B18 boundary TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-19-IMPL_CAND003单文件验证报告.md",
+      "reason": "Z027-CAND-003 B19 readonly pytest report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_19_cand003_result.json",
+      "reason": "Z027-CAND-003 B19 result JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_19_cand003_result.tsv",
+      "reason": "Z027-CAND-003 B19 result TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_19_cand003_stdout.txt",
+      "reason": "Z027-CAND-003 B19 stdout evidence"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-20-PREP-CAND003-FAILURE-DIAG_失败定位报告.md",
+      "reason": "Z027-CAND-003 B20 failure diagnosis report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_20_cand003_failure_boundary.json",
+      "reason": "Z027-CAND-003 B20 failure boundary JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_20_cand003_failure_boundary.tsv",
+      "reason": "Z027-CAND-003 B20 failure boundary TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-21-FIX-CAND003_security_audit测试合同修复报告.md",
+      "reason": "Z027-CAND-003 B21 first fix report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_21_cand003_fix_result.json",
+      "reason": "Z027-CAND-003 B21 first fix result JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_21_cand003_fix_result.tsv",
+      "reason": "Z027-CAND-003 B21 first fix result TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_21_cand003_fix_stdout.txt",
+      "reason": "Z027-CAND-003 B21 first fix stdout evidence"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-22-PREP-CAND003-SECOND-FAILURE-DIAG_二次失败定位报告.md",
+      "reason": "Z027-CAND-003 B22 second failure diagnosis report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_22_cand003_second_failure_boundary.json",
+      "reason": "Z027-CAND-003 B22 second failure boundary JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_22_cand003_second_failure_boundary.tsv",
+      "reason": "Z027-CAND-003 B22 second failure boundary TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-23-FIX-CAND003-SECOND_security_audit二次修复报告.md",
+      "reason": "Z027-CAND-003 B23 second fix report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_23_cand003_second_fix_result.json",
+      "reason": "Z027-CAND-003 B23 second fix result JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_23_cand003_second_fix_result.tsv",
+      "reason": "Z027-CAND-003 B23 second fix result TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_23_cand003_second_fix_stdout.txt",
+      "reason": "Z027-CAND-003 B23 second fix stdout evidence"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-24-LEDGER-CAND003_security_audit提交候选账本报告.md",
+      "reason": "Z027-CAND-003 B24 ledger report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_24_cand003_freeze.json",
+      "reason": "Z027-CAND-003 B24 freeze JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_24_cand003_ledger.json",
+      "reason": "Z027-CAND-003 B24 ledger JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_24_cand003_ledger.tsv",
+      "reason": "Z027-CAND-003 B24 ledger TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "07_后端/lingyi_service/tests/test_security_audit.py",
+      "reason": "Only allowed backend test file for Z027-CAND-003"
+    }
+  ],
+  "no": [
+    {
+      "decision": "NO",
+      "path": "06_前端/**",
+      "reason": "Frontend is outside Z027-CAND-003 ledger scope"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/app/**",
+      "reason": "Backend app source is outside Z027-CAND-003 ledger scope"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/工程师会话日志.md",
+      "reason": "Shared engineer log is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/01_架构设计/架构师会话日志.md",
+      "reason": "Shared architect log is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.json",
+      "reason": "Z027 candidate pool is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.tsv",
+      "reason": "Z027 candidate pool TSV is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-01-PREP_Z027本地候选池冻结报告.md",
+      "reason": "Z027 candidate pool report is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_17_remaining_refresh.json",
+      "reason": "B17 refresh is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_17_remaining_refresh.tsv",
+      "reason": "B17 refresh TSV is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-17-PREP_Z027剩余候选刷新报告.md",
+      "reason": "B17 refresh report is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_07_cand001_archive_result.json",
+      "reason": "CAND001 archive result is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_07_cand001_archive_result.tsv",
+      "reason": "CAND001 archive TSV is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-07-ARCHIVE-CAND001_Z027_CAND001归档确认报告.md",
+      "reason": "CAND001 archive report is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_16_cand002_archive_result.json",
+      "reason": "CAND002 archive result is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_16_cand002_archive_result.tsv",
+      "reason": "CAND002 archive TSV is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-16-ARCHIVE-CAND002_BOM_audit归档确认报告.md",
+      "reason": "CAND002 archive report is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_04_cand001_ledger.json",
+      "reason": "CAND001 ledger is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_13_cand002_ledger.json",
+      "reason": "CAND002 ledger is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/*cand004*",
+      "reason": "CAND004 scope is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/*cand005*",
+      "reason": "CAND005 scope is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z026B-*",
+      "reason": "Old cycle Z026 artifacts are excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z026b_*",
+      "reason": "Old cycle Z026 artifacts are excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z025B-*",
+      "reason": "Old cycle Z025 artifacts are excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z025b_*",
+      "reason": "Old cycle Z025 artifacts are excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_bom_audit.py",
+      "reason": "Other backend tests are outside CAND003 scope"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_sales_inventory_adapter.py",
+      "reason": "Other backend tests are outside CAND003 scope"
+    },
+    {
+      "decision": "NO",
+      "path": "**/__pycache__/**",
+      "reason": "Runtime cache is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "**/.pytest_cache/**",
+      "reason": "Pytest cache is excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "node_modules/**",
+      "reason": "Node runtime dependencies are excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "dist/**",
+      "reason": "Build output is excluded"
+    }
+  ]
+}

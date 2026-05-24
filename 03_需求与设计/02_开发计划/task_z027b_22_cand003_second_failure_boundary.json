@@ -1,0 +1,53 @@
+{
+  "task_id": "TASK-Z027B-22-PREP-CAND003-SECOND-FAILURE-DIAG",
+  "role": "B Engineer",
+  "candidate_id": "Z027-CAND-003",
+  "source_failure_task": "TASK-Z027B-21-FIX-CAND003",
+  "previous_boundary_task": "TASK-Z027B-20-PREP-CAND003-FAILURE-DIAG",
+  "current_head": "c46b8f5a74166eedf5cfac8c75bad232359a1f87",
+  "cached_empty": true,
+  "failed_summary": "1 failed, 4 passed, 1 warning in 1.07s",
+  "remaining_failed_cases": [
+    {
+      "case": "SecurityAuditTest::test_workshop_resource_forbidden_writes_security_audit",
+      "observed_status": 403,
+      "expected_status": 403,
+      "observed_resource_no": "DEMO-TEE",
+      "expected_resource_no": "ITEM-A",
+      "failure_pattern": "B21 payload/carrier fix now reaches the expected 403 security-audit branch; remaining failure is resource_no expectation drift caused by local workshop synthetic resource context."
+    }
+  ],
+  "observed_status": 403,
+  "expected_status": 403,
+  "observed_resource_no": "DEMO-TEE",
+  "expected_resource_no": "ITEM-A",
+  "target_test_dirty_diff": "B21 allowed test contract changes only in 07_后端/lingyi_service/tests/test_security_audit.py",
+  "readonly_source_evidence_paths": [
+    "03_需求与设计/02_开发计划/task_z027b_20_cand003_failure_boundary.json",
+    "03_需求与设计/02_开发计划/task_z027b_21_cand003_fix_result.json",
+    "03_需求与设计/02_开发计划/task_z027b_21_cand003_fix_stdout.txt",
+    "07_后端/lingyi_service/tests/test_security_audit.py",
+    "07_后端/lingyi_service/app/routers/workshop.py",
+    "07_后端/lingyi_service/app/services/workshop_service.py",
+    "07_后端/lingyi_service/app/services/permission_service.py",
+    "07_后端/lingyi_service/app/services/audit_service.py",
+    "07_后端/lingyi_service/app/models/audit.py",
+    "07_后端/lingyi_service/app/schemas/workshop.py"
+  ],
+  "source_evidence_missing": [],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "classification_reason": "The remaining assertion is a fixture/resource expectation drift. Current local workshop write gate enables synthetic context; WorkshopService.resolve_job_card_resource returns default item_code DEMO-TEE when request_item_code is absent, and PermissionService records that item_code into security audit on 403. Business code is behaving consistently with current local contract.",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_security_audit.py",
+  "next_task": "TASK-Z027B-23-FIX-CAND003-SECOND",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

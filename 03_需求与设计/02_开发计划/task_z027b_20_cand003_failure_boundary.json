@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-Z027B-20-PREP-CAND003-FAILURE-DIAG",
+  "role": "B Engineer",
+  "candidate_id": "Z027-CAND-003",
+  "source_boundary_task": "TASK-Z027B-18-PREP",
+  "source_impl_task": "TASK-Z027B-19-IMPL",
+  "current_head": "c46b8f5a74166eedf5cfac8c75bad232359a1f87",
+  "cached_empty": true,
+  "failed_summary": "2 failed, 3 passed, 1 warning in 1.17s",
+  "failed_cases": [
+    {
+      "case": "test_resource_level_forbidden_writes_resource_context",
+      "full_case": "tests/test_security_audit.py::SecurityAuditTest::test_resource_level_forbidden_writes_resource_context",
+      "observed_status": 422,
+      "expected_status": 403,
+      "assertion": "self.assertEqual(explode_resp.status_code, 403)",
+      "location": "07_后端/lingyi_service/tests/test_security_audit.py:246",
+      "readonly_evidence": [
+        "Test payload at lines 239-243 only sends order_qty and size_ratio.",
+        "BomExplodeRequest requires scenario_tag, idempotency_key, source_ref, bom_no, item_code, and order_qty."
+      ]
+    },
+    {
+      "case": "test_workshop_resource_forbidden_writes_security_audit",
+      "full_case": "tests/test_security_audit.py::SecurityAuditTest::test_workshop_resource_forbidden_writes_security_audit",
+      "observed_status": 422,
+      "expected_status": 403,
+      "assertion": "self.assertEqual(response.status_code, 403)",
+      "location": "07_后端/lingyi_service/tests/test_security_audit.py:335",
+      "readonly_evidence": [
+        "Test payload at lines 321-332 omits current required carrier fields.",
+        "WorkshopTicketRegisterRequest requires scenario_tag, idempotency_key, and source_ref."
+      ]
+    }
+  ],
+  "observed_status": 422,
+  "expected_status": 403,
+  "failure_pattern": "Both failures return 422 before the intended 403 security-audit assertions because request payloads no longer satisfy current schema/local gate carrier contracts.",
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_security_audit.py",
+    "07_后端/lingyi_service/app/services/permission_service.py",
+    "07_后端/lingyi_service/app/services/audit_service.py",
+    "07_后端/lingyi_service/app/routers/bom.py",
+    "07_后端/lingyi_service/app/routers/workshop.py",
+    "07_后端/lingyi_service/app/models/audit.py",
+    "07_后端/lingyi_service/app/schemas/bom.py",
+    "07_后端/lingyi_service/app/schemas/workshop.py"
+  ],
+  "source_evidence_missing": [],
+  "target_test_dirty_diff": [],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_security_audit.py",
+  "next_task": "TASK-Z027B-21-FIX-CAND003",
+  "run_this_task": false,
+  "git_diff_check": "PASS",
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pull_request": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "tests_build_typecheck_npm_browser": false,
+  "cleanup_reset_checkout_stash": false
+}

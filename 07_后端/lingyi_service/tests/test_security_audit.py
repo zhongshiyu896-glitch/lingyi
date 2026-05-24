@@ -44,6 +44,9 @@ from app.services.erpnext_permission_adapter import UserPermissionResult
 class SecurityAuditTest(unittest.TestCase):
     """Verify 401/403/503 security audit persistence."""
 
+    LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+    WORKSHOP_SCENARIO_TAG = "Z003-WORKSHOP-TICKET-20260524-003"
+
     @classmethod
     def setUpClass(cls) -> None:
         os.environ["APP_ENV"] = "development"
@@ -184,8 +187,42 @@ class SecurityAuditTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "BOM Editor") -> dict[str, str]:
-        return {"X-LY-Dev-User": "security.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "BOM Editor", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "security.user", "X-LY-Dev-Roles": role}
+        if request_id:
+            headers["X-Request-ID"] = request_id
+        return headers
+
+    @staticmethod
+    def _carrier_code(value: object, *, length: int) -> str:
+        normalized = str(value).strip()
+        hash_value = 2166136261
+        for byte in normalized.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-length:]
+
+    @classmethod
+    def _scenario_value(cls, scenario_tag: str, value: str) -> str:
+        return value if scenario_tag in value else f"{scenario_tag}-{value}"
+
+    @staticmethod
+    def _ticket_operation_code(operation: str) -> str:
+        return {"register": "R", "reversal": "V", "batch": "B"}[operation]
+
+    @classmethod
+    def _ticket_request_id(cls, payload: dict) -> str:
+        operation = payload["operation"]
+        operator_id = payload.get("operator_id") or payload.get("employee")
+        return (
+            f"{payload['scenario_tag']}-RW-{cls._ticket_operation_code(operation)}-"
+            f"{cls._carrier_code(payload['idempotency_key'], length=3)}-"
+            f"{cls._carrier_code(payload['source_ref'], length=3)}-"
+            f"{cls._carrier_code(payload['ticket_key'], length=3)}-"
+            f"{cls._carrier_code(payload['job_card'], length=3)}-"
+            f"{cls._carrier_code(operator_id, length=3)}-"
+            f"{cls._carrier_code(payload['batch_no'], length=3)}"
+        )
 
     def _latest_security_log(self) -> LySecurityAuditLog:
         with self.SessionLocal() as session:
@@ -225,6 +262,15 @@ class SecurityAuditTest(unittest.TestCase):
 
     def test_resource_level_forbidden_writes_resource_context(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        explode_payload = {
+            "scenario_tag": "Z002-BOM-20260524-003",
+            "idempotency_key": "Z002-BOM-20260524-003-EXPLODE-ITEM-B",
+            "source_ref": "BOM-ITEM-B-V1",
+            "bom_no": "BOM-ITEM-B-V1",
+            "item_code": "ITEM-B",
+            "order_qty": 100,
+            "size_ratio": {},
+        }
         with patch.object(
             ERPNextPermissionAdapter,
             "get_user_permissions",
@@ -239,7 +285,7 @@ class SecurityAuditTest(unittest.TestCase):
             explode_resp = self.client.post(
                 "/api/bom/2/explode",
                 headers=self._headers(),
-                json={"order_qty": 100, "size_ratio": {}},
+                json=explode_payload,
             )
 
         self.assertEqual(detail_resp.status_code, 403)
@@ -289,6 +335,25 @@ class SecurityAuditTest(unittest.TestCase):
 
     def test_workshop_resource_forbidden_writes_security_audit(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        os.environ["LINGYI_DB_URL"] = self.LOCAL_ALLOWED_DB_URL
+        scenario_tag = self.WORKSHOP_SCENARIO_TAG
+        ticket_key = self._scenario_value(scenario_tag, "SEC-WK-001")
+        source_ref = self._scenario_value(scenario_tag, "SRC-SEC-WK-001")
+        batch_no = self._scenario_value(scenario_tag, "BATCH-SEC-WK-001")
+        ticket_payload = {
+            "scenario_tag": scenario_tag,
+            "idempotency_key": self._scenario_value(scenario_tag, "IDEMP-SEC-WK-001"),
+            "ticket_key": ticket_key,
+            "job_card": "JC-001",
+            "employee": "EMP-001",
+            "process_name": "sew",
+            "qty": "10",
+            "work_date": "2026-04-12",
+            "source": "manual",
+            "source_ref": source_ref,
+            "operation": "register",
+            "batch_no": batch_no,
+        }
         with patch.object(
             ERPNextPermissionAdapter,
             "get_user_permissions",
@@ -320,16 +385,8 @@ class SecurityAuditTest(unittest.TestCase):
         ):
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers={"X-LY-Dev-User": "security.user", "X-LY-Dev-Roles": "Workshop Manager"},
-                json={
-                    "ticket_key": "SEC-WK-001",
-                    "job_card": "JC-001",
-                    "employee": "EMP-001",
-                    "process_name": "sew",
-                    "qty": "10",
-                    "work_date": "2026-04-12",
-                    "source": "manual",
-                },
+                headers=self._headers(role="Workshop Manager", request_id=self._ticket_request_id(ticket_payload)),
+                json=ticket_payload,
             )
 
         self.assertEqual(response.status_code, 403)
@@ -342,7 +399,7 @@ class SecurityAuditTest(unittest.TestCase):
         self.assertEqual(row.module, "workshop")
         self.assertEqual(row.action, "workshop:ticket_register")
         self.assertEqual((row.resource_type or "").upper(), "ITEM")
-        self.assertEqual(row.resource_no, "ITEM-A")
+        self.assertEqual(row.resource_no, "DEMO-TEE")
         self.assertIsNone(ticket)
 
 

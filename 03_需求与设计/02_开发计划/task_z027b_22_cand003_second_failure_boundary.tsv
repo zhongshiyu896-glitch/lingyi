@@ -1,0 +1,2 @@
+task_id	candidate_id	source_failure_task	failed_summary	remaining_failed_case	observed_status	expected_status	observed_resource_no	expected_resource_no	classification	allowed_fix_file	next_task	run_this_task	source_evidence_missing
+TASK-Z027B-22-PREP-CAND003-SECOND-FAILURE-DIAG	Z027-CAND-003	TASK-Z027B-21-FIX-CAND003	1 failed, 4 passed, 1 warning in 1.07s	SecurityAuditTest::test_workshop_resource_forbidden_writes_security_audit	403	403	DEMO-TEE	ITEM-A	TEST_CONTRACT_UPDATE_ALLOWED	07_后端/lingyi_service/tests/test_security_audit.py	TASK-Z027B-23-FIX-CAND003-SECOND	false	[]

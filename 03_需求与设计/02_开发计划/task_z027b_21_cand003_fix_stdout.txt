@@ -1,0 +1,87 @@
+....F                                                                    [100%]
+=================================== FAILURES ===================================
+___ SecurityAuditTest.test_workshop_resource_forbidden_writes_security_audit ___
+
+self = <tests.test_security_audit.SecurityAuditTest testMethod=test_workshop_resource_forbidden_writes_security_audit>
+
+    def test_workshop_resource_forbidden_writes_security_audit(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        os.environ["LINGYI_DB_URL"] = self.LOCAL_ALLOWED_DB_URL
+        scenario_tag = self.WORKSHOP_SCENARIO_TAG
+        ticket_key = self._scenario_value(scenario_tag, "SEC-WK-001")
+        source_ref = self._scenario_value(scenario_tag, "SRC-SEC-WK-001")
+        batch_no = self._scenario_value(scenario_tag, "BATCH-SEC-WK-001")
+        ticket_payload = {
+            "scenario_tag": scenario_tag,
+            "idempotency_key": self._scenario_value(scenario_tag, "IDEMP-SEC-WK-001"),
+            "ticket_key": ticket_key,
+            "job_card": "JC-001",
+            "employee": "EMP-001",
+            "process_name": "sew",
+            "qty": "10",
+            "work_date": "2026-04-12",
+            "source": "manual",
+            "source_ref": source_ref,
+            "operation": "register",
+            "batch_no": batch_no,
+        }
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-B"},
+                allowed_companies={"COMP-A"},
+            ),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_job_card",
+            return_value=JobCardInfo(
+                name="JC-001",
+                operation="sew",
+                status="Open",
+                work_order="WO-001",
+                item_code="",
+                company="",
+            ),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_work_order",
+            return_value=WorkOrderInfo(name="WO-001", production_item="ITEM-A", company="COMP-A"),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=EmployeeInfo(name="EMP-001", status="Active", disabled=False),
+        ):
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(role="Workshop Manager", request_id=self._ticket_request_id(ticket_payload)),
+                json=ticket_payload,
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json().get("code"), "AUTH_FORBIDDEN")
+        with self.SessionLocal() as session:
+            row = session.query(LySecurityAuditLog).order_by(LySecurityAuditLog.id.desc()).first()
+            ticket = session.query(YsWorkshopTicket).filter(YsWorkshopTicket.ticket_key == "SEC-WK-001").first()
+        self.assertIsNotNone(row)
+        self.assertEqual(row.event_type, "AUTH_FORBIDDEN")
+        self.assertEqual(row.module, "workshop")
+        self.assertEqual(row.action, "workshop:ticket_register")
+        self.assertEqual((row.resource_type or "").upper(), "ITEM")
+>       self.assertEqual(row.resource_no, "ITEM-A")
+E       AssertionError: 'DEMO-TEE' != 'ITEM-A'
+E       - DEMO-TEE
+E       + ITEM-A
+
+tests/test_security_audit.py:402: AssertionError
+=============================== warnings summary ===============================
+tests/test_security_audit.py::SecurityAuditTest::test_forbidden_action_writes_security_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_security_audit.py::SecurityAuditTest::test_workshop_resource_forbidden_writes_security_audit
+1 failed, 4 passed, 1 warning in 1.07s

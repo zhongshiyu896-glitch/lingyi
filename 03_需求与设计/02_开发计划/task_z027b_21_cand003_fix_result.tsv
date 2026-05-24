@@ -1,0 +1,2 @@
+task_id	candidate_id	classification	command_run_count	exit_code	result	pytest_summary	assertions_preserved	skip_xfail_deleted_cases	backend_app_changed	frontend_changed	unrelated_tests_changed	cached_empty	rerun_performed	stopped_after_fail
+TASK-Z027B-21-FIX-CAND003	Z027-CAND-003	TEST_CONTRACT_UPDATE_ALLOWED	1	1	FAIL	1 failed, 4 passed, 1 warning in 1.07s	true	false	false	false	false	true	false	true

@@ -1,0 +1,93 @@
+..F.F                                                                    [100%]
+=================================== FAILURES ===================================
+___ SecurityAuditTest.test_resource_level_forbidden_writes_resource_context ____
+
+self = <tests.test_security_audit.SecurityAuditTest testMethod=test_resource_level_forbidden_writes_resource_context>
+
+    def test_resource_level_forbidden_writes_resource_context(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-A"},
+                allowed_companies=set(),
+            ),
+        ):
+            detail_resp = self.client.get("/api/bom/2", headers=self._headers())
+            explode_resp = self.client.post(
+                "/api/bom/2/explode",
+                headers=self._headers(),
+                json={"order_qty": 100, "size_ratio": {}},
+            )
+
+        self.assertEqual(detail_resp.status_code, 403)
+>       self.assertEqual(explode_resp.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_security_audit.py:246: AssertionError
+___ SecurityAuditTest.test_workshop_resource_forbidden_writes_security_audit ___
+
+self = <tests.test_security_audit.SecurityAuditTest testMethod=test_workshop_resource_forbidden_writes_security_audit>
+
+    def test_workshop_resource_forbidden_writes_security_audit(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch.object(
+            ERPNextPermissionAdapter,
+            "get_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-B"},
+                allowed_companies={"COMP-A"},
+            ),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_job_card",
+            return_value=JobCardInfo(
+                name="JC-001",
+                operation="sew",
+                status="Open",
+                work_order="WO-001",
+                item_code="",
+                company="",
+            ),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_work_order",
+            return_value=WorkOrderInfo(name="WO-001", production_item="ITEM-A", company="COMP-A"),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=EmployeeInfo(name="EMP-001", status="Active", disabled=False),
+        ):
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers={"X-LY-Dev-User": "security.user", "X-LY-Dev-Roles": "Workshop Manager"},
+                json={
+                    "ticket_key": "SEC-WK-001",
+                    "job_card": "JC-001",
+                    "employee": "EMP-001",
+                    "process_name": "sew",
+                    "qty": "10",
+                    "work_date": "2026-04-12",
+                    "source": "manual",
+                },
+            )
+
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_security_audit.py:335: AssertionError
+=============================== warnings summary ===============================
+tests/test_security_audit.py::SecurityAuditTest::test_forbidden_action_writes_security_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_security_audit.py::SecurityAuditTest::test_resource_level_forbidden_writes_resource_context
+FAILED tests/test_security_audit.py::SecurityAuditTest::test_workshop_resource_forbidden_writes_security_audit
+2 failed, 3 passed, 1 warning in 1.17s

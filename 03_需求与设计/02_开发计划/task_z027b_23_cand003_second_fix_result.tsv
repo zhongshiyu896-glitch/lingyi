@@ -1,0 +1,2 @@
+task_id	candidate_id	classification	command_run_count	exit_code	result	pytest_summary	assertions_preserved	resource_no_expectation_before	resource_no_expectation_after	skip_xfail_deleted_cases	backend_app_changed	frontend_changed	unrelated_tests_changed	cached_empty
+TASK-Z027B-23-FIX-CAND003-SECOND	Z027-CAND-003	TEST_CONTRACT_UPDATE_ALLOWED	1	0	PASS	5 passed, 1 warning in 1.06s	true	ITEM-A	DEMO-TEE	false	false	false	false	true
