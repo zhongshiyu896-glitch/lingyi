@@ -1,0 +1,71 @@
+{
+  "task_id": "TASK-Z028B-41-LEDGER-CAND005",
+  "role": "B Engineer",
+  "candidate_id": "Z028-CAND-005",
+  "current_head": "c8b8a5b53a91af33c9c1856312bc2af1935dbc38",
+  "freeze_summary": "B37 boundary -> B38 FAIL -> B39 TEST_CONTRACT_UPDATE_ALLOWED -> B40 PASS -> B40-FIX1 lifecycle fields fixed -> B41 ledger",
+  "source_tasks": {
+    "boundary": "TASK-Z028B-37-PREP",
+    "impl_fail": "TASK-Z028B-38-IMPL",
+    "failure_boundary": "TASK-Z028B-39-PREP-CAND005-FAILURE-DIAG",
+    "fix_pass": "TASK-Z028B-40-FIX-CAND005",
+    "fix1_lifecycle_fields": "TASK-Z028B-40-FIX-CAND005-FIX1"
+  },
+  "b38_result": {
+    "result": "FAIL",
+    "command_run_count": 1,
+    "pytest_summary": "5 failed, 1 warning in 1.04s"
+  },
+  "b39_failure_boundary": {
+    "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+    "allowed_fix_file": "07_后端/lingyi_service/tests/test_warehouse_stock_entry_worker.py",
+    "missing_schema_fields": [
+      "source_ref",
+      "warehouse",
+      "item_code",
+      "operation",
+      "quantity",
+      "business_date",
+      "status_action",
+      "scenario_tag"
+    ]
+  },
+  "b40_result": {
+    "result": "PASS",
+    "command_run_count": 1,
+    "exit_code": 0,
+    "pytest_summary": "5 passed, 1 warning in 1.10s",
+    "assertions_preserved": true,
+    "draft_create_201_assertions_preserved": true,
+    "missing_fields_addressed": [
+      "source_ref",
+      "warehouse",
+      "item_code",
+      "operation",
+      "quantity",
+      "business_date",
+      "status_action",
+      "scenario_tag"
+    ]
+  },
+  "b40_fix1": {
+    "semantic_test_result_changed": false,
+    "command_result_preserved": true,
+    "lifecycle_fields_fixed": true
+  },
+  "allowed_backend_test_file": "07_后端/lingyi_service/tests/test_warehouse_stock_entry_worker.py",
+  "draft_create_201_assertions_preserved": true,
+  "skip_xfail_deleted_cases": false,
+  "cached_empty": true,
+  "git_diff_check": "PASS",
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

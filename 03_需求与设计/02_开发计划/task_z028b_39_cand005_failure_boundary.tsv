@@ -1,0 +1,26 @@
+field	value
+task_id	TASK-Z028B-39-PREP-CAND005-FAILURE-DIAG
+candidate_id	Z028-CAND-005
+current_head	c8b8a5b53a91af33c9c1856312bc2af1935dbc38
+cached_empty	true
+source_boundary_task	TASK-Z028B-37-PREP
+source_impl_task	TASK-Z028B-38-IMPL
+failed_summary	5 failed, 1 warning in 1.04s
+failed_cases	WarehouseStockEntryWorkerTest::test_cancelled_outbox_or_draft_not_processed;WarehouseStockEntryWorkerTest::test_worker_default_batch_size_is_10;WarehouseStockEntryWorkerTest::test_worker_dry_run_does_not_modify_outbox;WarehouseStockEntryWorkerTest::test_worker_failure_retries_then_dead;WarehouseStockEntryWorkerTest::test_worker_success_transitions_to_succeeded
+observed_statuses	[422,422,422,422,422]
+expected_statuses	[201,201,201,201,201]
+missing_schema_fields	["source_ref","warehouse","item_code","operation","quantity","business_date","status_action","scenario_tag"]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_warehouse_stock_entry_worker.py
+next_task	TASK-Z028B-40-FIX-CAND005
+run_this_task	false
+target_test_dirty_diff	false
+source_evidence_missing	[]
+historical_dirty_forbidden_staged	[]
+git_diff_check	PASS
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false

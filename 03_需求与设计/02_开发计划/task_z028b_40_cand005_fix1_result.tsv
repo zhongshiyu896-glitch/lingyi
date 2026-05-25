@@ -1,0 +1,23 @@
+field	value
+task_id	TASK-Z028B-40-FIX-CAND005-FIX1
+fixed_file	03_需求与设计/02_开发计划/task_z028b_40_cand005_fix_result.json
+fixed_fields	stage_performed;commit_performed;push_performed;tag_performed;pr_performed;release_performed;remote_lifecycle_parked;production_readback_ready;go_live_ready;project_completion_claimed
+values_before	stage_performed=null;commit_performed=null;push_performed=null;tag_performed=null;pr_performed=null;release_performed=null;remote_lifecycle_parked=null;production_readback_ready=null;go_live_ready=null;project_completion_claimed=null
+values_after	stage_performed=false;commit_performed=false;push_performed=false;tag_performed=false;pr_performed=false;release_performed=false;remote_lifecycle_parked=true;production_readback_ready=false;go_live_ready=false;project_completion_claimed=false
+semantic_test_result_changed	false
+command_result_preserved	true
+b40_command_run_count	1
+b40_exit_code	0
+b40_result	PASS
+b40_pytest_summary	5 passed, 1 warning in 1.10s
+cached_empty	true
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

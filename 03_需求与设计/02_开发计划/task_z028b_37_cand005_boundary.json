@@ -1,0 +1,97 @@
+{
+  "task_id": "TASK-Z028B-37-PREP",
+  "role": "B Engineer",
+  "current_head": "c8b8a5b53a91af33c9c1856312bc2af1935dbc38",
+  "cached_empty": true,
+  "candidate_pool": {
+    "path": "03_需求与设计/02_开发计划/task_z028b_01_candidate_pool.json",
+    "candidate_ids": [
+      "Z028-CAND-001",
+      "Z028-CAND-002",
+      "Z028-CAND-003",
+      "Z028-CAND-004",
+      "Z028-CAND-005"
+    ],
+    "candidate_total": 5
+  },
+  "archived_candidates": [
+    {
+      "candidate_id": "Z028-CAND-001",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "47d8208281d2437f0afd60169c7fed3907d6a98f"
+    },
+    {
+      "candidate_id": "Z028-CAND-002",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "d62432bbb0b247ef6ec554bb8a6e12e4452388a0"
+    },
+    {
+      "candidate_id": "Z028-CAND-003",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "8b2536babda1780764407c6da2fa96a6313952d9"
+    },
+    {
+      "candidate_id": "Z028-CAND-004",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "c8b8a5b53a91af33c9c1856312bc2af1935dbc38",
+      "archive_fix1_negative_scan_fields_valid": true
+    }
+  ],
+  "remaining_candidates": [
+    "Z028-CAND-005"
+  ],
+  "candidate_id": "Z028-CAND-005",
+  "candidate_original_fields": {
+    "candidate_id": "Z028-CAND-005",
+    "module": "warehouse_stock_entry_worker",
+    "risk": "LOW",
+    "target_test": "07_后端/lingyi_service/tests/test_warehouse_stock_entry_worker.py",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_warehouse_stock_entry_worker.py -q",
+    "recommended_workdir": "07_后端/lingyi_service",
+    "source_evidence_paths": [
+      "07_后端/lingyi_service/tests/test_warehouse_stock_entry_worker.py",
+      "07_后端/lingyi_service/tests/test_warehouse_stock_entry_draft.py",
+      "07_后端/lingyi_service/app/routers/warehouse.py",
+      "07_后端/lingyi_service/app/services/warehouse_service.py",
+      "07_后端/lingyi_service/app/services/erpnext_warehouse_adapter.py",
+      "07_后端/lingyi_service/app/models/warehouse.py",
+      "07_后端/lingyi_service/app/schemas/warehouse.py"
+    ],
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "reuse_check": {
+      "reused_from_Z015_Z027": false,
+      "matched_prior_entries": []
+    },
+    "status": "PENDING_LOCAL_READONLY_VALIDATION"
+  },
+  "frozen_command": ".venv/bin/python -m pytest tests/test_warehouse_stock_entry_worker.py -q",
+  "frozen_workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "target_test_path": "07_后端/lingyi_service/tests/test_warehouse_stock_entry_worker.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_warehouse_stock_entry_worker.py",
+    "07_后端/lingyi_service/tests/test_warehouse_stock_entry_draft.py",
+    "07_后端/lingyi_service/app/routers/warehouse.py",
+    "07_后端/lingyi_service/app/services/warehouse_service.py",
+    "07_后端/lingyi_service/app/services/erpnext_warehouse_adapter.py",
+    "07_后端/lingyi_service/app/models/warehouse.py",
+    "07_后端/lingyi_service/app/schemas/warehouse.py"
+  ],
+  "source_evidence_missing": [],
+  "historical_dirty_forbidden_staged": [],
+  "next_task": "TASK-Z028B-38-IMPL",
+  "run_this_task": false,
+  "git_diff_check": "PASS",
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

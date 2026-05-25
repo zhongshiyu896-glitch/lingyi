@@ -1,0 +1,27 @@
+field	value
+task_id	TASK-Z028B-37-PREP
+current_head	c8b8a5b53a91af33c9c1856312bc2af1935dbc38
+cached_empty	true
+candidate_pool_total	5
+candidate_pool_ids	Z028-CAND-001,Z028-CAND-002,Z028-CAND-003,Z028-CAND-004,Z028-CAND-005
+archived_candidates	Z028-CAND-001,Z028-CAND-002,Z028-CAND-003,Z028-CAND-004
+remaining_candidates	Z028-CAND-005
+candidate_id	Z028-CAND-005
+module	warehouse_stock_entry_worker
+risk	LOW
+frozen_command	.venv/bin/python -m pytest tests/test_warehouse_stock_entry_worker.py -q
+frozen_workdir	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service
+target_test_path	07_后端/lingyi_service/tests/test_warehouse_stock_entry_worker.py
+target_test_exists	true
+target_test_dirty_diff	false
+source_evidence_missing	[]
+historical_dirty_forbidden_staged	[]
+next_task	TASK-Z028B-38-IMPL
+run_this_task	false
+git_diff_check	PASS
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
