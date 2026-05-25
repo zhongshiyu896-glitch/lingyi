@@ -1,0 +1,188 @@
+FFFFFFFFF..FFF                                                           [100%]
+=================================== FAILURES ===================================
+_ FactoryStatementPayableWorkerTest.test_failed_with_future_retry_is_not_claimed _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_failed_with_future_retry_is_not_claimed>
+
+    def test_failed_with_future_retry_is_not_claimed(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-future-failed-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:389:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+_ FactoryStatementPayableWorkerTest.test_pending_or_failed_due_can_be_claimed __
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_pending_or_failed_due_can_be_claimed>
+
+    def test_pending_or_failed_due_can_be_claimed(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-due-retry-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:409:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_pending_or_failed_with_future_retry_is_not_claimed _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_pending_or_failed_with_future_retry_is_not_claimed>
+
+    def test_pending_or_failed_with_future_retry_is_not_claimed(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-future-retry-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:369:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_stale_id_with_expired_processing_lease_can_be_claimed _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_stale_id_with_expired_processing_lease_can_be_claimed>
+
+    def test_stale_id_with_expired_processing_lease_can_be_claimed(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-lease-expired-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:348:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_stale_id_with_unexpired_processing_lease_is_not_claimed _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_stale_id_with_unexpired_processing_lease_is_not_claimed>
+
+    def test_stale_id_with_unexpired_processing_lease_is_not_claimed(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-lease-unexpired-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:328:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_worker_dry_run_does_not_call_erpnext_or_mutate_outbox _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_worker_dry_run_does_not_call_erpnext_or_mutate_outbox>
+
+    def test_worker_dry_run_does_not_call_erpnext_or_mutate_outbox(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-dryrun-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:161:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_worker_failed_outbox_reaches_dead_after_max_attempts _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_worker_failed_outbox_reaches_dead_after_max_attempts>
+
+    def test_worker_failed_outbox_reaches_dead_after_max_attempts(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-dead-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:195:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_worker_fails_when_erpnext_returns_non_draft_docstatus _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_worker_fails_when_erpnext_returns_non_draft_docstatus>
+
+    def test_worker_fails_when_erpnext_returns_non_draft_docstatus(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-invalid-docstatus-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:131:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_worker_processes_outbox_and_updates_statement_status _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_worker_processes_outbox_and_updates_statement_status>
+
+    def test_worker_processes_outbox_and_updates_statement_status(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-success-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:97:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_worker_skips_erp_calls_when_statement_already_payable_draft_created _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_worker_skips_erp_calls_when_statement_already_payable_draft_created>
+
+    def test_worker_skips_erp_calls_when_statement_already_payable_draft_created(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-created-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:300:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_worker_skips_erp_calls_when_statement_cancelled _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_worker_skips_erp_calls_when_statement_cancelled>
+
+    def test_worker_skips_erp_calls_when_statement_cancelled(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-cancelled-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:233:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableWorkerTest.test_worker_skips_erp_calls_when_statement_draft _
+
+self = <tests.test_factory_statement_payable_worker.FactoryStatementPayableWorkerTest testMethod=test_worker_skips_erp_calls_when_statement_draft>
+
+    def test_worker_skips_erp_calls_when_statement_draft(self) -> None:
+>       statement_id = self._create_confirmed_statement(create_key="idem-worker-draft-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_worker.py:272:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_worker.py:52: in _create_confirmed_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+=============================== warnings summary ===============================
+tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_failed_with_future_retry_is_not_claimed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_factory_statement_payable_worker.py: 12 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:4017: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_factory_statement_payable_worker.py: 12 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:377: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    LySubcontractInspection.settlement_locked_at: datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_failed_with_future_retry_is_not_claimed
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_pending_or_failed_due_can_be_claimed
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_pending_or_failed_with_future_retry_is_not_claimed
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_stale_id_with_expired_processing_lease_can_be_claimed
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_stale_id_with_unexpired_processing_lease_is_not_claimed
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_worker_dry_run_does_not_call_erpnext_or_mutate_outbox
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_worker_failed_outbox_reaches_dead_after_max_attempts
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_worker_fails_when_erpnext_returns_non_draft_docstatus
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_worker_processes_outbox_and_updates_statement_status
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_worker_skips_erp_calls_when_statement_already_payable_draft_created
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_worker_skips_erp_calls_when_statement_cancelled
+FAILED tests/test_factory_statement_payable_worker.py::FactoryStatementPayableWorkerTest::test_worker_skips_erp_calls_when_statement_draft
+12 failed, 2 passed, 25 warnings in 1.19s

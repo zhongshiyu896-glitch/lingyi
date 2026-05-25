@@ -26,9 +26,42 @@ class FactoryStatementPayableWorkerTest(FactoryStatementApiBase):
         os.environ["LINGYI_SERVICE_ACCOUNT_USERS"] = "svc.payable"
 
     @staticmethod
-    def _payable_payload(*, idempotency_key: str) -> dict[str, str]:
+    def _scenario_key(idempotency_key: str) -> str:
+        scenario_tag = FactoryStatementApiBase._SCENARIO_TAG
+        return idempotency_key if scenario_tag in idempotency_key else f"{scenario_tag}-{idempotency_key}"
+
+    def _statement_chain(self, statement_id: int) -> dict[str, str]:
+        with self.SessionLocal() as session:
+            statement = session.query(LyFactoryStatement).filter(LyFactoryStatement.id == statement_id).one()
+            return {
+                "company": str(statement.company),
+                "supplier": str(statement.supplier),
+                "statement_no": str(statement.statement_no),
+                "source_type": str(statement.source_type),
+            }
+
+    def _confirm_payload(self, *, statement_id: int, idempotency_key: str, remark: str = "confirm") -> dict[str, str]:
+        chain = self._statement_chain(statement_id)
         return {
-            "idempotency_key": idempotency_key,
+            "idempotency_key": self._scenario_key(idempotency_key),
+            "remark": remark,
+            "scenario_tag": FactoryStatementApiBase._SCENARIO_TAG,
+            "company": chain["company"],
+            "supplier": chain["supplier"],
+            "statement_no": chain["statement_no"],
+        }
+
+    def _payable_payload(self, *, statement_id: int, idempotency_key: str) -> dict[str, str]:
+        chain = self._statement_chain(statement_id)
+        return {
+            "idempotency_key": self._scenario_key(idempotency_key),
+            "scenario_tag": FactoryStatementApiBase._SCENARIO_TAG,
+            "company": chain["company"],
+            "supplier": chain["supplier"],
+            "statement_no": chain["statement_no"],
+            "source_type": chain["source_type"],
+            "status_action": "payable_draft",
+            "source_ref": chain["statement_no"],
             "payable_account": "2202 - AP - C",
             "cost_center": "Main - C",
             "posting_date": "2026-04-15",
@@ -47,7 +80,7 @@ class FactoryStatementPayableWorkerTest(FactoryStatementApiBase):
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(role="Finance Manager"),
-            json={"idempotency_key": f"{create_key}-confirm", "remark": "confirm"},
+            json=self._confirm_payload(statement_id=statement_id, idempotency_key=f"{create_key}-confirm"),
         )
         self.assertEqual(confirmed.status_code, 200)
         return statement_id
@@ -61,7 +94,7 @@ class FactoryStatementPayableWorkerTest(FactoryStatementApiBase):
             created = self.client.post(
                 f"/api/factory-statements/{statement_id}/payable-draft",
                 headers=self._headers(role="Finance Manager"),
-                json=self._payable_payload(idempotency_key=idem_key),
+                json=self._payable_payload(statement_id=statement_id, idempotency_key=idem_key),
             )
         self.assertEqual(created.status_code, 200)
 

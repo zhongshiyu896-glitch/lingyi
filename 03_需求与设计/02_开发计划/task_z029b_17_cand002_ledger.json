@@ -1,0 +1,211 @@
+{
+  "task_id": "TASK-Z029B-17-LEDGER-CAND002",
+  "candidate_id": "Z029-CAND-002",
+  "current_head": "a487919d62f8838d683f50472bf09b8235d7da93",
+  "ledger_total": 60,
+  "yes_count": 19,
+  "no_count": 41,
+  "yes_no_intersection": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_factory_statement_payable_worker.py"
+  ],
+  "frontend_yes_paths": [],
+  "yes_files_exist": true,
+  "yes_files_missing": [],
+  "git_check_ignore_yes_matches": [],
+  "historical_dirty_forbidden_paths_count": 19,
+  "historical_dirty_forbidden_paths_all_in_no": true,
+  "historical_dirty_forbidden_paths_in_yes": [],
+  "historical_dirty_forbidden_paths": [
+    "00_交接与日志/HANDOVER_STATUS.md",
+    "03_需求与设计/01_架构设计/架构师会话日志.md",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+    "07_后端/lingyi_service/tests/test_bom_permissions.py",
+    "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+    "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+    "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+    "07_后端/lingyi_service/tests/test_style_profit_api.py",
+    "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+    "07_后端/lingyi_service/tests/test_workshop_permissions.py"
+  ],
+  "yes_paths": [
+    "03_需求与设计/02_开发计划/TASK-Z029B-13-PREP_CAND002只读验证边界报告.md",
+    "03_需求与设计/02_开发计划/task_z029b_13_cand002_boundary.json",
+    "03_需求与设计/02_开发计划/task_z029b_13_cand002_boundary.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z029B-14-IMPL_CAND002单文件验证报告.md",
+    "03_需求与设计/02_开发计划/task_z029b_14_cand002_result.json",
+    "03_需求与设计/02_开发计划/task_z029b_14_cand002_result.tsv",
+    "03_需求与设计/02_开发计划/task_z029b_14_cand002_stdout.txt",
+    "03_需求与设计/02_开发计划/TASK-Z029B-15-PREP-CAND002-FAILURE-DIAG_失败只读定位报告.md",
+    "03_需求与设计/02_开发计划/task_z029b_15_cand002_failure_boundary.json",
+    "03_需求与设计/02_开发计划/task_z029b_15_cand002_failure_boundary.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z029B-16-FIX-CAND002_factory_statement_payable_worker测试合同修复报告.md",
+    "03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_result.json",
+    "03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_result.tsv",
+    "03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_stdout.txt",
+    "03_需求与设计/02_开发计划/TASK-Z029B-17-LEDGER-CAND002_factory_statement_payable_worker提交候选账本报告.md",
+    "03_需求与设计/02_开发计划/task_z029b_17_cand002_freeze.json",
+    "03_需求与设计/02_开发计划/task_z029b_17_cand002_ledger.json",
+    "03_需求与设计/02_开发计划/task_z029b_17_cand002_ledger.tsv",
+    "07_后端/lingyi_service/tests/test_factory_statement_payable_worker.py"
+  ],
+  "no_paths": [
+    "00_交接与日志/HANDOVER_STATUS.md",
+    "03_需求与设计/01_架构设计/架构师会话日志.md",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+    "07_后端/lingyi_service/tests/test_bom_permissions.py",
+    "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+    "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+    "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+    "07_后端/lingyi_service/tests/test_style_profit_api.py",
+    "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+    "07_后端/lingyi_service/tests/test_workshop_permissions.py",
+    "03_需求与设计/02_开发计划/TASK-Z029B-01-PREP_Z029本地候选池重建报告.md",
+    "03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.json",
+    "03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z029B-12-PREP_Z029剩余候选刷新报告.md",
+    "03_需求与设计/02_开发计划/task_z029b_12_remaining_refresh.json",
+    "03_需求与设计/02_开发计划/task_z029b_12_remaining_refresh.tsv",
+    "Z029-CAND-001_ARCHIVED_RANGE",
+    "07_后端/lingyi_service/tests/test_factory_statement_payable_api.py",
+    "Z029-CAND-003_SCOPE",
+    "Z029-CAND-004_SCOPE",
+    "Z029-CAND-005_SCOPE",
+    "06_前端",
+    "07_后端/lingyi_service/app",
+    "Z015-Z028_OLD_CYCLE_ARTIFACTS",
+    "TASK-Z015",
+    "TASK-Z016",
+    "TASK-Z017",
+    "TASK-Z018_TO_Z028",
+    "runtime",
+    "cache",
+    ".pytest_cache",
+    "__pycache__"
+  ],
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z029B-13-PREP_CAND002只读验证边界报告.md",
+      "decision": "YES",
+      "reason": "B13 boundary report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_13_cand002_boundary.json",
+      "decision": "YES",
+      "reason": "B13 boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_13_cand002_boundary.tsv",
+      "decision": "YES",
+      "reason": "B13 boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z029B-14-IMPL_CAND002单文件验证报告.md",
+      "decision": "YES",
+      "reason": "B14 readonly pytest report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_14_cand002_result.json",
+      "decision": "YES",
+      "reason": "B14 result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_14_cand002_result.tsv",
+      "decision": "YES",
+      "reason": "B14 result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_14_cand002_stdout.txt",
+      "decision": "YES",
+      "reason": "B14 stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z029B-15-PREP-CAND002-FAILURE-DIAG_失败只读定位报告.md",
+      "decision": "YES",
+      "reason": "B15 failure diagnosis report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_15_cand002_failure_boundary.json",
+      "decision": "YES",
+      "reason": "B15 failure boundary JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_15_cand002_failure_boundary.tsv",
+      "decision": "YES",
+      "reason": "B15 failure boundary TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z029B-16-FIX-CAND002_factory_statement_payable_worker测试合同修复报告.md",
+      "decision": "YES",
+      "reason": "B16 fix report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_result.json",
+      "decision": "YES",
+      "reason": "B16 fix result JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_result.tsv",
+      "decision": "YES",
+      "reason": "B16 fix result TSV"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_stdout.txt",
+      "decision": "YES",
+      "reason": "B16 fix stdout"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/TASK-Z029B-17-LEDGER-CAND002_factory_statement_payable_worker提交候选账本报告.md",
+      "decision": "YES",
+      "reason": "B17 ledger report"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_17_cand002_freeze.json",
+      "decision": "YES",
+      "reason": "B17 freeze JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_17_cand002_ledger.json",
+      "decision": "YES",
+      "reason": "B17 ledger JSON"
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/task_z029b_17_cand002_ledger.tsv",
+      "decision": "YES",
+      "reason": "B17 ledger TSV"
+    },
+    {
+      "path": "07_后端/lingyi_service/tests/test_factory_statement_payable_worker.py",
+      "decision": "YES",
+      "reason": "Only allowed backend target test"
+    }
+  ],
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

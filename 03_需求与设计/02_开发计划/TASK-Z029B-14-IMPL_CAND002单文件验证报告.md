@@ -1,0 +1,37 @@
+# TASK-Z029B-14-IMPL CAND002 单文件验证报告
+
+## 结论
+
+- task_id: TASK-Z029B-14-IMPL
+- source_task: TASK-Z029B-13-PREP
+- candidate_id: Z029-CAND-002
+- workdir: `/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service`
+- command: `.venv/bin/python -m pytest tests/test_factory_statement_payable_worker.py -q`
+- command_run_count: 1
+- exit_code: 1
+- result: FAIL
+- pytest_summary: `12 failed, 2 passed, 25 warnings in 1.19s`
+- stdout_path: `03_需求与设计/02_开发计划/task_z029b_14_cand002_stdout.txt`
+- target_test_dirty_diff_before: false
+- target_test_dirty_diff_after: false
+- cached_empty_after: true
+- `git diff --check`: PASS
+
+## 失败摘要
+
+本轮只记录 FAIL evidence。未诊断、未修复、未重跑。
+
+## 生命周期门禁
+
+- fix_attempt: false
+- rerun_performed: false
+- stage_performed: false
+- commit_performed: false
+- push_performed: false
+- tag_performed: false
+- pr_performed: false
+- release_performed: false
+- remote_lifecycle_parked: true
+- production_readback_ready: false
+- go_live_ready: false
+- project_completion_claimed: false

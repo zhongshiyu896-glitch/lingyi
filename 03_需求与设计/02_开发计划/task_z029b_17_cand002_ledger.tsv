@@ -1,0 +1,61 @@
+path	decision	reason
+03_需求与设计/02_开发计划/TASK-Z029B-13-PREP_CAND002只读验证边界报告.md	YES	B13 boundary report
+03_需求与设计/02_开发计划/task_z029b_13_cand002_boundary.json	YES	B13 boundary JSON
+03_需求与设计/02_开发计划/task_z029b_13_cand002_boundary.tsv	YES	B13 boundary TSV
+03_需求与设计/02_开发计划/TASK-Z029B-14-IMPL_CAND002单文件验证报告.md	YES	B14 readonly pytest report
+03_需求与设计/02_开发计划/task_z029b_14_cand002_result.json	YES	B14 result JSON
+03_需求与设计/02_开发计划/task_z029b_14_cand002_result.tsv	YES	B14 result TSV
+03_需求与设计/02_开发计划/task_z029b_14_cand002_stdout.txt	YES	B14 stdout
+03_需求与设计/02_开发计划/TASK-Z029B-15-PREP-CAND002-FAILURE-DIAG_失败只读定位报告.md	YES	B15 failure diagnosis report
+03_需求与设计/02_开发计划/task_z029b_15_cand002_failure_boundary.json	YES	B15 failure boundary JSON
+03_需求与设计/02_开发计划/task_z029b_15_cand002_failure_boundary.tsv	YES	B15 failure boundary TSV
+03_需求与设计/02_开发计划/TASK-Z029B-16-FIX-CAND002_factory_statement_payable_worker测试合同修复报告.md	YES	B16 fix report
+03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_result.json	YES	B16 fix result JSON
+03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_result.tsv	YES	B16 fix result TSV
+03_需求与设计/02_开发计划/task_z029b_16_cand002_fix_stdout.txt	YES	B16 fix stdout
+03_需求与设计/02_开发计划/TASK-Z029B-17-LEDGER-CAND002_factory_statement_payable_worker提交候选账本报告.md	YES	B17 ledger report
+03_需求与设计/02_开发计划/task_z029b_17_cand002_freeze.json	YES	B17 freeze JSON
+03_需求与设计/02_开发计划/task_z029b_17_cand002_ledger.json	YES	B17 ledger JSON
+03_需求与设计/02_开发计划/task_z029b_17_cand002_ledger.tsv	YES	B17 ledger TSV
+07_后端/lingyi_service/tests/test_factory_statement_payable_worker.py	YES	Only allowed backend target test
+00_交接与日志/HANDOVER_STATUS.md	NO	historical dirty forbidden path
+03_需求与设计/01_架构设计/架构师会话日志.md	NO	historical dirty forbidden path
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	NO	historical dirty forbidden path
+07_后端/lingyi_service/app/schemas/report.py	NO	historical dirty forbidden backend app path
+07_后端/lingyi_service/app/services/report_catalog_service.py	NO	historical dirty forbidden backend app path
+07_后端/lingyi_service/app/services/system_config_catalog_service.py	NO	historical dirty forbidden backend app path
+07_后端/lingyi_service/tests/test_bom_permissions.py	NO	historical dirty forbidden unrelated test
+07_后端/lingyi_service/tests/test_logging_sanitization.py	NO	historical dirty forbidden unrelated test
+07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	NO	historical dirty forbidden unrelated test
+07_后端/lingyi_service/tests/test_request_id_sanitization.py	NO	historical dirty forbidden unrelated test
+07_后端/lingyi_service/tests/test_style_profit_api.py	NO	historical dirty forbidden unrelated test
+07_后端/lingyi_service/tests/test_subcontract_company_permission.py	NO	historical dirty forbidden unrelated test
+07_后端/lingyi_service/tests/test_workshop_permissions.py	NO	historical dirty forbidden unrelated test
+03_需求与设计/02_开发计划/TASK-Z029B-01-PREP_Z029本地候选池重建报告.md	NO	Z029 candidate pool
+03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.json	NO	Z029 candidate pool
+03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.tsv	NO	Z029 candidate pool
+03_需求与设计/02_开发计划/TASK-Z029B-12-PREP_Z029剩余候选刷新报告.md	NO	Z029 refresh outside CAND002 ledger
+03_需求与设计/02_开发计划/task_z029b_12_remaining_refresh.json	NO	Z029 refresh outside CAND002 ledger
+03_需求与设计/02_开发计划/task_z029b_12_remaining_refresh.tsv	NO	Z029 refresh outside CAND002 ledger
+Z029-CAND-001_ARCHIVED_RANGE	NO	CAND001 archived range
+07_后端/lingyi_service/tests/test_factory_statement_payable_api.py	NO	CAND001 target test
+Z029-CAND-003_SCOPE	NO	CAND003 scope
+Z029-CAND-004_SCOPE	NO	CAND004 scope
+Z029-CAND-005_SCOPE	NO	CAND005 scope
+06_前端	NO	frontend excluded
+07_后端/lingyi_service/app	NO	backend app excluded
+Z015-Z028_OLD_CYCLE_ARTIFACTS	NO	old cycle artifacts excluded
+TASK-Z015	NO	old cycle artifacts excluded
+TASK-Z016	NO	old cycle artifacts excluded
+TASK-Z017	NO	old cycle artifacts excluded
+TASK-Z018_TO_Z028	NO	old cycle artifacts excluded
+runtime	NO	runtime directory excluded
+cache	NO	cache directory excluded
+.pytest_cache	NO	cache directory excluded
+__pycache__	NO	cache directory excluded
