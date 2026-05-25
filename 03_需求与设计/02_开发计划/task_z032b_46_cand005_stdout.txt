@@ -1,0 +1,60 @@
+............                                                             [100%]
+=============================== warnings summary ===============================
+tests/test_workshop_outbox_audit_throttle.py::WorkshopOutboxAuditThrottleTest::test_blocked_scope_outbox_is_excluded_from_forbidden_diagnostics
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_workshop_outbox_audit_throttle.py: 14 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_workshop_outbox_audit_throttle.py: 14 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_outbox_audit_throttle.py: 14 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_workshop_outbox_audit_throttle.py:163: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.next_retry_at = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_workshop_outbox_audit_throttle.py: 18 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:170: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_workshop_outbox_audit_throttle.py::WorkshopOutboxAuditThrottleTest::test_blocked_scope_outbox_is_excluded_from_forbidden_diagnostics
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:319: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_outbox_audit_throttle.py: 13 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:135: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_workshop_outbox_audit_throttle.py: 18 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:41: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_workshop_outbox_audit_throttle.py: 12 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_outbox_access_denial_repository.py:43: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_workshop_outbox_audit_throttle.py::WorkshopOutboxAuditThrottleTest::test_forbidden_diagnostics_after_cooldown_writes_one_more_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_workshop_outbox_audit_throttle.py:294: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    denial.next_audit_at = datetime.utcnow() - timedelta(seconds=1)
+
+tests/test_workshop_outbox_audit_throttle.py::WorkshopOutboxAuditThrottleTest::test_head_of_line_fix_still_processes_authorized_second_row
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:223: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_workshop_outbox_audit_throttle.py::WorkshopOutboxAuditThrottleTest::test_head_of_line_fix_still_processes_authorized_second_row
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:269: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.next_retry_at = datetime.utcnow()
+
+tests/test_workshop_outbox_audit_throttle.py::WorkshopOutboxAuditThrottleTest::test_head_of_line_fix_still_processes_authorized_second_row
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:270: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_outbox_audit_throttle.py::WorkshopOutboxAuditThrottleTest::test_head_of_line_fix_still_processes_authorized_second_row
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_job_card_sync_worker.py:480: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "updated_at": datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+12 passed, 110 warnings in 1.11s

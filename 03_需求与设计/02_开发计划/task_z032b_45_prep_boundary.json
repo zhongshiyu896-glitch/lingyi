@@ -1,0 +1,88 @@
+{
+  "task_id": "TASK-Z032B-45-PREP",
+  "cycle_id": "Z032",
+  "candidate_id": "Z032-CAND-005",
+  "source_task": "TASK-Z032B-44-ARCHIVE-CAND004",
+  "current_head": "01d155598b194a162325dab55c4aa9a42e94b363",
+  "archived_candidates": {
+    "Z032-CAND-001": "bbc298a8e2423ea51d82de66ed058835182bcade",
+    "Z032-CAND-002": "f1ee52224ea1a4615db30f51cb234eba023b1fb8",
+    "Z032-CAND-003": "aedc2d39cca4d065a028ce42e325de17490d95b6",
+    "Z032-CAND-004": "01d155598b194a162325dab55c4aa9a42e94b363"
+  },
+  "remaining_candidates": [
+    "Z032-CAND-005"
+  ],
+  "selected_candidate": "Z032-CAND-005",
+  "candidate_original_fields": {
+    "candidate_id": "Z032-CAND-005",
+    "module": "workshop_outbox_audit_throttle",
+    "risk": "LOW_LOCAL_READONLY",
+    "workdir": "07_后端/lingyi_service",
+    "command": ".venv/bin/python -m pytest tests/test_workshop_outbox_audit_throttle.py -q",
+    "target_test": "07_后端/lingyi_service/tests/test_workshop_outbox_audit_throttle.py",
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_workshop_outbox_audit_throttle.py",
+      "07_后端/lingyi_service/app/services/workshop_outbox_service.py",
+      "07_后端/lingyi_service/app/services/erpnext_permission_adapter.py",
+      "07_后端/lingyi_service/app/models/workshop.py",
+      "07_后端/lingyi_service/app/models/audit.py"
+    ],
+    "source_evidence_missing": [],
+    "reuse_check": {
+      "reused_from_Z015_Z031": false,
+      "matched_prior_entries": [],
+      "evidence": {
+        "scan_scope": "Z015-Z031 json/tsv/md/txt evidence text scan for test_*.py references",
+        "used_target_test_count": 83,
+        "target_test_basename": "test_workshop_outbox_audit_throttle.py",
+        "target_test_basename_absent_from_prior_scan": true,
+        "excluded_reused_target_tests_applied": true
+      }
+    },
+    "historical_dirty_forbidden_target": false,
+    "historical_dirty_forbidden_source_evidence": false,
+    "status": "PENDING_LOCAL_READONLY_VALIDATION"
+  },
+  "frozen_workdir": "07_后端/lingyi_service",
+  "frozen_command": ".venv/bin/python -m pytest tests/test_workshop_outbox_audit_throttle.py -q",
+  "target_test": "07_后端/lingyi_service/tests/test_workshop_outbox_audit_throttle.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence": [
+    "07_后端/lingyi_service/tests/test_workshop_outbox_audit_throttle.py",
+    "07_后端/lingyi_service/app/services/workshop_outbox_service.py",
+    "07_后端/lingyi_service/app/services/erpnext_permission_adapter.py",
+    "07_后端/lingyi_service/app/models/workshop.py",
+    "07_后端/lingyi_service/app/models/audit.py"
+  ],
+  "source_evidence_missing": [],
+  "reuse_check": {
+    "reused_from_Z015_Z031": false,
+    "matched_prior_entries": [],
+    "evidence": {
+      "scan_scope": "Z015-Z031 json/tsv/md/txt evidence text scan for test_*.py references",
+      "used_target_test_count": 83,
+      "target_test_basename": "test_workshop_outbox_audit_throttle.py",
+      "target_test_basename_absent_from_prior_scan": true,
+      "excluded_reused_target_tests_applied": true
+    }
+  },
+  "historical_dirty_forbidden_staged": [],
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z032B-46-IMPL",
+  "run_this_task": false
+}
