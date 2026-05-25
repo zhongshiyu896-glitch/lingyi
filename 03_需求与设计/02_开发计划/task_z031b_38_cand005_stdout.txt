@@ -1,0 +1,191 @@
+FFFFF..FFFFF                                                             [100%]
+=================================== FAILURES ===================================
+_ WarehouseStockEntryDraftApiTest.test_cancel_draft_success_and_outbox_cancelled _
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_cancel_draft_success_and_outbox_cancelled>
+
+    def test_cancel_draft_success_and_outbox_cancelled(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:stock_entry_cancel,warehouse:read"),
+            json=self._payload(),
+        )
+>       self.assertEqual(create_resp.status_code, 201, create_resp.text)
+E       AssertionError: 422 != 201 : {"detail":[{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","warehouse"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","item_code"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","quantity"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","business_date"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","status_action"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}}]}
+
+tests/test_warehouse_stock_entry_draft.py:219: AssertionError
+_ WarehouseStockEntryDraftApiTest.test_company_scope_denied_returns_403_or_404 _
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_company_scope_denied_returns_403_or_404>
+
+    def test_company_scope_denied_returns_403_or_404(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch(
+            "app.services.permission_service.PermissionService.require_action",
+            return_value=None,
+        ), patch(
+            "app.services.permission_service.PermissionService.get_sales_inventory_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_companies={"COMP-X"},
+                allowed_warehouses={"WH-A", "WH-B"},
+                allowed_items={"ITEM-A"},
+            ),
+        ):
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers("warehouse:stock_entry_draft"),
+                json=self._payload(),
+            )
+>       self.assertIn(response.status_code, {403, 404})
+E       AssertionError: 422 not found in {403, 404}
+
+tests/test_warehouse_stock_entry_draft.py:189: AssertionError
+_ WarehouseStockEntryDraftApiTest.test_create_draft_generates_in_pending_outbox _
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_create_draft_generates_in_pending_outbox>
+
+    def test_create_draft_generates_in_pending_outbox(self) -> None:
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+            json=self._payload(),
+        )
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 422 != 201 : {"detail":[{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","warehouse"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","item_code"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","quantity"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","business_date"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","status_action"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}}]}
+
+tests/test_warehouse_stock_entry_draft.py:130: AssertionError
+______ WarehouseStockEntryDraftApiTest.test_create_draft_with_permission _______
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_create_draft_with_permission>
+
+    def test_create_draft_with_permission(self) -> None:
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+            json=self._payload(),
+        )
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 422 != 201 : {"detail":[{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","warehouse"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","item_code"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","quantity"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","business_date"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","status_action"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Transfer","source_type":"manual","source_id":"SRC-001","source_warehouse":"WH-A","target_warehouse":"WH-B","idempotency_key":"idem-001","items":[{"item_code":"ITEM-A","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":"WH-A","target_warehouse":"WH-B"}]}}]}
+
+tests/test_warehouse_stock_entry_draft.py:117: AssertionError
+_ WarehouseStockEntryDraftApiTest.test_inventory_write_only_cannot_create_draft _
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_inventory_write_only_cannot_create_draft>
+
+    def test_inventory_write_only_cannot_create_draft(self) -> None:
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("inventory:write"),
+            json=self._payload(),
+        )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_warehouse_stock_entry_draft.py:167: AssertionError
+__ WarehouseStockEntryDraftApiTest.test_outbox_status_returns_correct_payload __
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_outbox_status_returns_correct_payload>
+
+    def test_outbox_status_returns_correct_payload(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+            json=self._payload(),
+        )
+>       draft_id = int(create_resp.json()["data"]["id"])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'data'
+
+tests/test_warehouse_stock_entry_draft.py:270: KeyError
+________ WarehouseStockEntryDraftApiTest.test_qty_lte_zero_returns_400 _________
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_qty_lte_zero_returns_400>
+
+    def test_qty_lte_zero_returns_400(self) -> None:
+        payload = self._payload(qty="0")
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+            json=payload,
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 422 != 400
+
+tests/test_warehouse_stock_entry_draft.py:150: AssertionError
+________ WarehouseStockEntryDraftApiTest.test_repeat_cancel_returns_409 ________
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_repeat_cancel_returns_409>
+
+    def test_repeat_cancel_returns_409(self) -> None:
+        create_resp = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:stock_entry_draft,warehouse:stock_entry_cancel,warehouse:read"),
+            json=self._payload(),
+        )
+>       draft_id = int(create_resp.json()["data"]["id"])
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'data'
+
+tests/test_warehouse_stock_entry_draft.py:247: KeyError
+_ WarehouseStockEntryDraftApiTest.test_warehouse_scope_denied_returns_403_or_404 _
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_warehouse_scope_denied_returns_403_or_404>
+
+    def test_warehouse_scope_denied_returns_403_or_404(self) -> None:
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        with patch(
+            "app.services.permission_service.PermissionService.require_action",
+            return_value=None,
+        ), patch(
+            "app.services.permission_service.PermissionService.get_sales_inventory_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_companies={"COMP-A"},
+                allowed_warehouses={"WH-A"},
+                allowed_items={"ITEM-A"},
+            ),
+        ):
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers("warehouse:stock_entry_draft"),
+                json=self._payload(),
+            )
+>       self.assertIn(response.status_code, {403, 404})
+E       AssertionError: 422 not found in {403, 404}
+
+tests/test_warehouse_stock_entry_draft.py:211: AssertionError
+_ WarehouseStockEntryDraftApiTest.test_without_stock_entry_draft_permission_returns_403 _
+
+self = <tests.test_warehouse_stock_entry_draft.WarehouseStockEntryDraftApiTest testMethod=test_without_stock_entry_draft_permission_returns_403>
+
+    def test_without_stock_entry_draft_permission_returns_403(self) -> None:
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers("warehouse:read"),
+            json=self._payload(),
+        )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 422 != 403
+
+tests/test_warehouse_stock_entry_draft.py:159: AssertionError
+=============================== warnings summary ===============================
+tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_cancel_draft_success_and_outbox_cancelled
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_cancel_draft_success_and_outbox_cancelled
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_company_scope_denied_returns_403_or_404
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_create_draft_generates_in_pending_outbox
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_create_draft_with_permission
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_inventory_write_only_cannot_create_draft
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_outbox_status_returns_correct_payload
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_qty_lte_zero_returns_400
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_repeat_cancel_returns_409
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_warehouse_scope_denied_returns_403_or_404
+FAILED tests/test_warehouse_stock_entry_draft.py::WarehouseStockEntryDraftApiTest::test_without_stock_entry_draft_permission_returns_403
+10 failed, 2 passed, 1 warning in 1.08s

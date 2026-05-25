@@ -1,0 +1,59 @@
+{
+  "task_id": "TASK-Z031B-41-LEDGER-CAND005",
+  "candidate_id": "Z031-CAND-005",
+  "evidence_only": false,
+  "current_head": "ed859b726057b3c5d8d7072dd60055f6954cb119",
+  "cached_empty": true,
+  "git_diff_check_pass": true,
+  "source_chain": [
+    "B37 boundary",
+    "B38 FAIL",
+    "B39 classification",
+    "B40 PASS",
+    "B41 ledger"
+  ],
+  "b39_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_backend_test_path_only": "07_后端/lingyi_service/tests/test_warehouse_stock_entry_draft.py",
+  "b40_result": "PASS",
+  "b40_pytest_summary": "12 passed, 1 warning in 1.06s",
+  "ledger_total": 49,
+  "yes_count": 19,
+  "no_count": 30,
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "yes_paths_missing": [],
+  "git_check_ignore_yes_matches": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_warehouse_stock_entry_draft.py"
+  ],
+  "backend_app_yes_paths": [],
+  "frontend_yes_paths": [],
+  "historical_dirty_forbidden_in_yes": [],
+  "target_assertion_semantics": {
+    "explicit_status_assertions": [
+      201,
+      400,
+      403,
+      404,
+      409
+    ],
+    "business_error_code_assertions": [
+      "WAREHOUSE_INVALID_QTY",
+      "WAREHOUSE_DRAFT_ALREADY_CANCELLED"
+    ],
+    "skip_xfail_found": false,
+    "weak_assertions_found": false
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z031B-42-STAGE-CAND005",
+  "run_this_task": false
+}

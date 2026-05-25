@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 import os
 import unittest
 from unittest.mock import patch
@@ -28,6 +29,13 @@ from app.services.erpnext_permission_adapter import UserPermissionResult
 
 class WarehouseStockEntryDraftApiBase(unittest.TestCase):
     """In-memory app wiring for warehouse stock-entry draft APIs."""
+
+    SCENARIO_TAG = "Z003-WAREHOUSE-20260526-005"
+    BUSINESS_DATE = date(2026, 5, 26).isoformat()
+    SOURCE_REF = f"{SCENARIO_TAG}-SRC-001"
+    IDEMPOTENCY_KEY = f"{SCENARIO_TAG}-IDEM-001"
+    WAREHOUSE = "WH-B"
+    ITEM_CODE = "ITEM-A"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -63,8 +71,9 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
@@ -75,33 +84,117 @@ class WarehouseStockEntryDraftApiBase(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(roles: str) -> dict[str, str]:
+    def _carrier_code(value: object, *, length: int = 3) -> str:
+        normalized = str(value).strip()
+        hash_value = 2166136261
+        for byte in normalized.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-length:]
+
+    @staticmethod
+    def _decimal_text(value: object) -> str:
+        normalized = format(Decimal(str(value)).normalize(), "f")
+        if "." in normalized:
+            normalized = normalized.rstrip("0").rstrip(".")
+        return normalized or "0"
+
+    @classmethod
+    def _request_id(
+        cls,
+        *,
+        operation: str = "create_stock_entry_draft",
+        idempotency_key: str | None = None,
+        source_ref: str | None = None,
+        warehouse: str | None = None,
+        item_code: str | None = None,
+        quantity: object = "5",
+        business_date: str | None = None,
+        status_action: str = "create",
+    ) -> str:
+        operation_code = "C" if operation == "create_stock_entry_draft" else "X"
+        status_action_code = "C" if status_action == "create" else "X"
+        return "-".join(
+            [
+                cls.SCENARIO_TAG,
+                "RW",
+                operation_code,
+                cls._carrier_code(idempotency_key or cls.IDEMPOTENCY_KEY),
+                cls._carrier_code(source_ref or cls.SOURCE_REF),
+                cls._carrier_code(warehouse or cls.WAREHOUSE),
+                cls._carrier_code(item_code or cls.ITEM_CODE),
+                cls._carrier_code(cls._decimal_text(quantity)),
+                cls._carrier_code(business_date or cls.BUSINESS_DATE),
+                cls._carrier_code(status_action_code),
+            ]
+        )
+
+    @classmethod
+    def _headers(cls, roles: str, *, request_id: str | None = None) -> dict[str, str]:
         return {
             "X-LY-Dev-User": "warehouse.writer",
             "X-LY-Dev-Roles": roles,
+            "X-Request-ID": request_id or cls._request_id(),
         }
 
-    @staticmethod
-    def _payload(*, qty: str = "5") -> dict:
+    @classmethod
+    def _payload(cls, *, qty: str = "5") -> dict:
         return {
             "company": "COMP-A",
             "purpose": "Material Transfer",
             "source_type": "manual",
-            "source_id": "SRC-001",
-            "source_warehouse": "WH-A",
-            "target_warehouse": "WH-B",
-            "idempotency_key": "idem-001",
+            "source_id": cls.SOURCE_REF,
+            "source_ref": cls.SOURCE_REF,
+            "warehouse": cls.WAREHOUSE,
+            "item_code": cls.ITEM_CODE,
+            "operation": "create_stock_entry_draft",
+            "quantity": qty,
+            "business_date": cls.BUSINESS_DATE,
+            "status_action": "create",
+            "scenario_tag": cls.SCENARIO_TAG,
+            "source_warehouse": cls.WAREHOUSE,
+            "target_warehouse": cls.WAREHOUSE,
+            "idempotency_key": cls.IDEMPOTENCY_KEY,
             "items": [
                 {
-                    "item_code": "ITEM-A",
+                    "item_code": cls.ITEM_CODE,
                     "qty": qty,
                     "uom": "Nos",
                     "batch_no": None,
                     "serial_no": None,
-                    "source_warehouse": "WH-A",
-                    "target_warehouse": "WH-B",
+                    "source_warehouse": cls.WAREHOUSE,
+                    "target_warehouse": cls.WAREHOUSE,
                 }
             ],
+        }
+
+    @classmethod
+    def _request_id_from_payload(cls, payload: dict, *, operation: str | None = None, status_action: str | None = None) -> str:
+        return cls._request_id(
+            operation=operation or str(payload["operation"]),
+            idempotency_key=str(payload["idempotency_key"]),
+            source_ref=str(payload["source_ref"]),
+            warehouse=str(payload["warehouse"]),
+            item_code=str(payload["item_code"]),
+            quantity=payload["quantity"],
+            business_date=str(payload["business_date"]),
+            status_action=status_action or str(payload["status_action"]),
+        )
+
+    @classmethod
+    def _cancel_payload(cls, *, reason: str) -> dict:
+        payload = cls._payload()
+        return {
+            "reason": reason,
+            "idempotency_key": str(payload["idempotency_key"]),
+            "source_ref": str(payload["source_ref"]),
+            "warehouse": str(payload["warehouse"]),
+            "item_code": str(payload["item_code"]),
+            "operation": "cancel_stock_entry_draft",
+            "quantity": payload["quantity"],
+            "business_date": str(payload["business_date"]),
+            "status_action": "cancel",
+            "scenario_tag": str(payload["scenario_tag"]),
         }
 
 
@@ -144,7 +237,10 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         payload = self._payload(qty="0")
         response = self.client.post(
             "/api/warehouse/stock-entry-drafts",
-            headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
             json=payload,
         )
         self.assertEqual(response.status_code, 400)
@@ -221,8 +317,15 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
 
         cancel_resp = self.client.post(
             f"/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
-            headers=self._headers("warehouse:stock_entry_cancel,warehouse:read"),
-            json={"reason": "manual cancel"},
+            headers=self._headers(
+                "warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    self._cancel_payload(reason="manual cancel"),
+                    operation="cancel_stock_entry_draft",
+                    status_action="cancel",
+                ),
+            ),
+            json=self._cancel_payload(reason="manual cancel"),
         )
         self.assertEqual(cancel_resp.status_code, 200, cancel_resp.text)
         self.assertEqual(cancel_resp.json()["data"]["status"], "cancelled")
@@ -248,15 +351,29 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
 
         first = self.client.post(
             f"/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
-            headers=self._headers("warehouse:stock_entry_cancel,warehouse:read"),
-            json={"reason": "first"},
+            headers=self._headers(
+                "warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    self._cancel_payload(reason="first"),
+                    operation="cancel_stock_entry_draft",
+                    status_action="cancel",
+                ),
+            ),
+            json=self._cancel_payload(reason="first"),
         )
         self.assertEqual(first.status_code, 200)
 
         second = self.client.post(
             f"/api/warehouse/stock-entry-drafts/{draft_id}/cancel",
-            headers=self._headers("warehouse:stock_entry_cancel,warehouse:read"),
-            json={"reason": "again"},
+            headers=self._headers(
+                "warehouse:stock_entry_cancel,warehouse:read",
+                request_id=self._request_id_from_payload(
+                    self._cancel_payload(reason="again"),
+                    operation="cancel_stock_entry_draft",
+                    status_action="cancel",
+                ),
+            ),
+            json=self._cancel_payload(reason="again"),
         )
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "WAREHOUSE_DRAFT_ALREADY_CANCELLED")
