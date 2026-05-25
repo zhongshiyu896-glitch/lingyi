@@ -1,0 +1,28 @@
+field	value
+task_id	TASK-Z032B-02-PREP
+role	B Engineer
+source_task	TASK-Z032B-01-PREP-FIX1
+candidate_id	Z032-CAND-001
+current_head	33ebafc01c08757e70b2b3030236db117f555c8c
+frozen_workdir	07_后端/lingyi_service
+frozen_command	.venv/bin/python -m pytest tests/test_audit_log.py -q
+target_test	07_后端/lingyi_service/tests/test_audit_log.py
+target_test_exists	true
+target_test_dirty_diff	false
+source_evidence_missing	[]
+reuse_check.reused_from_Z015_Z031	false
+cached_empty	true
+diff_check_pass	true
+historical_dirty_forbidden_staged	[]
+next_task	TASK-Z032B-03-IMPL
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

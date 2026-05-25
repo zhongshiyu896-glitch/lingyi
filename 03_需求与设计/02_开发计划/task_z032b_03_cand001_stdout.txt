@@ -1,0 +1,62 @@
+..........                                                               [100%]
+=============================== warnings summary ===============================
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_allowed_writes_operation_audit
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_allowed_writes_operation_audit
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_audit_write_failure_returns_audit_write_failed
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_call_erpnext_job_card_write
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_create_success_sync_log
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_mutate_outbox_state_or_attempts
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_operation_audit_contains_safe_summary_fields
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_operation_audit_has_no_sensitive_plaintext
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_with_forbidden_diagnostics_keeps_dedupe_cooldown
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_worker_audit_after_data_does_not_require_skipped_forbidden_for_business_judgement
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_allowed_writes_operation_audit
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_audit_write_failure_returns_audit_write_failed
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_call_erpnext_job_card_write
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_create_success_sync_log
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_mutate_outbox_state_or_attempts
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_operation_audit_contains_safe_summary_fields
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_operation_audit_has_no_sensitive_plaintext
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_with_forbidden_diagnostics_keeps_dedupe_cooldown
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_worker_audit_after_data_does_not_require_skipped_forbidden_for_business_judgement
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_allowed_writes_operation_audit
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_audit_write_failure_returns_audit_write_failed
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_call_erpnext_job_card_write
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_create_success_sync_log
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_does_not_mutate_outbox_state_or_attempts
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_operation_audit_contains_safe_summary_fields
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_operation_audit_has_no_sensitive_plaintext
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_with_forbidden_diagnostics_keeps_dedupe_cooldown
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_worker_audit_after_data_does_not_require_skipped_forbidden_for_business_judgement
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_audit_log.py:169: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.next_retry_at = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_audit_log.py: 11 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:198: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_audit_log.py: 11 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:41: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_with_forbidden_diagnostics_keeps_dedupe_cooldown
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_with_forbidden_diagnostics_keeps_dedupe_cooldown
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:135: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_with_forbidden_diagnostics_keeps_dedupe_cooldown
+tests/test_audit_log.py::WorkshopDryRunAuditLogTest::test_dry_run_with_forbidden_diagnostics_keeps_dedupe_cooldown
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_outbox_access_denial_repository.py:43: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+10 passed, 54 warnings in 1.07s
