@@ -1,0 +1,45 @@
+decision	path	category	reason
+YES	03_需求与设计/02_开发计划/TASK-Z029B-29-PREP_CAND004只读验证边界报告.md	B29 boundary report	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/task_z029b_29_cand004_boundary.json	B29 boundary JSON	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/task_z029b_29_cand004_boundary.tsv	B29 boundary TSV	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/TASK-Z029B-30-IMPL_CAND004单文件验证报告.md	B30 result report	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/task_z029b_30_cand004_result.json	B30 result JSON	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/task_z029b_30_cand004_result.tsv	B30 result TSV	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/task_z029b_30_cand004_stdout.txt	B30 stdout	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/TASK-Z029B-31-LEDGER-CAND004_warehouse_export_diagnostic证据账本报告.md	B31 ledger report	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/task_z029b_31_cand004_freeze.json	B31 freeze JSON	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/task_z029b_31_cand004_ledger.json	B31 ledger JSON	Z029-CAND-004 evidence chain
+YES	03_需求与设计/02_开发计划/task_z029b_31_cand004_ledger.tsv	B31 ledger TSV	Z029-CAND-004 evidence chain
+NO	07_后端/lingyi_service/tests/test_warehouse_export_diagnostic.py	target test excluded	evidence-only ledger
+NO	03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.json	Z029 candidate pool	candidate pool excluded
+NO	03_需求与设计/02_开发计划/TASK-Z029B-28-PREP_Z029剩余候选刷新报告.md	B28 refresh	not part of CAND004 B29-B31 evidence chain
+NO	03_需求与设计/02_开发计划/task_z029b_28_remaining_refresh.json	B28 refresh	not part of CAND004 B29-B31 evidence chain
+NO	03_需求与设计/02_开发计划/task_z029b_28_remaining_refresh.tsv	B28 refresh	not part of CAND004 B29-B31 evidence chain
+NO	Z029-CAND-001 archive/evidence range	archived candidate range	excluded from CAND004 ledger
+NO	Z029-CAND-002 archive/evidence range	archived candidate range	excluded from CAND004 ledger
+NO	Z029-CAND-003 archive/evidence range	archived candidate range	excluded from CAND004 ledger
+NO	Z029-CAND-005 range	other candidate range	excluded from CAND004 ledger
+NO	06_前端/	frontend	frontend excluded
+NO	07_后端/lingyi_service/app/	backend app	backend app excluded
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	shared engineer log	shared logs excluded
+NO	Z015-Z028 historical artifacts	old cycle artifacts	old cycle excluded
+NO	runtime/cache/	runtime cache	runtime/cache excluded
+NO	00_交接与日志/HANDOVER_STATUS.md	historical dirty forbidden path	explicitly excluded
+NO	03_需求与设计/01_架构设计/架构师会话日志.md	historical dirty forbidden path	explicitly excluded
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	historical dirty forbidden path	explicitly excluded
+NO	06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	historical dirty forbidden path	explicitly excluded
+NO	06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	historical dirty forbidden path	explicitly excluded
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	historical dirty forbidden path	explicitly excluded
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	historical dirty forbidden path	explicitly excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	historical dirty forbidden path	explicitly excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/app/schemas/report.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/app/services/report_catalog_service.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/app/services/system_config_catalog_service.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/tests/test_bom_permissions.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/tests/test_logging_sanitization.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/tests/test_request_id_sanitization.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/tests/test_style_profit_api.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/tests/test_subcontract_company_permission.py	historical dirty forbidden path	explicitly excluded
+NO	07_后端/lingyi_service/tests/test_workshop_permissions.py	historical dirty forbidden path	explicitly excluded
