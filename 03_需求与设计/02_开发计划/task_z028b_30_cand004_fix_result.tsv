@@ -1,0 +1,28 @@
+field	value
+task_id	TASK-Z028B-30-FIX-CAND004
+candidate_id	Z028-CAND-004
+source_failure_task	TASK-Z028B-29-PREP-CAND004-FAILURE-DIAG
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+current_head	8b2536babda1780764407c6da2fa96a6313952d9
+changed_files	07_后端/lingyi_service/tests/test_production_work_order_outbox.py; 03_需求与设计/02_开发计划/TASK-Z028B-30-FIX-CAND004_production_work_order_outbox修复报告.md; 03_需求与设计/02_开发计划/task_z028b_30_cand004_fix_result.json; 03_需求与设计/02_开发计划/task_z028b_30_cand004_fix_result.tsv; 03_需求与设计/02_开发计划/task_z028b_30_cand004_fix_stdout.txt
+command	.venv/bin/python -m pytest tests/test_production_work_order_outbox.py -q
+workdir	07_后端/lingyi_service
+command_run_count	1
+exit_code	1
+result	FAIL
+pytest_summary	1 failed, 15 passed, 30 warnings in 1.12s
+failed_case	ProductionWorkOrderOutboxTest::test_create_work_order_same_idempotency_different_payload_returns_conflict
+expected_status	409
+observed_status	200
+assertions_preserved	true
+skip_xfail_deleted_cases	false
+backend_app_changed	false
+frontend_changed	false
+unrelated_tests_changed	false
+historical_dirty_forbidden_staged	[]
+cached_empty	true
+continued_after_fail	false
+rerun_performed	false
+stage_commit_push_tag_pr_release	false
+remote_lifecycle_parked	true
+production_readback_go_live_project_completion	false

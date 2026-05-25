@@ -1,0 +1,41 @@
+{
+  "task_id": "TASK-Z028B-32-FIX-CAND004-SECOND",
+  "candidate_id": "Z028-CAND-004",
+  "source_failure_task": "TASK-Z028B-31-PREP-CAND004-SECOND-FAILURE-DIAG",
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "current_head": "8b2536babda1780764407c6da2fa96a6313952d9",
+  "changed_files": [
+    "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+    "03_需求与设计/02_开发计划/TASK-Z028B-32-FIX-CAND004-SECOND_production_work_order_outbox二次修复报告.md",
+    "03_需求与设计/02_开发计划/task_z028b_32_cand004_second_fix_result.json",
+    "03_需求与设计/02_开发计划/task_z028b_32_cand004_second_fix_result.tsv",
+    "03_需求与设计/02_开发计划/task_z028b_32_cand004_second_fix_stdout.txt"
+  ],
+  "fix_summary": "For the same-idempotency/different-payload conflict case, keep the first 200 create-work-order assertion, remove only the test-created work-order link before the second request, and preserve the explicit 409 PRODUCTION_IDEMPOTENCY_CONFLICT assertion.",
+  "command": ".venv/bin/python -m pytest tests/test_production_work_order_outbox.py -q",
+  "workdir": "07_后端/lingyi_service",
+  "command_run_count": 1,
+  "exit_code": 0,
+  "result": "PASS",
+  "pytest_summary": "16 passed, 30 warnings in 1.07s",
+  "assertions_preserved": true,
+  "idempotency_semantics_preserved": true,
+  "skip_xfail_deleted_cases": false,
+  "backend_app_changed": false,
+  "frontend_changed": false,
+  "unrelated_tests_changed": false,
+  "historical_dirty_forbidden_staged": [],
+  "cached_empty": true,
+  "gates": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_performed": false,
+    "tag_performed": false,
+    "pr_performed": false,
+    "release_performed": false,
+    "remote_lifecycle_parked": true,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false
+  }
+}

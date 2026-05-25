@@ -1,0 +1,25 @@
+field	value
+task_id	TASK-Z028B-31-PREP-CAND004-SECOND-FAILURE-DIAG
+candidate_id	Z028-CAND-004
+source_failure_task	TASK-Z028B-30-FIX-CAND004
+previous_boundary_task	TASK-Z028B-29-PREP-CAND004-FAILURE-DIAG
+current_head	8b2536babda1780764407c6da2fa96a6313952d9
+cached_empty	true
+failed_summary	1 failed, 15 passed, 30 warnings in 1.12s
+remaining_failed_case	ProductionWorkOrderOutboxTest::test_create_work_order_same_idempotency_different_payload_returns_conflict
+expected_status	409
+observed_status	200
+remaining_failure_pattern	After B30 carrier repair, the second same-idempotency/different-payload request returns existing work-order data with 200 before the conflict check.
+readonly_source_evidence	07_后端/lingyi_service/tests/test_production_work_order_outbox.py; 07_后端/lingyi_service/app/routers/production.py; 07_后端/lingyi_service/app/services/production_work_order_outbox_service.py; 07_后端/lingyi_service/app/services/production_work_order_worker.py; 07_后端/lingyi_service/app/services/erpnext_production_adapter.py; 07_后端/lingyi_service/app/models/production.py; 07_后端/lingyi_service/app/schemas/production.py; 07_后端/lingyi_service/app/services/production_service.py
+source_evidence_missing	[]
+target_test_dirty_diff_scope	Only B30 allowed fixture/carrier changes are present in the target test diff.
+historical_dirty_forbidden_staged	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_production_work_order_outbox.py
+next_task	TASK-Z028B-32-FIX-CAND004-SECOND
+run_this_task	false
+pytest_rerun_performed	false
+fix_attempted	false
+stage_commit_push_tag_pr_release	false
+remote_lifecycle_parked	true
+production_readback_go_live_project_completion	false

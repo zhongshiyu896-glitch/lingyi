@@ -1,0 +1,125 @@
+{
+  "task_id": "TASK-Z028B-29-PREP-CAND004-FAILURE-DIAG",
+  "candidate_id": "Z028-CAND-004",
+  "source_boundary_task": "TASK-Z028B-27-PREP",
+  "source_impl_task": "TASK-Z028B-28-IMPL",
+  "current_head": "8b2536babda1780764407c6da2fa96a6313952d9",
+  "cached_empty": true,
+  "failed_command": ".venv/bin/python -m pytest tests/test_production_work_order_outbox.py -q",
+  "failed_summary": "6 failed, 10 passed, 30 warnings in 1.11s",
+  "failed_cases": [
+    {
+      "case": "ProductionWorkOrderOutboxTest::test_create_work_order_audit_write_failed_returns_audit_write_failed",
+      "expected_status": 500,
+      "observed_status": 409,
+      "assertion_line": "tests/test_production_work_order_outbox.py:242"
+    },
+    {
+      "case": "ProductionWorkOrderOutboxTest::test_create_work_order_commit_failure_does_not_call_erpnext",
+      "expected_status": 500,
+      "observed_status": 409,
+      "assertion_line": "tests/test_production_work_order_outbox.py:258"
+    },
+    {
+      "case": "ProductionWorkOrderOutboxTest::test_create_work_order_outbox_is_idempotent_for_same_plan",
+      "expected_status": 200,
+      "observed_status": 409,
+      "assertion_line": "tests/test_production_work_order_outbox.py:175"
+    },
+    {
+      "case": "ProductionWorkOrderOutboxTest::test_create_work_order_returns_existing_pending_outbox_without_duplicate",
+      "expected_status": 200,
+      "observed_status": 409,
+      "assertion_line": "tests/test_production_work_order_outbox.py:209"
+    },
+    {
+      "case": "ProductionWorkOrderOutboxTest::test_create_work_order_returns_existing_work_order_when_link_succeeded",
+      "expected_status": 200,
+      "observed_status": 409,
+      "assertion_line": "tests/test_production_work_order_outbox.py:232"
+    },
+    {
+      "case": "ProductionWorkOrderOutboxTest::test_create_work_order_same_idempotency_different_payload_returns_conflict",
+      "expected_status": 200,
+      "observed_status": 409,
+      "assertion_line": "tests/test_production_work_order_outbox.py:194"
+    }
+  ],
+  "observed_statuses": [
+    409,
+    409,
+    409,
+    409,
+    409,
+    409
+  ],
+  "expected_statuses": [
+    500,
+    500,
+    200,
+    200,
+    200,
+    200
+  ],
+  "failure_pattern": "All failing create-work-order cases return 409 before their intended 200 or 500 branches.",
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+    "07_后端/lingyi_service/app/routers/production.py",
+    "07_后端/lingyi_service/app/services/production_work_order_outbox_service.py",
+    "07_后端/lingyi_service/app/services/production_work_order_worker.py",
+    "07_后端/lingyi_service/app/services/erpnext_production_adapter.py",
+    "07_后端/lingyi_service/app/models/production.py",
+    "07_后端/lingyi_service/app/schemas/production.py",
+    "07_后端/lingyi_service/app/services/production_service.py"
+  ],
+  "source_evidence_missing": [],
+  "source_findings": [
+    {
+      "path": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+      "lines": "124-130",
+      "finding": "The shared create-work-order payload helper sends fg_warehouse, wip_warehouse, start_date, and idempotency_key only."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/schemas/production.py",
+      "lines": "452-466",
+      "finding": "ProductionCreateWorkOrderRequest now includes scenario_tag, operation, plan_id, sales_order, sales_order_item, item_code, bom_id, and request_id carrier fields."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/production_service.py",
+      "lines": "1336-1359",
+      "finding": "create_work_order_outbox validates plan carrier fields before warehouse and outbox branch logic."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/production_service.py",
+      "lines": "1859-1891",
+      "finding": "The local write gate requires local dev DB, valid scenario_tag, idempotency_key containing the scenario, expected operation, plan id, business carriers, and request id alignment."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/production_service.py",
+      "lines": "1792-1797",
+      "finding": "Carrier gate failures raise PRODUCTION_IDEMPOTENCY_CONFLICT with LOCAL_GATE_FAIL_CLOSED prefix, which maps to HTTP 409."
+    }
+  ],
+  "diagnosis": "Evidence supports test fixture/outbox payload carrier drift. The tests still target create-work-order 200 and 500 behavior, but the helper payload lacks current local gate carrier fields, so requests stop at 409 before the tested branches.",
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+  "next_task": "TASK-Z028B-30-FIX-CAND004",
+  "run_this_task": false,
+  "target_test_path": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+  "target_test_dirty_diff": false,
+  "historical_dirty_forbidden_staged": [],
+  "gates": {
+    "pytest_rerun_performed": false,
+    "fix_attempted": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_performed": false,
+    "tag_performed": false,
+    "pr_performed": false,
+    "release_performed": false,
+    "remote_lifecycle_parked": true,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false
+  }
+}

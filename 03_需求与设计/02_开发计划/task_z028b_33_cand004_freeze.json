@@ -1,0 +1,66 @@
+{
+  "task_id": "TASK-Z028B-33-LEDGER-CAND004",
+  "candidate_id": "Z028-CAND-004",
+  "current_head": "8b2536babda1780764407c6da2fa96a6313952d9",
+  "freeze_summary": "B28 FAIL -> B29 TEST_CONTRACT_UPDATE_ALLOWED -> B30 FAIL -> B31 TEST_CONTRACT_UPDATE_ALLOWED -> B32 PASS",
+  "evidence_chain": [
+    {
+      "task_id": "TASK-Z028B-27-PREP",
+      "summary": "Frozen readonly boundary for production_work_order_outbox."
+    },
+    {
+      "task_id": "TASK-Z028B-28-IMPL",
+      "result": "FAIL",
+      "pytest_summary": "6 failed, 10 passed, 30 warnings in 1.11s"
+    },
+    {
+      "task_id": "TASK-Z028B-29-PREP-CAND004-FAILURE-DIAG",
+      "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+      "allowed_fix_file": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py"
+    },
+    {
+      "task_id": "TASK-Z028B-30-FIX-CAND004",
+      "result": "FAIL",
+      "pytest_summary": "1 failed, 15 passed, 30 warnings in 1.12s"
+    },
+    {
+      "task_id": "TASK-Z028B-31-PREP-CAND004-SECOND-FAILURE-DIAG",
+      "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+      "allowed_fix_file": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py"
+    },
+    {
+      "task_id": "TASK-Z028B-32-FIX-CAND004-SECOND",
+      "result": "PASS",
+      "pytest_summary": "16 passed, 30 warnings in 1.07s"
+    }
+  ],
+  "final_result": "PASS",
+  "final_pytest_summary": "16 passed, 30 warnings in 1.07s",
+  "allowed_fix_files": [
+    "07_后端/lingyi_service/tests/test_production_work_order_outbox.py"
+  ],
+  "assertion_semantics_preserved": {
+    "status_500_branch": true,
+    "status_200_branch": true,
+    "idempotency_conflict_409": true,
+    "idempotency_error_code": "PRODUCTION_IDEMPOTENCY_CONFLICT",
+    "skip_xfail_deleted_cases": false
+  },
+  "current_tracked_dirty_expected": [
+    "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+    "19 historical dirty forbidden paths"
+  ],
+  "historical_dirty_forbidden_paths_count": 19,
+  "cached_empty": true,
+  "git_diff_check": "PASS",
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

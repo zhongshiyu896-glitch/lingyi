@@ -1,0 +1,61 @@
+{
+  "task_id": "TASK-Z028B-27-PREP",
+  "role": "B Engineer",
+  "candidate_id": "Z028-CAND-004",
+  "source_task": "TASK-Z028B-26-PREP",
+  "current_head": "8b2536babda1780764407c6da2fa96a6313952d9",
+  "candidate_original_fields": {
+    "candidate_id": "Z028-CAND-004",
+    "module": "production_work_order_outbox",
+    "risk": "LOW",
+    "target_test": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_production_work_order_outbox.py -q",
+    "recommended_workdir": "07_后端/lingyi_service",
+    "source_evidence_paths": [
+      "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+      "07_后端/lingyi_service/app/routers/production.py",
+      "07_后端/lingyi_service/app/services/production_work_order_outbox_service.py",
+      "07_后端/lingyi_service/app/services/production_work_order_worker.py",
+      "07_后端/lingyi_service/app/services/erpnext_production_adapter.py",
+      "07_后端/lingyi_service/app/models/production.py",
+      "07_后端/lingyi_service/app/schemas/production.py"
+    ],
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "reuse_check": {
+      "reused_from_Z015_Z027": false,
+      "matched_prior_entries": []
+    },
+    "status": "PENDING_LOCAL_READONLY_VALIDATION"
+  },
+  "frozen_command": ".venv/bin/python -m pytest tests/test_production_work_order_outbox.py -q",
+  "frozen_workdir": "07_后端/lingyi_service",
+  "target_test_path": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+    "07_后端/lingyi_service/app/routers/production.py",
+    "07_后端/lingyi_service/app/services/production_work_order_outbox_service.py",
+    "07_后端/lingyi_service/app/services/production_work_order_worker.py",
+    "07_后端/lingyi_service/app/services/erpnext_production_adapter.py",
+    "07_后端/lingyi_service/app/models/production.py",
+    "07_后端/lingyi_service/app/schemas/production.py"
+  ],
+  "source_evidence_missing": [],
+  "cached_empty": true,
+  "historical_dirty_forbidden_staged": [],
+  "git_diff_check": "PASS",
+  "next_task": "TASK-Z028B-28-IMPL",
+  "run_this_task": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

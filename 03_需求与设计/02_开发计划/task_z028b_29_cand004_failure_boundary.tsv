@@ -1,0 +1,26 @@
+field	value
+task_id	TASK-Z028B-29-PREP-CAND004-FAILURE-DIAG
+candidate_id	Z028-CAND-004
+source_boundary_task	TASK-Z028B-27-PREP
+source_impl_task	TASK-Z028B-28-IMPL
+current_head	8b2536babda1780764407c6da2fa96a6313952d9
+cached_empty	true
+failed_summary	6 failed, 10 passed, 30 warnings in 1.11s
+failed_cases_count	6
+failed_cases	ProductionWorkOrderOutboxTest::test_create_work_order_audit_write_failed_returns_audit_write_failed; ProductionWorkOrderOutboxTest::test_create_work_order_commit_failure_does_not_call_erpnext; ProductionWorkOrderOutboxTest::test_create_work_order_outbox_is_idempotent_for_same_plan; ProductionWorkOrderOutboxTest::test_create_work_order_returns_existing_pending_outbox_without_duplicate; ProductionWorkOrderOutboxTest::test_create_work_order_returns_existing_work_order_when_link_succeeded; ProductionWorkOrderOutboxTest::test_create_work_order_same_idempotency_different_payload_returns_conflict
+expected_statuses	500,500,200,200,200,200
+observed_statuses	409,409,409,409,409,409
+failure_pattern	All failing create-work-order cases return 409 before their intended 200 or 500 branches.
+readonly_source_evidence	07_后端/lingyi_service/tests/test_production_work_order_outbox.py; 07_后端/lingyi_service/app/routers/production.py; 07_后端/lingyi_service/app/services/production_work_order_outbox_service.py; 07_后端/lingyi_service/app/services/production_work_order_worker.py; 07_后端/lingyi_service/app/services/erpnext_production_adapter.py; 07_后端/lingyi_service/app/models/production.py; 07_后端/lingyi_service/app/schemas/production.py; 07_后端/lingyi_service/app/services/production_service.py
+source_evidence_missing	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_production_work_order_outbox.py
+next_task	TASK-Z028B-30-FIX-CAND004
+run_this_task	false
+target_test_dirty_diff	false
+historical_dirty_forbidden_staged	[]
+pytest_rerun_performed	false
+fix_attempted	false
+stage_commit_push_tag_pr_release	false
+remote_lifecycle_parked	true
+production_readback_go_live_project_completion	false

@@ -1,0 +1,202 @@
+...FFFFFF.......                                                         [100%]
+=================================== FAILURES ===================================
+_ ProductionWorkOrderOutboxTest.test_create_work_order_audit_write_failed_returns_audit_write_failed _
+
+self = <tests.test_production_work_order_outbox.ProductionWorkOrderOutboxTest testMethod=test_create_work_order_audit_write_failed_returns_audit_write_failed>
+
+    def test_create_work_order_audit_write_failed_returns_audit_write_failed(self) -> None:
+        with patch("app.routers.production.AuditService.record_success", side_effect=AuditWriteFailed()):
+            response = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager"),
+                json=self._create_work_order_payload(idempotency_key="idem-audit-failed-1"),
+            )
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_production_work_order_outbox.py:242: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+_ ProductionWorkOrderOutboxTest.test_create_work_order_commit_failure_does_not_call_erpnext _
+
+self = <tests.test_production_work_order_outbox.ProductionWorkOrderOutboxTest testMethod=test_create_work_order_commit_failure_does_not_call_erpnext>
+
+    def test_create_work_order_commit_failure_does_not_call_erpnext(self) -> None:
+        with patch("app.routers.production._commit_or_raise_write_error", side_effect=DatabaseWriteFailed()), patch.object(
+            ERPNextProductionAdapter,
+            "create_work_order",
+        ) as create_mock, patch.object(
+            ERPNextProductionAdapter,
+            "submit_work_order",
+        ) as submit_mock:
+            response = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager"),
+                json=self._create_work_order_payload(idempotency_key="idem-plan-9101-commit-failed"),
+            )
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_production_work_order_outbox.py:258: AssertionError
+_ ProductionWorkOrderOutboxTest.test_create_work_order_outbox_is_idempotent_for_same_plan _
+
+self = <tests.test_production_work_order_outbox.ProductionWorkOrderOutboxTest testMethod=test_create_work_order_outbox_is_idempotent_for_same_plan>
+
+    def test_create_work_order_outbox_is_idempotent_for_same_plan(self) -> None:
+        first = self.client.post(
+            "/api/production/plans/9101/create-work-order",
+            headers=self._headers(role="Production Manager"),
+            json=self._create_work_order_payload(idempotency_key="idem-plan-9101"),
+        )
+        second = self.client.post(
+            "/api/production/plans/9101/create-work-order",
+            headers=self._headers(role="Production Manager"),
+            json=self._create_work_order_payload(idempotency_key="idem-plan-9101"),
+        )
+
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_work_order_outbox.py:175: AssertionError
+_ ProductionWorkOrderOutboxTest.test_create_work_order_returns_existing_pending_outbox_without_duplicate _
+
+self = <tests.test_production_work_order_outbox.ProductionWorkOrderOutboxTest testMethod=test_create_work_order_returns_existing_pending_outbox_without_duplicate>
+
+    def test_create_work_order_returns_existing_pending_outbox_without_duplicate(self) -> None:
+        first = self.client.post(
+            "/api/production/plans/9101/create-work-order",
+            headers=self._headers(role="Production Manager"),
+            json=self._create_work_order_payload(idempotency_key="idem-existing-pending-1"),
+        )
+        second = self.client.post(
+            "/api/production/plans/9101/create-work-order",
+            headers=self._headers(role="Production Manager"),
+            json=self._create_work_order_payload(idempotency_key="idem-existing-pending-2"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_work_order_outbox.py:209: AssertionError
+_ ProductionWorkOrderOutboxTest.test_create_work_order_returns_existing_work_order_when_link_succeeded _
+
+self = <tests.test_production_work_order_outbox.ProductionWorkOrderOutboxTest testMethod=test_create_work_order_returns_existing_work_order_when_link_succeeded>
+
+    def test_create_work_order_returns_existing_work_order_when_link_succeeded(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyProductionWorkOrderLink(
+                    plan_id=9101,
+                    work_order="WO-EXIST-001",
+                    erpnext_docstatus=1,
+                    erpnext_status="Submitted",
+                    sync_status="succeeded",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        response = self.client.post(
+            "/api/production/plans/9101/create-work-order",
+            headers=self._headers(role="Production Manager"),
+            json=self._create_work_order_payload(idempotency_key="idem-existing-link-1"),
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_work_order_outbox.py:232: AssertionError
+_ ProductionWorkOrderOutboxTest.test_create_work_order_same_idempotency_different_payload_returns_conflict _
+
+self = <tests.test_production_work_order_outbox.ProductionWorkOrderOutboxTest testMethod=test_create_work_order_same_idempotency_different_payload_returns_conflict>
+
+    def test_create_work_order_same_idempotency_different_payload_returns_conflict(self) -> None:
+        first = self.client.post(
+            "/api/production/plans/9101/create-work-order",
+            headers=self._headers(role="Production Manager"),
+            json=self._create_work_order_payload(idempotency_key="idem-plan-9101-conflict", fg="FG-A"),
+        )
+        second = self.client.post(
+            "/api/production/plans/9101/create-work-order",
+            headers=self._headers(role="Production Manager"),
+            json=self._create_work_order_payload(idempotency_key="idem-plan-9101-conflict", fg="FG-B"),
+        )
+
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_production_work_order_outbox.py:194: AssertionError
+=============================== warnings summary ===============================
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_does_not_take_processing_row_before_lease_expired
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_with_two_sessions_does_not_double_claim
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_cancelled_work_order_not_marked_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_claim_commits_before_erpnext_call
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_dry_run_has_no_outbox_or_erpnext_side_effect
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_existing_draft_submitted_then_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_success_creates_work_order_link
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:133: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:455: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.lease_until = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:457: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.locked_at = datetime.utcnow() - timedelta(minutes=2)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_does_not_take_processing_row_before_lease_expired
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_with_two_sessions_does_not_double_claim
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_with_two_sessions_does_not_double_claim
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_cancelled_work_order_not_marked_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_claim_commits_before_erpnext_call
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_existing_draft_submitted_then_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_success_creates_work_order_link
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_outbox_service.py:185: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_does_not_take_processing_row_before_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:470: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in Python 3.16
+    row.lease_until = datetime.utcnow() + timedelta(minutes=3)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_does_not_take_processing_row_before_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:472: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in Python 3.16
+    row.locked_at = datetime.utcnow()
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:416: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in Python 3.16
+    row.locked_at = datetime.utcnow()
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:417: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in Python 3.16
+    row.lease_until = datetime.utcnow() + timedelta(minutes=3)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_cancelled_work_order_not_marked_succeeded
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_outbox_service.py:316: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in Python 3.16
+    row.next_retry_at = datetime.utcnow() + timedelta(minutes=self._backoff_minutes(attempts))
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_claim_commits_before_erpnext_call
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_existing_draft_submitted_then_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_success_creates_work_order_link
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_worker.py:203: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in Python 3.16
+    last_synced_at=datetime.utcnow(),
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_dry_run_has_no_outbox_or_erpnext_side_effect
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_worker.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in Python 3.16
+    now = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_create_work_order_audit_write_failed_returns_audit_write_failed
+FAILED tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_create_work_order_commit_failure_does_not_call_erpnext
+FAILED tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_create_work_order_outbox_is_idempotent_for_same_plan
+FAILED tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_create_work_order_returns_existing_pending_outbox_without_duplicate
+FAILED tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_create_work_order_returns_existing_work_order_when_link_succeeded
+FAILED tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_create_work_order_same_idempotency_different_payload_returns_conflict
+6 failed, 10 passed, 30 warnings in 1.11s

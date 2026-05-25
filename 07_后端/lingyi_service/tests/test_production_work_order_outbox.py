@@ -117,16 +117,52 @@ class ProductionWorkOrderOutboxTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(user: str = "svc.production", role: str = "System Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": user, "X-LY-Dev-Roles": role}
+    def _headers(
+        user: str = "svc.production",
+        role: str = "System Manager",
+        *,
+        scenario_tag: str | None = None,
+    ) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": user, "X-LY-Dev-Roles": role}
+        if scenario_tag:
+            headers["X-Request-ID"] = f"rid-{scenario_tag}"
+        return headers
 
     @staticmethod
-    def _create_work_order_payload(*, idempotency_key: str, fg: str = "FG-WH-001", wip: str = "WIP-WH-001", start_date: str = "2026-04-13") -> dict[str, str]:
+    def _scenario_tag(index: int) -> str:
+        return f"Z003-PROD-PLAN-DETAIL-20260525-{index:03d}"
+
+    @staticmethod
+    def _local_gate_env():
+        return patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "development",
+                "LINGYI_DB_URL": "sqlite:///./lingyi_service.local.db",
+            },
+        )
+
+    @staticmethod
+    def _create_work_order_payload(
+        *,
+        idempotency_key: str,
+        scenario_tag: str,
+        fg: str = "FG-WH-001",
+        wip: str = "WIP-WH-001",
+        start_date: str = "2026-04-13",
+    ) -> dict[str, object]:
         return {
             "fg_warehouse": fg,
             "wip_warehouse": wip,
             "start_date": start_date,
-            "idempotency_key": idempotency_key,
+            "idempotency_key": f"{scenario_tag}-{idempotency_key}",
+            "scenario_tag": scenario_tag,
+            "operation": "create_work_order",
+            "plan_id": 9101,
+            "sales_order": "SO-WO-001",
+            "sales_order_item": "SOI-WO-001",
+            "item_code": "ITEM-A",
+            "bom_id": 301,
         }
 
     def _seed_due_outbox(self, *, status: str = "pending") -> int:
@@ -161,16 +197,18 @@ class ProductionWorkOrderOutboxTest(unittest.TestCase):
             return int(row.id)
 
     def test_create_work_order_outbox_is_idempotent_for_same_plan(self) -> None:
-        first = self.client.post(
-            "/api/production/plans/9101/create-work-order",
-            headers=self._headers(role="Production Manager"),
-            json=self._create_work_order_payload(idempotency_key="idem-plan-9101"),
-        )
-        second = self.client.post(
-            "/api/production/plans/9101/create-work-order",
-            headers=self._headers(role="Production Manager"),
-            json=self._create_work_order_payload(idempotency_key="idem-plan-9101"),
-        )
+        scenario_tag = self._scenario_tag(1)
+        with self._local_gate_env():
+            first = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(idempotency_key="idem-plan-9101", scenario_tag=scenario_tag),
+            )
+            second = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(idempotency_key="idem-plan-9101", scenario_tag=scenario_tag),
+            )
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
@@ -180,32 +218,47 @@ class ProductionWorkOrderOutboxTest(unittest.TestCase):
             self.assertEqual(len(rows), 1)
 
     def test_create_work_order_same_idempotency_different_payload_returns_conflict(self) -> None:
-        first = self.client.post(
-            "/api/production/plans/9101/create-work-order",
-            headers=self._headers(role="Production Manager"),
-            json=self._create_work_order_payload(idempotency_key="idem-plan-9101-conflict", fg="FG-A"),
-        )
-        second = self.client.post(
-            "/api/production/plans/9101/create-work-order",
-            headers=self._headers(role="Production Manager"),
-            json=self._create_work_order_payload(idempotency_key="idem-plan-9101-conflict", fg="FG-B"),
-        )
+        scenario_tag = self._scenario_tag(2)
+        with self._local_gate_env():
+            first = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(
+                    idempotency_key="idem-plan-9101-conflict",
+                    scenario_tag=scenario_tag,
+                    fg="FG-A",
+                ),
+            )
+            self.assertEqual(first.status_code, 200)
+            with self.SessionLocal() as session:
+                session.query(LyProductionWorkOrderLink).filter(LyProductionWorkOrderLink.plan_id == 9101).delete()
+                session.commit()
+            second = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(
+                    idempotency_key="idem-plan-9101-conflict",
+                    scenario_tag=scenario_tag,
+                    fg="FG-B",
+                ),
+            )
 
-        self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "PRODUCTION_IDEMPOTENCY_CONFLICT")
 
     def test_create_work_order_returns_existing_pending_outbox_without_duplicate(self) -> None:
-        first = self.client.post(
-            "/api/production/plans/9101/create-work-order",
-            headers=self._headers(role="Production Manager"),
-            json=self._create_work_order_payload(idempotency_key="idem-existing-pending-1"),
-        )
-        second = self.client.post(
-            "/api/production/plans/9101/create-work-order",
-            headers=self._headers(role="Production Manager"),
-            json=self._create_work_order_payload(idempotency_key="idem-existing-pending-2"),
-        )
+        scenario_tag = self._scenario_tag(3)
+        with self._local_gate_env():
+            first = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(idempotency_key="idem-existing-pending-1", scenario_tag=scenario_tag),
+            )
+            second = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(idempotency_key="idem-existing-pending-2", scenario_tag=scenario_tag),
+            )
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()["data"]["outbox_id"], second.json()["data"]["outbox_id"])
@@ -224,26 +277,33 @@ class ProductionWorkOrderOutboxTest(unittest.TestCase):
             )
             session.commit()
 
-        response = self.client.post(
-            "/api/production/plans/9101/create-work-order",
-            headers=self._headers(role="Production Manager"),
-            json=self._create_work_order_payload(idempotency_key="idem-existing-link-1"),
-        )
+        scenario_tag = self._scenario_tag(4)
+        with self._local_gate_env():
+            response = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(idempotency_key="idem-existing-link-1", scenario_tag=scenario_tag),
+            )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["work_order"], "WO-EXIST-001")
 
     def test_create_work_order_audit_write_failed_returns_audit_write_failed(self) -> None:
-        with patch("app.routers.production.AuditService.record_success", side_effect=AuditWriteFailed()):
+        scenario_tag = self._scenario_tag(5)
+        with self._local_gate_env(), patch("app.routers.production.AuditService.record_success", side_effect=AuditWriteFailed()):
             response = self.client.post(
                 "/api/production/plans/9101/create-work-order",
-                headers=self._headers(role="Production Manager"),
-                json=self._create_work_order_payload(idempotency_key="idem-audit-failed-1"),
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(idempotency_key="idem-audit-failed-1", scenario_tag=scenario_tag),
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "AUDIT_WRITE_FAILED")
 
     def test_create_work_order_commit_failure_does_not_call_erpnext(self) -> None:
-        with patch("app.routers.production._commit_or_raise_write_error", side_effect=DatabaseWriteFailed()), patch.object(
+        scenario_tag = self._scenario_tag(6)
+        with self._local_gate_env(), patch(
+            "app.routers.production._commit_or_raise_write_error",
+            side_effect=DatabaseWriteFailed(),
+        ), patch.object(
             ERPNextProductionAdapter,
             "create_work_order",
         ) as create_mock, patch.object(
@@ -252,8 +312,8 @@ class ProductionWorkOrderOutboxTest(unittest.TestCase):
         ) as submit_mock:
             response = self.client.post(
                 "/api/production/plans/9101/create-work-order",
-                headers=self._headers(role="Production Manager"),
-                json=self._create_work_order_payload(idempotency_key="idem-plan-9101-commit-failed"),
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(idempotency_key="idem-plan-9101-commit-failed", scenario_tag=scenario_tag),
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "DATABASE_WRITE_FAILED")

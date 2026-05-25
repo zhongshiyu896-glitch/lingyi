@@ -1,0 +1,104 @@
+........F.......                                                         [100%]
+=================================== FAILURES ===================================
+_ ProductionWorkOrderOutboxTest.test_create_work_order_same_idempotency_different_payload_returns_conflict _
+
+self = <tests.test_production_work_order_outbox.ProductionWorkOrderOutboxTest testMethod=test_create_work_order_same_idempotency_different_payload_returns_conflict>
+
+    def test_create_work_order_same_idempotency_different_payload_returns_conflict(self) -> None:
+        scenario_tag = self._scenario_tag(2)
+        with self._local_gate_env():
+            first = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(
+                    idempotency_key="idem-plan-9101-conflict",
+                    scenario_tag=scenario_tag,
+                    fg="FG-A",
+                ),
+            )
+            second = self.client.post(
+                "/api/production/plans/9101/create-work-order",
+                headers=self._headers(role="Production Manager", scenario_tag=scenario_tag),
+                json=self._create_work_order_payload(
+                    idempotency_key="idem-plan-9101-conflict",
+                    scenario_tag=scenario_tag,
+                    fg="FG-B",
+                ),
+            )
+
+        self.assertEqual(first.status_code, 200)
+>       self.assertEqual(second.status_code, 409)
+E       AssertionError: 200 != 409
+
+tests/test_production_work_order_outbox.py:243: AssertionError
+=============================== warnings summary ===============================
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_does_not_take_processing_row_before_lease_expired
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_with_two_sessions_does_not_double_claim
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_cancelled_work_order_not_marked_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_claim_commits_before_erpnext_call
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_dry_run_has_no_outbox_or_erpnext_side_effect
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_existing_draft_submitted_then_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_success_creates_work_order_link
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:169: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:512: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.lease_until = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:514: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.locked_at = datetime.utcnow() - timedelta(minutes=2)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_can_recover_processing_row_after_lease_expired
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_does_not_take_processing_row_before_lease_expired
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_with_two_sessions_does_not_double_claim
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_with_two_sessions_does_not_double_claim
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_cancelled_work_order_not_marked_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_claim_commits_before_erpnext_call
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_existing_draft_submitted_then_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_success_creates_work_order_link
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_outbox_service.py:185: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_does_not_take_processing_row_before_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:527: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.lease_until = datetime.utcnow() + timedelta(minutes=3)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_claim_due_does_not_take_processing_row_before_lease_expired
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:529: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.locked_at = datetime.utcnow()
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:473: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.locked_at = datetime.utcnow()
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_production_work_order_outbox.py:474: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.lease_until = datetime.utcnow() + timedelta(minutes=3)
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_mark_failed_dead_clears_lease_and_keeps_retry_timestamp
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_cancelled_work_order_not_marked_succeeded
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_outbox_service.py:316: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.next_retry_at = datetime.utcnow() + timedelta(minutes=self._backoff_minutes(attempts))
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_claim_commits_before_erpnext_call
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_existing_draft_submitted_then_succeeded
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_success_creates_work_order_link
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_worker.py:203: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    last_synced_at=datetime.utcnow(),
+
+tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_worker_dry_run_has_no_outbox_or_erpnext_side_effect
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/production_work_order_worker.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_production_work_order_outbox.py::ProductionWorkOrderOutboxTest::test_create_work_order_same_idempotency_different_payload_returns_conflict
+1 failed, 15 passed, 30 warnings in 1.12s

@@ -1,0 +1,74 @@
+{
+  "task_id": "TASK-Z028B-31-PREP-CAND004-SECOND-FAILURE-DIAG",
+  "candidate_id": "Z028-CAND-004",
+  "source_failure_task": "TASK-Z028B-30-FIX-CAND004",
+  "previous_boundary_task": "TASK-Z028B-29-PREP-CAND004-FAILURE-DIAG",
+  "current_head": "8b2536babda1780764407c6da2fa96a6313952d9",
+  "cached_empty": true,
+  "failed_summary": "1 failed, 15 passed, 30 warnings in 1.12s",
+  "remaining_failed_cases": [
+    {
+      "case": "ProductionWorkOrderOutboxTest::test_create_work_order_same_idempotency_different_payload_returns_conflict",
+      "expected_status": 409,
+      "observed_status": 200,
+      "assertion_line": "tests/test_production_work_order_outbox.py:243"
+    }
+  ],
+  "observed_status": 200,
+  "expected_status": 409,
+  "remaining_failure_pattern": "After B30 carrier repair, the request reaches create-work-order behavior, but the second same-idempotency/different-payload request returns existing work-order data with 200 instead of the preserved 409 conflict assertion.",
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+    "07_后端/lingyi_service/app/routers/production.py",
+    "07_后端/lingyi_service/app/services/production_work_order_outbox_service.py",
+    "07_后端/lingyi_service/app/services/production_work_order_worker.py",
+    "07_后端/lingyi_service/app/services/erpnext_production_adapter.py",
+    "07_后端/lingyi_service/app/models/production.py",
+    "07_后端/lingyi_service/app/schemas/production.py",
+    "07_后端/lingyi_service/app/services/production_service.py"
+  ],
+  "source_evidence_missing": [],
+  "source_findings": [
+    {
+      "path": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+      "finding": "B30 diff only adds local gate carrier fixtures and preserves the failing test's 409 assertion."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/production_service.py",
+      "lines": "1378-1402",
+      "finding": "If a work-order link already exists for the plan, create_work_order_outbox returns existing work-order data before idempotency payload-hash conflict evaluation."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/production_service.py",
+      "lines": "1424-1432",
+      "finding": "The intended PRODUCTION_IDEMPOTENCY_CONFLICT branch exists, but it is reached only when existing_by_idempotency is evaluated before an existing work-order link short-circuit."
+    },
+    {
+      "path": "07_后端/lingyi_service/app/services/production_service.py",
+      "lines": "1473-1511",
+      "finding": "The first successful create-work-order request creates an outbox and upserts a local work-order link, causing the second request in the current fixture to observe the existing-link path."
+    }
+  ],
+  "target_test_path": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+  "target_test_dirty_diff_scope": "Only B30 allowed fixture/carrier changes are present in the target test diff.",
+  "historical_dirty_forbidden_staged": [],
+  "diagnosis": "The remaining failure is test fixture/idempotency-payload conflict expectation drift. The preserved conflict assertion is still valid as a branch target, but the current two-call fixture now creates a work-order link on the first request, so the second request returns existing work-order data with 200 before the conflict check.",
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_production_work_order_outbox.py",
+  "next_task": "TASK-Z028B-32-FIX-CAND004-SECOND",
+  "run_this_task": false,
+  "gates": {
+    "pytest_rerun_performed": false,
+    "fix_attempted": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_performed": false,
+    "tag_performed": false,
+    "pr_performed": false,
+    "release_performed": false,
+    "remote_lifecycle_parked": true,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false
+  }
+}
