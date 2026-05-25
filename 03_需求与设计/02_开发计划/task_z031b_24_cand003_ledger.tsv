@@ -1,0 +1,69 @@
+decision	entry_type	path_or_category	reason
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-16-PREP_CAND003只读验证边界报告.md	B16 boundary evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_16_cand003_boundary.json	B16 boundary evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_16_cand003_boundary.tsv	B16 boundary evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-17-IMPL_CAND003单文件验证报告.md	B17 FAIL evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_17_cand003_result.json	B17 FAIL evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_17_cand003_result.tsv	B17 FAIL evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_17_cand003_stdout.txt	B17 FAIL evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-18-PREP-CAND003-FAILURE-DIAG_失败定位边界报告.md	B18 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_18_cand003_failure_boundary.json	B18 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_18_cand003_failure_boundary.tsv	B18 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-19-FIX-CAND003_修复验证报告.md	B19 fix evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_19_cand003_fix_result.json	B19 fix evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_19_cand003_fix_result.tsv	B19 fix evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_19_cand003_fix_stdout.txt	B19 fix evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-19-FIX-CAND003-FIX1_语义修正验证报告.md	B19-FIX1 evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_19_cand003_fix1_result.json	B19-FIX1 evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_19_cand003_fix1_result.tsv	B19-FIX1 evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_19_cand003_fix1_stdout.txt	B19-FIX1 evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-20-PREP-CAND003-SECOND-FAILURE-DIAG_二次失败定位边界报告.md	B20 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_20_cand003_second_failure_boundary.json	B20 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_20_cand003_second_failure_boundary.tsv	B20 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-21-FIX-CAND003-SECOND_二次修复验证报告.md	B21 fix evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_21_cand003_second_fix_result.json	B21 fix evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_21_cand003_second_fix_result.tsv	B21 fix evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_21_cand003_second_fix_stdout.txt	B21 fix evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-22-PREP-CAND003-THIRD-FAILURE-DIAG_三次失败定位边界报告.md	B22 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_22_cand003_third_failure_boundary.json	B22 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_22_cand003_third_failure_boundary.tsv	B22 classification evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-23-FIX-CAND003-THIRD_三次修复验证报告.md	B23 PASS evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_23_cand003_third_fix_result.json	B23 PASS evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_23_cand003_third_fix_result.tsv	B23 PASS evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_23_cand003_third_fix_stdout.txt	B23 PASS evidence
+YES	evidence	03_需求与设计/02_开发计划/TASK-Z031B-24-LEDGER-CAND003_提交候选账本冻结报告.md	B24 ledger evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_24_cand003_freeze.json	B24 ledger evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_24_cand003_ledger.json	B24 ledger evidence
+YES	evidence	03_需求与设计/02_开发计划/task_z031b_24_cand003_ledger.tsv	B24 ledger evidence
+YES	backend_test	07_后端/lingyi_service/tests/test_style_profit_api_errors.py	only allowed backend test path
+NO	candidate_pool	03_需求与设计/02_开发计划/TASK-Z031B-01-PREP_Z031本地候选池重建报告.md	candidate pool excluded
+NO	candidate_pool	03_需求与设计/02_开发计划/task_z031b_01_candidate_pool.json	candidate pool excluded
+NO	candidate_pool	03_需求与设计/02_开发计划/task_z031b_01_candidate_pool.tsv	candidate pool excluded
+NO	historical_dirty	00_交接与日志/HANDOVER_STATUS.md	historical dirty forbidden excluded
+NO	historical_dirty	03_需求与设计/01_架构设计/架构师会话日志.md	historical dirty forbidden excluded
+NO	historical_dirty	03_需求与设计/02_开发计划/工程师会话日志.md	historical dirty forbidden excluded
+NO	historical_dirty	06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	historical dirty forbidden excluded
+NO	historical_dirty	06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	historical dirty forbidden excluded
+NO	historical_dirty	06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	historical dirty forbidden excluded
+NO	historical_dirty	06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	historical dirty forbidden excluded
+NO	historical_dirty	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	historical dirty forbidden excluded
+NO	historical_dirty	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/app/schemas/report.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/app/services/report_catalog_service.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/app/services/system_config_catalog_service.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/tests/test_bom_permissions.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/tests/test_logging_sanitization.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/tests/test_request_id_sanitization.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/tests/test_style_profit_api.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/tests/test_subcontract_company_permission.py	historical dirty forbidden excluded
+NO	historical_dirty	07_后端/lingyi_service/tests/test_workshop_permissions.py	historical dirty forbidden excluded
+NO	category	Z031-CAND-001 archived evidence range TASK-Z031B-02..07	archived candidate range excluded
+NO	category	Z031-CAND-002 archived evidence range TASK-Z031B-09..14	archived candidate range excluded
+NO	category	Z031-CAND-004 scope	future candidate scope excluded
+NO	category	Z031-CAND-005 scope	future candidate scope excluded
+NO	category	06_前端	frontend excluded
+NO	category	07_后端/lingyi_service/app	backend app excluded
+NO	category	shared engineer logs	shared logs excluded
+NO	category	legacy Z015-Z030 artifacts	old cycle artifacts excluded
+NO	category	runtime/cache/unrelated files	runtime cache and unrelated files excluded

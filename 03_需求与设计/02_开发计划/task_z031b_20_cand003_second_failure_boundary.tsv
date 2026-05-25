@@ -1,0 +1,37 @@
+field	value
+task_id	TASK-Z031B-20-PREP-CAND003-SECOND-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z031B-19-FIX-CAND003-FIX1
+candidate_id	Z031-CAND-003
+current_head	23c9a5068daa6cca8a7071f4e4ce2def52bb6a7f
+cached_empty	true
+git_diff_check_pass	true
+b19_c_audit_result	AUDIT_RESULT: FIX
+b19_fix1_result	FAIL
+b19_fix1_command_run_count	1
+b19_fix1_pytest_summary	2 failed, 3 passed, 1 warning in 1.05s
+remaining_failed_cases_count	2
+remaining_failed_case_1	tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_invalid_idempotency_key_returns_business_error | observed=500 | expected=400
+remaining_failed_case_2	tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_blank_sales_order_returns_business_error | observed=500 | expected=400
+observed_statuses	[500,500]
+expected_statuses	[400,400]
+failure_pattern_summary	incomplete target-test write-gate mock returns empty carrier while router expects gate_carriers["sales_order"], so failure remains test fixture/mock adjustable
+target_test	07_后端/lingyi_service/tests/test_style_profit_api_errors.py
+current_target_dirty_diff_limited_to_allowed_file	true
+business_error_semantics_restored_before_diag	true
+source_evidence_missing	[]
+historical_dirty_forbidden_staged	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_style_profit_api_errors.py
+next_task	TASK-Z031B-21-FIX-CAND003-SECOND
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

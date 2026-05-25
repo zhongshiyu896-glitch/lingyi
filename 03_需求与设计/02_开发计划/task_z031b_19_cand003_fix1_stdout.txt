@@ -1,0 +1,45 @@
+F.F..                                                                    [100%]
+=================================== FAILURES ===================================
+____ StyleProfitApiErrorTest.test_blank_sales_order_returns_business_error _____
+
+self = <tests.test_style_profit_api_errors.StyleProfitApiErrorTest testMethod=test_blank_sales_order_returns_business_error>
+
+    def test_blank_sales_order_returns_business_error(self) -> None:
+        payload = self._base_create_payload(idem="idem-blank-sales-order")
+        payload["sales_order"] = "   "
+        with patch.object(style_profit_router, "_validate_local_style_profit_write_gate", return_value={}):
+            response = self.client.post(
+                "/api/reports/style-profit/snapshots",
+                json=payload,
+                headers=self._headers(),
+            )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 500 != 400
+
+tests/test_style_profit_api_errors.py:93: AssertionError
+_ StyleProfitApiErrorTest.test_invalid_idempotency_key_returns_business_error __
+
+self = <tests.test_style_profit_api_errors.StyleProfitApiErrorTest testMethod=test_invalid_idempotency_key_returns_business_error>
+
+    def test_invalid_idempotency_key_returns_business_error(self) -> None:
+        payload = self._base_create_payload(idem="x" * 129)
+        with patch.object(style_profit_router, "_validate_local_style_profit_write_gate", return_value={}):
+            response = self.client.post(
+                "/api/reports/style-profit/snapshots",
+                json=payload,
+                headers=self._headers(),
+            )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 500 != 400
+
+tests/test_style_profit_api_errors.py:81: AssertionError
+=============================== warnings summary ===============================
+tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_blank_sales_order_returns_business_error
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_blank_sales_order_returns_business_error
+FAILED tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_invalid_idempotency_key_returns_business_error
+2 failed, 3 passed, 1 warning in 1.05s

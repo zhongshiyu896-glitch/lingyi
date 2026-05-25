@@ -1,0 +1,35 @@
+field	value
+task_id	TASK-Z031B-22-PREP-CAND003-THIRD-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z031B-21-FIX-CAND003-SECOND
+candidate_id	Z031-CAND-003
+current_head	23c9a5068daa6cca8a7071f4e4ce2def52bb6a7f
+cached_empty	true
+git_diff_check_pass	true
+b21_result	FAIL
+b21_command_run_count	1
+b21_pytest_summary	1 failed, 4 passed, 1 warning in 1.07s
+remaining_failed_cases_count	1
+remaining_failed_case	test_blank_sales_order_returns_business_error
+observed_status	500
+expected_status	400
+failure_pattern_summary	blank sales_order carrier is reintroduced as raw whitespace after route stripping, so original 400 branch is still reachable by target-test fixture/mock adjustment
+target_test	07_后端/lingyi_service/tests/test_style_profit_api_errors.py
+current_target_dirty_diff_limited_to_allowed_file	true
+business_error_semantics_still_preserved	true
+source_evidence_missing	[]
+historical_dirty_forbidden_staged	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_style_profit_api_errors.py
+next_task	TASK-Z031B-23-FIX-CAND003-THIRD
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

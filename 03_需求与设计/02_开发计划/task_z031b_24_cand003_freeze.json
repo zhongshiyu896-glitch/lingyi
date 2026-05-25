@@ -1,0 +1,61 @@
+{
+  "task_id": "TASK-Z031B-24-LEDGER-CAND003",
+  "role": "B Engineer",
+  "candidate_id": "Z031-CAND-003",
+  "evidence_only": false,
+  "head": "23c9a5068daa6cca8a7071f4e4ce2def52bb6a7f",
+  "cached_empty": true,
+  "git_diff_check_pass": true,
+  "source_chain": [
+    "TASK-Z031B-16-PREP boundary",
+    "TASK-Z031B-17-IMPL FAIL",
+    "TASK-Z031B-18-PREP-CAND003-FAILURE-DIAG classification",
+    "TASK-Z031B-19-FIX-CAND003 semantic FIX by C",
+    "TASK-Z031B-19-FIX-CAND003-FIX1 FAIL",
+    "TASK-Z031B-20-PREP-CAND003-SECOND-FAILURE-DIAG classification",
+    "TASK-Z031B-21-FIX-CAND003-SECOND FAIL",
+    "TASK-Z031B-22-PREP-CAND003-THIRD-FAILURE-DIAG classification",
+    "TASK-Z031B-23-FIX-CAND003-THIRD PASS",
+    "TASK-Z031B-24-LEDGER-CAND003 ledger"
+  ],
+  "classifications": {
+    "B18": "TEST_CONTRACT_UPDATE_ALLOWED",
+    "B20": "TEST_CONTRACT_UPDATE_ALLOWED",
+    "B22": "TEST_CONTRACT_UPDATE_ALLOWED"
+  },
+  "allowed_backend_test_path_only": "07_后端/lingyi_service/tests/test_style_profit_api_errors.py",
+  "b23_result": "PASS",
+  "b23_pytest_summary": "5 passed, 1 warning in 1.04s",
+  "target_assertion_semantics": {
+    "blank_sales_order_expected_status": 400,
+    "blank_sales_order_expected_error_code": "STYLE_PROFIT_SALES_ORDER_REQUIRED",
+    "no_idempotency_conflict_acceptance_for_blank_sales_order": true,
+    "no_500_acceptance_for_blank_sales_order": true,
+    "skip_xfail_found": false,
+    "weak_assertion_found": false
+  },
+  "ledger_total": 68,
+  "yes_count": 37,
+  "no_count": 31,
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "git_check_ignore_yes_matches": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_style_profit_api_errors.py"
+  ],
+  "backend_app_yes_paths": [],
+  "frontend_yes_paths": [],
+  "historical_dirty_forbidden_in_yes": [],
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z031B-25-STAGE-CAND003",
+  "run_this_task": false
+}

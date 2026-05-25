@@ -1,0 +1,38 @@
+field	value
+task_id	TASK-Z031B-19-FIX-CAND003
+role	B Engineer
+source_task	TASK-Z031B-18-PREP-CAND003-FAILURE-DIAG
+candidate_id	Z031-CAND-003
+current_head	23c9a5068daa6cca8a7071f4e4ce2def52bb6a7f
+allowed_fix_file	07_后端/lingyi_service/tests/test_style_profit_api_errors.py
+changed_files	07_后端/lingyi_service/tests/test_style_profit_api_errors.py; 03_需求与设计/02_开发计划/TASK-Z031B-19-FIX-CAND003_修复验证报告.md; 03_需求与设计/02_开发计划/task_z031b_19_cand003_fix_result.json; 03_需求与设计/02_开发计划/task_z031b_19_cand003_fix_result.tsv; 03_需求与设计/02_开发计划/task_z031b_19_cand003_fix_stdout.txt
+fixture_payload_contract_updated	true
+local_write_gate_headers_updated	true
+carrier_fields_addressed	scenario_tag,source_ref,status_action,idempotency_key_scenario_prefix,X-Request-ID
+workdir	07_后端/lingyi_service
+exact_command	.venv/bin/python -m pytest tests/test_style_profit_api_errors.py -q
+command_run_count	1
+exit_code	0
+result	PASS
+pytest_summary	5 passed, 1 warning in 1.05s
+stdout_path	03_需求与设计/02_开发计划/task_z031b_19_cand003_fix_stdout.txt
+target_test_dirty_diff	true
+assertions_weakened	false
+skip_xfail_deleted_cases	false
+backend_app_changed	false
+frontend_changed	false
+unrelated_tests_changed	false
+continued_after_fail	false
+rerun_performed	false
+cached_empty	true
+git_diff_check_pass	true
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

@@ -1,0 +1,36 @@
+field	value
+task_id	TASK-Z031B-18-PREP-CAND003-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z031B-17-IMPL
+candidate_id	Z031-CAND-003
+current_head	23c9a5068daa6cca8a7071f4e4ce2def52bb6a7f
+cached_empty	true
+git_diff_check_pass	true
+b17_result	FAIL
+b17_command_run_count	1
+b17_pytest_summary	5 failed, 1 warning in 1.08s
+failed_cases_count	5
+failed_case_1	tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_blank_sales_order_returns_business_error | observed=409 | expected=400
+failed_case_2	tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_commit_failure_returns_database_write_failed | observed=409 | expected=500
+failed_case_3	tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_invalid_idempotency_key_returns_business_error | observed=409 | expected=400
+failed_case_4	tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_same_idempotency_key_with_different_request_returns_conflict | observed=409 | expected=200
+failed_case_5	tests/test_style_profit_api_errors.py::StyleProfitApiErrorTest::test_unknown_error_uses_unified_envelope_without_detail | observed=409 | expected=500
+failure_pattern_summary	all failures return STYLE_PROFIT_IDEMPOTENCY_CONFLICT before intended business branches because target fixture payload lacks local write gate carrier fields
+target_test	07_后端/lingyi_service/tests/test_style_profit_api_errors.py
+source_evidence_missing	[]
+target_test_dirty_diff	false
+historical_dirty_forbidden_staged	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_style_profit_api_errors.py
+next_task	TASK-Z031B-19-FIX-CAND003
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false
