@@ -1,0 +1,169 @@
+.FFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ WorkshopJobCardSyncTest.test_service_account_forbidden_marks_failed_without_losing_local_ticket _
+
+self = <tests.test_workshop_job_card_sync.WorkshopJobCardSyncTest testMethod=test_service_account_forbidden_marks_failed_without_losing_local_ticket>
+
+    def test_service_account_forbidden_marks_failed_without_losing_local_ticket(self) -> None:
+        payload = self._register_payload(ticket_key="SYNC-SA-FORBIDDEN-001")
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._employee(),
+        ):
+            register_resp = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload=payload),
+                json=payload,
+            )
+        self.assertEqual(register_resp.status_code, 200)
+
+        with self.SessionLocal() as session, patch.object(
+            ERPNextJobCardAdapter,
+            "update_job_card_completed_qty",
+            side_effect=ERPNextServiceAccountForbiddenError("forbidden"),
+        ):
+            worker = WorkshopJobCardSyncWorker(
+                session=session,
+                erp_adapter=ERPNextJobCardAdapter(request_obj=None, use_service_account=True),
+            )
+            result = worker.run_once(limit=10, service_account_policy=self._service_policy())
+            session.commit()
+
+>       self.assertGreaterEqual(result.processed, 1)
+E       AssertionError: 0 not greater than or equal to 1
+
+tests/test_workshop_job_card_sync.py:330: AssertionError
+_ WorkshopJobCardSyncTest.test_worker_failure_can_retry_after_manual_sync_enqueue _
+
+self = <tests.test_workshop_job_card_sync.WorkshopJobCardSyncTest testMethod=test_worker_failure_can_retry_after_manual_sync_enqueue>
+
+    def test_worker_failure_can_retry_after_manual_sync_enqueue(self) -> None:
+        payload = self._register_payload(ticket_key="SYNC-WORKER-FAIL-001")
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._employee(),
+        ):
+            register_resp = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload=payload),
+                json=payload,
+            )
+        self.assertEqual(register_resp.status_code, 200)
+
+        with self.SessionLocal() as session, patch.object(
+            ERPNextJobCardAdapter,
+            "update_job_card_completed_qty",
+            side_effect=ERPNextServiceUnavailableError("down"),
+        ):
+            worker = WorkshopJobCardSyncWorker(
+                session=session,
+                erp_adapter=ERPNextJobCardAdapter(request_obj=None, use_service_account=True),
+            )
+            fail_result = worker.run_once(limit=10, service_account_policy=self._service_policy())
+            session.commit()
+
+>       self.assertGreaterEqual(fail_result.processed, 1)
+E       AssertionError: 0 not greater than or equal to 1
+
+tests/test_workshop_job_card_sync.py:276: AssertionError
+_ WorkshopJobCardSyncTest.test_worker_success_marks_outbox_succeeded_and_ticket_synced _
+
+self = <tests.test_workshop_job_card_sync.WorkshopJobCardSyncTest testMethod=test_worker_success_marks_outbox_succeeded_and_ticket_synced>
+
+    def test_worker_success_marks_outbox_succeeded_and_ticket_synced(self) -> None:
+        payload = self._register_payload(ticket_key="SYNC-WORKER-OK-001")
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._employee(),
+        ):
+            register_resp = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload=payload),
+                json=payload,
+            )
+        self.assertEqual(register_resp.status_code, 200)
+
+        with self.SessionLocal() as session, patch.object(
+            ERPNextJobCardAdapter,
+            "update_job_card_completed_qty",
+            return_value={"message": "ok"},
+        ):
+            worker = WorkshopJobCardSyncWorker(
+                session=session,
+                erp_adapter=ERPNextJobCardAdapter(request_obj=None, use_service_account=True),
+            )
+            result = worker.run_once(limit=10, service_account_policy=self._service_policy())
+            session.commit()
+
+>       self.assertGreaterEqual(result.processed, 1)
+E       AssertionError: 0 not greater than or equal to 1
+
+tests/test_workshop_job_card_sync.py:236: AssertionError
+=============================== warnings summary ===============================
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1920: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:329: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1678: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:356: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ticket.updated_at = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:170: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:41: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+FAILED tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+FAILED tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+3 failed, 1 passed, 31 warnings in 1.01s

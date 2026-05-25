@@ -1,0 +1,46 @@
+path	decision	reason
+03_需求与设计/02_开发计划/TASK-Z032B-35-PREP_CAND004只读验证边界报告.md	YES	B35 CAND004 boundary evidence
+03_需求与设计/02_开发计划/task_z032b_35_cand004_boundary.json	YES	B35 CAND004 boundary evidence
+03_需求与设计/02_开发计划/task_z032b_35_cand004_boundary.tsv	YES	B35 CAND004 boundary evidence
+03_需求与设计/02_开发计划/TASK-Z032B-36-IMPL_CAND004单文件验证报告.md	YES	B36 CAND004 FAIL result evidence
+03_需求与设计/02_开发计划/task_z032b_36_cand004_result.json	YES	B36 CAND004 FAIL result evidence
+03_需求与设计/02_开发计划/task_z032b_36_cand004_result.tsv	YES	B36 CAND004 FAIL result evidence
+03_需求与设计/02_开发计划/task_z032b_36_cand004_stdout.txt	YES	B36 CAND004 FAIL stdout evidence
+03_需求与设计/02_开发计划/TASK-Z032B-37-PREP-CAND004-FAILURE-DIAG_失败定位边界报告.md	YES	B37 CAND004 failure boundary evidence
+03_需求与设计/02_开发计划/task_z032b_37_cand004_failure_boundary.json	YES	B37 CAND004 failure boundary evidence
+03_需求与设计/02_开发计划/task_z032b_37_cand004_failure_boundary.tsv	YES	B37 CAND004 failure boundary evidence
+03_需求与设计/02_开发计划/TASK-Z032B-38-FIX-CAND004_修复验证报告.md	YES	B38 CAND004 first fix evidence
+03_需求与设计/02_开发计划/task_z032b_38_cand004_fix_result.json	YES	B38 CAND004 first fix evidence
+03_需求与设计/02_开发计划/task_z032b_38_cand004_fix_result.tsv	YES	B38 CAND004 first fix evidence
+03_需求与设计/02_开发计划/task_z032b_38_cand004_fix_stdout.txt	YES	B38 CAND004 first fix stdout evidence
+03_需求与设计/02_开发计划/TASK-Z032B-39-PREP-CAND004-SECOND-FAILURE-DIAG_二次失败定位边界报告.md	YES	B39 CAND004 second failure boundary evidence
+03_需求与设计/02_开发计划/task_z032b_39_cand004_second_failure_boundary.json	YES	B39 CAND004 second failure boundary evidence
+03_需求与设计/02_开发计划/task_z032b_39_cand004_second_failure_boundary.tsv	YES	B39 CAND004 second failure boundary evidence
+03_需求与设计/02_开发计划/TASK-Z032B-40-FIX-CAND004-SECOND_二次修复验证报告.md	YES	B40 CAND004 second fix PASS evidence
+03_需求与设计/02_开发计划/task_z032b_40_cand004_second_fix_result.json	YES	B40 CAND004 second fix PASS evidence
+03_需求与设计/02_开发计划/task_z032b_40_cand004_second_fix_result.tsv	YES	B40 CAND004 second fix PASS evidence
+03_需求与设计/02_开发计划/task_z032b_40_cand004_second_fix_stdout.txt	YES	B40 CAND004 second fix PASS stdout evidence
+03_需求与设计/02_开发计划/TASK-Z032B-41-LEDGER-CAND004_提交候选账本冻结报告.md	YES	B41 ledger evidence
+03_需求与设计/02_开发计划/task_z032b_41_cand004_freeze.json	YES	B41 ledger evidence
+03_需求与设计/02_开发计划/task_z032b_41_cand004_ledger.json	YES	B41 ledger evidence
+03_需求与设计/02_开发计划/task_z032b_41_cand004_ledger.tsv	YES	B41 ledger evidence
+07_后端/lingyi_service/tests/test_workshop_job_card_sync.py	YES	only allowed backend test path
+00_交接与日志/HANDOVER_STATUS.md	NO	historical dirty forbidden path
+03_需求与设计/01_架构设计/架构师会话日志.md	NO	historical dirty forbidden path
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	NO	historical dirty forbidden path
+07_后端/lingyi_service/app/schemas/report.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/app/services/report_catalog_service.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/app/services/system_config_catalog_service.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_bom_permissions.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_logging_sanitization.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_request_id_sanitization.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_style_profit_api.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_subcontract_company_permission.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_workshop_permissions.py	NO	historical dirty forbidden path

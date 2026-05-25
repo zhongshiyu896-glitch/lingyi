@@ -1,0 +1,35 @@
+field	value
+task_id	TASK-Z032B-37-PREP-CAND004-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z032B-36-IMPL
+candidate_id	Z032-CAND-004
+current_head	aedc2d39cca4d065a028ce42e325de17490d95b6
+cached_empty	true
+diff_check_pass	true
+b36_result	FAIL
+b36_command_run_count	1
+b36_pytest_summary	4 failed, 1 warning in 0.98s
+failed_cases_count	4
+failed_cases	test_register_creates_pending_outbox_without_inline_erp_sync;test_service_account_forbidden_marks_failed_without_losing_local_ticket;test_worker_failure_can_retry_after_manual_sync_enqueue;test_worker_success_marks_outbox_succeeded_and_ticket_synced
+observed_expected	422!=200;422!=200;422!=200;422!=200
+failure_pattern_summary	old workshop ticket register payload/header contract returns 422 before original job card outbox sync business branch
+target_test	07_后端/lingyi_service/tests/test_workshop_job_card_sync.py
+source_evidence_checked	07_后端/lingyi_service/tests/test_workshop_job_card_sync.py;07_后端/lingyi_service/app/services/workshop_job_card_sync_worker.py;07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py;07_后端/lingyi_service/app/models/workshop.py;07_后端/lingyi_service/app/routers/workshop.py
+source_evidence_missing	[]
+target_test_dirty_diff	false
+historical_dirty_forbidden_staged	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_job_card_sync.py
+next_task	TASK-Z032B-38-FIX-CAND004
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false
+b37_artifacts_staged	false

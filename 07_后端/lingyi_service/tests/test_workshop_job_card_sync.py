@@ -7,9 +7,11 @@ import os
 import unittest
 from unittest.mock import patch
 
-os.environ["APP_ENV"] = "test"
+os.environ["APP_ENV"] = "development"
 os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
+os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
 os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
+os.environ["LINGYI_LOCAL_DEV_COMPANY"] = "COMP-A"
 os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
 
 from fastapi.testclient import TestClient
@@ -38,6 +40,8 @@ from app.services.workshop_job_card_sync_worker import WorkshopJobCardSyncWorker
 
 class WorkshopJobCardSyncTest(unittest.TestCase):
     """Validate outbox creation and worker retry behavior."""
+
+    SCENARIO_TAG = "Z003-WORKSHOP-TICKET-20260412-004"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -98,8 +102,32 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Workshop Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "sync.user", "X-LY-Dev-Roles": role}
+    def _ticket_carrier_code(value: object) -> str:
+        normalized = str(value).strip()
+        hash_value = 2166136261
+        for byte in normalized.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-3:]
+
+    @classmethod
+    def _request_id_for_payload(cls, payload: dict) -> str:
+        return (
+            f"{payload['scenario_tag']}-RW-R-"
+            f"{cls._ticket_carrier_code(payload['idempotency_key'])}-"
+            f"{cls._ticket_carrier_code(payload['source_ref'])}-"
+            f"{cls._ticket_carrier_code(payload['ticket_key'])}-"
+            f"{cls._ticket_carrier_code(payload['job_card'])}-"
+            f"{cls._ticket_carrier_code(payload['operator_id'])}-"
+            f"{cls._ticket_carrier_code(payload['batch_no'])}"
+        )
+
+    @classmethod
+    def _headers(cls, role: str = "Workshop Manager", *, payload: dict | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "sync.user", "X-LY-Dev-Roles": role}
+        if payload is not None:
+            headers["X-Request-ID"] = cls._request_id_for_payload(payload)
+        return headers
 
     @staticmethod
     def _job_card() -> JobCardInfo:
@@ -124,21 +152,30 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
             allowed_items={"ITEM-A"},
         )
 
-    def _register_payload(self, ticket_key: str = "SYNC-TK-001") -> dict:
+    @classmethod
+    def _register_payload(cls, ticket_key: str = "SYNC-TK-001") -> dict:
+        scoped_ticket_key = f"{cls.SCENARIO_TAG}-{ticket_key}"
         return {
-            "ticket_key": ticket_key,
+            "ticket_key": scoped_ticket_key,
+            "idempotency_key": scoped_ticket_key,
+            "scenario_tag": cls.SCENARIO_TAG,
             "job_card": "JC-001",
+            "item_code": "ITEM-A",
             "employee": "EMP-001",
+            "operator_id": "EMP-001",
             "process_name": "sew",
+            "operation": "register",
+            "batch_no": "BATCH-001",
             "color": "black",
             "size": "M",
             "qty": "10",
             "work_date": "2026-04-12",
             "source": "manual",
-            "source_ref": "REF",
+            "source_ref": f"{cls.SCENARIO_TAG}-REF-{ticket_key}",
         }
 
     def test_register_creates_pending_outbox_without_inline_erp_sync(self) -> None:
+        payload = self._register_payload(ticket_key="SYNC-PENDING-001")
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
             ERPNextJobCardAdapter,
             "get_employee",
@@ -150,8 +187,8 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
         ) as update_mock:
             register_resp = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="SYNC-PENDING-001"),
+                headers=self._headers(payload=payload),
+                json=payload,
             )
 
         self.assertEqual(register_resp.status_code, 200)
@@ -172,6 +209,7 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
             self.assertNotIn(str(outbox.job_card), str(outbox.event_key))
 
     def test_worker_success_marks_outbox_succeeded_and_ticket_synced(self) -> None:
+        payload = self._register_payload(ticket_key="SYNC-WORKER-OK-001")
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
             ERPNextJobCardAdapter,
             "get_employee",
@@ -179,8 +217,8 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
         ):
             register_resp = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="SYNC-WORKER-OK-001"),
+                headers=self._headers(payload=payload),
+                json=payload,
             )
         self.assertEqual(register_resp.status_code, 200)
 
@@ -211,6 +249,7 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
             self.assertIsNotNone(log_row.outbox_id)
 
     def test_worker_failure_can_retry_after_manual_sync_enqueue(self) -> None:
+        payload = self._register_payload(ticket_key="SYNC-WORKER-FAIL-001")
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
             ERPNextJobCardAdapter,
             "get_employee",
@@ -218,8 +257,8 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
         ):
             register_resp = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="SYNC-WORKER-FAIL-001"),
+                headers=self._headers(payload=payload),
+                json=payload,
             )
         self.assertEqual(register_resp.status_code, 200)
 
@@ -264,6 +303,7 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
             self.assertEqual(ticket.sync_status, "synced")
 
     def test_service_account_forbidden_marks_failed_without_losing_local_ticket(self) -> None:
+        payload = self._register_payload(ticket_key="SYNC-SA-FORBIDDEN-001")
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
             ERPNextJobCardAdapter,
             "get_employee",
@@ -271,8 +311,8 @@ class WorkshopJobCardSyncTest(unittest.TestCase):
         ):
             register_resp = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="SYNC-SA-FORBIDDEN-001"),
+                headers=self._headers(payload=payload),
+                json=payload,
             )
         self.assertEqual(register_resp.status_code, 200)
 

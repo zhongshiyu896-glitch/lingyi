@@ -1,0 +1,37 @@
+field	value
+task_id	TASK-Z032B-39-PREP-CAND004-SECOND-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z032B-38-FIX-CAND004
+candidate_id	Z032-CAND-004
+current_head	aedc2d39cca4d065a028ce42e325de17490d95b6
+cached_empty	true
+diff_check_pass	true
+b38_result	FAIL
+b38_command_run_count	1
+b38_pytest_summary	3 failed, 1 passed, 31 warnings in 1.01s
+previous_failed_cases_count	4
+remaining_failed_cases_count	3
+remaining_case_1	test_service_account_forbidden_marks_failed_without_losing_local_ticket | observed result.processed == 0 | expected result.processed >= 1
+remaining_case_2	test_worker_failure_can_retry_after_manual_sync_enqueue | observed fail_result.processed == 0 | expected fail_result.processed >= 1
+remaining_case_3	test_worker_success_marks_outbox_succeeded_and_ticket_synced | observed result.processed == 0 | expected result.processed >= 1
+failure_pattern_summary	B38 fixed register payload/header contract and register now reaches 200, but worker run_once processes zero outbox rows, blocking the original worker business assertions.
+target_test	07_后端/lingyi_service/tests/test_workshop_job_card_sync.py
+current_target_dirty_diff_limited_to_allowed_file	true
+register_payload_header_contract_addressed_before_diag	true
+business_200_assertions_preserved_before_diag	true
+source_evidence_missing	[]
+historical_dirty_forbidden_paths_staged	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_job_card_sync.py
+next_task	TASK-Z032B-40-FIX-CAND004-SECOND
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+PR	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

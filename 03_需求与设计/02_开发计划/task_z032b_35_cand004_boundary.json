@@ -1,0 +1,71 @@
+{
+  "task_id": "TASK-Z032B-35-PREP",
+  "role": "B Engineer",
+  "source_task": "TASK-Z032B-34-PREP",
+  "candidate_id": "Z032-CAND-004",
+  "current_head": "aedc2d39cca4d065a028ce42e325de17490d95b6",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "candidate_original_fields": {
+    "candidate_id": "Z032-CAND-004",
+    "module": "workshop_job_card_sync",
+    "risk": "LOW_LOCAL_READONLY",
+    "workdir": "07_后端/lingyi_service",
+    "command": ".venv/bin/python -m pytest tests/test_workshop_job_card_sync.py -q",
+    "target_test": "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py",
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py",
+      "07_后端/lingyi_service/app/services/workshop_job_card_sync_worker.py",
+      "07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py",
+      "07_后端/lingyi_service/app/models/workshop.py",
+      "07_后端/lingyi_service/app/routers/workshop.py"
+    ],
+    "source_evidence_missing": [],
+    "reuse_check": {
+      "reused_from_Z015_Z031": false,
+      "matched_prior_entries": [],
+      "evidence": {
+        "scan_scope": "Z015-Z031 json/tsv/md/txt evidence text scan for test_*.py references",
+        "used_target_test_count": 83,
+        "target_test_basename": "test_workshop_job_card_sync.py",
+        "target_test_basename_absent_from_prior_scan": true,
+        "excluded_reused_target_tests_applied": true
+      }
+    },
+    "historical_dirty_forbidden_target": false,
+    "historical_dirty_forbidden_source_evidence": false,
+    "status": "PENDING_LOCAL_READONLY_VALIDATION"
+  },
+  "frozen_workdir": "07_后端/lingyi_service",
+  "frozen_command": ".venv/bin/python -m pytest tests/test_workshop_job_card_sync.py -q",
+  "target_test": "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence": [
+    "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py",
+    "07_后端/lingyi_service/app/services/workshop_job_card_sync_worker.py",
+    "07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py",
+    "07_后端/lingyi_service/app/models/workshop.py",
+    "07_后端/lingyi_service/app/routers/workshop.py"
+  ],
+  "source_evidence_missing": [],
+  "reuse_check": {
+    "reused_from_Z015_Z031": false
+  },
+  "historical_dirty_forbidden_staged": [],
+  "next_task": "TASK-Z032B-36-IMPL",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "b35_artifacts_staged": false
+}

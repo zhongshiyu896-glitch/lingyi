@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-Z032B-39-PREP-CAND004-SECOND-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task": "TASK-Z032B-38-FIX-CAND004",
+  "candidate_id": "Z032-CAND-004",
+  "current_head": "aedc2d39cca4d065a028ce42e325de17490d95b6",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "b38_result": {
+    "result": "FAIL",
+    "command_run_count": 1,
+    "pytest_summary": "3 failed, 1 passed, 31 warnings in 1.01s",
+    "register_payload_header_contract_addressed": true,
+    "business_200_assertions_preserved": true,
+    "assertions_weakened": false,
+    "skip_xfail_deleted_cases": false
+  },
+  "previous_failed_cases_count": 4,
+  "remaining_failed_cases_count": 3,
+  "remaining_failed_cases": [
+    {
+      "case": "test_service_account_forbidden_marks_failed_without_losing_local_ticket",
+      "observed": "result.processed == 0",
+      "expected": "result.processed >= 1",
+      "difference_summary": "register reached the 200 branch, but worker run_once processed zero outbox rows before the forbidden service-account assertions."
+    },
+    {
+      "case": "test_worker_failure_can_retry_after_manual_sync_enqueue",
+      "observed": "fail_result.processed == 0",
+      "expected": "fail_result.processed >= 1",
+      "difference_summary": "register reached the 200 branch, but the first worker failure path did not claim or process an outbox row, blocking the retry branch."
+    },
+    {
+      "case": "test_worker_success_marks_outbox_succeeded_and_ticket_synced",
+      "observed": "result.processed == 0",
+      "expected": "result.processed >= 1",
+      "difference_summary": "register reached the 200 branch, but the worker success path did not claim or process an outbox row, blocking the ticket synced assertions."
+    }
+  ],
+  "failure_pattern_summary": "B38 addressed the register payload/header schema and carrier contract: register calls now reach the original 200 business branch and the business assertions remain preserved. The remaining failures are concentrated after registration, where worker run_once reports processed=0 instead of processing at least one due outbox row. Source evidence shows processed only increments after due rows are listed, claimed, and handled, so the next boundary is limited to target-test fixture, payload, header, mock, assertion contract, or local outbox eligibility adjustment to enter the original 200 worker business branch.",
+  "target_test": "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py",
+  "current_target_dirty_diff_limited_to_allowed_file": true,
+  "register_payload_header_contract_addressed_before_diag": true,
+  "business_200_assertions_preserved_before_diag": true,
+  "source_evidence_checked": [
+    "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py",
+    "07_后端/lingyi_service/app/services/workshop_job_card_sync_worker.py",
+    "07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py",
+    "07_后端/lingyi_service/app/models/workshop.py",
+    "07_后端/lingyi_service/app/routers/workshop.py"
+  ],
+  "source_evidence_missing": [],
+  "historical_dirty_forbidden_paths_staged": [],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py",
+  "next_task": "TASK-Z032B-40-FIX-CAND004-SECOND",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

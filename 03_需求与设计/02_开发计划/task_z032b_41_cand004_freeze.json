@@ -1,0 +1,52 @@
+{
+  "task_id": "TASK-Z032B-41-LEDGER-CAND004",
+  "role": "B Engineer",
+  "candidate_id": "Z032-CAND-004",
+  "current_head": "aedc2d39cca4d065a028ce42e325de17490d95b6",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "evidence_only": false,
+  "source_chain": [
+    "B35 boundary",
+    "B36 FAIL",
+    "B37 classification",
+    "B38 FAIL",
+    "B39 classification",
+    "B40 PASS",
+    "B41 ledger"
+  ],
+  "b37_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "b39_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "b40_result": "PASS",
+  "b40_pytest_summary": "4 passed, 54 warnings in 1.05s",
+  "allowed_backend_test_path_only": "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py",
+  "target_test_assertion_semantics": {
+    "explicit_200_status_assertions_preserved": true,
+    "worker_processed_assertions_preserved": true,
+    "no_zero_processed_acceptance": true,
+    "skip_xfail_found": false,
+    "assertions_weakened": false
+  },
+  "ledger_total": 45,
+  "yes_count": 26,
+  "no_count": 19,
+  "yes_no_intersection": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_workshop_job_card_sync.py"
+  ],
+  "backend_app_yes_paths": [],
+  "frontend_yes_paths": [],
+  "historical_dirty_forbidden_in_yes": [],
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z032B-42-STAGE-CAND004",
+  "run_this_task": false
+}

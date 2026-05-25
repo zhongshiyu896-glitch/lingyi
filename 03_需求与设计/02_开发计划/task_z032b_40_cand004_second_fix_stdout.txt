@@ -1,0 +1,112 @@
+....                                                                     [100%]
+=============================== warnings summary ===============================
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1920: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:329: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1678: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_register_creates_pending_outbox_without_inline_erp_sync
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:356: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ticket.updated_at = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:170: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/repositories/workshop_job_card_sync_outbox_repository.py:41: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:223: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:297: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.next_retry_at = datetime.utcnow() + timedelta(minutes=self._backoff_minutes(attempt_no))
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:299: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_service_account_forbidden_marks_failed_without_losing_local_ticket
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_job_card_sync_worker.py:480: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "updated_at": datetime.utcnow(),
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:181: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.next_retry_at = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:187: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:771: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "updated_at": datetime.utcnow(),
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:269: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.next_retry_at = datetime.utcnow()
+
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_failure_can_retry_after_manual_sync_enqueue
+tests/test_workshop_job_card_sync.py::WorkshopJobCardSyncTest::test_worker_success_marks_outbox_succeeded_and_ticket_synced
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:270: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+4 passed, 54 warnings in 1.05s
