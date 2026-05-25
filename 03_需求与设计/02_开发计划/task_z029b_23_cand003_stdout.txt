@@ -1,0 +1,127 @@
+....................................                                     [100%]
+=============================== warnings summary ===============================
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_checks_receipt_outbox_resource_permission
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_subcontract_stock_worker.py: 45 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:242: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_subcontract_stock_worker.py: 36 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:183: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.next_retry_at = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_checks_receipt_outbox_resource_permission
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_does_not_reset_succeeded_receipt_outbox
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_issue_when_receipt_succeeded_latest
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_receipt_by_exact_outbox_id
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_processes_receipt_outbox_as_material_receipt
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_find_existing_docstatus_0_submits_draft_then_succeeds
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_find_existing_docstatus_2_does_not_succeed
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_submit_draft_requires_final_docstatus_1
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:242: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    issue_row.next_retry_at = datetime.utcnow() + timedelta(days=1)
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_checks_receipt_outbox_resource_permission
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_does_not_reset_succeeded_receipt_outbox
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_issue_when_receipt_succeeded_latest
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_receipt_by_exact_outbox_id
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_processes_receipt_outbox_as_material_receipt
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_find_existing_docstatus_0_submits_draft_then_succeeds
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_find_existing_docstatus_2_does_not_succeed
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_submit_draft_requires_final_docstatus_1
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:270: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.next_retry_at = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_checks_receipt_outbox_resource_permission
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_does_not_reset_succeeded_receipt_outbox
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_issue_when_receipt_succeeded_latest
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_receipt_by_exact_outbox_id
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_processes_receipt_outbox_as_material_receipt
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_find_existing_docstatus_0_submits_draft_then_succeeds
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_find_existing_docstatus_2_does_not_succeed
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_submit_draft_requires_final_docstatus_1
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:286: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    received_at=datetime.utcnow(),
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_does_not_call_erpnext
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_resets_issue_outbox_to_pending
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_issue_when_receipt_succeeded_latest
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_receipt_by_exact_outbox_id
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:383: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.next_retry_at = datetime.utcnow()
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_does_not_call_erpnext
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_resets_issue_outbox_to_pending
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_issue_when_receipt_succeeded_latest
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_sync_retry_targets_failed_receipt_by_exact_outbox_id
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:387: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_business_validation_dead_after_max_attempts
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:826: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.next_retry_at = datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_subcontract_stock_worker.py: 23 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:406: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_subcontract_stock_worker.py: 21 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:457: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_subcontract_stock_worker.py: 21 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:519: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    moment = now or datetime.utcnow()
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_business_validation_dead_after_max_attempts
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_sync_log_records_success_failure_and_dead
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:582: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.next_retry_at = datetime.utcnow()
+
+tests/test_subcontract_stock_worker.py: 10 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:586: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_subcontract_stock_worker.py: 11 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:564: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_duplicate_event_key_fails_closed
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_erpnext_timeout_marks_failed_with_retry
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_find_existing_docstatus_0_submit_failed_marks_retry
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_find_existing_docstatus_2_does_not_succeed
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_find_existing_docstatus_2_does_not_succeed
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_receipt_submit_draft_requires_final_docstatus_1
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_sync_log_records_success_failure_and_dead
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_subcontract_stock_logs_are_sanitized_for_worker_failures
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:585: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.next_retry_at = datetime.utcnow() + timedelta(minutes=self._backoff_minutes(attempt_no))
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_lease_expiry_allows_reclaim_after_crash
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:771: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.locked_at = datetime.utcnow() - timedelta(minutes=10)
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_lease_expiry_allows_reclaim_after_crash
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:772: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.lease_until = datetime.utcnow() - timedelta(minutes=5)
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_lease_expiry_allows_reclaim_after_crash
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:773: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.next_retry_at = datetime.utcnow() - timedelta(minutes=5)
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_result_write_failure_recovered_by_event_key_next_run
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:717: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.lease_until = datetime.utcnow() - timedelta(seconds=1)
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_result_write_failure_recovered_by_event_key_next_run
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:718: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.next_retry_at = datetime.utcnow() - timedelta(seconds=1)
+
+tests/test_subcontract_stock_worker.py::SubcontractStockWorkerTest::test_stock_worker_sync_log_records_success_failure_and_dead
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_subcontract_stock_worker.py:872: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    outbox.next_retry_at = datetime.utcnow() - timedelta(minutes=1)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+36 passed, 217 warnings in 1.28s

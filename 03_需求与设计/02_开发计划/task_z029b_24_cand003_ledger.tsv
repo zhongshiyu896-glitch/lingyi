@@ -1,0 +1,25 @@
+decision	path	category
+YES	03_需求与设计/02_开发计划/TASK-Z029B-22-PREP_CAND003只读验证边界报告.md	B22 boundary
+YES	03_需求与设计/02_开发计划/task_z029b_22_cand003_boundary.json	B22 boundary
+YES	03_需求与设计/02_开发计划/task_z029b_22_cand003_boundary.tsv	B22 boundary
+YES	03_需求与设计/02_开发计划/TASK-Z029B-23-IMPL_CAND003单文件验证报告.md	B23 evidence
+YES	03_需求与设计/02_开发计划/task_z029b_23_cand003_result.json	B23 evidence
+YES	03_需求与设计/02_开发计划/task_z029b_23_cand003_result.tsv	B23 evidence
+YES	03_需求与设计/02_开发计划/task_z029b_23_cand003_stdout.txt	B23 evidence
+YES	03_需求与设计/02_开发计划/TASK-Z029B-24-LEDGER-CAND003_subcontract_stock_worker证据账本报告.md	B24 ledger
+YES	03_需求与设计/02_开发计划/task_z029b_24_cand003_freeze.json	B24 ledger
+YES	03_需求与设计/02_开发计划/task_z029b_24_cand003_ledger.json	B24 ledger
+YES	03_需求与设计/02_开发计划/task_z029b_24_cand003_ledger.tsv	B24 ledger
+NO	07_后端/lingyi_service/tests/test_subcontract_stock_worker.py	target test excluded for evidence-only
+NO	03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.json	Z029 candidate pool
+NO	03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.tsv	Z029 candidate pool
+NO	03_需求与设计/02_开发计划/TASK-Z029B-01-PREP_Z029本地候选池重建报告.md	Z029 candidate pool
+NO	Z029-CAND-001 archived evidence and committed range	archived scope
+NO	Z029-CAND-002 archived evidence and committed range	archived scope
+NO	Z029-CAND-004 range	future candidate scope
+NO	Z029-CAND-005 range	future candidate scope
+NO	06_前端	frontend scope
+NO	07_后端/lingyi_service/app backend app	backend app scope
+NO	shared engineer and architect logs	shared logs
+NO	old cycle Z015-Z028 artifacts	old cycle scope
+NO	runtime/cache/unrelated files	runtime cache scope
