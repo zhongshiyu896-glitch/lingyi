@@ -1,0 +1,146 @@
+{
+  "task_id": "TASK-Z032B-11-PREP-CAND002-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task": "TASK-Z032B-10-IMPL",
+  "candidate_id": "Z032-CAND-002",
+  "current_head": "bbc298a8e2423ea51d82de66ed058835182bcade",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "b10_result": "FAIL",
+  "b10_command_run_count": 1,
+  "b10_pytest_summary": "26 failed, 9 passed, 1 warning in 1.51s",
+  "frozen_command": ".venv/bin/python -m pytest tests/test_subcontract_settlement_export.py -q",
+  "target_test": "07_后端/lingyi_service/tests/test_subcontract_settlement_export.py",
+  "target_test_dirty_diff": false,
+  "failed_cases_count": 26,
+  "failed_cases": [
+    {
+      "name": "test_no_erpnext_write_called_by_settlement_export_or_lock",
+      "observed_expected_summary": "lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_duplicate_unique_conflict_different_hash_returns_conflict",
+      "observed_expected_summary": "first lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_duplicate_unique_conflict_does_not_create_second_operation",
+      "observed_expected_summary": "initial lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again",
+      "observed_expected_summary": "initial lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_first_lock_sets_idempotent_replay_false",
+      "observed_expected_summary": "first lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_first_release_sets_idempotent_replay_false",
+      "observed_expected_summary": "initial lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_idempotency_key_accepts_128_chars",
+      "observed_expected_summary": "lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_lock_conflicts_for_other_statement",
+      "observed_expected_summary": "second lock response status observed 422, expected 409"
+    },
+    {
+      "name": "test_settlement_lock_duplicate_unique_conflict_replays_first_response",
+      "observed_expected_summary": "first lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_lock_is_idempotent_for_same_statement",
+      "observed_expected_summary": "first lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_lock_marks_inspections_statement_locked",
+      "observed_expected_summary": "lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_lock_release_then_old_lock_retry_does_not_relock",
+      "observed_expected_summary": "first lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_lock_replay_sets_idempotent_replay_true",
+      "observed_expected_summary": "initial lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_lock_rolls_back_all_rows_on_failure",
+      "observed_expected_summary": "lock response status observed 422, expected 409"
+    },
+    {
+      "name": "test_settlement_operation_record_is_append_only",
+      "observed_expected_summary": "operation rows observed 0, expected 2 after lock/release calls"
+    },
+    {
+      "name": "test_settlement_operation_write_failure_rolls_back_lock",
+      "observed_expected_summary": "lock response status observed 422, expected 500"
+    },
+    {
+      "name": "test_settlement_operation_write_failure_rolls_back_release",
+      "observed_expected_summary": "initial lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_preview_does_not_use_old_amount_formula",
+      "observed_expected_summary": "preview response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_preview_sums_inspection_amount_facts",
+      "observed_expected_summary": "preview response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_release_duplicate_unique_conflict_replays_first_response",
+      "observed_expected_summary": "initial lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_release_rejects_settled_rows",
+      "observed_expected_summary": "release response status observed 422, expected 409"
+    },
+    {
+      "name": "test_settlement_release_replay_sets_idempotent_replay_true",
+      "observed_expected_summary": "initial lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_release_retry_returns_first_result_without_mutation",
+      "observed_expected_summary": "initial lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_release_unlocks_statement_locked_rows",
+      "observed_expected_summary": "lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_request_id_is_not_used_as_idempotency_history",
+      "observed_expected_summary": "first lock response status observed 422, expected 200"
+    },
+    {
+      "name": "test_settlement_same_idempotency_key_different_payload_conflicts",
+      "observed_expected_summary": "first lock response status observed 422, expected 200"
+    }
+  ],
+  "failure_pattern_summary": "Current router validates settlement payloads through _validate_subcontract_settlement_gate before business branches. Existing target test payloads only include legacy fields such as inspection_ids, statement_id, statement_no, idempotency_key, remark, or reason, while current gate requires carrier fields including request_id, operation, scenario_tag, source_ref, subcontract_ref, supplier_ref, work_order_ref, item_code, quantity, and status_action. This produces early 422 responses and blocks original 200/409/500 business assertions.",
+  "source_evidence_checked": [
+    "07_后端/lingyi_service/tests/test_subcontract_settlement_export.py",
+    "07_后端/lingyi_service/app/routers/subcontract.py",
+    "07_后端/lingyi_service/app/services/subcontract_settlement_service.py",
+    "07_后端/lingyi_service/app/models/subcontract.py",
+    "07_后端/lingyi_service/app/models/audit.py"
+  ],
+  "source_evidence_missing": [],
+  "historical_dirty_forbidden_staged": [],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_subcontract_settlement_export.py",
+  "next_task": "TASK-Z032B-12-FIX-CAND002",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

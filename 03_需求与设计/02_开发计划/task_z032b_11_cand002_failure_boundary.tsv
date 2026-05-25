@@ -1,0 +1,27 @@
+field	value
+task_id	TASK-Z032B-11-PREP-CAND002-FAILURE-DIAG
+source_task	TASK-Z032B-10-IMPL
+candidate_id	Z032-CAND-002
+current_head	bbc298a8e2423ea51d82de66ed058835182bcade
+b10_result	FAIL
+b10_command_run_count	1
+b10_pytest_summary	26 failed, 9 passed, 1 warning in 1.51s
+failed_cases_count	26
+failure_pattern_summary	early 422 settlement carrier gate blocks original 200/409/500 business branches
+target_test	07_后端/lingyi_service/tests/test_subcontract_settlement_export.py
+target_test_dirty_diff	false
+source_evidence_missing	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_subcontract_settlement_export.py
+next_task	TASK-Z032B-12-FIX-CAND002
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

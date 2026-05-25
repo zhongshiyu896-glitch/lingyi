@@ -1,0 +1,646 @@
+F....FFFFFF.FFFFFFFFFF.FFFFFFFFF...                                      [100%]
+=================================== FAILURES ===================================
+_ SubcontractSettlementExportTest.test_no_erpnext_write_called_by_settlement_export_or_lock _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_no_erpnext_write_called_by_settlement_export_or_lock>
+
+    def test_no_erpnext_write_called_by_settlement_export_or_lock(self) -> None:
+        with patch(
+            "app.services.erpnext_stock_entry_service.ERPNextStockEntryService.create_material_issue"
+        ) as mock_create, patch(
+            "app.services.erpnext_stock_entry_service.ERPNextStockEntryService.create_material_receipt"
+        ) as mock_create_receipt, patch(
+            "app.services.erpnext_stock_entry_service.ERPNextStockEntryService.submit_stock_entry"
+        ) as mock_submit:
+            candidate_resp = self.client.get(
+                "/api/subcontract/settlement-candidates",
+                headers=self._headers(),
+                params={"page": 1, "page_size": 20},
+            )
+            self.assertEqual(candidate_resp.status_code, 200)
+
+            lock_resp = self.client.post(
+                "/api/subcontract/settlement-locks",
+                headers=self._headers(),
+                json={
+                    "statement_id": 540,
+                    "statement_no": "ST-540",
+                    "inspection_ids": [100],
+                    "idempotency_key": "idem-lock-540",
+                    "remark": "no erpnext write",
+                },
+            )
+>           self.assertEqual(lock_resp.status_code, 200)
+E           AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:1335: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+_ SubcontractSettlementExportTest.test_settlement_duplicate_unique_conflict_different_hash_returns_conflict _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_different_hash_returns_conflict>
+
+    def test_settlement_duplicate_unique_conflict_different_hash_returns_conflict(self) -> None:
+        first_payload = {
+            "statement_id": 716,
+            "statement_no": "ST-716",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-716",
+            "remark": "first",
+        }
+        second_payload = {
+            "statement_id": 716,
+            "statement_no": "ST-716",
+            "inspection_ids": [105],
+            "idempotency_key": "idem-lock-716",
+            "remark": "second",
+        }
+>       self.assertEqual(
+            self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=first_payload).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:822: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_duplicate_unique_conflict_does_not_create_second_operation _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_does_not_create_second_operation>
+
+    def test_settlement_duplicate_unique_conflict_does_not_create_second_operation(self) -> None:
+        payload = {
+            "statement_id": 717,
+            "statement_no": "ST-717",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-717",
+            "remark": "lock",
+        }
+>       self.assertEqual(
+            self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:859: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again>
+
+    def test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again(self) -> None:
+        payload = {
+            "statement_id": 718,
+            "statement_no": "ST-718",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-718",
+            "remark": "lock",
+        }
+>       self.assertEqual(
+            self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:905: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_first_lock_sets_idempotent_replay_false _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_first_lock_sets_idempotent_replay_false>
+
+    def test_settlement_first_lock_sets_idempotent_replay_false(self) -> None:
+        payload = {
+            "statement_id": 714,
+            "statement_no": "ST-714",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-714",
+            "remark": "lock",
+        }
+        first = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload)
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:781: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_first_release_sets_idempotent_replay_false _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_first_release_sets_idempotent_replay_false>
+
+    def test_settlement_first_release_sets_idempotent_replay_false(self) -> None:
+        lock_payload = {
+            "statement_id": 715,
+            "statement_no": "ST-715",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-715",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 715,
+            "statement_no": "ST-715",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-715",
+            "reason": "release",
+        }
+>       self.assertEqual(
+            self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:799: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_idempotency_key_accepts_128_chars _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_idempotency_key_accepts_128_chars>
+
+    def test_settlement_idempotency_key_accepts_128_chars(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 670,
+                "statement_no": "ST-670",
+                "inspection_ids": [100],
+                "idempotency_key": "k" * 128,
+                "remark": "lock",
+            },
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:1213: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_lock_conflicts_for_other_statement _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_conflicts_for_other_statement>
+
+    def test_settlement_lock_conflicts_for_other_statement(self) -> None:
+        self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 510,
+                "statement_no": "ST-510",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-510",
+                "remark": "first",
+            },
+        )
+        response = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 511,
+                "statement_no": "ST-511",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-511",
+                "remark": "second",
+            },
+        )
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_subcontract_settlement_export.py:562: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_lock_duplicate_unique_conflict_replays_first_response _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_duplicate_unique_conflict_replays_first_response>
+
+    def test_settlement_lock_duplicate_unique_conflict_replays_first_response(self) -> None:
+        payload = {
+            "statement_id": 710,
+            "statement_no": "ST-710",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-710",
+            "remark": "lock",
+        }
+        first = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload)
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:643: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_lock_is_idempotent_for_same_statement _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_is_idempotent_for_same_statement>
+
+    def test_settlement_lock_is_idempotent_for_same_statement(self) -> None:
+        payload = {
+            "statement_id": 501,
+            "statement_no": "ST-501",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-501",
+            "remark": "same",
+        }
+        first = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload)
+        second = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload)
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:534: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_lock_marks_inspections_statement_locked _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_marks_inspections_statement_locked>
+
+    def test_settlement_lock_marks_inspections_statement_locked(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 500,
+                "statement_no": "ST-500",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-500",
+                "remark": "lock",
+            },
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:515: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_lock_release_then_old_lock_retry_does_not_relock _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_release_then_old_lock_retry_does_not_relock>
+
+    def test_settlement_lock_release_then_old_lock_retry_does_not_relock(self) -> None:
+        lock_payload = {
+            "statement_id": 610,
+            "statement_no": "ST-610",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-610",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 610,
+            "statement_no": "ST-610",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-610",
+            "reason": "release",
+        }
+        first_lock = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload)
+>       self.assertEqual(first_lock.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:989: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_lock_replay_sets_idempotent_replay_true _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_replay_sets_idempotent_replay_true>
+
+    def test_settlement_lock_replay_sets_idempotent_replay_true(self) -> None:
+        payload = {
+            "statement_id": 712,
+            "statement_no": "ST-712",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-712",
+            "remark": "lock",
+        }
+>       self.assertEqual(
+            self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:737: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_lock_rolls_back_all_rows_on_failure _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_rolls_back_all_rows_on_failure>
+
+    def test_settlement_lock_rolls_back_all_rows_on_failure(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 520,
+                "statement_no": "ST-520",
+                "inspection_ids": [100, 102],
+                "idempotency_key": "idem-lock-520",
+                "remark": "rollback",
+            },
+        )
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_subcontract_settlement_export.py:577: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_operation_record_is_append_only _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_record_is_append_only>
+
+    def test_settlement_operation_record_is_append_only(self) -> None:
+        self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 640,
+                "statement_no": "ST-640",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-640",
+                "remark": "lock",
+            },
+        )
+        self.client.post(
+            "/api/subcontract/settlement-locks/release",
+            headers=self._headers(),
+            json={
+                "statement_id": 640,
+                "statement_no": "ST-640",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-release-640",
+                "reason": "release",
+            },
+        )
+        self.client.post(
+            "/api/subcontract/settlement-locks/release",
+            headers=self._headers(),
+            json={
+                "statement_id": 640,
+                "statement_no": "ST-640",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-release-640",
+                "reason": "release",
+            },
+        )
+
+        with self.SessionLocal() as session:
+            ops = (
+                session.query(LySubcontractSettlementOperation)
+                .order_by(LySubcontractSettlementOperation.id.asc())
+                .all()
+            )
+>           self.assertEqual(len(ops), 2)
+E           AssertionError: 0 != 2
+
+tests/test_subcontract_settlement_export.py:1127: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_operation_write_failure_rolls_back_lock _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_write_failure_rolls_back_lock>
+
+    def test_settlement_operation_write_failure_rolls_back_lock(self) -> None:
+        with patch(
+            "app.services.subcontract_settlement_service.SubcontractSettlementService._record_operation_success",
+            side_effect=DatabaseWriteFailed(),
+        ):
+            response = self.client.post(
+                "/api/subcontract/settlement-locks",
+                headers=self._headers(),
+                json={
+                    "statement_id": 650,
+                    "statement_no": "ST-650",
+                    "inspection_ids": [100],
+                    "idempotency_key": "idem-lock-650",
+                    "remark": "lock",
+                },
+            )
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_subcontract_settlement_export.py:1147: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_operation_write_failure_rolls_back_release _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_write_failure_rolls_back_release>
+
+    def test_settlement_operation_write_failure_rolls_back_release(self) -> None:
+>       self.assertEqual(
+            self.client.post(
+                "/api/subcontract/settlement-locks",
+                headers=self._headers(),
+                json={
+                    "statement_id": 660,
+                    "statement_no": "ST-660",
+                    "inspection_ids": [100],
+                    "idempotency_key": "idem-lock-660",
+                    "remark": "lock",
+                },
+            ).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:1158: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_preview_does_not_use_old_amount_formula _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_preview_does_not_use_old_amount_formula>
+
+    def test_settlement_preview_does_not_use_old_amount_formula(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/settlement-preview",
+            headers=self._headers(),
+            json={"inspection_ids": [100]},
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:497: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_preview_sums_inspection_amount_facts _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_preview_sums_inspection_amount_facts>
+
+    def test_settlement_preview_sums_inspection_amount_facts(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/settlement-preview",
+            headers=self._headers(),
+            json={"inspection_ids": [100, 105]},
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:482: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_release_duplicate_unique_conflict_replays_first_response _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_duplicate_unique_conflict_replays_first_response>
+
+    def test_settlement_release_duplicate_unique_conflict_replays_first_response(self) -> None:
+        lock_payload = {
+            "statement_id": 711,
+            "statement_no": "ST-711",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-711",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 711,
+            "statement_no": "ST-711",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-711",
+            "reason": "release",
+        }
+>       self.assertEqual(
+            self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:687: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_release_rejects_settled_rows _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_rejects_settled_rows>
+
+    def test_settlement_release_rejects_settled_rows(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/settlement-locks/release",
+            headers=self._headers(),
+            json={
+                "statement_id": 901,
+                "statement_no": "ST-901",
+                "inspection_ids": [103],
+                "idempotency_key": "idem-release-901",
+                "reason": "reopen",
+            },
+        )
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_subcontract_settlement_export.py:631: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_release_replay_sets_idempotent_replay_true _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_replay_sets_idempotent_replay_true>
+
+    def test_settlement_release_replay_sets_idempotent_replay_true(self) -> None:
+        lock_payload = {
+            "statement_id": 713,
+            "statement_no": "ST-713",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-713",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 713,
+            "statement_no": "ST-713",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-713",
+            "reason": "release",
+        }
+>       self.assertEqual(
+            self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:760: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_release_retry_returns_first_result_without_mutation _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_retry_returns_first_result_without_mutation>
+
+    def test_settlement_release_retry_returns_first_result_without_mutation(self) -> None:
+        lock_payload = {
+            "statement_id": 620,
+            "statement_no": "ST-620",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-620",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 620,
+            "statement_no": "ST-620",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-620",
+            "reason": "release",
+        }
+>       self.assertEqual(
+            self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload).status_code,
+            200,
+        )
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:1027: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_release_unlocks_statement_locked_rows _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_unlocks_statement_locked_rows>
+
+    def test_settlement_release_unlocks_statement_locked_rows(self) -> None:
+        lock_resp = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 530,
+                "statement_no": "ST-530",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-530",
+                "remark": "lock",
+            },
+        )
+>       self.assertEqual(lock_resp.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:597: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_request_id_is_not_used_as_idempotency_history _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_request_id_is_not_used_as_idempotency_history>
+
+    def test_settlement_request_id_is_not_used_as_idempotency_history(self) -> None:
+        payload = {
+            "statement_id": 719,
+            "statement_no": "ST-719",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-719",
+            "remark": "lock",
+        }
+        first = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers={**self._headers(), "X-Request-ID": "req-1"},
+            json=payload,
+        )
+        second = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers={**self._headers(), "X-Request-ID": "req-2"},
+            json=payload,
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:958: AssertionError
+_ SubcontractSettlementExportTest.test_settlement_same_idempotency_key_different_payload_conflicts _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_same_idempotency_key_different_payload_conflicts>
+
+    def test_settlement_same_idempotency_key_different_payload_conflicts(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 630,
+                "statement_no": "ST-630",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-630",
+                "remark": "first",
+            },
+        )
+        second = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 630,
+                "statement_no": "ST-630",
+                "inspection_ids": [105],
+                "idempotency_key": "idem-lock-630",
+                "remark": "second",
+            },
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_settlement_export.py:1082: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_no_erpnext_write_called_by_settlement_export_or_lock
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_no_erpnext_write_called_by_settlement_export_or_lock
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_duplicate_unique_conflict_different_hash_returns_conflict
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_duplicate_unique_conflict_does_not_create_second_operation
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_first_lock_sets_idempotent_replay_false
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_first_release_sets_idempotent_replay_false
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_idempotency_key_accepts_128_chars
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_conflicts_for_other_statement
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_duplicate_unique_conflict_replays_first_response
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_is_idempotent_for_same_statement
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_marks_inspections_statement_locked
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_release_then_old_lock_retry_does_not_relock
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_replay_sets_idempotent_replay_true
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_rolls_back_all_rows_on_failure
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_operation_record_is_append_only
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_operation_write_failure_rolls_back_lock
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_operation_write_failure_rolls_back_release
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_preview_does_not_use_old_amount_formula
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_preview_sums_inspection_amount_facts
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_duplicate_unique_conflict_replays_first_response
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_rejects_settled_rows
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_replay_sets_idempotent_replay_true
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_retry_returns_first_result_without_mutation
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_unlocks_statement_locked_rows
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_request_id_is_not_used_as_idempotency_history
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_same_idempotency_key_different_payload_conflicts
+26 failed, 9 passed, 1 warning in 1.51s

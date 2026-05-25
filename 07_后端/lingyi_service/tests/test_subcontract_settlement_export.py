@@ -27,6 +27,9 @@ from app.models.subcontract import LySubcontractOrder
 from app.models.subcontract import LySubcontractReceipt
 from app.models.subcontract import LySubcontractSettlementOperation
 from app.routers.auth import get_db_session as auth_db_dep
+from app.routers.subcontract import SUBCONTRACT_LOCAL_DB_URL
+from app.routers.subcontract import SUBCONTRACT_OPERATION_CODE_BY_NAME
+from app.routers.subcontract import _fnv_carrier_code
 from app.routers.subcontract import get_db_session as subcontract_db_dep
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from app.services.subcontract_settlement_service import SettlementOperationDuplicateKeyError
@@ -89,6 +92,7 @@ class SubcontractSettlementExportTest(unittest.TestCase):
         cls._old_main_session_local = main_module.SessionLocal
         main_module.SessionLocal = cls.SessionLocal
         cls.client = TestClient(app)
+        cls._raw_client_post = cls.client.post
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -98,9 +102,17 @@ class SubcontractSettlementExportTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        self._old_env = {
+            "APP_ENV": os.environ.get("APP_ENV"),
+            "LINGYI_ALLOW_DEV_AUTH": os.environ.get("LINGYI_ALLOW_DEV_AUTH"),
+            "LINGYI_PERMISSION_SOURCE": os.environ.get("LINGYI_PERMISSION_SOURCE"),
+            "LINGYI_DB_URL": os.environ.get("LINGYI_DB_URL"),
+        }
+        os.environ["APP_ENV"] = "development"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        os.environ["LINGYI_DB_URL"] = SUBCONTRACT_LOCAL_DB_URL
+        self.client.post = self._post_with_settlement_contract
 
         with self.SessionLocal() as session:
             session.query(LySecurityAuditLog).delete()
@@ -114,9 +126,139 @@ class SubcontractSettlementExportTest(unittest.TestCase):
             self._seed_inspections(session)
             session.commit()
 
+    def tearDown(self) -> None:
+        self.client.post = self._raw_client_post
+        for name, value in self._old_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
     @staticmethod
     def _headers(role: str = "Subcontract Manager") -> dict[str, str]:
         return {"X-LY-Dev-User": "settlement.user", "X-LY-Dev-Roles": role}
+
+    @staticmethod
+    def _settlement_scope(inspection_ids: list[int]) -> dict[str, str]:
+        scope_by_inspection = {
+            100: {
+                "subcontract_ref": "SC-SETTLE-A",
+                "supplier_ref": "SUP-A",
+                "work_order_ref": "NO-WORK-ORDER",
+                "item_code": "ITEM-A",
+                "quantity": "20",
+            },
+            101: {
+                "subcontract_ref": "SC-SETTLE-A",
+                "supplier_ref": "SUP-A",
+                "work_order_ref": "NO-WORK-ORDER",
+                "item_code": "ITEM-A",
+                "quantity": "10",
+            },
+            102: {
+                "subcontract_ref": "SC-SETTLE-A",
+                "supplier_ref": "SUP-A",
+                "work_order_ref": "NO-WORK-ORDER",
+                "item_code": "ITEM-A",
+                "quantity": "8",
+            },
+            103: {
+                "subcontract_ref": "SC-SETTLE-A",
+                "supplier_ref": "SUP-A",
+                "work_order_ref": "NO-WORK-ORDER",
+                "item_code": "ITEM-A",
+                "quantity": "7",
+            },
+            104: {
+                "subcontract_ref": "SC-SETTLE-BLOCK",
+                "supplier_ref": "SUP-A",
+                "work_order_ref": "NO-WORK-ORDER",
+                "item_code": "ITEM-A",
+                "quantity": "5",
+            },
+            105: {
+                "subcontract_ref": "SC-SETTLE-B",
+                "supplier_ref": "SUP-B",
+                "work_order_ref": "NO-WORK-ORDER",
+                "item_code": "ITEM-B",
+                "quantity": "9",
+            },
+        }
+        for inspection_id in inspection_ids:
+            if inspection_id in scope_by_inspection:
+                return scope_by_inspection[inspection_id]
+        return {
+            "subcontract_ref": "SC-SETTLE-A",
+            "supplier_ref": "SUP-A",
+            "work_order_ref": "NO-WORK-ORDER",
+            "item_code": "ITEM-A",
+            "quantity": "1",
+        }
+
+    @staticmethod
+    def _settlement_request_id(
+        *,
+        scenario_tag: str,
+        operation: str,
+        idempotency_key: str,
+        source_ref: str,
+        subcontract_ref: str,
+        supplier_ref: str,
+        work_order_ref: str,
+        item_code: str,
+        quantity: str,
+        status_action: str,
+    ) -> str:
+        return (
+            f"{scenario_tag}-SC-{SUBCONTRACT_OPERATION_CODE_BY_NAME[operation]}"
+            f"-{_fnv_carrier_code(idempotency_key)}"
+            f"-{_fnv_carrier_code(source_ref)}"
+            f"-{_fnv_carrier_code(subcontract_ref)}"
+            f"-{_fnv_carrier_code(supplier_ref)}"
+            f"-{_fnv_carrier_code(work_order_ref)}"
+            f"-{_fnv_carrier_code(item_code)}"
+            f"-{_fnv_carrier_code(status_action)}"
+        )
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+        request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+        payload.update(carrier)
+        payload["request_id"] = request_id
+        headers["X-Request-ID"] = request_id
+        kwargs["json"] = payload
+        kwargs["headers"] = headers
+        return self._raw_client_post(url, *args, **kwargs)
 
     @staticmethod
     def _seed_orders(session) -> None:

@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-Z032B-09-PREP",
+  "role": "B Engineer",
+  "source_task": "TASK-Z032B-08-PREP",
+  "candidate_id": "Z032-CAND-002",
+  "current_head": "bbc298a8e2423ea51d82de66ed058835182bcade",
+  "candidate_original_fields": {
+    "candidate_id": "Z032-CAND-002",
+    "module": "subcontract_settlement_export",
+    "risk": "LOW_LOCAL_READONLY",
+    "workdir": "07_后端/lingyi_service",
+    "command": ".venv/bin/python -m pytest tests/test_subcontract_settlement_export.py -q",
+    "target_test": "07_后端/lingyi_service/tests/test_subcontract_settlement_export.py",
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_subcontract_settlement_export.py",
+      "07_后端/lingyi_service/app/routers/subcontract.py",
+      "07_后端/lingyi_service/app/services/subcontract_settlement_service.py",
+      "07_后端/lingyi_service/app/models/subcontract.py",
+      "07_后端/lingyi_service/app/models/audit.py"
+    ],
+    "source_evidence_missing": [],
+    "reuse_check": {
+      "reused_from_Z015_Z031": false,
+      "matched_prior_entries": [],
+      "evidence": {
+        "scan_scope": "Z015-Z031 json/tsv/md/txt evidence text scan for test_*.py references",
+        "used_target_test_count": 83,
+        "target_test_basename": "test_subcontract_settlement_export.py",
+        "target_test_basename_absent_from_prior_scan": true,
+        "excluded_reused_target_tests_applied": true
+      }
+    },
+    "historical_dirty_forbidden_target": false,
+    "historical_dirty_forbidden_source_evidence": false,
+    "status": "PENDING_LOCAL_READONLY_VALIDATION"
+  },
+  "frozen_workdir": "07_后端/lingyi_service",
+  "frozen_command": ".venv/bin/python -m pytest tests/test_subcontract_settlement_export.py -q",
+  "target_test": "07_后端/lingyi_service/tests/test_subcontract_settlement_export.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence_missing": [],
+  "reuse_check": {
+    "reused_from_Z015_Z031": false
+  },
+  "historical_dirty_forbidden_staged": [],
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "next_task": "TASK-Z032B-10-IMPL",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

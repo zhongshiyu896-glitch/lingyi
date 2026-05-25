@@ -1,0 +1,1929 @@
+F....FFFFFFFFFFFFFFFFF.FFFFFFFFF...                                      [100%]
+=================================== FAILURES ===================================
+_ SubcontractSettlementExportTest.test_no_erpnext_write_called_by_settlement_export_or_lock _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_no_erpnext_write_called_by_settlement_export_or_lock>
+
+    def test_no_erpnext_write_called_by_settlement_export_or_lock(self) -> None:
+        with patch(
+            "app.services.erpnext_stock_entry_service.ERPNextStockEntryService.create_material_issue"
+        ) as mock_create, patch(
+            "app.services.erpnext_stock_entry_service.ERPNextStockEntryService.create_material_receipt"
+        ) as mock_create_receipt, patch(
+            "app.services.erpnext_stock_entry_service.ERPNextStockEntryService.submit_stock_entry"
+        ) as mock_submit:
+            candidate_resp = self.client.get(
+                "/api/subcontract/settlement-candidates",
+                headers=self._headers(),
+                params={"page": 1, "page_size": 20},
+            )
+            self.assertEqual(candidate_resp.status_code, 200)
+
+>           lock_resp = self.client.post(
+                "/api/subcontract/settlement-locks",
+                headers=self._headers(),
+                json={
+                    "statement_id": 540,
+                    "statement_no": "ST-540",
+                    "inspection_ids": [100],
+                    "idempotency_key": "idem-lock-540",
+                    "remark": "no erpnext write",
+                },
+            )
+
+tests/test_subcontract_settlement_export.py:1452:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_no_erpnext_write_called_by_settlement_export_or_lock>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-540', 'inspection_ids': [100], 'remark': 'no erpnext write', 'statement_id': 540, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-540', 'inspection_ids': [100], 'remark': 'no erpnext write', 'statement_id': 540, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-540', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+_ SubcontractSettlementExportTest.test_settlement_duplicate_unique_conflict_different_hash_returns_conflict _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_different_hash_returns_conflict>
+
+    def test_settlement_duplicate_unique_conflict_different_hash_returns_conflict(self) -> None:
+        first_payload = {
+            "statement_id": 716,
+            "statement_no": "ST-716",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-716",
+            "remark": "first",
+        }
+        second_payload = {
+            "statement_id": 716,
+            "statement_no": "ST-716",
+            "inspection_ids": [105],
+            "idempotency_key": "idem-lock-716",
+            "remark": "second",
+        }
+        self.assertEqual(
+>           self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=first_payload).status_code,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:951:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_different_hash_returns_conflict>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-716', 'inspection_ids': [100], 'remark': 'first', 'statement_id': 716, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-716', 'inspection_ids': [100], 'remark': 'first', 'statement_id': 716, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-716', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_duplicate_unique_conflict_does_not_create_second_operation _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_does_not_create_second_operation>
+
+    def test_settlement_duplicate_unique_conflict_does_not_create_second_operation(self) -> None:
+        payload = {
+            "statement_id": 717,
+            "statement_no": "ST-717",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-717",
+            "remark": "lock",
+        }
+        self.assertEqual(
+>           self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload).status_code,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:988:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_does_not_create_second_operation>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-717', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 717, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-717', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 717, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-717', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again>
+
+    def test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again(self) -> None:
+        payload = {
+            "statement_id": 718,
+            "statement_no": "ST-718",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-718",
+            "remark": "lock",
+        }
+        self.assertEqual(
+>           self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload).status_code,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:1034:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-718', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 718, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-718', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 718, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-718', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_first_lock_sets_idempotent_replay_false _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_first_lock_sets_idempotent_replay_false>
+
+    def test_settlement_first_lock_sets_idempotent_replay_false(self) -> None:
+        payload = {
+            "statement_id": 714,
+            "statement_no": "ST-714",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-714",
+            "remark": "lock",
+        }
+>       first = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_subcontract_settlement_export.py:908:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_first_lock_sets_idempotent_replay_false>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-714', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 714, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-714', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 714, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-714', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_first_release_sets_idempotent_replay_false _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_first_release_sets_idempotent_replay_false>
+
+    def test_settlement_first_release_sets_idempotent_replay_false(self) -> None:
+        lock_payload = {
+            "statement_id": 715,
+            "statement_no": "ST-715",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-715",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 715,
+            "statement_no": "ST-715",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-715",
+            "reason": "release",
+        }
+        self.assertEqual(
+>           self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload).status_code,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:928:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_first_release_sets_idempotent_replay_false>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-715', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 715, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-715', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 715, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-715', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_idempotency_key_accepts_128_chars _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_idempotency_key_accepts_128_chars>
+
+    def test_settlement_idempotency_key_accepts_128_chars(self) -> None:
+>       response = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 670,
+                "statement_no": "ST-670",
+                "inspection_ids": [100],
+                "idempotency_key": "k" * 128,
+                "remark": "lock",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:1330:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_idempotency_key_accepts_128_chars>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key':...kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 670, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 670, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk'
+status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_idempotency_key_rejects_over_128_chars _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_idempotency_key_rejects_over_128_chars>
+
+    def test_settlement_idempotency_key_rejects_over_128_chars(self) -> None:
+>       response = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 671,
+                "statement_no": "ST-671",
+                "inspection_ids": [100],
+                "idempotency_key": "k" * 129,
+                "remark": "lock",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:1345:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_idempotency_key_rejects_over_128_chars>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key':...kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 671, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 671, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk'
+status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_lock_conflicts_for_other_statement _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_conflicts_for_other_statement>
+
+    def test_settlement_lock_conflicts_for_other_statement(self) -> None:
+>       self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 510,
+                "statement_no": "ST-510",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-510",
+                "remark": "first",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:668:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_conflicts_for_other_statement>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-510', 'inspection_ids': [100], 'remark': 'first', 'statement_id': 510, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-510', 'inspection_ids': [100], 'remark': 'first', 'statement_id': 510, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-510', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_lock_duplicate_unique_conflict_replays_first_response _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_duplicate_unique_conflict_replays_first_response>
+
+    def test_settlement_lock_duplicate_unique_conflict_replays_first_response(self) -> None:
+        payload = {
+            "statement_id": 710,
+            "statement_no": "ST-710",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-710",
+            "remark": "lock",
+        }
+>       first = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_subcontract_settlement_export.py:770:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_duplicate_unique_conflict_replays_first_response>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-710', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 710, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-710', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 710, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-710', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_lock_is_idempotent_for_same_statement _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_is_idempotent_for_same_statement>
+
+    def test_settlement_lock_is_idempotent_for_same_statement(self) -> None:
+        payload = {
+            "statement_id": 501,
+            "statement_no": "ST-501",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-501",
+            "remark": "same",
+        }
+>       first = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_subcontract_settlement_export.py:660:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_is_idempotent_for_same_statement>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-501', 'inspection_ids': [100], 'remark': 'same', 'statement_id': 501, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-501', 'inspection_ids': [100], 'remark': 'same', 'statement_id': 501, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-501', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_lock_marks_inspections_statement_locked _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_marks_inspections_statement_locked>
+
+    def test_settlement_lock_marks_inspections_statement_locked(self) -> None:
+>       response = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 500,
+                "statement_no": "ST-500",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-500",
+                "remark": "lock",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:632:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_marks_inspections_statement_locked>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-500', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 500, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-500', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 500, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-500', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_lock_release_then_old_lock_retry_does_not_relock _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_release_then_old_lock_retry_does_not_relock>
+
+    def test_settlement_lock_release_then_old_lock_retry_does_not_relock(self) -> None:
+        lock_payload = {
+            "statement_id": 610,
+            "statement_no": "ST-610",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-610",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 610,
+            "statement_no": "ST-610",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-610",
+            "reason": "release",
+        }
+>       first_lock = self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_subcontract_settlement_export.py:1116:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_release_then_old_lock_retry_does_not_relock>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-610', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 610, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-610', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 610, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-610', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_lock_replay_sets_idempotent_replay_true _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_replay_sets_idempotent_replay_true>
+
+    def test_settlement_lock_replay_sets_idempotent_replay_true(self) -> None:
+        payload = {
+            "statement_id": 712,
+            "statement_no": "ST-712",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-712",
+            "remark": "lock",
+        }
+        self.assertEqual(
+>           self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=payload).status_code,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:866:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_replay_sets_idempotent_replay_true>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-712', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 712, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-712', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 712, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-712', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_lock_rolls_back_all_rows_on_failure _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_rolls_back_all_rows_on_failure>
+
+    def test_settlement_lock_rolls_back_all_rows_on_failure(self) -> None:
+>       response = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 520,
+                "statement_no": "ST-520",
+                "inspection_ids": [100, 102],
+                "idempotency_key": "idem-lock-520",
+                "remark": "rollback",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:694:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_lock_rolls_back_all_rows_on_failure>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-520', 'inspection_ids': [100, 102], 'remark': 'rollback', 'statement_id': 520, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-520', 'inspection_ids': [100, 102], 'remark': 'rollback', 'statement_id': 520, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100, 102]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-520', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_operation_record_is_append_only _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_record_is_append_only>
+
+    def test_settlement_operation_record_is_append_only(self) -> None:
+>       self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 640,
+                "statement_no": "ST-640",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-640",
+                "remark": "lock",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:1215:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_record_is_append_only>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-640', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 640, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-640', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 640, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-640', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_operation_write_failure_rolls_back_lock _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_write_failure_rolls_back_lock>
+
+    def test_settlement_operation_write_failure_rolls_back_lock(self) -> None:
+        with patch(
+            "app.services.subcontract_settlement_service.SubcontractSettlementService._record_operation_success",
+            side_effect=DatabaseWriteFailed(),
+        ):
+>           response = self.client.post(
+                "/api/subcontract/settlement-locks",
+                headers=self._headers(),
+                json={
+                    "statement_id": 650,
+                    "statement_no": "ST-650",
+                    "inspection_ids": [100],
+                    "idempotency_key": "idem-lock-650",
+                    "remark": "lock",
+                },
+            )
+
+tests/test_subcontract_settlement_export.py:1264:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_write_failure_rolls_back_lock>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-650', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 650, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-650', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 650, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-650', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_operation_write_failure_rolls_back_release _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_write_failure_rolls_back_release>
+
+    def test_settlement_operation_write_failure_rolls_back_release(self) -> None:
+        self.assertEqual(
+>           self.client.post(
+                "/api/subcontract/settlement-locks",
+                headers=self._headers(),
+                json={
+                    "statement_id": 660,
+                    "statement_no": "ST-660",
+                    "inspection_ids": [100],
+                    "idempotency_key": "idem-lock-660",
+                    "remark": "lock",
+                },
+            ).status_code,
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:1287:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_operation_write_failure_rolls_back_release>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-660', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 660, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-660', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 660, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-660', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_preview_does_not_use_old_amount_formula _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_preview_does_not_use_old_amount_formula>
+
+    def test_settlement_preview_does_not_use_old_amount_formula(self) -> None:
+>       response = self.client.post(
+            "/api/subcontract/settlement-preview",
+            headers=self._headers(),
+            json={"inspection_ids": [100]},
+        )
+
+tests/test_subcontract_settlement_export.py:620:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_preview_does_not_use_old_amount_formula>
+url = '/api/subcontract/settlement-preview', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'inspection_ids': [100]}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_preview', payload = {'inspection_ids': [100]}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-settlement_preview-100'
+status_action = 'settlement_preview'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_preview_sums_inspection_amount_facts _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_preview_sums_inspection_amount_facts>
+
+    def test_settlement_preview_sums_inspection_amount_facts(self) -> None:
+>       response = self.client.post(
+            "/api/subcontract/settlement-preview",
+            headers=self._headers(),
+            json={"inspection_ids": [100, 105]},
+        )
+
+tests/test_subcontract_settlement_export.py:605:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_preview_sums_inspection_amount_facts>
+url = '/api/subcontract/settlement-preview', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'inspection_ids': [100, 105]}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_preview', payload = {'inspection_ids': [100, 105]}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100, 105]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-settlement_preview-100-105'
+status_action = 'settlement_preview'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_release_duplicate_unique_conflict_replays_first_response _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_duplicate_unique_conflict_replays_first_response>
+
+    def test_settlement_release_duplicate_unique_conflict_replays_first_response(self) -> None:
+        lock_payload = {
+            "statement_id": 711,
+            "statement_no": "ST-711",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-711",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 711,
+            "statement_no": "ST-711",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-711",
+            "reason": "release",
+        }
+        self.assertEqual(
+>           self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload).status_code,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:816:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_duplicate_unique_conflict_replays_first_response>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-711', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 711, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-711', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 711, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-711', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_release_rejects_settled_rows _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_rejects_settled_rows>
+
+    def test_settlement_release_rejects_settled_rows(self) -> None:
+>       response = self.client.post(
+            "/api/subcontract/settlement-locks/release",
+            headers=self._headers(),
+            json={
+                "statement_id": 901,
+                "statement_no": "ST-901",
+                "inspection_ids": [103],
+                "idempotency_key": "idem-release-901",
+                "reason": "reopen",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:748:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_rejects_settled_rows>
+url = '/api/subcontract/settlement-locks/release', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-release-901', 'inspection_ids': [103], 'reason': 'reopen', 'statement_id': 901, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'release'
+payload = {'idempotency_key': 'idem-release-901', 'inspection_ids': [103], 'reason': 'reopen', 'statement_id': 901, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [103]
+scope = {'item_code': 'ITEM-A', 'quantity': '7', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-release-901', status_action = 'release'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_release_replay_sets_idempotent_replay_true _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_replay_sets_idempotent_replay_true>
+
+    def test_settlement_release_replay_sets_idempotent_replay_true(self) -> None:
+        lock_payload = {
+            "statement_id": 713,
+            "statement_no": "ST-713",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-713",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 713,
+            "statement_no": "ST-713",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-713",
+            "reason": "release",
+        }
+        self.assertEqual(
+>           self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload).status_code,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:889:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_replay_sets_idempotent_replay_true>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-713', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 713, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-713', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 713, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-713', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_release_retry_returns_first_result_without_mutation _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_retry_returns_first_result_without_mutation>
+
+    def test_settlement_release_retry_returns_first_result_without_mutation(self) -> None:
+        lock_payload = {
+            "statement_id": 620,
+            "statement_no": "ST-620",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-620",
+            "remark": "lock",
+        }
+        release_payload = {
+            "statement_id": 620,
+            "statement_no": "ST-620",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-release-620",
+            "reason": "release",
+        }
+        self.assertEqual(
+>           self.client.post("/api/subcontract/settlement-locks", headers=self._headers(), json=lock_payload).status_code,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            200,
+        )
+
+tests/test_subcontract_settlement_export.py:1156:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_retry_returns_first_result_without_mutation>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-620', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 620, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-620', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 620, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-620', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_release_unlocks_statement_locked_rows _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_unlocks_statement_locked_rows>
+
+    def test_settlement_release_unlocks_statement_locked_rows(self) -> None:
+>       lock_resp = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 530,
+                "statement_no": "ST-530",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-530",
+                "remark": "lock",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:714:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_release_unlocks_statement_locked_rows>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-530', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 530, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-530', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 530, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-530', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_request_id_is_not_used_as_idempotency_history _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_request_id_is_not_used_as_idempotency_history>
+
+    def test_settlement_request_id_is_not_used_as_idempotency_history(self) -> None:
+        payload = {
+            "statement_id": 719,
+            "statement_no": "ST-719",
+            "inspection_ids": [100],
+            "idempotency_key": "idem-lock-719",
+            "remark": "lock",
+        }
+>       first = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers={**self._headers(), "X-Request-ID": "req-1"},
+            json=payload,
+        )
+
+tests/test_subcontract_settlement_export.py:1076:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_request_id_is_not_used_as_idempotency_history>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user', 'X-Request-ID': 'req-1'}, 'json': {'idempotency_key': 'idem-lock-719', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 719, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-719', 'inspection_ids': [100], 'remark': 'lock', 'statement_id': 719, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user', 'X-Request-ID': 'req-1'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-719', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+_ SubcontractSettlementExportTest.test_settlement_same_idempotency_key_different_payload_conflicts _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_same_idempotency_key_different_payload_conflicts>
+
+    def test_settlement_same_idempotency_key_different_payload_conflicts(self) -> None:
+>       first = self.client.post(
+            "/api/subcontract/settlement-locks",
+            headers=self._headers(),
+            json={
+                "statement_id": 630,
+                "statement_no": "ST-630",
+                "inspection_ids": [100],
+                "idempotency_key": "idem-lock-630",
+                "remark": "first",
+            },
+        )
+
+tests/test_subcontract_settlement_export.py:1188:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <tests.test_subcontract_settlement_export.SubcontractSettlementExportTest testMethod=test_settlement_same_idempotency_key_different_payload_conflicts>
+url = '/api/subcontract/settlement-locks', args = ()
+kwargs = {'headers': {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}, 'json': {'idempotency_key': 'idem-lock-630', 'inspection_ids': [100], 'remark': 'first', 'statement_id': 630, ...}}
+operation_by_path = {'/api/subcontract/settlement-locks': 'settlement_lock', '/api/subcontract/settlement-locks/release': 'release', '/api/subcontract/settlement-preview': 'settlement_preview'}
+operation = 'settlement_lock'
+payload = {'idempotency_key': 'idem-lock-630', 'inspection_ids': [100], 'remark': 'first', 'statement_id': 630, ...}
+headers = {'X-LY-Dev-Roles': 'Subcontract Manager', 'X-LY-Dev-User': 'settlement.user'}
+scenario_tag = 'Z003-SUBCONTRACT-20260410-001', inspection_ids = [100]
+scope = {'item_code': 'ITEM-A', 'quantity': '20', 'subcontract_ref': 'SC-SETTLE-A', 'supplier_ref': 'SUP-A', ...}
+idempotency_key = 'idem-lock-630', status_action = 'settlement_lock'
+
+    def _post_with_settlement_contract(self, url, *args, **kwargs):
+        operation_by_path = {
+            "/api/subcontract/settlement-preview": "settlement_preview",
+            "/api/subcontract/settlement-locks": "settlement_lock",
+            "/api/subcontract/settlement-locks/release": "release",
+        }
+        operation = operation_by_path.get(str(url).split("?", 1)[0])
+        if operation is None:
+            return self._raw_client_post(url, *args, **kwargs)
+
+        payload = dict(kwargs.get("json") or {})
+        headers = dict(kwargs.get("headers") or {})
+        scenario_tag = str(payload.get("scenario_tag") or "Z003-SUBCONTRACT-20260410-001")
+        inspection_ids = [int(value) for value in payload.get("inspection_ids") or []]
+        scope = self._settlement_scope(inspection_ids)
+        idempotency_key = str(payload.get("idempotency_key") or f"idem-{operation}-{'-'.join(map(str, inspection_ids)) or 'filter'}")
+        status_action = str(payload.get("status_action") or operation)
+        explicit_request_id = str(headers.get("X-Request-ID") or "").strip()
+        source_ref_suffix = explicit_request_id if explicit_request_id else operation
+        source_ref = str(payload.get("source_ref") or f"{scenario_tag}:settlement:{source_ref_suffix}")
+        carrier = {
+            "operation": operation,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": idempotency_key,
+            "source_ref": source_ref,
+            "subcontract_ref": str(payload.get("subcontract_ref") or scope["subcontract_ref"]),
+            "supplier_ref": str(payload.get("supplier_ref") or scope["supplier_ref"]),
+            "work_order_ref": str(payload.get("work_order_ref") or scope["work_order_ref"]),
+            "item_code": str(payload.get("item_code") or scope["item_code"]),
+            "quantity": str(payload.get("quantity") or scope["quantity"]),
+            "status_action": status_action,
+        }
+>       request_id = str(payload.get("request_id") or self._settlement_request_id(**carrier))
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: SubcontractSettlementExportTest._settlement_request_id() got an unexpected keyword argument 'quantity'
+
+tests/test_subcontract_settlement_export.py:241: TypeError
+=============================== warnings summary ===============================
+tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_no_erpnext_write_called_by_settlement_export_or_lock
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_no_erpnext_write_called_by_settlement_export_or_lock
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_duplicate_unique_conflict_different_hash_returns_conflict
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_duplicate_unique_conflict_does_not_create_second_operation
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_duplicate_unique_conflict_does_not_mutate_inspection_again
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_first_lock_sets_idempotent_replay_false
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_first_release_sets_idempotent_replay_false
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_idempotency_key_accepts_128_chars
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_idempotency_key_rejects_over_128_chars
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_conflicts_for_other_statement
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_duplicate_unique_conflict_replays_first_response
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_is_idempotent_for_same_statement
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_marks_inspections_statement_locked
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_release_then_old_lock_retry_does_not_relock
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_replay_sets_idempotent_replay_true
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_lock_rolls_back_all_rows_on_failure
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_operation_record_is_append_only
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_operation_write_failure_rolls_back_lock
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_operation_write_failure_rolls_back_release
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_preview_does_not_use_old_amount_formula
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_preview_sums_inspection_amount_facts
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_duplicate_unique_conflict_replays_first_response
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_rejects_settled_rows
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_replay_sets_idempotent_replay_true
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_retry_returns_first_result_without_mutation
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_release_unlocks_statement_locked_rows
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_request_id_is_not_used_as_idempotency_history
+FAILED tests/test_subcontract_settlement_export.py::SubcontractSettlementExportTest::test_settlement_same_idempotency_key_different_payload_conflicts
+27 failed, 8 passed, 1 warning in 1.63s
