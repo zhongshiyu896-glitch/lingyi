@@ -1,0 +1,34 @@
+field	value
+task_id	TASK-Z030B-04-PREP-CAND001-FAILURE-DIAG
+source_task	TASK-Z030B-03-IMPL
+candidate_id	Z030-CAND-001
+current_head	52d00a349ae810cb9cb5c3f1c44ad52122f6f812
+cached_empty	true
+git_diff_check_pass	true
+b03_result	FAIL
+b03_command_run_count	1
+b03_pytest_summary	3 failed, 4 passed, 1 warning in 0.43s
+target_test_path	07_后端/lingyi_service/tests/test_quality_auto_trigger.py
+target_test_dirty_diff	false
+frozen_command	.venv/bin/python -m pytest tests/test_quality_auto_trigger.py -q
+failed_cases_count	3
+failed_cases	QualityAutoTriggerTest.test_auto_trigger_creates_draft_quality_inspection;QualityAutoTriggerTest.test_duplicate_event_is_idempotent;QualityAutoTriggerTest.test_source_validation_failure_does_not_create_draft
+missing_schema_fields	request_id;idempotency_key;scenario_tag;source_ref;inspection_ref;operation
+failure_site	07_后端/lingyi_service/app/services/quality_purchase_receipt_listener.py:179
+schema_contract_site	07_后端/lingyi_service/app/schemas/quality.py:38
+source_evidence_missing	[]
+classification	BLOCK_BACKEND_APP_SCHEMA_PAYLOAD_DRIFT_REQUIRES_APP_FIX_AUTHORIZATION
+allowed_fix_file	null
+recommended_next_task	null
+next_task	null
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

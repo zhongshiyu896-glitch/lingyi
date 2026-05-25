@@ -1,0 +1,30 @@
+field	value
+task_id	TASK-Z030B-05-FIX-CAND001-BACKEND
+source_task	TASK-Z030B-04-PREP-CAND001-FAILURE-DIAG
+candidate_id	Z030-CAND-001
+allowed_backend_app_file	07_后端/lingyi_service/app/services/quality_purchase_receipt_listener.py
+workdir	07_后端/lingyi_service
+command	.venv/bin/python -m pytest tests/test_quality_auto_trigger.py -q
+command_run_count	1
+exit_code	0
+result	PASS
+pytest_summary	7 passed, 1 warning in 0.39s
+stdout_path	03_需求与设计/02_开发计划/task_z030b_05_cand001_backend_fix_stdout.txt
+changed_files	07_后端/lingyi_service/app/services/quality_purchase_receipt_listener.py;03_需求与设计/02_开发计划/TASK-Z030B-05-FIX-CAND001-BACKEND_quality_auto_trigger后端payload修复报告.md;03_需求与设计/02_开发计划/task_z030b_05_cand001_backend_fix_result.json;03_需求与设计/02_开发计划/task_z030b_05_cand001_backend_fix_result.tsv;03_需求与设计/02_开发计划/task_z030b_05_cand001_backend_fix_stdout.txt
+required_fields_addressed	request_id;idempotency_key;scenario_tag;source_ref;inspection_ref;operation
+target_test_changed	false
+unrelated_backend_app_changed	false
+current_unrelated_backend_app_dirty_paths_present_but_unstaged	07_后端/lingyi_service/app/schemas/report.py;07_后端/lingyi_service/app/services/report_catalog_service.py;07_后端/lingyi_service/app/services/system_config_catalog_service.py
+frontend_changed	false
+shared_log_changed	false
+cached_empty	true
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

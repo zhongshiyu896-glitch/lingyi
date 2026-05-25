@@ -1,0 +1,257 @@
+FF....F                                                                  [100%]
+=================================== FAILURES ===================================
+__ QualityAutoTriggerTest.test_auto_trigger_creates_draft_quality_inspection ___
+
+self = <tests.test_quality_auto_trigger.QualityAutoTriggerTest testMethod=test_auto_trigger_creates_draft_quality_inspection>
+
+    def test_auto_trigger_creates_draft_quality_inspection(self) -> None:
+        validator = _FakeSourceValidator()
+        with self.SessionLocal() as session:
+>           detail = handle_purchase_receipt_event(
+                session,
+                self._event(),
+                actor="quality.listener",
+                source_validator=validator,
+            )
+
+tests/test_quality_auto_trigger.py:108:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app/services/quality_purchase_receipt_listener.py:212: in handle_purchase_receipt_event
+    return listener.handle_event(event=event, actor=actor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <app.services.quality_purchase_receipt_listener.QualityPurchaseReceiptListener object at 0x1095ccc20>
+event = {'company': 'COMP-A', 'event_id': 'evt-pr-1', 'event_type': 'purchase_receipt_submitted', 'items': [{'item_code': 'ITE...A', 'qty': '6', 'warehouse': 'WH-A'}, {'item_code': 'ITEM-B', 'item_name': 'B', 'qty': '4', 'warehouse': 'WH-A'}], ...}
+
+    def handle_event(
+        self,
+        event: dict[str, Any],
+        *,
+        actor: str = DEFAULT_ACTOR,
+    ) -> QualityInspectionDetailData:
+        source_id, company, supplier, warehouse, raw_items, inspection_date, request_id = _parse_event(event)
+        item_code, items, total_qty = _normalize_items(items=raw_items, fallback_warehouse=_text(warehouse))
+
+        existing_query = (
+            self.session.query(LyQualityInspection)
+            .filter(LyQualityInspection.company == company)
+            .filter(LyQualityInspection.source_type == SOURCE_TYPE_INCOMING_MATERIAL)
+            .filter(LyQualityInspection.source_id == source_id)
+        )
+        existing_active = (
+            existing_query.filter(LyQualityInspection.status != "cancelled")
+            .order_by(LyQualityInspection.id.desc())
+            .first()
+        )
+        if existing_active is not None:
+            return QualityService(session=self.session, source_validator=self.source_validator).get_detail_data(
+                int(existing_active.id)
+            )
+
+        existing_cancelled = (
+            existing_query.filter(LyQualityInspection.status == "cancelled")
+            .order_by(LyQualityInspection.id.desc())
+            .first()
+        )
+        if existing_cancelled is not None:
+            raise BusinessException(
+                code=QUALITY_INVALID_STATUS,
+                message="同 source 已存在 cancelled 记录，自动触发拒绝重建",
+            )
+
+>       payload = QualityInspectionCreateRequest(
+            company=company,
+            source_type=SOURCE_TYPE_INCOMING_MATERIAL,
+            source_id=source_id,
+            item_code=item_code,
+            supplier=supplier,
+            warehouse=_text(warehouse),
+            inspection_date=inspection_date,
+            inspected_qty=total_qty,
+            accepted_qty=total_qty,
+            rejected_qty=Decimal("0"),
+            defect_qty=Decimal("0"),
+            result="pass",
+            items=items,
+            defects=[],
+            remark=f"auto_trigger_from_purchase_receipt:{source_id}",
+        )
+E       pydantic_core._pydantic_core.ValidationError: 6 validation errors for QualityInspectionCreateRequest
+E       request_id
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       idempotency_key
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       scenario_tag
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       source_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       inspection_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       operation
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+app/services/quality_purchase_receipt_listener.py:179: ValidationError
+__________ QualityAutoTriggerTest.test_duplicate_event_is_idempotent ___________
+
+self = <tests.test_quality_auto_trigger.QualityAutoTriggerTest testMethod=test_duplicate_event_is_idempotent>
+
+    def test_duplicate_event_is_idempotent(self) -> None:
+        validator = _FakeSourceValidator()
+        with self.SessionLocal() as session:
+>           first = handle_purchase_receipt_event(session, self._event(), source_validator=validator)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_quality_auto_trigger.py:135:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app/services/quality_purchase_receipt_listener.py:212: in handle_purchase_receipt_event
+    return listener.handle_event(event=event, actor=actor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <app.services.quality_purchase_receipt_listener.QualityPurchaseReceiptListener object at 0x1098ec550>
+event = {'company': 'COMP-A', 'event_id': 'evt-pr-1', 'event_type': 'purchase_receipt_submitted', 'items': [{'item_code': 'ITE...A', 'qty': '6', 'warehouse': 'WH-A'}, {'item_code': 'ITEM-B', 'item_name': 'B', 'qty': '4', 'warehouse': 'WH-A'}], ...}
+
+    def handle_event(
+        self,
+        event: dict[str, Any],
+        *,
+        actor: str = DEFAULT_ACTOR,
+    ) -> QualityInspectionDetailData:
+        source_id, company, supplier, warehouse, raw_items, inspection_date, request_id = _parse_event(event)
+        item_code, items, total_qty = _normalize_items(items=raw_items, fallback_warehouse=_text(warehouse))
+
+        existing_query = (
+            self.session.query(LyQualityInspection)
+            .filter(LyQualityInspection.company == company)
+            .filter(LyQualityInspection.source_type == SOURCE_TYPE_INCOMING_MATERIAL)
+            .filter(LyQualityInspection.source_id == source_id)
+        )
+        existing_active = (
+            existing_query.filter(LyQualityInspection.status != "cancelled")
+            .order_by(LyQualityInspection.id.desc())
+            .first()
+        )
+        if existing_active is not None:
+            return QualityService(session=self.session, source_validator=self.source_validator).get_detail_data(
+                int(existing_active.id)
+            )
+
+        existing_cancelled = (
+            existing_query.filter(LyQualityInspection.status == "cancelled")
+            .order_by(LyQualityInspection.id.desc())
+            .first()
+        )
+        if existing_cancelled is not None:
+            raise BusinessException(
+                code=QUALITY_INVALID_STATUS,
+                message="同 source 已存在 cancelled 记录，自动触发拒绝重建",
+            )
+
+>       payload = QualityInspectionCreateRequest(
+            company=company,
+            source_type=SOURCE_TYPE_INCOMING_MATERIAL,
+            source_id=source_id,
+            item_code=item_code,
+            supplier=supplier,
+            warehouse=_text(warehouse),
+            inspection_date=inspection_date,
+            inspected_qty=total_qty,
+            accepted_qty=total_qty,
+            rejected_qty=Decimal("0"),
+            defect_qty=Decimal("0"),
+            result="pass",
+            items=items,
+            defects=[],
+            remark=f"auto_trigger_from_purchase_receipt:{source_id}",
+        )
+E       pydantic_core._pydantic_core.ValidationError: 6 validation errors for QualityInspectionCreateRequest
+E       request_id
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       idempotency_key
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       scenario_tag
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       source_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       inspection_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       operation
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+app/services/quality_purchase_receipt_listener.py:179: ValidationError
+_ QualityAutoTriggerTest.test_source_validation_failure_does_not_create_draft __
+
+self = <tests.test_quality_auto_trigger.QualityAutoTriggerTest testMethod=test_source_validation_failure_does_not_create_draft>
+
+    def test_source_validation_failure_does_not_create_draft(self) -> None:
+        validator = _FakeSourceValidator(fail=True)
+        with self.SessionLocal() as session:
+            with self.assertRaises(BusinessException) as ctx:
+>               handle_purchase_receipt_event(session, self._event(), source_validator=validator)
+
+tests/test_quality_auto_trigger.py:188:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app/services/quality_purchase_receipt_listener.py:212: in handle_purchase_receipt_event
+    return listener.handle_event(event=event, actor=actor)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/services/quality_purchase_receipt_listener.py:179: in handle_event
+    payload = QualityInspectionCreateRequest(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def __init__(self, /, **data: Any) -> None:
+        """Create a new model by parsing and validating input data from keyword arguments.
+
+        Raises [`ValidationError`][pydantic_core.ValidationError] if the input data cannot be
+        validated to form a valid model.
+
+        `self` is explicitly positional-only to allow `self` as a field name.
+        """
+        # `__tracebackhide__` tells pytest and some other tools to omit this function from tracebacks
+        __tracebackhide__ = True
+>       validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       pydantic_core._pydantic_core.ValidationError: 6 validation errors for QualityInspectionCreateRequest
+E       request_id
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       idempotency_key
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       scenario_tag
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       source_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       inspection_ref
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       operation
+E         Field required [type=missing, input_value={'company': 'COMP-A', 'so...rchase_receipt:PR-0001'}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+.venv/lib/python3.14/site-packages/pydantic/main.py:250: ValidationError
+=============================== warnings summary ===============================
+tests/test_quality_auto_trigger.py::QualityAutoTriggerTest::test_auto_trigger_creates_draft_quality_inspection
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_quality_auto_trigger.py::QualityAutoTriggerTest::test_auto_trigger_creates_draft_quality_inspection
+FAILED tests/test_quality_auto_trigger.py::QualityAutoTriggerTest::test_duplicate_event_is_idempotent
+FAILED tests/test_quality_auto_trigger.py::QualityAutoTriggerTest::test_source_validation_failure_does_not_create_draft
+3 failed, 4 passed, 1 warning in 0.43s

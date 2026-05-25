@@ -1,0 +1,52 @@
+decision	path	category	reason
+YES	03_需求与设计/02_开发计划/TASK-Z030B-02-PREP_CAND001只读验证边界报告.md	B02 boundary evidence	Z030-CAND-001 frozen validation boundary
+YES	03_需求与设计/02_开发计划/task_z030b_02_cand001_boundary.json	B02 boundary evidence	Z030-CAND-001 frozen validation boundary
+YES	03_需求与设计/02_开发计划/task_z030b_02_cand001_boundary.tsv	B02 boundary evidence	Z030-CAND-001 frozen validation boundary
+YES	03_需求与设计/02_开发计划/TASK-Z030B-03-IMPL_CAND001单文件验证报告.md	B03 readonly validation evidence	Z030-CAND-001 first single-file pytest result
+YES	03_需求与设计/02_开发计划/task_z030b_03_cand001_result.json	B03 readonly validation evidence	Z030-CAND-001 first single-file pytest result
+YES	03_需求与设计/02_开发计划/task_z030b_03_cand001_result.tsv	B03 readonly validation evidence	Z030-CAND-001 first single-file pytest result
+YES	03_需求与设计/02_开发计划/task_z030b_03_cand001_stdout.txt	B03 readonly validation evidence	Z030-CAND-001 first single-file pytest stdout
+YES	03_需求与设计/02_开发计划/TASK-Z030B-04-PREP-CAND001-FAILURE-DIAG_失败只读定位报告.md	B04 failure diagnosis evidence	Z030-CAND-001 backend payload drift boundary
+YES	03_需求与设计/02_开发计划/task_z030b_04_cand001_failure_boundary.json	B04 failure diagnosis evidence	Z030-CAND-001 backend payload drift boundary
+YES	03_需求与设计/02_开发计划/task_z030b_04_cand001_failure_boundary.tsv	B04 failure diagnosis evidence	Z030-CAND-001 backend payload drift boundary
+YES	03_需求与设计/02_开发计划/TASK-Z030B-05-FIX-CAND001-BACKEND_quality_auto_trigger后端payload修复报告.md	B05 backend fix evidence	Z030-CAND-001 authorized backend payload fix result
+YES	03_需求与设计/02_开发计划/task_z030b_05_cand001_backend_fix_result.json	B05 backend fix evidence	Z030-CAND-001 authorized backend payload fix result
+YES	03_需求与设计/02_开发计划/task_z030b_05_cand001_backend_fix_result.tsv	B05 backend fix evidence	Z030-CAND-001 authorized backend payload fix result
+YES	03_需求与设计/02_开发计划/task_z030b_05_cand001_backend_fix_stdout.txt	B05 backend fix evidence	Z030-CAND-001 authorized backend payload fix stdout
+YES	03_需求与设计/02_开发计划/TASK-Z030B-06-LEDGER-CAND001_quality_auto_trigger后端修复账本报告.md	B06 ledger evidence	Z030-CAND-001 ledger freeze report
+YES	03_需求与设计/02_开发计划/task_z030b_06_cand001_freeze.json	B06 ledger evidence	Z030-CAND-001 ledger freeze summary
+YES	03_需求与设计/02_开发计划/task_z030b_06_cand001_ledger.json	B06 ledger evidence	Z030-CAND-001 ledger JSON
+YES	03_需求与设计/02_开发计划/task_z030b_06_cand001_ledger.tsv	B06 ledger evidence	Z030-CAND-001 ledger TSV
+YES	07_后端/lingyi_service/app/services/quality_purchase_receipt_listener.py	authorized backend app fix	authorized backend payload construction fix for quality auto trigger
+NO	07_后端/lingyi_service/tests/test_quality_auto_trigger.py	target test excluded	target test was readonly and is not part of backend fix candidate
+NO	03_需求与设计/02_开发计划/TASK-Z030B-01-PREP_Z030本地候选池重建报告.md	Z030 candidate pool	candidate pool excluded from CAND001 commit candidate
+NO	03_需求与设计/02_开发计划/task_z030b_01_candidate_pool.json	Z030 candidate pool	candidate pool excluded from CAND001 commit candidate
+NO	03_需求与设计/02_开发计划/task_z030b_01_candidate_pool.tsv	Z030 candidate pool	candidate pool excluded from CAND001 commit candidate
+NO	Z030-CAND-002_EVIDENCE_AND_TARGET_RANGE	future candidate range	Z030-CAND-002 excluded from CAND001 commit candidate
+NO	Z030-CAND-003_EVIDENCE_AND_TARGET_RANGE	future candidate range	Z030-CAND-003 excluded from CAND001 commit candidate
+NO	Z030-CAND-004_EVIDENCE_AND_TARGET_RANGE	future candidate range	Z030-CAND-004 excluded from CAND001 commit candidate
+NO	Z030-CAND-005_EVIDENCE_AND_TARGET_RANGE	future candidate range	Z030-CAND-005 excluded from CAND001 commit candidate
+NO	06_前端	frontend	frontend is out of scope
+NO	07_后端/lingyi_service/app/OTHER_BACKEND_APP_FILES_EXCEPT_quality_purchase_receipt_listener.py	other backend app files	only the authorized backend listener file is included in YES
+NO	SHARED_ENGINEER_LOG_RANGE	shared engineer logs	shared logs are out of scope
+NO	Z015_Z029_OLD_CYCLE_ARTIFACT_RANGE	old cycle artifacts	old Z015-Z029 artifacts excluded
+NO	runtime/cache	runtime cache	runtime and cache paths excluded
+NO	00_交接与日志/HANDOVER_STATUS.md	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	03_需求与设计/01_架构设计/架构师会话日志.md	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/app/schemas/report.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/app/services/report_catalog_service.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/app/services/system_config_catalog_service.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_bom_permissions.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_logging_sanitization.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_request_id_sanitization.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_style_profit_api.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_subcontract_company_permission.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_workshop_permissions.py	historical dirty forbidden path	historical dirty forbidden path excluded

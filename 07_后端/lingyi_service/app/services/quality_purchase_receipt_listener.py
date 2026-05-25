@@ -176,7 +176,14 @@ class QualityPurchaseReceiptListener:
                 message="同 source 已存在 cancelled 记录，自动触发拒绝重建",
             )
 
+        effective_request_id = request_id or f"auto-pr:{source_id}"
         payload = QualityInspectionCreateRequest(
+            request_id=effective_request_id,
+            idempotency_key=source_id,
+            scenario_tag="quality_auto_trigger",
+            source_ref=source_id,
+            inspection_ref=source_id,
+            operation="create",
             company=company,
             source_type=SOURCE_TYPE_INCOMING_MATERIAL,
             source_id=source_id,
@@ -196,7 +203,7 @@ class QualityPurchaseReceiptListener:
         return QualityService(session=self.session, source_validator=self.source_validator).create_inspection(
             payload=payload,
             operator=actor,
-            request_id=request_id or f"auto-pr:{source_id}",
+            request_id=effective_request_id,
         )
 
 
@@ -210,4 +217,3 @@ def handle_purchase_receipt_event(
     """Convenience function for direct event handling in tests/integration entry."""
     listener = QualityPurchaseReceiptListener(session=session, source_validator=source_validator)
     return listener.handle_event(event=event, actor=actor)
-

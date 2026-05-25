@@ -1,0 +1,70 @@
+{
+  "task_id": "TASK-Z030B-04-PREP-CAND001-FAILURE-DIAG",
+  "source_task": "TASK-Z030B-03-IMPL",
+  "candidate_id": "Z030-CAND-001",
+  "current_head": "52d00a349ae810cb9cb5c3f1c44ad52122f6f812",
+  "cached_empty": true,
+  "git_diff_check_pass": true,
+  "b03_result": "FAIL",
+  "b03_command_run_count": 1,
+  "b03_pytest_summary": "3 failed, 4 passed, 1 warning in 0.43s",
+  "target_test_path": "07_后端/lingyi_service/tests/test_quality_auto_trigger.py",
+  "target_test_dirty_diff": false,
+  "frozen_command": ".venv/bin/python -m pytest tests/test_quality_auto_trigger.py -q",
+  "failed_cases_count": 3,
+  "failed_cases": [
+    {
+      "case": "QualityAutoTriggerTest.test_auto_trigger_creates_draft_quality_inspection",
+      "expected": "draft quality inspection detail is created",
+      "observed": "QualityInspectionCreateRequest ValidationError before draft creation",
+      "schema_status_diff": "missing request_id, idempotency_key, scenario_tag, source_ref, inspection_ref, operation"
+    },
+    {
+      "case": "QualityAutoTriggerTest.test_duplicate_event_is_idempotent",
+      "expected": "duplicate event reuses the first created inspection",
+      "observed": "QualityInspectionCreateRequest ValidationError before first create",
+      "schema_status_diff": "missing request_id, idempotency_key, scenario_tag, source_ref, inspection_ref, operation"
+    },
+    {
+      "case": "QualityAutoTriggerTest.test_source_validation_failure_does_not_create_draft",
+      "expected": "BusinessException QUALITY_SOURCE_UNAVAILABLE from source validation",
+      "observed": "QualityInspectionCreateRequest ValidationError before source validation",
+      "schema_status_diff": "missing request_id, idempotency_key, scenario_tag, source_ref, inspection_ref, operation"
+    }
+  ],
+  "missing_schema_fields": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "inspection_ref",
+    "operation"
+  ],
+  "failure_site": "07_后端/lingyi_service/app/services/quality_purchase_receipt_listener.py:179",
+  "schema_contract_site": "07_后端/lingyi_service/app/schemas/quality.py:38",
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_quality_auto_trigger.py",
+    "07_后端/lingyi_service/app/services/quality_purchase_receipt_listener.py",
+    "07_后端/lingyi_service/app/schemas/quality.py",
+    "07_后端/lingyi_service/app/services/quality_service.py",
+    "07_后端/lingyi_service/app/models/quality.py",
+    "07_后端/lingyi_service/app/models/quality_outbox.py"
+  ],
+  "source_evidence_missing": [],
+  "classification": "BLOCK_BACKEND_APP_SCHEMA_PAYLOAD_DRIFT_REQUIRES_APP_FIX_AUTHORIZATION",
+  "classification_reason": "The failure occurs inside backend listener payload construction before the test assertions. The current schema requires request_id, idempotency_key, scenario_tag, source_ref, inspection_ref, and operation, but quality_purchase_receipt_listener.py constructs QualityInspectionCreateRequest without them. A target-test-only fixture change cannot supply fields omitted by the backend app constructor without weakening or monkeypatching the behavior under test.",
+  "allowed_fix_file": null,
+  "recommended_next_task": null,
+  "next_task": null,
+  "run_this_task": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}
