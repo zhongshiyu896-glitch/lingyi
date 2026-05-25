@@ -1,0 +1,41 @@
+field	value
+task_id	TASK-Z030B-43-PREP-CAND005-FAILURE-DIAG
+source_task	TASK-Z030B-42-IMPL
+candidate_id	Z030-CAND-005
+current_head	d120175a8bd931bfe9e6f6d76a531364b48d778e
+cached_empty	true
+diff_check_pass	true
+frozen_command	.venv/bin/python -m pytest tests/test_workshop_outbox.py -q
+frozen_workdir	07_后端/lingyi_service
+target_test_path	07_后端/lingyi_service/tests/test_workshop_outbox.py
+target_test_dirty_diff	false
+b42_result	FAIL
+b42_command_run_count	1
+b42_pytest_summary	2 failed, 9 passed, 5 warnings in 1.04s
+failed_cases_count	2
+failed_cases	test_audit_failed_does_not_call_erp_and_rolls_back_outbox;test_commit_failed_does_not_call_erp_and_rolls_back_outbox
+status_difference	422 != 500;422 != 500
+missing_or_stale_payload_fields	scenario_tag;idempotency_key;batch_no
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_outbox.py
+recommended_next_task	TASK-Z030B-44-FIX-CAND005
+run_this_task	false
+source_evidence_missing	[]
+readonly_source_evidence_paths	03_需求与设计/02_开发计划/task_z030b_41_cand005_boundary.json;03_需求与设计/02_开发计划/task_z030b_42_cand005_result.json;03_需求与设计/02_开发计划/task_z030b_42_cand005_stdout.txt;07_后端/lingyi_service/tests/test_workshop_outbox.py;07_后端/lingyi_service/app/schemas/workshop.py;07_后端/lingyi_service/app/routers/workshop.py;07_后端/lingyi_service/app/services/workshop_outbox_service.py;07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py;07_后端/lingyi_service/app/models/workshop.py;07_后端/lingyi_service/app/models/audit.py
+pytest_performed	false
+npm_performed	false
+browser_performed	false
+build_performed	false
+typecheck_performed	false
+verify_performed	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+cleanup_reset_checkout_stash_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

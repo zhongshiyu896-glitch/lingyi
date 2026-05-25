@@ -94,6 +94,8 @@ class WorkshopOutboxBoundaryTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
             session.query(YsWorkshopJobCardSyncOutbox).delete()
@@ -101,8 +103,11 @@ class WorkshopOutboxBoundaryTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Workshop Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "outbox.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "Workshop Manager", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "outbox.user", "X-LY-Dev-Roles": role}
+        if request_id is not None:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
     def _job_card() -> JobCardInfo:
@@ -121,8 +126,12 @@ class WorkshopOutboxBoundaryTest(unittest.TestCase):
 
     @staticmethod
     def _payload(ticket_key: str) -> dict:
+        scenario_tag = "Z003-WORKSHOP-TICKET-20260412-001"
+        scoped_ticket_key = f"{scenario_tag}-{ticket_key}"
         return {
-            "ticket_key": ticket_key,
+            "scenario_tag": scenario_tag,
+            "idempotency_key": f"{scenario_tag}-IDEMP-{ticket_key}",
+            "ticket_key": scoped_ticket_key,
             "job_card": "JC-001",
             "employee": "EMP-001",
             "process_name": "sew",
@@ -131,8 +140,24 @@ class WorkshopOutboxBoundaryTest(unittest.TestCase):
             "qty": "10",
             "work_date": "2026-04-12",
             "source": "manual",
-            "source_ref": "REF",
+            "source_ref": f"{scenario_tag}-SRC-{ticket_key}",
+            "operation": "register",
+            "batch_no": f"BATCH-{ticket_key}",
         }
+
+    @staticmethod
+    def _request_id_for_payload(payload: dict) -> str:
+        operation_code = workshop_router._ticket_operation_code(payload["operation"])
+        idempotency_code = workshop_router._build_ticket_carrier_code(payload["idempotency_key"])
+        source_ref_code = workshop_router._build_ticket_carrier_code(payload["source_ref"])
+        ticket_key_code = workshop_router._build_ticket_carrier_code(payload["ticket_key"])
+        job_card_code = workshop_router._build_ticket_carrier_code(payload["job_card"])
+        operator_code = workshop_router._build_ticket_carrier_code(payload["employee"])
+        batch_code = workshop_router._build_ticket_carrier_code(payload["batch_no"])
+        return (
+            f"{payload['scenario_tag']}-RW-{operation_code}-{idempotency_code}-"
+            f"{source_ref_code}-{ticket_key_code}-{job_card_code}-{operator_code}-{batch_code}"
+        )
 
     @staticmethod
     def _long_job_card(length: int) -> str:
@@ -403,10 +428,11 @@ class WorkshopOutboxBoundaryTest(unittest.TestCase):
             "update_job_card_completed_qty",
             return_value={"message": "ok"},
         ) as update_mock:
+            payload = self._payload("OUTBOX-COMMIT-FAIL-001")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._payload("OUTBOX-COMMIT-FAIL-001"),
+                headers=self._headers(request_id=self._request_id_for_payload(payload)),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 500)
@@ -430,10 +456,11 @@ class WorkshopOutboxBoundaryTest(unittest.TestCase):
             "update_job_card_completed_qty",
             return_value={"message": "ok"},
         ) as update_mock:
+            payload = self._payload("OUTBOX-AUDIT-FAIL-001")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._payload("OUTBOX-AUDIT-FAIL-001"),
+                headers=self._headers(request_id=self._request_id_for_payload(payload)),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 500)

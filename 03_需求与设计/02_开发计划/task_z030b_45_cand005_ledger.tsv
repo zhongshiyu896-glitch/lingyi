@@ -1,0 +1,55 @@
+decision	path	category
+YES	03_需求与设计/02_开发计划/TASK-Z030B-41-PREP_CAND005只读验证边界报告.md	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_41_cand005_boundary.json	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_41_cand005_boundary.tsv	evidence
+YES	03_需求与设计/02_开发计划/TASK-Z030B-42-IMPL_CAND005单文件验证报告.md	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_42_cand005_result.json	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_42_cand005_result.tsv	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_42_cand005_stdout.txt	evidence
+YES	03_需求与设计/02_开发计划/TASK-Z030B-43-PREP-CAND005-FAILURE-DIAG_失败只读定位报告.md	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_43_cand005_failure_boundary.json	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_43_cand005_failure_boundary.tsv	evidence
+YES	03_需求与设计/02_开发计划/TASK-Z030B-44-FIX-CAND005_workshop_outbox测试合同修复报告.md	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_44_cand005_fix_result.json	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_44_cand005_fix_result.tsv	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_44_cand005_fix_stdout.txt	evidence
+YES	03_需求与设计/02_开发计划/TASK-Z030B-45-LEDGER-CAND005_workshop_outbox提交候选账本报告.md	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_45_cand005_freeze.json	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_45_cand005_ledger.json	evidence
+YES	03_需求与设计/02_开发计划/task_z030b_45_cand005_ledger.tsv	evidence
+YES	07_后端/lingyi_service/tests/test_workshop_outbox.py	backend_test
+NO	03_需求与设计/02_开发计划/TASK-Z030B-01-PREP_Z030本地候选池重建报告.md	candidate_pool
+NO	03_需求与设计/02_开发计划/task_z030b_01_candidate_pool.json	candidate_pool
+NO	03_需求与设计/02_开发计划/task_z030b_01_candidate_pool.tsv	candidate_pool
+NO	Z030-CAND-001 archived range: TASK-Z030B-02..09	other_candidate
+NO	Z030-CAND-002 archived range: TASK-Z030B-11..20	other_candidate
+NO	Z030-CAND-003 archived range: TASK-Z030B-22..29	other_candidate
+NO	Z030-CAND-004 archived range: TASK-Z030B-31..40	other_candidate
+NO	06_前端	frontend
+NO	07_后端/lingyi_service/app	backend_app
+NO	00_交接与日志/HANDOVER_STATUS.md	historical_dirty_forbidden
+NO	03_需求与设计/01_架构设计/架构师会话日志.md	historical_dirty_forbidden
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	historical_dirty_forbidden
+NO	06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	historical_dirty_forbidden
+NO	06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	historical_dirty_forbidden
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	historical_dirty_forbidden
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	historical_dirty_forbidden
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	historical_dirty_forbidden
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	historical_dirty_forbidden
+NO	07_后端/lingyi_service/app/schemas/report.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/app/services/report_catalog_service.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/app/services/system_config_catalog_service.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/tests/test_bom_permissions.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/tests/test_logging_sanitization.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/tests/test_request_id_sanitization.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/tests/test_style_profit_api.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/tests/test_subcontract_company_permission.py	historical_dirty_forbidden
+NO	07_后端/lingyi_service/tests/test_workshop_permissions.py	historical_dirty_forbidden
+NO	旧周期 Z015-Z029 产物	old_cycle
+NO	runtime/cache/无关文件	runtime_cache
+NO	07_后端/lingyi_service/.pytest_cache	runtime_cache
+NO	07_后端/lingyi_service/.ruff_cache	runtime_cache
+NO	07_后端/lingyi_service/__pycache__	runtime_cache
+NO	07_后端/lingyi_service/lingyi_service.local.db	runtime_cache
+NO	03_需求与设计/02_开发计划/TASK-Z030B-30-PREP_Z030剩余候选刷新报告.md	previous_refresh

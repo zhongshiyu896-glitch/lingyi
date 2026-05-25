@@ -1,0 +1,84 @@
+FF.........                                                              [100%]
+=================================== FAILURES ===================================
+_ WorkshopOutboxBoundaryTest.test_audit_failed_does_not_call_erp_and_rolls_back_outbox _
+
+self = <tests.test_workshop_outbox.WorkshopOutboxBoundaryTest testMethod=test_audit_failed_does_not_call_erp_and_rolls_back_outbox>
+
+    def test_audit_failed_does_not_call_erp_and_rolls_back_outbox(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._employee(),
+        ), patch.object(
+            AuditService,
+            "record_success",
+            side_effect=AuditWriteFailed(),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "update_job_card_completed_qty",
+            return_value={"message": "ok"},
+        ) as update_mock:
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(),
+                json=self._payload("OUTBOX-AUDIT-FAIL-001"),
+            )
+
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_workshop_outbox.py:439: AssertionError
+_ WorkshopOutboxBoundaryTest.test_commit_failed_does_not_call_erp_and_rolls_back_outbox _
+
+self = <tests.test_workshop_outbox.WorkshopOutboxBoundaryTest testMethod=test_commit_failed_does_not_call_erp_and_rolls_back_outbox>
+
+    def test_commit_failed_does_not_call_erp_and_rolls_back_outbox(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._employee(),
+        ), patch.object(
+            workshop_router,
+            "_commit_or_raise_write_error",
+            side_effect=DatabaseWriteFailed(),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "update_job_card_completed_qty",
+            return_value={"message": "ok"},
+        ) as update_mock:
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(),
+                json=self._payload("OUTBOX-COMMIT-FAIL-001"),
+            )
+
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 422 != 500
+
+tests/test_workshop_outbox.py:412: AssertionError
+=============================== warnings summary ===============================
+tests/test_workshop_outbox.py::WorkshopOutboxBoundaryTest::test_audit_failed_does_not_call_erp_and_rolls_back_outbox
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_workshop_outbox.py::WorkshopOutboxBoundaryTest::test_legacy_pending_outbox_is_compatible_without_duplicate_insert
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_workshop_outbox.py:358: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_workshop_outbox.py::WorkshopOutboxBoundaryTest::test_legacy_pending_outbox_is_compatible_without_duplicate_insert
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_workshop_outbox.py:365: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_outbox.py::WorkshopOutboxBoundaryTest::test_same_business_event_dedupes_to_single_outbox_row
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_workshop_outbox.py::WorkshopOutboxBoundaryTest::test_same_business_event_dedupes_to_single_outbox_row
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_workshop_outbox.py::WorkshopOutboxBoundaryTest::test_audit_failed_does_not_call_erp_and_rolls_back_outbox
+FAILED tests/test_workshop_outbox.py::WorkshopOutboxBoundaryTest::test_commit_failed_does_not_call_erp_and_rolls_back_outbox
+2 failed, 9 passed, 5 warnings in 1.04s
