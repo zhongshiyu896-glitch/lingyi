@@ -1,0 +1,106 @@
+.FFF.                                                                    [100%]
+=================================== FAILURES ===================================
+_ WarehouseFinishedGoodsInboundApiTest.test_create_finished_goods_draft_candidate_disabled_fail_closed _
+
+self = <tests.test_warehouse_finished_goods_inbound.WarehouseFinishedGoodsInboundApiTest testMethod=test_create_finished_goods_draft_candidate_disabled_fail_closed>
+
+    def test_create_finished_goods_draft_candidate_disabled_fail_closed(self) -> None:
+        with patch(
+            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.get_finished_goods_inbound_candidate",
+            return_value={
+                "source_id": "MLI-0001",
+                "item_code": "FG-ITEM-001",
+                "qty": Decimal("0"),
+                "uom": "Nos",
+                "strict_alloc_qty": Decimal("0"),
+                "disabled": True,
+                "disabled_reason": "候选数量不足，禁止创建草稿",
+            },
+        ):
+            payload = self._draft_payload(qty="1")
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers(
+                    "warehouse:stock_entry_draft,warehouse:read",
+                    request_id=self._stock_entry_request_id(payload),
+                ),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 409 != 400
+
+tests/test_warehouse_finished_goods_inbound.py:275: AssertionError
+_ WarehouseFinishedGoodsInboundApiTest.test_create_finished_goods_draft_fallback_mode _
+
+self = <tests.test_warehouse_finished_goods_inbound.WarehouseFinishedGoodsInboundApiTest testMethod=test_create_finished_goods_draft_fallback_mode>
+
+    def test_create_finished_goods_draft_fallback_mode(self) -> None:
+        with patch(
+            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.get_finished_goods_inbound_candidate",
+            return_value={
+                "source_id": "MLI-0001",
+                "item_code": "FG-ITEM-001",
+                "qty": Decimal("12"),
+                "uom": "Nos",
+                "strict_alloc_qty": Decimal("0"),
+                "disabled": False,
+                "disabled_reason": None,
+            },
+        ):
+            payload = self._draft_payload(qty="4")
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers(
+                    "warehouse:stock_entry_draft,warehouse:read",
+                    request_id=self._stock_entry_request_id(payload),
+                ),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 409 != 201 : {"code":"WAREHOUSE_IDEMPOTENCY_CONFLICT","message":"scenario_tag 载体缺失或格式非法","data":{}}
+
+tests/test_warehouse_finished_goods_inbound.py:247: AssertionError
+_ WarehouseFinishedGoodsInboundApiTest.test_create_finished_goods_draft_strict_alloc _
+
+self = <tests.test_warehouse_finished_goods_inbound.WarehouseFinishedGoodsInboundApiTest testMethod=test_create_finished_goods_draft_strict_alloc>
+
+    def test_create_finished_goods_draft_strict_alloc(self) -> None:
+        with patch(
+            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.get_finished_goods_inbound_candidate",
+            return_value={
+                "source_id": "MLI-0001",
+                "item_code": "FG-ITEM-001",
+                "qty": Decimal("12"),
+                "uom": "Nos",
+                "strict_alloc_qty": Decimal("12"),
+                "disabled": False,
+                "disabled_reason": None,
+            },
+        ):
+            payload = self._draft_payload(qty="5")
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers(
+                    "warehouse:stock_entry_draft,warehouse:read",
+                    request_id=self._stock_entry_request_id(payload),
+                ),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 409 != 201 : {"code":"WAREHOUSE_IDEMPOTENCY_CONFLICT","message":"scenario_tag 载体缺失或格式非法","data":{}}
+
+tests/test_warehouse_finished_goods_inbound.py:198: AssertionError
+=============================== warnings summary ===============================
+tests/test_warehouse_finished_goods_inbound.py::WarehouseFinishedGoodsInboundApiTest::test_candidates_show_disabled_entry_and_show_completed_contract
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_warehouse_finished_goods_inbound.py::WarehouseFinishedGoodsInboundApiTest::test_create_finished_goods_draft_candidate_disabled_fail_closed
+FAILED tests/test_warehouse_finished_goods_inbound.py::WarehouseFinishedGoodsInboundApiTest::test_create_finished_goods_draft_fallback_mode
+FAILED tests/test_warehouse_finished_goods_inbound.py::WarehouseFinishedGoodsInboundApiTest::test_create_finished_goods_draft_strict_alloc
+3 failed, 2 passed, 1 warning in 1.02s

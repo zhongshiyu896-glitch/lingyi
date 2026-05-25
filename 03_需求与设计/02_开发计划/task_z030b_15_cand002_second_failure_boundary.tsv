@@ -1,0 +1,33 @@
+field	value
+task_id	TASK-Z030B-15-PREP-CAND002-SECOND-FAILURE-DIAG
+source_task	TASK-Z030B-14-FIX-CAND002
+candidate_id	Z030-CAND-002
+current_head	c35ffbb2b19bff7633b3a14a89c3476cae39be1e
+cached_empty	true
+diff_check_pass	true
+b14_result	FAIL
+b14_command_run_count	1
+b14_pytest_summary	3 failed, 2 passed, 1 warning in 1.02s
+b14_required_fields_addressed	["source_ref","warehouse","item_code","operation","quantity","business_date","status_action","scenario_tag"]
+b14_assertions_weakened	false
+b14_skip_xfail_deleted_cases	false
+remaining_failed_cases_count	3
+observed_statuses	[409,409,409]
+expected_statuses	[400,201,201]
+failure_mode	WAREHOUSE_IDEMPOTENCY_CONFLICT: scenario_tag carrier missing or invalid
+target_test_dirty_status	untracked_allowed_target_file
+source_evidence_missing	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py
+recommended_next_task	TASK-Z030B-16-FIX-CAND002-SECOND
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

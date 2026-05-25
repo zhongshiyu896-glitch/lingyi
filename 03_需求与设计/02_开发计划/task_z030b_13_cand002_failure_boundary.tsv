@@ -1,0 +1,30 @@
+field	value
+task_id	TASK-Z030B-13-PREP-CAND002-FAILURE-DIAG
+source_task	TASK-Z030B-12-IMPL
+candidate_id	Z030-CAND-002
+current_head	c35ffbb2b19bff7633b3a14a89c3476cae39be1e
+cached_empty	true
+diff_check_pass	true
+frozen_command	.venv/bin/python -m pytest tests/test_warehouse_finished_goods_inbound.py -q
+target_test_path	07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py
+target_test_dirty_diff	false
+failed_summary	3 failed, 2 passed, 1 warning in 1.04s
+failed_cases_count	3
+observed_statuses	[422,422,422]
+expected_statuses	[400,201,201]
+missing_schema_fields	["source_ref","warehouse","item_code","operation","quantity","business_date","status_action","scenario_tag"]
+source_evidence_missing	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py
+recommended_next_task	TASK-Z030B-14-FIX-CAND002
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

@@ -1,0 +1,94 @@
+.FFF.                                                                    [100%]
+=================================== FAILURES ===================================
+_ WarehouseFinishedGoodsInboundApiTest.test_create_finished_goods_draft_candidate_disabled_fail_closed _
+
+self = <tests.test_warehouse_finished_goods_inbound.WarehouseFinishedGoodsInboundApiTest testMethod=test_create_finished_goods_draft_candidate_disabled_fail_closed>
+
+    def test_create_finished_goods_draft_candidate_disabled_fail_closed(self) -> None:
+        with patch(
+            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.get_finished_goods_inbound_candidate",
+            return_value={
+                "source_id": "MLI-0001",
+                "item_code": "FG-ITEM-001",
+                "qty": Decimal("0"),
+                "uom": "Nos",
+                "strict_alloc_qty": Decimal("0"),
+                "disabled": True,
+                "disabled_reason": "候选数量不足，禁止创建草稿",
+            },
+        ):
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+                json=self._draft_payload(qty="1"),
+            )
+
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 422 != 400
+
+tests/test_warehouse_finished_goods_inbound.py:227: AssertionError
+_ WarehouseFinishedGoodsInboundApiTest.test_create_finished_goods_draft_fallback_mode _
+
+self = <tests.test_warehouse_finished_goods_inbound.WarehouseFinishedGoodsInboundApiTest testMethod=test_create_finished_goods_draft_fallback_mode>
+
+    def test_create_finished_goods_draft_fallback_mode(self) -> None:
+        with patch(
+            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.get_finished_goods_inbound_candidate",
+            return_value={
+                "source_id": "MLI-0001",
+                "item_code": "FG-ITEM-001",
+                "qty": Decimal("12"),
+                "uom": "Nos",
+                "strict_alloc_qty": Decimal("0"),
+                "disabled": False,
+                "disabled_reason": None,
+            },
+        ):
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+                json=self._draft_payload(qty="4"),
+            )
+
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 422 != 201 : {"detail":[{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"4","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","warehouse"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"4","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","item_code"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"4","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"4","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","quantity"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"4","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","business_date"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"4","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","status_action"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"4","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"4","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}}]}
+
+tests/test_warehouse_finished_goods_inbound.py:203: AssertionError
+_ WarehouseFinishedGoodsInboundApiTest.test_create_finished_goods_draft_strict_alloc _
+
+self = <tests.test_warehouse_finished_goods_inbound.WarehouseFinishedGoodsInboundApiTest testMethod=test_create_finished_goods_draft_strict_alloc>
+
+    def test_create_finished_goods_draft_strict_alloc(self) -> None:
+        with patch(
+            "app.services.erpnext_warehouse_adapter.ERPNextWarehouseAdapter.get_finished_goods_inbound_candidate",
+            return_value={
+                "source_id": "MLI-0001",
+                "item_code": "FG-ITEM-001",
+                "qty": Decimal("12"),
+                "uom": "Nos",
+                "strict_alloc_qty": Decimal("12"),
+                "disabled": False,
+                "disabled_reason": None,
+            },
+        ):
+            response = self.client.post(
+                "/api/warehouse/stock-entry-drafts",
+                headers=self._headers("warehouse:stock_entry_draft,warehouse:read"),
+                json=self._draft_payload(qty="5"),
+            )
+
+>       self.assertEqual(response.status_code, 201, response.text)
+E       AssertionError: 422 != 201 : {"detail":[{"type":"missing","loc":["body","source_ref"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","warehouse"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","item_code"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","operation"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","quantity"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","business_date"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","status_action"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}},{"type":"missing","loc":["body","scenario_tag"],"msg":"Field required","input":{"company":"COMP-A","purpose":"Material Issue","source_type":"manual","source_id":"IGNORED-SOURCE","finished_goods_source_id":"MLI-0001","source_warehouse":null,"target_warehouse":"FG-WH-001","idempotency_key":"fg-inbound-idem-001","items":[{"item_code":"FG-ITEM-001","qty":"5","uom":"Nos","batch_no":null,"serial_no":null,"source_warehouse":null,"target_warehouse":"FG-WH-001"}]}}]}
+
+tests/test_warehouse_finished_goods_inbound.py:158: AssertionError
+=============================== warnings summary ===============================
+tests/test_warehouse_finished_goods_inbound.py::WarehouseFinishedGoodsInboundApiTest::test_candidates_show_disabled_entry_and_show_completed_contract
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_warehouse_finished_goods_inbound.py::WarehouseFinishedGoodsInboundApiTest::test_create_finished_goods_draft_candidate_disabled_fail_closed
+FAILED tests/test_warehouse_finished_goods_inbound.py::WarehouseFinishedGoodsInboundApiTest::test_create_finished_goods_draft_fallback_mode
+FAILED tests/test_warehouse_finished_goods_inbound.py::WarehouseFinishedGoodsInboundApiTest::test_create_finished_goods_draft_strict_alloc
+3 failed, 2 passed, 1 warning in 1.04s

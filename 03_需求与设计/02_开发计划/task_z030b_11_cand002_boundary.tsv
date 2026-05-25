@@ -1,0 +1,26 @@
+field	value
+task_id	TASK-Z030B-11-PREP
+source_task	TASK-Z030B-10-PREP
+current_head	c35ffbb2b19bff7633b3a14a89c3476cae39be1e
+cached_empty	true
+diff_check_pass	true
+candidate_id	Z030-CAND-002
+frozen_workdir	07_后端/lingyi_service
+frozen_command	.venv/bin/python -m pytest tests/test_warehouse_finished_goods_inbound.py -q
+command_backend_single_file_pytest	true
+target_test_path	07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py
+target_test_exists	true
+target_test_dirty_diff	false
+source_evidence_missing	[]
+next_task	TASK-Z030B-12-IMPL
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

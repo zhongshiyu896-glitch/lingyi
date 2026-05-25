@@ -1,0 +1,86 @@
+{
+  "task_id": "TASK-Z030B-15-PREP-CAND002-SECOND-FAILURE-DIAG",
+  "source_task": "TASK-Z030B-14-FIX-CAND002",
+  "candidate_id": "Z030-CAND-002",
+  "current_head": "c35ffbb2b19bff7633b3a14a89c3476cae39be1e",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "b14_result": "FAIL",
+  "b14_command_run_count": 1,
+  "b14_pytest_summary": "3 failed, 2 passed, 1 warning in 1.02s",
+  "b14_required_fields_addressed": [
+    "source_ref",
+    "warehouse",
+    "item_code",
+    "operation",
+    "quantity",
+    "business_date",
+    "status_action",
+    "scenario_tag"
+  ],
+  "b14_assertions_weakened": false,
+  "b14_skip_xfail_deleted_cases": false,
+  "remaining_failed_cases_count": 3,
+  "remaining_failed_cases": [
+    {
+      "name": "test_create_finished_goods_draft_candidate_disabled_fail_closed",
+      "observed_status": 409,
+      "expected_status": 400,
+      "difference": "carrier gate blocks before candidate-disabled fail-closed branch"
+    },
+    {
+      "name": "test_create_finished_goods_draft_fallback_mode",
+      "observed_status": 409,
+      "expected_status": 201,
+      "difference": "carrier gate blocks before fallback create branch"
+    },
+    {
+      "name": "test_create_finished_goods_draft_strict_alloc",
+      "observed_status": 409,
+      "expected_status": 201,
+      "difference": "carrier gate blocks before strict allocation create branch"
+    }
+  ],
+  "observed_expected_summary": "all remaining failures are 409 WAREHOUSE_IDEMPOTENCY_CONFLICT with message scenario_tag carrier missing or invalid; expected branches remain 400/201/201",
+  "target_test_dirty_status": "untracked_allowed_target_file",
+  "target_test_dirty_diff_summary": [
+    "B14 target-only edit added local warehouse development env and allowed DB URL",
+    "B14 target-only edit added schema payload fields source_ref, warehouse, item_code, operation, quantity, business_date, status_action, scenario_tag",
+    "B14 target-only edit added request id carrier helper and POST X-Request-ID headers",
+    "business status assertions remain explicit 201/400"
+  ],
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py",
+    "07_后端/lingyi_service/app/routers/warehouse.py",
+    "07_后端/lingyi_service/app/services/erpnext_warehouse_adapter.py",
+    "07_后端/lingyi_service/app/models/warehouse.py",
+    "07_后端/lingyi_service/app/schemas/warehouse.py"
+  ],
+  "source_evidence_missing": [],
+  "evidence_summary": [
+    "B14 stdout shows all three failures advanced from schema 422 to carrier 409",
+    "router carrier gate requires scenario tag to be present and consistent across scenario_tag, idempotency_key, source_ref, and source_id carriers",
+    "current target payload includes scenario_tag but source_id, source_ref, and idempotency_key still lack scenario-tagged carrier values"
+  ],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py",
+  "recommended_next_task": "TASK-Z030B-16-FIX-CAND002-SECOND",
+  "run_this_task": false,
+  "pytest_run": false,
+  "npm_run": false,
+  "browser_run": false,
+  "build_run": false,
+  "typecheck_run": false,
+  "verify_run": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "cleanup_reset_checkout_stash_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

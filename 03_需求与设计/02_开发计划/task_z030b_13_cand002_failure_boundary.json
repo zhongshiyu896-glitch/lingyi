@@ -1,0 +1,77 @@
+{
+  "task_id": "TASK-Z030B-13-PREP-CAND002-FAILURE-DIAG",
+  "source_task": "TASK-Z030B-12-IMPL",
+  "candidate_id": "Z030-CAND-002",
+  "current_head": "c35ffbb2b19bff7633b3a14a89c3476cae39be1e",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "frozen_command": ".venv/bin/python -m pytest tests/test_warehouse_finished_goods_inbound.py -q",
+  "target_test_path": "07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py",
+  "target_test_dirty_diff": false,
+  "failed_summary": "3 failed, 2 passed, 1 warning in 1.04s",
+  "failed_cases_count": 3,
+  "failed_cases": [
+    {
+      "name": "test_create_finished_goods_draft_candidate_disabled_fail_closed",
+      "observed_status": 422,
+      "expected_status": 400,
+      "difference": "draft payload schema validation failed before candidate-disabled fail-closed branch"
+    },
+    {
+      "name": "test_create_finished_goods_draft_fallback_mode",
+      "observed_status": 422,
+      "expected_status": 201,
+      "difference": "draft payload schema validation failed before fallback create branch"
+    },
+    {
+      "name": "test_create_finished_goods_draft_strict_alloc",
+      "observed_status": 422,
+      "expected_status": 201,
+      "difference": "draft payload schema validation failed before strict allocation create branch"
+    }
+  ],
+  "missing_schema_fields": [
+    "source_ref",
+    "warehouse",
+    "item_code",
+    "operation",
+    "quantity",
+    "business_date",
+    "status_action",
+    "scenario_tag"
+  ],
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py",
+    "07_后端/lingyi_service/app/routers/warehouse.py",
+    "07_后端/lingyi_service/app/services/erpnext_warehouse_adapter.py",
+    "07_后端/lingyi_service/app/models/warehouse.py",
+    "07_后端/lingyi_service/app/schemas/warehouse.py"
+  ],
+  "source_evidence_missing": [],
+  "evidence_summary": [
+    "target test _draft_payload omits required WarehouseStockEntryDraftCreateRequest carrier fields",
+    "WarehouseStockEntryDraftCreateRequest requires source_ref, warehouse, item_code, operation, quantity, business_date, status_action, scenario_tag",
+    "router /stock-entry-drafts binds payload to WarehouseStockEntryDraftCreateRequest before business branch logic"
+  ],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_warehouse_finished_goods_inbound.py",
+  "recommended_next_task": "TASK-Z030B-14-FIX-CAND002",
+  "run_this_task": false,
+  "pytest_run": false,
+  "npm_run": false,
+  "browser_run": false,
+  "build_run": false,
+  "typecheck_run": false,
+  "verify_run": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "cleanup_reset_checkout_stash_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}
