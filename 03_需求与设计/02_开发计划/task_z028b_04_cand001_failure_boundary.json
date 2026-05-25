@@ -1,0 +1,66 @@
+{
+  "task_id": "TASK-Z028B-04-PREP-CAND001-FAILURE-DIAG",
+  "role": "B Engineer",
+  "candidate_id": "Z028-CAND-001",
+  "source_boundary_task": "TASK-Z028B-02-PREP",
+  "source_impl_task": "TASK-Z028B-03-IMPL",
+  "current_head": "abe758cebfa5c3affde9e3632692402227ec80c0",
+  "cached_empty": true,
+  "failed_summary": "2 failed, 5 warnings in 1.12s",
+  "failed_cases": [
+    {
+      "case": "FactoryStatementConfirmCancelTest::test_cancel_allowed_when_only_failed_or_dead_outbox_exists",
+      "expected_status": 200,
+      "observed_status": 409,
+      "failure_point": "tests/test_factory_statement_confirm_cancel.py::_create_confirmed_statement confirm request"
+    },
+    {
+      "case": "FactoryStatementConfirmCancelTest::test_cancel_blocked_when_pending_payable_outbox_exists",
+      "expected_status": 200,
+      "observed_status": 409,
+      "failure_point": "tests/test_factory_statement_confirm_cancel.py::_create_confirmed_statement confirm request"
+    }
+  ],
+  "observed_statuses": [409, 409],
+  "expected_statuses": [200, 200],
+  "failure_pattern": "Both cases fail before the cancel assertions because the shared helper creates a draft successfully, then posts confirm with an old payload that lacks the current factory-statement local write-chain carriers.",
+  "readonly_findings": [
+    "FactoryStatementApiBase._create_payload already normalizes create idempotency_key with scenario_tag and includes scenario_tag.",
+    "FactoryStatementConfirmCancelTest._create_confirmed_statement posts confirm with only idempotency_key and remark.",
+    "factory_statement router confirm endpoint validates local write gate with payload.idempotency_key and payload.scenario_tag.",
+    "factory_statement router then requires company, supplier, and statement_no payload values to match the persisted statement header.",
+    "FactoryStatementConfirmRequest schema contains scenario_tag, company, supplier, and statement_no, so the missing fields are test payload/fixture drift rather than a required app boundary change."
+  ],
+  "readonly_source_evidence_paths": [
+    "03_需求与设计/02_开发计划/task_z028b_02_cand001_boundary.json",
+    "03_需求与设计/02_开发计划/task_z028b_03_cand001_result.json",
+    "03_需求与设计/02_开发计划/task_z028b_03_cand001_stdout.txt",
+    "07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py",
+    "07_后端/lingyi_service/tests/test_factory_statement_api.py",
+    "07_后端/lingyi_service/app/routers/factory_statement.py",
+    "07_后端/lingyi_service/app/services/factory_statement_service.py",
+    "07_后端/lingyi_service/app/models/factory_statement.py",
+    "07_后端/lingyi_service/app/schemas/factory_statement.py"
+  ],
+  "source_evidence_missing": [],
+  "target_test_path": "07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py",
+  "target_test_dirty_diff": false,
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py",
+  "recommended_fix_boundary": "Update only the confirm/cancel test payload fixtures to satisfy current factory-statement scenario_tag/idempotency and chain-carrier contract while preserving the original 200/409 confirm-cancel semantics.",
+  "next_task": "TASK-Z028B-05-FIX-CAND001",
+  "run_this_task": false,
+  "git_diff_check_pass": true,
+  "gates": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_performed": false,
+    "tag_performed": false,
+    "pr_performed": false,
+    "release_performed": false,
+    "remote_lifecycle_parked": true,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false
+  }
+}

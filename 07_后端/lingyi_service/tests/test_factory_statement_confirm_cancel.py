@@ -16,9 +16,34 @@ class FactoryStatementConfirmCancelTest(FactoryStatementApiBase):
     """Validate cancel vs payable outbox mutual exclusion."""
 
     @staticmethod
-    def _payable_payload(*, idempotency_key: str) -> dict[str, str]:
+    def _scoped_idempotency_key(idempotency_key: str) -> str:
+        scenario_tag = FactoryStatementApiBase._SCENARIO_TAG
+        if scenario_tag in idempotency_key:
+            return idempotency_key
+        return f"{scenario_tag}-{idempotency_key}"
+
+    def _statement_scope(self, *, statement_id: int) -> dict[str, str]:
+        with self.SessionLocal() as session:
+            statement = session.query(LyFactoryStatement).filter(LyFactoryStatement.id == statement_id).one()
+            return {
+                "scenario_tag": self._SCENARIO_TAG,
+                "company": str(statement.company),
+                "supplier": str(statement.supplier),
+                "statement_no": str(statement.statement_no),
+                "source_type": str(statement.source_type),
+            }
+
+    def _payable_payload(self, *, statement_id: int, idempotency_key: str) -> dict[str, str]:
+        statement_scope = self._statement_scope(statement_id=statement_id)
         return {
-            "idempotency_key": idempotency_key,
+            "idempotency_key": self._scoped_idempotency_key(idempotency_key),
+            "scenario_tag": statement_scope["scenario_tag"],
+            "company": statement_scope["company"],
+            "supplier": statement_scope["supplier"],
+            "statement_no": statement_scope["statement_no"],
+            "source_type": statement_scope["source_type"],
+            "source_ref": statement_scope["statement_no"],
+            "status_action": "payable_draft",
             "payable_account": "2202 - AP - C",
             "cost_center": "Main - C",
             "posting_date": "2026-04-15",
@@ -33,11 +58,19 @@ class FactoryStatementConfirmCancelTest(FactoryStatementApiBase):
         )
         self.assertEqual(created.status_code, 200)
         statement_id = int(created.json()["data"]["statement_id"])
+        statement_scope = self._statement_scope(statement_id=statement_id)
 
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": f"{idempotency_key}-confirm", "remark": "ok"},
+            json={
+                "idempotency_key": self._scoped_idempotency_key(f"{idempotency_key}-confirm"),
+                "remark": "ok",
+                "scenario_tag": statement_scope["scenario_tag"],
+                "company": statement_scope["company"],
+                "supplier": statement_scope["supplier"],
+                "statement_no": statement_scope["statement_no"],
+            },
         )
         self.assertEqual(confirmed.status_code, 200)
         return statement_id
@@ -51,7 +84,7 @@ class FactoryStatementConfirmCancelTest(FactoryStatementApiBase):
             response = self.client.post(
                 f"/api/factory-statements/{statement_id}/payable-draft",
                 headers=self._headers(),
-                json=self._payable_payload(idempotency_key=idempotency_key),
+                json=self._payable_payload(statement_id=statement_id, idempotency_key=idempotency_key),
             )
         self.assertEqual(response.status_code, 200)
         return int(response.json()["data"]["payable_outbox_id"])
@@ -59,11 +92,19 @@ class FactoryStatementConfirmCancelTest(FactoryStatementApiBase):
     def test_cancel_blocked_when_pending_payable_outbox_exists(self) -> None:
         statement_id = self._create_confirmed_statement(idempotency_key="idem-cancel-blocked-pending")
         self._create_pending_outbox(statement_id=statement_id, idempotency_key="idem-cancel-blocked-pending-outbox")
+        statement_scope = self._statement_scope(statement_id=statement_id)
 
         cancelled = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-blocked-pending-op", "reason": "must deny"},
+            json={
+                "idempotency_key": self._scoped_idempotency_key("idem-cancel-blocked-pending-op"),
+                "reason": f"{self._SCENARIO_TAG}-must deny",
+                "scenario_tag": statement_scope["scenario_tag"],
+                "company": statement_scope["company"],
+                "supplier": statement_scope["supplier"],
+                "statement_no": statement_scope["statement_no"],
+            },
         )
         self.assertEqual(cancelled.status_code, 409)
         self.assertEqual(cancelled.json()["code"], "FACTORY_STATEMENT_PAYABLE_OUTBOX_ACTIVE")
@@ -85,6 +126,7 @@ class FactoryStatementConfirmCancelTest(FactoryStatementApiBase):
     def test_cancel_allowed_when_only_failed_or_dead_outbox_exists(self) -> None:
         statement_id = self._create_confirmed_statement(idempotency_key="idem-cancel-allow-failed")
         outbox_id = self._create_pending_outbox(statement_id=statement_id, idempotency_key="idem-cancel-allow-failed-outbox")
+        statement_scope = self._statement_scope(statement_id=statement_id)
 
         with self.SessionLocal() as session:
             row = session.query(LyFactoryStatementPayableOutbox).filter(LyFactoryStatementPayableOutbox.id == outbox_id).one()
@@ -94,7 +136,14 @@ class FactoryStatementConfirmCancelTest(FactoryStatementApiBase):
         cancelled = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-allow-failed-op", "reason": "allow"},
+            json={
+                "idempotency_key": self._scoped_idempotency_key("idem-cancel-allow-failed-op"),
+                "reason": f"{self._SCENARIO_TAG}-allow",
+                "scenario_tag": statement_scope["scenario_tag"],
+                "company": statement_scope["company"],
+                "supplier": statement_scope["supplier"],
+                "statement_no": statement_scope["statement_no"],
+            },
         )
         self.assertEqual(cancelled.status_code, 200)
         self.assertEqual(cancelled.json()["code"], "0")

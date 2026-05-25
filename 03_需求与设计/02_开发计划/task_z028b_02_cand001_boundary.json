@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-Z028B-02-PREP",
+  "role": "B Engineer",
+  "candidate_id": "Z028-CAND-001",
+  "source_task": "TASK-Z028B-01-PREP",
+  "current_head": "abe758cebfa5c3affde9e3632692402227ec80c0",
+  "cached_empty": true,
+  "candidate_pool_path": "03_需求与设计/02_开发计划/task_z028b_01_candidate_pool.json",
+  "candidate_pool_selected_candidate": "Z028-CAND-001",
+  "candidate_pool_next_task": "TASK-Z028B-02-PREP",
+  "candidate_original_fields": {
+    "candidate_id": "Z028-CAND-001",
+    "module": "factory_statement",
+    "risk": "LOW",
+    "target_test": "07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_factory_statement_confirm_cancel.py -q",
+    "recommended_workdir": "07_后端/lingyi_service",
+    "source_evidence_paths": [
+      "07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py",
+      "07_后端/lingyi_service/tests/test_factory_statement_api.py",
+      "07_后端/lingyi_service/app/routers/factory_statement.py",
+      "07_后端/lingyi_service/app/services/factory_statement_service.py",
+      "07_后端/lingyi_service/app/models/factory_statement.py",
+      "07_后端/lingyi_service/app/schemas/factory_statement.py"
+    ],
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "reuse_check": {
+      "reused_from_Z015_Z027": false,
+      "matched_prior_entries": []
+    },
+    "status": "NEXT_PREP_SELECTED"
+  },
+  "frozen_command": ".venv/bin/python -m pytest tests/test_factory_statement_confirm_cancel.py -q",
+  "frozen_workdir": "07_后端/lingyi_service",
+  "target_test_path": "07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py",
+    "07_后端/lingyi_service/tests/test_factory_statement_api.py",
+    "07_后端/lingyi_service/app/routers/factory_statement.py",
+    "07_后端/lingyi_service/app/services/factory_statement_service.py",
+    "07_后端/lingyi_service/app/models/factory_statement.py",
+    "07_后端/lingyi_service/app/schemas/factory_statement.py"
+  ],
+  "source_evidence_missing": [],
+  "command_boundary": {
+    "from_candidate_pool": true,
+    "single_file_backend_readonly_pytest": true,
+    "pytest_executed_this_task": false
+  },
+  "next_task": "TASK-Z028B-03-IMPL",
+  "run_this_task": false,
+  "git_diff_check_pass": true,
+  "gates": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_performed": false,
+    "tag_performed": false,
+    "pr_performed": false,
+    "release_performed": false,
+    "remote_lifecycle_parked": true,
+    "production_readback_ready": false,
+    "go_live_ready": false,
+    "project_completion_claimed": false
+  }
+}

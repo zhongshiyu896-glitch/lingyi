@@ -1,0 +1,28 @@
+field	value
+task_id	TASK-Z028B-04-PREP-CAND001-FAILURE-DIAG
+candidate_id	Z028-CAND-001
+source_boundary_task	TASK-Z028B-02-PREP
+source_impl_task	TASK-Z028B-03-IMPL
+current_head	abe758cebfa5c3affde9e3632692402227ec80c0
+cached_empty	true
+failed_summary	2 failed, 5 warnings in 1.12s
+failed_cases	FactoryStatementConfirmCancelTest::test_cancel_allowed_when_only_failed_or_dead_outbox_exists; FactoryStatementConfirmCancelTest::test_cancel_blocked_when_pending_payable_outbox_exists
+observed_statuses	[409,409]
+expected_statuses	[200,200]
+failure_pattern	confirm helper payload missing current scenario_tag/idempotency and company/supplier/statement_no chain carriers
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py
+recommended_next_task	TASK-Z028B-05-FIX-CAND001
+source_evidence_missing	[]
+target_test_dirty_diff	false
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

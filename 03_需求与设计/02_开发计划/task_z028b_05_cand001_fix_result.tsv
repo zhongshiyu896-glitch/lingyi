@@ -1,0 +1,28 @@
+field	value
+task_id	TASK-Z028B-05-FIX-CAND001
+candidate_id	Z028-CAND-001
+source_failure_task	TASK-Z028B-04-PREP-CAND001-FAILURE-DIAG
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+fixed_file	07_后端/lingyi_service/tests/test_factory_statement_confirm_cancel.py
+command	.venv/bin/python -m pytest tests/test_factory_statement_confirm_cancel.py -q
+workdir	07_后端/lingyi_service
+command_run_count	1
+exit_code	0
+result	PASS
+pytest_summary	2 passed, 10 warnings in 1.10s
+assertions_preserved	true
+skip_xfail_deleted_cases	false
+backend_app_changed	false
+frontend_changed	false
+unrelated_tests_changed	false
+cached_empty	true
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false
