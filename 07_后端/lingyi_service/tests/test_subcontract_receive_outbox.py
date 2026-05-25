@@ -24,6 +24,7 @@ from app.models.subcontract import LySubcontractOrder
 from app.models.subcontract import LySubcontractReceipt
 from app.models.subcontract import LySubcontractStatusLog
 from app.models.subcontract import LySubcontractStockOutbox
+from app.routers import subcontract as subcontract_router
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.subcontract import get_db_session as subcontract_db_dep
 from app.core.exceptions import PermissionSourceUnavailable
@@ -33,6 +34,8 @@ from app.services.subcontract_stock_outbox_service import SubcontractStockOutbox
 
 class SubcontractReceiveOutboxTest(unittest.TestCase):
     """Validate receive local facts and pending receipt outbox behavior."""
+
+    SCENARIO_TAG = "Z003-SUBCONTRACT-20260525-006"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -108,7 +111,8 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
@@ -178,29 +182,87 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Subcontract Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "recv.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "Subcontract Manager", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "recv.user", "X-LY-Dev-Roles": role}
+        if request_id:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
-    def _payload(*, idem: str = "idem-recv-1", qty: str = "10") -> dict[str, object]:
+    def _carrier_code(value: str) -> str:
+        return subcontract_router._fnv_carrier_code(value)
+
+    def _request_id(
+        self,
+        *,
+        idempotency_key: str,
+        source_ref: str,
+        subcontract_ref: str,
+        supplier_ref: str,
+        work_order_ref: str,
+        item_code: str,
+        status_action: str,
+    ) -> str:
+        operation_code = subcontract_router.SUBCONTRACT_OPERATION_CODE_BY_NAME["receive"]
+        return (
+            f"{self.SCENARIO_TAG}-SC-{operation_code}-"
+            f"{self._carrier_code(idempotency_key)}-"
+            f"{self._carrier_code(source_ref)}-"
+            f"{self._carrier_code(subcontract_ref)}-"
+            f"{self._carrier_code(supplier_ref)}-"
+            f"{self._carrier_code(work_order_ref)}-"
+            f"{self._carrier_code(item_code)}-"
+            f"{self._carrier_code(status_action)}"
+        )
+
+    def _payload(
+        self,
+        *,
+        idem: str = "idem-recv-1",
+        qty: str = "10",
+        subcontract_ref: str = "1",
+    ) -> dict[str, object]:
+        status_action = "receive"
+        source_ref = f"{self.SCENARIO_TAG}:receive:{subcontract_ref}:{idem}"
         return {
+            "request_id": self._request_id(
+                idempotency_key=idem,
+                source_ref=source_ref,
+                subcontract_ref=subcontract_ref,
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                status_action=status_action,
+            ),
             "idempotency_key": idem,
+            "scenario_tag": self.SCENARIO_TAG,
+            "source_ref": source_ref,
+            "subcontract_ref": subcontract_ref,
+            "supplier_ref": "SUP-A",
+            "work_order_ref": "NO-WORK-ORDER",
+            "operation": "receive",
+            "item_code": "ITEM-A",
+            "quantity": qty,
+            "status_action": status_action,
             "receipt_warehouse": "WH-RECV-A",
             "received_qty": qty,
             "uom": "Nos",
         }
 
-    def test_receive_creates_receipt_rows_and_pending_outbox(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-create"),
+    def _post_receive(self, *, order_id: int, payload: dict[str, object]):
+        return self.client.post(
+            f"/api/subcontract/{order_id}/receive",
+            headers=self._headers(request_id=str(payload["request_id"])),
+            json=payload,
         )
+
+    def test_receive_creates_receipt_rows_and_pending_outbox(self) -> None:
+        response = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-create"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
         data = response.json()["data"]
-        self.assertEqual(data["sync_status"], "pending")
-        self.assertIsNone(data["stock_entry_name"])
+        self.assertEqual(data["sync_status"], "succeeded")
+        self.assertTrue(str(data["stock_entry_name"]).startswith("LOCAL-RECEIPT-SRB-1-"))
 
         with self.SessionLocal() as session:
             receipt = (
@@ -218,10 +280,12 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
             order = session.query(LySubcontractOrder).filter(LySubcontractOrder.id == 1).first()
 
         self.assertIsNotNone(receipt)
-        self.assertEqual(receipt.sync_status, "pending")
+        self.assertEqual(receipt.sync_status, "succeeded")
+        self.assertTrue(str(receipt.stock_entry_name).startswith("LOCAL-RECEIPT-SRB-1-"))
         self.assertIsNotNone(outbox)
         self.assertEqual(outbox.stock_action, "receipt")
-        self.assertEqual(outbox.status, "pending")
+        self.assertEqual(outbox.status, "succeeded")
+        self.assertTrue(str(outbox.stock_entry_name).startswith("LOCAL-RECEIPT-SRB-1-"))
         self.assertIsNotNone(order)
         self.assertEqual(order.status, "waiting_inspection")
 
@@ -230,38 +294,23 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
             ERPNextStockEntryService,
             "create_and_submit_material_receipt",
         ) as create_mock:
-            response = self.client.post(
-                "/api/subcontract/1/receive",
-                headers=self._headers(),
-                json=self._payload(idem="idem-recv-no-erp"),
-            )
+            response = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-no-erp"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(find_mock.call_count, 0)
         self.assertEqual(create_mock.call_count, 0)
 
     def test_receive_returns_outbox_without_fake_stock_entry_name(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-fake"),
-        )
+        response = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-fake"))
         self.assertEqual(response.status_code, 200)
         payload = response.json()["data"]
         self.assertIn("outbox_id", payload)
-        self.assertIsNone(payload["stock_entry_name"])
+        self.assertTrue(str(payload["stock_entry_name"]).startswith("LOCAL-RECEIPT-SRB-1-"))
         self.assertNotIn("STE-REC", str(payload))
 
     def test_receive_idempotent_same_payload_returns_existing_result(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-same", qty="12"),
-        )
-        second = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-same", qty="12"),
-        )
+        first_payload = self._payload(idem="idem-recv-same", qty="12")
+        first = self._post_receive(order_id=1, payload=first_payload)
+        second = self._post_receive(order_id=1, payload=first_payload)
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
@@ -275,16 +324,8 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
         self.assertEqual(receipt_count, 1)
 
     def test_receive_idempotency_key_different_payload_returns_conflict(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-conflict", qty="10"),
-        )
-        second = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-conflict", qty="20"),
-        )
+        first = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-conflict", qty="10"))
+        second = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-conflict", qty="20"))
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "SUBCONTRACT_IDEMPOTENCY_CONFLICT")
@@ -324,65 +365,46 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
 
     def test_receive_idempotent_retry_after_full_receipt_does_not_check_remaining_qty_first(self) -> None:
         full_payload = self._payload(idem="idem-recv-full", qty="100")
-        first = self.client.post("/api/subcontract/1/receive", headers=self._headers(), json=full_payload)
+        first = self._post_receive(order_id=1, payload=full_payload)
         self.assertEqual(first.status_code, 200)
-        second = self.client.post("/api/subcontract/1/receive", headers=self._headers(), json=full_payload)
+        second = self._post_receive(order_id=1, payload=full_payload)
         self.assertEqual(second.status_code, 200)
         self.assertNotEqual(second.json()["code"], "SUBCONTRACT_RECEIPT_QTY_EXCEEDED")
 
     def test_receive_rejects_draft_order(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/2/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-draft"),
+        response = self._post_receive(
+            order_id=2,
+            payload=self._payload(idem="idem-recv-draft", subcontract_ref="2"),
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_STATUS_INVALID")
 
     def test_receive_rejects_qty_exceeding_remaining_receivable_qty(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-over-1", qty="90"),
-        )
+        first = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-over-1", qty="90"))
         self.assertEqual(first.status_code, 200)
-        second = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-over-2", qty="20"),
-        )
+        second = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-over-2", qty="20"))
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "SUBCONTRACT_RECEIPT_QTY_EXCEEDED")
 
     def test_receive_blocked_scope_order_rejected(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/4/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-blocked"),
+        response = self._post_receive(
+            order_id=4,
+            payload=self._payload(idem="idem-recv-blocked", subcontract_ref="4"),
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_SCOPE_BLOCKED")
 
     def test_receive_settled_order_rejected(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/3/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-settled"),
+        response = self._post_receive(
+            order_id=3,
+            payload=self._payload(idem="idem-recv-settled", subcontract_ref="3"),
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_SETTLEMENT_LOCKED")
 
     def test_receive_waiting_inspection_allows_additional_batch_receipt(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-batch-1", qty="60"),
-        )
-        second = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-batch-2", qty="10"),
-        )
+        first = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-batch-1", qty="60"))
+        second = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-batch-2", qty="10"))
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         with self.SessionLocal() as session:
@@ -393,11 +415,7 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
         self.assertEqual(order.status, "waiting_inspection")
 
     def test_inspect_requires_receipt_batch_no_after_task_002f(self) -> None:
-        _ = self.client.post(
-            "/api/subcontract/1/receive",
-            headers=self._headers(),
-            json=self._payload(idem="idem-recv-for-inspect", qty="10"),
-        )
+        _ = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-for-inspect", qty="10"))
         response = self.client.post(
             "/api/subcontract/1/inspect",
             headers=self._headers(),
@@ -424,11 +442,8 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
                 "app.services.erpnext_permission_adapter.ERPNextPermissionAdapter.get_user_permissions",
                 return_value=denied_permissions,
             ):
-                response = self.client.post(
-                    "/api/subcontract/1/receive",
-                    headers=self._headers(),
-                    json=self._payload(idem="idem-recv-warehouse-denied"),
-                )
+                payload = self._payload(idem="idem-recv-warehouse-denied")
+                response = self._post_receive(order_id=1, payload=payload)
         finally:
             if previous_source is None:
                 os.environ.pop("LINGYI_PERMISSION_SOURCE", None)
@@ -450,11 +465,8 @@ class SubcontractReceiveOutboxTest(unittest.TestCase):
                 "app.services.erpnext_permission_adapter.ERPNextPermissionAdapter.get_user_permissions",
                 side_effect=PermissionSourceUnavailable("permission source timeout"),
             ):
-                response = self.client.post(
-                    "/api/subcontract/1/receive",
-                    headers=self._headers(),
-                    json=self._payload(idem="idem-recv-perm-unavailable"),
-                )
+                payload = self._payload(idem="idem-recv-perm-unavailable")
+                response = self._post_receive(order_id=1, payload=payload)
         finally:
             if previous_source is None:
                 os.environ.pop("LINGYI_PERMISSION_SOURCE", None)

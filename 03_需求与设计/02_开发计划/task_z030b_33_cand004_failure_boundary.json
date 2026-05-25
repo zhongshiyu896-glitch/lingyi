@@ -1,0 +1,135 @@
+{
+  "task_id": "TASK-Z030B-33-PREP-CAND004-FAILURE-DIAG",
+  "source_task": "TASK-Z030B-32-IMPL",
+  "source_boundary_task": "TASK-Z030B-31-PREP",
+  "candidate_id": "Z030-CAND-004",
+  "current_head": "d892457a8612122c70ef96e851f72e418baa37b9",
+  "frozen_command": ".venv/bin/python -m pytest tests/test_subcontract_receive_outbox.py -q",
+  "failed_summary": "13 failed, 2 passed, 1 warning in 1.21s",
+  "failed_cases_count": 13,
+  "failed_cases": [
+    "test_receive_blocked_scope_order_rejected",
+    "test_receive_creates_receipt_rows_and_pending_outbox",
+    "test_receive_does_not_call_erpnext_before_commit",
+    "test_receive_forbidden_when_receipt_warehouse_not_allowed",
+    "test_receive_idempotency_key_different_payload_returns_conflict",
+    "test_receive_idempotent_retry_after_full_receipt_does_not_check_remaining_qty_first",
+    "test_receive_idempotent_same_payload_returns_existing_result",
+    "test_receive_permission_source_unavailable_fails_closed",
+    "test_receive_rejects_draft_order",
+    "test_receive_rejects_qty_exceeding_remaining_receivable_qty",
+    "test_receive_returns_outbox_without_fake_stock_entry_name",
+    "test_receive_settled_order_rejected",
+    "test_receive_waiting_inspection_allows_additional_batch_receipt"
+  ],
+  "assertion_status_differences": [
+    {
+      "case": "test_receive_blocked_scope_order_rejected",
+      "expected": "409 SUBCONTRACT_SCOPE_BLOCKED",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT"
+    },
+    {
+      "case": "test_receive_creates_receipt_rows_and_pending_outbox",
+      "expected": "200",
+      "observed": "409"
+    },
+    {
+      "case": "test_receive_does_not_call_erpnext_before_commit",
+      "expected": "200",
+      "observed": "409"
+    },
+    {
+      "case": "test_receive_forbidden_when_receipt_warehouse_not_allowed",
+      "expected": "403 AUTH_FORBIDDEN",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT"
+    },
+    {
+      "case": "test_receive_idempotency_key_different_payload_returns_conflict",
+      "expected": "first 200, second 409 SUBCONTRACT_IDEMPOTENCY_CONFLICT",
+      "observed": "409 before first success branch"
+    },
+    {
+      "case": "test_receive_idempotent_retry_after_full_receipt_does_not_check_remaining_qty_first",
+      "expected": "200",
+      "observed": "409"
+    },
+    {
+      "case": "test_receive_idempotent_same_payload_returns_existing_result",
+      "expected": "200",
+      "observed": "409"
+    },
+    {
+      "case": "test_receive_permission_source_unavailable_fails_closed",
+      "expected": "503 PERMISSION_SOURCE_UNAVAILABLE",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT"
+    },
+    {
+      "case": "test_receive_rejects_draft_order",
+      "expected": "409 SUBCONTRACT_STATUS_INVALID",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT"
+    },
+    {
+      "case": "test_receive_rejects_qty_exceeding_remaining_receivable_qty",
+      "expected": "first 200, second 409 SUBCONTRACT_RECEIPT_QTY_EXCEEDED",
+      "observed": "409 before first success branch"
+    },
+    {
+      "case": "test_receive_returns_outbox_without_fake_stock_entry_name",
+      "expected": "200",
+      "observed": "409"
+    },
+    {
+      "case": "test_receive_settled_order_rejected",
+      "expected": "409 SUBCONTRACT_SETTLEMENT_LOCKED",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT"
+    },
+    {
+      "case": "test_receive_waiting_inspection_allows_additional_batch_receipt",
+      "expected": "200",
+      "observed": "409"
+    }
+  ],
+  "observed_statuses": [
+    409
+  ],
+  "expected_statuses": [
+    200,
+    403,
+    409,
+    503
+  ],
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_subcontract_receive_outbox.py",
+    "07_后端/lingyi_service/app/routers/subcontract.py",
+    "07_后端/lingyi_service/app/schemas/subcontract.py",
+    "07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py",
+    "07_后端/lingyi_service/app/services/erpnext_stock_entry_service.py",
+    "07_后端/lingyi_service/app/models/subcontract.py"
+  ],
+  "source_evidence_missing": [],
+  "target_test_dirty_diff": false,
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "classification_reason": "Target test payload is stale against ReceiveRequest/SubcontractWriteCarrierBase and local write-gate carrier contract. Current router maps ReceiveRequest validation failure to SUBCONTRACT_STOCK_OUTBOX_CONFLICT, so stale fixture data blocks the original 200/403/409/503 receive business branches.",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_subcontract_receive_outbox.py",
+  "recommended_next_task": "TASK-Z030B-34-FIX-CAND004",
+  "run_this_task": false,
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "pytest_performed": false,
+  "npm_performed": false,
+  "browser_performed": false,
+  "build_performed": false,
+  "typecheck_performed": false,
+  "verify_performed": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "cleanup_reset_checkout_stash_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

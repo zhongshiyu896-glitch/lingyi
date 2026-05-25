@@ -1,0 +1,56 @@
+..F.........F..                                                          [100%]
+=================================== FAILURES ===================================
+_ SubcontractReceiveOutboxTest.test_receive_creates_receipt_rows_and_pending_outbox _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_creates_receipt_rows_and_pending_outbox>
+
+    def test_receive_creates_receipt_rows_and_pending_outbox(self) -> None:
+        response = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-create"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+        data = response.json()["data"]
+>       self.assertEqual(data["sync_status"], "pending")
+E       AssertionError: 'succeeded' != 'pending'
+E       - succeeded
+E       + pending
+
+tests/test_subcontract_receive_outbox.py:264: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_returns_outbox_without_fake_stock_entry_name _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_returns_outbox_without_fake_stock_entry_name>
+
+    def test_receive_returns_outbox_without_fake_stock_entry_name(self) -> None:
+        response = self._post_receive(order_id=1, payload=self._payload(idem="idem-recv-fake"))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["data"]
+        self.assertIn("outbox_id", payload)
+>       self.assertIsNone(payload["stock_entry_name"])
+E       AssertionError: 'LOCAL-RECEIPT-SRB-1-20260525121250222151' is not None
+
+tests/test_subcontract_receive_outbox.py:305: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_inspect_requires_receipt_batch_no_after_task_002f
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_subcontract_receive_outbox.py: 10 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:1746: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_subcontract_receive_outbox.py: 10 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py:242: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_subcontract_receive_outbox.py: 10 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:642: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    received_at=datetime.utcnow(),
+
+tests/test_subcontract_receive_outbox.py: 10 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/subcontract_service.py:666: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.updated_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_creates_receipt_rows_and_pending_outbox
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_returns_outbox_without_fake_stock_entry_name
+2 failed, 13 passed, 41 warnings in 1.15s

@@ -1,0 +1,265 @@
+.FFF.FFFFFFFFFF                                                          [100%]
+=================================== FAILURES ===================================
+____ SubcontractReceiveOutboxTest.test_receive_blocked_scope_order_rejected ____
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_blocked_scope_order_rejected>
+
+    def test_receive_blocked_scope_order_rejected(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/4/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-blocked"),
+        )
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_SCOPE_BLOCKED")
+E       AssertionError: 'SUBCONTRACT_STOCK_OUTBOX_CONFLICT' != 'SUBCONTRACT_SCOPE_BLOCKED'
+E       - SUBCONTRACT_STOCK_OUTBOX_CONFLICT
+E       + SUBCONTRACT_SCOPE_BLOCKED
+
+tests/test_subcontract_receive_outbox.py:364: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_creates_receipt_rows_and_pending_outbox _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_creates_receipt_rows_and_pending_outbox>
+
+    def test_receive_creates_receipt_rows_and_pending_outbox(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-create"),
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_receive_outbox.py:199: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_does_not_call_erpnext_before_commit _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_does_not_call_erpnext_before_commit>
+
+    def test_receive_does_not_call_erpnext_before_commit(self) -> None:
+        with patch.object(ERPNextStockEntryService, "find_by_event_key") as find_mock, patch.object(
+            ERPNextStockEntryService,
+            "create_and_submit_material_receipt",
+        ) as create_mock:
+            response = self.client.post(
+                "/api/subcontract/1/receive",
+                headers=self._headers(),
+                json=self._payload(idem="idem-recv-no-erp"),
+            )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_receive_outbox.py:238: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_forbidden_when_receipt_warehouse_not_allowed _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_forbidden_when_receipt_warehouse_not_allowed>
+
+    def test_receive_forbidden_when_receipt_warehouse_not_allowed(self) -> None:
+        from app.services.erpnext_permission_adapter import UserPermissionResult
+
+        previous_source = os.environ.get("LINGYI_PERMISSION_SOURCE")
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        denied_permissions = UserPermissionResult(
+            source_available=True,
+            unrestricted=False,
+            allowed_items={"ITEM-A"},
+            allowed_companies={"COMP-A"},
+            allowed_suppliers={"SUP-A"},
+            allowed_warehouses={"WH-NOT-ALLOWED"},
+        )
+        try:
+            with patch(
+                "app.services.erpnext_permission_adapter.ERPNextPermissionAdapter.get_user_permissions",
+                return_value=denied_permissions,
+            ):
+                response = self.client.post(
+                    "/api/subcontract/1/receive",
+                    headers=self._headers(),
+                    json=self._payload(idem="idem-recv-warehouse-denied"),
+                )
+        finally:
+            if previous_source is None:
+                os.environ.pop("LINGYI_PERMISSION_SOURCE", None)
+            else:
+                os.environ["LINGYI_PERMISSION_SOURCE"] = previous_source
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 409 != 403
+
+tests/test_subcontract_receive_outbox.py:437: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_idempotency_key_different_payload_returns_conflict _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_idempotency_key_different_payload_returns_conflict>
+
+    def test_receive_idempotency_key_different_payload_returns_conflict(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-conflict", qty="10"),
+        )
+        second = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-conflict", qty="20"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_receive_outbox.py:288: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_idempotent_retry_after_full_receipt_does_not_check_remaining_qty_first _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_idempotent_retry_after_full_receipt_does_not_check_remaining_qty_first>
+
+    def test_receive_idempotent_retry_after_full_receipt_does_not_check_remaining_qty_first(self) -> None:
+        full_payload = self._payload(idem="idem-recv-full", qty="100")
+        first = self.client.post("/api/subcontract/1/receive", headers=self._headers(), json=full_payload)
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_receive_outbox.py:328: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_idempotent_same_payload_returns_existing_result _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_idempotent_same_payload_returns_existing_result>
+
+    def test_receive_idempotent_same_payload_returns_existing_result(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-same", qty="12"),
+        )
+        second = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-same", qty="12"),
+        )
+
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_receive_outbox.py:266: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_permission_source_unavailable_fails_closed _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_permission_source_unavailable_fails_closed>
+
+    def test_receive_permission_source_unavailable_fails_closed(self) -> None:
+        previous_source = os.environ.get("LINGYI_PERMISSION_SOURCE")
+        os.environ["LINGYI_PERMISSION_SOURCE"] = "erpnext"
+        try:
+            with patch(
+                "app.services.erpnext_permission_adapter.ERPNextPermissionAdapter.get_user_permissions",
+                side_effect=PermissionSourceUnavailable("permission source timeout"),
+            ):
+                response = self.client.post(
+                    "/api/subcontract/1/receive",
+                    headers=self._headers(),
+                    json=self._payload(idem="idem-recv-perm-unavailable"),
+                )
+        finally:
+            if previous_source is None:
+                os.environ.pop("LINGYI_PERMISSION_SOURCE", None)
+            else:
+                os.environ["LINGYI_PERMISSION_SOURCE"] = previous_source
+>       self.assertEqual(response.status_code, 503)
+E       AssertionError: 409 != 503
+
+tests/test_subcontract_receive_outbox.py:463: AssertionError
+________ SubcontractReceiveOutboxTest.test_receive_rejects_draft_order _________
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_rejects_draft_order>
+
+    def test_receive_rejects_draft_order(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/2/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-draft"),
+        )
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_STATUS_INVALID")
+E       AssertionError: 'SUBCONTRACT_STOCK_OUTBOX_CONFLICT' != 'SUBCONTRACT_STATUS_INVALID'
+E       - SUBCONTRACT_STOCK_OUTBOX_CONFLICT
+E       + SUBCONTRACT_STATUS_INVALID
+
+tests/test_subcontract_receive_outbox.py:340: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_rejects_qty_exceeding_remaining_receivable_qty _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_rejects_qty_exceeding_remaining_receivable_qty>
+
+    def test_receive_rejects_qty_exceeding_remaining_receivable_qty(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-over-1", qty="90"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_receive_outbox.py:348: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_returns_outbox_without_fake_stock_entry_name _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_returns_outbox_without_fake_stock_entry_name>
+
+    def test_receive_returns_outbox_without_fake_stock_entry_name(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-fake"),
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_receive_outbox.py:248: AssertionError
+_______ SubcontractReceiveOutboxTest.test_receive_settled_order_rejected _______
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_settled_order_rejected>
+
+    def test_receive_settled_order_rejected(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/3/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-settled"),
+        )
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_SETTLEMENT_LOCKED")
+E       AssertionError: 'SUBCONTRACT_STOCK_OUTBOX_CONFLICT' != 'SUBCONTRACT_SETTLEMENT_LOCKED'
+E       - SUBCONTRACT_STOCK_OUTBOX_CONFLICT
+E       + SUBCONTRACT_SETTLEMENT_LOCKED
+
+tests/test_subcontract_receive_outbox.py:373: AssertionError
+_ SubcontractReceiveOutboxTest.test_receive_waiting_inspection_allows_additional_batch_receipt _
+
+self = <tests.test_subcontract_receive_outbox.SubcontractReceiveOutboxTest testMethod=test_receive_waiting_inspection_allows_additional_batch_receipt>
+
+    def test_receive_waiting_inspection_allows_additional_batch_receipt(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-batch-1", qty="60"),
+        )
+        second = self.client.post(
+            "/api/subcontract/1/receive",
+            headers=self._headers(),
+            json=self._payload(idem="idem-recv-batch-2", qty="10"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_receive_outbox.py:386: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_inspect_requires_receipt_batch_no_after_task_002f
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_blocked_scope_order_rejected
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_creates_receipt_rows_and_pending_outbox
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_does_not_call_erpnext_before_commit
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_forbidden_when_receipt_warehouse_not_allowed
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_idempotency_key_different_payload_returns_conflict
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_idempotent_retry_after_full_receipt_does_not_check_remaining_qty_first
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_idempotent_same_payload_returns_existing_result
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_permission_source_unavailable_fails_closed
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_rejects_draft_order
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_rejects_qty_exceeding_remaining_receivable_qty
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_returns_outbox_without_fake_stock_entry_name
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_settled_order_rejected
+FAILED tests/test_subcontract_receive_outbox.py::SubcontractReceiveOutboxTest::test_receive_waiting_inspection_allows_additional_batch_receipt
+13 failed, 2 passed, 1 warning in 1.21s

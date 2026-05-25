@@ -1,0 +1,29 @@
+field	value
+task_id	TASK-Z030B-35-PREP-CAND004-SECOND-FAILURE-DIAG
+source_task	TASK-Z030B-34-FIX-CAND004
+candidate_id	Z030-CAND-004
+current_head	d892457a8612122c70ef96e851f72e418baa37b9
+cached_empty	true
+diff_check_pass	true
+b34_result	FAIL
+b34_command_run_count	1
+b34_pytest_summary	2 failed, 13 passed, 41 warnings in 1.15s
+remaining_failed_cases_count	2
+remaining_failed_cases	test_receive_creates_receipt_rows_and_pending_outbox;test_receive_returns_outbox_without_fake_stock_entry_name
+failure_mode	pending/succeeded and stock_entry_name local substitute expectation drift
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_subcontract_receive_outbox.py
+recommended_next_task	TASK-Z030B-36-FIX-CAND004-SECOND
+source_evidence_missing	[]
+run_this_task	false
+pytest_performed	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

@@ -1,0 +1,80 @@
+{
+  "task_id": "TASK-Z030B-34-FIX-CAND004",
+  "source_task": "TASK-Z030B-33-PREP-CAND004-FAILURE-DIAG",
+  "candidate_id": "Z030-CAND-004",
+  "current_head": "d892457a8612122c70ef96e851f72e418baa37b9",
+  "cached_empty_before": true,
+  "b33_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "b33_allowed_fix_file": "07_后端/lingyi_service/tests/test_subcontract_receive_outbox.py",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_subcontract_receive_outbox.py",
+  "workdir": "07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_subcontract_receive_outbox.py -q",
+  "command_run_count": 1,
+  "exit_code": 1,
+  "result": "FAIL",
+  "pytest_summary": "2 failed, 13 passed, 41 warnings in 1.15s",
+  "stdout_path": "03_需求与设计/02_开发计划/task_z030b_34_cand004_fix_stdout.txt",
+  "changed_files": [
+    "07_后端/lingyi_service/tests/test_subcontract_receive_outbox.py",
+    "03_需求与设计/02_开发计划/TASK-Z030B-34-FIX-CAND004_subcontract_receive_outbox测试合同修复报告.md",
+    "03_需求与设计/02_开发计划/task_z030b_34_cand004_fix_result.json",
+    "03_需求与设计/02_开发计划/task_z030b_34_cand004_fix_result.tsv",
+    "03_需求与设计/02_开发计划/task_z030b_34_cand004_fix_stdout.txt"
+  ],
+  "required_payload_carrier_fields_addressed": [
+    "request_id",
+    "idempotency_key",
+    "scenario_tag",
+    "source_ref",
+    "subcontract_ref",
+    "supplier_ref",
+    "work_order_ref",
+    "operation",
+    "item_code",
+    "quantity",
+    "status_action",
+    "X-Request-ID"
+  ],
+  "payload_carrier_contract_addressed": true,
+  "business_status_assertions_preserved": true,
+  "status_assertions_preserved": [
+    200,
+    403,
+    409,
+    503
+  ],
+  "assertions_weakened": false,
+  "skip_xfail_deleted_cases": false,
+  "backend_app_changed": false,
+  "frontend_changed": false,
+  "shared_log_changed": false,
+  "candidate_pool_changed": false,
+  "unrelated_tests_changed": false,
+  "cached_empty": true,
+  "git_diff_check_pass": true,
+  "failed_cases_count": 2,
+  "failed_cases": [
+    {
+      "case": "test_receive_creates_receipt_rows_and_pending_outbox",
+      "expected": "data[\"sync_status\"] == \"pending\"",
+      "observed": "data[\"sync_status\"] == \"succeeded\""
+    },
+    {
+      "case": "test_receive_returns_outbox_without_fake_stock_entry_name",
+      "expected": "payload[\"stock_entry_name\"] is None",
+      "observed": "payload[\"stock_entry_name\"] == \"LOCAL-RECEIPT-SRB-1-20260525121250222151\""
+    }
+  ],
+  "stop_on_fail": true,
+  "rerun_performed": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

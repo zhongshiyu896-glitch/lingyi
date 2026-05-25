@@ -1,0 +1,78 @@
+path	decision	reason
+03_需求与设计/02_开发计划/TASK-Z030B-31-PREP_CAND004只读验证边界报告.md	YES	B31 boundary evidence
+03_需求与设计/02_开发计划/task_z030b_31_cand004_boundary.json	YES	B31 boundary evidence
+03_需求与设计/02_开发计划/task_z030b_31_cand004_boundary.tsv	YES	B31 boundary evidence
+03_需求与设计/02_开发计划/TASK-Z030B-32-IMPL_CAND004单文件验证报告.md	YES	B32 FAIL evidence
+03_需求与设计/02_开发计划/task_z030b_32_cand004_result.json	YES	B32 FAIL evidence
+03_需求与设计/02_开发计划/task_z030b_32_cand004_result.tsv	YES	B32 FAIL evidence
+03_需求与设计/02_开发计划/task_z030b_32_cand004_stdout.txt	YES	B32 FAIL evidence
+03_需求与设计/02_开发计划/TASK-Z030B-33-PREP-CAND004-FAILURE-DIAG_失败只读定位报告.md	YES	B33 classification evidence
+03_需求与设计/02_开发计划/task_z030b_33_cand004_failure_boundary.json	YES	B33 classification evidence
+03_需求与设计/02_开发计划/task_z030b_33_cand004_failure_boundary.tsv	YES	B33 classification evidence
+03_需求与设计/02_开发计划/TASK-Z030B-34-FIX-CAND004_subcontract_receive_outbox测试合同修复报告.md	YES	B34 FAIL evidence
+03_需求与设计/02_开发计划/task_z030b_34_cand004_fix_result.json	YES	B34 FAIL evidence
+03_需求与设计/02_开发计划/task_z030b_34_cand004_fix_result.tsv	YES	B34 FAIL evidence
+03_需求与设计/02_开发计划/task_z030b_34_cand004_fix_stdout.txt	YES	B34 FAIL evidence
+03_需求与设计/02_开发计划/TASK-Z030B-35-PREP-CAND004-SECOND-FAILURE-DIAG_二次失败只读定位报告.md	YES	B35 second classification evidence
+03_需求与设计/02_开发计划/task_z030b_35_cand004_second_failure_boundary.json	YES	B35 second classification evidence
+03_需求与设计/02_开发计划/task_z030b_35_cand004_second_failure_boundary.tsv	YES	B35 second classification evidence
+03_需求与设计/02_开发计划/TASK-Z030B-36-FIX-CAND004-SECOND_subcontract_receive_outbox二次修复报告.md	YES	B36 PASS evidence
+03_需求与设计/02_开发计划/task_z030b_36_cand004_second_fix_result.json	YES	B36 PASS evidence
+03_需求与设计/02_开发计划/task_z030b_36_cand004_second_fix_result.tsv	YES	B36 PASS evidence
+03_需求与设计/02_开发计划/task_z030b_36_cand004_second_fix_stdout.txt	YES	B36 PASS evidence
+03_需求与设计/02_开发计划/TASK-Z030B-37-LEDGER-CAND004_subcontract_receive_outbox提交候选账本报告.md	YES	B37 ledger evidence
+03_需求与设计/02_开发计划/task_z030b_37_cand004_freeze.json	YES	B37 ledger evidence
+03_需求与设计/02_开发计划/task_z030b_37_cand004_ledger.json	YES	B37 ledger evidence
+03_需求与设计/02_开发计划/task_z030b_37_cand004_ledger.tsv	YES	B37 ledger evidence
+07_后端/lingyi_service/tests/test_subcontract_receive_outbox.py	YES	only allowed backend test file for CAND004
+00_交接与日志/HANDOVER_STATUS.md	NO	historical dirty forbidden path
+03_需求与设计/01_架构设计/架构师会话日志.md	NO	historical dirty forbidden path
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	NO	historical dirty forbidden path
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	NO	historical dirty forbidden path
+07_后端/lingyi_service/app/schemas/report.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/app/services/report_catalog_service.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/app/services/system_config_catalog_service.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_bom_permissions.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_logging_sanitization.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_request_id_sanitization.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_style_profit_api.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_subcontract_company_permission.py	NO	historical dirty forbidden path
+07_后端/lingyi_service/tests/test_workshop_permissions.py	NO	historical dirty forbidden path
+03_需求与设计/02_开发计划/TASK-Z030B-01-PREP_Z030本地候选池重建报告.md	NO	Z030 candidate pool
+03_需求与设计/02_开发计划/task_z030b_01_candidate_pool.json	NO	Z030 candidate pool
+03_需求与设计/02_开发计划/task_z030b_01_candidate_pool.tsv	NO	Z030 candidate pool
+03_需求与设计/02_开发计划/*Z030*CAND001*	NO	Z030-CAND-001 archived range
+03_需求与设计/02_开发计划/*Z030*CAND002*	NO	Z030-CAND-002 archived range
+03_需求与设计/02_开发计划/*Z030*CAND003*	NO	Z030-CAND-003 archived range
+03_需求与设计/02_开发计划/*Z030*CAND005*	NO	Z030-CAND-005 range
+06_前端/**	NO	frontend excluded
+07_后端/lingyi_service/app/**	NO	backend app excluded
+00_交接与日志/**	NO	shared log excluded
+03_需求与设计/01_架构设计/*会话日志*	NO	shared log excluded
+03_需求与设计/02_开发计划/*工程师会话日志*	NO	shared engineer log excluded
+03_需求与设计/02_开发计划/*Z015*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z016*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z017*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z018*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z019*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z020*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z021*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z022*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z023*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z024*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z025*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z026*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z027*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z028*	NO	old cycle excluded
+03_需求与设计/02_开发计划/*Z029*	NO	old cycle excluded
+runtime/**	NO	runtime/cache excluded
+**/__pycache__/**	NO	runtime/cache excluded
+.pytest_cache/**	NO	runtime/cache excluded
+07_后端/lingyi_service/.pytest_cache/**	NO	runtime/cache excluded
+07_后端/lingyi_service/lingyi_service.local.db*	NO	runtime/cache excluded
