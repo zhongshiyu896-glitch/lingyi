@@ -1,0 +1,232 @@
+{
+  "task_id": "TASK-Z029B-37-PREP-CAND005-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task": "TASK-Z029B-36-IMPL",
+  "source_boundary_task": "TASK-Z029B-35-PREP",
+  "candidate_id": "Z029-CAND-005",
+  "current_head": "99434f1b9eacf47f75120c1144181a2004c10073",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "target_test_path": "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+  "target_test_dirty_diff": false,
+  "frozen_command": ".venv/bin/python -m pytest tests/test_workshop_ticket.py -q",
+  "frozen_workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "b36_result": {
+    "command_run_count": 1,
+    "exit_code": 1,
+    "result": "FAIL",
+    "pytest_summary": "15 failed, 1 warning in 1.11s",
+    "target_test_dirty_diff": false
+  },
+  "failed_cases_count": 15,
+  "failed_summary": "15 failed, 1 warning in 1.11s",
+  "failure_pattern": "ALL_FAILED_BEFORE_TARGET_BUSINESS_BRANCH_WITH_422_SCHEMA_VALIDATION",
+  "failed_cases": [
+    {
+      "name": "test_company_b_job_card_cannot_use_company_a_item_wage_rate",
+      "observed_status": 422,
+      "expected_status": 400,
+      "summary": "expected company scoped wage-rate guard branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_employee_invalid_returns_400",
+      "observed_status": 422,
+      "expected_status": 400,
+      "summary": "expected invalid employee branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_idempotency_conflict_returns_409",
+      "observed_status": 422,
+      "expected_status": 409,
+      "summary": "expected idempotency conflict branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_idempotent_same_payload_returns_same_ticket",
+      "observed_status": 422,
+      "expected_status": 200,
+      "summary": "expected idempotent success branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_invalid_qty_returns_400",
+      "observed_status": 422,
+      "expected_status": 400,
+      "summary": "expected invalid quantity branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_job_card_not_found_returns_400",
+      "observed_status": 422,
+      "expected_status": 400,
+      "summary": "expected job-card missing branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_job_card_status_invalid_returns_409",
+      "observed_status": 422,
+      "expected_status": 409,
+      "summary": "expected job-card status conflict branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_process_mismatch_returns_400",
+      "observed_status": 422,
+      "expected_status": 400,
+      "summary": "expected process mismatch branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_ticket_success_and_wage_amount",
+      "observed_status": 422,
+      "expected_status": 200,
+      "summary": "expected ticket success branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_register_wage_rate_not_found_returns_400",
+      "observed_status": 422,
+      "expected_status": 400,
+      "summary": "expected wage-rate missing branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_reversal_success_and_exceed_guard",
+      "observed_status": 422,
+      "expected_statuses": [
+        200,
+        409
+      ],
+      "summary": "expected reversal success and exceed guard branches, but request failed schema validation first"
+    },
+    {
+      "name": "test_ticket_register_does_not_match_empty_company_item_rate",
+      "observed_status": 422,
+      "expected_status": 200,
+      "summary": "expected company scoped item-rate matching branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_ticket_register_does_not_match_item_rate_with_null_company",
+      "observed_status": 422,
+      "expected_status": 200,
+      "summary": "expected company scoped item-rate matching branch, but request failed schema validation first"
+    },
+    {
+      "name": "test_ticket_register_empty_company_legacy_candidate_returns_scope_required",
+      "observed_status": 422,
+      "expected_status": 409,
+      "summary": "expected legacy empty-company scope guard, but request failed schema validation first"
+    },
+    {
+      "name": "test_ticket_register_fails_when_only_legacy_null_company_rate_exists",
+      "observed_status": 422,
+      "expected_status": 409,
+      "summary": "expected legacy null-company scope guard, but request failed schema validation first"
+    }
+  ],
+  "key_status_differences": {
+    "observed_statuses": [
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422,
+      422
+    ],
+    "expected_status_values": [
+      200,
+      400,
+      409
+    ],
+    "stdout_assertion_lines": [
+      "28: 422 != 400",
+      "48: 422 != 400",
+      "77: 422 != 200",
+      "106: 422 != 200",
+      "126: 422 != 400",
+      "146: 422 != 400",
+      "166: 422 != 409",
+      "186: 422 != 400",
+      "211: 422 != 200",
+      "233: 422 != 400",
+      "267: 422 != 200",
+      "304: 422 != 200",
+      "341: 422 != 200",
+      "381: 422 != 409",
+      "421: 422 != 409"
+    ]
+  },
+  "contract_drift_evidence": {
+    "register_schema_required_fields": [
+      "scenario_tag",
+      "idempotency_key",
+      "ticket_key",
+      "job_card",
+      "employee",
+      "process_name",
+      "qty",
+      "work_date",
+      "source_ref",
+      "batch_no"
+    ],
+    "reversal_schema_required_fields": [
+      "scenario_tag",
+      "idempotency_key",
+      "ticket_key",
+      "job_card",
+      "employee",
+      "process_name",
+      "qty",
+      "work_date",
+      "source_ref",
+      "reason",
+      "batch_no"
+    ],
+    "register_payload_helper_missing_current_carriers": [
+      "scenario_tag",
+      "idempotency_key",
+      "batch_no"
+    ],
+    "reversal_payload_helper_missing_current_carriers": [
+      "scenario_tag",
+      "idempotency_key",
+      "source_ref",
+      "batch_no"
+    ],
+    "local_gate_required_carriers": [
+      "scenario_tag",
+      "idempotency_key",
+      "ticket_key",
+      "job_card",
+      "source_ref",
+      "employee_or_operator",
+      "batch_no",
+      "operation",
+      "request_id"
+    ]
+  },
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+    "07_后端/lingyi_service/app/routers/workshop.py",
+    "07_后端/lingyi_service/app/models/workshop.py",
+    "07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py",
+    "07_后端/lingyi_service/app/core/permissions.py",
+    "07_后端/lingyi_service/app/schemas/workshop.py"
+  ],
+  "source_evidence_missing": [],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+  "recommended_next_task": "TASK-Z029B-38-FIX-CAND005",
+  "run_this_task": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

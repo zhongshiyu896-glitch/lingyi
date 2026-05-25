@@ -1,0 +1,60 @@
+decision	path	category	reason
+YES	03_需求与设计/02_开发计划/TASK-Z029B-35-PREP_CAND005只读验证边界报告.md	B35 boundary evidence	Z029-CAND-005 frozen validation boundary
+YES	03_需求与设计/02_开发计划/task_z029b_35_cand005_boundary.json	B35 boundary evidence	Z029-CAND-005 frozen validation boundary
+YES	03_需求与设计/02_开发计划/task_z029b_35_cand005_boundary.tsv	B35 boundary evidence	Z029-CAND-005 frozen validation boundary
+YES	03_需求与设计/02_开发计划/TASK-Z029B-36-IMPL_CAND005单文件验证报告.md	B36 validation evidence	Z029-CAND-005 readonly pytest failure evidence
+YES	03_需求与设计/02_开发计划/task_z029b_36_cand005_result.json	B36 validation evidence	Z029-CAND-005 readonly pytest failure evidence
+YES	03_需求与设计/02_开发计划/task_z029b_36_cand005_result.tsv	B36 validation evidence	Z029-CAND-005 readonly pytest failure evidence
+YES	03_需求与设计/02_开发计划/task_z029b_36_cand005_stdout.txt	B36 validation evidence	Z029-CAND-005 readonly pytest failure stdout
+YES	03_需求与设计/02_开发计划/TASK-Z029B-37-PREP-CAND005-FAILURE-DIAG_失败只读定位报告.md	B37 failure boundary evidence	TEST_CONTRACT_UPDATE_ALLOWED classification
+YES	03_需求与设计/02_开发计划/task_z029b_37_cand005_failure_boundary.json	B37 failure boundary evidence	TEST_CONTRACT_UPDATE_ALLOWED classification
+YES	03_需求与设计/02_开发计划/task_z029b_37_cand005_failure_boundary.tsv	B37 failure boundary evidence	TEST_CONTRACT_UPDATE_ALLOWED classification
+YES	03_需求与设计/02_开发计划/TASK-Z029B-38-FIX-CAND005_workshop_ticket测试合同修复报告.md	B38 fix evidence	first test contract fix attempt evidence
+YES	03_需求与设计/02_开发计划/task_z029b_38_cand005_fix_result.json	B38 fix evidence	first test contract fix attempt result
+YES	03_需求与设计/02_开发计划/task_z029b_38_cand005_fix_result.tsv	B38 fix evidence	first test contract fix attempt result
+YES	03_需求与设计/02_开发计划/task_z029b_38_cand005_fix_stdout.txt	B38 fix evidence	first test contract fix attempt stdout
+YES	03_需求与设计/02_开发计划/TASK-Z029B-39-PREP-CAND005-SECOND-FAILURE-DIAG_二次失败只读定位报告.md	B39 second failure boundary evidence	second TEST_CONTRACT_UPDATE_ALLOWED classification
+YES	03_需求与设计/02_开发计划/task_z029b_39_cand005_second_failure_boundary.json	B39 second failure boundary evidence	second TEST_CONTRACT_UPDATE_ALLOWED classification
+YES	03_需求与设计/02_开发计划/task_z029b_39_cand005_second_failure_boundary.tsv	B39 second failure boundary evidence	second TEST_CONTRACT_UPDATE_ALLOWED classification
+YES	03_需求与设计/02_开发计划/TASK-Z029B-40-FIX-CAND005-SECOND_workshop_ticket二次修复报告.md	B40 second fix evidence	passing single-file validation evidence
+YES	03_需求与设计/02_开发计划/task_z029b_40_cand005_second_fix_result.json	B40 second fix evidence	passing single-file validation result
+YES	03_需求与设计/02_开发计划/task_z029b_40_cand005_second_fix_result.tsv	B40 second fix evidence	passing single-file validation result
+YES	03_需求与设计/02_开发计划/task_z029b_40_cand005_second_fix_stdout.txt	B40 second fix evidence	passing single-file validation stdout
+YES	03_需求与设计/02_开发计划/TASK-Z029B-41-LEDGER-CAND005_workshop_ticket提交候选账本报告.md	B41 ledger evidence	current ledger freeze report
+YES	03_需求与设计/02_开发计划/task_z029b_41_cand005_freeze.json	B41 ledger evidence	current ledger freeze summary
+YES	03_需求与设计/02_开发计划/task_z029b_41_cand005_ledger.json	B41 ledger evidence	current ledger freeze machine ledger
+YES	03_需求与设计/02_开发计划/task_z029b_41_cand005_ledger.tsv	B41 ledger evidence	current ledger freeze tabular ledger
+YES	07_后端/lingyi_service/tests/test_workshop_ticket.py	allowed backend test	only authorized backend target test for Z029-CAND-005
+NO	03_需求与设计/02_开发计划/TASK-Z029B-01-PREP_Z029本地候选池重建报告.md	Z029 candidate pool	candidate pool excluded from CAND005 commit candidate
+NO	03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.json	Z029 candidate pool	candidate pool excluded from CAND005 commit candidate
+NO	03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.tsv	Z029 candidate pool	candidate pool excluded from CAND005 commit candidate
+NO	Z029-CAND-001_ARCHIVE_AND_EVIDENCE_RANGE	archived candidate range	CAND001 is already archived and excluded
+NO	Z029-CAND-002_ARCHIVE_AND_EVIDENCE_RANGE	archived candidate range	CAND002 is already archived and excluded
+NO	Z029-CAND-003_ARCHIVE_AND_EVIDENCE_RANGE	archived candidate range	CAND003 is already archived and excluded
+NO	Z029-CAND-004_ARCHIVE_AND_EVIDENCE_RANGE	archived candidate range	CAND004 is already archived and excluded
+NO	06_前端	frontend	frontend is out of scope
+NO	07_后端/lingyi_service/app	backend app	backend app is out of scope
+NO	03_需求与设计/02_开发计划/TASK-Z029B-12-PREP_Z029剩余候选刷新报告.md	non-CAND005 refresh evidence	prior refresh artifact excluded from CAND005 commit candidate
+NO	03_需求与设计/02_开发计划/TASK-Z029B-21-PREP_Z029剩余候选刷新报告.md	non-CAND005 refresh evidence	prior refresh artifact excluded from CAND005 commit candidate
+NO	03_需求与设计/02_开发计划/TASK-Z029B-28-PREP_Z029剩余候选刷新报告.md	non-CAND005 refresh evidence	prior refresh artifact excluded from CAND005 commit candidate
+NO	Z015_Z028_OLD_CYCLE_ARTIFACT_RANGE	old cycle artifacts	old Z015-Z028 artifacts excluded
+NO	runtime/cache	runtime cache	runtime and cache paths excluded
+NO	00_交接与日志/HANDOVER_STATUS.md	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	03_需求与设计/01_架构设计/架构师会话日志.md	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/app/schemas/report.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/app/services/report_catalog_service.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/app/services/system_config_catalog_service.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_bom_permissions.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_logging_sanitization.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_request_id_sanitization.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_style_profit_api.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_subcontract_company_permission.py	historical dirty forbidden path	historical dirty forbidden path excluded
+NO	07_后端/lingyi_service/tests/test_workshop_permissions.py	historical dirty forbidden path	historical dirty forbidden path excluded

@@ -1,0 +1,107 @@
+{
+  "task_id": "TASK-Z029B-35-PREP",
+  "role": "B Engineer",
+  "current_head": "99434f1b9eacf47f75120c1144181a2004c10073",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "candidate_pool_path": "03_需求与设计/02_开发计划/task_z029b_01_candidate_pool.json",
+  "candidate_pool_exact_ids": [
+    "Z029-CAND-001",
+    "Z029-CAND-002",
+    "Z029-CAND-003",
+    "Z029-CAND-004",
+    "Z029-CAND-005"
+  ],
+  "archived_candidates": [
+    {
+      "candidate_id": "Z029-CAND-001",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "a487919d62f8838d683f50472bf09b8235d7da93",
+      "archive_result_path": "03_需求与设计/02_开发计划/task_z029b_11_cand001_archive_result.json"
+    },
+    {
+      "candidate_id": "Z029-CAND-002",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "63dee234e6f462f229b1e550ee1da50e4e3774b7",
+      "archive_result_path": "03_需求与设计/02_开发计划/task_z029b_20_cand002_archive_result.json"
+    },
+    {
+      "candidate_id": "Z029-CAND-003",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "fdebac7c5f6a93a1e0d8a8bbf13c9a6bce48aad0",
+      "archive_result_path": "03_需求与设计/02_开发计划/task_z029b_27_cand003_archive_result.json"
+    },
+    {
+      "candidate_id": "Z029-CAND-004",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "99434f1b9eacf47f75120c1144181a2004c10073",
+      "archive_result_path": "03_需求与设计/02_开发计划/task_z029b_34_cand004_archive_result.json"
+    }
+  ],
+  "remaining_candidates": [
+    "Z029-CAND-005"
+  ],
+  "candidate_id": "Z029-CAND-005",
+  "candidate_original_fields": {
+    "candidate_id": "Z029-CAND-005",
+    "module": "workshop_ticket_api",
+    "risk": "LOW",
+    "target_test": "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_workshop_ticket.py -q",
+    "recommended_workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+    "source_evidence_paths": [
+      "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+      "07_后端/lingyi_service/app/routers/workshop.py",
+      "07_后端/lingyi_service/app/models/workshop.py",
+      "07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py",
+      "07_后端/lingyi_service/app/core/permissions.py"
+    ],
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "source_evidence_missing": [],
+    "source_evidence_dirty_diff": [],
+    "source_evidence_historical_dirty_forbidden": [],
+    "readonly_pytest": true,
+    "single_file_pytest": true,
+    "reuse_check": {
+      "reused_from_Z015_Z028": false,
+      "used_target_scan_count": 54
+    },
+    "historical_dirty_forbidden_target": false
+  },
+  "frozen_command": ".venv/bin/python -m pytest tests/test_workshop_ticket.py -q",
+  "frozen_workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "frozen_command_from_candidate_pool": true,
+  "readonly_single_file_backend_pytest": true,
+  "target_test_path": "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+    "07_后端/lingyi_service/app/routers/workshop.py",
+    "07_后端/lingyi_service/app/models/workshop.py",
+    "07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py",
+    "07_后端/lingyi_service/app/core/permissions.py"
+  ],
+  "source_evidence_missing": [],
+  "next_task": "TASK-Z029B-36-IMPL",
+  "run_this_task": false,
+  "pytest_performed": false,
+  "npm_performed": false,
+  "browser_performed": false,
+  "build_performed": false,
+  "typecheck_performed": false,
+  "verify_performed": false,
+  "code_or_test_edits_performed": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "cleanup_reset_checkout_stash_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

@@ -1,0 +1,33 @@
+field	value
+task_id	TASK-Z029B-39-PREP-CAND005-SECOND-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z029B-38-FIX-CAND005
+candidate_id	Z029-CAND-005
+current_head	99434f1b9eacf47f75120c1144181a2004c10073
+cached_empty	true
+diff_check_pass	true
+b38_result	FAIL
+b38_command_run_count	1
+b38_pytest_summary	11 failed, 4 passed, 65 warnings in 1.20s
+assertions_weakened	false
+skip_xfail_deleted_cases	false
+target_test_path	07_后端/lingyi_service/tests/test_workshop_ticket.py
+target_test_dirty_diff	true
+target_test_dirty_diff_summary	B38_ALLOWED_TARGET_TEST_ONLY; 1 file changed, 113 insertions(+), 47 deletions(-)
+remaining_failed_cases_count	11
+failure_mode	synthetic_context_business_branch_status_drift; synthetic_default_unit_wage_expectation_drift
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_ticket.py
+recommended_next_task	TASK-Z029B-40-FIX-CAND005-SECOND
+source_evidence_missing	[]
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

@@ -8,7 +8,8 @@ import os
 import unittest
 from unittest.mock import patch
 
-os.environ["APP_ENV"] = "test"
+os.environ["APP_ENV"] = "development"
+os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
 os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
 os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
 os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
@@ -30,10 +31,13 @@ from app.services.erpnext_job_card_adapter import EmployeeInfo
 from app.services.erpnext_job_card_adapter import ERPNextJobCardAdapter
 from app.services.erpnext_job_card_adapter import JobCardInfo
 from app.services.erpnext_job_card_adapter import WorkOrderInfo
+from app.services.workshop_service import WorkshopService
 
 
 class WorkshopTicketApiTest(unittest.TestCase):
     """Cover ticket register/reversal/idempotency behavior."""
+
+    SCENARIO_TAG = "Z003-WORKSHOP-TICKET-20260412-001"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -87,6 +91,8 @@ class WorkshopTicketApiTest(unittest.TestCase):
 
     def setUp(self) -> None:
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
+        self._synthetic_context_patch = patch.object(WorkshopService, "_is_local_synthetic_context_enabled", return_value=False)
+        self._synthetic_context_patch.start()
         with self.SessionLocal() as session:
             session.query(YsWorkshopTicket).delete()
             session.query(LyOperationWageRate).filter(LyOperationWageRate.id > 1).delete()
@@ -96,14 +102,53 @@ class WorkshopTicketApiTest(unittest.TestCase):
                 base.company = "COMP-A"
             session.commit()
 
-    @staticmethod
-    def _headers(role: str = "Workshop Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "workshop.user", "X-LY-Dev-Roles": role}
+    def tearDown(self) -> None:
+        self._synthetic_context_patch.stop()
 
     @staticmethod
-    def _register_payload(ticket_key: str = "TK-001", qty: str = "100") -> dict:
+    def _carrier_code(value: str) -> str:
+        hash_value = 2166136261
+        for byte in str(value).encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-3:]
+
+    @staticmethod
+    def _operation_code(operation: str) -> str:
+        return {"register": "R", "reversal": "V"}[operation]
+
+    @classmethod
+    def _request_id_for_payload(cls, payload: dict) -> str:
+        operation = payload.get("operation", "register")
+        operator = payload.get("operator_id") or payload["employee"]
+        return "-".join(
+            [
+                cls.SCENARIO_TAG,
+                "RW",
+                cls._operation_code(operation),
+                cls._carrier_code(payload["idempotency_key"]),
+                cls._carrier_code(payload["source_ref"]),
+                cls._carrier_code(payload["ticket_key"]),
+                cls._carrier_code(payload["job_card"]),
+                cls._carrier_code(operator),
+                cls._carrier_code(payload["batch_no"]),
+            ]
+        )
+
+    @classmethod
+    def _headers(cls, payload: dict | None = None, role: str = "Workshop Manager") -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "workshop.user", "X-LY-Dev-Roles": role}
+        if payload is not None:
+            headers["X-Request-ID"] = cls._request_id_for_payload(payload)
+        return headers
+
+    @classmethod
+    def _register_payload(cls, ticket_key: str = "TK-001", qty: str = "100") -> dict:
+        scoped_ticket_key = f"{cls.SCENARIO_TAG}-{ticket_key}"
         return {
-            "ticket_key": ticket_key,
+            "scenario_tag": cls.SCENARIO_TAG,
+            "idempotency_key": f"{scoped_ticket_key}-IDEMP",
+            "ticket_key": scoped_ticket_key,
             "job_card": "JC-001",
             "employee": "EMP-001",
             "process_name": "sew",
@@ -112,13 +157,19 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "qty": qty,
             "work_date": "2026-04-12",
             "source": "manual",
-            "source_ref": "REF-1",
+            "source_ref": f"{scoped_ticket_key}-SRC",
+            "operation": "register",
+            "operator_id": "workshop.user",
+            "batch_no": f"{cls.SCENARIO_TAG}-BATCH-001",
         }
 
-    @staticmethod
-    def _reversal_payload(ticket_key: str = "TK-R-001", qty: str = "10") -> dict:
+    @classmethod
+    def _reversal_payload(cls, ticket_key: str = "TK-R-001", qty: str = "10") -> dict:
+        scoped_ticket_key = f"{cls.SCENARIO_TAG}-{ticket_key}"
         return {
-            "ticket_key": ticket_key,
+            "scenario_tag": cls.SCENARIO_TAG,
+            "idempotency_key": f"{scoped_ticket_key}-IDEMP",
+            "ticket_key": scoped_ticket_key,
             "job_card": "JC-001",
             "employee": "EMP-001",
             "process_name": "sew",
@@ -126,7 +177,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "size": "M",
             "qty": qty,
             "work_date": "2026-04-12",
+            "source_ref": f"{scoped_ticket_key}-SRC",
             "reason": "fix",
+            "operation": "reversal",
+            "operator_id": "workshop.user",
+            "batch_no": f"{cls.SCENARIO_TAG}-BATCH-001",
         }
 
     @staticmethod
@@ -158,10 +213,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "update_job_card_completed_qty",
             return_value={"message": "ok"},
         ):
+            payload = self._register_payload(ticket_key="TK-S-001", qty="100")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-S-001", qty="100"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         payload = response.json()
@@ -180,22 +236,23 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "update_job_card_completed_qty",
             return_value={"message": "ok"},
         ):
+            payload = self._register_payload(ticket_key="TK-IDEMP-001")
             first = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-IDEMP-001"),
+                headers=self._headers(payload),
+                json=payload,
             )
             second = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-IDEMP-001"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()["data"]["ticket_id"], second.json()["data"]["ticket_id"])
         with self.SessionLocal() as session:
-            count = session.query(YsWorkshopTicket).filter(YsWorkshopTicket.ticket_key == "TK-IDEMP-001").count()
+            count = session.query(YsWorkshopTicket).filter(YsWorkshopTicket.ticket_key == payload["ticket_key"]).count()
         self.assertEqual(count, 1)
 
     def test_register_idempotency_conflict_returns_409(self) -> None:
@@ -208,15 +265,17 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "update_job_card_completed_qty",
             return_value={"message": "ok"},
         ):
+            first_payload = self._register_payload(ticket_key="TK-CONFLICT-001", qty="100")
+            second_payload = self._register_payload(ticket_key="TK-CONFLICT-001", qty="90")
             first = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-CONFLICT-001", qty="100"),
+                headers=self._headers(first_payload),
+                json=first_payload,
             )
             second = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-CONFLICT-001", qty="90"),
+                headers=self._headers(second_payload),
+                json=second_payload,
             )
 
         self.assertEqual(first.status_code, 200)
@@ -229,10 +288,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-QTY-001", qty="0")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-QTY-001", qty="0"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 400)
@@ -244,10 +304,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-NOJC-001")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-NOJC-001"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 400)
@@ -259,10 +320,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(active=False),
         ):
+            payload = self._register_payload(ticket_key="TK-NOEMP-001")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-NOEMP-001"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 400)
@@ -274,10 +336,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-JCS-001")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-JCS-001"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 409)
@@ -289,10 +352,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-PM-001")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-PM-001"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 400)
@@ -308,7 +372,7 @@ class WorkshopTicketApiTest(unittest.TestCase):
             payload["process_name"] = "iron"
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
+                headers=self._headers(payload),
                 json=payload,
             )
 
@@ -338,10 +402,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-NULL-CO-IGNORED", qty="100")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-NULL-CO-IGNORED", qty="100"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 200)
@@ -371,10 +436,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-EMPTY-CO-IGNORED", qty="100")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-EMPTY-CO-IGNORED", qty="100"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 200)
@@ -407,10 +473,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-NULL-CO-ONLY")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-NULL-CO-ONLY"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 409)
@@ -442,10 +509,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-EMPTY-CO-ONLY")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-EMPTY-CO-ONLY"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 409)
@@ -465,10 +533,11 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "get_employee",
             return_value=self._mock_employee(),
         ):
+            payload = self._register_payload(ticket_key="TK-COMP-B-MISS")
             response = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-COMP-B-MISS"),
+                headers=self._headers(payload),
+                json=payload,
             )
 
         self.assertEqual(response.status_code, 400)
@@ -484,20 +553,23 @@ class WorkshopTicketApiTest(unittest.TestCase):
             "update_job_card_completed_qty",
             return_value={"message": "ok"},
         ):
+            register_payload = self._register_payload(ticket_key="TK-REV-RG-001", qty="100")
+            reversal_ok_payload = self._reversal_payload(ticket_key="TK-REV-OK-001", qty="10")
+            reversal_bad_payload = self._reversal_payload(ticket_key="TK-REV-BAD-001", qty="200")
             register_resp = self.client.post(
                 "/api/workshop/tickets/register",
-                headers=self._headers(),
-                json=self._register_payload(ticket_key="TK-REV-RG-001", qty="100"),
+                headers=self._headers(register_payload),
+                json=register_payload,
             )
             reversal_ok = self.client.post(
                 "/api/workshop/tickets/reversal",
-                headers=self._headers(),
-                json=self._reversal_payload(ticket_key="TK-REV-OK-001", qty="10"),
+                headers=self._headers(reversal_ok_payload),
+                json=reversal_ok_payload,
             )
             reversal_bad = self.client.post(
                 "/api/workshop/tickets/reversal",
-                headers=self._headers(),
-                json=self._reversal_payload(ticket_key="TK-REV-BAD-001", qty="200"),
+                headers=self._headers(reversal_bad_payload),
+                json=reversal_bad_payload,
             )
 
         self.assertEqual(register_resp.status_code, 200)

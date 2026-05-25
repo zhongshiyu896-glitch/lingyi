@@ -1,0 +1,71 @@
+{
+  "task_id": "TASK-Z029B-38-FIX-CAND005",
+  "role": "B Engineer",
+  "source_task": "TASK-Z029B-37-PREP-CAND005-FAILURE-DIAG",
+  "candidate_id": "Z029-CAND-005",
+  "current_head": "99434f1b9eacf47f75120c1144181a2004c10073",
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_workshop_ticket.py -q",
+  "command_run_count": 1,
+  "exit_code": 1,
+  "result": "FAIL",
+  "pytest_summary": "11 failed, 4 passed, 65 warnings in 1.20s",
+  "stdout_path": "03_需求与设计/02_开发计划/task_z029b_38_cand005_fix_stdout.txt",
+  "changed_files": [
+    "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+    "03_需求与设计/02_开发计划/TASK-Z029B-38-FIX-CAND005_workshop_ticket测试合同修复报告.md",
+    "03_需求与设计/02_开发计划/task_z029b_38_cand005_fix_result.json",
+    "03_需求与设计/02_开发计划/task_z029b_38_cand005_fix_result.tsv",
+    "03_需求与设计/02_开发计划/task_z029b_38_cand005_fix_stdout.txt"
+  ],
+  "remaining_failed_cases_count": 11,
+  "remaining_failed_cases": [
+    "test_company_b_job_card_cannot_use_company_a_item_wage_rate",
+    "test_register_employee_invalid_returns_400",
+    "test_register_job_card_not_found_returns_400",
+    "test_register_job_card_status_invalid_returns_409",
+    "test_register_process_mismatch_returns_400",
+    "test_register_ticket_success_and_wage_amount",
+    "test_register_wage_rate_not_found_returns_400",
+    "test_ticket_register_does_not_match_empty_company_item_rate",
+    "test_ticket_register_does_not_match_item_rate_with_null_company",
+    "test_ticket_register_empty_company_legacy_candidate_returns_scope_required",
+    "test_ticket_register_fails_when_only_legacy_null_company_rate_exists"
+  ],
+  "remaining_failure_summary": [
+    "company/job-card/wage-rate guard cases now reach business branches but observed 200 where 400 or 409 is expected",
+    "success wage amount expectation remains Decimal('50.000000') while observed Decimal('100.0')",
+    "unit_wage expectation remains Decimal('0.500000') while observed Decimal('1.0') for scoped item-rate cases"
+  ],
+  "assertions_preserved": {
+    "explicit_status_assertions_retained": [
+      200,
+      400,
+      409
+    ],
+    "assertions_weakened": false,
+    "skip_xfail_deleted_cases": false
+  },
+  "fix_attempt_limited_to_allowed_test": true,
+  "backend_app_changed": false,
+  "frontend_changed": false,
+  "shared_log_changed": false,
+  "candidate_pool_changed": false,
+  "unrelated_tests_changed": false,
+  "continued_fix_after_failure": false,
+  "rerun_performed": false,
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

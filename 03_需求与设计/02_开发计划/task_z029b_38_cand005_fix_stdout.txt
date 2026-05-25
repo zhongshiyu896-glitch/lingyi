@@ -1,0 +1,382 @@
+FF...FFFFF.FFFF                                                          [100%]
+=================================== FAILURES ===================================
+_ WorkshopTicketApiTest.test_company_b_job_card_cannot_use_company_a_item_wage_rate _
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_company_b_job_card_cannot_use_company_a_item_wage_rate>
+
+    def test_company_b_job_card_cannot_use_company_a_item_wage_rate(self) -> None:
+        with patch.object(
+            ERPNextJobCardAdapter,
+            "get_job_card",
+            return_value=self._mock_job_card(company="", item_code="", work_order="WO-B-001"),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_work_order",
+            return_value=self._mock_work_order(item_code="ITEM-A", company="COMP-B", name="WO-B-001"),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-COMP-B-MISS")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 200 != 400
+
+tests/test_workshop_ticket.py:537: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+_______ WorkshopTicketApiTest.test_register_employee_invalid_returns_400 _______
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_register_employee_invalid_returns_400>
+
+    def test_register_employee_invalid_returns_400(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(active=False),
+        ):
+            payload = self._register_payload(ticket_key="TK-NOEMP-001")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 200 != 400
+
+tests/test_workshop_ticket.py:324: AssertionError
+______ WorkshopTicketApiTest.test_register_job_card_not_found_returns_400 ______
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_register_job_card_not_found_returns_400>
+
+    def test_register_job_card_not_found_returns_400(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=None), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-NOJC-001")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 200 != 400
+
+tests/test_workshop_ticket.py:308: AssertionError
+___ WorkshopTicketApiTest.test_register_job_card_status_invalid_returns_409 ____
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_register_job_card_status_invalid_returns_409>
+
+    def test_register_job_card_status_invalid_returns_409(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card(status="Cancelled")), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-JCS-001")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 200 != 409
+
+tests/test_workshop_ticket.py:340: AssertionError
+_______ WorkshopTicketApiTest.test_register_process_mismatch_returns_400 _______
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_register_process_mismatch_returns_400>
+
+    def test_register_process_mismatch_returns_400(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card(operation="cut")), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-PM-001")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 200 != 400
+
+tests/test_workshop_ticket.py:356: AssertionError
+______ WorkshopTicketApiTest.test_register_ticket_success_and_wage_amount ______
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_register_ticket_success_and_wage_amount>
+
+    def test_register_ticket_success_and_wage_amount(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "update_job_card_completed_qty",
+            return_value={"message": "ok"},
+        ):
+            payload = self._register_payload(ticket_key="TK-S-001", qty="100")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+        payload = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["code"], "0")
+>       self.assertEqual(Decimal(str(payload["data"]["wage_amount"])), Decimal("50.000000"))
+E       AssertionError: Decimal('100.0') != Decimal('50.000000')
+
+tests/test_workshop_ticket.py:220: AssertionError
+_____ WorkshopTicketApiTest.test_register_wage_rate_not_found_returns_400 ______
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_register_wage_rate_not_found_returns_400>
+
+    def test_register_wage_rate_not_found_returns_400(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card(operation="iron")), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-NORATE-001")
+            payload["process_name"] = "iron"
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 200 != 400
+
+tests/test_workshop_ticket.py:373: AssertionError
+_ WorkshopTicketApiTest.test_ticket_register_does_not_match_empty_company_item_rate _
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_ticket_register_does_not_match_empty_company_item_rate>
+
+    def test_ticket_register_does_not_match_empty_company_item_rate(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyOperationWageRate(
+                    id=4,
+                    item_code="ITEM-A",
+                    company="",
+                    is_global=False,
+                    process_name="sew",
+                    wage_rate="0.9",
+                    effective_from=date(2026, 1, 1),
+                    effective_to=None,
+                    status="active",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-EMPTY-CO-IGNORED", qty="100")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+>       self.assertEqual(Decimal(str(response.json()["data"]["unit_wage"])), Decimal("0.500000"))
+E       AssertionError: Decimal('1.0') != Decimal('0.500000')
+
+tests/test_workshop_ticket.py:442: AssertionError
+_ WorkshopTicketApiTest.test_ticket_register_does_not_match_item_rate_with_null_company _
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_ticket_register_does_not_match_item_rate_with_null_company>
+
+    def test_ticket_register_does_not_match_item_rate_with_null_company(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LyOperationWageRate(
+                    id=2,
+                    item_code="ITEM-A",
+                    company=None,
+                    is_global=False,
+                    process_name="sew",
+                    wage_rate="0.9",
+                    effective_from=date(2026, 1, 1),
+                    effective_to=None,
+                    status="active",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-NULL-CO-IGNORED", qty="100")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["code"], "0")
+>       self.assertEqual(Decimal(str(response.json()["data"]["unit_wage"])), Decimal("0.500000"))
+E       AssertionError: Decimal('1.0') != Decimal('0.500000')
+
+tests/test_workshop_ticket.py:408: AssertionError
+_ WorkshopTicketApiTest.test_ticket_register_empty_company_legacy_candidate_returns_scope_required _
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_ticket_register_empty_company_legacy_candidate_returns_scope_required>
+
+    def test_ticket_register_empty_company_legacy_candidate_returns_scope_required(self) -> None:
+        with self.SessionLocal() as session:
+            base = session.query(LyOperationWageRate).filter(LyOperationWageRate.id == 1).first()
+            self.assertIsNotNone(base)
+            base.status = "inactive"
+            session.add(
+                LyOperationWageRate(
+                    id=5,
+                    item_code="ITEM-A",
+                    company="   ",
+                    is_global=False,
+                    process_name="sew",
+                    wage_rate="0.9",
+                    effective_from=date(2026, 1, 1),
+                    effective_to=None,
+                    status="active",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-EMPTY-CO-ONLY")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 200 != 409
+
+tests/test_workshop_ticket.py:513: AssertionError
+_ WorkshopTicketApiTest.test_ticket_register_fails_when_only_legacy_null_company_rate_exists _
+
+self = <tests.test_workshop_ticket.WorkshopTicketApiTest testMethod=test_ticket_register_fails_when_only_legacy_null_company_rate_exists>
+
+    def test_ticket_register_fails_when_only_legacy_null_company_rate_exists(self) -> None:
+        with self.SessionLocal() as session:
+            base = session.query(LyOperationWageRate).filter(LyOperationWageRate.id == 1).first()
+            self.assertIsNotNone(base)
+            base.status = "inactive"
+            session.add(
+                LyOperationWageRate(
+                    id=3,
+                    item_code="ITEM-A",
+                    company=None,
+                    is_global=False,
+                    process_name="sew",
+                    wage_rate="0.9",
+                    effective_from=date(2026, 1, 1),
+                    effective_to=None,
+                    status="active",
+                    created_by="seed",
+                )
+            )
+            session.commit()
+
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._mock_job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._mock_employee(),
+        ):
+            payload = self._register_payload(ticket_key="TK-NULL-CO-ONLY")
+            response = self.client.post(
+                "/api/workshop/tickets/register",
+                headers=self._headers(payload),
+                json=payload,
+            )
+
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 200 != 409
+
+tests/test_workshop_ticket.py:477: AssertionError
+=============================== warnings summary ===============================
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_company_b_job_card_cannot_use_company_a_item_wage_rate
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_workshop_ticket.py: 15 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1920: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_workshop_ticket.py: 14 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:329: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_ticket.py: 15 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1678: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_company_b_job_card_cannot_use_company_a_item_wage_rate
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_company_b_job_card_cannot_use_company_a_item_wage_rate
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_ticket.py: 14 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:356: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ticket.updated_at = datetime.utcnow()
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:454: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:481: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ticket.updated_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_company_b_job_card_cannot_use_company_a_item_wage_rate
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_employee_invalid_returns_400
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_job_card_not_found_returns_400
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_job_card_status_invalid_returns_409
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_process_mismatch_returns_400
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_ticket_success_and_wage_amount
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_wage_rate_not_found_returns_400
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_empty_company_item_rate
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_item_rate_with_null_company
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_empty_company_legacy_candidate_returns_scope_required
+FAILED tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_fails_when_only_legacy_null_company_rate_exists
+11 failed, 4 passed, 65 warnings in 1.20s

@@ -1,0 +1,50 @@
+# TASK-Z029B-35-PREP CAND005 只读验证边界报告
+
+## 核对结论
+
+- task_id: `TASK-Z029B-35-PREP`
+- role: `B Engineer`
+- current_head: `99434f1b9eacf47f75120c1144181a2004c10073`
+- cached_empty: `true`
+- git_diff_check: `PASS`
+- candidate_pool_exact_ids: `Z029-CAND-001..005`
+- archived_candidates: `Z029-CAND-001`, `Z029-CAND-002`, `Z029-CAND-003`, `Z029-CAND-004`
+- remaining_candidates: `Z029-CAND-005`
+
+## 冻结边界
+
+- candidate_id: `Z029-CAND-005`
+- module: `workshop_ticket_api`
+- risk: `LOW`
+- frozen_workdir: `/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service`
+- frozen_command: `.venv/bin/python -m pytest tests/test_workshop_ticket.py -q`
+- target_test_path: `07_后端/lingyi_service/tests/test_workshop_ticket.py`
+- target_test_exists: `true`
+- target_test_dirty_diff: `false`
+- source_evidence_missing: `[]`
+- next_task: `TASK-Z029B-36-IMPL`
+- run_this_task: `false`
+
+## Source Evidence
+
+- `07_后端/lingyi_service/tests/test_workshop_ticket.py`
+- `07_后端/lingyi_service/app/routers/workshop.py`
+- `07_后端/lingyi_service/app/models/workshop.py`
+- `07_后端/lingyi_service/app/services/erpnext_job_card_adapter.py`
+- `07_后端/lingyi_service/app/core/permissions.py`
+
+## 禁止动作确认
+
+- pytest/npm/browser/build/typecheck/verify: `false`
+- code_or_test_edits_performed: `false`
+- stage_performed: `false`
+- commit_performed: `false`
+- push_performed: `false`
+- tag_performed: `false`
+- pr_performed: `false`
+- release_performed: `false`
+- cleanup_reset_checkout_stash_performed: `false`
+- remote_lifecycle_parked: `true`
+- production_readback_ready: `false`
+- go_live_ready: `false`
+- project_completion_claimed: `false`

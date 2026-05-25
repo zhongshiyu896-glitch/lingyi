@@ -1,0 +1,64 @@
+...............                                                          [100%]
+=============================== warnings summary ===============================
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_company_b_job_card_cannot_use_company_a_item_wage_rate
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotency_conflict_returns_409
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotent_same_payload_returns_same_ticket
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_ticket_success_and_wage_amount
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_empty_company_item_rate
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_item_rate_with_null_company
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1920: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotency_conflict_returns_409
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotent_same_payload_returns_same_ticket
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_ticket_success_and_wage_amount
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_empty_company_item_rate
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_item_rate_with_null_company
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:329: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotency_conflict_returns_409
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotent_same_payload_returns_same_ticket
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_ticket_success_and_wage_amount
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_empty_company_item_rate
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_item_rate_with_null_company
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1678: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotency_conflict_returns_409
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotency_conflict_returns_409
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotency_conflict_returns_409
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_idempotent_same_payload_returns_same_ticket
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_register_ticket_success_and_wage_amount
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_empty_company_item_rate
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_ticket_register_does_not_match_item_rate_with_null_company
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:356: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ticket.updated_at = datetime.utcnow()
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:454: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_ticket.py::WorkshopTicketApiTest::test_reversal_success_and_exceed_guard
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:481: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ticket.updated_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+15 passed, 33 warnings in 1.11s

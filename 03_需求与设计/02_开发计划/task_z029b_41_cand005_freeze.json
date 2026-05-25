@@ -1,0 +1,64 @@
+{
+  "task_id": "TASK-Z029B-41-LEDGER-CAND005",
+  "candidate_id": "Z029-CAND-005",
+  "current_head": "99434f1b9eacf47f75120c1144181a2004c10073",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "chain": [
+    {
+      "task": "TASK-Z029B-35-PREP",
+      "status": "BOUNDARY_FROZEN"
+    },
+    {
+      "task": "TASK-Z029B-36-IMPL",
+      "status": "FAIL",
+      "pytest_summary": "15 failed, 1 warning in 1.11s"
+    },
+    {
+      "task": "TASK-Z029B-37-PREP-CAND005-FAILURE-DIAG",
+      "classification": "TEST_CONTRACT_UPDATE_ALLOWED"
+    },
+    {
+      "task": "TASK-Z029B-38-FIX-CAND005",
+      "status": "FAIL",
+      "pytest_summary": "11 failed, 4 passed, 65 warnings in 1.20s"
+    },
+    {
+      "task": "TASK-Z029B-39-PREP-CAND005-SECOND-FAILURE-DIAG",
+      "classification": "TEST_CONTRACT_UPDATE_ALLOWED"
+    },
+    {
+      "task": "TASK-Z029B-40-FIX-CAND005-SECOND",
+      "status": "PASS",
+      "pytest_summary": "15 passed, 33 warnings in 1.11s"
+    }
+  ],
+  "b40_stdout_summary": "15 passed, 33 warnings in 1.11s",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_workshop_ticket.py",
+  "allowed_backend_paths": [
+    "07_后端/lingyi_service/tests/test_workshop_ticket.py"
+  ],
+  "target_assertions_preserved": {
+    "explicit_status_assertions_preserved": true,
+    "wage_assertions_preserved": true,
+    "unit_wage_assertions_preserved": true,
+    "skip_xfail_deleted_cases": false
+  },
+  "ledger_total": 59,
+  "yes_count": 26,
+  "no_count": 33,
+  "yes_no_intersection": [],
+  "historical_dirty_forbidden_paths_count": 19,
+  "historical_dirty_forbidden_paths_in_no": true,
+  "historical_dirty_forbidden_paths_in_yes": [],
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

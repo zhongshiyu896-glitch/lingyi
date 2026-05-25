@@ -1,0 +1,33 @@
+field	value
+task_id	TASK-Z029B-37-PREP-CAND005-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z029B-36-IMPL
+candidate_id	Z029-CAND-005
+current_head	99434f1b9eacf47f75120c1144181a2004c10073
+cached_empty	true
+diff_check_pass	true
+target_test_path	07_后端/lingyi_service/tests/test_workshop_ticket.py
+target_test_dirty_diff	false
+frozen_command	.venv/bin/python -m pytest tests/test_workshop_ticket.py -q
+b36_result	FAIL
+b36_command_run_count	1
+failed_summary	15 failed, 1 warning in 1.11s
+failed_cases_count	15
+failure_pattern	ALL_FAILED_BEFORE_TARGET_BUSINESS_BRANCH_WITH_422_SCHEMA_VALIDATION
+observed_status_values	422
+expected_status_values	200,400,409
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_ticket.py
+recommended_next_task	TASK-Z029B-38-FIX-CAND005
+source_evidence_missing	[]
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false
