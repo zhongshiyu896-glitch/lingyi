@@ -1,0 +1,46 @@
+{
+  "task_id": "TASK-Z027B-36-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z027-CAND-005",
+  "source_task": "TASK-Z027B-35-PREP",
+  "current_head": "bc3aa7f1a1c78ccd48e3c911bee619df0f65ce74",
+  "workdir": "07_后端/lingyi_service",
+  "command": ".venv/bin/python -m pytest tests/test_workshop_wage.py -q",
+  "command_run_count": 1,
+  "exit_code": 1,
+  "result": "FAIL",
+  "pytest_summary": "2 failed, 45 passed, 12 warnings in 1.18s",
+  "failed_cases": [
+    {
+      "case": "WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed",
+      "expected": "200",
+      "observed": "422",
+      "failure": "AssertionError: 422 != 200 at self._register(\"WAGE-RG-001\", \"100\")"
+    },
+    {
+      "case": "WorkshopWageApiTest::test_wage_rate_overlap_returns_409",
+      "expected": "409",
+      "observed": "422",
+      "failure": "AssertionError: 422 != 409"
+    }
+  ],
+  "stdout_log": "03_需求与设计/02_开发计划/task_z027b_36_cand005_stdout.txt",
+  "target_test_path": "07_后端/lingyi_service/tests/test_workshop_wage.py",
+  "target_test_dirty_diff": [],
+  "cached_empty": true,
+  "fix_attempt": false,
+  "rerun_performed": false,
+  "git_diff_check": "PASS",
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pull_request": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "tests_build_typecheck_npm_browser_beyond_allowed_command": false,
+  "cleanup_reset_checkout_stash": false
+}

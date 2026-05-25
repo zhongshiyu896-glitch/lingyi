@@ -1,0 +1,366 @@
+{
+  "task_id": "TASK-Z027B-41-LEDGER-CAND005",
+  "role": "B Engineer",
+  "candidate_id": "Z027-CAND-005",
+  "current_head": "bc3aa7f1a1c78ccd48e3c911bee619df0f65ce74",
+  "final_result": "PASS",
+  "final_pytest_summary": "47 passed, 26 warnings in 1.15s",
+  "ledger_total": 56,
+  "yes_count": 26,
+  "no_count": 30,
+  "yes_no_intersection_empty": true,
+  "yes_files_exist": true,
+  "yes_git_ignored": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_workshop_wage.py"
+  ],
+  "frontend_yes_paths": [],
+  "entries": [
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-35-PREP_CAND005最终候选边界冻结报告.md",
+      "category": "B35 boundary evidence",
+      "reason": "CAND005 boundary report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_35_cand005_boundary.json",
+      "category": "B35 boundary evidence",
+      "reason": "CAND005 boundary JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_35_cand005_boundary.tsv",
+      "category": "B35 boundary evidence",
+      "reason": "CAND005 boundary TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-36-IMPL_CAND005单文件验证报告.md",
+      "category": "B36 readonly pytest evidence",
+      "reason": "Initial FAIL report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_36_cand005_result.json",
+      "category": "B36 readonly pytest evidence",
+      "reason": "Initial FAIL result JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_36_cand005_result.tsv",
+      "category": "B36 readonly pytest evidence",
+      "reason": "Initial FAIL result TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_36_cand005_stdout.txt",
+      "category": "B36 readonly pytest evidence",
+      "reason": "Initial FAIL stdout"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-37-PREP-CAND005-FAILURE-DIAG_失败定位报告.md",
+      "category": "B37 failure diagnosis evidence",
+      "reason": "First failure diagnosis report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_37_cand005_failure_boundary.json",
+      "category": "B37 failure diagnosis evidence",
+      "reason": "First failure boundary JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_37_cand005_failure_boundary.tsv",
+      "category": "B37 failure diagnosis evidence",
+      "reason": "First failure boundary TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-38-FIX-CAND005_workshop_wage测试合同修复报告.md",
+      "category": "B38 first fix evidence",
+      "reason": "First fix report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_38_cand005_fix_result.json",
+      "category": "B38 first fix evidence",
+      "reason": "First fix result JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_38_cand005_fix_result.tsv",
+      "category": "B38 first fix evidence",
+      "reason": "First fix result TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_38_cand005_fix_stdout.txt",
+      "category": "B38 first fix evidence",
+      "reason": "First fix stdout"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-39-PREP-CAND005-SECOND-FAILURE-DIAG_二次失败定位报告.md",
+      "category": "B39 second failure diagnosis evidence",
+      "reason": "Second failure diagnosis report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_39_cand005_second_failure_boundary.json",
+      "category": "B39 second failure diagnosis evidence",
+      "reason": "Second failure boundary JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_39_cand005_second_failure_boundary.tsv",
+      "category": "B39 second failure diagnosis evidence",
+      "reason": "Second failure boundary TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-40-FIX-CAND005-SECOND_workshop_wage二次修复报告.md",
+      "category": "B40 second fix evidence",
+      "reason": "Second fix report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_40_cand005_second_fix_result.json",
+      "category": "B40 second fix evidence",
+      "reason": "Second fix result JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_40_cand005_second_fix_result.tsv",
+      "category": "B40 second fix evidence",
+      "reason": "Second fix result TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_40_cand005_second_fix_stdout.txt",
+      "category": "B40 second fix evidence",
+      "reason": "Second fix stdout"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-41-LEDGER-CAND005_workshop_wage提交候选账本报告.md",
+      "category": "B41 ledger evidence",
+      "reason": "Ledger report"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_41_cand005_freeze.json",
+      "category": "B41 ledger evidence",
+      "reason": "Freeze JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_41_cand005_ledger.json",
+      "category": "B41 ledger evidence",
+      "reason": "Ledger JSON"
+    },
+    {
+      "decision": "YES",
+      "path": "03_需求与设计/02_开发计划/task_z027b_41_cand005_ledger.tsv",
+      "category": "B41 ledger evidence",
+      "reason": "Ledger TSV"
+    },
+    {
+      "decision": "YES",
+      "path": "07_后端/lingyi_service/tests/test_workshop_wage.py",
+      "category": "allowed backend test file",
+      "reason": "Only allowed backend test diff for CAND005"
+    },
+    {
+      "decision": "NO",
+      "path": "06_前端/",
+      "category": "frontend",
+      "reason": "Frontend paths are forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/app/",
+      "category": "backend app",
+      "reason": "Backend app paths are forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_sales_inventory_adapter.py",
+      "category": "other backend test",
+      "reason": "CAND001 test file excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_bom_audit.py",
+      "category": "other backend test",
+      "reason": "CAND002 test file excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_security_audit.py",
+      "category": "other backend test",
+      "reason": "CAND003 test file excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_subcontract_list_summary.py",
+      "category": "other backend test",
+      "reason": "CAND004 test file excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/tests/test_workshop_permissions.py",
+      "category": "other backend test",
+      "reason": "Unrelated backend test excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "00_交接与日志/HANDOVER_STATUS.md",
+      "category": "shared engineer log",
+      "reason": "Shared logs are forbidden"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-01-PREP_Z027本地候选池冻结报告.md",
+      "category": "candidate pool",
+      "reason": "Z027 candidate pool excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.json",
+      "category": "candidate pool",
+      "reason": "Z027 candidate pool excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.tsv",
+      "category": "candidate pool",
+      "reason": "Z027 candidate pool excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-28-PREP_Z027剩余候选刷新报告.md",
+      "category": "refresh outside boundary",
+      "reason": "B28 refresh excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_28_remaining_refresh.json",
+      "category": "refresh outside boundary",
+      "reason": "B28 refresh excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_28_remaining_refresh.tsv",
+      "category": "refresh outside boundary",
+      "reason": "B28 refresh excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z027B-02-PREP_Z027候选001只读验证边界报告.md",
+      "category": "CAND001 evidence",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_02_cand001_boundary.json",
+      "category": "CAND001 evidence",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_03_cand001_result.json",
+      "category": "CAND001 evidence",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_07_cand001_archive_result.json",
+      "category": "CAND001 archive",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_13_cand002_ledger.json",
+      "category": "CAND002 evidence",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_16_cand002_archive_result.json",
+      "category": "CAND002 archive",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_24_cand003_ledger.json",
+      "category": "CAND003 evidence",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_27_cand003_archive_result.json",
+      "category": "CAND003 archive",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_31_cand004_ledger.json",
+      "category": "CAND004 evidence",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z027b_34_cand004_archive_result.json",
+      "category": "CAND004 archive",
+      "reason": "Archived prior candidate excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/TASK-Z026B-51-FINAL-FREEZE_Z026本地候选池最终冻结报告.md",
+      "category": "old cycle artifact",
+      "reason": "Z026 prior cycle excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "03_需求与设计/02_开发计划/task_z026b_51_final_freeze.json",
+      "category": "old cycle artifact",
+      "reason": "Z026 prior cycle excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "04_测试与验收/测试证据/",
+      "category": "historical evidence",
+      "reason": "Historical evidence excluded"
+    },
+    {
+      "decision": "NO",
+      "path": ".ci-reports/",
+      "category": "runtime cache",
+      "reason": "Runtime/cache excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/.venv/",
+      "category": "runtime cache",
+      "reason": "Virtualenv excluded"
+    },
+    {
+      "decision": "NO",
+      "path": "07_后端/lingyi_service/lingyi_service.local.db",
+      "category": "runtime cache",
+      "reason": "Local runtime DB excluded"
+    }
+  ],
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

@@ -1,0 +1,91 @@
+{
+  "task_id": "TASK-Z027B-35-PREP",
+  "role": "B Engineer",
+  "current_head": "bc3aa7f1a1c78ccd48e3c911bee619df0f65ce74",
+  "source_candidate_pool": "03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.json",
+  "candidate_total": 5,
+  "candidate_ids": [
+    "Z027-CAND-001",
+    "Z027-CAND-002",
+    "Z027-CAND-003",
+    "Z027-CAND-004",
+    "Z027-CAND-005"
+  ],
+  "archived_candidates": [
+    {
+      "candidate_id": "Z027-CAND-001",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "d924557791f94d151d805797b4a4be8ee298f0cb"
+    },
+    {
+      "candidate_id": "Z027-CAND-002",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "c46b8f5a74166eedf5cfac8c75bad232359a1f87"
+    },
+    {
+      "candidate_id": "Z027-CAND-003",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "a5d385b1fff92820a79efec3482a5c34b63e020e"
+    },
+    {
+      "candidate_id": "Z027-CAND-004",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "bc3aa7f1a1c78ccd48e3c911bee619df0f65ce74"
+    }
+  ],
+  "remaining_candidates": [
+    "Z027-CAND-005"
+  ],
+  "candidate_id": "Z027-CAND-005",
+  "candidate_original_fields_copied": true,
+  "candidate_original_fields": {
+    "candidate_id": "Z027-CAND-005",
+    "module": "workshop",
+    "route_or_area": "workshop wage and wage-rate API behavior",
+    "target_test": "07_后端/lingyi_service/tests/test_workshop_wage.py",
+    "recommended_command": ".venv/bin/python -m pytest tests/test_workshop_wage.py -q",
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_workshop_wage.py",
+      "07_后端/lingyi_service/app/routers/workshop.py",
+      "07_后端/lingyi_service/app/services/workshop_service.py",
+      "07_后端/lingyi_service/app/models/workshop.py",
+      "07_后端/lingyi_service/app/models/audit.py"
+    ],
+    "risk_level": "LOW",
+    "allowed_scope": "Run only the frozen single-file backend readonly pytest command and record evidence artifacts.",
+    "forbidden_scope": "No code edits, no test edits, no frontend, no backend app changes, no remote lifecycle, no production account, no push/PR/release.",
+    "why_minimal": "Single existing backend pytest file uses local sqlite fixtures and mocked adapters for workshop wage behavior, without remote lifecycle or production access.",
+    "status": "LOCAL_ACTIONABLE_PREP_ONLY"
+  },
+  "frozen_command": ".venv/bin/python -m pytest tests/test_workshop_wage.py -q",
+  "frozen_workdir": "07_后端/lingyi_service",
+  "command_from_candidate_pool": true,
+  "command_is_single_file_backend_readonly_pytest": true,
+  "target_test_path": "07_后端/lingyi_service/tests/test_workshop_wage.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": [],
+  "source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_workshop_wage.py",
+    "07_后端/lingyi_service/app/routers/workshop.py",
+    "07_后端/lingyi_service/app/services/workshop_service.py",
+    "07_后端/lingyi_service/app/models/workshop.py",
+    "07_后端/lingyi_service/app/models/audit.py"
+  ],
+  "source_evidence_missing": [],
+  "next_task": "TASK-Z027B-36-IMPL",
+  "run_this_task": false,
+  "cached_empty": true,
+  "git_diff_check": "PASS",
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pull_request": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "tests_build_typecheck_npm_browser": false,
+  "cleanup_reset_checkout_stash": false
+}

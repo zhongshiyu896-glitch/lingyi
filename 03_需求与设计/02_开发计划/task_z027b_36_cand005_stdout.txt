@@ -1,0 +1,96 @@
+............................F.................F                          [100%]
+=================================== FAILURES ===================================
+_____ WorkshopWageApiTest.test_daily_wage_formula_and_snapshot_not_changed _____
+
+self = <tests.test_workshop_wage.WorkshopWageApiTest testMethod=test_daily_wage_formula_and_snapshot_not_changed>
+
+    def test_daily_wage_formula_and_snapshot_not_changed(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._employee(),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_item",
+            return_value=ItemInfo(name="ITEM-A", item_code="ITEM-A", disabled=False, companies=("COMP-A",)),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_company",
+            return_value=CompanyInfo(name="COMP-A", disabled=False),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "update_job_card_completed_qty",
+            return_value={"message": "ok"},
+        ):
+>           self._register("WAGE-RG-001", "100")
+
+tests/test_workshop_wage.py:188:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_workshop_wage.py:150: in _register
+    self.assertEqual(response.status_code, 200)
+E   AssertionError: 422 != 200
+____________ WorkshopWageApiTest.test_wage_rate_overlap_returns_409 ____________
+
+self = <tests.test_workshop_wage.WorkshopWageApiTest testMethod=test_wage_rate_overlap_returns_409>
+
+    def test_wage_rate_overlap_returns_409(self) -> None:
+        with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
+            ERPNextJobCardAdapter,
+            "get_employee",
+            return_value=self._employee(),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_item",
+            return_value=ItemInfo(name="ITEM-A", item_code="ITEM-A", disabled=False, companies=("COMP-A",)),
+        ), patch.object(
+            ERPNextJobCardAdapter,
+            "get_company",
+            return_value=CompanyInfo(name="COMP-A", disabled=False),
+        ):
+            response = self.client.post(
+                "/api/workshop/wage-rates",
+                headers=self._headers(),
+                json={
+                    "item_code": "ITEM-A",
+                    "company": "COMP-A",
+                    "process_name": "sew",
+                    "wage_rate": "0.6",
+                    "effective_from": "2026-02-01",
+                    "effective_to": "2026-12-31",
+                },
+            )
+
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_workshop_wage.py:253: AssertionError
+=============================== warnings summary ===============================
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_blocks_ambiguous_company_item_rate
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_blocks_ambiguous_company_item_rate
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_blocks_unresolved_company_item_rate
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_no_active_item_specific_wage_rate_with_null_company_after_migration
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_wage_rate_company_backfill_plan_and_execute_counts_match
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1177: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_is_idempotent
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_normalizes_blank_company_before_resolution
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_scoped_wage_rate_unique_company_still_backfills
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_sets_company_for_uniquely_resolved_item_rate
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_wage_rate_company_backfill_execute_still_writes_logs_and_updates_rates
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_wage_rate_company_backfill_plan_and_execute_counts_match
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1164: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_normalizes_blank_company_before_resolution
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1152: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+FAILED tests/test_workshop_wage.py::WorkshopWageApiTest::test_wage_rate_overlap_returns_409
+2 failed, 45 passed, 12 warnings in 1.18s

@@ -1,0 +1,57 @@
+decision	path	category	reason
+YES	03_需求与设计/02_开发计划/TASK-Z027B-35-PREP_CAND005最终候选边界冻结报告.md	B35 boundary evidence	CAND005 boundary report
+YES	03_需求与设计/02_开发计划/task_z027b_35_cand005_boundary.json	B35 boundary evidence	CAND005 boundary JSON
+YES	03_需求与设计/02_开发计划/task_z027b_35_cand005_boundary.tsv	B35 boundary evidence	CAND005 boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z027B-36-IMPL_CAND005单文件验证报告.md	B36 readonly pytest evidence	Initial FAIL report
+YES	03_需求与设计/02_开发计划/task_z027b_36_cand005_result.json	B36 readonly pytest evidence	Initial FAIL result JSON
+YES	03_需求与设计/02_开发计划/task_z027b_36_cand005_result.tsv	B36 readonly pytest evidence	Initial FAIL result TSV
+YES	03_需求与设计/02_开发计划/task_z027b_36_cand005_stdout.txt	B36 readonly pytest evidence	Initial FAIL stdout
+YES	03_需求与设计/02_开发计划/TASK-Z027B-37-PREP-CAND005-FAILURE-DIAG_失败定位报告.md	B37 failure diagnosis evidence	First failure diagnosis report
+YES	03_需求与设计/02_开发计划/task_z027b_37_cand005_failure_boundary.json	B37 failure diagnosis evidence	First failure boundary JSON
+YES	03_需求与设计/02_开发计划/task_z027b_37_cand005_failure_boundary.tsv	B37 failure diagnosis evidence	First failure boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z027B-38-FIX-CAND005_workshop_wage测试合同修复报告.md	B38 first fix evidence	First fix report
+YES	03_需求与设计/02_开发计划/task_z027b_38_cand005_fix_result.json	B38 first fix evidence	First fix result JSON
+YES	03_需求与设计/02_开发计划/task_z027b_38_cand005_fix_result.tsv	B38 first fix evidence	First fix result TSV
+YES	03_需求与设计/02_开发计划/task_z027b_38_cand005_fix_stdout.txt	B38 first fix evidence	First fix stdout
+YES	03_需求与设计/02_开发计划/TASK-Z027B-39-PREP-CAND005-SECOND-FAILURE-DIAG_二次失败定位报告.md	B39 second failure diagnosis evidence	Second failure diagnosis report
+YES	03_需求与设计/02_开发计划/task_z027b_39_cand005_second_failure_boundary.json	B39 second failure diagnosis evidence	Second failure boundary JSON
+YES	03_需求与设计/02_开发计划/task_z027b_39_cand005_second_failure_boundary.tsv	B39 second failure diagnosis evidence	Second failure boundary TSV
+YES	03_需求与设计/02_开发计划/TASK-Z027B-40-FIX-CAND005-SECOND_workshop_wage二次修复报告.md	B40 second fix evidence	Second fix report
+YES	03_需求与设计/02_开发计划/task_z027b_40_cand005_second_fix_result.json	B40 second fix evidence	Second fix result JSON
+YES	03_需求与设计/02_开发计划/task_z027b_40_cand005_second_fix_result.tsv	B40 second fix evidence	Second fix result TSV
+YES	03_需求与设计/02_开发计划/task_z027b_40_cand005_second_fix_stdout.txt	B40 second fix evidence	Second fix stdout
+YES	03_需求与设计/02_开发计划/TASK-Z027B-41-LEDGER-CAND005_workshop_wage提交候选账本报告.md	B41 ledger evidence	Ledger report
+YES	03_需求与设计/02_开发计划/task_z027b_41_cand005_freeze.json	B41 ledger evidence	Freeze JSON
+YES	03_需求与设计/02_开发计划/task_z027b_41_cand005_ledger.json	B41 ledger evidence	Ledger JSON
+YES	03_需求与设计/02_开发计划/task_z027b_41_cand005_ledger.tsv	B41 ledger evidence	Ledger TSV
+YES	07_后端/lingyi_service/tests/test_workshop_wage.py	allowed backend test file	Only allowed backend test diff for CAND005
+NO	06_前端/	frontend	Frontend paths are forbidden
+NO	07_后端/lingyi_service/app/	backend app	Backend app paths are forbidden
+NO	07_后端/lingyi_service/tests/test_sales_inventory_adapter.py	other backend test	CAND001 test file excluded
+NO	07_后端/lingyi_service/tests/test_bom_audit.py	other backend test	CAND002 test file excluded
+NO	07_后端/lingyi_service/tests/test_security_audit.py	other backend test	CAND003 test file excluded
+NO	07_后端/lingyi_service/tests/test_subcontract_list_summary.py	other backend test	CAND004 test file excluded
+NO	07_后端/lingyi_service/tests/test_workshop_permissions.py	other backend test	Unrelated backend test excluded
+NO	00_交接与日志/HANDOVER_STATUS.md	shared engineer log	Shared logs are forbidden
+NO	03_需求与设计/02_开发计划/TASK-Z027B-01-PREP_Z027本地候选池冻结报告.md	candidate pool	Z027 candidate pool excluded
+NO	03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.json	candidate pool	Z027 candidate pool excluded
+NO	03_需求与设计/02_开发计划/task_z027b_01_candidate_pool.tsv	candidate pool	Z027 candidate pool excluded
+NO	03_需求与设计/02_开发计划/TASK-Z027B-28-PREP_Z027剩余候选刷新报告.md	refresh outside boundary	B28 refresh excluded
+NO	03_需求与设计/02_开发计划/task_z027b_28_remaining_refresh.json	refresh outside boundary	B28 refresh excluded
+NO	03_需求与设计/02_开发计划/task_z027b_28_remaining_refresh.tsv	refresh outside boundary	B28 refresh excluded
+NO	03_需求与设计/02_开发计划/TASK-Z027B-02-PREP_Z027候选001只读验证边界报告.md	CAND001 evidence	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_02_cand001_boundary.json	CAND001 evidence	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_03_cand001_result.json	CAND001 evidence	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_07_cand001_archive_result.json	CAND001 archive	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_13_cand002_ledger.json	CAND002 evidence	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_16_cand002_archive_result.json	CAND002 archive	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_24_cand003_ledger.json	CAND003 evidence	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_27_cand003_archive_result.json	CAND003 archive	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_31_cand004_ledger.json	CAND004 evidence	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/task_z027b_34_cand004_archive_result.json	CAND004 archive	Archived prior candidate excluded
+NO	03_需求与设计/02_开发计划/TASK-Z026B-51-FINAL-FREEZE_Z026本地候选池最终冻结报告.md	old cycle artifact	Z026 prior cycle excluded
+NO	03_需求与设计/02_开发计划/task_z026b_51_final_freeze.json	old cycle artifact	Z026 prior cycle excluded
+NO	04_测试与验收/测试证据/	historical evidence	Historical evidence excluded
+NO	.ci-reports/	runtime cache	Runtime/cache excluded
+NO	07_后端/lingyi_service/.venv/	runtime cache	Virtualenv excluded
+NO	07_后端/lingyi_service/lingyi_service.local.db	runtime cache	Local runtime DB excluded

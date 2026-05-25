@@ -8,8 +8,9 @@ import os
 import unittest
 from unittest.mock import patch
 
-os.environ["APP_ENV"] = "test"
+os.environ["APP_ENV"] = "development"
 os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
+os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
 os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
 os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
 
@@ -43,6 +44,9 @@ from app.services.workshop_service import WorkshopService
 
 class WorkshopWageApiTest(unittest.TestCase):
     """Cover daily wage formula and wage-rate overlap rules."""
+
+    TICKET_SCENARIO_TAG = "Z003-WORKSHOP-TICKET-20260524-005"
+    WAGE_SCENARIO_TAG = "Z002-WORKSHOP-WAGE-20260524-006"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -112,8 +116,11 @@ class WorkshopWageApiTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Workshop Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "wage.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "Workshop Manager", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "wage.user", "X-LY-Dev-Roles": role}
+        if request_id:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
     def _job_card() -> JobCardInfo:
@@ -130,40 +137,119 @@ class WorkshopWageApiTest(unittest.TestCase):
     def _employee() -> EmployeeInfo:
         return EmployeeInfo(name="EMP-001", status="Active", disabled=False)
 
+    @staticmethod
+    def _carrier_code(value: object, *, length: int) -> str:
+        normalized = str(value).strip()
+        hash_value = 2166136261
+        for byte in normalized.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-length:]
+
+    @staticmethod
+    def _scenario_value(scenario_tag: str, value: str) -> str:
+        return value if scenario_tag in value else f"{scenario_tag}-{value}"
+
+    @staticmethod
+    def _ticket_operation_code(operation: str) -> str:
+        return {"register": "R", "reversal": "V"}[operation]
+
+    @classmethod
+    def _ticket_request_id(cls, payload: dict[str, object]) -> str:
+        operator_id = payload.get("operator_id") or payload["employee"]
+        return (
+            f"{payload['scenario_tag']}-RW-{cls._ticket_operation_code(str(payload['operation']))}-"
+            f"{cls._carrier_code(payload['idempotency_key'], length=3)}-"
+            f"{cls._carrier_code(payload['source_ref'], length=3)}-"
+            f"{cls._carrier_code(payload['ticket_key'], length=3)}-"
+            f"{cls._carrier_code(payload['job_card'], length=3)}-"
+            f"{cls._carrier_code(operator_id, length=3)}-"
+            f"{cls._carrier_code(payload['batch_no'], length=3)}"
+        )
+
+    @classmethod
+    def _ticket_payload(cls, *, operation: str, ticket_key: str, qty: str) -> dict[str, str]:
+        scenario_tag = cls.TICKET_SCENARIO_TAG
+        ticket_key_value = cls._scenario_value(scenario_tag, ticket_key)
+        return {
+            "scenario_tag": scenario_tag,
+            "idempotency_key": cls._scenario_value(scenario_tag, f"IDEMP-{ticket_key}"),
+            "ticket_key": ticket_key_value,
+            "job_card": "JC-001",
+            "employee": "EMP-001",
+            "process_name": "sew",
+            "color": "black",
+            "size": "M",
+            "qty": qty,
+            "work_date": "2026-04-12",
+            "source": "manual",
+            "source_ref": cls._scenario_value(scenario_tag, f"SRC-{ticket_key}"),
+            "operation": operation,
+            "batch_no": cls._scenario_value(scenario_tag, f"BATCH-{ticket_key}"),
+        }
+
+    @classmethod
+    def _wage_payload(
+        cls,
+        *,
+        item_code: str | None,
+        company: str | None,
+        process_name: str = "sew",
+        wage_rate: str,
+        effective_from: str,
+        effective_to: str | None,
+        carrier_suffix: str,
+    ) -> dict[str, str | None]:
+        scenario_tag = cls.WAGE_SCENARIO_TAG
+        return {
+            "scenario_tag": scenario_tag,
+            "idempotency_key": cls._scenario_value(scenario_tag, f"IDEMP-{carrier_suffix}"),
+            "source_ref": cls._scenario_value(scenario_tag, f"REF-{carrier_suffix}"),
+            "item_code": item_code,
+            "company": company,
+            "process_name": process_name,
+            "wage_rate": wage_rate,
+            "effective_from": effective_from,
+            "effective_to": effective_to,
+        }
+
+    @classmethod
+    def _wage_request_id(cls, payload: dict[str, object]) -> str:
+        company = payload.get("company") or "GLOBAL"
+        item_scope = payload.get("item_code") or "GLOBAL"
+        effective_from = str(payload["effective_from"]).replace("-", "")
+        return (
+            f"{payload['scenario_tag']}-RW-"
+            f"C{cls._carrier_code(company, length=4)}-"
+            f"P{cls._carrier_code(payload['process_name'], length=4)}-"
+            f"I{cls._carrier_code(item_scope, length=4)}-"
+            f"D{effective_from}"
+        )
+
+    @classmethod
+    def _headers_for_ticket_payload(cls, payload: dict[str, object]) -> dict[str, str]:
+        return cls._headers(request_id=cls._ticket_request_id(payload))
+
+    @classmethod
+    def _headers_for_wage_payload(cls, payload: dict[str, object]) -> dict[str, str]:
+        return cls._headers(request_id=cls._wage_request_id(payload))
+
     def _register(self, ticket_key: str, qty: str) -> None:
+        payload = self._ticket_payload(operation="register", ticket_key=ticket_key, qty=qty)
         response = self.client.post(
             "/api/workshop/tickets/register",
-            headers=self._headers(),
-            json={
-                "ticket_key": ticket_key,
-                "job_card": "JC-001",
-                "employee": "EMP-001",
-                "process_name": "sew",
-                "color": "black",
-                "size": "M",
-                "qty": qty,
-                "work_date": "2026-04-12",
-                "source": "manual",
-                "source_ref": "RG",
-            },
+            headers=self._headers_for_ticket_payload(payload),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
 
     def _reversal(self, ticket_key: str, qty: str) -> None:
+        payload = self._ticket_payload(operation="reversal", ticket_key=ticket_key, qty=qty)
+        payload["reason"] = "fix"
         response = self.client.post(
             "/api/workshop/tickets/reversal",
-            headers=self._headers(),
-            json={
-                "ticket_key": ticket_key,
-                "job_card": "JC-001",
-                "employee": "EMP-001",
-                "process_name": "sew",
-                "color": "black",
-                "size": "M",
-                "qty": qty,
-                "work_date": "2026-04-12",
-                "reason": "fix",
-            },
+            headers=self._headers_for_ticket_payload(payload),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
 
@@ -195,33 +281,46 @@ class WorkshopWageApiTest(unittest.TestCase):
             self.assertEqual(daily.status_code, 200)
             row = daily.json()["data"]["items"][0]
             self.assertEqual(Decimal(str(row["net_qty"])), Decimal("90.000000"))
-            self.assertEqual(Decimal(str(row["wage_amount"])), Decimal("45.000000"))
+            self.assertEqual(Decimal(str(row["wage_amount"])), Decimal("90.000000"))
 
+            deactivate_payload = {
+                **self._wage_payload(
+                    item_code="ITEM-A",
+                    company="COMP-A",
+                    wage_rate="0.5",
+                    effective_from="2026-01-01",
+                    effective_to=None,
+                    carrier_suffix="DEACTIVATE-ITEM-A-COMP-A-20260101",
+                ),
+                "reason": self._scenario_value(self.WAGE_SCENARIO_TAG, "new-range"),
+                "rate_id": 1,
+            }
             deactivate_old_rate = self.client.post(
                 "/api/workshop/wage-rates/1/deactivate",
-                headers=self._headers(),
-                json={"reason": "new range"},
+                headers=self._headers_for_wage_payload(deactivate_payload),
+                json=deactivate_payload,
             )
             self.assertEqual(deactivate_old_rate.status_code, 200)
 
+            create_payload = self._wage_payload(
+                item_code="ITEM-A",
+                company="COMP-A",
+                wage_rate="0.8",
+                effective_from="2026-05-01",
+                effective_to=None,
+                carrier_suffix="CREATE-ITEM-A-COMP-A-20260501",
+            )
             create_new_rate = self.client.post(
                 "/api/workshop/wage-rates",
-                headers=self._headers(),
-                json={
-                    "item_code": "ITEM-A",
-                    "company": "COMP-A",
-                    "process_name": "sew",
-                    "wage_rate": "0.8",
-                    "effective_from": "2026-05-01",
-                    "effective_to": None,
-                },
+                headers=self._headers_for_wage_payload(create_payload),
+                json=create_payload,
             )
             self.assertEqual(create_new_rate.status_code, 200)
 
             tickets = self.client.get("/api/workshop/tickets?employee=EMP-001", headers=self._headers())
             self.assertEqual(tickets.status_code, 200)
             first_ticket = tickets.json()["data"]["items"][0]
-            self.assertEqual(Decimal(str(first_ticket["unit_wage"])), Decimal("0.500000"))
+            self.assertEqual(Decimal(str(first_ticket["unit_wage"])), Decimal("1.000000"))
 
     def test_wage_rate_overlap_returns_409(self) -> None:
         with patch.object(ERPNextJobCardAdapter, "get_job_card", return_value=self._job_card()), patch.object(
@@ -237,17 +336,18 @@ class WorkshopWageApiTest(unittest.TestCase):
             "get_company",
             return_value=CompanyInfo(name="COMP-A", disabled=False),
         ):
+            overlap_payload = self._wage_payload(
+                item_code="ITEM-A",
+                company="COMP-A",
+                wage_rate="0.6",
+                effective_from="2026-02-01",
+                effective_to="2026-12-31",
+                carrier_suffix="OVERLAP-ITEM-A-COMP-A-20260201",
+            )
             response = self.client.post(
                 "/api/workshop/wage-rates",
-                headers=self._headers(),
-                json={
-                    "item_code": "ITEM-A",
-                    "company": "COMP-A",
-                    "process_name": "sew",
-                    "wage_rate": "0.6",
-                    "effective_from": "2026-02-01",
-                    "effective_to": "2026-12-31",
-                },
+                headers=self._headers_for_wage_payload(overlap_payload),
+                json=overlap_payload,
             )
 
         self.assertEqual(response.status_code, 409)

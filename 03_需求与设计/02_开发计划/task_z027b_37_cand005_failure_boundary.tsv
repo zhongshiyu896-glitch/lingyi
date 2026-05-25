@@ -1,0 +1,32 @@
+field	value
+task_id	TASK-Z027B-37-PREP-CAND005-FAILURE-DIAG
+role	B Engineer
+candidate_id	Z027-CAND-005
+source_boundary_task	TASK-Z027B-35-PREP
+source_impl_task	TASK-Z027B-36-IMPL
+current_head	bc3aa7f1a1c78ccd48e3c911bee619df0f65ce74
+cached_empty	true
+failed_summary	2 failed, 45 passed, 12 warnings in 1.18s
+failed_cases	WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed; WorkshopWageApiTest::test_wage_rate_overlap_returns_409
+observed_statuses	422;422
+expected_statuses	200;409
+failure_pattern	pre-target 422 validation/schema/local carrier contract drift before original 200 and 409 assertions
+readonly_source_evidence_paths	03_需求与设计/02_开发计划/task_z027b_35_cand005_boundary.json; 03_需求与设计/02_开发计划/task_z027b_36_cand005_result.json; 03_需求与设计/02_开发计划/task_z027b_36_cand005_stdout.txt; 07_后端/lingyi_service/tests/test_workshop_wage.py; 07_后端/lingyi_service/app/schemas/workshop.py; 07_后端/lingyi_service/app/routers/workshop.py; 07_后端/lingyi_service/app/services/workshop_service.py; 07_后端/lingyi_service/app/models/workshop.py; 07_后端/lingyi_service/app/models/audit.py
+source_evidence_missing
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_wage.py
+next_task	TASK-Z027B-38-FIX-CAND005
+run_this_task	false
+target_test_dirty_diff
+git_diff_check	PASS
+tests_run	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

@@ -1,0 +1,72 @@
+...............................................                          [100%]
+=============================== warnings summary ===============================
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_blocks_ambiguous_company_item_rate
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_blocks_ambiguous_company_item_rate
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_blocks_unresolved_company_item_rate
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_no_active_item_specific_wage_rate_with_null_company_after_migration
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_wage_rate_company_backfill_plan_and_execute_counts_match
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1177: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_is_idempotent
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_normalizes_blank_company_before_resolution
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_scoped_wage_rate_unique_company_still_backfills
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_sets_company_for_uniquely_resolved_item_rate
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_wage_rate_company_backfill_execute_still_writes_logs_and_updates_rates
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_wage_rate_company_backfill_plan_and_execute_counts_match
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1164: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_backfill_normalizes_blank_company_before_resolution
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1152: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1920: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:329: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:1678: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_retry_at=datetime.utcnow(),
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_outbox_service.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:356: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ticket.updated_at = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:454: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:481: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ticket.updated_at = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:940: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.updated_at = datetime.utcnow()
+
+tests/test_workshop_wage.py::WorkshopWageApiTest::test_daily_wage_formula_and_snapshot_not_changed
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/workshop_service.py:914: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+47 passed, 26 warnings in 1.15s
