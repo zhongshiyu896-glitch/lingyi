@@ -1,0 +1,306 @@
+FFFFFFFFFFFFFFF                                                          [100%]
+=================================== FAILURES ===================================
+_ FactoryStatementPayableApiTest.test_cancelled_statement_cannot_create_payable_outbox _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_cancelled_statement_cannot_create_payable_outbox>
+
+    def test_cancelled_statement_cannot_create_payable_outbox(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-payable-cancel-denied-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        cancelled = self.client.post(
+            f"/api/factory-statements/{statement_id}/cancel",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-payable-cancel-denied-op", "reason": "cancel"},
+        )
+>       self.assertEqual(cancelled.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_payable_api.py:380: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.permission_service:permission_service.py:1479 LINGYI_PERMISSION_SOURCE=static 临时权限来源，不可用于生产
+_ FactoryStatementPayableApiTest.test_confirmed_statement_can_create_payable_outbox _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_confirmed_statement_can_create_payable_outbox>
+_mock_account = <MagicMock name='validate_payable_account' id='4473868640'>
+_mock_center = <MagicMock name='validate_cost_center' id='4473868304'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_confirmed_statement_can_create_payable_outbox(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:62:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_different_key_cannot_create_second_active_outbox _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_different_key_cannot_create_second_active_outbox>
+_mock_account = <MagicMock name='validate_payable_account' id='4473870992'>
+_mock_center = <MagicMock name='validate_cost_center' id='4473872000'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_different_key_cannot_create_second_active_outbox(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-active-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:163:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_draft_statement_cannot_create_payable_outbox _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_draft_statement_cannot_create_payable_outbox>
+
+    def test_draft_statement_cannot_create_payable_outbox(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-payable-draft-denied-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        response = self.client.post(
+            f"/api/factory-statements/{statement_id}/payable-draft",
+            headers=self._headers(),
+            json=self._payable_payload(idempotency_key="idem-payable-draft-denied"),
+        )
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_INVALID_STATUS")
+E       AssertionError: 'FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT' != 'FACTORY_STATEMENT_INVALID_STATUS'
+E       - FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT
+E       + FACTORY_STATEMENT_INVALID_STATUS
+
+tests/test_factory_statement_payable_api.py:364: AssertionError
+_____ FactoryStatementPayableApiTest.test_erpnext_unavailable_fail_closed ______
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_erpnext_unavailable_fail_closed>
+_mock_account = <MagicMock name='validate_payable_account' id='4473872336'>
+
+    @patch.object(
+        ERPNextPurchaseInvoiceAdapter,
+        "validate_payable_account",
+        side_effect=ERPNextServiceUnavailableError("erp unavailable"),
+    )
+    def test_erpnext_unavailable_fail_closed(self, _mock_account) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-erp-down")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:429:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_event_key_is_stable_and_excludes_idempotency _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_event_key_is_stable_and_excludes_idempotency>
+_mock_account = <MagicMock name='validate_payable_account' id='4473872672'>
+_mock_center = <MagicMock name='validate_cost_center' id='4473873008'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_event_key_is_stable_and_excludes_idempotency(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-event-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:266:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_failed_outbox_allows_new_request_with_new_business_payload _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_failed_outbox_allows_new_request_with_new_business_payload>
+_mock_account = <MagicMock name='validate_payable_account' id='4473873344'>
+_mock_center = <MagicMock name='validate_cost_center' id='4473873680'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_failed_outbox_allows_new_request_with_new_business_payload(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-failed-retry-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:223:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_integrity_conflict_reloads_existing_active_outbox _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_integrity_conflict_reloads_existing_active_outbox>
+_mock_account = <MagicMock name='validate_payable_account' id='4473874352'>
+_mock_center = <MagicMock name='validate_cost_center' id='4473874688'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_integrity_conflict_reloads_existing_active_outbox(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-race-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:310:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_____ FactoryStatementPayableApiTest.test_invalid_cost_center_fail_closed ______
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_invalid_cost_center_fail_closed>
+_mock_account = <MagicMock name='validate_payable_account' id='4473875024'>
+_mock_center = <MagicMock name='validate_cost_center' id='4473875360'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=False)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_invalid_cost_center_fail_closed(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-cost-invalid")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:409:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+___ FactoryStatementPayableApiTest.test_invalid_payable_account_fail_closed ____
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_invalid_payable_account_fail_closed>
+_mock_account = <MagicMock name='validate_payable_account' id='4473875696'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=False)
+    def test_invalid_payable_account_fail_closed(self, _mock_account) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-account-invalid")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:392:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_list_and_detail_expose_payable_outbox_summary _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_list_and_detail_expose_payable_outbox_summary>
+_mock_account = <MagicMock name='validate_payable_account' id='4471403728'>
+_mock_center = <MagicMock name='validate_cost_center' id='4472543552'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_list_and_detail_expose_payable_outbox_summary(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-summary")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:91:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_no_payable_create_permission_returns_403 _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_no_payable_create_permission_returns_403>
+
+    def test_no_payable_create_permission_returns_403(self) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-perm-denied")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:463:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_payable_draft_endpoint_never_creates_purchase_invoice_directly _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_payable_draft_endpoint_never_creates_purchase_invoice_directly>
+_mock_account = <MagicMock name='validate_payable_account' id='4472546576'>
+_mock_center = <MagicMock name='validate_cost_center' id='4472546912'>
+_mock_create = <MagicMock name='create_purchase_invoice_draft' id='4472543216'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "create_purchase_invoice_draft", side_effect=AssertionError("must not call"))
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_payable_draft_endpoint_never_creates_purchase_invoice_directly(
+        self,
+        _mock_account,
+        _mock_center,
+        _mock_create,
+    ) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-no-direct-pi")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:452:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_same_key_different_hash_returns_conflict _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_same_key_different_hash_returns_conflict>
+_mock_account = <MagicMock name='validate_payable_account' id='4472551616'>
+_mock_center = <MagicMock name='validate_cost_center' id='4472545568'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_same_key_different_hash_returns_conflict(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-conflict-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:203:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+_ FactoryStatementPayableApiTest.test_same_key_same_hash_replays_same_payable_outbox _
+
+self = <tests.test_factory_statement_payable_api.FactoryStatementPayableApiTest testMethod=test_same_key_same_hash_replays_same_payable_outbox>
+_mock_account = <MagicMock name='validate_payable_account' id='4472545904'>
+_mock_center = <MagicMock name='validate_cost_center' id='4472548928'>
+
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_cost_center", return_value=True)
+    @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
+    def test_same_key_same_hash_replays_same_payable_outbox(self, _mock_account, _mock_center) -> None:
+>       statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-replay-create")
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_factory_statement_payable_api.py:133:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_factory_statement_payable_api.py:56: in _create_and_confirm_statement
+    self.assertEqual(confirmed.status_code, 200)
+E   AssertionError: 409 != 200
+=============================== warnings summary ===============================
+tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_cancelled_statement_cannot_create_payable_outbox
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_factory_statement_payable_api.py: 15 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:4017: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_factory_statement_payable_api.py: 15 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:377: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    LySubcontractInspection.settlement_locked_at: datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_cancelled_statement_cannot_create_payable_outbox
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_confirmed_statement_can_create_payable_outbox
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_different_key_cannot_create_second_active_outbox
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_draft_statement_cannot_create_payable_outbox
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_erpnext_unavailable_fail_closed
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_event_key_is_stable_and_excludes_idempotency
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_failed_outbox_allows_new_request_with_new_business_payload
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_integrity_conflict_reloads_existing_active_outbox
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_invalid_cost_center_fail_closed
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_invalid_payable_account_fail_closed
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_list_and_detail_expose_payable_outbox_summary
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_no_payable_create_permission_returns_403
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_payable_draft_endpoint_never_creates_purchase_invoice_directly
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_same_key_different_hash_returns_conflict
+FAILED tests/test_factory_statement_payable_api.py::FactoryStatementPayableApiTest::test_same_key_same_hash_replays_same_payable_outbox
+15 failed, 31 warnings in 1.26s

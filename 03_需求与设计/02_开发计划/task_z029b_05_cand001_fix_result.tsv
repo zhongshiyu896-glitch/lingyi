@@ -1,0 +1,36 @@
+field	value
+task_id	TASK-Z029B-05-FIX-CAND001
+candidate_id	Z029-CAND-001
+source_task	TASK-Z029B-04-PREP-CAND001-FAILURE-DIAG
+allowed_fix_file	07_后端/lingyi_service/tests/test_factory_statement_payable_api.py
+workdir	/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service
+command	.venv/bin/python -m pytest tests/test_factory_statement_payable_api.py -q
+command_run_count	1
+exit_code	1
+result	FAIL
+pytest_summary	1 failed, 14 passed, 57 warnings in 1.31s
+stdout_path	03_需求与设计/02_开发计划/task_z029b_05_cand001_fix_stdout.txt
+changed_files	07_后端/lingyi_service/tests/test_factory_statement_payable_api.py;03_需求与设计/02_开发计划/TASK-Z029B-05-FIX-CAND001_factory_statement_payable_api测试合同修复报告.md;03_需求与设计/02_开发计划/task_z029b_05_cand001_fix_result.json;03_需求与设计/02_开发计划/task_z029b_05_cand001_fix_result.tsv;03_需求与设计/02_开发计划/task_z029b_05_cand001_fix_stdout.txt
+assertions_weakened	false
+skip_xfail_deleted_cases	false
+failed_case	FactoryStatementPayableApiTest::test_erpnext_unavailable_fail_closed
+failed_case_diff	expected 503 observed 200
+backend_app_changed	false
+frontend_changed	false
+other_tests_changed	false
+cached_empty	true
+git_diff_cached_name_only	[]
+git_diff_check	PASS
+b05_artifacts_staged	false
+rerun_performed	false
+continued_fix_after_failure	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

@@ -1,0 +1,130 @@
+{
+  "task_id": "TASK-Z029B-04-PREP-CAND001-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task": "TASK-Z029B-03-IMPL",
+  "fix1_source": "TASK-Z029B-03-IMPL-FIX1",
+  "candidate_id": "Z029-CAND-001",
+  "current_head": "765441c1248ebb8e83f9835e7f7a1f931a1d0687",
+  "cached_empty": true,
+  "git_diff_check": "PASS",
+  "b03_result_after_fix1": "FAIL",
+  "pytest_summary": "15 failed, 31 warnings in 1.26s",
+  "command_run_count": 1,
+  "frozen_command": ".venv/bin/python -m pytest tests/test_factory_statement_payable_api.py -q",
+  "frozen_workdir": "/Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service",
+  "target_test_path": "07_后端/lingyi_service/tests/test_factory_statement_payable_api.py",
+  "target_test_dirty_diff": false,
+  "failed_cases_count": 15,
+  "failed_cases": [
+    {
+      "case": "FactoryStatementPayableApiTest::test_cancelled_statement_cannot_create_payable_outbox",
+      "key_assertion_status_diff": "cancelled.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_confirmed_statement_can_create_payable_outbox",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_different_key_cannot_create_second_active_outbox",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_draft_statement_cannot_create_payable_outbox",
+      "key_assertion_status_diff": "response.status_code expected 409 and observed 409; response code expected FACTORY_STATEMENT_INVALID_STATUS, observed FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_erpnext_unavailable_fail_closed",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_event_key_is_stable_and_excludes_idempotency",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_failed_outbox_allows_new_request_with_new_business_payload",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_integrity_conflict_reloads_existing_active_outbox",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_invalid_cost_center_fail_closed",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_invalid_payable_account_fail_closed",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_list_and_detail_expose_payable_outbox_summary",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_no_payable_create_permission_returns_403",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_payable_draft_endpoint_never_creates_purchase_invoice_directly",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_same_key_different_hash_returns_conflict",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    },
+    {
+      "case": "FactoryStatementPayableApiTest::test_same_key_same_hash_replays_same_payable_outbox",
+      "key_assertion_status_diff": "confirmed.status_code expected 200, observed 409"
+    }
+  ],
+  "failure_patterns": [
+    {
+      "pattern": "confirm_cancel_or_setup_preempted_by_local_idempotency_gate",
+      "affected_cases_count": 14,
+      "expected_status": 200,
+      "observed_status": 409,
+      "summary": "confirm/cancel/payable setup payloads lack current scenario carrier alignment, so FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT is reached before the original target branch."
+    },
+    {
+      "pattern": "draft_payable_invalid_status_preempted_by_idempotency_conflict",
+      "affected_cases_count": 1,
+      "expected_status": 409,
+      "observed_status": 409,
+      "expected_code": "FACTORY_STATEMENT_INVALID_STATUS",
+      "observed_code": "FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT"
+    }
+  ],
+  "readonly_source_evidence_paths": [
+    "07_后端/lingyi_service/tests/test_factory_statement_payable_api.py",
+    "07_后端/lingyi_service/tests/test_factory_statement_api.py",
+    "07_后端/lingyi_service/app/routers/factory_statement.py",
+    "07_后端/lingyi_service/app/services/factory_statement_payable_outbox_service.py",
+    "07_后端/lingyi_service/app/services/erpnext_purchase_invoice_adapter.py",
+    "07_后端/lingyi_service/app/models/factory_statement.py"
+  ],
+  "source_evidence_missing": [],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "classification_basis": [
+    "B03 was run once and remained FAIL after the B03-FIX1 evidence field correction.",
+    "The target test is currently clean and the source evidence exists.",
+    "The current router local write gate requires scenario_tag carriers for create, confirm, cancel, and payable-draft operations.",
+    "The payable target test payload helpers do not yet carry the current scenario_tag/source_ref/status_action contract needed to reach the original business branches."
+  ],
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_factory_statement_payable_api.py",
+  "recommended_next_task": "TASK-Z029B-05-FIX-CAND001",
+  "next_task": "TASK-Z029B-05-FIX-CAND001",
+  "run_this_task": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false,
+  "tests_build_typecheck_npm_browser_performed": false,
+  "code_or_test_edits_performed": false,
+  "cleanup_reset_checkout_stash_performed": false
+}

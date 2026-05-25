@@ -1,0 +1,33 @@
+field	value
+task_id	TASK-Z029B-04-PREP-CAND001-FAILURE-DIAG
+candidate_id	Z029-CAND-001
+source_task	TASK-Z029B-03-IMPL
+fix1_source	TASK-Z029B-03-IMPL-FIX1
+current_head	765441c1248ebb8e83f9835e7f7a1f931a1d0687
+cached_empty	true
+git_diff_check	PASS
+b03_result_after_fix1	FAIL
+pytest_summary	15 failed, 31 warnings in 1.26s
+command_run_count	1
+frozen_command	.venv/bin/python -m pytest tests/test_factory_statement_payable_api.py -q
+target_test_path	07_后端/lingyi_service/tests/test_factory_statement_payable_api.py
+target_test_dirty_diff	false
+failed_cases_count	15
+failure_pattern_1	14 cases expected 200 but observed 409 before original branch
+failure_pattern_2	1 draft case expected FACTORY_STATEMENT_INVALID_STATUS but observed FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT
+readonly_source_evidence_paths	07_后端/lingyi_service/tests/test_factory_statement_payable_api.py;07_后端/lingyi_service/tests/test_factory_statement_api.py;07_后端/lingyi_service/app/routers/factory_statement.py;07_后端/lingyi_service/app/services/factory_statement_payable_outbox_service.py;07_后端/lingyi_service/app/services/erpnext_purchase_invoice_adapter.py;07_后端/lingyi_service/app/models/factory_statement.py
+source_evidence_missing	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_factory_statement_payable_api.py
+recommended_next_task	TASK-Z029B-05-FIX-CAND001
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false

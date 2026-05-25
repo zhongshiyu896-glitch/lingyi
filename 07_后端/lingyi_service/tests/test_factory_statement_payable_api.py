@@ -14,6 +14,7 @@ from app.core.exceptions import ERPNextServiceUnavailableError
 from app.models.factory_statement import LyFactoryStatement
 from app.models.factory_statement import LyFactoryStatementPayableOutbox
 from app.services.erpnext_purchase_invoice_adapter import ERPNextPurchaseInvoiceAdapter
+from app.services.factory_statement_service import FactoryStatementService
 from app.services.factory_statement_payable_outbox_service import FactoryStatementPayableOutboxService
 from tests.test_factory_statement_api import FactoryStatementApiBase
 
@@ -30,9 +31,62 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         )
 
     @staticmethod
-    def _payable_payload(*, idempotency_key: str, posting_date: str = "2026-04-15", remark: str = "") -> dict[str, str]:
+    def _scenario_key(idempotency_key: str) -> str:
+        scenario_tag = FactoryStatementApiBase._SCENARIO_TAG
+        return idempotency_key if scenario_tag in idempotency_key else f"{scenario_tag}-{idempotency_key}"
+
+    def _statement_chain(self, statement_id: int) -> dict[str, str]:
+        with self.SessionLocal() as session:
+            statement = session.query(LyFactoryStatement).filter(LyFactoryStatement.id == statement_id).one()
+            return {
+                "company": str(statement.company),
+                "supplier": str(statement.supplier),
+                "statement_no": str(statement.statement_no),
+                "source_type": str(statement.source_type),
+            }
+
+    def _confirm_payload(self, *, statement_id: int, idempotency_key: str, remark: str = "confirm") -> dict[str, str]:
+        chain = self._statement_chain(statement_id)
         return {
-            "idempotency_key": idempotency_key,
+            "idempotency_key": self._scenario_key(idempotency_key),
+            "remark": remark,
+            "scenario_tag": FactoryStatementApiBase._SCENARIO_TAG,
+            "company": chain["company"],
+            "supplier": chain["supplier"],
+            "statement_no": chain["statement_no"],
+        }
+
+    def _cancel_payload(self, *, statement_id: int, idempotency_key: str, reason: str = "cancel") -> dict[str, str]:
+        chain = self._statement_chain(statement_id)
+        scenario_tag = FactoryStatementApiBase._SCENARIO_TAG
+        scoped_reason = reason if scenario_tag in reason else f"{scenario_tag}-{reason}"
+        return {
+            "idempotency_key": self._scenario_key(idempotency_key),
+            "reason": scoped_reason,
+            "scenario_tag": scenario_tag,
+            "company": chain["company"],
+            "supplier": chain["supplier"],
+            "statement_no": chain["statement_no"],
+        }
+
+    def _payable_payload(
+        self,
+        *,
+        statement_id: int,
+        idempotency_key: str,
+        posting_date: str = "2026-04-15",
+        remark: str = "",
+    ) -> dict[str, str]:
+        chain = self._statement_chain(statement_id)
+        return {
+            "idempotency_key": self._scenario_key(idempotency_key),
+            "scenario_tag": FactoryStatementApiBase._SCENARIO_TAG,
+            "company": chain["company"],
+            "supplier": chain["supplier"],
+            "statement_no": chain["statement_no"],
+            "source_type": chain["source_type"],
+            "status_action": "payable_draft",
+            "source_ref": chain["statement_no"],
             "payable_account": "2202 - AP - C",
             "cost_center": "Main - C",
             "posting_date": posting_date,
@@ -51,7 +105,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": f"{idempotency_key}-confirm", "remark": "confirm"},
+            json=self._confirm_payload(statement_id=statement_id, idempotency_key=f"{idempotency_key}-confirm"),
         )
         self.assertEqual(confirmed.status_code, 200)
         return statement_id
@@ -64,7 +118,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-op-1", remark="create outbox"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-payable-op-1",
+                remark="create outbox",
+            ),
         )
         self.assertEqual(response.status_code, 200)
         body = response.json()
@@ -92,7 +150,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         create_outbox = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-summary-op"),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-summary-op"),
         )
         self.assertEqual(create_outbox.status_code, 200)
         outbox_id = int(create_outbox.json()["data"]["payable_outbox_id"])
@@ -131,7 +189,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
     @patch.object(ERPNextPurchaseInvoiceAdapter, "validate_payable_account", return_value=True)
     def test_same_key_same_hash_replays_same_payable_outbox(self, _mock_account, _mock_center) -> None:
         statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-replay-create")
-        payload = self._payable_payload(idempotency_key="idem-payable-replay", remark="same")
+        payload = self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-replay", remark="same")
 
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
@@ -165,7 +223,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="manual-pay-1", posting_date="2026-04-15"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="manual-pay-1",
+                posting_date="2026-04-15",
+            ),
         )
         self.assertEqual(first.status_code, 200)
         first_outbox_id = int(first.json()["data"]["payable_outbox_id"])
@@ -173,7 +235,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         second = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="manual-pay-2", posting_date="2026-04-15"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="manual-pay-2",
+                posting_date="2026-04-15",
+            ),
         )
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "FACTORY_STATEMENT_PAYABLE_OUTBOX_ACTIVE")
@@ -205,14 +271,22 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-conflict", posting_date="2026-04-15"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-payable-conflict",
+                posting_date="2026-04-15",
+            ),
         )
         self.assertEqual(first.status_code, 200)
 
         conflict = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-conflict", posting_date="2026-04-16"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-payable-conflict",
+                posting_date="2026-04-16",
+            ),
         )
         self.assertEqual(conflict.status_code, 409)
         self.assertEqual(conflict.json()["code"], "FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT")
@@ -225,7 +299,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-failed-retry-1", posting_date="2026-04-15"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-payable-failed-retry-1",
+                posting_date="2026-04-15",
+            ),
         )
         self.assertEqual(first.status_code, 200)
         first_outbox_id = int(first.json()["data"]["payable_outbox_id"])
@@ -243,7 +321,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         second = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-failed-retry-2", posting_date="2026-04-16"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-payable-failed-retry-2",
+                posting_date="2026-04-16",
+            ),
         )
         self.assertEqual(second.status_code, 200)
         second_outbox_id = int(second.json()["data"]["payable_outbox_id"])
@@ -268,7 +350,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="manual-pay-1", posting_date="2026-04-15"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="manual-pay-1",
+                posting_date="2026-04-15",
+            ),
         )
         self.assertEqual(first.status_code, 200)
         first_outbox_id = int(first.json()["data"]["payable_outbox_id"])
@@ -276,7 +362,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         second = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="manual-pay-2", posting_date="2026-04-15"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="manual-pay-2",
+                posting_date="2026-04-15",
+            ),
         )
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "FACTORY_STATEMENT_PAYABLE_OUTBOX_ACTIVE")
@@ -312,7 +402,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-race-1", posting_date="2026-04-15"),
+            json=self._payable_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-payable-race-1",
+                posting_date="2026-04-15",
+            ),
         )
         self.assertEqual(first.status_code, 200)
         first_outbox_id = int(first.json()["data"]["payable_outbox_id"])
@@ -338,7 +432,11 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
             conflict = self.client.post(
                 f"/api/factory-statements/{statement_id}/payable-draft",
                 headers=self._headers(),
-                json=self._payable_payload(idempotency_key="idem-payable-race-2", posting_date="2026-04-15"),
+                json=self._payable_payload(
+                    statement_id=statement_id,
+                    idempotency_key="idem-payable-race-2",
+                    posting_date="2026-04-15",
+                ),
             )
 
         self.assertEqual(conflict.status_code, 409)
@@ -358,7 +456,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-draft-denied"),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-draft-denied"),
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_INVALID_STATUS")
@@ -375,14 +473,14 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         cancelled = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-payable-cancel-denied-op", "reason": "cancel"},
+            json=self._cancel_payload(statement_id=statement_id, idempotency_key="idem-payable-cancel-denied-op"),
         )
         self.assertEqual(cancelled.status_code, 200)
 
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-cancel-denied"),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-cancel-denied"),
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_INVALID_STATUS")
@@ -394,7 +492,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-account-invalid-op"),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-account-invalid-op"),
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_PAYABLE_ACCOUNT_INVALID")
@@ -411,7 +509,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-cost-invalid-op"),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-cost-invalid-op"),
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_COST_CENTER_INVALID")
@@ -421,17 +519,22 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         self.assertEqual(total, 0)
 
     @patch.object(
+        FactoryStatementService,
+        "_is_local_dev_sqlite_mode",
+        return_value=False,
+    )
+    @patch.object(
         ERPNextPurchaseInvoiceAdapter,
         "validate_payable_account",
         side_effect=ERPNextServiceUnavailableError("erp unavailable"),
     )
-    def test_erpnext_unavailable_fail_closed(self, _mock_account) -> None:
+    def test_erpnext_unavailable_fail_closed(self, _mock_account, _mock_non_local) -> None:
         statement_id = self._create_and_confirm_statement(idempotency_key="idem-payable-erp-down")
 
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-erp-down-op"),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-erp-down-op"),
         )
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["code"], "FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE")
@@ -454,7 +557,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         response = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(),
-            json=self._payable_payload(idempotency_key="idem-payable-no-direct-pi-op"),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-no-direct-pi-op"),
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
@@ -465,7 +568,7 @@ class FactoryStatementPayableApiTest(FactoryStatementApiBase):
         denied = self.client.post(
             f"/api/factory-statements/{statement_id}/payable-draft",
             headers=self._headers(role="Viewer"),
-            json=self._payable_payload(idempotency_key="idem-payable-perm-denied-op"),
+            json=self._payable_payload(statement_id=statement_id, idempotency_key="idem-payable-perm-denied-op"),
         )
         self.assertEqual(denied.status_code, 403)
         self.assertEqual(denied.json()["code"], "FACTORY_STATEMENT_PERMISSION_DENIED")

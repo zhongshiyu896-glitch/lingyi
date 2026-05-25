@@ -1,0 +1,43 @@
+# TASK-Z029B-03-IMPL CAND001 Single File Pytest Report
+
+- task_id: TASK-Z029B-03-IMPL
+- role: B Engineer
+- candidate_id: Z029-CAND-001
+- source_task: TASK-Z029B-02-PREP
+
+## Execution
+
+- workdir: /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service
+- command: .venv/bin/python -m pytest tests/test_factory_statement_payable_api.py -q
+- command_run_count: 1
+- exit_code: 1
+- result: FAIL
+- pytest_summary: 15 failed, 31 warnings in 1.26s
+- stdout_log: 03_需求与设计/02_开发计划/task_z029b_03_cand001_stdout.txt
+
+## Scope
+
+- target_test_path: 07_后端/lingyi_service/tests/test_factory_statement_payable_api.py
+- target_test_dirty_diff_before: false
+- target_test_dirty_diff_after: false
+- cached_empty_after: true
+- git_diff_check_after: PASS
+
+## Failure Evidence
+
+- failed_case_count: 15
+- fix_attempt: false
+- rerun_performed: false
+
+## Gates
+
+- stage_performed: false
+- commit_performed: false
+- push_performed: false
+- tag_performed: false
+- pr_performed: false
+- release_performed: false
+- remote_lifecycle_parked: true
+- production_readback_ready: false
+- go_live_ready: false
+- project_completion_claimed: false
