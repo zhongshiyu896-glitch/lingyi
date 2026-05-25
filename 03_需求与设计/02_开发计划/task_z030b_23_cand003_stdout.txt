@@ -1,0 +1,174 @@
+FFFFFFFFF                                                                [100%]
+=================================== FAILURES ===================================
+_ SubcontractIssueOutboxTest.test_issue_material_blocked_scope_order_rejected __
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_blocked_scope_order_rejected>
+
+    def test_issue_material_blocked_scope_order_rejected(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/2/issue-material",
+            headers=self._headers(),
+            json=self._payload(idem="idem-blocked"),
+        )
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_subcontract_issue_outbox.py:291: AssertionError
+_ SubcontractIssueOutboxTest.test_issue_material_creates_material_rows_and_pending_outbox _
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_creates_material_rows_and_pending_outbox>
+
+    def test_issue_material_creates_material_rows_and_pending_outbox(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/issue-material",
+            headers=self._headers(),
+            json=self._payload(idem="idem-create"),
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_issue_outbox.py:202: AssertionError
+_ SubcontractIssueOutboxTest.test_issue_material_does_not_call_erpnext_before_commit _
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_does_not_call_erpnext_before_commit>
+
+    def test_issue_material_does_not_call_erpnext_before_commit(self) -> None:
+        with patch.object(ERPNextStockEntryService, "create_and_submit_material_issue") as create_mock, patch.object(
+            ERPNextStockEntryService,
+            "find_by_event_key",
+        ) as find_mock:
+            response = self.client.post(
+                "/api/subcontract/1/issue-material",
+                headers=self._headers(),
+                json=self._payload(idem="idem-no-erp"),
+            )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_issue_outbox.py:241: AssertionError
+_ SubcontractIssueOutboxTest.test_issue_material_full_issue_idempotent_retry_does_not_check_remaining_qty_first _
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_full_issue_idempotent_retry_does_not_check_remaining_qty_first>
+
+    def test_issue_material_full_issue_idempotent_retry_does_not_check_remaining_qty_first(self) -> None:
+        full_payload = {
+            "idempotency_key": "idem-full-remaining",
+            "warehouse": "WH-A",
+            "materials": [],
+        }
+        first = self.client.post(
+            "/api/subcontract/1/issue-material",
+            headers=self._headers(),
+            json=full_payload,
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_issue_outbox.py:342: AssertionError
+_ SubcontractIssueOutboxTest.test_issue_material_full_issue_idempotent_retry_returns_existing_outbox _
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_full_issue_idempotent_retry_returns_existing_outbox>
+
+    def test_issue_material_full_issue_idempotent_retry_returns_existing_outbox(self) -> None:
+        full_payload = {
+            "idempotency_key": "idem-full-001",
+            "warehouse": "WH-A",
+            "materials": [],
+        }
+        first = self.client.post(
+            "/api/subcontract/1/issue-material",
+            headers=self._headers(),
+            json=full_payload,
+        )
+        second = self.client.post(
+            "/api/subcontract/1/issue-material",
+            headers=self._headers(),
+            json=full_payload,
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_issue_outbox.py:319: AssertionError
+__ SubcontractIssueOutboxTest.test_issue_material_rejects_material_not_in_bom __
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_rejects_material_not_in_bom>
+
+    def test_issue_material_rejects_material_not_in_bom(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/issue-material",
+            headers=self._headers(),
+            json={
+                "idempotency_key": "idem-not-in-bom",
+                "warehouse": "WH-A",
+                "materials": [
+                    {
+                        "material_item_code": "MAT-Z",
+                        "required_qty": "100",
+                        "issued_qty": "10",
+                    }
+                ],
+            },
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 422 != 400
+
+tests/test_subcontract_issue_outbox.py:273: AssertionError
+_ SubcontractIssueOutboxTest.test_issue_material_rejects_qty_exceeding_remaining_required_qty _
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_rejects_qty_exceeding_remaining_required_qty>
+
+    def test_issue_material_rejects_qty_exceeding_remaining_required_qty(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/issue-material",
+            headers=self._headers(),
+            json=self._payload(idem="idem-qty-over", qty="1000"),
+        )
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_subcontract_issue_outbox.py:282: AssertionError
+_ SubcontractIssueOutboxTest.test_issue_material_returns_outbox_without_fake_stock_entry_name _
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_returns_outbox_without_fake_stock_entry_name>
+
+    def test_issue_material_returns_outbox_without_fake_stock_entry_name(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/issue-material",
+            headers=self._headers(),
+            json=self._payload(idem="idem-no-fake"),
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 422 != 200
+
+tests/test_subcontract_issue_outbox.py:251: AssertionError
+____ SubcontractIssueOutboxTest.test_issue_material_settled_order_rejected _____
+
+self = <tests.test_subcontract_issue_outbox.SubcontractIssueOutboxTest testMethod=test_issue_material_settled_order_rejected>
+
+    def test_issue_material_settled_order_rejected(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/3/issue-material",
+            headers=self._headers(),
+            json=self._payload(idem="idem-settled"),
+        )
+>       self.assertEqual(response.status_code, 409)
+E       AssertionError: 422 != 409
+
+tests/test_subcontract_issue_outbox.py:300: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_blocked_scope_order_rejected
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_blocked_scope_order_rejected
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_creates_material_rows_and_pending_outbox
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_does_not_call_erpnext_before_commit
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_full_issue_idempotent_retry_does_not_check_remaining_qty_first
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_full_issue_idempotent_retry_returns_existing_outbox
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_rejects_material_not_in_bom
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_rejects_qty_exceeding_remaining_required_qty
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_returns_outbox_without_fake_stock_entry_name
+FAILED tests/test_subcontract_issue_outbox.py::SubcontractIssueOutboxTest::test_issue_material_settled_order_rejected
+9 failed, 1 warning in 1.06s

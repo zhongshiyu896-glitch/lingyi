@@ -1,0 +1,49 @@
+{
+  "task_id": "TASK-Z030B-26-LEDGER-CAND003",
+  "candidate_id": "Z030-CAND-003",
+  "current_head": "7cbebc82d57a4b576e501236457e3a969705f625",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "chain_summary": {
+    "boundary_task": "TASK-Z030B-22-PREP",
+    "impl_task": "TASK-Z030B-23-IMPL",
+    "impl_result": "FAIL",
+    "impl_pytest_summary": "9 failed, 1 warning in 1.06s",
+    "failure_boundary_task": "TASK-Z030B-24-PREP-CAND003-FAILURE-DIAG",
+    "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+    "fix_task": "TASK-Z030B-25-FIX-CAND003",
+    "fix_result": "PASS",
+    "fix_pytest_summary": "9 passed, 16 warnings in 1.10s"
+  },
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_subcontract_issue_outbox.py",
+  "status_assertions_preserved": [
+    200,
+    400,
+    409
+  ],
+  "skip_xfail_deleted_cases": false,
+  "ledger_total": 53,
+  "yes_count": 19,
+  "no_count": 34,
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "yes_git_ignore_hits": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_subcontract_issue_outbox.py"
+  ],
+  "frontend_yes_paths": [],
+  "historical_dirty_forbidden_paths_count": 19,
+  "historical_dirty_forbidden_paths_all_in_no": true,
+  "historical_dirty_forbidden_paths_in_yes": [],
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "cleanup_reset_checkout_stash_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback_ready": false,
+  "go_live_ready": false,
+  "project_completion_claimed": false
+}

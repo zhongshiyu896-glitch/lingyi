@@ -24,6 +24,7 @@ from app.models.subcontract import LySubcontractMaterial
 from app.models.subcontract import LySubcontractOrder
 from app.models.subcontract import LySubcontractStatusLog
 from app.models.subcontract import LySubcontractStockOutbox
+from app.routers import subcontract as subcontract_router
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.subcontract import get_db_session as subcontract_db_dep
 from app.services.erpnext_stock_entry_service import ERPNextStockEntryService
@@ -31,6 +32,8 @@ from app.services.erpnext_stock_entry_service import ERPNextStockEntryService
 
 class SubcontractIssueOutboxTest(unittest.TestCase):
     """Validate issue-material local facts and pending outbox behavior."""
+
+    SCENARIO_TAG = "Z003-SUBCONTRACT-20260525-005"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -119,7 +122,8 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["ENABLE_SUBCONTRACT_INTERNAL_STOCK_WORKER_API"] = "true"
@@ -176,15 +180,73 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Subcontract Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "issue.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "Subcontract Manager", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "issue.user", "X-LY-Dev-Roles": role}
+        if request_id:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
-    def _payload(*, idem: str = "idem-1", qty: str = "10") -> dict[str, object]:
-        return {
+    def _carrier_code(value: str) -> str:
+        return subcontract_router._fnv_carrier_code(value)
+
+    def _request_id(
+        self,
+        *,
+        idempotency_key: str,
+        source_ref: str,
+        subcontract_ref: str,
+        supplier_ref: str,
+        work_order_ref: str,
+        item_code: str,
+        status_action: str,
+    ) -> str:
+        operation_code = subcontract_router.SUBCONTRACT_OPERATION_CODE_BY_NAME["issue_material"]
+        return (
+            f"{self.SCENARIO_TAG}-SC-{operation_code}-"
+            f"{self._carrier_code(idempotency_key)}-"
+            f"{self._carrier_code(source_ref)}-"
+            f"{self._carrier_code(subcontract_ref)}-"
+            f"{self._carrier_code(supplier_ref)}-"
+            f"{self._carrier_code(work_order_ref)}-"
+            f"{self._carrier_code(item_code)}-"
+            f"{self._carrier_code(status_action)}"
+        )
+
+    def _payload(
+        self,
+        *,
+        idem: str = "idem-1",
+        qty: str = "10",
+        subcontract_ref: str = "1",
+        materials: list[dict[str, str]] | None = None,
+    ) -> dict[str, object]:
+        status_action = "issue_material"
+        source_ref = f"{self.SCENARIO_TAG}:issue_material:{subcontract_ref}:{idem}"
+        payload: dict[str, object] = {
+            "request_id": self._request_id(
+                idempotency_key=idem,
+                source_ref=source_ref,
+                subcontract_ref=subcontract_ref,
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                status_action=status_action,
+            ),
             "idempotency_key": idem,
+            "scenario_tag": self.SCENARIO_TAG,
+            "source_ref": source_ref,
+            "subcontract_ref": subcontract_ref,
+            "supplier_ref": "SUP-A",
+            "work_order_ref": "NO-WORK-ORDER",
+            "operation": "issue_material",
+            "item_code": "ITEM-A",
+            "quantity": qty,
+            "status_action": status_action,
             "warehouse": "WH-A",
-            "materials": [
+            "materials": materials
+            if materials is not None
+            else [
                 {
                     "material_item_code": "MAT-A",
                     "required_qty": "100",
@@ -192,13 +254,17 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
                 }
             ],
         }
+        return payload
+
+    def _post_issue_material(self, *, order_id: int, payload: dict[str, object]):
+        return self.client.post(
+            f"/api/subcontract/{order_id}/issue-material",
+            headers=self._headers(request_id=str(payload["request_id"])),
+            json=payload,
+        )
 
     def test_issue_material_creates_material_rows_and_pending_outbox(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=self._payload(idem="idem-create"),
-        )
+        response = self._post_issue_material(order_id=1, payload=self._payload(idem="idem-create"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
         self.assertEqual(response.json()["data"]["sync_status"], "pending")
@@ -233,21 +299,14 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
             ERPNextStockEntryService,
             "find_by_event_key",
         ) as find_mock:
-            response = self.client.post(
-                "/api/subcontract/1/issue-material",
-                headers=self._headers(),
-                json=self._payload(idem="idem-no-erp"),
-            )
+            payload = self._payload(idem="idem-no-erp")
+            response = self._post_issue_material(order_id=1, payload=payload)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(create_mock.call_count, 0)
         self.assertEqual(find_mock.call_count, 0)
 
     def test_issue_material_returns_outbox_without_fake_stock_entry_name(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=self._payload(idem="idem-no-fake"),
-        )
+        response = self._post_issue_material(order_id=1, payload=self._payload(idem="idem-no-fake"))
         self.assertEqual(response.status_code, 200)
         payload = response.json()["data"]
         self.assertIn("outbox_id", payload)
@@ -255,67 +314,47 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
         self.assertNotIn("STE-ISS", str(payload))
 
     def test_issue_material_rejects_material_not_in_bom(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json={
-                "idempotency_key": "idem-not-in-bom",
-                "warehouse": "WH-A",
-                "materials": [
+        response = self._post_issue_material(
+            order_id=1,
+            payload=self._payload(
+                idem="idem-not-in-bom",
+                materials=[
                     {
                         "material_item_code": "MAT-Z",
                         "required_qty": "100",
                         "issued_qty": "10",
                     }
                 ],
-            },
+            ),
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_MATERIAL_NOT_IN_BOM")
 
     def test_issue_material_rejects_qty_exceeding_remaining_required_qty(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=self._payload(idem="idem-qty-over", qty="1000"),
-        )
+        response = self._post_issue_material(order_id=1, payload=self._payload(idem="idem-qty-over", qty="1000"))
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_MATERIAL_QTY_EXCEEDED")
 
     def test_issue_material_blocked_scope_order_rejected(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/2/issue-material",
-            headers=self._headers(),
-            json=self._payload(idem="idem-blocked"),
+        response = self._post_issue_material(
+            order_id=2,
+            payload=self._payload(idem="idem-blocked", subcontract_ref="2"),
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_SCOPE_BLOCKED")
 
     def test_issue_material_settled_order_rejected(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/3/issue-material",
-            headers=self._headers(),
-            json=self._payload(idem="idem-settled"),
+        response = self._post_issue_material(
+            order_id=3,
+            payload=self._payload(idem="idem-settled", subcontract_ref="3"),
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_SETTLEMENT_LOCKED")
 
     def test_issue_material_full_issue_idempotent_retry_returns_existing_outbox(self) -> None:
-        full_payload = {
-            "idempotency_key": "idem-full-001",
-            "warehouse": "WH-A",
-            "materials": [],
-        }
-        first = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=full_payload,
-        )
-        second = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=full_payload,
-        )
+        full_payload = self._payload(idem="idem-full-001", materials=[])
+        first = self._post_issue_material(order_id=1, payload=full_payload)
+        second = self._post_issue_material(order_id=1, payload=full_payload)
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()["code"], "0")
@@ -329,23 +368,11 @@ class SubcontractIssueOutboxTest(unittest.TestCase):
         self.assertEqual(outbox_count, 1)
 
     def test_issue_material_full_issue_idempotent_retry_does_not_check_remaining_qty_first(self) -> None:
-        full_payload = {
-            "idempotency_key": "idem-full-remaining",
-            "warehouse": "WH-A",
-            "materials": [],
-        }
-        first = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=full_payload,
-        )
+        full_payload = self._payload(idem="idem-full-remaining", materials=[])
+        first = self._post_issue_material(order_id=1, payload=full_payload)
         self.assertEqual(first.status_code, 200)
 
-        second = self.client.post(
-            "/api/subcontract/1/issue-material",
-            headers=self._headers(),
-            json=full_payload,
-        )
+        second = self._post_issue_material(order_id=1, payload=full_payload)
         self.assertEqual(second.status_code, 200)
         self.assertNotEqual(second.json()["code"], "SUBCONTRACT_MATERIAL_QTY_EXCEEDED")
 

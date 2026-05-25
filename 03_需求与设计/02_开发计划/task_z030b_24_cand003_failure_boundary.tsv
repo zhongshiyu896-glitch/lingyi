@@ -1,0 +1,32 @@
+field	value
+task_id	TASK-Z030B-24-PREP-CAND003-FAILURE-DIAG
+source_task	TASK-Z030B-23-IMPL
+candidate_id	Z030-CAND-003
+current_head	7cbebc82d57a4b576e501236457e3a969705f625
+cached_empty	true
+diff_check_pass	true
+frozen_command	.venv/bin/python -m pytest tests/test_subcontract_issue_outbox.py -q
+target_test_path	07_后端/lingyi_service/tests/test_subcontract_issue_outbox.py
+target_test_dirty_diff	false
+b23_result	FAIL
+b23_command_run_count	1
+b23_pytest_summary	9 failed, 1 warning in 1.06s
+failed_cases_count	9
+failure_pattern	all failures return 422 before original 200/400/409 business branches because current write carrier schema requires fields not supplied by the stale test payload
+missing_or_stale_payload_fields	["request_id","scenario_tag","source_ref","subcontract_ref","supplier_ref","work_order_ref","operation","item_code","quantity","status_action"]
+source_evidence_missing	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_subcontract_issue_outbox.py
+recommended_next_task	TASK-Z030B-25-FIX-CAND003
+run_this_task	false
+historical_dirty_forbidden_staged	[]
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false
