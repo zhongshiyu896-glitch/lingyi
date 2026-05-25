@@ -1,0 +1,42 @@
+field	value
+task_id	TASK-Z031B-31-PREP-CAND004-FAILURE-DIAG
+source_task	TASK-Z031B-30-IMPL
+candidate_id	Z031-CAND-004
+current_head	0f783aa3b3f9a2cdc467c504840aa6caed55a56c
+cached_empty	true
+git_diff_check_pass	true
+b30_result	FAIL
+b30_command_run_count	1
+b30_pytest_summary	19 failed, 5 passed, 1 warning in 1.24s
+failed_cases_count	19
+failure_01	test_inspect_all_received_but_not_all_planned_sets_waiting_receive | observed 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT | expected 200 waiting receive branch
+failure_02	test_inspect_creates_inspection_and_amounts | observed 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT | expected 200 success with amount assertions
+failure_03	test_inspect_does_not_call_erpnext_or_create_finance_docs | observed 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT | expected 200 success with no ERP/finance side effects
+failure_04	test_inspect_idempotent_different_payload_returns_conflict | observed first inspect 409 | expected first inspect 200 before conflict branch
+failure_05	test_inspect_idempotent_retry_after_full_inspection_does_not_check_remaining_first | observed 409 | expected 200 idempotent retry branch
+failure_06	test_inspect_idempotent_same_payload_returns_existing_result | observed 409 | expected 200 existing result branch
+failure_07	test_inspect_partial_batch_keeps_waiting_inspection | observed 409 | expected 200 partial inspection branch
+failure_08	test_inspect_rejects_deduction_amount_greater_than_gross_amount | observed 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT | expected 409 SUBCONTRACT_DEDUCTION_EXCEEDS_GROSS
+failure_09	test_inspect_rejects_qty_exceeding_batch_remaining_qty | observed setup inspect 409 | expected setup inspect 200 before rejection
+failure_10	test_inspect_rejects_receipt_batch_from_other_order | observed 409 | expected 404
+failure_11	test_inspect_rejects_rejected_qty_greater_than_inspected_qty | observed 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT | expected 409 SUBCONTRACT_REJECTED_QTY_EXCEEDS_INSPECTED
+failure_12	test_inspect_rejects_unsynced_receipt_batch | observed 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT | expected 409 SUBCONTRACT_RECEIPT_NOT_SYNCED
+failure_13	test_inspect_same_key_different_receipt_batch_does_not_create_second_success_response | observed setup inspect 409 | expected setup inspect 200
+failure_14	test_inspect_same_key_different_receipt_batch_returns_conflict | observed setup inspect 409 | expected setup inspect 200 before conflict branch
+failure_15	test_inspect_same_key_same_batch_decimal_equivalent_returns_existing_result | observed 409 | expected 200 existing result branch
+failure_16	test_inspect_same_key_same_batch_different_deduction_rate_returns_conflict | observed setup inspect 409 | expected setup inspect 200 before conflict branch
+failure_17	test_inspect_service_layer_prevents_overinspect_regression | observed InspectRequest ValidationError missing carrier fields | expected service overinspect guard
+failure_18	test_subcontract_detail_inspection_amounts_use_inspection_table_not_receipt_legacy_fields | observed setup inspect 409 | expected setup inspect 200 before detail amount assertions
+failure_19	test_subcontract_detail_returns_inspections | observed setup inspect 409 | expected setup inspect 200 before detail inspection assertions
+failure_pattern_summary	legacy inspect payload/direct InspectRequest missing current carrier fields, causing early 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT or ValidationError before original business branches
+target_test	07_后端/lingyi_service/tests/test_subcontract_inspection.py
+source_evidence_missing	[]
+target_test_dirty_diff	false
+historical_dirty_forbidden_staged	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_subcontract_inspection.py
+next_task	TASK-Z031B-32-FIX-CAND004
+run_this_task	false
+stage_commit_push_tag_pr_release	false
+remote_lifecycle_parked	true
+production_readback_go_live_project_completion	false

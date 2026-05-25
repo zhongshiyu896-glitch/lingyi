@@ -1,0 +1,394 @@
+FFFFFFFFFFFF.FFFFF....FF                                                 [100%]
+=================================== FAILURES ===================================
+_ SubcontractInspectionTest.test_inspect_all_received_but_not_all_planned_sets_waiting_receive _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_all_received_but_not_all_planned_sets_waiting_receive>
+
+    def test_inspect_all_received_but_not_all_planned_sets_waiting_receive(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/4/inspect",
+            headers=self._headers(),
+            json=self._payload(batch="RB-4", idem="idem-inspect-waiting-receive", inspected_qty="100", rejected_qty="0", deduction_amount_per_piece="0"),
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:574: AssertionError
+____ SubcontractInspectionTest.test_inspect_creates_inspection_and_amounts _____
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_creates_inspection_and_amounts>
+
+    def test_inspect_creates_inspection_and_amounts(self) -> None:
+        response = self.client.post("/api/subcontract/1/inspect", headers=self._headers(), json=self._payload())
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:282: AssertionError
+_ SubcontractInspectionTest.test_inspect_does_not_call_erpnext_or_create_finance_docs _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_does_not_call_erpnext_or_create_finance_docs>
+
+    def test_inspect_does_not_call_erpnext_or_create_finance_docs(self) -> None:
+        with patch.object(ERPNextStockEntryService, "find_by_event_key") as find_mock, patch.object(
+            ERPNextStockEntryService, "create_and_submit_material_issue"
+        ) as issue_mock, patch.object(
+            ERPNextStockEntryService, "create_and_submit_material_receipt"
+        ) as receipt_mock:
+            response = self.client.post(
+                "/api/subcontract/1/inspect",
+                headers=self._headers(),
+                json=self._payload(idem="idem-inspect-no-erp", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+            )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:588: AssertionError
+_ SubcontractInspectionTest.test_inspect_idempotent_different_payload_returns_conflict _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_idempotent_different_payload_returns_conflict>
+
+    def test_inspect_idempotent_different_payload_returns_conflict(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-conflict", inspected_qty="60", rejected_qty="2"),
+        )
+        second = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-conflict", inspected_qty="60", rejected_qty="3"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:437: AssertionError
+_ SubcontractInspectionTest.test_inspect_idempotent_retry_after_full_inspection_does_not_check_remaining_first _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_idempotent_retry_after_full_inspection_does_not_check_remaining_first>
+
+    def test_inspect_idempotent_retry_after_full_inspection_does_not_check_remaining_first(self) -> None:
+        payload = self._payload(idem="idem-inspect-full", inspected_qty="100", rejected_qty="0", deduction_amount_per_piece="0")
+        first = self.client.post("/api/subcontract/1/inspect", headers=self._headers(), json=payload)
+        second = self.client.post("/api/subcontract/1/inspect", headers=self._headers(), json=payload)
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:460: AssertionError
+_ SubcontractInspectionTest.test_inspect_idempotent_same_payload_returns_existing_result _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_idempotent_same_payload_returns_existing_result>
+
+    def test_inspect_idempotent_same_payload_returns_existing_result(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-same", inspected_qty="60", rejected_qty="2"),
+        )
+        second = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-same", inspected_qty="60", rejected_qty="2"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:347: AssertionError
+_ SubcontractInspectionTest.test_inspect_partial_batch_keeps_waiting_inspection _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_partial_batch_keeps_waiting_inspection>
+
+    def test_inspect_partial_batch_keeps_waiting_inspection(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-partial", inspected_qty="40", rejected_qty="0", deduction_amount_per_piece="0"),
+        )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:565: AssertionError
+_ SubcontractInspectionTest.test_inspect_rejects_deduction_amount_greater_than_gross_amount _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_rejects_deduction_amount_greater_than_gross_amount>
+
+    def test_inspect_rejects_deduction_amount_greater_than_gross_amount(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(
+                idem="idem-inspect-deduction",
+                inspected_qty="1",
+                rejected_qty="1",
+                deduction_amount_per_piece="11",
+            ),
+        )
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_DEDUCTION_EXCEEDS_GROSS")
+E       AssertionError: 'SUBCONTRACT_STOCK_OUTBOX_CONFLICT' != 'SUBCONTRACT_DEDUCTION_EXCEEDS_GROSS'
+E       - SUBCONTRACT_STOCK_OUTBOX_CONFLICT
+E       + SUBCONTRACT_DEDUCTION_EXCEEDS_GROSS
+
+tests/test_subcontract_inspection.py:485: AssertionError
+_ SubcontractInspectionTest.test_inspect_rejects_qty_exceeding_batch_remaining_qty _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_rejects_qty_exceeding_batch_remaining_qty>
+
+    def test_inspect_rejects_qty_exceeding_batch_remaining_qty(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-over-1", inspected_qty="90", rejected_qty="0", deduction_amount_per_piece="0"),
+        )
+        second = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-over-2", inspected_qty="20", rejected_qty="0", deduction_amount_per_piece="0"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:498: AssertionError
+_ SubcontractInspectionTest.test_inspect_rejects_receipt_batch_from_other_order _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_rejects_receipt_batch_from_other_order>
+
+    def test_inspect_rejects_receipt_batch_from_other_order(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(batch="RB-2", idem="idem-inspect-other-order"),
+        )
+>       self.assertEqual(response.status_code, 404)
+E       AssertionError: 409 != 404
+
+tests/test_subcontract_inspection.py:324: AssertionError
+_ SubcontractInspectionTest.test_inspect_rejects_rejected_qty_greater_than_inspected_qty _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_rejects_rejected_qty_greater_than_inspected_qty>
+
+    def test_inspect_rejects_rejected_qty_greater_than_inspected_qty(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-rejected", inspected_qty="5", rejected_qty="6"),
+        )
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_REJECTED_QTY_EXCEEDS_INSPECTED")
+E       AssertionError: 'SUBCONTRACT_STOCK_OUTBOX_CONFLICT' != 'SUBCONTRACT_REJECTED_QTY_EXCEEDS_INSPECTED'
+E       - SUBCONTRACT_STOCK_OUTBOX_CONFLICT
+E       + SUBCONTRACT_REJECTED_QTY_EXCEEDS_INSPECTED
+
+tests/test_subcontract_inspection.py:471: AssertionError
+____ SubcontractInspectionTest.test_inspect_rejects_unsynced_receipt_batch _____
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_rejects_unsynced_receipt_batch>
+
+    def test_inspect_rejects_unsynced_receipt_batch(self) -> None:
+        response = self.client.post(
+            "/api/subcontract/3/inspect",
+            headers=self._headers(),
+            json=self._payload(batch="RB-3", idem="idem-inspect-unsynced"),
+        )
+        self.assertEqual(response.status_code, 409)
+>       self.assertEqual(response.json()["code"], "SUBCONTRACT_RECEIPT_NOT_SYNCED")
+E       AssertionError: 'SUBCONTRACT_STOCK_OUTBOX_CONFLICT' != 'SUBCONTRACT_RECEIPT_NOT_SYNCED'
+E       - SUBCONTRACT_STOCK_OUTBOX_CONFLICT
+E       + SUBCONTRACT_RECEIPT_NOT_SYNCED
+
+tests/test_subcontract_inspection.py:334: AssertionError
+_ SubcontractInspectionTest.test_inspect_same_key_different_receipt_batch_does_not_create_second_success_response _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_same_key_different_receipt_batch_does_not_create_second_success_response>
+
+    def test_inspect_same_key_different_receipt_batch_does_not_create_second_success_response(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/2/inspect",
+            headers=self._headers(),
+            json=self._payload(batch="RB-2", idem="idem-batch-no-second", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+        )
+        second = self.client.post(
+            "/api/subcontract/2/inspect",
+            headers=self._headers(),
+            json=self._payload(batch="RB-2B", idem="idem-batch-no-second", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:384: AssertionError
+_ SubcontractInspectionTest.test_inspect_same_key_different_receipt_batch_returns_conflict _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_same_key_different_receipt_batch_returns_conflict>
+
+    def test_inspect_same_key_different_receipt_batch_returns_conflict(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/2/inspect",
+            headers=self._headers(),
+            json=self._payload(batch="RB-2", idem="idem-batch-conflict", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+        )
+        second = self.client.post(
+            "/api/subcontract/2/inspect",
+            headers=self._headers(),
+            json=self._payload(batch="RB-2B", idem="idem-batch-conflict", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:369: AssertionError
+_ SubcontractInspectionTest.test_inspect_same_key_same_batch_decimal_equivalent_returns_existing_result _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_same_key_same_batch_decimal_equivalent_returns_existing_result>
+
+    def test_inspect_same_key_same_batch_decimal_equivalent_returns_existing_result(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/2/inspect",
+            headers=self._headers(),
+            json=self._payload(
+                batch="RB-2",
+                idem="idem-same-batch-decimal",
+                inspected_qty="10.0",
+                rejected_qty="1.000000",
+                deduction_amount_per_piece="2.0",
+            ),
+        )
+        second = self.client.post(
+            "/api/subcontract/2/inspect",
+            headers=self._headers(),
+            json=self._payload(
+                batch="RB-2",
+                idem="idem-same-batch-decimal",
+                inspected_qty="10.000000",
+                rejected_qty="1",
+                deduction_amount_per_piece="2.000000",
+            ),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:422: AssertionError
+_ SubcontractInspectionTest.test_inspect_same_key_same_batch_different_deduction_rate_returns_conflict _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_same_key_same_batch_different_deduction_rate_returns_conflict>
+
+    def test_inspect_same_key_same_batch_different_deduction_rate_returns_conflict(self) -> None:
+        first = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-deduction-conflict", inspected_qty="60", rejected_qty="2", deduction_amount_per_piece="1"),
+        )
+        second = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-inspect-deduction-conflict", inspected_qty="60", rejected_qty="2", deduction_amount_per_piece="2"),
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:452: AssertionError
+_ SubcontractInspectionTest.test_inspect_service_layer_prevents_overinspect_regression _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_inspect_service_layer_prevents_overinspect_regression>
+
+    def test_inspect_service_layer_prevents_overinspect_regression(self) -> None:
+        with self.SessionLocal() as session:
+            service = SubcontractService(session=session)
+            first = service.inspect(
+                order_id=1,
+>               payload=InspectRequest(
+                    receipt_batch_no="RB-1",
+                    idempotency_key="idem-service-overinspect-1",
+                    inspected_qty=Decimal("70"),
+                    rejected_qty=Decimal("0"),
+                    deduction_amount_per_piece=Decimal("0"),
+                    remark="service-guard",
+                ),
+                operator="inspect.user",
+                request_id="rid-service-overinspect-1",
+            )
+E           pydantic_core._pydantic_core.ValidationError: 10 validation errors for InspectRequest
+E           request_id
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           scenario_tag
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           source_ref
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           subcontract_ref
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           supplier_ref
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           work_order_ref
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           operation
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           item_code
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           quantity
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+E           status_action
+E             Field required [type=missing, input_value={'receipt_batch_no': 'RB-...emark': 'service-guard'}, input_type=dict]
+E               For further information visit https://errors.pydantic.dev/2.12/v/missing
+
+tests/test_subcontract_inspection.py:507: ValidationError
+_ SubcontractInspectionTest.test_subcontract_detail_inspection_amounts_use_inspection_table_not_receipt_legacy_fields _
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_subcontract_detail_inspection_amounts_use_inspection_table_not_receipt_legacy_fields>
+
+    def test_subcontract_detail_inspection_amounts_use_inspection_table_not_receipt_legacy_fields(self) -> None:
+        inspect_resp = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-detail-amount-source", inspected_qty="20", rejected_qty="2", deduction_amount_per_piece="3"),
+        )
+>       self.assertEqual(inspect_resp.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:672: AssertionError
+____ SubcontractInspectionTest.test_subcontract_detail_returns_inspections _____
+
+self = <tests.test_subcontract_inspection.SubcontractInspectionTest testMethod=test_subcontract_detail_returns_inspections>
+
+    def test_subcontract_detail_returns_inspections(self) -> None:
+        inspect_resp = self.client.post(
+            "/api/subcontract/1/inspect",
+            headers=self._headers(),
+            json=self._payload(idem="idem-detail-inspections", inspected_qty="10", rejected_qty="1", deduction_amount_per_piece="2"),
+        )
+>       self.assertEqual(inspect_resp.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_subcontract_inspection.py:640: AssertionError
+=============================== warnings summary ===============================
+tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_all_received_but_not_all_planned_sets_waiting_receive
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_all_received_but_not_all_planned_sets_waiting_receive
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_creates_inspection_and_amounts
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_does_not_call_erpnext_or_create_finance_docs
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_idempotent_different_payload_returns_conflict
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_idempotent_retry_after_full_inspection_does_not_check_remaining_first
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_idempotent_same_payload_returns_existing_result
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_partial_batch_keeps_waiting_inspection
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_rejects_deduction_amount_greater_than_gross_amount
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_rejects_qty_exceeding_batch_remaining_qty
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_rejects_receipt_batch_from_other_order
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_rejects_rejected_qty_greater_than_inspected_qty
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_rejects_unsynced_receipt_batch
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_same_key_different_receipt_batch_does_not_create_second_success_response
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_same_key_different_receipt_batch_returns_conflict
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_same_key_same_batch_decimal_equivalent_returns_existing_result
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_same_key_same_batch_different_deduction_rate_returns_conflict
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_inspect_service_layer_prevents_overinspect_regression
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_subcontract_detail_inspection_amounts_use_inspection_table_not_receipt_legacy_fields
+FAILED tests/test_subcontract_inspection.py::SubcontractInspectionTest::test_subcontract_detail_returns_inspections
+19 failed, 5 passed, 1 warning in 1.24s

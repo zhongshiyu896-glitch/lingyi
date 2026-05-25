@@ -1,0 +1,169 @@
+{
+  "task_id": "TASK-Z031B-31-PREP-CAND004-FAILURE-DIAG",
+  "source_task": "TASK-Z031B-30-IMPL",
+  "candidate_id": "Z031-CAND-004",
+  "current_head": "0f783aa3b3f9a2cdc467c504840aa6caed55a56c",
+  "cached_empty": true,
+  "git_diff_check_pass": true,
+  "b30_result": "FAIL",
+  "b30_command_run_count": 1,
+  "b30_pytest_summary": "19 failed, 5 passed, 1 warning in 1.24s",
+  "failed_cases_count": 19,
+  "failed_cases": [
+    {
+      "name": "test_inspect_all_received_but_not_all_planned_sets_waiting_receive",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "200 waiting receive branch",
+      "difference_summary": "Legacy inspect payload is rejected by schema gate before waiting receive assertions."
+    },
+    {
+      "name": "test_inspect_creates_inspection_and_amounts",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "200 success with inspection amount assertions",
+      "difference_summary": "Legacy inspect payload is rejected before inspection and amount assertions."
+    },
+    {
+      "name": "test_inspect_does_not_call_erpnext_or_create_finance_docs",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "200 success with no ERP/finance side effects",
+      "difference_summary": "Legacy inspect payload is rejected before side-effect assertions."
+    },
+    {
+      "name": "test_inspect_idempotent_different_payload_returns_conflict",
+      "observed": "first inspect returns 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "first inspect returns 200 before different-payload conflict branch",
+      "difference_summary": "Setup inspect cannot pass schema gate, so idempotency conflict branch is unreachable."
+    },
+    {
+      "name": "test_inspect_idempotent_retry_after_full_inspection_does_not_check_remaining_first",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "200 idempotent retry branch",
+      "difference_summary": "Retry payload is rejected before idempotent existing-result handling."
+    },
+    {
+      "name": "test_inspect_idempotent_same_payload_returns_existing_result",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "200 existing result branch",
+      "difference_summary": "Payload is rejected before same-payload idempotency handling."
+    },
+    {
+      "name": "test_inspect_partial_batch_keeps_waiting_inspection",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "200 partial inspection branch",
+      "difference_summary": "Legacy inspect payload is rejected before partial status assertions."
+    },
+    {
+      "name": "test_inspect_rejects_deduction_amount_greater_than_gross_amount",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "409 SUBCONTRACT_DEDUCTION_EXCEEDS_GROSS",
+      "difference_summary": "Schema/carrier gate masks the original deduction business error branch."
+    },
+    {
+      "name": "test_inspect_rejects_qty_exceeding_batch_remaining_qty",
+      "observed": "setup inspect returns 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "setup inspect returns 200 before over-quantity rejection",
+      "difference_summary": "Setup inspect cannot pass schema gate, so over-quantity branch is blocked."
+    },
+    {
+      "name": "test_inspect_rejects_receipt_batch_from_other_order",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "404 receipt batch from other order branch",
+      "difference_summary": "Schema/carrier gate masks the original 404 branch."
+    },
+    {
+      "name": "test_inspect_rejects_rejected_qty_greater_than_inspected_qty",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "409 SUBCONTRACT_REJECTED_QTY_EXCEEDS_INSPECTED",
+      "difference_summary": "Schema/carrier gate masks the rejected quantity business error branch."
+    },
+    {
+      "name": "test_inspect_rejects_unsynced_receipt_batch",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "409 SUBCONTRACT_RECEIPT_NOT_SYNCED",
+      "difference_summary": "Schema/carrier gate masks the unsynced receipt business error branch."
+    },
+    {
+      "name": "test_inspect_same_key_different_receipt_batch_does_not_create_second_success_response",
+      "observed": "setup inspect returns 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "setup inspect returns 200 before duplicate-success prevention branch",
+      "difference_summary": "Setup inspect cannot pass schema gate."
+    },
+    {
+      "name": "test_inspect_same_key_different_receipt_batch_returns_conflict",
+      "observed": "setup inspect returns 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "setup inspect returns 200 before conflict branch",
+      "difference_summary": "Setup inspect cannot pass schema gate."
+    },
+    {
+      "name": "test_inspect_same_key_same_batch_decimal_equivalent_returns_existing_result",
+      "observed": "409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "200 existing result branch",
+      "difference_summary": "Payload is rejected before decimal-equivalent idempotency handling."
+    },
+    {
+      "name": "test_inspect_same_key_same_batch_different_deduction_rate_returns_conflict",
+      "observed": "setup inspect returns 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "setup inspect returns 200 before deduction-rate conflict branch",
+      "difference_summary": "Setup inspect cannot pass schema gate."
+    },
+    {
+      "name": "test_inspect_service_layer_prevents_overinspect_regression",
+      "observed": "InspectRequest ValidationError for missing request_id, scenario_tag, source_ref, subcontract_ref, supplier_ref, work_order_ref, operation, item_code, quantity, status_action",
+      "expected": "service-layer overinspect guard executes with a valid InspectRequest",
+      "difference_summary": "Direct model construction in the target test lacks required carrier fields."
+    },
+    {
+      "name": "test_subcontract_detail_inspection_amounts_use_inspection_table_not_receipt_legacy_fields",
+      "observed": "setup inspect returns 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "setup inspect returns 200 before detail amount assertions",
+      "difference_summary": "Detail setup inspect cannot pass schema gate."
+    },
+    {
+      "name": "test_subcontract_detail_returns_inspections",
+      "observed": "setup inspect returns 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT",
+      "expected": "setup inspect returns 200 before detail inspection list assertions",
+      "difference_summary": "Detail setup inspect cannot pass schema gate."
+    }
+  ],
+  "failure_pattern_summary": "Most failures are early 409 SUBCONTRACT_STOCK_OUTBOX_CONFLICT responses caused by legacy inspect payloads that lack required SubcontractWriteCarrierBase fields now required by InspectRequest. One service-layer test directly constructs InspectRequest and fails validation for the same missing carrier fields. The original 200/404/409 business branches are blocked before they can execute.",
+  "required_carrier_fields_observed_missing": [
+    "request_id",
+    "scenario_tag",
+    "source_ref",
+    "subcontract_ref",
+    "supplier_ref",
+    "work_order_ref",
+    "operation",
+    "item_code",
+    "quantity",
+    "status_action"
+  ],
+  "target_test": "07_后端/lingyi_service/tests/test_subcontract_inspection.py",
+  "source_evidence_checked": [
+    "07_后端/lingyi_service/tests/test_subcontract_inspection.py",
+    "07_后端/lingyi_service/app/routers/subcontract.py",
+    "07_后端/lingyi_service/app/services/subcontract_service.py",
+    "07_后端/lingyi_service/app/services/subcontract_stock_outbox_service.py",
+    "07_后端/lingyi_service/app/services/erpnext_stock_entry_service.py",
+    "07_后端/lingyi_service/app/models/subcontract.py",
+    "07_后端/lingyi_service/app/schemas/subcontract.py"
+  ],
+  "source_evidence_missing": [],
+  "target_test_dirty_diff": false,
+  "historical_dirty_forbidden_staged": [],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "classification_rationale": "Evidence points to target test fixture/payload/direct InspectRequest construction drift against current schema carrier requirements. The fix can be confined to the target test by adding valid carrier fields and preserving original 200/404/409 branch assertions.",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_subcontract_inspection.py",
+  "next_task": "TASK-Z031B-32-FIX-CAND004",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

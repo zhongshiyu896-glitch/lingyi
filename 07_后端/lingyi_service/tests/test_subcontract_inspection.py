@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.main as main_module
+import app.routers.subcontract as subcontract_router
 from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.bom import Base as BomBase
@@ -35,6 +36,8 @@ from app.services.subcontract_stock_outbox_service import SubcontractStockOutbox
 
 class SubcontractInspectionTest(unittest.TestCase):
     """Validate inspection formula, idempotency and status transitions."""
+
+    SCENARIO_TAG = "Z003-SUBCONTRACT-20260524-004"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -97,7 +100,8 @@ class SubcontractInspectionTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
@@ -256,29 +260,91 @@ class SubcontractInspectionTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Subcontract Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "inspect.user", "X-LY-Dev-Roles": role}
+    def _headers(role: str = "Subcontract Manager", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "inspect.user", "X-LY-Dev-Roles": role}
+        if request_id:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
+    def _carrier_code(value: str) -> str:
+        return subcontract_router._fnv_carrier_code(value)
+
+    @classmethod
+    def _request_id(
+        cls,
+        *,
+        idempotency_key: str,
+        source_ref: str,
+        subcontract_ref: str,
+        supplier_ref: str,
+        work_order_ref: str,
+        item_code: str,
+        status_action: str,
+    ) -> str:
+        operation_code = subcontract_router.SUBCONTRACT_OPERATION_CODE_BY_NAME["inspect"]
+        return (
+            f"{cls.SCENARIO_TAG}-SC-{operation_code}-"
+            f"{cls._carrier_code(idempotency_key)}-"
+            f"{cls._carrier_code(source_ref)}-"
+            f"{cls._carrier_code(subcontract_ref)}-"
+            f"{cls._carrier_code(supplier_ref)}-"
+            f"{cls._carrier_code(work_order_ref)}-"
+            f"{cls._carrier_code(item_code)}-"
+            f"{cls._carrier_code(status_action)}"
+        )
+
+    @classmethod
     def _payload(
+        cls,
         *,
         batch: str = "RB-1",
         idem: str = "idem-inspect-1",
         inspected_qty: str = "100",
         rejected_qty: str = "5",
         deduction_amount_per_piece: str = "2.00",
+        subcontract_ref: str = "1",
     ) -> dict[str, str]:
+        source_ref = f"{cls.SCENARIO_TAG}:inspect:{subcontract_ref}:{batch}:{idem}"
+        status_action = "inspect"
         return {
+            "request_id": cls._request_id(
+                idempotency_key=idem,
+                source_ref=source_ref,
+                subcontract_ref=subcontract_ref,
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                status_action=status_action,
+            ),
             "receipt_batch_no": batch,
             "idempotency_key": idem,
+            "scenario_tag": cls.SCENARIO_TAG,
+            "source_ref": source_ref,
+            "subcontract_ref": subcontract_ref,
+            "supplier_ref": "SUP-A",
+            "work_order_ref": "NO-WORK-ORDER",
+            "operation": "inspect",
+            "item_code": "ITEM-A",
+            "quantity": inspected_qty,
+            "status_action": status_action,
             "inspected_qty": inspected_qty,
             "rejected_qty": rejected_qty,
             "deduction_amount_per_piece": deduction_amount_per_piece,
             "remark": "unit-test",
         }
 
+    def _post_inspect(self, order_id: int, payload: dict[str, str] | None = None, **payload_kwargs) -> object:
+        if payload is None:
+            payload = self._payload(subcontract_ref=str(order_id), **payload_kwargs)
+        return self.client.post(
+            f"/api/subcontract/{order_id}/inspect",
+            headers=self._headers(request_id=payload["request_id"]),
+            json=payload,
+        )
+
     def test_inspect_creates_inspection_and_amounts(self) -> None:
-        response = self.client.post("/api/subcontract/1/inspect", headers=self._headers(), json=self._payload())
+        response = self._post_inspect(1)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
         data = response.json()["data"]
@@ -316,34 +382,18 @@ class SubcontractInspectionTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "SUBCONTRACT_RECEIPT_BATCH_REQUIRED")
 
     def test_inspect_rejects_receipt_batch_from_other_order(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(batch="RB-2", idem="idem-inspect-other-order"),
-        )
+        response = self._post_inspect(1, batch="RB-2", idem="idem-inspect-other-order")
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_RECEIPT_BATCH_NOT_FOUND")
 
     def test_inspect_rejects_unsynced_receipt_batch(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/3/inspect",
-            headers=self._headers(),
-            json=self._payload(batch="RB-3", idem="idem-inspect-unsynced"),
-        )
+        response = self._post_inspect(3, batch="RB-3", idem="idem-inspect-unsynced")
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_RECEIPT_NOT_SYNCED")
 
     def test_inspect_idempotent_same_payload_returns_existing_result(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-same", inspected_qty="60", rejected_qty="2"),
-        )
-        second = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-same", inspected_qty="60", rejected_qty="2"),
-        )
+        first = self._post_inspect(1, idem="idem-inspect-same", inspected_qty="60", rejected_qty="2")
+        second = self._post_inspect(1, idem="idem-inspect-same", inspected_qty="60", rejected_qty="2")
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()["data"]["inspection_no"], second.json()["data"]["inspection_no"])
@@ -356,30 +406,42 @@ class SubcontractInspectionTest(unittest.TestCase):
         self.assertEqual(count, 1)
 
     def test_inspect_same_key_different_receipt_batch_returns_conflict(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/2/inspect",
-            headers=self._headers(),
-            json=self._payload(batch="RB-2", idem="idem-batch-conflict", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+        first = self._post_inspect(
+            2,
+            batch="RB-2",
+            idem="idem-batch-conflict",
+            inspected_qty="10",
+            rejected_qty="0",
+            deduction_amount_per_piece="0",
         )
-        second = self.client.post(
-            "/api/subcontract/2/inspect",
-            headers=self._headers(),
-            json=self._payload(batch="RB-2B", idem="idem-batch-conflict", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+        second = self._post_inspect(
+            2,
+            batch="RB-2B",
+            idem="idem-batch-conflict",
+            inspected_qty="10",
+            rejected_qty="0",
+            deduction_amount_per_piece="0",
         )
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "SUBCONTRACT_IDEMPOTENCY_CONFLICT")
 
     def test_inspect_same_key_different_receipt_batch_does_not_create_second_success_response(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/2/inspect",
-            headers=self._headers(),
-            json=self._payload(batch="RB-2", idem="idem-batch-no-second", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+        first = self._post_inspect(
+            2,
+            batch="RB-2",
+            idem="idem-batch-no-second",
+            inspected_qty="10",
+            rejected_qty="0",
+            deduction_amount_per_piece="0",
         )
-        second = self.client.post(
-            "/api/subcontract/2/inspect",
-            headers=self._headers(),
-            json=self._payload(batch="RB-2B", idem="idem-batch-no-second", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+        second = self._post_inspect(
+            2,
+            batch="RB-2B",
+            idem="idem-batch-no-second",
+            inspected_qty="10",
+            rejected_qty="0",
+            deduction_amount_per_piece="0",
         )
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 409)
@@ -397,57 +459,47 @@ class SubcontractInspectionTest(unittest.TestCase):
         self.assertEqual(Decimal(str(order.net_amount)), Decimal("100.00"))
 
     def test_inspect_same_key_same_batch_decimal_equivalent_returns_existing_result(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/2/inspect",
-            headers=self._headers(),
-            json=self._payload(
-                batch="RB-2",
-                idem="idem-same-batch-decimal",
-                inspected_qty="10.0",
-                rejected_qty="1.000000",
-                deduction_amount_per_piece="2.0",
-            ),
+        first = self._post_inspect(
+            2,
+            batch="RB-2",
+            idem="idem-same-batch-decimal",
+            inspected_qty="10.0",
+            rejected_qty="1.000000",
+            deduction_amount_per_piece="2.0",
         )
-        second = self.client.post(
-            "/api/subcontract/2/inspect",
-            headers=self._headers(),
-            json=self._payload(
-                batch="RB-2",
-                idem="idem-same-batch-decimal",
-                inspected_qty="10.000000",
-                rejected_qty="1",
-                deduction_amount_per_piece="2.000000",
-            ),
+        second = self._post_inspect(
+            2,
+            batch="RB-2",
+            idem="idem-same-batch-decimal",
+            inspected_qty="10.000000",
+            rejected_qty="1",
+            deduction_amount_per_piece="2.000000",
         )
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first.json()["data"]["inspection_no"], second.json()["data"]["inspection_no"])
 
     def test_inspect_idempotent_different_payload_returns_conflict(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-conflict", inspected_qty="60", rejected_qty="2"),
-        )
-        second = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-conflict", inspected_qty="60", rejected_qty="3"),
-        )
+        first = self._post_inspect(1, idem="idem-inspect-conflict", inspected_qty="60", rejected_qty="2")
+        second = self._post_inspect(1, idem="idem-inspect-conflict", inspected_qty="60", rejected_qty="3")
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 409)
         self.assertEqual(second.json()["code"], "SUBCONTRACT_IDEMPOTENCY_CONFLICT")
 
     def test_inspect_same_key_same_batch_different_deduction_rate_returns_conflict(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-deduction-conflict", inspected_qty="60", rejected_qty="2", deduction_amount_per_piece="1"),
+        first = self._post_inspect(
+            1,
+            idem="idem-inspect-deduction-conflict",
+            inspected_qty="60",
+            rejected_qty="2",
+            deduction_amount_per_piece="1",
         )
-        second = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-deduction-conflict", inspected_qty="60", rejected_qty="2", deduction_amount_per_piece="2"),
+        second = self._post_inspect(
+            1,
+            idem="idem-inspect-deduction-conflict",
+            inspected_qty="60",
+            rejected_qty="2",
+            deduction_amount_per_piece="2",
         )
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 409)
@@ -455,45 +507,42 @@ class SubcontractInspectionTest(unittest.TestCase):
 
     def test_inspect_idempotent_retry_after_full_inspection_does_not_check_remaining_first(self) -> None:
         payload = self._payload(idem="idem-inspect-full", inspected_qty="100", rejected_qty="0", deduction_amount_per_piece="0")
-        first = self.client.post("/api/subcontract/1/inspect", headers=self._headers(), json=payload)
-        second = self.client.post("/api/subcontract/1/inspect", headers=self._headers(), json=payload)
+        first = self._post_inspect(1, payload=payload)
+        second = self._post_inspect(1, payload=payload)
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertNotEqual(second.json()["code"], "SUBCONTRACT_INSPECTION_QTY_EXCEEDED")
 
     def test_inspect_rejects_rejected_qty_greater_than_inspected_qty(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-rejected", inspected_qty="5", rejected_qty="6"),
-        )
+        response = self._post_inspect(1, idem="idem-inspect-rejected", inspected_qty="5", rejected_qty="6")
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_REJECTED_QTY_EXCEEDS_INSPECTED")
 
     def test_inspect_rejects_deduction_amount_greater_than_gross_amount(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(
-                idem="idem-inspect-deduction",
-                inspected_qty="1",
-                rejected_qty="1",
-                deduction_amount_per_piece="11",
-            ),
+        response = self._post_inspect(
+            1,
+            idem="idem-inspect-deduction",
+            inspected_qty="1",
+            rejected_qty="1",
+            deduction_amount_per_piece="11",
         )
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "SUBCONTRACT_DEDUCTION_EXCEEDS_GROSS")
 
     def test_inspect_rejects_qty_exceeding_batch_remaining_qty(self) -> None:
-        first = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-over-1", inspected_qty="90", rejected_qty="0", deduction_amount_per_piece="0"),
+        first = self._post_inspect(
+            1,
+            idem="idem-inspect-over-1",
+            inspected_qty="90",
+            rejected_qty="0",
+            deduction_amount_per_piece="0",
         )
-        second = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-over-2", inspected_qty="20", rejected_qty="0", deduction_amount_per_piece="0"),
+        second = self._post_inspect(
+            1,
+            idem="idem-inspect-over-2",
+            inspected_qty="20",
+            rejected_qty="0",
+            deduction_amount_per_piece="0",
         )
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 409)
@@ -502,34 +551,32 @@ class SubcontractInspectionTest(unittest.TestCase):
     def test_inspect_service_layer_prevents_overinspect_regression(self) -> None:
         with self.SessionLocal() as session:
             service = SubcontractService(session=session)
+            first_payload = self._payload(
+                idem="idem-service-overinspect-1",
+                inspected_qty="70",
+                rejected_qty="0",
+                deduction_amount_per_piece="0",
+            )
             first = service.inspect(
                 order_id=1,
-                payload=InspectRequest(
-                    receipt_batch_no="RB-1",
-                    idempotency_key="idem-service-overinspect-1",
-                    inspected_qty=Decimal("70"),
-                    rejected_qty=Decimal("0"),
-                    deduction_amount_per_piece=Decimal("0"),
-                    remark="service-guard",
-                ),
+                payload=InspectRequest(**first_payload),
                 operator="inspect.user",
-                request_id="rid-service-overinspect-1",
+                request_id=first_payload["request_id"],
             )
             self.assertEqual(first.status, "waiting_inspection")
 
+            second_payload = self._payload(
+                idem="idem-service-overinspect-2",
+                inspected_qty="70",
+                rejected_qty="0",
+                deduction_amount_per_piece="0",
+            )
             with self.assertRaises(BusinessException) as exc_ctx:
                 service.inspect(
                     order_id=1,
-                    payload=InspectRequest(
-                        receipt_batch_no="RB-1",
-                        idempotency_key="idem-service-overinspect-2",
-                        inspected_qty=Decimal("70"),
-                        rejected_qty=Decimal("0"),
-                        deduction_amount_per_piece=Decimal("0"),
-                        remark="service-guard",
-                    ),
+                    payload=InspectRequest(**second_payload),
                     operator="inspect.user",
-                    request_id="rid-service-overinspect-2",
+                    request_id=second_payload["request_id"],
                 )
             self.assertEqual(exc_ctx.exception.code, SUBCONTRACT_INSPECTION_QTY_EXCEEDED)
             session.rollback()
@@ -557,19 +604,24 @@ class SubcontractInspectionTest(unittest.TestCase):
         self.assertLessEqual(total_inspected_qty, received_qty)
 
     def test_inspect_partial_batch_keeps_waiting_inspection(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-inspect-partial", inspected_qty="40", rejected_qty="0", deduction_amount_per_piece="0"),
+        response = self._post_inspect(
+            1,
+            idem="idem-inspect-partial",
+            inspected_qty="40",
+            rejected_qty="0",
+            deduction_amount_per_piece="0",
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["status"], "waiting_inspection")
 
     def test_inspect_all_received_but_not_all_planned_sets_waiting_receive(self) -> None:
-        response = self.client.post(
-            "/api/subcontract/4/inspect",
-            headers=self._headers(),
-            json=self._payload(batch="RB-4", idem="idem-inspect-waiting-receive", inspected_qty="100", rejected_qty="0", deduction_amount_per_piece="0"),
+        response = self._post_inspect(
+            4,
+            batch="RB-4",
+            idem="idem-inspect-waiting-receive",
+            inspected_qty="100",
+            rejected_qty="0",
+            deduction_amount_per_piece="0",
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["status"], "waiting_receive")
@@ -580,10 +632,12 @@ class SubcontractInspectionTest(unittest.TestCase):
         ) as issue_mock, patch.object(
             ERPNextStockEntryService, "create_and_submit_material_receipt"
         ) as receipt_mock:
-            response = self.client.post(
-                "/api/subcontract/1/inspect",
-                headers=self._headers(),
-                json=self._payload(idem="idem-inspect-no-erp", inspected_qty="10", rejected_qty="0", deduction_amount_per_piece="0"),
+            response = self._post_inspect(
+                1,
+                idem="idem-inspect-no-erp",
+                inspected_qty="10",
+                rejected_qty="0",
+                deduction_amount_per_piece="0",
             )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(find_mock.call_count, 0)
@@ -632,10 +686,12 @@ class SubcontractInspectionTest(unittest.TestCase):
         self.assertEqual(outbox_hash_a, outbox_hash_b)
 
     def test_subcontract_detail_returns_inspections(self) -> None:
-        inspect_resp = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-detail-inspections", inspected_qty="10", rejected_qty="1", deduction_amount_per_piece="2"),
+        inspect_resp = self._post_inspect(
+            1,
+            idem="idem-detail-inspections",
+            inspected_qty="10",
+            rejected_qty="1",
+            deduction_amount_per_piece="2",
         )
         self.assertEqual(inspect_resp.status_code, 200)
 
@@ -664,10 +720,12 @@ class SubcontractInspectionTest(unittest.TestCase):
             self.assertIn(key, row)
 
     def test_subcontract_detail_inspection_amounts_use_inspection_table_not_receipt_legacy_fields(self) -> None:
-        inspect_resp = self.client.post(
-            "/api/subcontract/1/inspect",
-            headers=self._headers(),
-            json=self._payload(idem="idem-detail-amount-source", inspected_qty="20", rejected_qty="2", deduction_amount_per_piece="3"),
+        inspect_resp = self._post_inspect(
+            1,
+            idem="idem-detail-amount-source",
+            inspected_qty="20",
+            rejected_qty="2",
+            deduction_amount_per_piece="3",
         )
         self.assertEqual(inspect_resp.status_code, 200)
         inspection_no = inspect_resp.json()["data"]["inspection_no"]

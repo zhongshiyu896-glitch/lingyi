@@ -1,0 +1,54 @@
+{
+  "task_id": "TASK-Z031B-33-LEDGER-CAND004",
+  "candidate_id": "Z031-CAND-004",
+  "evidence_only": false,
+  "current_head": "0f783aa3b3f9a2cdc467c504840aa6caed55a56c",
+  "cached_empty": true,
+  "git_diff_check_pass": true,
+  "source_chain": [
+    "B29 boundary",
+    "B30 FAIL",
+    "B31 classification",
+    "B32 PASS",
+    "B33 ledger"
+  ],
+  "b31_classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "b32_result": "PASS",
+  "b32_pytest_summary": "24 passed, 46 warnings in 1.22s",
+  "allowed_backend_test_path_only": "07_后端/lingyi_service/tests/test_subcontract_inspection.py",
+  "target_assertion_semantics": {
+    "explicit_status_assertions_preserved": [
+      200,
+      400,
+      404,
+      409
+    ],
+    "business_error_code_assertions_preserved": true,
+    "skip_xfail_found": false,
+    "weak_assertions_found": false
+  },
+  "ledger_total": 58,
+  "yes_count": 19,
+  "no_count": 39,
+  "yes_no_intersection": [],
+  "yes_paths_missing": [],
+  "git_check_ignore_yes_matches": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_subcontract_inspection.py"
+  ],
+  "backend_app_yes_paths": [],
+  "frontend_yes_paths": [],
+  "historical_dirty_forbidden_in_yes": [],
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z031B-34-STAGE-CAND004",
+  "run_this_task": false
+}
