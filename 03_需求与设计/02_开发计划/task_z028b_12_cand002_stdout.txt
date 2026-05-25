@@ -1,0 +1,173 @@
+...FFFFF....                                                             [100%]
+=================================== FAILURES ===================================
+_ FactoryStatementIdempotencyTest.test_cancel_same_key_different_payload_conflict _
+
+self = <tests.test_factory_statement_idempotency.FactoryStatementIdempotencyTest testMethod=test_cancel_same_key_different_payload_conflict>
+
+    def test_cancel_same_key_different_payload_conflict(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-cancel-conflict-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        first = self.client.post(
+            f"/api/factory-statements/{statement_id}/cancel",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-cancel-conflict", "reason": "A"},
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_idempotency.py:319: AssertionError
+_ FactoryStatementIdempotencyTest.test_cancel_same_key_same_hash_replays_same_operation _
+
+self = <tests.test_factory_statement_idempotency.FactoryStatementIdempotencyTest testMethod=test_cancel_same_key_same_hash_replays_same_operation>
+
+    def test_cancel_same_key_same_hash_replays_same_operation(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-cancel-replay-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        first = self.client.post(
+            f"/api/factory-statements/{statement_id}/cancel",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-cancel-replay", "reason": "manual cancel"},
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_idempotency.py:294: AssertionError
+_ FactoryStatementIdempotencyTest.test_confirm_concurrent_same_idempotency_key_replays_without_duplicate_operation _
+
+self = <tests.test_factory_statement_idempotency.FactoryStatementIdempotencyTest testMethod=test_confirm_concurrent_same_idempotency_key_replays_without_duplicate_operation>
+
+    def test_confirm_concurrent_same_idempotency_key_replays_without_duplicate_operation(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-confirm-race-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        with self.SessionLocal() as session:
+            service = FactoryStatementService(session)
+            request_hash = service._build_operation_hash(
+                statement_id=statement_id,
+                operation_type="confirm",
+                remark="race",
+            )
+            existing = LyFactoryStatementOperation(
+                company="COMP-A",
+                statement_id=statement_id,
+                operation_type="confirm",
+                idempotency_key="idem-confirm-race-op",
+                request_hash=request_hash,
+                result_status="confirmed",
+                result_user="factory.statement.user",
+                result_at=datetime.utcnow(),
+                remark="race",
+            )
+            session.add(existing)
+            session.commit()
+
+        original_find = FactoryStatementService._find_operation_by_idempotency
+        calls = {"count": 0}
+
+        def _simulate_race(self, **kwargs):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return None
+            return original_find(self, **kwargs)
+
+        with patch.object(FactoryStatementService, "_find_operation_by_idempotency", new=_simulate_race), patch.object(
+            FactoryStatementService,
+            "_flush_operation_once",
+            side_effect=IntegrityError("insert", {}, Exception("duplicate operation key")),
+        ):
+            replay = self.client.post(
+                f"/api/factory-statements/{statement_id}/confirm",
+                headers=self._headers(),
+                json={"idempotency_key": "idem-confirm-race-op", "remark": "race"},
+            )
+
+>       self.assertEqual(replay.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_idempotency.py:379: AssertionError
+_ FactoryStatementIdempotencyTest.test_confirm_same_key_different_payload_conflict _
+
+self = <tests.test_factory_statement_idempotency.FactoryStatementIdempotencyTest testMethod=test_confirm_same_key_different_payload_conflict>
+
+    def test_confirm_same_key_different_payload_conflict(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-confirm-conflict-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        first = self.client.post(
+            f"/api/factory-statements/{statement_id}/confirm",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-confirm-conflict", "remark": "A"},
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_idempotency.py:270: AssertionError
+_ FactoryStatementIdempotencyTest.test_confirm_same_key_same_hash_replays_same_operation _
+
+self = <tests.test_factory_statement_idempotency.FactoryStatementIdempotencyTest testMethod=test_confirm_same_key_same_hash_replays_same_operation>
+
+    def test_confirm_same_key_same_hash_replays_same_operation(self) -> None:
+        created = self.client.post(
+            "/api/factory-statements/",
+            headers=self._headers(),
+            json=self._create_payload(idempotency_key="idem-confirm-replay-create"),
+        )
+        self.assertEqual(created.status_code, 200)
+        statement_id = int(created.json()["data"]["statement_id"])
+
+        first = self.client.post(
+            f"/api/factory-statements/{statement_id}/confirm",
+            headers=self._headers(),
+            json={"idempotency_key": "idem-confirm-replay", "remark": "ok"},
+        )
+>       self.assertEqual(first.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_factory_statement_idempotency.py:234: AssertionError
+=============================== warnings summary ===============================
+tests/test_factory_statement_idempotency.py::FactoryStatementIdempotencyTest::test_active_scope_prevents_second_draft_with_new_idempotency_key
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+tests/test_factory_statement_idempotency.py: 14 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:4017: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+tests/test_factory_statement_idempotency.py: 13 warnings
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/app/services/factory_statement_service.py:377: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    LySubcontractInspection.settlement_locked_at: datetime.utcnow(),
+
+tests/test_factory_statement_idempotency.py::FactoryStatementIdempotencyTest::test_confirm_concurrent_same_idempotency_key_replays_without_duplicate_operation
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/tests/test_factory_statement_idempotency.py:353: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    result_at=datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_factory_statement_idempotency.py::FactoryStatementIdempotencyTest::test_cancel_same_key_different_payload_conflict
+FAILED tests/test_factory_statement_idempotency.py::FactoryStatementIdempotencyTest::test_cancel_same_key_same_hash_replays_same_operation
+FAILED tests/test_factory_statement_idempotency.py::FactoryStatementIdempotencyTest::test_confirm_concurrent_same_idempotency_key_replays_without_duplicate_operation
+FAILED tests/test_factory_statement_idempotency.py::FactoryStatementIdempotencyTest::test_confirm_same_key_different_payload_conflict
+FAILED tests/test_factory_statement_idempotency.py::FactoryStatementIdempotencyTest::test_confirm_same_key_same_hash_replays_same_operation
+5 failed, 7 passed, 29 warnings in 1.18s

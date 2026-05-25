@@ -19,6 +19,65 @@ from tests.test_factory_statement_api import FactoryStatementApiBase
 class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
     """Validate replay/conflict behavior for company + idempotency_key + request_hash."""
 
+    @staticmethod
+    def _scoped_idempotency_key(idempotency_key: str) -> str:
+        scenario_tag = FactoryStatementApiBase._SCENARIO_TAG
+        if scenario_tag in idempotency_key:
+            return idempotency_key
+        return f"{scenario_tag}-{idempotency_key}"
+
+    def _statement_scope(self, *, statement_id: int) -> dict[str, str]:
+        with self.SessionLocal() as session:
+            statement = (
+                session.query(LyFactoryStatement)
+                .filter(LyFactoryStatement.id == statement_id)
+                .one()
+            )
+            return {
+                "scenario_tag": self._SCENARIO_TAG,
+                "company": str(statement.company),
+                "supplier": str(statement.supplier),
+                "statement_no": str(statement.statement_no),
+            }
+
+    def _confirm_payload(
+        self,
+        *,
+        statement_id: int,
+        idempotency_key: str,
+        remark: str | None = None,
+    ) -> dict[str, str]:
+        scope = self._statement_scope(statement_id=statement_id)
+        payload = {
+            "idempotency_key": self._scoped_idempotency_key(idempotency_key),
+            "scenario_tag": scope["scenario_tag"],
+            "company": scope["company"],
+            "supplier": scope["supplier"],
+            "statement_no": scope["statement_no"],
+        }
+        if remark is not None:
+            payload["remark"] = remark
+        return payload
+
+    def _cancel_payload(
+        self,
+        *,
+        statement_id: int,
+        idempotency_key: str,
+        reason: str | None = None,
+    ) -> dict[str, str]:
+        scope = self._statement_scope(statement_id=statement_id)
+        payload = {
+            "idempotency_key": self._scoped_idempotency_key(idempotency_key),
+            "scenario_tag": scope["scenario_tag"],
+            "company": scope["company"],
+            "supplier": scope["supplier"],
+            "statement_no": scope["statement_no"],
+        }
+        if reason is not None:
+            payload["reason"] = f"{scope['scenario_tag']}-{reason}"
+        return payload
+
     def test_same_key_same_hash_replays_same_statement(self) -> None:
         payload = self._create_payload(idempotency_key="idem-replay-001")
 
@@ -229,14 +288,22 @@ class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-confirm-replay", "remark": "ok"},
+            json=self._confirm_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-confirm-replay",
+                remark="ok",
+            ),
         )
         self.assertEqual(first.status_code, 200)
 
         replay = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-confirm-replay", "remark": "ok"},
+            json=self._confirm_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-confirm-replay",
+                remark="ok",
+            ),
         )
         self.assertEqual(replay.status_code, 200)
         self.assertEqual(replay.json()["code"], "0")
@@ -265,14 +332,22 @@ class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-confirm-conflict", "remark": "A"},
+            json=self._confirm_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-confirm-conflict",
+                remark="A",
+            ),
         )
         self.assertEqual(first.status_code, 200)
 
         conflict = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-confirm-conflict", "remark": "B"},
+            json=self._confirm_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-confirm-conflict",
+                remark="B",
+            ),
         )
         self.assertEqual(conflict.status_code, 409)
         self.assertEqual(conflict.json()["code"], "FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT")
@@ -289,14 +364,22 @@ class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-replay", "reason": "manual cancel"},
+            json=self._cancel_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-cancel-replay",
+                reason="manual cancel",
+            ),
         )
         self.assertEqual(first.status_code, 200)
 
         replay = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-replay", "reason": "manual cancel"},
+            json=self._cancel_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-cancel-replay",
+                reason="manual cancel",
+            ),
         )
         self.assertEqual(replay.status_code, 200)
         self.assertEqual(replay.json()["code"], "0")
@@ -314,14 +397,22 @@ class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
         first = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-conflict", "reason": "A"},
+            json=self._cancel_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-cancel-conflict",
+                reason="A",
+            ),
         )
         self.assertEqual(first.status_code, 200)
 
         conflict = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-conflict", "reason": "B"},
+            json=self._cancel_payload(
+                statement_id=statement_id,
+                idempotency_key="idem-cancel-conflict",
+                reason="B",
+            ),
         )
         self.assertEqual(conflict.status_code, 409)
         self.assertEqual(conflict.json()["code"], "FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT")
@@ -334,6 +425,7 @@ class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
         )
         self.assertEqual(created.status_code, 200)
         statement_id = int(created.json()["data"]["statement_id"])
+        operation_idempotency_key = self._scoped_idempotency_key("idem-confirm-race-op")
 
         with self.SessionLocal() as session:
             service = FactoryStatementService(session)
@@ -346,7 +438,7 @@ class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
                 company="COMP-A",
                 statement_id=statement_id,
                 operation_type="confirm",
-                idempotency_key="idem-confirm-race-op",
+                idempotency_key=operation_idempotency_key,
                 request_hash=request_hash,
                 result_status="confirmed",
                 result_user="factory.statement.user",
@@ -373,7 +465,11 @@ class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
             replay = self.client.post(
                 f"/api/factory-statements/{statement_id}/confirm",
                 headers=self._headers(),
-                json={"idempotency_key": "idem-confirm-race-op", "remark": "race"},
+                json=self._confirm_payload(
+                    statement_id=statement_id,
+                    idempotency_key="idem-confirm-race-op",
+                    remark="race",
+                ),
             )
 
         self.assertEqual(replay.status_code, 200)
@@ -387,7 +483,7 @@ class FactoryStatementIdempotencyTest(FactoryStatementApiBase):
                 .filter(
                     LyFactoryStatementOperation.statement_id == statement_id,
                     LyFactoryStatementOperation.operation_type == "confirm",
-                    LyFactoryStatementOperation.idempotency_key == "idem-confirm-race-op",
+                    LyFactoryStatementOperation.idempotency_key == operation_idempotency_key,
                 )
                 .count()
             )

@@ -1,0 +1,26 @@
+field	value
+task_id	TASK-Z028B-11-PREP
+candidate_id	Z028-CAND-002
+source_task	TASK-Z028B-10-PREP
+current_head	47d8208281d2437f0afd60169c7fed3907d6a98f
+frozen_command	.venv/bin/python -m pytest tests/test_factory_statement_idempotency.py -q
+frozen_workdir	07_后端/lingyi_service
+target_test_path	07_后端/lingyi_service/tests/test_factory_statement_idempotency.py
+target_test_exists	true
+target_test_dirty_diff	false
+source_evidence_missing	[]
+historical_dirty_forbidden_staged	[]
+cached_empty	true
+git_diff_check	PASS
+next_task	TASK-Z028B-12-IMPL
+run_this_task	false
+stage_performed	false
+commit_performed	false
+push_performed	false
+tag_performed	false
+pr_performed	false
+release_performed	false
+remote_lifecycle_parked	true
+production_readback_ready	false
+go_live_ready	false
+project_completion_claimed	false
