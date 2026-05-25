@@ -1,0 +1,58 @@
+{
+  "cycle_id": "Z033",
+  "candidate_id": "Z033-CAND-001",
+  "source_task": "TASK-Z033B-01-PREP-FIX1",
+  "current_head": "88d0cfe3c465ea60f6f34e3ae8c98efe430b6dd0",
+  "candidate_original_fields": {
+    "candidate_id": "Z033-CAND-001",
+    "workdir": "07_后端/lingyi_service",
+    "command": ".venv/bin/python -m pytest tests/test_ci_postgresql_gate.py -q",
+    "target_test": "07_后端/lingyi_service/tests/test_ci_postgresql_gate.py",
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_ci_postgresql_gate.py"
+    ],
+    "source_evidence_missing": [],
+    "reused_from_Z015_Z032": false,
+    "rationale": "Z015-Z032 cycle/task target 反查未命中；避开本轮 C 审计复用清单与 Z032 已用清单；目标测试已跟踪、存在且当前无 dirty diff。"
+  },
+  "frozen_workdir": "07_后端/lingyi_service",
+  "frozen_command": ".venv/bin/python -m pytest tests/test_ci_postgresql_gate.py -q",
+  "target_test": "07_后端/lingyi_service/tests/test_ci_postgresql_gate.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence": [
+    "07_后端/lingyi_service/tests/test_ci_postgresql_gate.py"
+  ],
+  "source_evidence_missing": [],
+  "reuse_check": {
+    "reused_from_Z015_Z032": false,
+    "reused_target_tests": [],
+    "excluded_reused_target_tests": [
+      "tests/test_dashboard_overview_readonly.py",
+      "tests/test_erpnext_fail_closed_adapter.py",
+      "tests/test_factory_statement_readback_contract_fixture.py",
+      "tests/test_outbox_state_machine.py",
+      "tests/test_permission_service.py",
+      "tests/test_audit_log.py",
+      "tests/test_subcontract_settlement_export.py",
+      "tests/test_workshop_batch_exceptions.py",
+      "tests/test_workshop_job_card_sync.py",
+      "tests/test_workshop_outbox_audit_throttle.py"
+    ]
+  },
+  "historical_dirty_forbidden_staged": [],
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z033B-03-IMPL",
+  "run_this_task": false
+}

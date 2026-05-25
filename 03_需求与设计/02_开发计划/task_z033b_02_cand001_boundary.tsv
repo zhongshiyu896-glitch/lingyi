@@ -1,0 +1,2 @@
+cycle_id	candidate_id	source_task	current_head	frozen_workdir	frozen_command	target_test	target_test_exists	target_test_dirty_diff	source_evidence	source_evidence_missing	reused_from_Z015_Z032	historical_dirty_forbidden_staged	next_task	run_this_task
+Z033	Z033-CAND-001	TASK-Z033B-01-PREP-FIX1	88d0cfe3c465ea60f6f34e3ae8c98efe430b6dd0	07_后端/lingyi_service	.venv/bin/python -m pytest tests/test_ci_postgresql_gate.py -q	07_后端/lingyi_service/tests/test_ci_postgresql_gate.py	true	false	["07_后端/lingyi_service/tests/test_ci_postgresql_gate.py"]	[]	false	[]	TASK-Z033B-03-IMPL	false
