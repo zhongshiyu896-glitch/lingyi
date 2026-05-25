@@ -1,0 +1,35 @@
+key	value
+task_id	TASK-Z032B-28-PREP-CAND003-THIRD-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z032B-27-FIX-CAND003-SECOND
+candidate_id	Z032-CAND-003
+head	f1ee52224ea1a4615db30f51cb234eba023b1fb8
+cached_empty	true
+diff_check_pass	true
+b27_result	FAIL
+b27_command_run_count	1
+b27_pytest_summary	6 failed, 1 warning in 1.00s
+previous_failed_cases_count	6
+remaining_failed_cases_count	6
+observed_statuses	409,409,409,409,409,409
+expected_statuses	500,500,503,200,200,500
+failure_pattern_summary	B27 still observes 409 local idempotency/carrier conflict before original 500/503/200 workshop batch exception branches.
+idempotency_carrier_conflict_gate_addressed	false
+target_test	07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py
+current_target_dirty_diff_limited_to_allowed_file	true
+business_assertions_preserved_before_diag	true
+source_evidence_missing	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py
+next_task	TASK-Z032B-29-FIX-CAND003-THIRD
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

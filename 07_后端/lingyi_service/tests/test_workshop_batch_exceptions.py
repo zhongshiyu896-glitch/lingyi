@@ -7,8 +7,9 @@ import os
 import unittest
 from unittest.mock import patch
 
-os.environ["APP_ENV"] = "test"
+os.environ["APP_ENV"] = "development"
 os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
+os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
 os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
 os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
 
@@ -73,14 +74,40 @@ class WorkshopBatchExceptionTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
             session.query(LySecurityAuditLog).delete()
             session.commit()
 
     @staticmethod
-    def _headers(role: str = "Workshop Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": "batch.user", "X-LY-Dev-Roles": role}
+    def _carrier_code(value: str) -> str:
+        normalized = str(value).strip()
+        hash_value = 2166136261
+        for byte in normalized.encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-3:]
+
+    @classmethod
+    def _request_id(cls, payload: dict) -> str:
+        return (
+            f"{payload['scenario_tag']}-RW-B-"
+            f"{cls._carrier_code(payload['idempotency_key'])}-"
+            f"{cls._carrier_code(payload['source_ref'])}-"
+            f"{cls._carrier_code(payload['ticket_key'])}-"
+            f"{cls._carrier_code(payload['job_card'])}-"
+            f"{cls._carrier_code(payload['operator_id'])}-"
+            f"{cls._carrier_code(payload['batch_no'])}"
+        )
+
+    @staticmethod
+    def _headers(role: str = "Workshop Manager", request_id: str | None = None) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": "batch.user", "X-LY-Dev-Roles": role}
+        if request_id:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
     def _row(ticket_key: str, qty: str = "10") -> dict:
@@ -96,6 +123,48 @@ class WorkshopBatchExceptionTest(unittest.TestCase):
             "work_date": "2026-04-12",
             "source": "import",
         }
+
+    @classmethod
+    def _batch_payload(cls, case_key: str, rows: list[dict]) -> dict:
+        scenario_tag = "Z003-WORKSHOP-TICKET-20260412-001"
+        batch_no = f"{scenario_tag}-BATCH-{case_key}"
+        payload = {
+            "scenario_tag": scenario_tag,
+            "idempotency_key": f"{scenario_tag}-BATCH-IDEMP-{case_key}",
+            "source_ref": f"{scenario_tag}-BATCH-SRC-{case_key}",
+            "operation": "batch",
+            "operator_id": "batch.user",
+            "batch_no": batch_no,
+            "ticket_key": f"{scenario_tag}-BATCH-{case_key}",
+            "job_card": "JC-001",
+            "employee": "EMP-001",
+            "tickets": [],
+        }
+        for row in rows:
+            normalized = dict(row)
+            original_ticket_key = normalized["ticket_key"]
+            carrier_ticket_key = f"{scenario_tag}-ROW-{original_ticket_key}"
+            normalized.update(
+                {
+                    "scenario_tag": scenario_tag,
+                    "idempotency_key": carrier_ticket_key,
+                    "source_ref": f"{scenario_tag}-SRC-{original_ticket_key}",
+                    "operation": normalized.get("operation_type", "register"),
+                    "operator_id": "batch.user",
+                    "batch_no": batch_no,
+                    "ticket_key": carrier_ticket_key,
+                },
+            )
+            payload["tickets"].append(normalized)
+        return payload
+
+    def _post_batch(self, case_key: str, rows: list[dict]):
+        payload = self._batch_payload(case_key, rows)
+        return self.client.post(
+            "/api/workshop/tickets/batch",
+            headers=self._headers(request_id=self._request_id(payload)),
+            json=payload,
+        )
 
     @staticmethod
     def _ctx(item_code: str = "ITEM-A", company: str = "COMP-A") -> WorkshopResourceContext:
@@ -128,11 +197,7 @@ class WorkshopBatchExceptionTest(unittest.TestCase):
             "process_batch_row",
             side_effect=DatabaseWriteFailed(),
         ):
-            response = self.client.post(
-                "/api/workshop/tickets/batch",
-                headers=self._headers(),
-                json={"tickets": [self._row("DB-ERR-001")]},
-            )
+            response = self._post_batch("DB-ERR-001", [self._row("DB-ERR-001")])
 
         payload = response.json()
         self.assertEqual(response.status_code, 500)
@@ -148,11 +213,7 @@ class WorkshopBatchExceptionTest(unittest.TestCase):
                 detail={"code": "PERMISSION_SOURCE_UNAVAILABLE", "message": "权限来源暂时不可用", "data": {}},
             ),
         ):
-            response = self.client.post(
-                "/api/workshop/tickets/batch",
-                headers=self._headers(),
-                json={"tickets": [self._row("PERM-ERR-001")]},
-            )
+            response = self._post_batch("PERM-ERR-001", [self._row("PERM-ERR-001")])
 
         payload = response.json()
         self.assertEqual(response.status_code, 503)
@@ -169,11 +230,7 @@ class WorkshopBatchExceptionTest(unittest.TestCase):
             "record_success",
             side_effect=AuditWriteFailed(),
         ):
-            response = self.client.post(
-                "/api/workshop/tickets/batch",
-                headers=self._headers(),
-                json={"tickets": [self._row("AUDIT-ERR-001")]},
-            )
+            response = self._post_batch("AUDIT-ERR-001", [self._row("AUDIT-ERR-001")])
 
         payload = response.json()
         self.assertEqual(response.status_code, 500)
@@ -186,11 +243,7 @@ class WorkshopBatchExceptionTest(unittest.TestCase):
             "process_batch_row",
             side_effect=RuntimeError("boom"),
         ):
-            response = self.client.post(
-                "/api/workshop/tickets/batch",
-                headers=self._headers(),
-                json={"tickets": [self._row("RUNTIME-ERR-001")]},
-            )
+            response = self._post_batch("RUNTIME-ERR-001", [self._row("RUNTIME-ERR-001")])
 
         payload = response.json()
         self.assertEqual(response.status_code, 500)
@@ -206,10 +259,9 @@ class WorkshopBatchExceptionTest(unittest.TestCase):
                 self._ok_ticket("ROW-OK-002"),
             ],
         ):
-            response = self.client.post(
-                "/api/workshop/tickets/batch",
-                headers=self._headers(),
-                json={"tickets": [self._row("ROW-BAD-001", qty="0"), self._row("ROW-OK-002", qty="10")]},
+            response = self._post_batch(
+                "ROW-BAD-001",
+                [self._row("ROW-BAD-001", qty="0"), self._row("ROW-OK-002", qty="10")],
             )
 
         payload = response.json()
@@ -238,11 +290,7 @@ class WorkshopBatchExceptionTest(unittest.TestCase):
             "process_batch_row",
             return_value=self._ok_ticket("ROW-OK-002"),
         ):
-            response = self.client.post(
-                "/api/workshop/tickets/batch",
-                headers=self._headers(),
-                json={"tickets": [self._row("ROW-DENY-001"), self._row("ROW-OK-002")]},
-            )
+            response = self._post_batch("ROW-DENY-001", [self._row("ROW-DENY-001"), self._row("ROW-OK-002")])
 
         payload = response.json()
         self.assertEqual(response.status_code, 200)

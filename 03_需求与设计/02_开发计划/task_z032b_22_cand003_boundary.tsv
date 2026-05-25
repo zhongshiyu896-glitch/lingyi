@@ -1,0 +1,28 @@
+field	value
+task_id	TASK-Z032B-22-PREP
+role	B Engineer
+source_task	TASK-Z032B-21-PREP
+candidate_id	Z032-CAND-003
+current_head	f1ee52224ea1a4615db30f51cb234eba023b1fb8
+cached_empty	true
+diff_check_pass	true
+frozen_workdir	07_后端/lingyi_service
+frozen_command	.venv/bin/python -m pytest tests/test_workshop_batch_exceptions.py -q
+target_test	07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py
+target_test_exists	true
+target_test_dirty_diff	false
+source_evidence_missing	[]
+reuse_check.reused_from_Z015_Z031	false
+historical_dirty_forbidden_staged	[]
+next_task	TASK-Z032B-23-IMPL
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

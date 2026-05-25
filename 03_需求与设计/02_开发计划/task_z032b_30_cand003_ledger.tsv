@@ -1,0 +1,66 @@
+decision	path_or_scope
+YES	03_需求与设计/02_开发计划/TASK-Z032B-22-PREP_CAND003只读验证边界报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_22_cand003_boundary.json
+YES	03_需求与设计/02_开发计划/task_z032b_22_cand003_boundary.tsv
+YES	03_需求与设计/02_开发计划/TASK-Z032B-23-IMPL_CAND003单文件验证报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_23_cand003_result.json
+YES	03_需求与设计/02_开发计划/task_z032b_23_cand003_result.tsv
+YES	03_需求与设计/02_开发计划/task_z032b_23_cand003_stdout.txt
+YES	03_需求与设计/02_开发计划/TASK-Z032B-24-PREP-CAND003-FAILURE-DIAG_失败定位边界报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_24_cand003_failure_boundary.json
+YES	03_需求与设计/02_开发计划/task_z032b_24_cand003_failure_boundary.tsv
+YES	03_需求与设计/02_开发计划/TASK-Z032B-25-FIX-CAND003_修复验证报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_25_cand003_fix_result.json
+YES	03_需求与设计/02_开发计划/task_z032b_25_cand003_fix_result.tsv
+YES	03_需求与设计/02_开发计划/task_z032b_25_cand003_fix_stdout.txt
+YES	03_需求与设计/02_开发计划/TASK-Z032B-26-PREP-CAND003-SECOND-FAILURE-DIAG_二次失败定位边界报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_26_cand003_second_failure_boundary.json
+YES	03_需求与设计/02_开发计划/task_z032b_26_cand003_second_failure_boundary.tsv
+YES	03_需求与设计/02_开发计划/TASK-Z032B-27-FIX-CAND003-SECOND_二次修复验证报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_27_cand003_second_fix_result.json
+YES	03_需求与设计/02_开发计划/task_z032b_27_cand003_second_fix_result.tsv
+YES	03_需求与设计/02_开发计划/task_z032b_27_cand003_second_fix_stdout.txt
+YES	03_需求与设计/02_开发计划/TASK-Z032B-28-PREP-CAND003-THIRD-FAILURE-DIAG_三次失败定位边界报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_28_cand003_third_failure_boundary.json
+YES	03_需求与设计/02_开发计划/task_z032b_28_cand003_third_failure_boundary.tsv
+YES	03_需求与设计/02_开发计划/TASK-Z032B-29-FIX-CAND003-THIRD_三次修复验证报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_29_cand003_third_fix_result.json
+YES	03_需求与设计/02_开发计划/task_z032b_29_cand003_third_fix_result.tsv
+YES	03_需求与设计/02_开发计划/task_z032b_29_cand003_third_fix_stdout.txt
+YES	03_需求与设计/02_开发计划/TASK-Z032B-30-LEDGER-CAND003_提交候选账本冻结报告.md
+YES	03_需求与设计/02_开发计划/task_z032b_30_cand003_freeze.json
+YES	03_需求与设计/02_开发计划/task_z032b_30_cand003_ledger.json
+YES	03_需求与设计/02_开发计划/task_z032b_30_cand003_ledger.tsv
+YES	07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py
+NO	03_需求与设计/02_开发计划/TASK-Z032B-01-PREP_候选池重建报告.md
+NO	03_需求与设计/02_开发计划/task_z032b_01_candidate_pool.json
+NO	03_需求与设计/02_开发计划/task_z032b_01_candidate_pool.tsv
+NO	Z032-CAND-001 archived evidence range
+NO	Z032-CAND-002 archived evidence range
+NO	Z032-CAND-004 scope
+NO	Z032-CAND-005 scope
+NO	06_前端/**
+NO	07_后端/lingyi_service/app/**
+NO	shared engineer logs
+NO	Z015-Z031 old cycle artifacts
+NO	runtime/cache/unrelated files
+NO	06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue
+NO	06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue
+NO	07_后端/lingyi_service/app/schemas/report.py
+NO	07_后端/lingyi_service/app/services/report_catalog_service.py
+NO	07_后端/lingyi_service/app/services/system_config_catalog_service.py
+NO	07_后端/lingyi_service/tests/test_bom_permissions.py
+NO	07_后端/lingyi_service/tests/test_logging_sanitization.py
+NO	07_后端/lingyi_service/tests/test_permission_governance_audit_export.py
+NO	07_后端/lingyi_service/tests/test_request_id_sanitization.py
+NO	07_后端/lingyi_service/tests/test_style_profit_api.py
+NO	07_后端/lingyi_service/tests/test_subcontract_company_permission.py
+NO	07_后端/lingyi_service/tests/test_workshop_permissions.py
+NO	06_前端/lingyi-pc/.tmp_task_z004b33_browser_capture.mjs
+NO	07_后端/lingyi_service/app/local_dev.py
+NO	07_后端/lingyi_service/tests/test_permission_audit_baseline.py
+NO	06_前端/lingyi-pc/test-results/

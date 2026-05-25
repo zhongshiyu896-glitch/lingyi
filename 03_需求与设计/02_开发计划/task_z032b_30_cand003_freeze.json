@@ -1,0 +1,70 @@
+{
+  "task_id": "TASK-Z032B-30-LEDGER-CAND003",
+  "role": "B Engineer",
+  "candidate_id": "Z032-CAND-003",
+  "evidence_only": false,
+  "source_chain": [
+    "B22 boundary",
+    "B23 FAIL",
+    "B24 classification",
+    "B25 FAIL",
+    "B26 classification",
+    "B27 FAIL",
+    "B28 classification",
+    "B29 PASS",
+    "B30 ledger"
+  ],
+  "current_head": "f1ee52224ea1a4615db30f51cb234eba023b1fb8",
+  "cached_empty": true,
+  "diff_check_pass": true,
+  "b29_result": "PASS",
+  "b29_pytest_summary": "6 passed, 1 warning in 0.98s",
+  "classifications": {
+    "B24": "TEST_CONTRACT_UPDATE_ALLOWED",
+    "B26": "TEST_CONTRACT_UPDATE_ALLOWED",
+    "B28": "TEST_CONTRACT_UPDATE_ALLOWED"
+  },
+  "allowed_backend_test_path_only": "07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py",
+  "ledger_total": 65,
+  "yes_count": 33,
+  "no_count": 32,
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "git_check_ignore_yes_hits": [],
+  "backend_yes_paths": [
+    "07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py"
+  ],
+  "backend_app_yes_paths": [],
+  "frontend_yes_paths": [],
+  "historical_dirty_forbidden_in_yes": [],
+  "target_assertion_semantics": {
+    "explicit_status_assertions_preserved": [
+      500,
+      503,
+      200
+    ],
+    "explicit_error_code_assertions_preserved": [
+      "DATABASE_WRITE_FAILED",
+      "PERMISSION_SOURCE_UNAVAILABLE",
+      "AUDIT_WRITE_FAILED",
+      "WORKSHOP_INTERNAL_ERROR",
+      "WORKSHOP_INVALID_QTY",
+      "AUTH_FORBIDDEN"
+    ],
+    "no_409_conflict_acceptance": true,
+    "skip_xfail_found": false,
+    "weak_assertions_found": false
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z032B-31-STAGE-CAND003",
+  "run_this_task": false
+}

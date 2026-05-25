@@ -1,0 +1,33 @@
+field	value
+task_id	TASK-Z032B-24-PREP-CAND003-FAILURE-DIAG
+role	B Engineer
+source_task	TASK-Z032B-23-IMPL
+candidate_id	Z032-CAND-003
+current_head	f1ee52224ea1a4615db30f51cb234eba023b1fb8
+cached_empty	true
+diff_check_pass	true
+b23_result	FAIL
+b23_command_run_count	1
+b23_pytest_summary	6 failed, 1 warning in 1.04s
+failed_cases_count	6
+failed_cases	["test_audit_write_failed_returns_500_not_failed_items","test_database_write_failed_returns_500_not_failed_items","test_permission_source_unavailable_returns_503_not_failed_items","test_row_business_error_can_enter_failed_items","test_row_resource_forbidden_can_enter_failed_items_and_write_security_audit","test_unknown_error_returns_500_not_failed_items"]
+observed_expected_summary	all observed 422; expected 500/500/503/200/200/500
+failure_pattern_summary	legacy batch payload missing current required carrier fields blocks business branches at 422 schema validation
+target_test	07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py
+target_test_dirty_diff	false
+source_evidence_missing	[]
+historical_dirty_forbidden_staged	[]
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py
+next_task	TASK-Z032B-25-FIX-CAND003
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

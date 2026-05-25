@@ -1,0 +1,108 @@
+{
+  "task_id": "TASK-Z032B-28-PREP-CAND003-THIRD-FAILURE-DIAG",
+  "role": "B Engineer",
+  "source_task": "TASK-Z032B-27-FIX-CAND003-SECOND",
+  "candidate_id": "Z032-CAND-003",
+  "precheck": {
+    "head": "f1ee52224ea1a4615db30f51cb234eba023b1fb8",
+    "cached_empty": true,
+    "diff_check_pass": true,
+    "b27_result": "FAIL",
+    "b27_command_run_count": 1,
+    "b27_pytest_summary": "6 failed, 1 warning in 1.00s",
+    "b27_stdout_failed_cases_traceable": true,
+    "historical_dirty_forbidden_staged": []
+  },
+  "previous_failed_cases_count": 6,
+  "remaining_failed_cases_count": 6,
+  "remaining_failed_cases": [
+    {
+      "name": "test_audit_write_failed_returns_500_not_failed_items",
+      "observed_status": 409,
+      "expected_status": 500,
+      "expected_code": "AUDIT_WRITE_FAILED",
+      "difference_summary": "Observed local idempotency/carrier conflict 409 before expected audit write failure branch."
+    },
+    {
+      "name": "test_database_write_failed_returns_500_not_failed_items",
+      "observed_status": 409,
+      "expected_status": 500,
+      "expected_code": "DATABASE_WRITE_FAILED",
+      "difference_summary": "Observed local idempotency/carrier conflict 409 before expected database write failure branch."
+    },
+    {
+      "name": "test_permission_source_unavailable_returns_503_not_failed_items",
+      "observed_status": 409,
+      "expected_status": 503,
+      "expected_code": "PERMISSION_SOURCE_UNAVAILABLE",
+      "difference_summary": "Observed local idempotency/carrier conflict 409 before expected permission source unavailable branch."
+    },
+    {
+      "name": "test_row_business_error_can_enter_failed_items",
+      "observed_status": 409,
+      "expected_status": 200,
+      "expected_code": "0",
+      "expected_failed_item_code": "WORKSHOP_INVALID_QTY",
+      "difference_summary": "Observed local idempotency/carrier conflict 409 before expected mixed success/failed-items row business branch."
+    },
+    {
+      "name": "test_row_resource_forbidden_can_enter_failed_items_and_write_security_audit",
+      "observed_status": 409,
+      "expected_status": 200,
+      "expected_code": "0",
+      "expected_failed_item_code": "AUTH_FORBIDDEN",
+      "difference_summary": "Observed local idempotency/carrier conflict 409 before expected row authorization failure and security audit branch."
+    },
+    {
+      "name": "test_unknown_error_returns_500_not_failed_items",
+      "observed_status": 409,
+      "expected_status": 500,
+      "expected_code": "WORKSHOP_INTERNAL_ERROR",
+      "difference_summary": "Observed local idempotency/carrier conflict 409 before expected unknown error branch."
+    }
+  ],
+  "observed_statuses": [
+    409,
+    409,
+    409,
+    409,
+    409,
+    409
+  ],
+  "expected_statuses": [
+    500,
+    500,
+    503,
+    200,
+    200,
+    500
+  ],
+  "failure_pattern_summary": "B27 still observes local idempotency/carrier conflict 409 for all six workshop batch exception cases, blocking the original 500/503/200 business branches. B25 addressed schema-required carrier fields, and B27 kept the business assertions explicit but did not clear the local request/carrier gate. Readonly source evidence indicates this remains fixable through target-test fixture/payload/mock/local state isolation within the authorized test file.",
+  "idempotency_carrier_conflict_gate_addressed": false,
+  "target_test": "07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py",
+  "current_target_dirty_diff_limited_to_allowed_file": true,
+  "business_assertions_preserved_before_diag": true,
+  "source_evidence_checked": [
+    "07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py",
+    "07_后端/lingyi_service/app/routers/workshop.py",
+    "07_后端/lingyi_service/app/services/workshop_service.py",
+    "07_后端/lingyi_service/app/schemas/workshop.py",
+    "07_后端/lingyi_service/app/models/workshop.py",
+    "07_后端/lingyi_service/app/services/permission_service.py"
+  ],
+  "source_evidence_missing": [],
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py",
+  "next_task": "TASK-Z032B-29-FIX-CAND003-THIRD",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "pr": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

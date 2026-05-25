@@ -1,0 +1,144 @@
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+_ WorkshopBatchExceptionTest.test_audit_write_failed_returns_500_not_failed_items _
+
+self = <tests.test_workshop_batch_exceptions.WorkshopBatchExceptionTest testMethod=test_audit_write_failed_returns_500_not_failed_items>
+
+    def test_audit_write_failed_returns_500_not_failed_items(self) -> None:
+        with patch.object(WorkshopService, "resolve_job_card_resource", return_value=self._ctx()), patch.object(
+            WorkshopService,
+            "process_batch_row",
+            return_value=self._ok_ticket("AUDIT-OK"),
+        ), patch.object(
+            AuditService,
+            "record_success",
+            side_effect=AuditWriteFailed(),
+        ):
+            response = self._post_batch("AUDIT-ERR-001", [self._row("AUDIT-ERR-001")])
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_workshop_batch_exceptions.py:233: AssertionError
+_ WorkshopBatchExceptionTest.test_database_write_failed_returns_500_not_failed_items _
+
+self = <tests.test_workshop_batch_exceptions.WorkshopBatchExceptionTest testMethod=test_database_write_failed_returns_500_not_failed_items>
+
+    def test_database_write_failed_returns_500_not_failed_items(self) -> None:
+        with patch.object(WorkshopService, "resolve_job_card_resource", return_value=self._ctx()), patch.object(
+            WorkshopService,
+            "process_batch_row",
+            side_effect=DatabaseWriteFailed(),
+        ):
+            response = self._post_batch("DB-ERR-001", [self._row("DB-ERR-001")])
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_workshop_batch_exceptions.py:200: AssertionError
+_ WorkshopBatchExceptionTest.test_permission_source_unavailable_returns_503_not_failed_items _
+
+self = <tests.test_workshop_batch_exceptions.WorkshopBatchExceptionTest testMethod=test_permission_source_unavailable_returns_503_not_failed_items>
+
+    def test_permission_source_unavailable_returns_503_not_failed_items(self) -> None:
+        with patch.object(
+            PermissionService,
+            "get_workshop_user_permissions",
+            side_effect=HTTPException(
+                status_code=503,
+                detail={"code": "PERMISSION_SOURCE_UNAVAILABLE", "message": "权限来源暂时不可用", "data": {}},
+            ),
+        ):
+            response = self._post_batch("PERM-ERR-001", [self._row("PERM-ERR-001")])
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 503)
+E       AssertionError: 409 != 503
+
+tests/test_workshop_batch_exceptions.py:216: AssertionError
+__ WorkshopBatchExceptionTest.test_row_business_error_can_enter_failed_items ___
+
+self = <tests.test_workshop_batch_exceptions.WorkshopBatchExceptionTest testMethod=test_row_business_error_can_enter_failed_items>
+
+    def test_row_business_error_can_enter_failed_items(self) -> None:
+        with patch.object(WorkshopService, "resolve_job_card_resource", return_value=self._ctx()), patch.object(
+            WorkshopService,
+            "process_batch_row",
+            side_effect=[
+                BusinessException(code="WORKSHOP_INVALID_QTY", message="数量必须大于 0"),
+                self._ok_ticket("ROW-OK-002"),
+            ],
+        ):
+            response = self._post_batch(
+                "ROW-BAD-001",
+                [self._row("ROW-BAD-001", qty="0"), self._row("ROW-OK-002", qty="10")],
+            )
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_workshop_batch_exceptions.py:265: AssertionError
+_ WorkshopBatchExceptionTest.test_row_resource_forbidden_can_enter_failed_items_and_write_security_audit _
+
+self = <tests.test_workshop_batch_exceptions.WorkshopBatchExceptionTest testMethod=test_row_resource_forbidden_can_enter_failed_items_and_write_security_audit>
+
+    def test_row_resource_forbidden_can_enter_failed_items_and_write_security_audit(self) -> None:
+        with patch.object(
+            PermissionService,
+            "get_workshop_user_permissions",
+            return_value=UserPermissionResult(
+                source_available=True,
+                unrestricted=False,
+                allowed_items={"ITEM-B"},
+                allowed_companies={"COMP-A"},
+            ),
+        ), patch.object(
+            WorkshopService,
+            "resolve_job_card_resource",
+            side_effect=[self._ctx(item_code="ITEM-A"), self._ctx(item_code="ITEM-B")],
+        ), patch.object(
+            WorkshopService,
+            "process_batch_row",
+            return_value=self._ok_ticket("ROW-OK-002"),
+        ):
+            response = self._post_batch("ROW-DENY-001", [self._row("ROW-DENY-001"), self._row("ROW-OK-002")])
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_workshop_batch_exceptions.py:293: AssertionError
+__ WorkshopBatchExceptionTest.test_unknown_error_returns_500_not_failed_items __
+
+self = <tests.test_workshop_batch_exceptions.WorkshopBatchExceptionTest testMethod=test_unknown_error_returns_500_not_failed_items>
+
+    def test_unknown_error_returns_500_not_failed_items(self) -> None:
+        with patch.object(WorkshopService, "resolve_job_card_resource", return_value=self._ctx()), patch.object(
+            WorkshopService,
+            "process_batch_row",
+            side_effect=RuntimeError("boom"),
+        ):
+            response = self._post_batch("RUNTIME-ERR-001", [self._row("RUNTIME-ERR-001")])
+
+        payload = response.json()
+>       self.assertEqual(response.status_code, 500)
+E       AssertionError: 409 != 500
+
+tests/test_workshop_batch_exceptions.py:246: AssertionError
+=============================== warnings summary ===============================
+tests/test_workshop_batch_exceptions.py::WorkshopBatchExceptionTest::test_audit_write_failed_returns_500_not_failed_items
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_workshop_batch_exceptions.py::WorkshopBatchExceptionTest::test_audit_write_failed_returns_500_not_failed_items
+FAILED tests/test_workshop_batch_exceptions.py::WorkshopBatchExceptionTest::test_database_write_failed_returns_500_not_failed_items
+FAILED tests/test_workshop_batch_exceptions.py::WorkshopBatchExceptionTest::test_permission_source_unavailable_returns_503_not_failed_items
+FAILED tests/test_workshop_batch_exceptions.py::WorkshopBatchExceptionTest::test_row_business_error_can_enter_failed_items
+FAILED tests/test_workshop_batch_exceptions.py::WorkshopBatchExceptionTest::test_row_resource_forbidden_can_enter_failed_items_and_write_security_audit
+FAILED tests/test_workshop_batch_exceptions.py::WorkshopBatchExceptionTest::test_unknown_error_returns_500_not_failed_items
+6 failed, 1 warning in 1.04s

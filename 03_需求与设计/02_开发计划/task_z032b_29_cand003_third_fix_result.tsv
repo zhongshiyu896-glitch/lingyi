@@ -1,0 +1,37 @@
+key	value
+task_id	TASK-Z032B-29-FIX-CAND003-THIRD
+role	B Engineer
+source_task	TASK-Z032B-28-PREP-CAND003-THIRD-FAILURE-DIAG
+candidate_id	Z032-CAND-003
+allowed_fix_file	07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py
+changed_files	07_后端/lingyi_service/tests/test_workshop_batch_exceptions.py;03_需求与设计/02_开发计划/task_z032b_29_cand003_third_fix_stdout.txt;03_需求与设计/02_开发计划/TASK-Z032B-29-FIX-CAND003-THIRD_三次修复验证报告.md;03_需求与设计/02_开发计划/task_z032b_29_cand003_third_fix_result.json;03_需求与设计/02_开发计划/task_z032b_29_cand003_third_fix_result.tsv
+workdir	07_后端/lingyi_service
+exact_command	.venv/bin/python -m pytest tests/test_workshop_batch_exceptions.py -q
+command_run_count	1
+exit_code	0
+result	PASS
+pytest_summary	6 passed, 1 warning in 0.98s
+stdout_path	03_需求与设计/02_开发计划/task_z032b_29_cand003_third_fix_stdout.txt
+target_test_dirty_diff	true
+carrier_contract_remains_addressed	true
+local_state_isolation_addressed	true
+idempotency_carrier_conflict_gate_addressed	true
+business_status_assertions_preserved	true
+no_409_conflict_acceptance	true
+assertions_weakened	false
+skip_xfail_deleted_cases	false
+backend_app_changed	false
+frontend_changed	false
+unrelated_tests_changed	false
+continued_after_fail	false
+rerun_performed	false
+stage	false
+commit	false
+push	false
+tag	false
+pr	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false
