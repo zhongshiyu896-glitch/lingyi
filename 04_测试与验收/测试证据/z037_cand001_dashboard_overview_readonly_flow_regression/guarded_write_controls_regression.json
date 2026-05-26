@@ -1,0 +1,90 @@
+{
+  "task_id": "TASK-Z037B-04-REGRESSION-CAND001",
+  "required_controls": [
+    "导出概览",
+    "新增待办",
+    "清空",
+    "确定",
+    "标志已读",
+    "删除消息",
+    "新增消息",
+    "保存"
+  ],
+  "controls": [
+    {
+      "label": "导出概览",
+      "observed": true,
+      "disabled": true,
+      "dataWriteGuard": "true",
+      "guardState": null,
+      "clicked": false,
+      "text": "导出概览"
+    },
+    {
+      "label": "新增待办",
+      "observed": true,
+      "disabled": true,
+      "dataWriteGuard": "true",
+      "guardState": null,
+      "clicked": false,
+      "text": "新增待办"
+    },
+    {
+      "label": "清空",
+      "observed": true,
+      "disabled": false,
+      "dataWriteGuard": "true",
+      "guardState": "guarded_readonly",
+      "clicked": true,
+      "text": "清空"
+    },
+    {
+      "label": "确定",
+      "observed": true,
+      "disabled": false,
+      "dataWriteGuard": "true",
+      "guardState": "guarded_readonly",
+      "clicked": true,
+      "text": "确定"
+    },
+    {
+      "label": "标志已读",
+      "observed": true,
+      "disabled": false,
+      "dataWriteGuard": "true",
+      "guardState": "guarded_readonly",
+      "clicked": true,
+      "text": "标志已读"
+    },
+    {
+      "label": "删除消息",
+      "observed": true,
+      "disabled": false,
+      "dataWriteGuard": "true",
+      "guardState": "guarded_readonly",
+      "clicked": true,
+      "text": "删除消息"
+    },
+    {
+      "label": "新增消息",
+      "observed": true,
+      "disabled": false,
+      "dataWriteGuard": "true",
+      "guardState": "guarded_readonly",
+      "clicked": true,
+      "text": "新增消息"
+    },
+    {
+      "label": "保存",
+      "observed": true,
+      "disabled": false,
+      "dataWriteGuard": "true",
+      "guardState": "guarded_readonly",
+      "clicked": true,
+      "text": "保存"
+    }
+  ],
+  "guarded_readonly_count": 8,
+  "all_guarded_or_disabled": true,
+  "guarded_readonly_not_write_success": true
+}

@@ -1,0 +1,61 @@
+{
+  "runtime_evidence": {
+    "route": "/dashboard/overview",
+    "url": "http://127.0.0.1:5187/dashboard/overview",
+    "status": 200,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "screenshot": "dashboard_overview_runtime_fullpage.png",
+    "anchors_observed": [
+      "dashboard-overview-page",
+      "dashboard-overview-filter-form",
+      "dashboard-overview-metrics-grid",
+      "dashboard-overview-summary-grid",
+      "dashboard-overview-flow-board",
+      "dashboard-overview-message-table",
+      "dashboard-overview-detail-drawer",
+      "dashboard-overview-write-guard"
+    ],
+    "anchors_missing": [],
+    "required_anchor_count": 8,
+    "observed_anchor_count": 8,
+    "write_requests_observed_count": 0,
+    "real_write_action_added": false,
+    "backend_api_added": false,
+    "read_only_boundary_preserved": true,
+    "api_requests_observed": [
+      {
+        "page": "overview",
+        "method": "GET",
+        "path": "/api/auth/me"
+      },
+      {
+        "page": "overview",
+        "method": "GET",
+        "path": "/api/auth/actions?module=dashboard"
+      },
+      {
+        "page": "workplace",
+        "method": "GET",
+        "path": "/api/auth/me"
+      },
+      {
+        "page": "workplace",
+        "method": "GET",
+        "path": "/api/auth/actions?module=dashboard"
+      }
+    ],
+    "console_errors": [],
+    "auth_401_count": 0,
+    "runtime_readonly_fallback_risk": false
+  },
+  "redirect_evidence": {
+    "source_route": "/dashboard/workplace",
+    "final_url": "http://127.0.0.1:5187/dashboard/overview",
+    "final_pathname": "/dashboard/overview",
+    "redirected_to_dashboard_overview": true,
+    "status": 200
+  }
+}

@@ -1,0 +1,66 @@
+[
+  {
+    "label": "导出概览",
+    "count": 1,
+    "disabled": false,
+    "data_write_guard": "true",
+    "data_guard_state": null,
+    "guarded_readonly": true
+  },
+  {
+    "label": "新增待办",
+    "count": 1,
+    "disabled": false,
+    "data_write_guard": "true",
+    "data_guard_state": null,
+    "guarded_readonly": true
+  },
+  {
+    "label": "清空",
+    "count": 1,
+    "disabled": false,
+    "data_write_guard": "true",
+    "data_guard_state": null,
+    "guarded_readonly": true
+  },
+  {
+    "label": "确定",
+    "count": 1,
+    "disabled": false,
+    "data_write_guard": "true",
+    "data_guard_state": null,
+    "guarded_readonly": true
+  },
+  {
+    "label": "标志已读",
+    "count": 1,
+    "disabled": false,
+    "data_write_guard": "true",
+    "data_guard_state": null,
+    "guarded_readonly": true
+  },
+  {
+    "label": "删除消息",
+    "count": 1,
+    "disabled": false,
+    "data_write_guard": "true",
+    "data_guard_state": null,
+    "guarded_readonly": true
+  },
+  {
+    "label": "新增消息",
+    "count": 1,
+    "disabled": false,
+    "data_write_guard": "true",
+    "data_guard_state": null,
+    "guarded_readonly": true
+  },
+  {
+    "label": "保存",
+    "count": 1,
+    "disabled": false,
+    "data_write_guard": "true",
+    "data_guard_state": null,
+    "guarded_readonly": true
+  }
+]

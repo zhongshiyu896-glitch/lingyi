@@ -1,0 +1,27 @@
+{
+  "write_requests_observed_count": 0,
+  "write_requests": [],
+  "api_requests": [
+    {
+      "page": "overview",
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "page": "overview",
+      "method": "GET",
+      "path": "/api/auth/actions?module=dashboard"
+    },
+    {
+      "page": "workplace",
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "page": "workplace",
+      "method": "GET",
+      "path": "/api/auth/actions?module=dashboard"
+    }
+  ],
+  "console_errors": []
+}

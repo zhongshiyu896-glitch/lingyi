@@ -54,7 +54,11 @@
             data-testid="dashboard-overview-to-date-input"
           />
         </el-form-item>
-        <el-form-item>
+        <el-form-item
+          data-testid="dashboard-overview-write-guard"
+          data-write-guard="true"
+          data-guard-state="guarded_readonly"
+        >
           <el-button data-testid="dashboard-overview-reset-button" @click="resetQuery">重置</el-button>
           <el-button data-write-guard="true" @click="guardedAction('清空')">清空</el-button>
           <el-button data-write-guard="true" @click="guardedAction('确定')">确定</el-button>

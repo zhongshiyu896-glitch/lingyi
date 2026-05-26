@@ -1,0 +1,87 @@
+{
+  "task_id": "TASK-Z037B-04-REGRESSION-CAND001",
+  "role": "B Engineer",
+  "candidate_id": "Z037-CAND-001",
+  "source_task": "TASK-Z037B-03-IMPL",
+  "result": "PASS",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue"
+  ],
+  "api_dashboard_changed": false,
+  "allowed_files_only": true,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "route_regression_evidence": {
+    "/dashboard/overview": {
+      "status": 200,
+      "pass": true
+    },
+    "/dashboard/workplace": {
+      "redirected_to": "/dashboard/overview",
+      "status": 200,
+      "pass": true
+    }
+  },
+  "screenshot": {
+    "captured": true,
+    "path": "04_测试与验收/测试证据/z037_cand001_dashboard_overview_readonly_flow_regression/dashboard_overview_regression_fullpage.png",
+    "dimensions": "1440x1797"
+  },
+  "runtime_evidence_files": [
+    "04_测试与验收/测试证据/z037_cand001_dashboard_overview_readonly_flow_regression/runtime_regression_evidence.json",
+    "04_测试与验收/测试证据/z037_cand001_dashboard_overview_readonly_flow_regression/dom_anchors_regression.json",
+    "04_测试与验收/测试证据/z037_cand001_dashboard_overview_readonly_flow_regression/guarded_write_controls_regression.json",
+    "04_测试与验收/测试证据/z037_cand001_dashboard_overview_readonly_flow_regression/network_observation_regression.json"
+  ],
+  "anchors_observed": [
+    "dashboard-overview-page",
+    "dashboard-overview-filter-form",
+    "dashboard-overview-metrics-grid",
+    "dashboard-overview-summary-grid",
+    "dashboard-overview-flow-board",
+    "dashboard-overview-message-table",
+    "dashboard-overview-detail-drawer",
+    "dashboard-overview-write-guard"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_required_count": 8,
+  "guarded_write_controls": [
+    "导出概览",
+    "新增待办",
+    "清空",
+    "确定",
+    "标志已读",
+    "删除消息",
+    "新增消息",
+    "保存"
+  ],
+  "guarded_write_controls_count": 8,
+  "guarded_readonly_not_write_success": true,
+  "auth_401_count": 0,
+  "runtime_readonly_fallback_risk": false,
+  "write_requests_observed_count": 0,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_z036_committed_product_paths_touched": false,
+  "runtime_cache_test_results_touched": false,
+  "stage_commit_push_performed": false,
+  "remote_lifecycle_parked": true,
+  "risk_fields_preserved": {
+    "prior_readonly_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true
+  },
+  "next_task": "TASK-Z037B-05-LEDGER-CAND001",
+  "run_this_task": false
+}

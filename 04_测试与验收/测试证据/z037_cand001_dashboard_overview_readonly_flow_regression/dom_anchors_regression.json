@@ -1,0 +1,64 @@
+{
+  "task_id": "TASK-Z037B-04-REGRESSION-CAND001",
+  "required_anchors": [
+    "dashboard-overview-page",
+    "dashboard-overview-filter-form",
+    "dashboard-overview-metrics-grid",
+    "dashboard-overview-summary-grid",
+    "dashboard-overview-flow-board",
+    "dashboard-overview-message-table",
+    "dashboard-overview-detail-drawer",
+    "dashboard-overview-write-guard"
+  ],
+  "anchors": [
+    {
+      "anchor": "dashboard-overview-page",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "dashboard-overview-filter-form",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "dashboard-overview-metrics-grid",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "dashboard-overview-summary-grid",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "dashboard-overview-flow-board",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "dashboard-overview-message-table",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "dashboard-overview-detail-drawer",
+      "count": 1,
+      "observed": true,
+      "visible": false
+    },
+    {
+      "anchor": "dashboard-overview-write-guard",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    }
+  ],
+  "all_observed": true
+}

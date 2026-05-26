@@ -1,0 +1,34 @@
+{
+  "task_id": "TASK-Z037B-04-REGRESSION-CAND001",
+  "api_requests": [
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "search": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions",
+      "search": "?module=dashboard"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "search": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions",
+      "search": "?module=dashboard"
+    }
+  ],
+  "write_requests": [],
+  "write_requests_observed_count": 0,
+  "failed_responses": [],
+  "console_errors": [],
+  "auth_401_count": 0,
+  "auth_401_observed": false,
+  "runtime_readonly_fallback_risk": false,
+  "permission_misread_as_success": false,
+  "write_chain_success": false
+}

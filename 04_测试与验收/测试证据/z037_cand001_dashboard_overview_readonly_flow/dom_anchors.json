@@ -1,0 +1,42 @@
+[
+  {
+    "anchor": "dashboard-overview-page",
+    "count": 1,
+    "visible": true
+  },
+  {
+    "anchor": "dashboard-overview-filter-form",
+    "count": 1,
+    "visible": true
+  },
+  {
+    "anchor": "dashboard-overview-metrics-grid",
+    "count": 1,
+    "visible": true
+  },
+  {
+    "anchor": "dashboard-overview-summary-grid",
+    "count": 1,
+    "visible": true
+  },
+  {
+    "anchor": "dashboard-overview-flow-board",
+    "count": 1,
+    "visible": true
+  },
+  {
+    "anchor": "dashboard-overview-message-table",
+    "count": 1,
+    "visible": true
+  },
+  {
+    "anchor": "dashboard-overview-detail-drawer",
+    "count": 1,
+    "visible": true
+  },
+  {
+    "anchor": "dashboard-overview-write-guard",
+    "count": 1,
+    "visible": true
+  }
+]

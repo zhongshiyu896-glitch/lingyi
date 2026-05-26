@@ -1,0 +1,35 @@
+field	value
+task_id	TASK-Z037B-04-REGRESSION-CAND001
+role	B Engineer
+candidate_id	Z037-CAND-001
+source_task	TASK-Z037B-03-IMPL
+result	PASS
+code_modified_in_this_task	false
+changed_files_observed	06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue
+api_dashboard_changed	false
+typecheck_command	npm run typecheck
+typecheck_exit_code	0
+route_verified	/dashboard/overview PASS
+redirect_verified	/dashboard/workplace -> /dashboard/overview PASS
+screenshot	04_测试与验收/测试证据/z037_cand001_dashboard_overview_readonly_flow_regression/dashboard_overview_regression_fullpage.png
+anchors_observed	8/8
+guarded_write_controls	8/8
+auth_401_count	0
+write_requests_observed_count	0
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+backend_changed	false
+tests_changed	false
+candidate_pool_changed	false
+historical_dirty_touched	false
+log_control_dirty_touched	false
+residual_artifacts_touched	false
+z035_z036_committed_product_paths_touched	false
+prior_readonly_fallback_risks	true
+guarded_readonly_not_write_success	true
+B28_shell_wrapper_anomaly	true
+Z033_skipped_only	true
+Z035_screenshot_missing_risk	true
+next_task	TASK-Z037B-05-LEDGER-CAND001
+run_this_task	false
