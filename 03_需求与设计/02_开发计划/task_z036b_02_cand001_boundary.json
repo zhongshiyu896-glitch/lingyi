@@ -1,0 +1,250 @@
+{
+  "cycle_id": "Z036",
+  "source_task": "TASK-Z036B-01-PREP-PRODUCT-POOL",
+  "task_id": "TASK-Z036B-02-PREP",
+  "role": "B Engineer",
+  "candidate_id": "Z036-CAND-001",
+  "result": "PASS",
+  "current_facts": {
+    "head": "9a75e862c5a911ac75dd77e150eaa584519dd719",
+    "branch": "codex/sprint4-seal",
+    "cached_empty": true,
+    "head_tag_empty": true,
+    "diff_check_pass": true
+  },
+  "candidate_original_fields": {
+    "candidate_id": "Z036-CAND-001",
+    "title": "报表目录与审批统计只读可见流",
+    "page_scope": "报表治理",
+    "routes": [
+      "/reports/catalog",
+      "/financial/financialReport/customerReconciliationReport",
+      "/reportManage/collaborationReport/factoryProductStockReport"
+    ],
+    "visible_acceptance_goal": "用户能在报表目录查看报表筛选、目录表格、详情预览、员工任务/审批统计区块，并看到导出等写入口保持只读 guard。",
+    "browser_evidence_plan": [
+      "采集 /reports/catalog 页面截图",
+      "采集 /reports/catalog 运行态 DOM anchors",
+      "采集 /financial/financialReport/customerReconciliationReport 与 /reportManage/collaborationReport/factoryProductStockReport redirect/route evidence",
+      "若无法截图，必须记录 screenshot_skip_reason，并提供运行态 DOM/route 替代证据"
+    ],
+    "field_button_state_anchors": [
+      "report-catalog-page",
+      "report-catalog-query-form",
+      "report-catalog-table",
+      "report-catalog-detail-preview",
+      "report-catalog-export-guarded-button",
+      "report-catalog-permission-state",
+      "report-catalog-parity-hint"
+    ],
+    "read_write_boundary": "read_only=true; 只允许报表目录查询、筛选、详情预览与本地只读 fallback；导出/下载/同步入口必须 guarded 或禁用，不新增真实写动作。",
+    "capture_contract_integration": true,
+    "expected_allowed_file_scope": [
+      "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "06_前端/lingyi-pc/src/api/report.ts"
+    ],
+    "forbidden_scope": [
+      "07_后端",
+      "candidate pool",
+      "historical dirty forbidden",
+      "log/control dirty",
+      "Z034 B37 residual artifacts",
+      "runtime/cache/test-results",
+      "Z035 committed product files"
+    ],
+    "touches_historical_dirty": false,
+    "candidate_blocked": false,
+    "backend_allowed": false,
+    "read_only": true
+  },
+  "title": "报表目录与审批统计只读可见流",
+  "page_scope": "报表治理",
+  "routes": [
+    "/reports/catalog",
+    "/financial/financialReport/customerReconciliationReport",
+    "/reportManage/collaborationReport/factoryProductStockReport"
+  ],
+  "visible_acceptance_goal": "用户能在报表目录查看报表筛选、目录表格、详情预览、员工任务/审批统计区块，并看到导出等写入口保持只读 guard。",
+  "implementation_workdir": "/Users/hh/Desktop/领意服装管理系统",
+  "frontend_workdir": "06_前端/lingyi-pc",
+  "expected_allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "allowed_file_exists": {
+    "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue": true,
+    "06_前端/lingyi-pc/src/api/report.ts": true
+  },
+  "allowed_file_dirty_status": {
+    "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue": false,
+    "06_前端/lingyi-pc/src/api/report.ts": false
+  },
+  "allowed_files_exist": true,
+  "allowed_files_dirty": false,
+  "route_static_check": {
+    "/reports/catalog": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/router/index.ts",
+      "line_refs": [
+        80,
+        81,
+        82
+      ],
+      "component": "@/views/reports/ReportCatalog.vue"
+    }
+  },
+  "redirect_route_static_check": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/router/index.ts",
+      "line_refs": [
+        255,
+        256
+      ],
+      "redirect": "/reports/catalog",
+      "query": {
+        "parity": "customer-reconciliation"
+      }
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/router/index.ts",
+      "line_refs": [
+        275,
+        276
+      ],
+      "redirect": "/reports/catalog",
+      "query": {
+        "parity": "factory-product-stock"
+      }
+    }
+  },
+  "field_button_state_anchors": [
+    "report-catalog-page",
+    "report-catalog-query-form",
+    "report-catalog-table",
+    "report-catalog-detail-preview",
+    "report-catalog-export-guarded-button",
+    "report-catalog-permission-state",
+    "report-catalog-parity-hint"
+  ],
+  "anchor_static_check": {
+    "report-catalog-page": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "line": 2
+    },
+    "report-catalog-export-guarded-button": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "line": 28
+    },
+    "report-catalog-query-form": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "line": 38
+    },
+    "report-catalog-permission-state": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "line": 144
+    },
+    "report-catalog-parity-hint": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "line": 166
+    },
+    "report-catalog-table": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "line": 204
+    },
+    "report-catalog-detail-preview": {
+      "found": true,
+      "file": "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "line": 233
+    }
+  },
+  "browser_evidence_plan": [
+    "采集 /reports/catalog 页面截图",
+    "采集 /reports/catalog 运行态 DOM anchors",
+    "采集 /financial/financialReport/customerReconciliationReport 与 /reportManage/collaborationReport/factoryProductStockReport redirect/route evidence",
+    "若无法截图，必须记录 screenshot_skip_reason，并提供运行态 DOM/route 替代证据"
+  ],
+  "screenshot_or_runtime_evidence_required_for_z036": true,
+  "screenshot_skip_requires_runtime_dom_or_route_substitute": true,
+  "read_write_boundary": "read_only=true; 只允许报表目录查询、筛选、详情预览与本地只读 fallback；导出/下载/同步入口必须 guarded 或禁用，不新增真实写动作。",
+  "capture_contract_integration": true,
+  "backend_allowed": false,
+  "read_only": true,
+  "forbidden_scope": [
+    "07_后端",
+    "candidate pool",
+    "historical dirty forbidden",
+    "log/control dirty",
+    "Z034 B37 residual artifacts",
+    "runtime/cache/test-results",
+    "Z035 committed product files"
+  ],
+  "historical_dirty_forbidden_paths": [
+    "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+    "07_后端/lingyi_service/tests/test_bom_permissions.py",
+    "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+    "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+    "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+    "07_后端/lingyi_service/tests/test_style_profit_api.py",
+    "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+    "07_后端/lingyi_service/tests/test_workshop_permissions.py"
+  ],
+  "log_control_dirty_paths": [
+    "00_交接与日志/HANDOVER_STATUS.md",
+    "03_需求与设计/01_架构设计/架构师会话日志.md",
+    "03_需求与设计/02_开发计划/工程师会话日志.md"
+  ],
+  "residual_artifacts": [
+    "03_需求与设计/02_开发计划/TASK-Z034B-37-COMMIT-CAND005_提交报告.md",
+    "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.json",
+    "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.tsv"
+  ],
+  "z035_committed_product_files": [
+    "06_前端/lingyi-pc/src/views/HomePage.vue",
+    "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+    "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue"
+  ],
+  "scope_intersections": [],
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "intersections_with_z035_committed_product_files": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "memory_citation_noise_included": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "screenshot_missing_risk_for_Z035": true,
+  "stage_commit_push_tag_pr_release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "code_edits_performed": false,
+  "tests_browser_typecheck_performed": false,
+  "cleanup_reset_restore_performed": false,
+  "next_task": "TASK-Z036B-03-IMPL",
+  "run_this_task": false
+}

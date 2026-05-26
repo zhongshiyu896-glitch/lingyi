@@ -1,0 +1,276 @@
+{
+  "captured_at": "2026-05-26T09:44:11.879Z",
+  "source_task": "TASK-Z036B-03-IMPL",
+  "candidate_id": "Z036-CAND-001",
+  "base_url": "http://127.0.0.1:5173",
+  "screenshot_reused_or_recaptured": "recaptured",
+  "screenshot_collected": true,
+  "screenshot_path": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow_regression/report_catalog_regression_fullpage.png",
+  "screenshot_skip_reason": "",
+  "browser_runtime": "standalone_playwright_after_iab_unavailable",
+  "browser_attempt_notes": [
+    "Codex in-app browser unavailable: Browser is not available: iab",
+    "Existing Vite dev server was available on http://127.0.0.1:5173"
+  ],
+  "route_regression_evidence": {
+    "route_label": "/reports/catalog",
+    "url": "http://127.0.0.1:5173/reports/catalog",
+    "path": "/reports/catalog",
+    "search": "",
+    "title": "Lingyi PC",
+    "anchors": {
+      "report-catalog-page": {
+        "exists": true,
+        "visible": true,
+        "text": "报表中心 / 资金计划报表（TASK-Y3B-08） 查询 重置 导出（只读） 公司客户来源模块finance报表类型financial员工审批人部门全部任务状态全部审批状态全部开始时间结束时间当前账号无 report:read 权限当前账号无 report:export 权限，导出按钮保持禁用。共享路由边界：本页保留资金计划报表语义，并新增员工任务统计表只读区块。目录接口不可用，已切换本地只读样例：登录已失效，请重新登录当前为只读 fallback 模式，导出/下载/同步动作保持 guarded。report_k"
+      },
+      "report-catalog-query-form": {
+        "exists": true,
+        "visible": true,
+        "text": "公司客户来源模块finance报表类型financial员工审批人部门全部任务状态全部审批状态全部开始时间结束时间"
+      },
+      "report-catalog-table": {
+        "exists": true,
+        "visible": true,
+        "text": "report_key报表名称来源模块类型状态finance_plan_report资金计划报表financefinancialactive"
+      },
+      "report-catalog-detail-preview": {
+        "exists": true,
+        "visible": true,
+        "text": "报表详情：资金计划报表finance_plan_report来源模块finance类型financial必填过滤company, from_date, to_date可选过滤customer_keyword, employee_keyword, department指标摘要回款计划, 账龄分布, 预警金额状态标签active占位词映射请输入全部开始时间结束时间按钮映射查询重置查看标题客户账期发送时间资金计划报表-本月计划华南服饰30天2026-05-18 10:20:00资金计划报表-重点客户领意服装45天2026"
+      },
+      "report-catalog-export-guarded-button": {
+        "exists": true,
+        "visible": true,
+        "text": "导出（只读）"
+      },
+      "report-catalog-permission-state": {
+        "exists": true,
+        "visible": true,
+        "text": "当前账号无 report:read 权限"
+      },
+      "report-catalog-parity-hint": {
+        "exists": false,
+        "visible": false,
+        "text": ""
+      },
+      "employee-task-statistics-section": {
+        "exists": true,
+        "visible": true,
+        "text": "员工任务统计表（TASK-Y74B-P1-01） 确认（guarded） 审核（guarded） 导出（disabled） 打印（disabled） 上传（disabled） 本区块为只读首版，确认/审核/导出/打印/上传均为 guarded 或 disabled，不触发写请求。员工任务统计接口不可用，已切换本地只读样例：登录已失效，请重新登录员工编号员工姓名部门待办任务进行中任务已完成任务逾期任务完成率最近任务单号最近任务标题最近截止日期更新时间状态操作E-001李青财务对账3212085%TASK-202605"
+      },
+      "approval-report-section": {
+        "exists": true,
+        "visible": true,
+        "text": "审批报表（TASK-Y74B-P1-02） 确认（guarded） 审核（guarded） 导出（disabled） 打印（disabled） 上传（disabled） 本区块为只读首版，确认/审核/导出/打印/上传均为 guarded 或 disabled，不触发写请求。审批报表接口不可用，已切换本地只读样例：登录已失效，请重新登录审批单号审批类型关联单据申请人审批人部门金额优先级提交时间完成时间状态备注操作APR-20260520-01费用审批DOC-20260520-08王敏赵晨财务对账12000中2026-"
+      }
+    },
+    "guarded_buttons": [
+      {
+        "testid": "report-catalog-export-guarded-button",
+        "guard": "guarded:readonly-report-export",
+        "disabled": false,
+        "text": "导出（只读）"
+      },
+      {
+        "testid": "employee-task-guarded-confirm-button",
+        "guard": "guarded:readonly-report-action",
+        "disabled": false,
+        "text": "确认（guarded）"
+      },
+      {
+        "testid": "employee-task-guarded-review-button",
+        "guard": "guarded:readonly-report-action",
+        "disabled": false,
+        "text": "审核（guarded）"
+      },
+      {
+        "testid": "employee-task-export-disabled-button",
+        "guard": "guarded:readonly-report-export",
+        "disabled": true,
+        "text": "导出（disabled）"
+      },
+      {
+        "testid": "employee-task-print-disabled-button",
+        "guard": "guarded:readonly-report-print",
+        "disabled": true,
+        "text": "打印（disabled）"
+      },
+      {
+        "testid": "employee-task-upload-disabled-button",
+        "guard": "guarded:readonly-report-upload",
+        "disabled": true,
+        "text": "上传（disabled）"
+      },
+      {
+        "testid": "approval-report-guarded-confirm-button",
+        "guard": "guarded:readonly-report-action",
+        "disabled": false,
+        "text": "确认（guarded）"
+      },
+      {
+        "testid": "approval-report-guarded-review-button",
+        "guard": "guarded:readonly-report-action",
+        "disabled": false,
+        "text": "审核（guarded）"
+      },
+      {
+        "testid": "approval-report-export-disabled-button",
+        "guard": "guarded:readonly-report-export",
+        "disabled": true,
+        "text": "导出（disabled）"
+      },
+      {
+        "testid": "approval-report-print-disabled-button",
+        "guard": "guarded:readonly-report-print",
+        "disabled": true,
+        "text": "打印（disabled）"
+      },
+      {
+        "testid": "approval-report-upload-disabled-button",
+        "guard": "guarded:readonly-report-upload",
+        "disabled": true,
+        "text": "上传（disabled）"
+      }
+    ],
+    "table_rows": 1,
+    "employee_rows": 1,
+    "approval_rows": 1,
+    "has_readonly_fallback_text": true,
+    "has_guarded_text": true,
+    "export_guard_message_present": true
+  },
+  "redirect_route_regression_evidence": [
+    {
+      "requested_route": "/financial/financialReport/customerReconciliationReport",
+      "final_url": "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation",
+      "final_path": "/reports/catalog",
+      "final_search": "?parity=customer-reconciliation",
+      "parity_hint_exists": true,
+      "parity_hint_visible": true,
+      "parity_hint_text": "衣算云 / 报表中心 / 资金计划报表（customer-reconciliation）只读 parity 对照。",
+      "report_catalog_page_exists": true,
+      "report_catalog_page_visible": true
+    },
+    {
+      "requested_route": "/reportManage/collaborationReport/factoryProductStockReport",
+      "final_url": "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock",
+      "final_path": "/reports/catalog",
+      "final_search": "?parity=factory-product-stock",
+      "parity_hint_exists": true,
+      "parity_hint_visible": true,
+      "parity_hint_text": "衣算云 / 报表中心 / 加工成品库存报表（factory-product-stock）只读 parity 对照。",
+      "report_catalog_page_exists": true,
+      "report_catalog_page_visible": true
+    }
+  ],
+  "dom_anchor_regression_evidence": {
+    "report-catalog-page": {
+      "exists": true,
+      "visible": true,
+      "text": "报表中心 / 资金计划报表（TASK-Y3B-08） 查询 重置 导出（只读） 公司客户来源模块finance报表类型financial员工审批人部门全部任务状态全部审批状态全部开始时间结束时间当前账号无 report:read 权限当前账号无 report:export 权限，导出按钮保持禁用。共享路由边界：本页保留资金计划报表语义，并新增员工任务统计表只读区块。目录接口不可用，已切换本地只读样例：登录已失效，请重新登录当前为只读 fallback 模式，导出/下载/同步动作保持 guarded。report_k"
+    },
+    "report-catalog-query-form": {
+      "exists": true,
+      "visible": true,
+      "text": "公司客户来源模块finance报表类型financial员工审批人部门全部任务状态全部审批状态全部开始时间结束时间"
+    },
+    "report-catalog-table": {
+      "exists": true,
+      "visible": true,
+      "text": "report_key报表名称来源模块类型状态finance_plan_report资金计划报表financefinancialactive"
+    },
+    "report-catalog-detail-preview": {
+      "exists": true,
+      "visible": true,
+      "text": "报表详情：资金计划报表finance_plan_report来源模块finance类型financial必填过滤company, from_date, to_date可选过滤customer_keyword, employee_keyword, department指标摘要回款计划, 账龄分布, 预警金额状态标签active占位词映射请输入全部开始时间结束时间按钮映射查询重置查看标题客户账期发送时间资金计划报表-本月计划华南服饰30天2026-05-18 10:20:00资金计划报表-重点客户领意服装45天2026"
+    },
+    "report-catalog-export-guarded-button": {
+      "exists": true,
+      "visible": true,
+      "text": "导出（只读）"
+    },
+    "report-catalog-permission-state": {
+      "exists": true,
+      "visible": true,
+      "text": "当前账号无 report:read 权限"
+    },
+    "report-catalog-parity-hint": {
+      "exists": false,
+      "visible": false,
+      "text": ""
+    },
+    "employee-task-statistics-section": {
+      "exists": true,
+      "visible": true,
+      "text": "员工任务统计表（TASK-Y74B-P1-01） 确认（guarded） 审核（guarded） 导出（disabled） 打印（disabled） 上传（disabled） 本区块为只读首版，确认/审核/导出/打印/上传均为 guarded 或 disabled，不触发写请求。员工任务统计接口不可用，已切换本地只读样例：登录已失效，请重新登录员工编号员工姓名部门待办任务进行中任务已完成任务逾期任务完成率最近任务单号最近任务标题最近截止日期更新时间状态操作E-001李青财务对账3212085%TASK-202605"
+    },
+    "approval-report-section": {
+      "exists": true,
+      "visible": true,
+      "text": "审批报表（TASK-Y74B-P1-02） 确认（guarded） 审核（guarded） 导出（disabled） 打印（disabled） 上传（disabled） 本区块为只读首版，确认/审核/导出/打印/上传均为 guarded 或 disabled，不触发写请求。审批报表接口不可用，已切换本地只读样例：登录已失效，请重新登录审批单号审批类型关联单据申请人审批人部门金额优先级提交时间完成时间状态备注操作APR-20260520-01费用审批DOC-20260520-08王敏赵晨财务对账12000中2026-"
+    }
+  },
+  "console_messages": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    }
+  ],
+  "console_401_errors_observed": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    }
+  ],
+  "network_401_responses_observed": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/auth/me"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/reports/employee-task-statistics"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/reports/approval-reports"
+    }
+  ],
+  "runtime_readonly_fallback_risk": {
+    "observed": true,
+    "classification": "runtime_readonly_fallback_risk",
+    "affects_visible_acceptance": false,
+    "write_chain_success": false,
+    "permission_misread_as_success": false,
+    "note": "401 appears during read/user/report API loading; UI falls back to local readonly samples and guarded/disabled write entries remain visible."
+  }
+}

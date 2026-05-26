@@ -891,6 +891,7 @@ const loadLocalReadonlyFinanceCatalog = (): Promise<void> => {
   })
 
   financeItems.value = list
+  selectedFinanceItem.value = list[0] || null
   if (financeItems.value.length === 0) {
     financeErrorMessage.value = '暂无资金计划报表目录数据（本地只读样例）'
   }
@@ -1022,17 +1023,19 @@ const loadFinanceCatalog = (): Promise<void> => {
       const apiItems = result.data.items
       scopeExpandedToOtherReports.value = apiItems.some((item) => !TASK_SCOPE_REPORT_KEYS.has(item.report_key))
       financeItems.value = apiItems.filter((item) => item.report_key === TASK_SCOPE_REPORT_KEY)
+      selectedFinanceItem.value = financeItems.value[0] || null
       if (financeItems.value.length === 0) {
         financeErrorMessage.value = '未命中资金计划报表目录条目，请检查筛选条件。'
       }
       return checkTaskY3B07Entry()
     })
     .catch((error: unknown) => {
-      financeItems.value = []
-      selectedFinanceItem.value = null
       const message = (error as Error).message || '目录加载失败'
-      financeErrorMessage.value = `目录加载失败：${message}`
-      ElMessage.error(message)
+      return loadLocalReadonlyFinanceCatalog().then(() => {
+        financeErrorMessage.value = `目录接口不可用，已切换本地只读样例：${message}`
+        exportGuardMessage.value = '当前为只读 fallback 模式，导出/下载/同步动作保持 guarded。'
+        ElMessage.warning(financeErrorMessage.value)
+      })
     })
     .finally(() => {
       loading.value = false
@@ -1065,14 +1068,11 @@ const loadEmployeeTaskStatistics = (): Promise<void> => {
       }
     })
     .catch((error: unknown) => {
-      employeeTaskItems.value = []
-      selectedEmployeeTaskItem.value = null
-      employeeTaskStatusTags.value = []
-      employeeTaskButtons.value = []
-      employeeTaskTableHeaders.value = []
       const message = (error as Error).message || '员工任务统计加载失败'
-      employeeTaskErrorMessage.value = `员工任务统计加载失败：${message}`
-      ElMessage.error(message)
+      return loadLocalReadonlyEmployeeTaskStatistics().then(() => {
+        employeeTaskErrorMessage.value = `员工任务统计接口不可用，已切换本地只读样例：${message}`
+        ElMessage.warning(employeeTaskErrorMessage.value)
+      })
     })
     .finally(() => {
       employeeTaskLoading.value = false
@@ -1104,14 +1104,11 @@ const loadApprovalReports = (): Promise<void> => {
       }
     })
     .catch((error: unknown) => {
-      approvalItems.value = []
-      selectedApprovalItem.value = null
-      approvalStatusTags.value = []
-      approvalButtons.value = []
-      approvalTableHeaders.value = []
       const message = (error as Error).message || '审批报表加载失败'
-      approvalErrorMessage.value = `审批报表加载失败：${message}`
-      ElMessage.error(message)
+      return loadLocalReadonlyApprovalReports().then(() => {
+        approvalErrorMessage.value = `审批报表接口不可用，已切换本地只读样例：${message}`
+        ElMessage.warning(approvalErrorMessage.value)
+      })
     })
     .finally(() => {
       approvalLoading.value = false
@@ -1120,6 +1117,17 @@ const loadApprovalReports = (): Promise<void> => {
 
 const loadCatalog = (): Promise<void> => {
   return Promise.all([loadFinanceCatalog(), loadEmployeeTaskStatistics(), loadApprovalReports()]).then(() => undefined)
+}
+
+const loadCatalogReadonlyFallback = (): Promise<void> => {
+  return Promise.all([
+    loadLocalReadonlyFinanceCatalog(),
+    loadLocalReadonlyEmployeeTaskStatistics(),
+    loadLocalReadonlyApprovalReports(),
+  ]).then(() => {
+    financeErrorMessage.value = '当前运行态使用本地只读 fallback，报表目录、员工任务与审批统计均可见。'
+    exportGuardMessage.value = '导出/下载/同步动作保持 guarded，不触发真实写链路。'
+  })
 }
 
 const onFinanceRowClick = (row: ReportCatalogItem): Promise<void> => {
@@ -1195,7 +1203,11 @@ onMounted(() => {
     .then(() => permissionStore.loadModuleActions('report'))
     .then(() => loadCatalog())
     .catch((error: unknown) => {
-      ElMessage.error((error as Error).message)
+      const message = (error as Error).message || '权限或目录加载失败'
+      ElMessage.warning(`${message}，已切换本地只读 fallback`)
+      loadCatalogReadonlyFallback().catch((fallbackError: unknown) => {
+        ElMessage.error((fallbackError as Error).message || '只读 fallback 加载失败')
+      })
     })
 })
 </script>

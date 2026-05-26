@@ -1,0 +1,55 @@
+{
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-001",
+  "source_task": "TASK-Z036B-02-PREP",
+  "evidence_type": "route_source_and_runtime",
+  "routes_checked": [
+    {
+      "route": "/reports/catalog",
+      "static_result": "PASS",
+      "source_file": "06_前端/lingyi-pc/src/router/index.ts",
+      "line_refs": [80, 81, 82],
+      "component": "@/views/reports/ReportCatalog.vue",
+      "runtime_result": "PASS",
+      "runtime_url": "http://127.0.0.1:5173/reports/catalog"
+    },
+    {
+      "route": "/financial/financialReport/customerReconciliationReport",
+      "static_result": "PASS",
+      "source_file": "06_前端/lingyi-pc/src/router/index.ts",
+      "line_refs": [255, 256],
+      "redirect": "/reports/catalog",
+      "redirect_query": {
+        "parity": "customer-reconciliation"
+      },
+      "runtime_result": "PASS",
+      "runtime_final_url": "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation"
+    },
+    {
+      "route": "/reportManage/collaborationReport/factoryProductStockReport",
+      "static_result": "PASS",
+      "source_file": "06_前端/lingyi-pc/src/router/index.ts",
+      "line_refs": [275, 276],
+      "redirect": "/reports/catalog",
+      "redirect_query": {
+        "parity": "factory-product-stock"
+      },
+      "runtime_result": "PASS",
+      "runtime_final_url": "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock"
+    }
+  ],
+  "http_runtime_probe": {
+    "/reports/catalog": {
+      "status_code": 200,
+      "content_type": "text/html"
+    },
+    "/financial/financialReport/customerReconciliationReport": {
+      "status_code": 200,
+      "content_type": "text/html"
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "status_code": 200,
+      "content_type": "text/html"
+    }
+  }
+}

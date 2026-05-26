@@ -1,0 +1,49 @@
+{
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-001",
+  "task_id": "TASK-Z036B-03-IMPL",
+  "source_task": "TASK-Z036B-02-PREP",
+  "evidence_dir": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow",
+  "files": [
+    {
+      "path": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/report_catalog_runtime_fullpage.png",
+      "type": "runtime_screenshot",
+      "status": "created"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/runtime_dom_route_evidence.json",
+      "type": "runtime_dom_route_evidence",
+      "status": "created"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/route_source_evidence.json",
+      "type": "route_source_evidence",
+      "status": "created"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/dom_anchor_static_evidence.json",
+      "type": "dom_anchor_static_evidence",
+      "status": "created"
+    }
+  ],
+  "screenshot_collected": true,
+  "screenshot_skip_reason": "",
+  "runtime_alternative_evidence": "",
+  "routes_checked": [
+    "/reports/catalog",
+    "/financial/financialReport/customerReconciliationReport",
+    "/reportManage/collaborationReport/factoryProductStockReport"
+  ],
+  "anchors_checked": [
+    "report-catalog-page",
+    "report-catalog-query-form",
+    "report-catalog-table",
+    "report-catalog-detail-preview",
+    "report-catalog-export-guarded-button",
+    "report-catalog-permission-state",
+    "report-catalog-parity-hint"
+  ],
+  "visible_acceptance_goal_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false
+}

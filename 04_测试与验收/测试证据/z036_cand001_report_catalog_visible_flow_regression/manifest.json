@@ -1,0 +1,53 @@
+{
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-001",
+  "task_id": "TASK-Z036B-04-REGRESSION-CAND001",
+  "source_task": "TASK-Z036B-03-IMPL",
+  "evidence_dir": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow_regression",
+  "files": [
+    {
+      "path": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow_regression/report_catalog_regression_fullpage.png",
+      "type": "runtime_screenshot",
+      "status": "created"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow_regression/runtime_regression_evidence.json",
+      "type": "runtime_dom_route_redirect_console_evidence",
+      "status": "created"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow_regression/manifest.json",
+      "type": "manifest",
+      "status": "created"
+    }
+  ],
+  "screenshot_reused_or_recaptured": "recaptured",
+  "screenshot_collected": true,
+  "screenshot_skip_reason": "",
+  "routes_checked": [
+    "/reports/catalog",
+    "/financial/financialReport/customerReconciliationReport",
+    "/reportManage/collaborationReport/factoryProductStockReport"
+  ],
+  "anchors_checked": [
+    "report-catalog-page",
+    "report-catalog-query-form",
+    "report-catalog-table",
+    "report-catalog-detail-preview",
+    "report-catalog-export-guarded-button",
+    "report-catalog-permission-state",
+    "report-catalog-parity-hint"
+  ],
+  "console_401_errors_observed_count": 4,
+  "network_401_responses_observed_count": 4,
+  "runtime_readonly_fallback_risk": {
+    "observed": true,
+    "classification": "runtime_readonly_fallback_risk",
+    "affects_visible_acceptance": false,
+    "write_chain_success": false,
+    "permission_misread_as_success": false
+  },
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false
+}

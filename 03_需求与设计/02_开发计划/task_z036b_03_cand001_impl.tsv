@@ -1,0 +1,41 @@
+key	value
+cycle_id	Z036
+candidate_id	Z036-CAND-001
+task_id	TASK-Z036B-03-IMPL
+source_task	TASK-Z036B-02-PREP
+result	PASS
+head	9a75e862c5a911ac75dd77e150eaa584519dd719
+changed_files	06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue
+allowed_files_only	true
+backend_changed	false
+tests_changed	false
+candidate_pool_changed	false
+historical_dirty_touched	false
+log_control_dirty_touched	false
+residual_artifacts_touched	false
+z035_committed_product_files_touched	false
+routes_checked	/reports/catalog;/financial/financialReport/customerReconciliationReport;/reportManage/collaborationReport/factoryProductStockReport
+redirect_routes_checked	/financial/financialReport/customerReconciliationReport->/reports/catalog?parity=customer-reconciliation;/reportManage/collaborationReport/factoryProductStockReport->/reports/catalog?parity=factory-product-stock
+anchors_checked	report-catalog-page;report-catalog-query-form;report-catalog-table;report-catalog-detail-preview;report-catalog-export-guarded-button;report-catalog-permission-state;report-catalog-parity-hint
+screenshot_collected	true
+screenshots	04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/report_catalog_runtime_fullpage.png
+screenshot_skip_reason
+runtime_alternative_evidence
+typecheck_command	npm run typecheck
+typecheck_workdir	06_前端/lingyi-pc
+typecheck_exit_code	0
+typecheck_summary	vue-tsc --noEmit -p tsconfig.json completed with no diagnostics
+visible_acceptance_goal_met	true
+read_only_boundary_preserved	true
+real_write_action_added	false
+evidence_dir	04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow
+shell_wrapper_anomaly_preserved	true
+z033_skipped_only_risk	skipped_only_evidence=true;actual_passed_count=0;skipped_count=4
+screenshot_missing_risk_for_Z035	true
+stage_commit_push_tag_pr_release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false
+next_task	TASK-Z036B-04-REGRESSION-CAND001
+run_this_task	false

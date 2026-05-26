@@ -1,0 +1,135 @@
+{
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-001",
+  "task_id": "TASK-Z036B-04-REGRESSION-CAND001",
+  "source_task": "TASK-Z036B-03-IMPL",
+  "result": "PASS",
+  "head": "9a75e862c5a911ac75dd77e150eaa584519dd719",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue"
+  ],
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "vue-tsc --noEmit -p tsconfig.json completed with no diagnostics",
+  "route_regression_evidence": {
+    "route_checked": "/reports/catalog",
+    "result": "PASS",
+    "runtime_url": "http://127.0.0.1:5173/reports/catalog",
+    "evidence_file": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow_regression/runtime_regression_evidence.json"
+  },
+  "redirect_route_regression_evidence": [
+    {
+      "requested_route": "/financial/financialReport/customerReconciliationReport",
+      "final_url": "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation",
+      "final_path": "/reports/catalog",
+      "parity_hint_visible": true,
+      "result": "PASS"
+    },
+    {
+      "requested_route": "/reportManage/collaborationReport/factoryProductStockReport",
+      "final_url": "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock",
+      "final_path": "/reports/catalog",
+      "parity_hint_visible": true,
+      "result": "PASS"
+    }
+  ],
+  "dom_anchor_regression_evidence": {
+    "anchors_checked": [
+      "report-catalog-page",
+      "report-catalog-query-form",
+      "report-catalog-table",
+      "report-catalog-detail-preview",
+      "report-catalog-export-guarded-button",
+      "report-catalog-permission-state",
+      "report-catalog-parity-hint"
+    ],
+    "anchors_result": {
+      "report-catalog-page": true,
+      "report-catalog-query-form": true,
+      "report-catalog-table": true,
+      "report-catalog-detail-preview": true,
+      "report-catalog-export-guarded-button": true,
+      "report-catalog-permission-state": true,
+      "report-catalog-parity-hint": true
+    },
+    "parity_hint_note": "report-catalog-parity-hint is visible on both redirected parity routes.",
+    "evidence_file": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow_regression/runtime_regression_evidence.json"
+  },
+  "screenshot_reused_or_recaptured": "recaptured",
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow_regression/report_catalog_regression_fullpage.png"
+  ],
+  "screenshot_skip_reason": "",
+  "console_401_errors_observed": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    }
+  ],
+  "console_401_errors_observed_count": 4,
+  "network_401_responses_observed": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/auth/me"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/reports/employee-task-statistics"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/reports/approval-reports"
+    }
+  ],
+  "runtime_readonly_fallback_risk": {
+    "observed": true,
+    "classification": "runtime_readonly_fallback_risk",
+    "affects_visible_acceptance": false,
+    "write_chain_success": false,
+    "permission_misread_as_success": false,
+    "note": "401 appears during read/user/report API loading; UI falls back to local readonly samples and guarded/disabled write entries remain visible."
+  },
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_committed_product_files_touched": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "screenshot_missing_risk_for_Z035": true,
+  "stage_commit_push_tag_pr_release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z036B-05-LEDGER-CAND001",
+  "run_this_task": false
+}

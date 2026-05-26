@@ -1,0 +1,131 @@
+{
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-001",
+  "task_id": "TASK-Z036B-03-IMPL",
+  "source_task": "TASK-Z036B-02-PREP",
+  "result": "PASS",
+  "head": "9a75e862c5a911ac75dd77e150eaa584519dd719",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue"
+  ],
+  "allowed_files_only": true,
+  "allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_committed_product_files_touched": false,
+  "implementation_summary": [
+    "ReportCatalog 在权限或报表接口不可用时切换本地只读 fallback。",
+    "本地只读 fallback 默认选中首条报表目录记录，保证详情预览运行态可见。",
+    "员工任务统计与审批报表接口不可用时同样切换本地只读样例。",
+    "导出/下载/同步和确认/审核类入口保持 guarded、disabled 或只读提示。"
+  ],
+  "route_evidence": {
+    "routes_checked": [
+      "/reports/catalog",
+      "/financial/financialReport/customerReconciliationReport",
+      "/reportManage/collaborationReport/factoryProductStockReport"
+    ],
+    "route_evidence_files": [
+      "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/runtime_dom_route_evidence.json",
+      "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/route_source_evidence.json"
+    ],
+    "route_checked": true
+  },
+  "redirect_route_evidence": {
+    "redirect_routes_checked": [
+      {
+        "requested_route": "/financial/financialReport/customerReconciliationReport",
+        "final_url": "http://127.0.0.1:5173/reports/catalog?parity=customer-reconciliation",
+        "result": "PASS"
+      },
+      {
+        "requested_route": "/reportManage/collaborationReport/factoryProductStockReport",
+        "final_url": "http://127.0.0.1:5173/reports/catalog?parity=factory-product-stock",
+        "result": "PASS"
+      }
+    ],
+    "redirect_route_checked": true
+  },
+  "dom_anchor_evidence": {
+    "anchors_checked": [
+      "report-catalog-page",
+      "report-catalog-query-form",
+      "report-catalog-table",
+      "report-catalog-detail-preview",
+      "report-catalog-export-guarded-button",
+      "report-catalog-permission-state",
+      "report-catalog-parity-hint"
+    ],
+    "anchor_evidence_files": [
+      "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/runtime_dom_route_evidence.json",
+      "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/dom_anchor_static_evidence.json"
+    ],
+    "dom_anchor_evidence_pass": true,
+    "parity_hint_runtime_note": "report-catalog-parity-hint is visible on redirected parity routes."
+  },
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/report_catalog_runtime_fullpage.png"
+  ],
+  "screenshot_files": [
+    "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/report_catalog_runtime_fullpage.png"
+  ],
+  "screenshot_collected": true,
+  "screenshot_skip_reason": "",
+  "runtime_alternative_evidence": "",
+  "browser_attempts": [
+    {
+      "tool": "Codex in-app browser",
+      "result": "UNAVAILABLE",
+      "reason": "Browser is not available: iab"
+    },
+    {
+      "tool": "standalone Playwright",
+      "result": "PASS",
+      "base_url": "http://127.0.0.1:5173"
+    }
+  ],
+  "evidence_dir": "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow",
+  "evidence_files": [
+    "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/report_catalog_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/runtime_dom_route_evidence.json",
+    "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/route_source_evidence.json",
+    "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/dom_anchor_static_evidence.json",
+    "04_测试与验收/测试证据/z036_cand001_report_catalog_visible_flow/manifest.json"
+  ],
+  "verification_commands": [
+    {
+      "command": "npm run typecheck",
+      "workdir": "06_前端/lingyi-pc",
+      "exit_code": 0,
+      "summary": "vue-tsc --noEmit -p tsconfig.json completed with no diagnostics"
+    }
+  ],
+  "typecheck_command": "npm run typecheck",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "vue-tsc --noEmit -p tsconfig.json completed with no diagnostics",
+  "visible_acceptance_goal_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "screenshot_missing_risk_for_Z035": true,
+  "stage_commit_push_tag_pr_release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z036B-04-REGRESSION-CAND001",
+  "run_this_task": false
+}
