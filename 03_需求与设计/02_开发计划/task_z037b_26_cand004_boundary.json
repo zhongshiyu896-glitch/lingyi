@@ -1,0 +1,126 @@
+{
+  "status": "READY_FOR_REVIEW",
+  "task_id": "TASK-Z037B-26-PREP",
+  "role": "B Engineer",
+  "cycle_id": "Z037",
+  "candidate_id": "Z037-CAND-004",
+  "title": "权限治理菜单与审计只读可见流",
+  "source_task": "TASK-Z037B-25-PREP",
+  "head": "1faa7542aed9c790a889af99934e4d2161f60cd0",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "selected_candidate_confirmed_from_b25": true,
+  "candidate_fields_match_b01_b25": true,
+  "route": "/permissions/governance",
+  "routes": [
+    "/permissions/governance"
+  ],
+  "read_only": true,
+  "backend_allowed": false,
+  "expected_allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/system/PermissionGovernance.vue",
+    "06_前端/lingyi-pc/src/api/permission_governance.ts"
+  ],
+  "allowed_files_exist": {
+    "06_前端/lingyi-pc/src/views/system/PermissionGovernance.vue": true,
+    "06_前端/lingyi-pc/src/api/permission_governance.ts": true
+  },
+  "allowed_files_dirty": {
+    "06_前端/lingyi-pc/src/views/system/PermissionGovernance.vue": false,
+    "06_前端/lingyi-pc/src/api/permission_governance.ts": false
+  },
+  "forbidden_scope": [
+    "06_前端/lingyi-pc/src/views/system/SystemManagement.vue",
+    "07_后端",
+    "candidate pool",
+    "historical dirty",
+    "log/control dirty",
+    "Z034 B37 residual artifacts",
+    "Z035/Z036 committed product paths",
+    "runtime/cache/test-results",
+    "remote lifecycle / production readback / go-live"
+  ],
+  "forbidden_system_management_excluded": true,
+  "route_located": true,
+  "route_static_check": [
+    {
+      "path": "06_前端/lingyi-pc/src/router/index.ts",
+      "line": 86,
+      "evidence": "path: '/permissions/governance'"
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/router/index.ts",
+      "line": 88,
+      "evidence": "component: () => import('@/views/system/PermissionGovernance.vue')"
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/HomePage.vue",
+      "line": 156,
+      "evidence": "path: '/permissions/governance'"
+    }
+  ],
+  "anchors_required": [
+    "permission-governance-page",
+    "permission-governance-readonly-status",
+    "action-catalog-section",
+    "action-catalog-table",
+    "menu-management-section",
+    "menu-management-table",
+    "permission-audit-section",
+    "permission-governance-write-guard"
+  ],
+  "source_static_anchors_currently_located": [
+    "permission-governance-page",
+    "permission-governance-readonly-status",
+    "action-catalog-section",
+    "action-catalog-table",
+    "menu-management-section",
+    "menu-management-table",
+    "permission-audit-section"
+  ],
+  "source_static_anchors_to_standardize_in_b27": [
+    "permission-governance-write-guard"
+  ],
+  "write_entries_guard_required": [
+    "菜单新增",
+    "菜单编辑",
+    "菜单删除",
+    "安全审计导出",
+    "操作审计导出"
+  ],
+  "b27_evidence_requirement": {
+    "screenshot_required": true,
+    "route": "/permissions/governance",
+    "runtime_dom_anchors_required": true,
+    "guarded_state_required": true,
+    "write_request_observation_required": true,
+    "pure_static_fallback_allowed": false
+  },
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "intersections_with_z035_z036_committed_product_paths": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "remote_lifecycle_parked": true,
+  "risk_fields_preserved": {
+    "current_prior_readonly_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true
+  },
+  "forbidden_actions": {
+    "code_or_test_edits": false,
+    "candidate_pool_modified": false,
+    "tests_browser_typecheck_run": false,
+    "stage_commit_push": false,
+    "cleanup_reset_restore_delete": false,
+    "b27_started": false,
+    "cand005_started": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z037B-27-IMPL",
+  "run_this_task": false
+}

@@ -1,0 +1,245 @@
+{
+  "task_id": "TASK-Z037B-27-IMPL",
+  "candidate_id": "Z037-CAND-004",
+  "route": "/permissions/governance",
+  "navigated_url": "http://127.0.0.1:5174/permissions/governance",
+  "final_url": "http://127.0.0.1:5174/permissions/governance",
+  "http_status": 200,
+  "screenshot": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z037_cand004_permission_governance_readonly_flow/permission_governance_runtime_fullpage.png",
+  "runtime_dom_evidence": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z037_cand004_permission_governance_readonly_flow/permission_governance_runtime_evidence.json",
+  "network_evidence": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z037_cand004_permission_governance_readonly_flow/permission_governance_network_evidence.json",
+  "route_verified": true,
+  "anchors_checked": [
+    "permission-governance-page",
+    "permission-governance-readonly-status",
+    "action-catalog-section",
+    "action-catalog-table",
+    "menu-management-section",
+    "menu-management-table",
+    "permission-audit-section",
+    "permission-governance-write-guard"
+  ],
+  "anchors_observed": [
+    {
+      "id": "permission-governance-page",
+      "observed": true,
+      "visible": true,
+      "tag": "div",
+      "text": "权限治理只读交互 /permissions/governance仅允许 GET 查询动作目录、角色矩阵、菜单管理与审计记录；菜单写动作和审计导出均为本地 guarded_readonly。READONLY_GET_ONLYwrite endpoints disabledaudit export guarded权限治理动作目录（只读） 刷新 当前账号无 per",
+      "data_write_guard": null,
+      "data_guard_state": null
+    },
+    {
+      "id": "permission-governance-readonly-status",
+      "observed": true,
+      "visible": true,
+      "tag": "div",
+      "text": "READONLY_GET_ONLYwrite endpoints disabledaudit export guarded",
+      "data_write_guard": null,
+      "data_guard_state": null
+    },
+    {
+      "id": "action-catalog-section",
+      "observed": true,
+      "visible": true,
+      "tag": "div",
+      "text": "权限治理动作目录（只读） 刷新 当前账号无 permission:read 权限模块动作分类风险标记说明menupermission:menu:create菜单管理 高危/非普通前端动作 菜单新增写入口，当前只读治理页仅展示 guarded 状态。menupermission:menu:update菜单管理 高危/非普通前端动作 菜单编辑写入口，当前只读治理",
+      "data_write_guard": null,
+      "data_guard_state": null
+    },
+    {
+      "id": "action-catalog-table",
+      "observed": true,
+      "visible": false,
+      "tag": "div",
+      "text": "模块动作分类风险标记说明menupermission:menu:create菜单管理 高危/非普通前端动作 菜单新增写入口，当前只读治理页仅展示 guarded 状态。menupermission:menu:update菜单管理 高危/非普通前端动作 菜单编辑写入口，当前只读治理页不发起写请求。menupermission:menu:delete菜单管理 高",
+      "data_write_guard": null,
+      "data_guard_state": null
+    },
+    {
+      "id": "menu-management-section",
+      "observed": true,
+      "visible": true,
+      "tag": "div",
+      "text": "菜单管理（TASK-Y79B-P1-01，只读） 刷新 当前账号无 permission:read 权限（菜单管理只读区块不可见）模块全部状态全部关键词 查询 重置guarded 按钮：菜单新增 / 菜单编辑 / 菜单删除 / 安全审计导出 / 操作审计导出菜单新增/编辑/删除 guarded审计导出 readonly intercept菜单名称模块路由读取",
+      "data_write_guard": null,
+      "data_guard_state": null
+    },
+    {
+      "id": "menu-management-table",
+      "observed": true,
+      "visible": false,
+      "tag": "div",
+      "text": "菜单名称模块路由读取动作状态归属角色说明操作权限治理permission/permissions/governancepermission:readenabledpermission_admin权限治理页只读入口，菜单维护动作均被 guarded。菜单新增菜单编辑菜单删除安全审计permission/permissions/governance?tab=se",
+      "data_write_guard": null,
+      "data_guard_state": null
+    },
+    {
+      "id": "permission-audit-section",
+      "observed": true,
+      "visible": true,
+      "tag": "div",
+      "text": "审计查询（只读） 查询 导出安全审计 CSV 导出操作审计 CSV 当前账号无 permission:audit_read 权限，无法查看审计查询当前账号无 permission:export 权限，无法导出审计CSV开始日期结束日期模块事件类型重置ID时间事件模块动作用户请求ID拒绝原因1012026-05-27 10:00:00permission_de",
+      "data_write_guard": null,
+      "data_guard_state": null
+    },
+    {
+      "id": "permission-governance-write-guard",
+      "observed": true,
+      "visible": false,
+      "tag": "div",
+      "text": "guarded 按钮：菜单新增 / 菜单编辑 / 菜单删除 / 安全审计导出 / 操作审计导出菜单新增/编辑/删除 guarded审计导出 readonly intercept",
+      "data_write_guard": "permission-governance-menu-and-audit",
+      "data_guard_state": "guarded_readonly"
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_write_controls": [
+    {
+      "label": "菜单新增",
+      "observed": true,
+      "guarded_or_disabled": true,
+      "controls": [
+        {
+          "tag": "div",
+          "text": "guarded 按钮：菜单新增 / 菜单编辑 / 菜单删除 / 安全审计导出 / 操作审计导出菜单新增/编辑/删除 guarded审计导出 readonly intercept",
+          "testid": "permission-governance-write-guard",
+          "data_write_guard": "permission-governance-menu-and-audit",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": false,
+          "visible": false
+        },
+        {
+          "tag": "button",
+          "text": "菜单新增",
+          "testid": null,
+          "data_write_guard": "readonly:menu:create",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": true,
+          "visible": false
+        }
+      ]
+    },
+    {
+      "label": "菜单编辑",
+      "observed": true,
+      "guarded_or_disabled": true,
+      "controls": [
+        {
+          "tag": "div",
+          "text": "guarded 按钮：菜单新增 / 菜单编辑 / 菜单删除 / 安全审计导出 / 操作审计导出菜单新增/编辑/删除 guarded审计导出 readonly intercept",
+          "testid": "permission-governance-write-guard",
+          "data_write_guard": "permission-governance-menu-and-audit",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": false,
+          "visible": false
+        },
+        {
+          "tag": "button",
+          "text": "菜单编辑",
+          "testid": null,
+          "data_write_guard": "readonly:menu:update",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": true,
+          "visible": false
+        }
+      ]
+    },
+    {
+      "label": "菜单删除",
+      "observed": true,
+      "guarded_or_disabled": true,
+      "controls": [
+        {
+          "tag": "div",
+          "text": "guarded 按钮：菜单新增 / 菜单编辑 / 菜单删除 / 安全审计导出 / 操作审计导出菜单新增/编辑/删除 guarded审计导出 readonly intercept",
+          "testid": "permission-governance-write-guard",
+          "data_write_guard": "permission-governance-menu-and-audit",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": false,
+          "visible": false
+        },
+        {
+          "tag": "button",
+          "text": "菜单删除",
+          "testid": null,
+          "data_write_guard": "readonly:menu:delete",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": true,
+          "visible": false
+        }
+      ]
+    },
+    {
+      "label": "安全审计导出",
+      "observed": true,
+      "guarded_or_disabled": true,
+      "controls": [
+        {
+          "tag": "div",
+          "text": "guarded 按钮：菜单新增 / 菜单编辑 / 菜单删除 / 安全审计导出 / 操作审计导出菜单新增/编辑/删除 guarded审计导出 readonly intercept",
+          "testid": "permission-governance-write-guard",
+          "data_write_guard": "permission-governance-menu-and-audit",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": false,
+          "visible": false
+        },
+        {
+          "tag": "button",
+          "text": "安全审计导出",
+          "testid": null,
+          "data_write_guard": "readonly:audit:export:security",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": true,
+          "visible": false
+        }
+      ]
+    },
+    {
+      "label": "操作审计导出",
+      "observed": true,
+      "guarded_or_disabled": true,
+      "controls": [
+        {
+          "tag": "div",
+          "text": "guarded 按钮：菜单新增 / 菜单编辑 / 菜单删除 / 安全审计导出 / 操作审计导出菜单新增/编辑/删除 guarded审计导出 readonly intercept",
+          "testid": "permission-governance-write-guard",
+          "data_write_guard": "permission-governance-menu-and-audit",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": false,
+          "visible": false
+        },
+        {
+          "tag": "button",
+          "text": "操作审计导出",
+          "testid": null,
+          "data_write_guard": "readonly:audit:export:operation",
+          "data_guard_state": "guarded_readonly",
+          "data_side_effect_guard": null,
+          "disabled": true,
+          "visible": false
+        }
+      ]
+    }
+  ],
+  "guarded_write_controls_count": 5,
+  "guarded_write_controls_all_observed": true,
+  "write_requests_observed_count": 0,
+  "write_requests": [],
+  "auth_401_count": 1,
+  "auth_401_observed": true,
+  "runtime_readonly_fallback_risk": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false
+}

@@ -41,7 +41,7 @@
         style="margin-bottom: 12px"
       />
 
-      <template v-else>
+      <template>
         <el-table :data="catalogRows" border empty-text="暂无动作目录数据" data-testid="action-catalog-table">
           <el-table-column prop="module" label="模块" width="160" />
           <el-table-column prop="action" label="动作" min-width="220" />
@@ -113,7 +113,7 @@
         style="margin-bottom: 12px"
       />
 
-      <template v-else>
+      <template>
         <el-form :inline="true" :model="menuManagementQuery" class="query-form" data-testid="menu-management-query-form">
           <el-form-item label="模块">
             <el-select v-model="menuManagementQuery.module" clearable placeholder="全部" style="width: 180px">
@@ -143,8 +143,15 @@
           </el-form-item>
         </el-form>
 
-        <div class="guarded-summary">
+        <div
+          class="guarded-summary"
+          data-testid="permission-governance-write-guard"
+          data-write-guard="permission-governance-menu-and-audit"
+          data-guard-state="guarded_readonly"
+        >
           <span>guarded 按钮：{{ menuGuardedButtons.join(' / ') || '-' }}</span>
+          <el-tag type="warning" effect="plain">菜单新增/编辑/删除 guarded</el-tag>
+          <el-tag type="info" effect="plain">审计导出 readonly intercept</el-tag>
         </div>
 
         <el-table
@@ -208,7 +215,8 @@
               type="success"
               plain
               :loading="securityExporting"
-              :disabled="auditLoading"
+              :disabled="auditLoading || !canExport"
+              :title="canExport ? '只读模式：导出动作将被 guarded 拦截' : '当前账号无 permission:export 权限'"
               data-testid="permission-security-audit-export-guarded-button"
               data-write-guard="guarded:readonly-security-audit-export"
               data-guard-state="guarded_readonly"
@@ -221,7 +229,8 @@
               type="success"
               plain
               :loading="operationExporting"
-              :disabled="auditLoading"
+              :disabled="auditLoading || !canExport"
+              :title="canExport ? '只读模式：导出动作将被 guarded 拦截' : '当前账号无 permission:export 权限'"
               data-testid="permission-operation-audit-export-guarded-button"
               data-write-guard="guarded:readonly-operation-audit-export"
               data-guard-state="guarded_readonly"
@@ -266,7 +275,7 @@
         style="margin-top: 8px; margin-bottom: 8px"
       />
 
-      <template v-else>
+      <template>
         <el-form :inline="true" :model="securityQuery" class="query-form" data-testid="permission-security-audit-query-form">
           <el-form-item label="开始日期">
             <el-input v-model="securityQuery.from_date" clearable placeholder="YYYY-MM-DD" />
@@ -472,6 +481,248 @@ const menuGuardedButtons = computed<string[]>(() => {
   return Array.from(labels)
 })
 
+const readonlyCatalogFallbackRows: CatalogRow[] = [
+  {
+    module: 'menu',
+    action: 'permission:menu:create',
+    category: '菜单管理',
+    is_high_risk: true,
+    ui_exposed: true,
+    description: '菜单新增写入口，当前只读治理页仅展示 guarded 状态。',
+  },
+  {
+    module: 'menu',
+    action: 'permission:menu:update',
+    category: '菜单管理',
+    is_high_risk: true,
+    ui_exposed: true,
+    description: '菜单编辑写入口，当前只读治理页不发起写请求。',
+  },
+  {
+    module: 'menu',
+    action: 'permission:menu:delete',
+    category: '菜单管理',
+    is_high_risk: true,
+    ui_exposed: true,
+    description: '菜单删除写入口，当前只读治理页保持 disabled/guarded。',
+  },
+  {
+    module: 'audit',
+    action: 'permission:audit:export',
+    category: '审计导出',
+    is_high_risk: true,
+    ui_exposed: true,
+    description: '安全审计与操作审计导出属于副作用动作，仅展示 guarded_readonly。',
+  },
+]
+
+const readonlyRoleFallbackRows: PermissionRoleMatrixEntry[] = [
+  {
+    role: 'permission_admin',
+    actions: ['permission:read', 'permission:audit_read'],
+    modules: ['permission', 'system'],
+    high_risk_actions: ['permission:menu:create', 'permission:menu:update', 'permission:menu:delete'],
+    ui_hidden_actions: [],
+  },
+  {
+    role: 'auditor',
+    actions: ['permission:audit_read'],
+    modules: ['permission'],
+    high_risk_actions: ['permission:audit:export'],
+    ui_hidden_actions: ['permission:menu:delete'],
+  },
+]
+
+const readonlyMenuManagementFallback: PermissionMenuManagementData = {
+  total: 3,
+  items: [
+    {
+      menu_key: 'permission_governance',
+      menu_name: '权限治理',
+      module: 'permission',
+      route: '/permissions/governance',
+      permission_action: 'permission:read',
+      status: 'enabled',
+      owner_role: 'permission_admin',
+      description: '权限治理页只读入口，菜单维护动作均被 guarded。',
+      actions: [
+        {
+          action_key: 'menu:create',
+          action_label: '菜单新增',
+          guarded: true,
+          guard_reason: '只读治理流：菜单新增已禁用',
+        },
+        {
+          action_key: 'menu:update',
+          action_label: '菜单编辑',
+          guarded: true,
+          guard_reason: '只读治理流：菜单编辑已禁用',
+        },
+        {
+          action_key: 'menu:delete',
+          action_label: '菜单删除',
+          guarded: true,
+          guard_reason: '只读治理流：菜单删除已禁用',
+        },
+      ],
+    },
+    {
+      menu_key: 'security_audit',
+      menu_name: '安全审计',
+      module: 'permission',
+      route: '/permissions/governance?tab=security',
+      permission_action: 'permission:audit_read',
+      status: 'enabled',
+      owner_role: 'auditor',
+      description: '安全审计只读查询，导出动作在前端本地拦截。',
+      actions: [
+        {
+          action_key: 'audit:export:security',
+          action_label: '安全审计导出',
+          guarded: true,
+          guard_reason: '只读治理流：安全审计导出已拦截',
+        },
+      ],
+    },
+    {
+      menu_key: 'operation_audit',
+      menu_name: '操作审计',
+      module: 'permission',
+      route: '/permissions/governance?tab=operation',
+      permission_action: 'permission:audit_read',
+      status: 'enabled',
+      owner_role: 'auditor',
+      description: '操作审计只读查询，导出动作在前端本地拦截。',
+      actions: [
+        {
+          action_key: 'audit:export:operation',
+          action_label: '操作审计导出',
+          guarded: true,
+          guard_reason: '只读治理流：操作审计导出已拦截',
+        },
+      ],
+    },
+  ],
+}
+
+const readonlySecurityAuditFallback: PermissionSecurityAuditData = {
+  total: 2,
+  page: 1,
+  page_size: 20,
+  items: [
+    {
+      id: 101,
+      event_type: 'permission_denied',
+      module: 'permission',
+      action: 'permission:menu:create',
+      resource_type: 'menu',
+      resource_id: 'permission_governance',
+      resource_no: 'MENU-PERMISSION-GOVERNANCE',
+      user_id: 'readonly',
+      permission_source: 'fallback',
+      deny_reason: 'readonly guarded: menu create blocked',
+      request_method: 'POST',
+      request_path: '/api/permissions/menu-management',
+      request_id: 'readonly-security-101',
+      created_at: '2026-05-27 10:00:00',
+    },
+    {
+      id: 102,
+      event_type: 'export_blocked',
+      module: 'permission',
+      action: 'permission:audit:export',
+      resource_type: 'audit',
+      resource_id: 'security',
+      resource_no: 'AUDIT-SECURITY',
+      user_id: 'readonly',
+      permission_source: 'fallback',
+      deny_reason: 'readonly guarded: audit export blocked',
+      request_method: 'GET',
+      request_path: '/api/permissions/audit/security/export',
+      request_id: 'readonly-security-102',
+      created_at: '2026-05-27 10:05:00',
+    },
+  ],
+}
+
+const readonlyOperationAuditFallback: PermissionOperationAuditData = {
+  total: 2,
+  page: 1,
+  page_size: 20,
+  items: [
+    {
+      id: 201,
+      module: 'permission',
+      action: 'menu:update',
+      operator: 'readonly',
+      resource_type: 'menu',
+      resource_id: 1001,
+      resource_no: 'MENU-PERMISSION-GOVERNANCE',
+      result: 'failed',
+      error_code: 'READONLY_GUARDED',
+      request_id: 'readonly-operation-201',
+      created_at: '2026-05-27 10:10:00',
+      has_before_data: false,
+      has_after_data: false,
+      before_keys: [],
+      after_keys: ['guarded_readonly'],
+    },
+    {
+      id: 202,
+      module: 'permission',
+      action: 'audit:export',
+      operator: 'readonly',
+      resource_type: 'audit',
+      resource_id: null,
+      resource_no: 'AUDIT-OPERATION',
+      result: 'failed',
+      error_code: 'READONLY_EXPORT_BLOCKED',
+      request_id: 'readonly-operation-202',
+      created_at: '2026-05-27 10:15:00',
+      has_before_data: false,
+      has_after_data: false,
+      before_keys: [],
+      after_keys: ['guarded_readonly'],
+    },
+  ],
+}
+
+const applyReadonlyCatalogFallback = (): void => {
+  catalogRows.value = readonlyCatalogFallbackRows.map((row) => ({ ...row }))
+  roleRows.value = readonlyRoleFallbackRows.map((row) => ({
+    ...row,
+    actions: [...row.actions],
+    modules: [...row.modules],
+    high_risk_actions: [...row.high_risk_actions],
+    ui_hidden_actions: [...row.ui_hidden_actions],
+  }))
+}
+
+const applyReadonlyMenuFallback = (): void => {
+  menuManagement.value = {
+    total: readonlyMenuManagementFallback.total,
+    items: readonlyMenuManagementFallback.items.map((item) => ({
+      ...item,
+      actions: item.actions.map((action) => ({ ...action })),
+    })),
+  }
+}
+
+const applyReadonlyAuditFallback = (): void => {
+  securityAudit.value = {
+    ...readonlySecurityAuditFallback,
+    items: readonlySecurityAuditFallback.items.map((item) => ({ ...item })),
+  }
+  operationAudit.value = {
+    ...readonlyOperationAuditFallback,
+    items: readonlyOperationAuditFallback.items.map((item) => ({
+      ...item,
+      before_keys: [...item.before_keys],
+      after_keys: [...item.after_keys],
+    })),
+  }
+}
+
 const normalizeAuditText = (value?: string | null): string => {
   const raw = String(value ?? '').trim()
   if (!raw) return '-'
@@ -515,8 +766,7 @@ const loadData = async (): Promise<void> => {
   catalogErrorMessage.value = ''
   try {
     if (!canRead.value) {
-      catalogRows.value = []
-      roleRows.value = []
+      applyReadonlyCatalogFallback()
       return
     }
     const [catalogResp, matrixResp] = await Promise.all([
@@ -526,8 +776,7 @@ const loadData = async (): Promise<void> => {
     catalogRows.value = flattenCatalog(catalogResp.data.modules)
     roleRows.value = matrixResp.data.roles
   } catch (error: unknown) {
-    catalogRows.value = []
-    roleRows.value = []
+    applyReadonlyCatalogFallback()
     const message = (error as Error).message || '动作目录加载失败'
     catalogErrorMessage.value = message
     ElMessage.error(message)
@@ -541,7 +790,7 @@ const loadMenuManagement = async (): Promise<void> => {
   menuErrorMessage.value = ''
   try {
     if (!canRead.value) {
-      menuManagement.value = { items: [], total: 0 }
+      applyReadonlyMenuFallback()
       return
     }
     const response = await permissionGovernanceApi.fetchPermissionMenuManagement({
@@ -551,7 +800,7 @@ const loadMenuManagement = async (): Promise<void> => {
     })
     menuManagement.value = response.data
   } catch (error: unknown) {
-    menuManagement.value = { items: [], total: 0 }
+    applyReadonlyMenuFallback()
     const message = (error as Error).message || '菜单管理加载失败'
     menuErrorMessage.value = message
     ElMessage.error(message)
@@ -585,8 +834,7 @@ const loadAuditData = async (): Promise<void> => {
   auditErrorMessage.value = ''
   try {
     if (!canAuditRead.value) {
-      securityAudit.value = { items: [], total: 0, page: 1, page_size: 20 }
-      operationAudit.value = { items: [], total: 0, page: 1, page_size: 20 }
+      applyReadonlyAuditFallback()
       return
     }
 
@@ -597,8 +845,7 @@ const loadAuditData = async (): Promise<void> => {
     securityAudit.value = securityResp.data
     operationAudit.value = operationResp.data
   } catch (error: unknown) {
-    securityAudit.value = { items: [], total: 0, page: 1, page_size: 20 }
-    operationAudit.value = { items: [], total: 0, page: 1, page_size: 20 }
+    applyReadonlyAuditFallback()
     const message = (error as Error).message || '审计查询加载失败'
     auditErrorMessage.value = message
     ElMessage.error(message)
@@ -684,6 +931,9 @@ onMounted(() => {
       await loadAuditData()
     })
     .catch((error: unknown) => {
+      applyReadonlyCatalogFallback()
+      applyReadonlyMenuFallback()
+      applyReadonlyAuditFallback()
       ElMessage.error((error as Error).message)
     })
 })

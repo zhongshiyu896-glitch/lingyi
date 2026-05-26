@@ -1,0 +1,36 @@
+field	value
+status	READY_FOR_REVIEW
+task_id	TASK-Z037B-28-REGRESSION-CAND004
+role	B Engineer
+cycle_id	Z037
+candidate_id	Z037-CAND-004
+source_task	TASK-Z037B-27-IMPL
+code_modified_in_this_task	false
+changed_files_observed	06_前端/lingyi-pc/src/views/system/PermissionGovernance.vue
+api_permission_governance_changed	false
+forbidden_system_management_touched	false
+route	/permissions/governance
+route_verified	true
+screenshot	04_测试与验收/测试证据/z037_cand004_permission_governance_readonly_flow_regression/permission_governance_regression_fullpage.png
+screenshot_size	1440x900
+runtime_dom_evidence	04_测试与验收/测试证据/z037_cand004_permission_governance_readonly_flow_regression/permission_governance_regression_runtime_evidence.json
+network_evidence	04_测试与验收/测试证据/z037_cand004_permission_governance_readonly_flow_regression/permission_governance_regression_network_evidence.json
+anchors_observed	permission-governance-page;permission-governance-readonly-status;action-catalog-section;action-catalog-table;menu-management-section;menu-management-table;permission-audit-section;permission-governance-write-guard
+anchors_all_observed	true
+guarded_write_controls	菜单新增=true;菜单编辑=true;菜单删除=true;安全审计导出=true;操作审计导出=true
+typecheck_command	npm run typecheck
+typecheck_workdir	06_前端/lingyi-pc
+typecheck_exit_code	0
+auth_401_count	1
+current_readonly_fallback_risk	true
+write_requests_observed_count	0
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+prior_readonly_fallback_risks	preserved
+guarded_readonly_not_write_success	true
+b28_shell_wrapper_anomaly	preserved
+z033_skipped_only	preserved
+z035_screenshot_missing_risk	preserved
+next_task	TASK-Z037B-29-LEDGER-CAND004
+run_this_task	false
