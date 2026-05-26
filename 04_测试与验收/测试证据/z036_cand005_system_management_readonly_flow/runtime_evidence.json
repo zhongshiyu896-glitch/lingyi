@@ -1,0 +1,288 @@
+{
+  "task_id": "TASK-Z036B-35-IMPL",
+  "candidate_id": "Z036-CAND-005",
+  "route_evidence": {
+    "requested_url": "http://127.0.0.1:5185/system/management?parity=system-management-readonly",
+    "response_status": 200,
+    "final_url": "http://127.0.0.1:5185/system/management?parity=system-management-readonly",
+    "final_pathname": "/system/management",
+    "route_verified": true
+  },
+  "dom_anchor_evidence": {
+    "required_anchors": [
+      "system-management-page",
+      "system-management-readonly-status",
+      "system-management-write-guard",
+      "system-management-export-download-guard",
+      "approval-flow-section",
+      "organization-framework-section",
+      "system-operation-log-section",
+      "system-document-code-section"
+    ],
+    "observed_count": 8,
+    "all_observed": true,
+    "anchors": [
+      {
+        "anchor": "system-management-page",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "系统管理只读交互：/system/management｜READONLY_GET_ONLY｜系统配置 / 用户角色菜单 / 审计日志 / 同步导出下载入口均按本地只读 guard 验证 GET-only 写入动作 guarded_readonly 导出 / 下载 / 同步不触发 审核流程（TASK-Y3B-09，只读） 查询 当前账号无 system:rea",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "system-management-readonly-status",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "GET-only 写入动作 guarded_readonly 导出 / 下载 / 同步不触发",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "system-management-write-guard",
+        "observed": true,
+        "visible": true,
+        "tag": "SPAN",
+        "text": "写入动作 guarded_readonly",
+        "dataWriteGuard": "readonly:system-save-submit",
+        "dataGuardState": "guarded_readonly"
+      },
+      {
+        "anchor": "system-management-export-download-guard",
+        "observed": true,
+        "visible": true,
+        "tag": "SPAN",
+        "text": "导出 / 下载 / 同步不触发",
+        "dataWriteGuard": "readonly:system-export-download-sync",
+        "dataGuardState": "guarded_readonly"
+      },
+      {
+        "anchor": "approval-flow-section",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "审核流程（TASK-Y3B-09，只读） 查询 当前账号无 system:read 权限",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "organization-framework-section",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "组织框架（TASK-Y74B-P1-03，只读） 查询 当前账号无 system:read 权限",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "system-operation-log-section",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "操作日志（TASK-Y79B-P1-03，只读） 查询 当前账号无 system:read 权限",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "system-document-code-section",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "单据编码（TASK-Y79B-P1-04，只读） 查询 当前账号无 system:read 权限",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      }
+    ]
+  },
+  "guard_evidence": {
+    "guarded_readonly_not_write_success": true,
+    "write_requests_observed_count": 0,
+    "write_requests_observed": [],
+    "guarded_write_controls": [
+      {
+        "tag": "SPAN",
+        "role": null,
+        "text": "写入动作 guarded_readonly",
+        "dataTestid": "system-management-write-guard",
+        "dataWriteGuard": "readonly:system-save-submit",
+        "dataGuardState": "guarded_readonly",
+        "disabled": false,
+        "className": "el-tag el-tag--warning el-tag--plain",
+        "visible": true
+      },
+      {
+        "tag": "SPAN",
+        "role": null,
+        "text": "导出 / 下载 / 同步不触发",
+        "dataTestid": "system-management-export-download-guard",
+        "dataWriteGuard": "readonly:system-export-download-sync",
+        "dataGuardState": "guarded_readonly",
+        "disabled": false,
+        "className": "el-tag el-tag--warning el-tag--plain",
+        "visible": true
+      }
+    ],
+    "save_export_download_sync_guarded": [
+      {
+        "tag": "SPAN",
+        "role": null,
+        "text": "写入动作 guarded_readonly",
+        "dataTestid": "system-management-write-guard",
+        "dataWriteGuard": "readonly:system-save-submit",
+        "dataGuardState": "guarded_readonly",
+        "disabled": false,
+        "className": "el-tag el-tag--warning el-tag--plain",
+        "visible": true
+      },
+      {
+        "tag": "SPAN",
+        "role": null,
+        "text": "导出 / 下载 / 同步不触发",
+        "dataTestid": "system-management-export-download-guard",
+        "dataWriteGuard": "readonly:system-export-download-sync",
+        "dataGuardState": "guarded_readonly",
+        "disabled": false,
+        "className": "el-tag el-tag--warning el-tag--plain",
+        "visible": true
+      }
+    ]
+  },
+  "network_console_observation": {
+    "unauthorized_response_count": 1,
+    "unauthorized_responses": [
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5185/api/auth/me"
+      }
+    ],
+    "console_error_count": 1,
+    "console_messages": [
+      {
+        "type": "debug",
+        "text": "[vite] connecting..."
+      },
+      {
+        "type": "debug",
+        "text": "[vite] connected."
+      },
+      {
+        "type": "error",
+        "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      }
+    ],
+    "write_requests_observed_count": 0,
+    "request_sample": [
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/system/management?parity=system-management-readonly",
+        "resourceType": "document"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/@vite/client",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/main.ts",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/node_modules/.vite/deps/vue.js?v=2645f498",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/node_modules/.vite/deps/element-plus.js?v=2645f498",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/node_modules/element-plus/dist/index.css",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/App.vue",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/router/index.ts",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/node_modules/vite/dist/client/env.mjs",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/@id/__x00__plugin-vue:export-helper",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/node_modules/.vite/deps/vue-router.js?v=2645f498",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/views/system/SystemManagement.vue",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/api/system_management.ts",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/stores/permission.ts",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/views/system/SystemManagement.vue?vue&type=style&index=0&scoped=f9a2aa36&lang.css",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/api/request.ts",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/src/api/auth.ts",
+        "resourceType": "script"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:5185/api/auth/me",
+        "resourceType": "fetch"
+      }
+    ]
+  },
+  "screenshot": {
+    "captured": true,
+    "path": "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/system_management_runtime_fullpage.png",
+    "bytes": 170515,
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "document_height": 1952
+  },
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "captured_at": "2026-05-26T13:00:10.006Z"
+}

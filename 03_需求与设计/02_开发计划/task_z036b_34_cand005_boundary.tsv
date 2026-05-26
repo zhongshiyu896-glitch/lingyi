@@ -1,0 +1,14 @@
+field	value
+task_id	TASK-Z036B-34-PREP
+candidate_id	Z036-CAND-005
+head	b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45
+route	/system/management
+allowed_files	["06_前端/lingyi-pc/src/views/system/SystemManagement.vue","06_前端/lingyi-pc/src/api/system_management.ts"]
+allowed_files_dirty	{"06_前端/lingyi-pc/src/views/system/SystemManagement.vue":false,"06_前端/lingyi-pc/src/api/system_management.ts":false}
+route_located	true
+anchors_required	["system-management-page","system-management-readonly-status","system-management-write-guard","system-management-export-download-guard","approval-flow-section","organization-framework-section","system-operation-log-section","system-document-code-section"]
+missing_exact_anchors	["system-operation-log-section","system-document-code-section"]
+unknown_dirty	[]
+must_block_before_continue	[]
+next_task	TASK-Z036B-35-IMPL
+run_this_task	false

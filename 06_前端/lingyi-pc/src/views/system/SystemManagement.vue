@@ -694,7 +694,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" data-testid="operation-log-section">
+    <el-card shadow="never" data-testid="system-operation-log-section" data-legacy-testid="operation-log-section">
       <template #header>
         <div class="header-row">
           <span>操作日志（TASK-Y79B-P1-03，只读）</span>
@@ -852,7 +852,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" data-testid="document-code-section">
+    <el-card shadow="never" data-testid="system-document-code-section" data-legacy-testid="document-code-section">
       <template #header>
         <div class="header-row">
           <span>单据编码（TASK-Y79B-P1-04，只读）</span>

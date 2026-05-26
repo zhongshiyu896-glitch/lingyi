@@ -1,0 +1,88 @@
+{
+  "required_anchors": [
+    "system-management-page",
+    "system-management-readonly-status",
+    "system-management-write-guard",
+    "system-management-export-download-guard",
+    "approval-flow-section",
+    "organization-framework-section",
+    "system-operation-log-section",
+    "system-document-code-section"
+  ],
+  "observed_count": 8,
+  "all_observed": true,
+  "anchors": [
+    {
+      "anchor": "system-management-page",
+      "observed": true,
+      "visible": true,
+      "tag": "DIV",
+      "text": "系统管理只读交互：/system/management｜READONLY_GET_ONLY｜系统配置 / 用户角色菜单 / 审计日志 / 同步导出下载入口均按本地只读 guard 验证 GET-only 写入动作 guarded_readonly 导出 / 下载 / 同步不触发 审核流程（TASK-Y3B-09，只读） 查询 当前账号无 system:rea",
+      "dataWriteGuard": null,
+      "dataGuardState": null
+    },
+    {
+      "anchor": "system-management-readonly-status",
+      "observed": true,
+      "visible": true,
+      "tag": "DIV",
+      "text": "GET-only 写入动作 guarded_readonly 导出 / 下载 / 同步不触发",
+      "dataWriteGuard": null,
+      "dataGuardState": null
+    },
+    {
+      "anchor": "system-management-write-guard",
+      "observed": true,
+      "visible": true,
+      "tag": "SPAN",
+      "text": "写入动作 guarded_readonly",
+      "dataWriteGuard": "readonly:system-save-submit",
+      "dataGuardState": "guarded_readonly"
+    },
+    {
+      "anchor": "system-management-export-download-guard",
+      "observed": true,
+      "visible": true,
+      "tag": "SPAN",
+      "text": "导出 / 下载 / 同步不触发",
+      "dataWriteGuard": "readonly:system-export-download-sync",
+      "dataGuardState": "guarded_readonly"
+    },
+    {
+      "anchor": "approval-flow-section",
+      "observed": true,
+      "visible": true,
+      "tag": "DIV",
+      "text": "审核流程（TASK-Y3B-09，只读） 查询 当前账号无 system:read 权限",
+      "dataWriteGuard": null,
+      "dataGuardState": null
+    },
+    {
+      "anchor": "organization-framework-section",
+      "observed": true,
+      "visible": true,
+      "tag": "DIV",
+      "text": "组织框架（TASK-Y74B-P1-03，只读） 查询 当前账号无 system:read 权限",
+      "dataWriteGuard": null,
+      "dataGuardState": null
+    },
+    {
+      "anchor": "system-operation-log-section",
+      "observed": true,
+      "visible": true,
+      "tag": "DIV",
+      "text": "操作日志（TASK-Y79B-P1-03，只读） 查询 当前账号无 system:read 权限",
+      "dataWriteGuard": null,
+      "dataGuardState": null
+    },
+    {
+      "anchor": "system-document-code-section",
+      "observed": true,
+      "visible": true,
+      "tag": "DIV",
+      "text": "单据编码（TASK-Y79B-P1-04，只读） 查询 当前账号无 system:read 权限",
+      "dataWriteGuard": null,
+      "dataGuardState": null
+    }
+  ]
+}

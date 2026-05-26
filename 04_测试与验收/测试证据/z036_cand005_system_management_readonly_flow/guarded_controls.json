@@ -1,0 +1,53 @@
+{
+  "guarded_readonly_not_write_success": true,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "guarded_write_controls": [
+    {
+      "tag": "SPAN",
+      "role": null,
+      "text": "写入动作 guarded_readonly",
+      "dataTestid": "system-management-write-guard",
+      "dataWriteGuard": "readonly:system-save-submit",
+      "dataGuardState": "guarded_readonly",
+      "disabled": false,
+      "className": "el-tag el-tag--warning el-tag--plain",
+      "visible": true
+    },
+    {
+      "tag": "SPAN",
+      "role": null,
+      "text": "导出 / 下载 / 同步不触发",
+      "dataTestid": "system-management-export-download-guard",
+      "dataWriteGuard": "readonly:system-export-download-sync",
+      "dataGuardState": "guarded_readonly",
+      "disabled": false,
+      "className": "el-tag el-tag--warning el-tag--plain",
+      "visible": true
+    }
+  ],
+  "save_export_download_sync_guarded": [
+    {
+      "tag": "SPAN",
+      "role": null,
+      "text": "写入动作 guarded_readonly",
+      "dataTestid": "system-management-write-guard",
+      "dataWriteGuard": "readonly:system-save-submit",
+      "dataGuardState": "guarded_readonly",
+      "disabled": false,
+      "className": "el-tag el-tag--warning el-tag--plain",
+      "visible": true
+    },
+    {
+      "tag": "SPAN",
+      "role": null,
+      "text": "导出 / 下载 / 同步不触发",
+      "dataTestid": "system-management-export-download-guard",
+      "dataWriteGuard": "readonly:system-export-download-sync",
+      "dataGuardState": "guarded_readonly",
+      "disabled": false,
+      "className": "el-tag el-tag--warning el-tag--plain",
+      "visible": true
+    }
+  ]
+}

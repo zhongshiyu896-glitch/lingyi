@@ -1,0 +1,122 @@
+{
+  "unauthorized_response_count": 1,
+  "unauthorized_responses": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5185/api/auth/me"
+    }
+  ],
+  "console_error_count": 1,
+  "console_messages": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    }
+  ],
+  "write_requests_observed_count": 0,
+  "request_sample": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/system/management?parity=system-management-readonly",
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/main.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/router/index.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/views/system/SystemManagement.vue",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/api/system_management.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/views/system/SystemManagement.vue?vue&type=style&index=0&scoped=f9a2aa36&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/api/request.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5185/api/auth/me",
+      "resourceType": "fetch"
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "cycle_id": "Z036",
+  "task_id": "TASK-Z036B-34-PREP",
+  "role": "B Engineer",
+  "mode": "boundary_freeze_PREP_only",
+  "source_task_id": "TASK-Z036B-33-PREP",
+  "head": "b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45",
+  "expected_head": "b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "cached_paths": [],
+  "head_tag_empty": true,
+  "head_tags": [],
+  "diff_check_pass": true,
+  "diff_check_output": "",
+  "b33_selected_candidate": "Z036-CAND-005",
+  "b33_next_task": "TASK-Z036B-34-PREP",
+  "selected_candidate_id": "Z036-CAND-005",
+  "candidate_raw_fields_match_b01_b33": true,
+  "boundary": {
+    "candidate_id": "Z036-CAND-005",
+    "title": "系统管理配置与审计只读治理流",
+    "page_scope": "系统管理",
+    "routes": [
+      "/system/management"
+    ],
+    "visible_acceptance_goal": "用户能在系统管理查看只读状态、审核流程、组织架构、集成平台、公告、操作日志和单据编码等治理区块，并看到保存、导出、同步下载入口保持只读 guard。",
+    "read_only": true,
+    "backend_allowed": false,
+    "expected_allowed_file_scope": [
+      "06_前端/lingyi-pc/src/views/system/SystemManagement.vue",
+      "06_前端/lingyi-pc/src/api/system_management.ts"
+    ],
+    "field_button_state_anchors": [
+      "system-management-page",
+      "system-management-readonly-status",
+      "system-management-write-guard",
+      "system-management-export-download-guard",
+      "approval-flow-section",
+      "organization-framework-section",
+      "system-operation-log-section",
+      "system-document-code-section"
+    ],
+    "browser_evidence_requirement_for_B35": [
+      "采集 /system/management 页面截图",
+      "采集运行态 DOM anchors",
+      "采集保存/导出/下载 guarded state",
+      "若无法截图，必须记录 screenshot_skip_reason 并提供运行态 DOM/route 替代证据"
+    ],
+    "read_write_boundary": "read_only=true; 仅允许系统配置和治理目录查询查看；保存、导出、下载、同步等入口必须 guarded 或禁用。",
+    "capture_contract_integration": true,
+    "next_task": "TASK-Z036B-35-IMPL",
+    "run_this_task": false
+  },
+  "implementation_workdir": "/Users/hh/Desktop/领意服装管理系统",
+  "frontend_workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc",
+  "route_static_check": {
+    "route": "/system/management",
+    "status": "PASS",
+    "evidence": [
+      "06_前端/lingyi-pc/src/router/index.ts:92:    path: '/system/management',",
+      "06_前端/lingyi-pc/src/router/index.ts:93:    name: 'SystemManagement',",
+      "06_前端/lingyi-pc/src/router/index.ts:94:    component: () => import('@/views/system/SystemManagement.vue'),",
+      "06_前端/lingyi-pc/src/views/HomePage.vue:157:      { title: '系统管理', path: '/system/management', group: '报表治理' },",
+      "06_前端/lingyi-pc/src/views/system/SystemManagement.vue:5:      data-route-parity=\"/system/management\"",
+      "06_前端/lingyi-pc/src/views/system/SystemManagement.vue:9:      title=\"系统管理只读交互：/system/management｜READONLY_GET_ONLY｜系统配置 / 用户角色菜单 / 审计日志 / 同步导出下载入口均按本地只读 guard 验证\""
+    ]
+  },
+  "route_located": true,
+  "anchor_static_check": {
+    "required_anchors": [
+      "system-management-page",
+      "system-management-readonly-status",
+      "system-management-write-guard",
+      "system-management-export-download-guard",
+      "approval-flow-section",
+      "organization-framework-section",
+      "system-operation-log-section",
+      "system-document-code-section"
+    ],
+    "exact_observed": [
+      "system-management-page",
+      "system-management-readonly-status",
+      "system-management-write-guard",
+      "system-management-export-download-guard",
+      "approval-flow-section",
+      "organization-framework-section"
+    ],
+    "missing_exact_anchors": [
+      "system-operation-log-section",
+      "system-document-code-section"
+    ],
+    "equivalent_observed": [
+      {
+        "requested_anchor": "system-operation-log-section",
+        "current_anchor": "operation-log-section",
+        "action_for_B35": "normalize or add requested explicit anchor"
+      },
+      {
+        "requested_anchor": "system-document-code-section",
+        "current_anchor": "document-code-section",
+        "action_for_B35": "normalize or add requested explicit anchor"
+      }
+    ],
+    "action_for_B35": "standardize missing exact anchors inside allowed files only"
+  },
+  "allowed_files_exist": {
+    "06_前端/lingyi-pc/src/views/system/SystemManagement.vue": true,
+    "06_前端/lingyi-pc/src/api/system_management.ts": true
+  },
+  "allowed_files_all_exist": true,
+  "allowed_files_dirty": {
+    "06_前端/lingyi-pc/src/views/system/SystemManagement.vue": false,
+    "06_前端/lingyi-pc/src/api/system_management.ts": false
+  },
+  "allowed_files_all_dirty_false": true,
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "intersections_with_z035_committed_product_files": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "risk_carry_forward": {
+    "cand001_readonly_fallback_risk": true,
+    "cand003_readonly_fallback_risk": true,
+    "guarded_readonly_not_write_success": true,
+    "shell_wrapper_anomaly_preserved": true,
+    "z033_skipped_only_risk_preserved": true,
+    "z035_screenshot_missing_risk": true
+  },
+  "code_modified": false,
+  "tests_browser_typecheck_run": false,
+  "stage_commit_push_performed": false,
+  "remote_lifecycle_parked": true,
+  "push_tag_pr_release": false,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "new_candidate_started": false,
+  "next_task": "TASK-Z036B-35-IMPL",
+  "run_this_task": false
+}

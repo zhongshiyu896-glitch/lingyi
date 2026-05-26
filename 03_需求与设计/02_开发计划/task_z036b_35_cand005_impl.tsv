@@ -1,0 +1,19 @@
+field	value
+task_id	TASK-Z036B-35-IMPL
+candidate_id	Z036-CAND-005
+changed_files	06_前端/lingyi-pc/src/views/system/SystemManagement.vue
+allowed_files_only	true
+route_verified	true
+anchors_observed	8/8
+screenshot	04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/system_management_runtime_fullpage.png
+runtime_dom_evidence	04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/runtime_evidence.json
+guarded_write_controls	system-management-write-guard:guarded_readonly:readonly:system-save-submit|system-management-export-download-guard:guarded_readonly:readonly:system-export-download-sync
+typecheck_command	npm run typecheck
+typecheck_exit_code	0
+write_requests_observed_count	0
+unauthorized_response_count	1
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+next_task	TASK-Z036B-36-REGRESSION-CAND005
+run_this_task	false

@@ -1,0 +1,194 @@
+{
+  "task_id": "TASK-Z036B-35-IMPL",
+  "role": "B Engineer",
+  "source_task": "TASK-Z036B-34-PREP",
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-005",
+  "head": "b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45",
+  "route": "/system/management",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/system/SystemManagement.vue"
+  ],
+  "allowed_files_only": true,
+  "api_file_changed": false,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_committed_product_files_touched": false,
+  "other_z036_committed_paths_touched": false,
+  "route_evidence": {
+    "requested_url": "http://127.0.0.1:5185/system/management?parity=system-management-readonly",
+    "response_status": 200,
+    "final_url": "http://127.0.0.1:5185/system/management?parity=system-management-readonly",
+    "final_pathname": "/system/management",
+    "route_verified": true
+  },
+  "dom_anchor_evidence": {
+    "required_anchors": [
+      "system-management-page",
+      "system-management-readonly-status",
+      "system-management-write-guard",
+      "system-management-export-download-guard",
+      "approval-flow-section",
+      "organization-framework-section",
+      "system-operation-log-section",
+      "system-document-code-section"
+    ],
+    "observed_count": 8,
+    "all_observed": true,
+    "anchors": [
+      {
+        "anchor": "system-management-page",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "系统管理只读交互：/system/management｜READONLY_GET_ONLY｜系统配置 / 用户角色菜单 / 审计日志 / 同步导出下载入口均按本地只读 guard 验证 GET-only 写入动作 guarded_readonly 导出 / 下载 / 同步不触发 审核流程（TASK-Y3B-09，只读） 查询 当前账号无 system:rea",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "system-management-readonly-status",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "GET-only 写入动作 guarded_readonly 导出 / 下载 / 同步不触发",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "system-management-write-guard",
+        "observed": true,
+        "visible": true,
+        "tag": "SPAN",
+        "text": "写入动作 guarded_readonly",
+        "dataWriteGuard": "readonly:system-save-submit",
+        "dataGuardState": "guarded_readonly"
+      },
+      {
+        "anchor": "system-management-export-download-guard",
+        "observed": true,
+        "visible": true,
+        "tag": "SPAN",
+        "text": "导出 / 下载 / 同步不触发",
+        "dataWriteGuard": "readonly:system-export-download-sync",
+        "dataGuardState": "guarded_readonly"
+      },
+      {
+        "anchor": "approval-flow-section",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "审核流程（TASK-Y3B-09，只读） 查询 当前账号无 system:read 权限",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "organization-framework-section",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "组织框架（TASK-Y74B-P1-03，只读） 查询 当前账号无 system:read 权限",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "system-operation-log-section",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "操作日志（TASK-Y79B-P1-03，只读） 查询 当前账号无 system:read 权限",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      },
+      {
+        "anchor": "system-document-code-section",
+        "observed": true,
+        "visible": true,
+        "tag": "DIV",
+        "text": "单据编码（TASK-Y79B-P1-04，只读） 查询 当前账号无 system:read 权限",
+        "dataWriteGuard": null,
+        "dataGuardState": null
+      }
+    ]
+  },
+  "anchors_observed": [
+    "system-management-page",
+    "system-management-readonly-status",
+    "system-management-write-guard",
+    "system-management-export-download-guard",
+    "approval-flow-section",
+    "organization-framework-section",
+    "system-operation-log-section",
+    "system-document-code-section"
+  ],
+  "screenshot": "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/system_management_runtime_fullpage.png",
+  "screenshot_captured": true,
+  "screenshot_skip_reason": null,
+  "screenshot_sha256": "bbaf66c4642d602cdd0ad7332476a3aef7bd8b82dba94b0524c61e9ce9eab121",
+  "runtime_dom_evidence": "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/runtime_evidence.json",
+  "guarded_write_controls": [
+    {
+      "tag": "SPAN",
+      "role": null,
+      "text": "写入动作 guarded_readonly",
+      "dataTestid": "system-management-write-guard",
+      "dataWriteGuard": "readonly:system-save-submit",
+      "dataGuardState": "guarded_readonly",
+      "disabled": false,
+      "className": "el-tag el-tag--warning el-tag--plain",
+      "visible": true
+    },
+    {
+      "tag": "SPAN",
+      "role": null,
+      "text": "导出 / 下载 / 同步不触发",
+      "dataTestid": "system-management-export-download-guard",
+      "dataWriteGuard": "readonly:system-export-download-sync",
+      "dataGuardState": "guarded_readonly",
+      "disabled": false,
+      "className": "el-tag el-tag--warning el-tag--plain",
+      "visible": true
+    }
+  ],
+  "guarded_readonly_not_write_success": true,
+  "write_requests_observed_count": 0,
+  "unauthorized_response_count": 1,
+  "current_runtime_readonly_fallback_risk": true,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "vue-tsc --noEmit -p tsconfig.json PASS",
+  "visible_acceptance_goal_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "backend_allowed": false,
+  "risk_fields_preserved": {
+    "cand001_readonly_fallback_risk": true,
+    "cand003_readonly_fallback_risk": true,
+    "guarded_readonly_not_write_success": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true
+  },
+  "evidence_dir": "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow",
+  "evidence_files": [
+    "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/system_management_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/runtime_evidence.json",
+    "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/dom_anchors.json",
+    "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/guarded_controls.json",
+    "04_测试与验收/测试证据/z036_cand005_system_management_readonly_flow/network_console_observation.json"
+  ],
+  "forbidden_actions": {
+    "stage_commit_push": false,
+    "pr_tag_release": false,
+    "cleanup_reset_restore_clean_delete": false,
+    "remote_lifecycle_released": false,
+    "cand005_next_started": false
+  },
+  "next_task": "TASK-Z036B-36-REGRESSION-CAND005",
+  "run_this_task": false
+}
