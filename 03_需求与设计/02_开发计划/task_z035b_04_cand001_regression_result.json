@@ -1,0 +1,95 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-001",
+  "source_task": "TASK-Z035B-03-IMPL",
+  "result": "PASS",
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/HomePage.vue"
+  ],
+  "code_modified_in_this_task": false,
+  "route_anchor_results": [
+    {
+      "route": "/home",
+      "status": "located",
+      "evidence": "06_前端/lingyi-pc/src/router/index.ts:9"
+    },
+    {
+      "route": "/dashboard/overview",
+      "status": "located",
+      "evidence": "06_前端/lingyi-pc/src/router/index.ts:158"
+    },
+    {
+      "route": "/dashboard/workplace",
+      "status": "located_as_redirect",
+      "redirect": "/dashboard/overview",
+      "evidence": "06_前端/lingyi-pc/src/router/index.ts:183"
+    }
+  ],
+  "dom_anchor_results": [
+    {
+      "anchor": "home-page",
+      "exists": true
+    },
+    {
+      "anchor": "home-navigation-readonly-state",
+      "exists": true
+    },
+    {
+      "anchor": "home-primary-entries",
+      "exists": true
+    },
+    {
+      "anchor": "dashboard-overview-page",
+      "exists": true
+    },
+    {
+      "anchor": "dashboard-overview-metrics-grid",
+      "exists": true
+    },
+    {
+      "anchor": "dashboard-overview-message-table",
+      "exists": true
+    },
+    {
+      "anchor": "dashboard-overview-refresh-button",
+      "exists": true
+    }
+  ],
+  "verification_commands": [
+    {
+      "workdir": "06_前端/lingyi-pc",
+      "command": "npm run typecheck"
+    }
+  ],
+  "verification_exit_codes": [
+    0
+  ],
+  "browser_screenshot_attempted": false,
+  "screenshot_files": [],
+  "browser_screenshot_skipped_reason": "Local dev server was detected on 127.0.0.1:5173, but no browser automation module was available without installing dependencies; no dependency install or config change was allowed, so B04 retained static route/DOM evidence plus typecheck.",
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z035B-05-LEDGER-CAND001",
+  "run_this_task": false
+}

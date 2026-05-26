@@ -161,10 +161,10 @@ const entryGroups: EntryGroup[] = [
 ]
 
 const primaryEntries = computed<EntryItem[]>(() => [
+  { title: '工作台总览', path: '/dashboard/workplace', group: '首页 / 工作台' },
   entryGroups[0].items[0],
   entryGroups[0].items[1],
   entryGroups[2].items[0],
-  entryGroups[3].items[1],
 ])
 
 const currentRoles = computed<string>(() => roles.value.join(' / ') || '未获取到角色')

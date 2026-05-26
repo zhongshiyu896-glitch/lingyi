@@ -1,0 +1,45 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-001",
+  "source_task": "TASK-Z035B-03-IMPL",
+  "evidence_type": "dom_anchor_regression_static_evidence",
+  "anchors": [
+    {
+      "anchor": "home-page",
+      "exists": true,
+      "source": "06_前端/lingyi-pc/src/views/HomePage.vue:2"
+    },
+    {
+      "anchor": "home-navigation-readonly-state",
+      "exists": true,
+      "source": "06_前端/lingyi-pc/src/views/HomePage.vue:21"
+    },
+    {
+      "anchor": "home-primary-entries",
+      "exists": true,
+      "source": "06_前端/lingyi-pc/src/views/HomePage.vue:40"
+    },
+    {
+      "anchor": "dashboard-overview-page",
+      "exists": true,
+      "source": "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue:2"
+    },
+    {
+      "anchor": "dashboard-overview-metrics-grid",
+      "exists": true,
+      "source": "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue:129"
+    },
+    {
+      "anchor": "dashboard-overview-message-table",
+      "exists": true,
+      "source": "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue:254"
+    },
+    {
+      "anchor": "dashboard-overview-refresh-button",
+      "exists": true,
+      "source": "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue:120"
+    }
+  ],
+  "all_required_anchors_present": true,
+  "b03_static_dom_evidence_preserved": true
+}

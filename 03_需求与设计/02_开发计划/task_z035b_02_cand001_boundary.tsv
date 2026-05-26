@@ -1,0 +1,39 @@
+field	value
+cycle_id	Z035
+source_task	TASK-Z035B-01-PREP-PRODUCT-POOL
+candidate_id	Z035-CAND-001
+title	首页 / 工作台可见收口
+page_scope	首页 / 工作台
+routes	/home;/dashboard/overview;/dashboard/workplace
+visible_acceptance_goal	用户能从首页进入工作台总览，看到会话信息、只读导航提示、核心入口、工作台指标卡片和消息表格。
+browser_evidence_plan	desktop screenshot;route evidence;DOM data-testid capture
+field_button_state_anchors	home-page;home-navigation-readonly-state;home-primary-entries;dashboard-overview-page;dashboard-overview-metrics-grid;dashboard-overview-message-table;dashboard-overview-refresh-button
+capture_contract_integration	true
+expected_allowed_file_scope	HomePage.vue;DashboardOverview.vue;api/dashboard.ts
+HomePage_exists	true
+HomePage_dirty	false
+DashboardOverview_exists	true
+DashboardOverview_dirty	false
+dashboard_api_exists	true
+dashboard_api_dirty	false
+scope_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+backend_allowed	false
+out_of_scope_artifacts_status	untracked_not_staged_not_committed
+remote_lifecycle_parked	true
+shell_wrapper_anomaly_preserved	true
+z033_cand003_skipped_only_evidence	true
+z033_cand003_actual_passed_count	0
+z033_cand003_skipped_count	4
+stage	false
+commit	false
+push	false
+tag	false
+PR	false
+release	false
+production_readback	false
+go_live	false
+project_completion	false
+next_task	TASK-Z035B-03-IMPL
+run_this_task	false

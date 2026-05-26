@@ -1,0 +1,13 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-001",
+  "source_task": "TASK-Z035B-03-IMPL",
+  "evidence_type": "screenshot_regression_status",
+  "browser_screenshot_attempted": false,
+  "screenshot_files": [],
+  "local_dev_server_probe": {
+    "status": "detected",
+    "address": "127.0.0.1:5173"
+  },
+  "browser_screenshot_skipped_reason": "Local dev server was detected on 127.0.0.1:5173, but no browser automation module was available without installing dependencies; no dependency install or config change was allowed, so B04 retained static route/DOM evidence plus typecheck."
+}

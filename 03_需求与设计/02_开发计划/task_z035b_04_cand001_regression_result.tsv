@@ -1,0 +1,24 @@
+field	value
+cycle_id	Z035
+candidate_id	Z035-CAND-001
+result	PASS
+changed_files_observed	06_前端/lingyi-pc/src/views/HomePage.vue
+code_modified_in_this_task	false
+routes_checked	/home;/dashboard/overview;/dashboard/workplace
+dom_anchors_present	true
+verification_command	npm run typecheck
+verification_exit_code	0
+browser_screenshot_attempted	false
+screenshot_files	[]
+browser_screenshot_skipped_reason	Local dev server was detected on 127.0.0.1:5173, but no browser automation module was available without installing dependencies; no dependency install or config change was allowed, so B04 retained static route/DOM evidence plus typecheck.
+visible_acceptance_goal_still_met	true
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_changed	false
+historical_dirty_touched	false
+log_control_dirty_touched	false
+residual_artifacts_touched	false
+shell_wrapper_anomaly_preserved	true
+z033_skipped_only	skipped_only_evidence=true;actual_passed_count=0;skipped_count=4
+next_task	TASK-Z035B-05-LEDGER-CAND001
+run_this_task	false

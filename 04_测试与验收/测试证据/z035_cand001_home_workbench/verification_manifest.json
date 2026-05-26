@@ -1,0 +1,28 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-001",
+  "source_task": "TASK-Z035B-02-PREP",
+  "implementation_task": "TASK-Z035B-03-IMPL",
+  "code_changed_files": [
+    "06_前端/lingyi-pc/src/views/HomePage.vue"
+  ],
+  "evidence_files": [
+    "04_测试与验收/测试证据/z035_cand001_home_workbench/route_evidence.json",
+    "04_测试与验收/测试证据/z035_cand001_home_workbench/dom_anchor_evidence.json",
+    "04_测试与验收/测试证据/z035_cand001_home_workbench/screenshot_status.json",
+    "04_测试与验收/测试证据/z035_cand001_home_workbench/verification_manifest.json"
+  ],
+  "verification_commands": [
+    {
+      "workdir": "06_前端/lingyi-pc",
+      "command": "npm run typecheck",
+      "exit_code": 0
+    }
+  ],
+  "route_evidence_file": "04_测试与验收/测试证据/z035_cand001_home_workbench/route_evidence.json",
+  "dom_anchor_evidence_file": "04_测试与验收/测试证据/z035_cand001_home_workbench/dom_anchor_evidence.json",
+  "screenshot_status_file": "04_测试与验收/测试证据/z035_cand001_home_workbench/screenshot_status.json",
+  "visible_acceptance_goal_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false
+}

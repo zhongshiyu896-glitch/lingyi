@@ -1,0 +1,31 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-001",
+  "evidence_type": "route_static_evidence",
+  "routes_checked": [
+    {
+      "route": "/home",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/router/index.ts:9",
+      "component": "06_前端/lingyi-pc/src/views/HomePage.vue"
+    },
+    {
+      "route": "/dashboard/overview",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/router/index.ts:158",
+      "component": "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue"
+    },
+    {
+      "route": "/dashboard/workplace",
+      "status": "located_as_redirect",
+      "source": "06_前端/lingyi-pc/src/router/index.ts:183",
+      "redirect": "/dashboard/overview"
+    }
+  ],
+  "home_primary_workbench_entry": {
+    "status": "implemented",
+    "source": "06_前端/lingyi-pc/src/views/HomePage.vue",
+    "title": "工作台总览",
+    "route": "/dashboard/workplace"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-001",
+  "source_task": "TASK-Z035B-03-IMPL",
+  "regression_task": "TASK-Z035B-04-REGRESSION-CAND001",
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/HomePage.vue"
+  ],
+  "code_modified_in_this_task": false,
+  "evidence_files": [
+    "04_测试与验收/测试证据/z035_cand001_home_workbench_regression/route_regression_evidence.json",
+    "04_测试与验收/测试证据/z035_cand001_home_workbench_regression/dom_anchor_regression_evidence.json",
+    "04_测试与验收/测试证据/z035_cand001_home_workbench_regression/screenshot_regression_status.json",
+    "04_测试与验收/测试证据/z035_cand001_home_workbench_regression/regression_manifest.json"
+  ],
+  "verification_commands": [
+    {
+      "workdir": "06_前端/lingyi-pc",
+      "command": "npm run typecheck",
+      "exit_code": 0
+    }
+  ],
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false
+}
