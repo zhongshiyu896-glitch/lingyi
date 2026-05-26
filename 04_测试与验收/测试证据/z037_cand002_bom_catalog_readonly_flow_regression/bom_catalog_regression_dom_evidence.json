@@ -1,0 +1,894 @@
+{
+  "url": "http://127.0.0.1:5188/bom/list",
+  "anchors": {
+    "bom-main-list-section": {
+      "count": 1,
+      "observed": true,
+      "text": [
+        "款式编码状态请选择状态操作 查询 重置 新建 BOM Z037-CAND-002 readonly boundary写入口保持只读保护 新建 BOM 选用 上传 导出 详情抽屉写入口 BOM编号款式编码版本状态默认生效日期操作BOM-Z037-RO-001LY-Z037-STYLE-001V1.0active是2026-05-26 详情页 详情抽屉 1 Total 120/pageBOM详情（只读）详情抽屉仅开放只读查看，保存、发布、删"
+      ]
+    },
+    "bom-main-list-filters": {
+      "count": 1,
+      "observed": true,
+      "text": [
+        "款式编码状态请选择状态操作 查询 重置 新建 BOM"
+      ]
+    },
+    "bom-main-table": {
+      "count": 1,
+      "observed": true,
+      "text": [
+        "BOM编号款式编码版本状态默认生效日期操作BOM-Z037-RO-001LY-Z037-STYLE-001V1.0active是2026-05-26 详情页 详情抽屉"
+      ]
+    },
+    "bom-fabric-section": {
+      "count": 1,
+      "observed": true,
+      "text": [
+        "款号面料编码面料名称颜色规格供应商状态请选择状态操作 查询 重置 选用 导出 面料编码面料名称款号颜色规格供应商单件用量损耗率单位来源BOM状态操作FAB-Z037-001只读面料样卡LY-Z037-STYLE-001藏青150cm只读供应商1.203%米BOM-Z037-RO-001可用 查看 选用导出 1 Total 120/page"
+      ]
+    },
+    "bom-accessories-section": {
+      "count": 1,
+      "observed": true,
+      "text": [
+        "款号物料编码物料名称分类请选择分类供应商状态请选择状态操作 查询 重置 选用 上传 导出 物料编码物料名称分类款号颜色规格供应商单件用量损耗率单位来源BOM状态操作FAB-Z037-001只读辅料样卡辅料LY-Z037-STYLE-001藏青150cm只读供应商1.203%米BOM-Z037-RO-001可用 查看 选用上传导出 1 Total 120/page"
+      ]
+    },
+    "bom-processing-type-section": {
+      "count": 1,
+      "observed": true,
+      "text": [
+        "款号加工类型工序名称委外类型请选择委外类型计价方式请选择计价方式状态请选择状态操作 查询 重置 配置 启停 导出 加工类型编码加工类型工序名称工序顺序委外类型计价方式单价/工价款号来源BOM状态操作PROC-Z037-001平车主缝10自产按工价1.50LY-Z037-STYLE-001BOM-Z037-RO-001可用 查看 配置启停导出 1 Total 120/page"
+      ]
+    },
+    "bom-main-create-guarded-button": {
+      "count": 1,
+      "observed": true,
+      "text": [
+        "新建 BOM"
+      ]
+    },
+    "bom-readonly-write-guard": {
+      "count": 1,
+      "observed": true,
+      "text": [
+        "Z037-CAND-002 readonly boundary写入口保持只读保护 新建 BOM 选用 上传 导出 详情抽屉写入口"
+      ]
+    }
+  },
+  "guarded_controls_count": 92,
+  "guarded_controls": [
+    {
+      "tag": "button",
+      "testid": "bom-main-create-guarded-button",
+      "text": "新建 BOM",
+      "action_type": "write",
+      "write_guard": "readonly-bom-create",
+      "guard_state": "guarded_readonly",
+      "disabled": true
+    },
+    {
+      "tag": "section",
+      "testid": "bom-readonly-write-guard",
+      "text": "Z037-CAND-002 readonly boundary写入口保持只读保护 新建 BOM 选用 上传 导出 详情抽屉写入口",
+      "action_type": "",
+      "write_guard": "readonly-bom-catalog",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "tag": "span",
+      "testid": "",
+      "text": "新建 BOM",
+      "action_type": "write",
+      "write_guard": "readonly-bom-create",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "tag": "span",
+      "testid": "",
+      "text": "选用",
+      "action_type": "write",
+      "write_guard": "readonly-material-select",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "tag": "span",
+      "testid": "",
+      "text": "上传",
+      "action_type": "write",
+      "write_guard": "readonly-material-upload",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "tag": "span",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-bom-export",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "tag": "span",
+      "testid": "",
+      "text": "详情抽屉写入口",
+      "action_type": "write",
+      "write_guard": "readonly-detail-drawer",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "tag": "div",
+      "testid": "",
+      "text": "详情抽屉仅开放只读查看，保存、发布、删除等写入口不在本页执行。",
+      "action_type": "write",
+      "write_guard": "readonly-detail-drawer",
+      "guard_state": "guarded_readonly",
+      "disabled": false
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "选用",
+      "action_type": "write",
+      "write_guard": "readonly-fabric-use",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-fabric-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "选用",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "选用",
+      "action_type": "write",
+      "write_guard": "readonly-accessories-use",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "上传",
+      "action_type": "write",
+      "write_guard": "readonly-accessories-upload",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-accessories-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "选用",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "上传",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "配置",
+      "action_type": "write",
+      "write_guard": "readonly-processing-type-config",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "启停",
+      "action_type": "write",
+      "write_guard": "readonly-processing-type-toggle",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-processing-type-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "配置",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "启停",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "新增加工",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-create",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "编辑",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-edit",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "删除",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-delete",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "提交审核",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-submit",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "同步",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-sync",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "打印",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-print",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "编辑",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "删除",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "提交审核",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "入仓确认",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-inbound-confirm",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "质检",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-inbound-inspect",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "同步",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-inbound-sync",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-inbound-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "打印",
+      "action_type": "write",
+      "write_guard": "readonly-material-processing-inbound-print",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "入仓确认",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "质检",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "打印",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "扣仓确认",
+      "action_type": "write",
+      "write_guard": "readonly-material-deduction-confirm",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "扣仓冲销",
+      "action_type": "write",
+      "write_guard": "readonly-material-deduction-reverse",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "同步",
+      "action_type": "write",
+      "write_guard": "readonly-material-deduction-sync",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-material-deduction-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "打印",
+      "action_type": "write",
+      "write_guard": "readonly-material-deduction-print",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "扣仓确认",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "扣仓冲销",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "打印",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "出仓确认",
+      "action_type": "write",
+      "write_guard": "readonly-material-sales-outbound-confirm",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "审核通过",
+      "action_type": "write",
+      "write_guard": "readonly-material-sales-outbound-audit",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "同步",
+      "action_type": "write",
+      "write_guard": "readonly-material-sales-outbound-sync",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-material-sales-outbound-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "打印",
+      "action_type": "write",
+      "write_guard": "readonly-material-sales-outbound-print",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "出仓确认",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "审核通过",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "打印",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "新增类型",
+      "action_type": "write",
+      "write_guard": "readonly-material-type-create",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "编辑",
+      "action_type": "write",
+      "write_guard": "readonly-material-type-edit",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "删除",
+      "action_type": "write",
+      "write_guard": "readonly-material-type-delete",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-material-type-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "编辑",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "删除",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "新增单位",
+      "action_type": "write",
+      "write_guard": "readonly-material-unit-create",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "编辑",
+      "action_type": "write",
+      "write_guard": "readonly-material-unit-edit",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "停用",
+      "action_type": "write",
+      "write_guard": "readonly-material-unit-disable",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-material-unit-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "编辑",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "停用",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "选用",
+      "action_type": "write",
+      "write_guard": "readonly-gallery-choose",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "上传",
+      "action_type": "write",
+      "write_guard": "readonly-gallery-upload",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "编辑",
+      "action_type": "write",
+      "write_guard": "readonly-gallery-edit",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "删除",
+      "action_type": "write",
+      "write_guard": "readonly-gallery-delete",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "选用",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "上传",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "编辑",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "删除",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "生成采购",
+      "action_type": "write",
+      "write_guard": "readonly-purchase-generate",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "确认",
+      "action_type": "write",
+      "write_guard": "readonly-purchase-confirm",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "取消",
+      "action_type": "write",
+      "write_guard": "readonly-purchase-cancel",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "write",
+      "write_guard": "readonly-purchase-export",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "生成采购",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "确认",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "取消",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    },
+    {
+      "tag": "button",
+      "testid": "",
+      "text": "导出",
+      "action_type": "",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "guard_state": "",
+      "disabled": true
+    }
+  ],
+  "drawer_open": true,
+  "detail_drawer_write_guard_observed": true
+}

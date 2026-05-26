@@ -1,0 +1,115 @@
+{
+  "task_id": "TASK-Z037B-10-PREP",
+  "role": "B Engineer",
+  "source_task": "TASK-Z037B-09-PREP",
+  "cycle_id": "Z037",
+  "candidate_id": "Z037-CAND-002",
+  "title": "BOM 主列表与物料目录只读可见流",
+  "page_scope": "BOM / 物料目录",
+  "routes": [
+    "/bom/list",
+    "/material/materialFabric",
+    "/goodsPlan/materialSamples",
+    "/goodsPlan/goodsPlanProcess",
+    "/product/product"
+  ],
+  "visible_acceptance_goal": "用户能在 BOM 主列表查看查询、主表、面辅料与加工类型目录，并看到新建、选用、上传、导出等写入口保持 guarded/readonly。",
+  "read_only": true,
+  "backend_allowed": false,
+  "head": "3da11d1edb746a879d0d3777132cc578544d7616",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "b09_selected_candidate": "Z037-CAND-002",
+  "expected_allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/bom/BomList.vue",
+    "06_前端/lingyi-pc/src/api/bom.ts"
+  ],
+  "allowed_files_exist": true,
+  "allowed_files_dirty": false,
+  "forbidden_scope": [
+    "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+    "07_后端",
+    "candidate pool",
+    "historical dirty",
+    "log/control dirty",
+    "Z034 residual artifacts",
+    "Z035/Z036 committed product paths",
+    "runtime/cache/test-results",
+    "remote lifecycle / production readback / go-live"
+  ],
+  "bom_detail_excluded": true,
+  "route_static_check": {
+    "/bom/list": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts",
+      "component": "06_前端/lingyi-pc/src/views/bom/BomList.vue"
+    },
+    "/material/materialFabric": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts",
+      "redirect": "/bom/list?parity=material-fabric"
+    },
+    "/goodsPlan/materialSamples": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts",
+      "redirect": "/bom/list?parity=goodsplan-material-samples"
+    },
+    "/goodsPlan/goodsPlanProcess": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts",
+      "redirect": "/bom/list?parity=goodsplan-material-samples"
+    },
+    "/product/product": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts",
+      "redirect": "/bom/list?parity=product-style"
+    }
+  },
+  "routes_located": true,
+  "anchors_required": [
+    "bom-main-list-section",
+    "bom-main-list-filters",
+    "bom-main-table",
+    "bom-fabric-section",
+    "bom-accessories-section",
+    "bom-processing-type-section",
+    "bom-main-create-guarded-button",
+    "bom-readonly-write-guard"
+  ],
+  "write_entries_guard_required": [
+    "新建 BOM",
+    "选用",
+    "上传",
+    "导出",
+    "详情抽屉写入口"
+  ],
+  "browser_evidence_requirement": {
+    "capture_bom_list_screenshot": true,
+    "capture_material_product_parity_route_evidence": true,
+    "capture_runtime_dom_anchors": true,
+    "capture_guarded_write_control_state": true,
+    "capture_write_request_observation": true,
+    "pure_static_fallback_allowed": false
+  },
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "intersections_with_z035_z036_committed_product_paths": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "risk_fields_preserved": {
+    "prior_readonly_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true
+  },
+  "remote_lifecycle_parked": true,
+  "push_tag_pr_release": false,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z037B-11-IMPL",
+  "run_this_task": false
+}

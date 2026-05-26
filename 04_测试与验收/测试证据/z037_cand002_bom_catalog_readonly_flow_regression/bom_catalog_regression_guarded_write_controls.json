@@ -1,0 +1,566 @@
+{
+  "required_write_entries": [
+    "新建 BOM",
+    "选用",
+    "上传",
+    "导出",
+    "详情抽屉写入口"
+  ],
+  "guarded_readonly": true,
+  "observed_entries": [
+    {
+      "text": "新建 BOM",
+      "write_guard": "readonly-bom-create",
+      "disabled": true,
+      "guard_state": "guarded_readonly"
+    },
+    {
+      "text": "Z037-CAND-002 readonly boundary写入口保持只读保护 新建 BOM 选用 上传 导出 详情抽屉写入口",
+      "write_guard": "readonly-bom-catalog",
+      "disabled": false,
+      "guard_state": "guarded_readonly"
+    },
+    {
+      "text": "新建 BOM",
+      "write_guard": "readonly-bom-create",
+      "disabled": false,
+      "guard_state": "guarded_readonly"
+    },
+    {
+      "text": "选用",
+      "write_guard": "readonly-material-select",
+      "disabled": false,
+      "guard_state": "guarded_readonly"
+    },
+    {
+      "text": "上传",
+      "write_guard": "readonly-material-upload",
+      "disabled": false,
+      "guard_state": "guarded_readonly"
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-bom-export",
+      "disabled": false,
+      "guard_state": "guarded_readonly"
+    },
+    {
+      "text": "详情抽屉写入口",
+      "write_guard": "readonly-detail-drawer",
+      "disabled": false,
+      "guard_state": "guarded_readonly"
+    },
+    {
+      "text": "详情抽屉仅开放只读查看，保存、发布、删除等写入口不在本页执行。",
+      "write_guard": "readonly-detail-drawer",
+      "disabled": false,
+      "guard_state": "guarded_readonly"
+    },
+    {
+      "text": "选用",
+      "write_guard": "readonly-fabric-use",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-fabric-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "选用",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "选用",
+      "write_guard": "readonly-accessories-use",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "上传",
+      "write_guard": "readonly-accessories-upload",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-accessories-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "选用",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "上传",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "配置",
+      "write_guard": "readonly-processing-type-config",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "启停",
+      "write_guard": "readonly-processing-type-toggle",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-processing-type-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "配置",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "启停",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "新增加工",
+      "write_guard": "readonly-material-processing-create",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "编辑",
+      "write_guard": "readonly-material-processing-edit",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "删除",
+      "write_guard": "readonly-material-processing-delete",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "提交审核",
+      "write_guard": "readonly-material-processing-submit",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "同步",
+      "write_guard": "readonly-material-processing-sync",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-material-processing-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "打印",
+      "write_guard": "readonly-material-processing-print",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "编辑",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "删除",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "提交审核",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "入仓确认",
+      "write_guard": "readonly-material-processing-inbound-confirm",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "质检",
+      "write_guard": "readonly-material-processing-inbound-inspect",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "同步",
+      "write_guard": "readonly-material-processing-inbound-sync",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-material-processing-inbound-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "打印",
+      "write_guard": "readonly-material-processing-inbound-print",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "入仓确认",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "质检",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "打印",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "扣仓确认",
+      "write_guard": "readonly-material-deduction-confirm",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "扣仓冲销",
+      "write_guard": "readonly-material-deduction-reverse",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "同步",
+      "write_guard": "readonly-material-deduction-sync",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-material-deduction-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "打印",
+      "write_guard": "readonly-material-deduction-print",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "扣仓确认",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "扣仓冲销",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "打印",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "出仓确认",
+      "write_guard": "readonly-material-sales-outbound-confirm",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "审核通过",
+      "write_guard": "readonly-material-sales-outbound-audit",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "同步",
+      "write_guard": "readonly-material-sales-outbound-sync",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-material-sales-outbound-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "打印",
+      "write_guard": "readonly-material-sales-outbound-print",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "出仓确认",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "审核通过",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "打印",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "新增类型",
+      "write_guard": "readonly-material-type-create",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "编辑",
+      "write_guard": "readonly-material-type-edit",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "删除",
+      "write_guard": "readonly-material-type-delete",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-material-type-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "编辑",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "删除",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "新增单位",
+      "write_guard": "readonly-material-unit-create",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "编辑",
+      "write_guard": "readonly-material-unit-edit",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "停用",
+      "write_guard": "readonly-material-unit-disable",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-material-unit-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "编辑",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "停用",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "选用",
+      "write_guard": "readonly-gallery-choose",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "上传",
+      "write_guard": "readonly-gallery-upload",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "编辑",
+      "write_guard": "readonly-gallery-edit",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "删除",
+      "write_guard": "readonly-gallery-delete",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "选用",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "上传",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "编辑",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "删除",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "生成采购",
+      "write_guard": "readonly-purchase-generate",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "确认",
+      "write_guard": "readonly-purchase-confirm",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "取消",
+      "write_guard": "readonly-purchase-cancel",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "readonly-purchase-export",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "生成采购",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "确认",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "取消",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    },
+    {
+      "text": "导出",
+      "write_guard": "dev-cand-005:readonly-disabled",
+      "disabled": true,
+      "guard_state": ""
+    }
+  ],
+  "disabled_or_guarded_count": 92,
+  "detail_drawer_write_guard_observed": true
+}

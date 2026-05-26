@@ -1,0 +1,42 @@
+{
+  "routes": [
+    {
+      "source": "/bom/list",
+      "final_url": "http://127.0.0.1:5188/bom/list",
+      "pass": true
+    },
+    {
+      "source": "/material/materialFabric",
+      "expected_parity": "material-fabric",
+      "final_url": "http://127.0.0.1:5188/bom/list?parity=material-fabric",
+      "final_path": "/bom/list",
+      "final_parity": "material-fabric",
+      "pass": true
+    },
+    {
+      "source": "/goodsPlan/materialSamples",
+      "expected_parity": "goodsplan-material-samples",
+      "final_url": "http://127.0.0.1:5188/bom/list?parity=goodsplan-material-samples",
+      "final_path": "/bom/list",
+      "final_parity": "goodsplan-material-samples",
+      "pass": true
+    },
+    {
+      "source": "/goodsPlan/goodsPlanProcess",
+      "expected_parity": "goodsplan-material-samples",
+      "final_url": "http://127.0.0.1:5188/bom/list?parity=goodsplan-material-samples",
+      "final_path": "/bom/list",
+      "final_parity": "goodsplan-material-samples",
+      "pass": true
+    },
+    {
+      "source": "/product/product",
+      "expected_parity": "product-style",
+      "final_url": "http://127.0.0.1:5188/bom/list?parity=product-style",
+      "final_path": "/bom/list",
+      "final_parity": "product-style",
+      "pass": true
+    }
+  ],
+  "routes_passed": true
+}

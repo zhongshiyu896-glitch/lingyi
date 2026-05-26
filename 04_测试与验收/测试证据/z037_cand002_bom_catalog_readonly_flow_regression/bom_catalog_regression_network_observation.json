@@ -1,0 +1,353 @@
+{
+  "api_requests": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/bom.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/fabrics?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/accessories-packaging?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/processing-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing-inbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-deduction?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-sales-outbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-units?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-gallery?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/purchase-orders?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/101"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/bom.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/fabrics?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/accessories-packaging?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/processing-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing-inbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-deduction?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-sales-outbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-units?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-gallery?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/purchase-orders?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/bom.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/fabrics?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/accessories-packaging?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/processing-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing-inbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-deduction?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-sales-outbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-units?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-gallery?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/purchase-orders?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/bom.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/fabrics?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/accessories-packaging?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/processing-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing-inbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-deduction?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-sales-outbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-units?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-gallery?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/purchase-orders?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/bom.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/fabrics?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/accessories-packaging?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/processing-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-processing-inbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-deduction?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-sales-outbound?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-types?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-units?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/material-gallery?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5188/api/bom/purchase-orders?page=1&page_size=20"
+    }
+  ],
+  "write_requests": [],
+  "auth_401_count": 0,
+  "console_errors": [],
+  "write_requests_observed_count": 0,
+  "readonly_fallback_risk": false
+}

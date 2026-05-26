@@ -1,0 +1,37 @@
+{
+  "task_id": "TASK-Z037B-13-LEDGER-CAND002",
+  "role": "B Engineer",
+  "cycle_id": "Z037",
+  "candidate_id": "Z037-CAND-002",
+  "evidence_only": false,
+  "source_chain": "B10 boundary -> B11 IMPL -> B12 REGRESSION -> B13 ledger",
+  "ledger_file": "03_需求与设计/02_开发计划/task_z037b_13_cand002_ledger.json",
+  "ledger_total": 72,
+  "yes_count": 24,
+  "no_count": 48,
+  "yes_no_intersection": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/bom/BomList.vue"
+  ],
+  "backend_yes_paths": [],
+  "ignored_yes_paths": [],
+  "screenshots_in_yes": [
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow/bom_catalog_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_fullpage.png"
+  ],
+  "runtime_evidence_in_yes": [
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow/bom_catalog_guarded_write_controls.json",
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow/bom_catalog_network_observation.json",
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow/bom_catalog_route_parity_evidence.json",
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow/bom_catalog_runtime_dom_evidence.json",
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_dom_evidence.json",
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_guarded_write_controls.json",
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_network_observation.json",
+    "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_route_parity_evidence.json"
+  ],
+  "forbidden_paths_in_yes": [],
+  "auth_401_count": 0,
+  "write_requests_observed_count": 0,
+  "next_task": "TASK-Z037B-14-STAGE-CAND002",
+  "run_this_task": false
+}

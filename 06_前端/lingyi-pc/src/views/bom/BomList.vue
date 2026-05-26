@@ -25,11 +25,12 @@
           </el-button>
           <el-button :disabled="!canRead" data-testid="bom-main-reset-button" @click="resetMainQuery">重置</el-button>
           <el-button
-            v-if="canCreate"
+            v-if="canRead"
             disabled
             data-action-type="write"
-            data-write-guard="permission:create(v-if)"
-            data-guard-state="dev_cand_005_disabled"
+            data-write-guard="readonly-bom-create"
+            data-guard-state="guarded_readonly"
+            :data-permission-create="canCreate ? 'permitted' : 'readonly-fallback'"
             data-testid="bom-main-create-guarded-button"
             @click="goCreate"
           >
@@ -49,6 +50,66 @@
           :closable="false"
           data-testid="bom-parity-hint"
         />
+
+        <section
+          class="bom-readonly-write-guard"
+          data-testid="bom-readonly-write-guard"
+          data-write-guard="readonly-bom-catalog"
+          data-guard-state="guarded_readonly"
+          aria-label="BOM主列表与物料目录只读写入口保护"
+        >
+          <div>
+            <p class="bom-readonly-guard-eyebrow">Z037-CAND-002 readonly boundary</p>
+            <strong>写入口保持只读保护</strong>
+          </div>
+          <div class="bom-readonly-guard-actions">
+            <el-tag
+              type="danger"
+              effect="plain"
+              data-action-type="write"
+              data-write-guard="readonly-bom-create"
+              data-guard-state="guarded_readonly"
+            >
+              新建 BOM
+            </el-tag>
+            <el-tag
+              type="warning"
+              effect="plain"
+              data-action-type="write"
+              data-write-guard="readonly-material-select"
+              data-guard-state="guarded_readonly"
+            >
+              选用
+            </el-tag>
+            <el-tag
+              type="warning"
+              effect="plain"
+              data-action-type="write"
+              data-write-guard="readonly-material-upload"
+              data-guard-state="guarded_readonly"
+            >
+              上传
+            </el-tag>
+            <el-tag
+              type="info"
+              effect="plain"
+              data-action-type="write"
+              data-write-guard="readonly-bom-export"
+              data-guard-state="guarded_readonly"
+            >
+              导出
+            </el-tag>
+            <el-tag
+              type="danger"
+              effect="plain"
+              data-action-type="write"
+              data-write-guard="readonly-detail-drawer"
+              data-guard-state="guarded_readonly"
+            >
+              详情抽屉写入口
+            </el-tag>
+          </div>
+        </section>
 
         <section
           v-if="isProductStyleParity"
@@ -253,6 +314,16 @@
           data-testid="bom-main-detail-drawer"
         >
           <div v-loading="bomDetailLoading" class="bom-detail-readonly-panel">
+            <el-alert
+              class="bom-detail-write-guard-alert"
+              title="详情抽屉仅开放只读查看，保存、发布、删除等写入口不在本页执行。"
+              type="warning"
+              show-icon
+              :closable="false"
+              data-action-type="write"
+              data-write-guard="readonly-detail-drawer"
+              data-guard-state="guarded_readonly"
+            />
             <el-alert
               v-if="bomDetailError"
               class="bom-detail-error-alert"
@@ -3074,6 +3145,31 @@ onMounted(async () => {
   color: var(--el-text-color-secondary);
 }
 
+.bom-readonly-write-guard {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 8px;
+  background: var(--el-fill-color-lighter);
+}
+
+.bom-readonly-guard-eyebrow {
+  margin: 0 0 4px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.bom-readonly-guard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .gallery-thumb {
   width: 52px;
   height: 52px;
@@ -3256,6 +3352,10 @@ onMounted(async () => {
 }
 
 .bom-detail-error-alert {
+  margin-bottom: 4px;
+}
+
+.bom-detail-write-guard-alert {
   margin-bottom: 4px;
 }
 

@@ -1,0 +1,31 @@
+field	value
+task_id	TASK-Z037B-13-LEDGER-CAND002
+role	B Engineer
+cycle_id	Z037
+candidate_id	Z037-CAND-002
+evidence_only	false
+source_chain	B10 boundary -> B11 IMPL -> B12 REGRESSION -> B13 ledger
+ledger_total	72
+yes_count	24
+no_count	48
+yes_no_intersection	[]
+frontend_yes_paths	06_前端/lingyi-pc/src/views/bom/BomList.vue
+backend_yes_paths	[]
+ignored_yes_paths	[]
+screenshots_in_yes	B11 bom_catalog_runtime_fullpage.png; B12 bom_catalog_regression_fullpage.png
+runtime_evidence_in_yes	B11 route/dom/guard/network; B12 route/dom/guard/network
+forbidden_paths_in_yes	[]
+auth_401_count	0
+write_requests_observed_count	0
+guarded_readonly	true
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+typecheck_exit_code	0
+guarded_readonly_not_write_success	true
+prior_readonly_fallback_risks	true
+B28_shell_wrapper_anomaly	true
+Z033_skipped_only	true
+Z035_screenshot_missing_risk	true
+next_task	TASK-Z037B-14-STAGE-CAND002
+run_this_task	false

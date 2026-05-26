@@ -1,0 +1,24 @@
+key	value
+task_id	TASK-Z037B-12-REGRESSION-CAND002
+role	B Engineer
+candidate_id	Z037-CAND-002
+head	3da11d1edb746a879d0d3777132cc578544d7616
+result	PASS
+code_modified_in_this_task	false
+changed_files_observed	06_前端/lingyi-pc/src/views/bom/BomList.vue
+bom_detail_touched	false
+routes_verified	/bom/list PASS; /material/materialFabric PASS; /goodsPlan/materialSamples PASS; /goodsPlan/goodsPlanProcess PASS; /product/product PASS
+anchors_observed	8/8
+screenshot	04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_fullpage.png
+screenshot_dimensions	1440x3621 PNG
+runtime_dom_evidence	04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_dom_evidence.json
+guarded_write_controls	新建 BOM; 选用; 上传; 导出; 详情抽屉写入口 guarded_readonly
+typecheck_command	npm run typecheck
+typecheck_exit_code	0
+auth_401_count	0
+write_requests_observed_count	0
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+next_task	TASK-Z037B-13-LEDGER-CAND002
+run_this_task	false

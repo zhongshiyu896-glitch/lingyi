@@ -1,0 +1,96 @@
+{
+  "task_id": "TASK-Z037B-12-REGRESSION-CAND002",
+  "role": "B Engineer",
+  "candidate_id": "Z037-CAND-002",
+  "source_task": "TASK-Z037B-11-IMPL",
+  "head": "3da11d1edb746a879d0d3777132cc578544d7616",
+  "result": "PASS",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/bom/BomList.vue"
+  ],
+  "api_bom_forced_into_changed_files": false,
+  "bom_detail_touched": false,
+  "backend_changed": false,
+  "backend_api_added": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_z036_committed_product_paths_touched": false,
+  "routes_verified": {
+    "/bom/list": "PASS",
+    "/material/materialFabric": "PASS",
+    "/goodsPlan/materialSamples": "PASS",
+    "/goodsPlan/goodsPlanProcess": "PASS",
+    "/product/product": "PASS"
+  },
+  "redirect_or_parity_routes": [
+    {
+      "source": "/material/materialFabric",
+      "final": "/bom/list?parity=material-fabric",
+      "pass": true
+    },
+    {
+      "source": "/goodsPlan/materialSamples",
+      "final": "/bom/list?parity=goodsplan-material-samples",
+      "pass": true
+    },
+    {
+      "source": "/goodsPlan/goodsPlanProcess",
+      "final": "/bom/list?parity=goodsplan-material-samples",
+      "pass": true
+    },
+    {
+      "source": "/product/product",
+      "final": "/bom/list?parity=product-style",
+      "pass": true
+    }
+  ],
+  "anchors_observed": {
+    "bom-main-list-section": true,
+    "bom-main-list-filters": true,
+    "bom-main-table": true,
+    "bom-fabric-section": true,
+    "bom-accessories-section": true,
+    "bom-processing-type-section": true,
+    "bom-main-create-guarded-button": true,
+    "bom-readonly-write-guard": true
+  },
+  "anchors_observed_count": 8,
+  "anchors_required_count": 8,
+  "screenshot": "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_fullpage.png",
+  "screenshot_dimensions": "1440x3621 PNG",
+  "screenshot_skip_reason": null,
+  "runtime_dom_evidence": "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_dom_evidence.json",
+  "route_evidence": "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_route_parity_evidence.json",
+  "guarded_write_control_evidence": "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_guarded_write_controls.json",
+  "network_observation_evidence": "04_测试与验收/测试证据/z037_cand002_bom_catalog_readonly_flow_regression/bom_catalog_regression_network_observation.json",
+  "guarded_write_controls": {
+    "新建 BOM": "disabled + data-write-guard=readonly-bom-create",
+    "选用": "disabled/data-write-guard",
+    "上传": "disabled/data-write-guard",
+    "导出": "disabled/data-write-guard",
+    "详情抽屉写入口": "data-write-guard=readonly-detail-drawer + guarded_readonly"
+  },
+  "auth_401_count": 0,
+  "write_requests_observed_count": 0,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "vue-tsc --noEmit -p tsconfig.json PASS",
+  "prior_readonly_fallback_risks": "preserved",
+  "guarded_readonly_not_write_success": true,
+  "B28_shell_wrapper_anomaly": "preserved",
+  "Z033_skipped_only": "preserved",
+  "Z035_screenshot_missing_risk": true,
+  "stage_commit_push": false,
+  "pr_tag_release": false,
+  "cleanup_reset_restore_clean_delete": false,
+  "remote_lifecycle_released": false,
+  "next_task": "TASK-Z037B-13-LEDGER-CAND002",
+  "run_this_task": false
+}

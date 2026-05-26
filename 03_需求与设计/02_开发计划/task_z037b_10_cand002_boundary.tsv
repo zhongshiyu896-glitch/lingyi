@@ -1,0 +1,38 @@
+field	value
+task_id	TASK-Z037B-10-PREP
+role	B Engineer
+source_task	TASK-Z037B-09-PREP
+cycle_id	Z037
+candidate_id	Z037-CAND-002
+title	BOM 主列表与物料目录只读可见流
+page_scope	BOM / 物料目录
+routes	/bom/list,/material/materialFabric,/goodsPlan/materialSamples,/goodsPlan/goodsPlanProcess,/product/product
+read_only	true
+backend_allowed	false
+head	3da11d1edb746a879d0d3777132cc578544d7616
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+allowed_files	06_前端/lingyi-pc/src/views/bom/BomList.vue;06_前端/lingyi-pc/src/api/bom.ts
+allowed_files_exist	true
+allowed_files_dirty	false
+bom_detail_excluded	true
+routes_located	true
+route_static_check	/bom/list component BomList.vue; parity routes redirect to /bom/list
+anchors_required	bom-main-list-section,bom-main-list-filters,bom-main-table,bom-fabric-section,bom-accessories-section,bom-processing-type-section,bom-main-create-guarded-button,bom-readonly-write-guard
+write_entries_guard_required	新建 BOM,选用,上传,导出,详情抽屉写入口
+pure_static_fallback_allowed	false
+intersections_with_historical_dirty	[]
+intersections_with_log_control_dirty	[]
+intersections_with_residual_artifacts	[]
+intersections_with_z035_z036_committed_product_paths	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+prior_readonly_fallback_risks	true
+guarded_readonly_not_write_success	true
+B28_shell_wrapper_anomaly	true
+Z033_skipped_only	true
+Z035_screenshot_missing_risk	true
+remote_lifecycle_parked	true
+next_task	TASK-Z037B-11-IMPL
+run_this_task	false
