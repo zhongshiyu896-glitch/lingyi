@@ -1,0 +1,114 @@
+{
+  "task_id": "TASK-Z038B-12-REGRESSION-CAND002",
+  "candidate_id": "Z038-CAND-002",
+  "route": "/workshop/tickets/batch",
+  "target_url": "http://127.0.0.1:5179/workshop/tickets/batch",
+  "final_url": "http://127.0.0.1:5179/workshop/tickets/batch",
+  "route_status": 200,
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z038_cand002_workshop_ticket_batch_preview_regression/workshop_ticket_batch_regression_fullpage.png",
+    "width": 1440,
+    "height": 1200,
+    "format": "png"
+  },
+  "anchors_required": [
+    "workshop-ticket-batch-page",
+    "workshop-ticket-batch-json-input",
+    "workshop-ticket-batch-actions",
+    "workshop-ticket-batch-parse-button",
+    "workshop-ticket-batch-submit-button",
+    "workshop-ticket-batch-permission-or-disabled-state",
+    "workshop-ticket-batch-readonly-preview",
+    "workshop-ticket-batch-failed-items-table"
+  ],
+  "anchors_observed": [
+    "workshop-ticket-batch-page",
+    "workshop-ticket-batch-json-input",
+    "workshop-ticket-batch-actions",
+    "workshop-ticket-batch-parse-button",
+    "workshop-ticket-batch-submit-button",
+    "workshop-ticket-batch-permission-or-disabled-state",
+    "workshop-ticket-batch-readonly-preview",
+    "workshop-ticket-batch-failed-items-table"
+  ],
+  "anchors_observed_count": 8,
+  "anchors": {
+    "workshop-ticket-batch-page": {
+      "observed": true,
+      "text": "工票批量导入返回列表请粘贴 JSON 数组，每行对象包含 ticket_key/job_card/employee/process_name/qty/work_date 等字段。 解析预览  批量导入只读预览 检测到 1 条校验失败记录，请先修正后再尝试只读预览。当前账号无批量导入权限，写动作已保持只读 guard。总行数2可预览1校验失败1行号类型ticket_keyjob_cardemployeeqty1registerZ003-WORKSHOP-TICKET-20260"
+    },
+    "workshop-ticket-batch-json-input": {
+      "observed": true,
+      "text": ""
+    },
+    "workshop-ticket-batch-actions": {
+      "observed": true,
+      "text": "解析预览  批量导入只读预览"
+    },
+    "workshop-ticket-batch-parse-button": {
+      "observed": true,
+      "text": "解析预览"
+    },
+    "workshop-ticket-batch-submit-button": {
+      "observed": true,
+      "text": "批量导入只读预览"
+    },
+    "workshop-ticket-batch-permission-or-disabled-state": {
+      "observed": true,
+      "text": "当前账号无批量导入权限，写动作已保持只读 guard。"
+    },
+    "workshop-ticket-batch-readonly-preview": {
+      "observed": true,
+      "text": "总行数2可预览1校验失败1"
+    },
+    "workshop-ticket-batch-failed-items-table": {
+      "observed": true,
+      "text": "行号ticket_key结果码校验说明2Z003-WORKSHOP-TICKET-20260527-012-TK-002LOCAL_VALIDATION_MISSING_FIELDS缺少字段：job_card, employee"
+    }
+  },
+  "visible_page_elements": {
+    "hasJsonInput": true,
+    "hasParseAction": true,
+    "hasPreviewTable": true,
+    "hasFailedItems": true,
+    "hasGuardedSubmit": true
+  },
+  "guarded_write_controls": {
+    "submit_button": {
+      "text": "批量导入只读预览",
+      "disabled": false,
+      "dataWriteGuard": "guarded:workshop-ticket-batch-readonly",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataGuardState": "guarded-readonly"
+    },
+    "failed_retry_button": {
+      "text": "导入失败重试入口",
+      "disabled": false,
+      "dataWriteGuard": "guarded:workshop-ticket-batch-failed-retry-readonly",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false"
+    },
+    "submit_phase": {
+      "guardedFeedbackText": "当前账号无批量导入权限，且 Z038 只读边界已拦截写请求。",
+      "readbackHintText": "只读边界已拦截批量导入，request_id=Z003-WORKSHOP-TICKET-20260527-012-RW-B-C4A-AAF-C4A-852-10C-0D1，scenario_tag=Z003-WORKSHOP-TICKET-20260527-012，未发起 /api/workshop/tickets/batch 写请求。",
+      "receiptText": "只读预览：可提交 1 条，失败 0 条；未发送批量导入请求。"
+    }
+  },
+  "network_observation": {
+    "auth_401_count": 1,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "batch_write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false,
+    "write_requests": [],
+    "auth_401_urls": [
+      "http://127.0.0.1:5179/api/auth/me"
+    ]
+  },
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "pure_static_fallback_used": false
+}

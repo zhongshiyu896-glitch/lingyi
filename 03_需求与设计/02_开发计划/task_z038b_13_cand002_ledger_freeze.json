@@ -1,0 +1,53 @@
+{
+  "freeze_status": "READY_FOR_REVIEW",
+  "task_id": "TASK-Z038B-13-LEDGER-CAND002",
+  "candidate_id": "Z038-CAND-002",
+  "evidence_only": false,
+  "source_chain": [
+    "TASK-Z038B-10-PREP",
+    "TASK-Z038B-11-IMPL",
+    "TASK-Z038B-12-REGRESSION",
+    "TASK-Z038B-13-LEDGER"
+  ],
+  "ledger_counts": {
+    "ledger_total": 38,
+    "yes_count": 18,
+    "no_count": 20
+  },
+  "ledger_integrity": {
+    "yes_no_intersection": [],
+    "yes_files_exist": true,
+    "yes_missing_files": [],
+    "ignored_yes_paths": [],
+    "frontend_yes_paths": [
+      "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"
+    ],
+    "backend_yes_paths": [],
+    "forbidden_paths_in_yes": []
+  },
+  "runtime_contract": {
+    "route": "/workshop/tickets/batch",
+    "route_status": 200,
+    "screenshots_png_1440x1200": true,
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true,
+    "guarded_write_controls": [
+      "guarded:workshop-ticket-batch-readonly",
+      "guarded:workshop-ticket-batch-failed-retry-readonly",
+      "dataReadonlyBoundary=true",
+      "dataWriteRequestSuccessAllowed=false"
+    ],
+    "auth_401_count": 1,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false,
+    "typecheck_exit_code": 0,
+    "read_only_boundary_preserved": true,
+    "real_write_action_added": false,
+    "backend_api_added": false
+  },
+  "next_task": "TASK-Z038B-14-STAGE-CAND002",
+  "run_this_task": false,
+  "remote_lifecycle_parked": true
+}

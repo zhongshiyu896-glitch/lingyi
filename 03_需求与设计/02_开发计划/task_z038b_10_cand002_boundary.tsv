@@ -1,0 +1,32 @@
+field	value
+task_id	TASK-Z038B-10-PREP
+role	B Engineer
+source_task	TASK-Z038B-09-PREP
+candidate_id	Z038-CAND-002
+boundary_status	FROZEN_PREP_ONLY
+title	车间工票批量导入只读预览流
+route	/workshop/tickets/batch
+read_only	true
+backend_allowed	false
+allowed_files	06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue;06_前端/lingyi-pc/src/api/workshop.ts
+allowed_files_exist	true
+allowed_files_dirty	false
+router_source_located	true
+required_anchors	workshop-ticket-batch-page;workshop-ticket-batch-json-input;workshop-ticket-batch-actions;workshop-ticket-batch-parse-button;workshop-ticket-batch-submit-button;workshop-ticket-batch-permission-or-disabled-state;workshop-ticket-batch-readonly-preview;workshop-ticket-batch-failed-items-table
+guarded_write_entries	批量导入;解析后提交;导入失败重试入口
+write_request_success_allowed	false
+auth_401_handling	readonly fallback risk only; must not be treated as permission pass or write success
+evidence_requirement	截图;运行态DOM anchors;guarded/readonly state;write request observation
+pure_static_fallback_allowed	false
+dirty_intersections	{"historical_product_test_dirty":[],"log_control_dirty":[],"z034_residual_artifacts":[],"z035_z036_z037_committed_product_paths":[]}
+unknown_dirty	[]
+must_block_before_continue	[]
+next_task	TASK-Z038B-11-IMPL
+run_this_task	false
+code_edits	false
+tests_browser_typecheck	false
+stage_commit_push	false
+cleanup_reset_restore	false
+implementation_started	false
+remote_lifecycle	false
+next_role	C Auditor

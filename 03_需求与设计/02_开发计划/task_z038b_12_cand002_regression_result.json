@@ -1,0 +1,101 @@
+{
+  "status": "READY_FOR_REVIEW",
+  "task_id": "TASK-Z038B-12-REGRESSION-CAND002",
+  "role": "B Engineer",
+  "candidate_id": "Z038-CAND-002",
+  "source_task": "TASK-Z038B-11-IMPL",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"
+  ],
+  "allowed_candidate_diff_scope": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue",
+    "06_前端/lingyi-pc/src/api/workshop.ts"
+  ],
+  "api_workshop_changed": false,
+  "route": "/workshop/tickets/batch",
+  "route_status": 200,
+  "page_visible_elements": {
+    "json_input": true,
+    "parse_action": true,
+    "preview_table": true,
+    "failed_items": true,
+    "guarded_batch_import_entry": true
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z038_cand002_workshop_ticket_batch_preview_regression/workshop_ticket_batch_regression_fullpage.png",
+    "width": 1440,
+    "height": 1200,
+    "format": "png"
+  },
+  "runtime_dom_evidence": "04_测试与验收/测试证据/z038_cand002_workshop_ticket_batch_preview_regression/workshop_ticket_batch_regression_dom_guard_network.json",
+  "anchors_required": [
+    "workshop-ticket-batch-page",
+    "workshop-ticket-batch-json-input",
+    "workshop-ticket-batch-actions",
+    "workshop-ticket-batch-parse-button",
+    "workshop-ticket-batch-submit-button",
+    "workshop-ticket-batch-permission-or-disabled-state",
+    "workshop-ticket-batch-readonly-preview",
+    "workshop-ticket-batch-failed-items-table"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_observed": {
+    "workshop-ticket-batch-page": true,
+    "workshop-ticket-batch-json-input": true,
+    "workshop-ticket-batch-actions": true,
+    "workshop-ticket-batch-parse-button": true,
+    "workshop-ticket-batch-submit-button": true,
+    "workshop-ticket-batch-permission-or-disabled-state": true,
+    "workshop-ticket-batch-readonly-preview": true,
+    "workshop-ticket-batch-failed-items-table": true
+  },
+  "guarded_write_controls": {
+    "submit_button": {
+      "dataWriteGuard": "guarded:workshop-ticket-batch-readonly",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataGuardState": "guarded-readonly"
+    },
+    "failed_retry_button": {
+      "dataWriteGuard": "guarded:workshop-ticket-batch-failed-retry-readonly",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false"
+    }
+  },
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "batch_write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "worktree_check_command": "git diff --check",
+  "worktree_check_pass": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "risk_fields_preserved": {
+    "z038_cand002_current_readonly_fallback_risk": "auth_401_count=1, runtime_readonly_fallback_risk=true",
+    "z038_cand001_readonly_fallback_risk": "auth_401_count=1, runtime_readonly_fallback_risk=true",
+    "prior_readonly_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true
+  },
+  "forbidden_actions": {
+    "code_edits": false,
+    "backend_edits": false,
+    "candidate_pool_edits": false,
+    "stage_commit_push": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle": false
+  },
+  "next_role": "C Auditor"
+}
