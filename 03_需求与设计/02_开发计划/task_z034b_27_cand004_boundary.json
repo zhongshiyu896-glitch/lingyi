@@ -1,0 +1,75 @@
+{
+  "cycle_id": "Z034",
+  "source_task": "TASK-Z034B-26-PREP",
+  "candidate_id": "Z034-CAND-004",
+  "current_head": "0869d7a5bf4667cb756a18c281d618c7653cb026",
+  "candidate_original_fields": {
+    "candidate_id": "Z034-CAND-004",
+    "workdir": "07_后端/lingyi_service",
+    "command": ".venv/bin/python -m pytest tests/test_style_profit_source_collector.py -q",
+    "target_test": "07_后端/lingyi_service/tests/test_style_profit_source_collector.py",
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_style_profit_source_collector.py"
+    ],
+    "source_evidence_missing": [],
+    "reused_from_Z015_Z033": false,
+    "rationale": "Clean single-file backend pytest target outside Z015-Z033 selected target scan; focuses on style profit source collection evidence."
+  },
+  "frozen_workdir": "07_后端/lingyi_service",
+  "frozen_command": ".venv/bin/python -m pytest tests/test_style_profit_source_collector.py -q",
+  "target_test": "07_后端/lingyi_service/tests/test_style_profit_source_collector.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence": [
+    "07_后端/lingyi_service/tests/test_style_profit_source_collector.py"
+  ],
+  "source_evidence_missing": [],
+  "reuse_check": {
+    "reused_from_Z015_Z033": false
+  },
+  "archived_candidates": [
+    {
+      "candidate_id": "Z034-CAND-001",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "a9768a57aceffedde0b2004cacaf498c2fe7c953"
+    },
+    {
+      "candidate_id": "Z034-CAND-002",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "71645918ca1ccf2a60b497fa7b4e73e4832ea707"
+    },
+    {
+      "candidate_id": "Z034-CAND-003",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "0869d7a5bf4667cb756a18c281d618c7653cb026"
+    }
+  ],
+  "historical_dirty_forbidden_staged": [],
+  "log_control_dirty_staged": [],
+  "previous_cycle_notes": [
+    {
+      "candidate_id": "Z033-CAND-003",
+      "skipped_only_evidence": true,
+      "actual_passed_count": 0,
+      "skipped_count": 4,
+      "risk_note": "Z033-CAND-003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."
+    }
+  ],
+  "z033_cand003_skipped_only_risk_preserved": true,
+  "stage/commit/push/tag/PR/release": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback/go_live/project_completion": false,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z034B-28-IMPL",
+  "run_this_task": false
+}
