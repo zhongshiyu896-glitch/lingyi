@@ -1,0 +1,5 @@
+case_name	observed	expected	assertion_location	difference_summary
+tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_collector_fail_closed_writes_operation_audit_failure	HTTP 409	HTTP 503	tests/test_style_profit_api_audit.py:165	Observed response.status_code 409, expected 503.
+tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_failure_writes_operation_audit_failure	HTTP 409	HTTP 400	tests/test_style_profit_api_audit.py:199	Observed response.status_code 409, expected 400.
+tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_rejected_client_source_rows_writes_operation_audit_failure	HTTP 409	HTTP 400	tests/test_style_profit_api_audit.py:131	Observed response.status_code 409, expected 400.
+tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_success_writes_operation_audit	HTTP 409	HTTP 200	tests/test_style_profit_api_audit.py:42	Observed response.status_code 409, expected 200.

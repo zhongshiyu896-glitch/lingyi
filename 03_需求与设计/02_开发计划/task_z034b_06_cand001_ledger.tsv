@@ -1,0 +1,54 @@
+path	decision	reason
+07_后端/lingyi_service/tests/test_style_profit_api_audit.py	YES	Z034-CAND-001 only allowed backend test path and B05 FIX changed file
+03_需求与设计/02_开发计划/TASK-Z034B-02-PREP_CAND001_边界冻结报告.md	YES	B02 boundary evidence
+03_需求与设计/02_开发计划/task_z034b_02_cand001_boundary.json	YES	B02 boundary evidence
+03_需求与设计/02_开发计划/task_z034b_02_cand001_boundary.tsv	YES	B02 boundary evidence
+03_需求与设计/02_开发计划/TASK-Z034B-03-IMPL_CAND001_单文件验证报告.md	YES	B03 FAIL evidence
+03_需求与设计/02_开发计划/task_z034b_03_cand001_result.json	YES	B03 FAIL evidence
+03_需求与设计/02_开发计划/task_z034b_03_cand001_result.tsv	YES	B03 FAIL evidence
+03_需求与设计/02_开发计划/task_z034b_03_cand001_stdout.txt	YES	B03 FAIL stdout evidence
+03_需求与设计/02_开发计划/TASK-Z034B-04-PREP-CAND001-FAILURE-DIAG_失败定位边界报告.md	YES	B04 failure boundary evidence
+03_需求与设计/02_开发计划/task_z034b_04_cand001_failure_boundary.json	YES	B04 failure boundary evidence
+03_需求与设计/02_开发计划/task_z034b_04_cand001_failure_boundary.tsv	YES	B04 failure boundary evidence
+03_需求与设计/02_开发计划/TASK-Z034B-05-DIRTY-ATTRIBUTION_只读脏区归因报告.md	YES	B05 dirty attribution evidence
+03_需求与设计/02_开发计划/task_z034b_05_dirty_attribution.json	YES	B05 dirty attribution evidence
+03_需求与设计/02_开发计划/task_z034b_05_dirty_attribution.tsv	YES	B05 dirty attribution evidence
+03_需求与设计/02_开发计划/TASK-Z034B-05-FIX-CAND001_修复验证报告.md	YES	B05 FIX PASS evidence
+03_需求与设计/02_开发计划/task_z034b_05_cand001_fix_result.json	YES	B05 FIX PASS evidence
+03_需求与设计/02_开发计划/task_z034b_05_cand001_fix_result.tsv	YES	B05 FIX PASS evidence
+03_需求与设计/02_开发计划/task_z034b_05_cand001_fix_stdout.txt	YES	B05 FIX stdout evidence
+03_需求与设计/02_开发计划/TASK-Z034B-06-LEDGER-CAND001_账本冻结报告.md	YES	B06 ledger evidence
+03_需求与设计/02_开发计划/task_z034b_06_cand001_ledger_freeze.json	YES	B06 ledger evidence
+03_需求与设计/02_开发计划/task_z034b_06_cand001_ledger.json	YES	B06 ledger evidence
+03_需求与设计/02_开发计划/task_z034b_06_cand001_ledger.tsv	YES	B06 ledger evidence
+06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/app/schemas/report.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/app/services/report_catalog_service.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/app/services/system_config_catalog_service.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/tests/test_bom_permissions.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/tests/test_logging_sanitization.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/tests/test_request_id_sanitization.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/tests/test_style_profit_api.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/tests/test_subcontract_company_permission.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+07_后端/lingyi_service/tests/test_workshop_permissions.py	NO	historical_dirty_forbidden allowed_in_next_ledger=false
+00_交接与日志/HANDOVER_STATUS.md	NO	log/control dirty not product/test attribution
+03_需求与设计/01_架构设计/架构师会话日志.md	NO	log/control dirty not product/test attribution
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	log/control dirty not product/test attribution
+03_需求与设计/02_开发计划/TASK-Z034B-01-PREP_候选池重建报告.md	NO	candidate pool excluded from CAND001 commit ledger
+03_需求与设计/02_开发计划/task_z034b_01_candidate_pool.json	NO	candidate pool excluded from CAND001 commit ledger
+03_需求与设计/02_开发计划/task_z034b_01_candidate_pool.tsv	NO	candidate pool excluded from CAND001 commit ledger
+07_后端/lingyi_service/tests/test_style_profit_api_permissions.py	NO	CAND002 target test excluded
+07_后端/lingyi_service/tests/test_style_profit_service.py	NO	CAND003 target test excluded
+07_后端/lingyi_service/tests/test_style_profit_source_collector.py	NO	CAND004 target test excluded
+07_后端/lingyi_service/tests/test_style_profit_subcontract_bridge.py	NO	CAND005 target test excluded
+07_后端/lingyi_service/app	NO	backend app excluded
+06_前端	NO	frontend excluded
+07_后端/lingyi_service/.pytest_cache	NO	runtime/cache excluded
+07_后端/lingyi_service/__pycache__	NO	runtime/cache excluded
+07_后端/lingyi_service/pytest_cache	NO	runtime/cache excluded

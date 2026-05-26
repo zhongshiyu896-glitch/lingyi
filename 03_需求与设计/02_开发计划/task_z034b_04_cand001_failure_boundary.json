@@ -1,0 +1,75 @@
+{
+  "cycle_id": "Z034",
+  "candidate_id": "Z034-CAND-001",
+  "source_task": "TASK-Z034B-03-IMPL",
+  "current_head": "6bc20b833e3780e2bd10549a2ce906ee860941cb",
+  "failed_result_task": "TASK-Z034B-03-IMPL",
+  "failed_cases_count": 4,
+  "failed_cases": [
+    {
+      "case_name": "tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_collector_fail_closed_writes_operation_audit_failure",
+      "observed": "HTTP 409",
+      "expected": "HTTP 503 with STYLE_PROFIT_SOURCE_UNAVAILABLE audit failure branch",
+      "difference_summary": "Observed response.status_code 409, expected 503.",
+      "assertion_location": "tests/test_style_profit_api_audit.py:165",
+      "key_traceback": "self.assertEqual(response.status_code, 503) -> AssertionError: 409 != 503"
+    },
+    {
+      "case_name": "tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_failure_writes_operation_audit_failure",
+      "observed": "HTTP 409",
+      "expected": "HTTP 400 with STYLE_PROFIT_INVALID_FORMULA_VERSION audit failure branch",
+      "difference_summary": "Observed response.status_code 409, expected 400.",
+      "assertion_location": "tests/test_style_profit_api_audit.py:199",
+      "key_traceback": "self.assertEqual(response.status_code, 400) -> AssertionError: 409 != 400"
+    },
+    {
+      "case_name": "tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_rejected_client_source_rows_writes_operation_audit_failure",
+      "observed": "HTTP 409",
+      "expected": "HTTP 400 with STYLE_PROFIT_CLIENT_SOURCE_FORBIDDEN audit failure branch",
+      "difference_summary": "Observed response.status_code 409, expected 400.",
+      "assertion_location": "tests/test_style_profit_api_audit.py:131",
+      "key_traceback": "self.assertEqual(response.status_code, 400) -> AssertionError: 409 != 400"
+    },
+    {
+      "case_name": "tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_success_writes_operation_audit",
+      "observed": "HTTP 409",
+      "expected": "HTTP 200 success audit branch",
+      "difference_summary": "Observed response.status_code 409, expected 200.",
+      "assertion_location": "tests/test_style_profit_api_audit.py:42",
+      "key_traceback": "self.assertEqual(response.status_code, 200) -> AssertionError: 409 != 200"
+    }
+  ],
+  "failure_pattern_summary": "All four failing create-endpoint audit tests stop at HTTP 409 before reaching their intended success, validation-failure, or source-unavailable audit branches. The shared pattern points to stale test contract/local fixture or idempotency payload isolation drift in the target test, not to a verified backend app defect from this readonly evidence.",
+  "failure_category": "test_contract_drift",
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_style_profit_api_audit.py",
+  "source_evidence": [
+    "07_后端/lingyi_service/tests/test_style_profit_api_audit.py",
+    "03_需求与设计/02_开发计划/task_z034b_03_cand001_result.json",
+    "03_需求与设计/02_开发计划/task_z034b_03_cand001_stdout.txt"
+  ],
+  "source_evidence_missing": [],
+  "target_test": "07_后端/lingyi_service/tests/test_style_profit_api_audit.py",
+  "target_test_dirty_diff": false,
+  "previous_cycle_notes": [
+    {
+      "candidate_id": "Z033-CAND-003",
+      "skipped_only_evidence": true,
+      "actual_passed_count": 0,
+      "skipped_count": 4,
+      "risk_note": "Z033-CAND-003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."
+    }
+  ],
+  "recommended_next_task": "TASK-Z034B-05-FIX-CAND001",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

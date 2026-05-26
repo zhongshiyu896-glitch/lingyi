@@ -1,0 +1,120 @@
+FFFF......                                                               [100%]
+=================================== FAILURES ===================================
+_ StyleProfitApiAuditTest.test_create_collector_fail_closed_writes_operation_audit_failure _
+
+self = <tests.test_style_profit_api_audit.StyleProfitApiAuditTest testMethod=test_create_collector_fail_closed_writes_operation_audit_failure>
+
+    def test_create_collector_fail_closed_writes_operation_audit_failure(self) -> None:
+        payload = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-AUD-CREATE-COLLECTOR-001",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "idempotency_key": "idem-aud-create-collector-fail-closed",
+        }
+        response = self.client.post(
+            "/api/reports/style-profit/snapshots",
+            json=payload,
+            headers=self._headers(role="Finance Manager"),
+        )
+>       self.assertEqual(response.status_code, 503)
+E       AssertionError: 409 != 503
+
+tests/test_style_profit_api_audit.py:165: AssertionError
+__ StyleProfitApiAuditTest.test_create_failure_writes_operation_audit_failure __
+
+self = <tests.test_style_profit_api_audit.StyleProfitApiAuditTest testMethod=test_create_failure_writes_operation_audit_failure>
+
+    def test_create_failure_writes_operation_audit_failure(self) -> None:
+        payload = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-AUD-CREATE-002",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V2",
+            "idempotency_key": "idem-aud-create-failed",
+        }
+        response = self.client.post(
+            "/api/reports/style-profit/snapshots",
+            json=payload,
+            headers=self._headers(),
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 409 != 400
+
+tests/test_style_profit_api_audit.py:199: AssertionError
+_ StyleProfitApiAuditTest.test_create_rejected_client_source_rows_writes_operation_audit_failure _
+
+self = <tests.test_style_profit_api_audit.StyleProfitApiAuditTest testMethod=test_create_rejected_client_source_rows_writes_operation_audit_failure>
+
+    def test_create_rejected_client_source_rows_writes_operation_audit_failure(self) -> None:
+        payload = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-AUD-CREATE-FORBIDDEN-001",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "idempotency_key": "idem-aud-create-forbidden",
+            "sales_order_rows": [{"name": "HACK"}],
+        }
+        response = self.client.post(
+            "/api/reports/style-profit/snapshots",
+            json=payload,
+            headers=self._headers(role="Finance Manager"),
+        )
+>       self.assertEqual(response.status_code, 400)
+E       AssertionError: 409 != 400
+
+tests/test_style_profit_api_audit.py:131: AssertionError
+______ StyleProfitApiAuditTest.test_create_success_writes_operation_audit ______
+
+self = <tests.test_style_profit_api_audit.StyleProfitApiAuditTest testMethod=test_create_success_writes_operation_audit>
+
+    def test_create_success_writes_operation_audit(self) -> None:
+        payload = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-AUD-CREATE-001",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "idempotency_key": "idem-aud-create-success",
+        }
+        with patch.object(
+            StyleProfitApiSourceCollector,
+            "collect",
+            side_effect=lambda *args, **kwargs: self._trusted_request(args[-1]),
+        ):
+            response = self.client.post(
+                "/api/reports/style-profit/snapshots",
+                json=payload,
+                headers=self._headers(),
+            )
+>       self.assertEqual(response.status_code, 200)
+E       AssertionError: 409 != 200
+
+tests/test_style_profit_api_audit.py:42: AssertionError
+=============================== warnings summary ===============================
+tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_collector_fail_closed_writes_operation_audit_failure
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_collector_fail_closed_writes_operation_audit_failure
+FAILED tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_failure_writes_operation_audit_failure
+FAILED tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_rejected_client_source_rows_writes_operation_audit_failure
+FAILED tests/test_style_profit_api_audit.py::StyleProfitApiAuditTest::test_create_success_writes_operation_audit
+4 failed, 6 passed, 1 warning in 1.12s
