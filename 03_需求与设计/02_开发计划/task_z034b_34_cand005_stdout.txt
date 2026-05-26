@@ -1,0 +1,8 @@
+.....                                                                    [100%]
+=============================== warnings summary ===============================
+tests/test_style_profit_subcontract_bridge.py::StyleProfitSubcontractBridgeTest::test_ready_subcontract_with_inspection_bridge_is_included
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+5 passed, 1 warning in 0.38s
