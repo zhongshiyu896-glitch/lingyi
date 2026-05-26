@@ -1,0 +1,75 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-005",
+  "source_task": "TASK-Z035B-34-PREP",
+  "head": "be1bc0235f63da9c50db233d6a9cbeeac128f33f",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue"
+  ],
+  "allowed_files_only": true,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "production_plan_list_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "route_evidence": {
+    "route": "/production/plans/detail",
+    "result": "PASS",
+    "evidence_file": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility/route_evidence.txt"
+  },
+  "dom_anchor_evidence": {
+    "result": "PASS",
+    "anchors": {
+      "production-plan-detail-page": true,
+      "production-plan-detail-main-fields": true,
+      "production-plan-detail-status-tag": true,
+      "production-plan-detail-work-order-mapping": true,
+      "production-plan-detail-material-snapshot-table": true,
+      "production-plan-detail-job-card-table": true,
+      "production-plan-detail-write-entry-status": true,
+      "production-plan-detail-readonly-state": true
+    },
+    "evidence_file": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility/dom_anchor_evidence.txt"
+  },
+  "readonly_guard_evidence": {
+    "result": "PASS",
+    "readOnlyDetailMode": true,
+    "material_check_guarded": true,
+    "create_work_order_guarded": true,
+    "sync_job_cards_guarded": true,
+    "evidence_file": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility/readonly_guard_evidence.txt"
+  },
+  "screenshots": [],
+  "screenshot_skip_reason": "未启动本地前端 dev server；本轮为避免留下后台进程或改动配置，采用 route/source/DOM 静态证据与 npm run typecheck 作为验证证据。",
+  "typecheck": {
+    "workdir": "06_前端/lingyi-pc",
+    "command": "npm run typecheck",
+    "exit_code": 0,
+    "summary": "vue-tsc --noEmit -p tsconfig.json completed without diagnostics.",
+    "command_run_count": 1
+  },
+  "visible_acceptance_goal_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z035B-36-REGRESSION-CAND005",
+  "run_this_task": false
+}

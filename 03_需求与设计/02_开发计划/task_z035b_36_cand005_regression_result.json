@@ -1,0 +1,73 @@
+{
+  "cycle_id": "Z035",
+  "source_task": "TASK-Z035B-35-IMPL",
+  "candidate_id": "Z035-CAND-005",
+  "head": "be1bc0235f63da9c50db233d6a9cbeeac128f33f",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue"
+  ],
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "vue-tsc --noEmit -p tsconfig.json completed without diagnostics.",
+  "route_regression_evidence": {
+    "route": "/production/plans/detail",
+    "result": "PASS",
+    "evidence_file": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility_regression/route_regression_evidence.txt"
+  },
+  "dom_anchor_regression_evidence": {
+    "result": "PASS",
+    "anchors": {
+      "production-plan-detail-page": true,
+      "production-plan-detail-main-fields": true,
+      "production-plan-detail-status-tag": true,
+      "production-plan-detail-work-order-mapping": true,
+      "production-plan-detail-material-snapshot-table": true,
+      "production-plan-detail-job-card-table": true,
+      "production-plan-detail-write-entry-status": true,
+      "production-plan-detail-readonly-state": true
+    },
+    "evidence_file": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility_regression/dom_anchor_regression_evidence.txt"
+  },
+  "readonly_guard_regression_evidence": {
+    "result": "PASS",
+    "readOnlyDetailMode": true,
+    "material_check_guarded": true,
+    "create_work_order_guarded": true,
+    "sync_job_cards_guarded": true,
+    "real_write_action_added": false,
+    "evidence_file": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility_regression/readonly_guard_regression_evidence.txt"
+  },
+  "screenshots": [],
+  "screenshot_skip_reason": "未启动本地前端 dev server；本任务为 regression-only，避免留下后台进程或改动配置，采用 route/source/DOM 静态复核证据与 npm run typecheck。",
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "production_plan_list_changed": false,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z035B-37-LEDGER-CAND005",
+  "run_this_task": false
+}

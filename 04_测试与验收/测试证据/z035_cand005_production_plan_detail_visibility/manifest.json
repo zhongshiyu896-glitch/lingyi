@@ -1,0 +1,28 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-005",
+  "task_id": "TASK-Z035B-35-IMPL",
+  "evidence_dir": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility",
+  "route_evidence": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility/route_evidence.txt",
+  "dom_anchor_evidence": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility/dom_anchor_evidence.txt",
+  "readonly_guard_evidence": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility/readonly_guard_evidence.txt",
+  "typecheck_evidence": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility/typecheck_evidence.txt",
+  "screenshot_skip_reason": "04_测试与验收/测试证据/z035_cand005_production_plan_detail_visibility/screenshot_skip_reason.txt",
+  "route_checked": "/production/plans/detail",
+  "anchors_checked": [
+    "production-plan-detail-page",
+    "production-plan-detail-main-fields",
+    "production-plan-detail-status-tag",
+    "production-plan-detail-work-order-mapping",
+    "production-plan-detail-material-snapshot-table",
+    "production-plan-detail-job-card-table",
+    "production-plan-detail-write-entry-status",
+    "production-plan-detail-readonly-state"
+  ],
+  "typecheck_command": "npm run typecheck",
+  "typecheck_exit_code": 0,
+  "screenshot_files": [],
+  "visible_acceptance_goal_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false
+}

@@ -1,0 +1,27 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-005",
+  "source_task": "TASK-Z035B-36-REGRESSION-CAND005",
+  "freeze_type": "LEDGER_ONLY",
+  "evidence_only": false,
+  "current_head": "be1bc0235f63da9c50db233d6a9cbeeac128f33f",
+  "ledger_source": "03_需求与设计/02_开发计划/task_z035b_37_cand005_ledger.json",
+  "ledger_total": 56,
+  "ledger_yes_count": 26,
+  "ledger_no_count": 30,
+  "yes_no_intersection": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue"
+  ],
+  "backend_yes_paths": [],
+  "production_plan_list_in_yes": [],
+  "historical_dirty_forbidden_in_yes": [],
+  "log_control_dirty_in_yes": [],
+  "residual_artifacts_in_yes": [],
+  "candidate_pool_yes_paths": [],
+  "ignored_yes_paths": [],
+  "all_yes_paths_exist": true,
+  "shell_wrapper_anomaly_preserved": true,
+  "next_task": "TASK-Z035B-38-STAGE-CAND005",
+  "run_this_task": false
+}

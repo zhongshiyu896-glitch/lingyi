@@ -1,0 +1,5 @@
+TASK-Z035B-36-REGRESSION-CAND005 screenshot skip reason
+
+browser_screenshot_attempted: false
+screenshot_files: []
+reason: 未启动本地前端 dev server；本任务为 regression-only，避免留下后台进程或改动配置，采用 route/source/DOM 静态复核证据与 npm run typecheck。

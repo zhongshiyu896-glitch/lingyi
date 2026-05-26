@@ -1,0 +1,21 @@
+TASK-Z035B-35-IMPL readonly guard evidence
+
+result: PASS
+
+readonly_mode:
+- readOnlyDetailMode: computed true
+- production-plan-detail-readonly-state: present
+- production-plan-detail-permission-or-disabled-state: data-readonly-mode=true
+
+guarded_write_entries:
+- material_check: disabled by readOnlyDetailMode, data-write-guard=readonly:material-check
+- create_work_order: disabled by readOnlyDetailMode, data-write-guard=readonly:create-work-order-outbox-only
+- sync_job_cards: disabled by readOnlyDetailMode, data-write-guard=readonly:sync-job-cards-local-only
+
+handler_guards:
+- runMaterialCheck returns before API call when readOnlyDetailMode is true.
+- submitCreateWorkOrder returns before API call when readOnlyDetailMode is true.
+- submitSyncJobCards returns before API call when readOnlyDetailMode is true.
+
+real_write_action_added: false
+backend_api_added: false

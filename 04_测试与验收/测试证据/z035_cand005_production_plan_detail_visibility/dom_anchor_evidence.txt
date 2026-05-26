@@ -1,0 +1,19 @@
+TASK-Z035B-35-IMPL DOM anchor evidence
+
+result: PASS
+
+anchors:
+- production-plan-detail-page: PASS
+- production-plan-detail-main-fields: PASS
+- production-plan-detail-status-tag: PASS
+- production-plan-detail-work-order-mapping: PASS
+- production-plan-detail-material-snapshot-table: PASS
+- production-plan-detail-job-card-table: PASS
+- production-plan-detail-write-entry-status: PASS
+- production-plan-detail-readonly-state: PASS
+
+source_file: 06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue
+notes:
+- Main fields expose plan_no, status, company, item_code, BOM, planned_qty and created_at.
+- Work Order mapping, material snapshot table and Job Card mapping remain visible sections.
+- Write entry status is visible and marked readonly.

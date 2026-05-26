@@ -1,0 +1,19 @@
+TASK-Z035B-36-REGRESSION-CAND005 readonly guard regression evidence
+
+result: PASS
+
+readonly_guard:
+- readOnlyDetailMode remains computed true.
+- material_check button remains disabled by readOnlyDetailMode and data-write-guard=readonly:material-check.
+- create_work_order button remains disabled by readOnlyDetailMode and data-write-guard=readonly:create-work-order-outbox-only.
+- sync_job_cards button remains disabled by readOnlyDetailMode and data-write-guard=readonly:sync-job-cards-local-only.
+- write-entry status keeps data-write-guard=readonly:production-plan-detail.
+
+handler_guards:
+- runMaterialCheck returns before API call when readOnlyDetailMode is true.
+- submitCreateWorkOrder returns before API call when readOnlyDetailMode is true.
+- submitSyncJobCards returns before API call when readOnlyDetailMode is true.
+
+real_write_action_added: false
+backend_api_added: false
+code_modified_in_this_task: false

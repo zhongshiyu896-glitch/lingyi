@@ -1,0 +1,16 @@
+TASK-Z035B-36-REGRESSION-CAND005 DOM anchor regression evidence
+
+result: PASS
+
+anchors:
+- production-plan-detail-page: PASS
+- production-plan-detail-main-fields: PASS
+- production-plan-detail-status-tag: PASS
+- production-plan-detail-work-order-mapping: PASS
+- production-plan-detail-material-snapshot-table: PASS
+- production-plan-detail-job-card-table: PASS
+- production-plan-detail-write-entry-status: PASS
+- production-plan-detail-readonly-state: PASS
+
+source_file: 06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue
+code_modified_in_this_task: false

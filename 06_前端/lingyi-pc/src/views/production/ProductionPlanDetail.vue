@@ -81,28 +81,45 @@
           <el-input v-model="scenarioTag" readonly data-testid="production-plan-detail-material-check-scenario-tag" />
         </el-form-item>
         <el-form-item label="仓库">
-          <el-input v-model="materialCheckForm.warehouse" placeholder="WIP Warehouse - LY" data-testid="production-plan-detail-material-check-warehouse" />
+          <el-input
+            v-model="materialCheckForm.warehouse"
+            placeholder="WIP Warehouse - LY"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-material-check-warehouse"
+          />
         </el-form-item>
         <el-form-item label="幂等键">
           <el-input
             v-model="materialCheckForm.idempotency_key"
             placeholder="idempotency key"
+            :readonly="readOnlyDetailMode"
             data-testid="production-plan-detail-material-check-idempotency-key"
           />
         </el-form-item>
         <el-form-item label="Request ID">
-          <el-input v-model="materialCheckForm.request_id" placeholder="request id" data-testid="production-plan-detail-material-check-request-id" />
+          <el-input
+            v-model="materialCheckForm.request_id"
+            placeholder="request id"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-material-check-request-id"
+          />
         </el-form-item>
       </el-form>
       <div style="display: flex; gap: 8px" data-testid="production-plan-detail-material-check-actions">
-        <el-button data-testid="production-plan-detail-material-check-reset" @click="resetMaterialCheckForm">重置</el-button>
+        <el-button
+          data-testid="production-plan-detail-material-check-reset"
+          :disabled="readOnlyDetailMode"
+          @click="resetMaterialCheckForm"
+        >
+          重置
+        </el-button>
         <el-button
           type="primary"
           data-action-type="write"
-          data-write-guard="allowed:material-check"
+          data-write-guard="readonly:material-check"
           data-testid="production-plan-detail-material-check-action"
           :loading="runningMaterialCheck"
-          :disabled="runningMaterialCheck"
+          :disabled="readOnlyDetailMode || runningMaterialCheck || Boolean(materialCheckGuardReason)"
           @click="runMaterialCheck"
         >
           执行物料检查
@@ -133,10 +150,20 @@
           <el-input v-model="scenarioTag" readonly data-testid="production-plan-detail-create-scenario-tag" />
         </el-form-item>
         <el-form-item label="FG Warehouse">
-          <el-input v-model="createWorkOrderForm.fg_warehouse" placeholder="FG Warehouse - LY" data-testid="production-plan-detail-create-fg-warehouse" />
+          <el-input
+            v-model="createWorkOrderForm.fg_warehouse"
+            placeholder="FG Warehouse - LY"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-create-fg-warehouse"
+          />
         </el-form-item>
         <el-form-item label="WIP Warehouse">
-          <el-input v-model="createWorkOrderForm.wip_warehouse" placeholder="WIP Warehouse - LY" data-testid="production-plan-detail-create-wip-warehouse" />
+          <el-input
+            v-model="createWorkOrderForm.wip_warehouse"
+            placeholder="WIP Warehouse - LY"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-create-wip-warehouse"
+          />
         </el-form-item>
         <el-form-item label="计划开工日">
           <el-date-picker
@@ -145,26 +172,43 @@
             value-format="YYYY-MM-DD"
             format="YYYY-MM-DD"
             placeholder="选择开工日期"
+            :disabled="readOnlyDetailMode"
             data-testid="production-plan-detail-create-start-date"
           />
         </el-form-item>
         <el-form-item label="幂等键">
-          <el-input v-model="createWorkOrderForm.idempotency_key" placeholder="idempotency key" data-testid="production-plan-detail-create-idempotency-key" />
+          <el-input
+            v-model="createWorkOrderForm.idempotency_key"
+            placeholder="idempotency key"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-create-idempotency-key"
+          />
         </el-form-item>
         <el-form-item label="Request ID">
-          <el-input v-model="createWorkOrderForm.request_id" placeholder="request id" data-testid="production-plan-detail-create-request-id" />
+          <el-input
+            v-model="createWorkOrderForm.request_id"
+            placeholder="request id"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-create-request-id"
+          />
         </el-form-item>
       </el-form>
       <div style="display: flex; gap: 8px" data-testid="production-plan-detail-create-work-order-actions">
-        <el-button data-testid="production-plan-detail-create-work-order-reset" @click="resetCreateWorkOrderForm">重置</el-button>
+        <el-button
+          data-testid="production-plan-detail-create-work-order-reset"
+          :disabled="readOnlyDetailMode"
+          @click="resetCreateWorkOrderForm"
+        >
+          重置
+        </el-button>
         <el-button
           type="primary"
           data-action-type="write"
-          data-write-guard="allowed:create-work-order-outbox-only"
+          data-write-guard="readonly:create-work-order-outbox-only"
           data-write-allowlist="create-work-order-outbox-only"
           data-testid="production-plan-detail-create-work-order-action"
           :loading="creatingWorkOrder"
-          :disabled="creatingWorkOrder"
+          :disabled="readOnlyDetailMode || creatingWorkOrder || Boolean(createWorkOrderGuardReason)"
           @click="submitCreateWorkOrder"
         >
           创建 Work Order（候选）
@@ -190,25 +234,46 @@
           <el-input :model-value="currentWorkOrder || '-'" readonly data-testid="production-plan-detail-sync-work-order" />
         </el-form-item>
         <el-form-item label="幂等键">
-          <el-input v-model="syncJobCardsForm.idempotency_key" placeholder="idempotency key" data-testid="production-plan-detail-sync-idempotency-key" />
+          <el-input
+            v-model="syncJobCardsForm.idempotency_key"
+            placeholder="idempotency key"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-sync-idempotency-key"
+          />
         </el-form-item>
         <el-form-item label="Request ID">
-          <el-input v-model="syncJobCardsForm.request_id" placeholder="request id" data-testid="production-plan-detail-sync-request-id" />
+          <el-input
+            v-model="syncJobCardsForm.request_id"
+            placeholder="request id"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-sync-request-id"
+          />
         </el-form-item>
         <el-form-item label="Source Ref">
-          <el-input v-model="syncJobCardsForm.source_ref" placeholder="scenario|company|plan_id|plan_no_or_work_order|item_code|operation" data-testid="production-plan-detail-sync-source-ref" />
+          <el-input
+            v-model="syncJobCardsForm.source_ref"
+            placeholder="scenario|company|plan_id|plan_no_or_work_order|item_code|operation"
+            :readonly="readOnlyDetailMode"
+            data-testid="production-plan-detail-sync-source-ref"
+          />
         </el-form-item>
       </el-form>
       <div style="display: flex; gap: 8px" data-testid="production-plan-detail-sync-job-cards-actions">
-        <el-button data-testid="production-plan-detail-sync-job-cards-reset" @click="resetSyncJobCardsForm">重置</el-button>
+        <el-button
+          data-testid="production-plan-detail-sync-job-cards-reset"
+          :disabled="readOnlyDetailMode"
+          @click="resetSyncJobCardsForm"
+        >
+          重置
+        </el-button>
         <el-button
           type="primary"
           data-action-type="write"
-          data-write-guard="allowed:sync-job-cards-local-only"
+          data-write-guard="readonly:sync-job-cards-local-only"
           data-write-allowlist="sync-job-cards"
           data-testid="production-plan-detail-sync-job-cards-action"
           :loading="syncingJobCards"
-          :disabled="syncingJobCards"
+          :disabled="readOnlyDetailMode || syncingJobCards || Boolean(syncJobCardsGuardReason)"
           @click="submitSyncJobCards"
         >
           执行 sync-job-cards
@@ -223,7 +288,16 @@
         :closable="false"
         show-icon
         :title="writeEntryFrozenMessage"
+        data-readonly-mode="true"
+        data-write-guard="readonly:production-plan-detail"
         data-testid="production-plan-detail-permission-or-disabled-state"
+      />
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="本页仅用于生产计划详情只读核验；物料检查、Work Order 创建与工序卡同步入口均已禁用。"
+        data-testid="production-plan-detail-readonly-state"
       />
     </el-card>
 
@@ -328,6 +402,7 @@ const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.
 const canMaterialCheck = computed<boolean>(() => permissionStore.state.buttonPermissions.material_check)
 const canWorkOrderCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.work_order_create)
 const canJobCardSync = computed<boolean>(() => permissionStore.state.buttonPermissions.job_card_sync)
+const readOnlyDetailMode = computed<boolean>(() => true)
 
 const planId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidPlanId = computed<boolean>(() => Number.isInteger(planId.value) && planId.value > 0)
@@ -341,7 +416,7 @@ const workOrderSyncStatusLabel = computed<string>(() =>
 const writeEntryFrozenMessage = computed<string>(
   () =>
     detail.value?.write_entry_frozen_reason ||
-    '当前写入口仅允许 local-dev + local sqlite + carrier 完整校验；internal worker 与 ERPNext 路径保持禁用。',
+    '当前生产计划详情处于只读验收模式；物料检查、Work Order 创建与工序卡同步入口保持禁用。',
 )
 const normalizedCreateWorkOrderForm = computed(() => ({
   fg_warehouse: createWorkOrderForm.fg_warehouse.trim(),
@@ -406,6 +481,9 @@ const syncJobCardsValidationError = computed<string | null>(() => {
   return null
 })
 const createWorkOrderGuardReason = computed<string>(() => {
+  if (readOnlyDetailMode.value) {
+    return writeEntryFrozenMessage.value
+  }
   if (!canWorkOrderCreate.value) {
     return '无创建工单权限'
   }
@@ -415,6 +493,9 @@ const createWorkOrderGuardReason = computed<string>(() => {
   return createWorkOrderValidationError.value || ''
 })
 const syncJobCardsGuardReason = computed<string>(() => {
+  if (readOnlyDetailMode.value) {
+    return writeEntryFrozenMessage.value
+  }
   if (!canJobCardSync.value) {
     return '无同步工序卡权限'
   }
@@ -433,6 +514,9 @@ const MATERIAL_CHECK_ALLOWED_STATUSES = new Set<string>([
 
 const isMaterialCheckStatusAllowed = computed<boolean>(() => MATERIAL_CHECK_ALLOWED_STATUSES.has(status.value))
 const materialCheckGuardReason = computed<string>(() => {
+  if (readOnlyDetailMode.value) {
+    return writeEntryFrozenMessage.value
+  }
   if (!canMaterialCheck.value) {
     return '无物料检查权限'
   }
@@ -579,6 +663,10 @@ const loadDetail = async (): Promise<void> => {
 }
 
 const runMaterialCheck = async (): Promise<void> => {
+  if (readOnlyDetailMode.value) {
+    guardedWriteAction('执行物料检查', writeEntryFrozenMessage.value)
+    return
+  }
   if (!canMaterialCheck.value) {
     guardedWriteAction('执行物料检查', '无物料检查权限')
     return
@@ -625,6 +713,10 @@ const runMaterialCheck = async (): Promise<void> => {
 }
 
 const submitCreateWorkOrder = async (): Promise<void> => {
+  if (readOnlyDetailMode.value) {
+    guardedWriteAction('创建 Work Order', writeEntryFrozenMessage.value)
+    return
+  }
   if (!canWorkOrderCreate.value) {
     guardedWriteAction('创建 Work Order', '无创建工单权限')
     return
@@ -671,6 +763,10 @@ const submitCreateWorkOrder = async (): Promise<void> => {
 }
 
 const submitSyncJobCards = async (): Promise<void> => {
+  if (readOnlyDetailMode.value) {
+    guardedWriteAction('执行 sync-job-cards', writeEntryFrozenMessage.value)
+    return
+  }
   if (!canJobCardSync.value) {
     guardedWriteAction('执行 sync-job-cards', '无同步工序卡权限')
     return

@@ -1,0 +1,7 @@
+TASK-Z035B-36-REGRESSION-CAND005 typecheck regression evidence
+
+workdir: 06_前端/lingyi-pc
+command: npm run typecheck
+exit_code: 0
+summary: vue-tsc --noEmit -p tsconfig.json completed without diagnostics.
+command_run_count: 1

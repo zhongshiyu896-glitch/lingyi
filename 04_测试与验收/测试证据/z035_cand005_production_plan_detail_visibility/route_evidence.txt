@@ -1,0 +1,12 @@
+TASK-Z035B-35-IMPL route evidence
+
+route_checked: /production/plans/detail
+result: PASS
+
+source:
+- 06_前端/lingyi-pc/src/router/index.ts:32:path: '/production/plans/detail'
+- 06_前端/lingyi-pc/src/router/index.ts:33:name: 'ProductionPlanDetail'
+- 06_前端/lingyi-pc/src/router/index.ts:34:component: () => import('@/views/production/ProductionPlanDetail.vue')
+
+route_target: 06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue
+production_plan_list_changed: false

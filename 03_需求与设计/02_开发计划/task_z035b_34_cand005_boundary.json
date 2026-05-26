@@ -1,0 +1,138 @@
+{
+  "cycle_id": "Z035",
+  "source_task": "TASK-Z035B-33-PREP",
+  "candidate_id": "Z035-CAND-005",
+  "selected_candidate_id": "Z035-CAND-005",
+  "head": "be1bc0235f63da9c50db233d6a9cbeeac128f33f",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "diff_check": "PASS",
+  "candidate_original_fields": {
+    "candidate_id": "Z035-CAND-005",
+    "title": "生产计划详情只读端到端锚点",
+    "page_scope": [
+      "生产计划"
+    ],
+    "routes": [
+      "/production/plans/detail"
+    ],
+    "visible_acceptance_goal": "用户能在生产计划详情看到计划单号、状态、款式、Work Order 映射、物料检查快照、工序卡映射与写入口状态。",
+    "read_only": true,
+    "backend_allowed": false,
+    "expected_allowed_file_scope": [
+      "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue",
+      "06_前端/lingyi-pc/src/api/production.ts"
+    ],
+    "field_button_state_anchors": [
+      "production-plan-detail-page",
+      "production-plan-detail-main-fields",
+      "production-plan-detail-status-tag",
+      "production-plan-detail-work-order-mapping",
+      "production-plan-detail-material-snapshot-table",
+      "production-plan-detail-job-card-table",
+      "production-plan-detail-write-entry-status"
+    ]
+  },
+  "implementation_workdir": "/Users/hh/Desktop/领意服装管理系统",
+  "frontend_workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc",
+  "routes": [
+    "/production/plans/detail"
+  ],
+  "visible_acceptance_goal": "用户能在生产计划详情看到计划单号、状态、款式、Work Order 映射、物料检查快照、工序卡映射与写入口状态。",
+  "read_only": true,
+  "backend_allowed": false,
+  "expected_allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue",
+    "06_前端/lingyi-pc/src/api/production.ts"
+  ],
+  "forbidden_scope": [
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+    "historical_dirty_forbidden_paths",
+    "log_control_dirty_paths",
+    "B37 residual artifacts",
+    "07_后端",
+    "candidate pool",
+    "runtime/cache/test-results",
+    "remote lifecycle"
+  ],
+  "field_button_state_anchors": [
+    "production-plan-detail-page",
+    "production-plan-detail-main-fields",
+    "production-plan-detail-status-tag",
+    "production-plan-detail-work-order-mapping",
+    "production-plan-detail-material-snapshot-table",
+    "production-plan-detail-job-card-table",
+    "production-plan-detail-write-entry-status"
+  ],
+  "browser_evidence_plan": [
+    "production detail screenshot",
+    "DOM field capture",
+    "guarded write-entry state capture"
+  ],
+  "allowed_files_exist": {
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue": true,
+    "06_前端/lingyi-pc/src/api/production.ts": true
+  },
+  "allowed_files_dirty": {
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue": false,
+    "06_前端/lingyi-pc/src/api/production.ts": false
+  },
+  "route_static_check": {
+    "found": true,
+    "route": "/production/plans/detail",
+    "router_path": "06_前端/lingyi-pc/src/router/index.ts",
+    "component": "@/views/production/ProductionPlanDetail.vue",
+    "evidence_lines": [
+      "06_前端/lingyi-pc/src/router/index.ts:32:path: '/production/plans/detail'",
+      "06_前端/lingyi-pc/src/router/index.ts:33:name: 'ProductionPlanDetail'",
+      "06_前端/lingyi-pc/src/router/index.ts:34:component: () => import('@/views/production/ProductionPlanDetail.vue')"
+    ]
+  },
+  "production_plan_list_excluded": true,
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "archived_candidates": [
+    {
+      "candidate_id": "Z035-CAND-001",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY"
+    },
+    {
+      "candidate_id": "Z035-CAND-002",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY"
+    },
+    {
+      "candidate_id": "Z035-CAND-003",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY"
+    },
+    {
+      "candidate_id": "Z035-CAND-004",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY"
+    }
+  ],
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "code_edits": false,
+  "tests_browser_typecheck": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "cleanup_reset_restore": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z035B-35-IMPL",
+  "run_this_task": false
+}
