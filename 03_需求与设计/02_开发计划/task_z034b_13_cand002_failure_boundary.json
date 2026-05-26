@@ -1,0 +1,59 @@
+{
+  "task_id": "TASK-Z034B-13-PREP-CAND002-FAILURE-DIAG",
+  "cycle_id": "Z034",
+  "candidate_id": "Z034-CAND-002",
+  "source_task": "TASK-Z034B-12-IMPL",
+  "current_head": "a9768a57aceffedde0b2004cacaf498c2fe7c953",
+  "failed_result_task": "TASK-Z034B-12-IMPL",
+  "failed_cases_count": 2,
+  "failed_cases": [
+    {
+      "case_name": "StyleProfitApiPermissionTest.test_forbidden_create_takes_precedence_over_client_source_forbidden",
+      "observed": "response.status_code == 409",
+      "expected": "response.status_code == 403",
+      "observed_expected_summary": "observed 409 vs expected 403",
+      "traceback_assertion": "tests/test_style_profit_api_permissions.py:146: AssertionError",
+      "assertion": "self.assertEqual(response.status_code, 403)"
+    },
+    {
+      "case_name": "StyleProfitApiPermissionTest.test_forbidden_create_takes_precedence_over_invalid_idempotency",
+      "observed": "response.status_code == 409",
+      "expected": "response.status_code == 403",
+      "observed_expected_summary": "observed 409 vs expected 403",
+      "traceback_assertion": "tests/test_style_profit_api_permissions.py:166: AssertionError",
+      "assertion": "self.assertEqual(response.status_code, 403)"
+    }
+  ],
+  "failure_pattern_summary": "Both failing create endpoint permission precedence tests observed 409 instead of the expected 403, blocking the AUTH_FORBIDDEN assertions. The target test payloads exercise forbidden create behavior with idempotency-related request fields, so the current failure pattern is consistent with stale test contract or local fixture/idempotency payload isolation drift that can be corrected inside the target test without accepting 409 as expected.",
+  "classification": "TEST_CONTRACT_UPDATE_ALLOWED",
+  "allowed_fix_file": "07_后端/lingyi_service/tests/test_style_profit_api_permissions.py",
+  "source_evidence": [
+    "07_后端/lingyi_service/tests/test_style_profit_api_permissions.py"
+  ],
+  "source_evidence_missing": [],
+  "target_test": "07_后端/lingyi_service/tests/test_style_profit_api_permissions.py",
+  "target_test_dirty_diff": false,
+  "historical_dirty_forbidden_staged": [],
+  "log_control_dirty_staged": [],
+  "previous_cycle_notes": [
+    {
+      "candidate_id": "Z033-CAND-003",
+      "skipped_only_evidence": true,
+      "actual_passed_count": 0,
+      "skipped_count": 4,
+      "risk_note": "Z033-CAND-003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."
+    }
+  ],
+  "recommended_next_task": "TASK-Z034B-14-FIX-CAND002",
+  "run_this_task": false,
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

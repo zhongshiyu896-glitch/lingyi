@@ -1,0 +1,72 @@
+{
+  "task_id": "TASK-Z034B-14-FIX-CAND002",
+  "cycle_id": "Z034",
+  "candidate_id": "Z034-CAND-002",
+  "source_task": "TASK-Z034B-13-PREP-CAND002-FAILURE-DIAG",
+  "exact_workdir": "07_后端/lingyi_service",
+  "exact_command": ".venv/bin/python -m pytest tests/test_style_profit_api_permissions.py -q",
+  "command_run_count": 1,
+  "exit_code": 0,
+  "result": "PASS",
+  "pytest_summary": "12 passed, 1 warning in 1.09s",
+  "stdout_path": "03_需求与设计/02_开发计划/task_z034b_14_cand002_fix_stdout.txt",
+  "changed_files": [
+    "07_后端/lingyi_service/tests/test_style_profit_api_permissions.py"
+  ],
+  "target_test_dirty_diff": true,
+  "only_allowed_fix_file_changed": true,
+  "historical_dirty_forbidden_preserved": true,
+  "log_control_dirty_preserved": true,
+  "historical_dirty_forbidden_paths": [
+    "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+    "07_后端/lingyi_service/tests/test_bom_permissions.py",
+    "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+    "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+    "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+    "07_后端/lingyi_service/tests/test_style_profit_api.py",
+    "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+    "07_后端/lingyi_service/tests/test_workshop_permissions.py"
+  ],
+  "log_control_dirty_paths": [
+    "00_交接与日志/HANDOVER_STATUS.md",
+    "03_需求与设计/01_架构设计/架构师会话日志.md",
+    "03_需求与设计/02_开发计划/工程师会话日志.md"
+  ],
+  "backend_app_changed": false,
+  "frontend_changed": false,
+  "candidate_pool_changed": false,
+  "unrelated_tests_changed": false,
+  "no_409_conflict_acceptance": true,
+  "auth_forbidden_assertions_preserved": true,
+  "assertions_weakened": false,
+  "skip_xfail_deleted_cases": false,
+  "rerun_performed": false,
+  "continued_after_fail": false,
+  "previous_cycle_notes": [
+    {
+      "candidate_id": "Z033-CAND-003",
+      "skipped_only_evidence": true,
+      "actual_passed_count": 0,
+      "skipped_count": 4,
+      "risk_note": "Z033-CAND-003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."
+    }
+  ],
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}

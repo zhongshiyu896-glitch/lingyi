@@ -1,0 +1,58 @@
+{
+  "task_id": "TASK-Z034B-11-PREP",
+  "cycle_id": "Z034",
+  "candidate_id": "Z034-CAND-002",
+  "source_task": "TASK-Z034B-10-PREP",
+  "current_head": "a9768a57aceffedde0b2004cacaf498c2fe7c953",
+  "candidate_original_fields": {
+    "candidate_id": "Z034-CAND-002",
+    "workdir": "07_后端/lingyi_service",
+    "command": ".venv/bin/python -m pytest tests/test_style_profit_api_permissions.py -q",
+    "target_test": "07_后端/lingyi_service/tests/test_style_profit_api_permissions.py",
+    "target_test_exists": true,
+    "target_test_dirty_diff": false,
+    "source_evidence": [
+      "07_后端/lingyi_service/tests/test_style_profit_api_permissions.py"
+    ],
+    "source_evidence_missing": [],
+    "reused_from_Z015_Z033": false,
+    "rationale": "Clean single-file backend pytest target outside Z015-Z033 selected target scan; covers style profit permission contract from test evidence only."
+  },
+  "frozen_workdir": "07_后端/lingyi_service",
+  "frozen_command": ".venv/bin/python -m pytest tests/test_style_profit_api_permissions.py -q",
+  "frozen_command_single_file_readonly_pytest": true,
+  "target_test": "07_后端/lingyi_service/tests/test_style_profit_api_permissions.py",
+  "target_test_exists": true,
+  "target_test_dirty_diff": false,
+  "source_evidence": [
+    "07_后端/lingyi_service/tests/test_style_profit_api_permissions.py"
+  ],
+  "source_evidence_missing": [],
+  "reuse_check": {
+    "reused_from_Z015_Z033": false,
+    "reuse_scan_reused_target_tests": []
+  },
+  "previous_cycle_notes": [
+    {
+      "candidate_id": "Z033-CAND-003",
+      "skipped_only_evidence": true,
+      "actual_passed_count": 0,
+      "skipped_count": 4,
+      "risk_note": "Z033-CAND-003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."
+    }
+  ],
+  "historical_dirty_forbidden_staged": [],
+  "log_control_dirty_staged": [],
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z034B-12-IMPL",
+  "run_this_task": false
+}

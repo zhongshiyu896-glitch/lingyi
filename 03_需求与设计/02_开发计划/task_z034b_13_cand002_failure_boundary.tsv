@@ -1,0 +1,35 @@
+field	value
+task_id	TASK-Z034B-13-PREP-CAND002-FAILURE-DIAG
+cycle_id	Z034
+candidate_id	Z034-CAND-002
+source_task	TASK-Z034B-12-IMPL
+current_head	a9768a57aceffedde0b2004cacaf498c2fe7c953
+failed_result_task	TASK-Z034B-12-IMPL
+b12_result	FAIL
+b12_command_run_count	1
+b12_pytest_summary	2 failed, 10 passed, 1 warning in 1.14s
+failed_cases_count	2
+failed_case_1	StyleProfitApiPermissionTest.test_forbidden_create_takes_precedence_over_client_source_forbidden observed 409 expected 403 at tests/test_style_profit_api_permissions.py:146
+failed_case_2	StyleProfitApiPermissionTest.test_forbidden_create_takes_precedence_over_invalid_idempotency observed 409 expected 403 at tests/test_style_profit_api_permissions.py:166
+failure_pattern_summary	create endpoint permission precedence tests hit 409 idempotency conflict before expected 403 AUTH_FORBIDDEN branch
+classification	TEST_CONTRACT_UPDATE_ALLOWED
+allowed_fix_file	07_后端/lingyi_service/tests/test_style_profit_api_permissions.py
+source_evidence	["07_后端/lingyi_service/tests/test_style_profit_api_permissions.py"]
+source_evidence_missing	[]
+target_test	07_后端/lingyi_service/tests/test_style_profit_api_permissions.py
+target_test_dirty_diff	false
+historical_dirty_forbidden_staged	[]
+log_control_dirty_staged	[]
+previous_cycle_notes	[{"candidate_id":"Z033-CAND-003","skipped_only_evidence":true,"actual_passed_count":0,"skipped_count":4}]
+recommended_next_task	TASK-Z034B-14-FIX-CAND002
+run_this_task	false
+stage	false
+commit	false
+push	false
+tag	false
+PR	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false

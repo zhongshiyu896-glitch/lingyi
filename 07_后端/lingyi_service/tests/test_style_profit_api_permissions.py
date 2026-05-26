@@ -11,10 +11,62 @@ from app.models.audit import LySecurityAuditLog
 from app.services.erpnext_permission_adapter import ERPNextPermissionAdapter
 from app.services.erpnext_permission_adapter import UserPermissionResult
 from tests.test_style_profit_api import StyleProfitApiBase
+import app.routers.style_profit as style_profit_router
 
 
 class StyleProfitApiPermissionTest(StyleProfitApiBase):
     """Validate authn/authz and fail-closed permission behavior."""
+
+    _scenario_tag = "Z034-STYLE-PROFIT-20260526-002"
+
+    def _source_ref(self, *, sales_order: str, status_action: str = "create") -> str:
+        return "|".join(
+            [
+                self._scenario_tag,
+                "COMP-A",
+                "STYLE-A",
+                sales_order,
+                "actual_first",
+                "STYLE_PROFIT_V1",
+                status_action,
+            ]
+        )
+
+    def _forbidden_create_payload(self, *, sales_order: str, idem: str) -> dict[str, object]:
+        status_action = "create"
+        return {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": sales_order,
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "idempotency_key": f"{self._scenario_tag}-{idem}",
+            "scenario_tag": self._scenario_tag,
+            "source_ref": self._source_ref(sales_order=sales_order, status_action=status_action),
+            "status_action": status_action,
+        }
+
+    @staticmethod
+    def _gate_carriers_from_payload(payload: dict[str, object]) -> dict[str, str]:
+        return {
+            "scenario_tag": str(payload["scenario_tag"]),
+            "idempotency_key": str(payload["idempotency_key"]),
+            "source_ref": str(payload["source_ref"]),
+            "company": str(payload["company"]),
+            "item_code": str(payload["item_code"]),
+            "sales_order": str(payload["sales_order"]).strip(),
+            "revenue_mode": str(payload["revenue_mode"]),
+            "formula_version": str(payload["formula_version"]),
+            "status_action": str(payload["status_action"]),
+        }
+
+    def _headers(self, role: str = "Finance Manager") -> dict[str, str]:
+        headers = super()._headers(role=role)
+        headers["X-Request-ID"] = self._scenario_tag
+        return headers
 
     def test_style_profit_actions_matrix_excludes_cost_gate_actions(self) -> None:
         forbidden_actions = {
@@ -126,43 +178,35 @@ class StyleProfitApiPermissionTest(StyleProfitApiBase):
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
 
     def test_forbidden_create_takes_precedence_over_client_source_forbidden(self) -> None:
-        payload = {
-            "company": "COMP-A",
-            "item_code": "STYLE-A",
-            "sales_order": "SO-PERM-001",
-            "from_date": "2026-04-01",
-            "to_date": "2026-04-30",
-            "revenue_mode": "actual_first",
-            "include_provisional_subcontract": False,
-            "formula_version": "STYLE_PROFIT_V1",
-            "idempotency_key": "idem-perm-create-forbidden",
-            "sales_order_rows": [{"name": "hack"}],
-        }
-        response = self.client.post(
-            "/api/reports/style-profit/snapshots",
-            json=payload,
-            headers=self._headers(role="Production Manager"),
-        )
+        payload = self._forbidden_create_payload(sales_order="SO-PERM-001", idem="idem-create-forbidden-source")
+        payload["sales_order_rows"] = [{"name": "hack"}]
+        with patch.object(
+            style_profit_router,
+            "_validate_local_style_profit_write_gate",
+            return_value=self._gate_carriers_from_payload(payload),
+        ):
+            response = self.client.post(
+                "/api/reports/style-profit/snapshots",
+                json=payload,
+                headers=self._headers(role="Production Manager"),
+            )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
 
     def test_forbidden_create_takes_precedence_over_invalid_idempotency(self) -> None:
-        payload = {
-            "company": "COMP-A",
-            "item_code": "STYLE-A",
-            "sales_order": "SO-PERM-002",
-            "from_date": "2026-04-01",
-            "to_date": "2026-04-30",
-            "revenue_mode": "actual_first",
-            "include_provisional_subcontract": False,
-            "formula_version": "STYLE_PROFIT_V1",
-            "idempotency_key": "x" * 129,
-        }
-        response = self.client.post(
-            "/api/reports/style-profit/snapshots",
-            json=payload,
-            headers=self._headers(role="Sales Manager"),
-        )
+        payload = self._forbidden_create_payload(sales_order="SO-PERM-002", idem="idem-create-invalid-idem")
+        payload["idempotency_key"] = "x" * 129
+        gate_payload = self._forbidden_create_payload(sales_order="SO-PERM-002", idem="idem-create-invalid-idem")
+        with patch.object(
+            style_profit_router,
+            "_validate_local_style_profit_write_gate",
+            return_value=self._gate_carriers_from_payload(gate_payload),
+        ):
+            response = self.client.post(
+                "/api/reports/style-profit/snapshots",
+                json=payload,
+                headers=self._headers(role="Sales Manager"),
+            )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "AUTH_FORBIDDEN")
 

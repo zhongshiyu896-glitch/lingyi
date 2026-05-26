@@ -1,0 +1,81 @@
+path	decision	category	allowed_in_next_ledger	reason
+07_后端/lingyi_service/tests/test_style_profit_api_permissions.py	YES	backend_test	true	Z034-CAND-002 only allowed backend test path
+03_需求与设计/02_开发计划/TASK-Z034B-11-PREP_CAND002_边界冻结报告.md	YES	evidence	true	B11 boundary evidence
+03_需求与设计/02_开发计划/task_z034b_11_cand002_boundary.json	YES	evidence	true	B11 boundary evidence
+03_需求与设计/02_开发计划/task_z034b_11_cand002_boundary.tsv	YES	evidence	true	B11 boundary evidence
+03_需求与设计/02_开发计划/TASK-Z034B-12-IMPL_CAND002_单文件验证报告.md	YES	evidence	true	B12 readonly pytest evidence
+03_需求与设计/02_开发计划/task_z034b_12_cand002_result.json	YES	evidence	true	B12 readonly pytest evidence
+03_需求与设计/02_开发计划/task_z034b_12_cand002_result.tsv	YES	evidence	true	B12 readonly pytest evidence
+03_需求与设计/02_开发计划/task_z034b_12_cand002_stdout.txt	YES	evidence	true	B12 readonly pytest stdout
+03_需求与设计/02_开发计划/TASK-Z034B-13-PREP-CAND002-FAILURE-DIAG_失败定位边界报告.md	YES	evidence	true	B13 failure boundary evidence
+03_需求与设计/02_开发计划/task_z034b_13_cand002_failure_boundary.json	YES	evidence	true	B13 failure boundary evidence
+03_需求与设计/02_开发计划/task_z034b_13_cand002_failure_boundary.tsv	YES	evidence	true	B13 failure boundary evidence
+03_需求与设计/02_开发计划/TASK-Z034B-14-FIX-CAND002_修复验证报告.md	YES	evidence	true	B14 fix evidence
+03_需求与设计/02_开发计划/task_z034b_14_cand002_fix_result.json	YES	evidence	true	B14 fix evidence
+03_需求与设计/02_开发计划/task_z034b_14_cand002_fix_result.tsv	YES	evidence	true	B14 fix evidence
+03_需求与设计/02_开发计划/task_z034b_14_cand002_fix_stdout.txt	YES	evidence	true	B14 fix stdout
+03_需求与设计/02_开发计划/TASK-Z034B-15-LEDGER-CAND002_账本冻结报告.md	YES	evidence	true	B15 ledger evidence
+03_需求与设计/02_开发计划/task_z034b_15_cand002_ledger_freeze.json	YES	evidence	true	B15 ledger evidence
+03_需求与设计/02_开发计划/task_z034b_15_cand002_ledger.json	YES	evidence	true	B15 ledger evidence
+03_需求与设计/02_开发计划/task_z034b_15_cand002_ledger.tsv	YES	evidence	true	B15 ledger evidence
+06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/app/schemas/report.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/app/services/report_catalog_service.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/app/services/system_config_catalog_service.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/tests/test_bom_permissions.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/tests/test_logging_sanitization.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/tests/test_request_id_sanitization.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/tests/test_style_profit_api.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/tests/test_subcontract_company_permission.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+07_后端/lingyi_service/tests/test_workshop_permissions.py	NO	historical_dirty_forbidden	false	historical dirty forbidden product/test path
+00_交接与日志/HANDOVER_STATUS.md	NO	log_control_dirty	false	log/control dirty path
+03_需求与设计/01_架构设计/架构师会话日志.md	NO	log_control_dirty	false	log/control dirty path
+03_需求与设计/02_开发计划/工程师会话日志.md	NO	log_control_dirty	false	log/control dirty path
+03_需求与设计/02_开发计划/TASK-Z034B-01-PREP_候选池重建报告.md	NO	candidate_pool	false	candidate pool excluded from CAND002 ledger
+03_需求与设计/02_开发计划/task_z034b_01_candidate_pool.json	NO	candidate_pool	false	candidate pool excluded from CAND002 ledger
+03_需求与设计/02_开发计划/task_z034b_01_candidate_pool.tsv	NO	candidate_pool	false	candidate pool excluded from CAND002 ledger
+07_后端/lingyi_service/tests/test_style_profit_api_audit.py	NO	archived_cand001	false	CAND001 archived backend test path
+03_需求与设计/02_开发计划/TASK-Z034B-02-PREP_CAND001_边界冻结报告.md	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_02_cand001_boundary.json	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_02_cand001_boundary.tsv	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/TASK-Z034B-03-IMPL_CAND001_单文件验证报告.md	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_03_cand001_result.json	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_03_cand001_result.tsv	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_03_cand001_stdout.txt	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/TASK-Z034B-04-PREP-CAND001-FAILURE-DIAG_失败定位边界报告.md	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_04_cand001_failure_boundary.json	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_04_cand001_failure_boundary.tsv	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/TASK-Z034B-05-DIRTY-ATTRIBUTION_只读脏区归因报告.md	NO	archived_cand001	false	CAND001 dirty attribution evidence excluded from CAND002 YES
+03_需求与设计/02_开发计划/task_z034b_05_dirty_attribution.json	NO	archived_cand001	false	CAND001 dirty attribution evidence excluded from CAND002 YES
+03_需求与设计/02_开发计划/task_z034b_05_dirty_attribution.tsv	NO	archived_cand001	false	CAND001 dirty attribution evidence excluded from CAND002 YES
+03_需求与设计/02_开发计划/TASK-Z034B-05-FIX-CAND001_修复验证报告.md	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_05_cand001_fix_result.json	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_05_cand001_fix_result.tsv	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_05_cand001_fix_stdout.txt	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/TASK-Z034B-06-LEDGER-CAND001_账本冻结报告.md	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_06_cand001_ledger_freeze.json	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_06_cand001_ledger.json	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/task_z034b_06_cand001_ledger.tsv	NO	archived_cand001	false	CAND001 archived evidence
+03_需求与设计/02_开发计划/TASK-Z034B-07-STAGE-CAND001_暂存结果报告.md	NO	archived_cand001	false	CAND001 archived control evidence
+03_需求与设计/02_开发计划/task_z034b_07_cand001_stage_result.json	NO	archived_cand001	false	CAND001 archived control evidence
+03_需求与设计/02_开发计划/task_z034b_07_cand001_stage_result.tsv	NO	archived_cand001	false	CAND001 archived control evidence
+03_需求与设计/02_开发计划/TASK-Z034B-08-COMMIT-CAND001_提交结果报告.md	NO	archived_cand001	false	CAND001 archived control evidence
+03_需求与设计/02_开发计划/task_z034b_08_cand001_commit_result.json	NO	archived_cand001	false	CAND001 archived control evidence
+03_需求与设计/02_开发计划/task_z034b_08_cand001_commit_result.tsv	NO	archived_cand001	false	CAND001 archived control evidence
+03_需求与设计/02_开发计划/TASK-Z034B-09-ARCHIVE-CAND001_归档确认报告.md	NO	archived_cand001	false	CAND001 archived control evidence
+03_需求与设计/02_开发计划/task_z034b_09_cand001_archive_result.json	NO	archived_cand001	false	CAND001 archived control evidence
+03_需求与设计/02_开发计划/task_z034b_09_cand001_archive_result.tsv	NO	archived_cand001	false	CAND001 archived control evidence
+07_后端/lingyi_service/tests/test_style_profit_service.py	NO	future_candidate	false	CAND003 target excluded
+07_后端/lingyi_service/tests/test_style_profit_source_collector.py	NO	future_candidate	false	CAND004 target excluded
+07_后端/lingyi_service/tests/test_style_profit_subcontract_bridge.py	NO	future_candidate	false	CAND005 target excluded
+07_后端/lingyi_service/app	NO	backend_app	false	backend app excluded from CAND002 ledger
+06_前端	NO	frontend	false	frontend excluded from CAND002 ledger
+07_后端/lingyi_service/.pytest_cache	NO	runtime_cache	false	runtime/cache excluded
+07_后端/lingyi_service/__pycache__	NO	runtime_cache	false	runtime/cache excluded
+07_后端/lingyi_service/pytest_cache	NO	runtime_cache	false	runtime/cache excluded

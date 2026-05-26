@@ -1,0 +1,63 @@
+...FF.......                                                             [100%]
+=================================== FAILURES ===================================
+_ StyleProfitApiPermissionTest.test_forbidden_create_takes_precedence_over_client_source_forbidden _
+
+self = <tests.test_style_profit_api_permissions.StyleProfitApiPermissionTest testMethod=test_forbidden_create_takes_precedence_over_client_source_forbidden>
+
+    def test_forbidden_create_takes_precedence_over_client_source_forbidden(self) -> None:
+        payload = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-PERM-001",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "idempotency_key": "idem-perm-create-forbidden",
+            "sales_order_rows": [{"name": "hack"}],
+        }
+        response = self.client.post(
+            "/api/reports/style-profit/snapshots",
+            json=payload,
+            headers=self._headers(role="Production Manager"),
+        )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 409 != 403
+
+tests/test_style_profit_api_permissions.py:146: AssertionError
+_ StyleProfitApiPermissionTest.test_forbidden_create_takes_precedence_over_invalid_idempotency _
+
+self = <tests.test_style_profit_api_permissions.StyleProfitApiPermissionTest testMethod=test_forbidden_create_takes_precedence_over_invalid_idempotency>
+
+    def test_forbidden_create_takes_precedence_over_invalid_idempotency(self) -> None:
+        payload = {
+            "company": "COMP-A",
+            "item_code": "STYLE-A",
+            "sales_order": "SO-PERM-002",
+            "from_date": "2026-04-01",
+            "to_date": "2026-04-30",
+            "revenue_mode": "actual_first",
+            "include_provisional_subcontract": False,
+            "formula_version": "STYLE_PROFIT_V1",
+            "idempotency_key": "x" * 129,
+        }
+        response = self.client.post(
+            "/api/reports/style-profit/snapshots",
+            json=payload,
+            headers=self._headers(role="Sales Manager"),
+        )
+>       self.assertEqual(response.status_code, 403)
+E       AssertionError: 409 != 403
+
+tests/test_style_profit_api_permissions.py:166: AssertionError
+=============================== warnings summary ===============================
+tests/test_style_profit_api_permissions.py::StyleProfitApiPermissionTest::test_detail_forbidden_hides_snapshot_existence
+  /Users/hh/Desktop/领意服装管理系统/07_后端/lingyi_service/.venv/lib/python3.14/site-packages/pytest_asyncio/plugin.py:1216: DeprecationWarning: 'asyncio.get_event_loop_policy' is deprecated and slated for removal in Python 3.16
+    return asyncio.get_event_loop_policy()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_style_profit_api_permissions.py::StyleProfitApiPermissionTest::test_forbidden_create_takes_precedence_over_client_source_forbidden
+FAILED tests/test_style_profit_api_permissions.py::StyleProfitApiPermissionTest::test_forbidden_create_takes_precedence_over_invalid_idempotency
+2 failed, 10 passed, 1 warning in 1.14s
