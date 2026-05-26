@@ -1,0 +1,121 @@
+{
+  "url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation",
+  "guarded_entries": [
+    {
+      "entry": "报表导出",
+      "observed": true
+    },
+    {
+      "entry": "财务下载",
+      "observed": true
+    },
+    {
+      "entry": "协同下载",
+      "observed": true
+    },
+    {
+      "entry": "明细导出",
+      "observed": true
+    }
+  ],
+  "guarded_elements": [
+    {
+      "testid": "global-auth-refresh-guard",
+      "writeGuard": "guarded:global-readonly-shell",
+      "disabled": false,
+      "text": "刷新权限"
+    },
+    {
+      "testid": "z042-global-guarded-refresh",
+      "writeGuard": "guarded:z042-global-route-context-readonly",
+      "disabled": false,
+      "text": "刷新权限"
+    },
+    {
+      "testid": null,
+      "writeGuard": "guarded:global-module-actions-readonly",
+      "disabled": false,
+      "text": "重载模块动作"
+    },
+    {
+      "testid": "global-readonly-write-guard",
+      "writeGuard": "guarded:global-readonly-confirm",
+      "disabled": true,
+      "text": "只读确认"
+    },
+    {
+      "testid": "report-catalog-export-guarded-button",
+      "writeGuard": "guarded:readonly-report-export",
+      "disabled": false,
+      "text": "导出（只读）"
+    },
+    {
+      "testid": "employee-task-guarded-confirm-button",
+      "writeGuard": "guarded:readonly-report-action",
+      "disabled": false,
+      "text": "确认（guarded）"
+    },
+    {
+      "testid": "employee-task-guarded-review-button",
+      "writeGuard": "guarded:readonly-report-action",
+      "disabled": false,
+      "text": "审核（guarded）"
+    },
+    {
+      "testid": "employee-task-export-disabled-button",
+      "writeGuard": "guarded:readonly-report-export",
+      "disabled": true,
+      "text": "导出（disabled）"
+    },
+    {
+      "testid": "employee-task-print-disabled-button",
+      "writeGuard": "guarded:readonly-report-print",
+      "disabled": true,
+      "text": "打印（disabled）"
+    },
+    {
+      "testid": "employee-task-upload-disabled-button",
+      "writeGuard": "guarded:readonly-report-upload",
+      "disabled": true,
+      "text": "上传（disabled）"
+    },
+    {
+      "testid": "approval-report-guarded-confirm-button",
+      "writeGuard": "guarded:readonly-report-action",
+      "disabled": false,
+      "text": "确认（guarded）"
+    },
+    {
+      "testid": "approval-report-guarded-review-button",
+      "writeGuard": "guarded:readonly-report-action",
+      "disabled": false,
+      "text": "审核（guarded）"
+    },
+    {
+      "testid": "approval-report-export-disabled-button",
+      "writeGuard": "guarded:readonly-report-export",
+      "disabled": true,
+      "text": "导出（disabled）"
+    },
+    {
+      "testid": "approval-report-print-disabled-button",
+      "writeGuard": "guarded:readonly-report-print",
+      "disabled": true,
+      "text": "打印（disabled）"
+    },
+    {
+      "testid": "approval-report-upload-disabled-button",
+      "writeGuard": "guarded:readonly-report-upload",
+      "disabled": true,
+      "text": "上传（disabled）"
+    }
+  ],
+  "export_button": {
+    "count": 1,
+    "enabled": true,
+    "visible": true
+  },
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "guarded_readonly_not_write_success": true
+}

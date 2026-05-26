@@ -1,5 +1,13 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
+const z042ReportParityQuery = {
+  parity: 'z042-report-parity-source-guard',
+  readonly_probe: '1',
+  source_trace: 'z042-report-parity-source-trace',
+  export_guard: 'z042-report-export-guard-matrix',
+  fallback: 'z042-report-fallback-explanation',
+}
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -81,6 +89,15 @@ const routes: RouteRecordRaw[] = [
     name: 'ReportCatalog',
     component: () => import('@/views/reports/ReportCatalog.vue'),
     meta: { module: 'report' },
+    beforeEnter: (to) => {
+      if (to.query.parity || to.query.readonly_probe) {
+        return true
+      }
+      return {
+        path: '/reports/catalog',
+        query: z042ReportParityQuery,
+      }
+    },
   },
   {
     path: '/permissions/governance',
@@ -255,21 +272,33 @@ const routes: RouteRecordRaw[] = [
     path: '/financial/financialReport/customerReconciliationReport',
     redirect: {
       path: '/reports/catalog',
-      query: { parity: 'financial-customer-reconciliation-report', readonly_probe: '1' },
+      query: {
+        ...z042ReportParityQuery,
+        parity: 'financial-customer-reconciliation-report',
+        source_entry: 'customer-reconciliation-report',
+      },
     },
   },
   {
     path: '/financial/financialProcess',
     redirect: {
       path: '/reports/catalog',
-      query: { parity: 'financial-process-report', readonly_probe: '1' },
+      query: {
+        ...z042ReportParityQuery,
+        parity: 'financial-process-report',
+        source_entry: 'financial-process',
+      },
     },
   },
   {
     path: '/finance/bank-flow',
     redirect: {
       path: '/reports/catalog',
-      query: { parity: 'finance-bank-flow-report', readonly_probe: '1' },
+      query: {
+        ...z042ReportParityQuery,
+        parity: 'finance-bank-flow-report',
+        source_entry: 'bank-flow',
+      },
     },
   },
   {
@@ -290,7 +319,11 @@ const routes: RouteRecordRaw[] = [
     path: '/reportManage/collaborationReport/factoryProductStockReport',
     redirect: {
       path: '/reports/catalog',
-      query: { parity: 'collaboration-factory-product-stock-report', readonly_probe: '1' },
+      query: {
+        ...z042ReportParityQuery,
+        parity: 'collaboration-factory-product-stock-report',
+        source_entry: 'factory-product-stock-report',
+      },
     },
   },
   {

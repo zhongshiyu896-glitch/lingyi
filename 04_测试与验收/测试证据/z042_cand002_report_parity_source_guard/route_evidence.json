@@ -1,0 +1,120 @@
+{
+  "base": "http://127.0.0.1:5174",
+  "routes": [
+    {
+      "route": "/financial/financialReport/customerReconciliationReport",
+      "initial_http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=customer-reconciliation-report",
+      "final_pathname": "/reports/catalog",
+      "final_catalog_route": true,
+      "http_200": true,
+      "anchors_present": [
+        "report-parity-entry-page",
+        "report-parity-route-state",
+        "report-catalog-filter-form",
+        "report-catalog-table",
+        "report-readonly-write-guard",
+        "z042-report-parity-source-trace",
+        "z042-report-export-guard-matrix",
+        "z042-report-fallback-explanation"
+      ],
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true,
+      "requests_observed_delta": 24,
+      "responses_observed_delta": 24
+    },
+    {
+      "route": "/financial/financialProcess",
+      "initial_http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-process-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=financial-process",
+      "final_pathname": "/reports/catalog",
+      "final_catalog_route": true,
+      "http_200": true,
+      "anchors_present": [
+        "report-parity-entry-page",
+        "report-parity-route-state",
+        "report-catalog-filter-form",
+        "report-catalog-table",
+        "report-readonly-write-guard",
+        "z042-report-parity-source-trace",
+        "z042-report-export-guard-matrix",
+        "z042-report-fallback-explanation"
+      ],
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true,
+      "requests_observed_delta": 23,
+      "responses_observed_delta": 23
+    },
+    {
+      "route": "/finance/bank-flow",
+      "initial_http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-bank-flow-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=bank-flow",
+      "final_pathname": "/reports/catalog",
+      "final_catalog_route": true,
+      "http_200": true,
+      "anchors_present": [
+        "report-parity-entry-page",
+        "report-parity-route-state",
+        "report-catalog-filter-form",
+        "report-catalog-table",
+        "report-readonly-write-guard",
+        "z042-report-parity-source-trace",
+        "z042-report-export-guard-matrix",
+        "z042-report-fallback-explanation"
+      ],
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true,
+      "requests_observed_delta": 23,
+      "responses_observed_delta": 23
+    },
+    {
+      "route": "/reportManage/collaborationReport/factoryProductStockReport",
+      "initial_http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=collaboration-factory-product-stock-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=factory-product-stock-report",
+      "final_pathname": "/reports/catalog",
+      "final_catalog_route": true,
+      "http_200": true,
+      "anchors_present": [
+        "report-parity-entry-page",
+        "report-parity-route-state",
+        "report-catalog-filter-form",
+        "report-catalog-table",
+        "report-readonly-write-guard",
+        "z042-report-parity-source-trace",
+        "z042-report-export-guard-matrix",
+        "z042-report-fallback-explanation"
+      ],
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true,
+      "requests_observed_delta": 23,
+      "responses_observed_delta": 23
+    },
+    {
+      "route": "/reports/catalog",
+      "initial_http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation",
+      "final_pathname": "/reports/catalog",
+      "final_catalog_route": true,
+      "http_200": true,
+      "anchors_present": [
+        "report-parity-entry-page",
+        "report-parity-route-state",
+        "report-catalog-filter-form",
+        "report-catalog-table",
+        "report-readonly-write-guard",
+        "z042-report-parity-source-trace",
+        "z042-report-export-guard-matrix",
+        "z042-report-fallback-explanation"
+      ],
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true,
+      "requests_observed_delta": 23,
+      "responses_observed_delta": 23
+    }
+  ]
+}

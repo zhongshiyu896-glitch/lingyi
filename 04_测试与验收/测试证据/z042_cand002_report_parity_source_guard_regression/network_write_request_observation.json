@@ -1,0 +1,11 @@
+{
+  "total_requests_observed": 139,
+  "total_responses_observed": 139,
+  "auth_401_count": 25,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "write_request_success_observed": false,
+  "write_request_success_count": 0,
+  "write_request_success_allowed": false
+}

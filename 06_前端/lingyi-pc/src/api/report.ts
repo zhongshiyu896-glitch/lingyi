@@ -144,6 +144,9 @@ const REPORT_PARITY_ANCHORS = [
   'report-finance-parity-source',
   'report-collaboration-parity-source',
   'report-readonly-write-guard',
+  'z042-report-parity-source-trace',
+  'z042-report-export-guard-matrix',
+  'z042-report-fallback-explanation',
 ]
 
 const REPORT_PARITY_GUARDS = [
@@ -151,8 +154,10 @@ const REPORT_PARITY_GUARDS = [
   'guarded:report-finance-download-readonly',
   'guarded:report-collaboration-download-readonly',
   'guarded:report-detail-export-readonly',
+  'guarded:z042-report-export-guard-matrix',
   'dataReadonlyBoundary=true',
   'dataWriteRequestSuccessAllowed=false',
+  'dataRealWriteActionAdded=false',
 ]
 
 const REPORT_PARITY_CATALOG_ITEM: ReportCatalogItem = {
@@ -162,23 +167,45 @@ const REPORT_PARITY_CATALOG_ITEM: ReportCatalogItem = {
   report_type: 'financial',
   required_filters: ['company', 'from_date', 'to_date'],
   optional_filters: ['customer_keyword', 'employee_keyword', 'department', 'parity'],
-  metric_summary: ['财务报表旧入口映射', '协同报表旧入口映射', '只读导出 guard'],
+  metric_summary: [
+    '财务报表旧入口映射',
+    '协同报表旧入口映射',
+    'Z042 parity source trace',
+    '导出 guard matrix',
+    'readonly fallback explanation',
+  ],
   permission_action: 'report:read',
   status: 'readonly',
   ui_placeholders: REPORT_PARITY_ANCHORS,
-  ui_buttons: ['报表导出', '财务报表下载', '协同报表下载', '明细查看后的导出', ...REPORT_PARITY_GUARDS],
-  ui_table_headers: ['report-parity-route-state', 'report-finance-parity-source', 'report-collaboration-parity-source'],
+  ui_buttons: [
+    '报表导出',
+    '财务下载',
+    '协同下载',
+    '明细导出',
+    '财务报表下载',
+    '协同报表下载',
+    '明细查看后的导出',
+    ...REPORT_PARITY_GUARDS,
+  ],
+  ui_table_headers: [
+    'report-parity-route-state',
+    'z042-report-parity-source-trace',
+    'z042-report-export-guard-matrix',
+    'z042-report-fallback-explanation',
+  ],
   status_tags: ['readonly-parity', ...REPORT_PARITY_ANCHORS, ...REPORT_PARITY_GUARDS],
   preview_rows: [
     {
       'report-parity-route-state': '/financial/financialReport/customerReconciliationReport -> /reports/catalog',
-      'report-finance-parity-source': 'customer-reconciliation / financial-process / bank-flow',
-      'report-collaboration-parity-source': 'factory-product-stock collaboration report',
+      'z042-report-parity-source-trace': 'finance parity source: customer-reconciliation / financial-process / bank-flow',
+      'z042-report-export-guard-matrix': '报表导出 / 财务下载 / 协同下载 / 明细导出 = guarded readonly',
+      'z042-report-fallback-explanation': 'auth 401 或接口不可用仅进入 readonly fallback，不代表权限通过或写成功',
     },
     {
-      'report-parity-route-state': '/finance/receipts-payments / /finance/reconciliation -> /reports/catalog',
-      'report-finance-parity-source': 'receipts-payments / reconciliation readonly catalog',
-      'report-collaboration-parity-source': 'guarded readonly export/download controls',
+      'report-parity-route-state': '/reportManage/collaborationReport/factoryProductStockReport -> /reports/catalog',
+      'z042-report-parity-source-trace': 'collaboration parity source: factory product stock report',
+      'z042-report-export-guard-matrix': 'download/export controls keep dataWriteRequestSuccessAllowed=false',
+      'z042-report-fallback-explanation': 'final catalog route remains /reports/catalog with read-only source trace context',
     },
   ],
 }

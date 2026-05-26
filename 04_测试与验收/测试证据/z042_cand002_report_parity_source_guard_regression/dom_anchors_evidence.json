@@ -1,0 +1,39 @@
+{
+  "url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation",
+  "anchors": [
+    {
+      "anchor": "report-parity-entry-page",
+      "observed": true
+    },
+    {
+      "anchor": "report-parity-route-state",
+      "observed": true
+    },
+    {
+      "anchor": "report-catalog-filter-form",
+      "observed": true
+    },
+    {
+      "anchor": "report-catalog-table",
+      "observed": true
+    },
+    {
+      "anchor": "report-readonly-write-guard",
+      "observed": true
+    },
+    {
+      "anchor": "z042-report-parity-source-trace",
+      "observed": true
+    },
+    {
+      "anchor": "z042-report-export-guard-matrix",
+      "observed": true
+    },
+    {
+      "anchor": "z042-report-fallback-explanation",
+      "observed": true
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

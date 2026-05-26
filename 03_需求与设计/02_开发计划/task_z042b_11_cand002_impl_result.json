@@ -1,0 +1,160 @@
+{
+  "task_id": "TASK-Z042B-11-IMPL",
+  "role": "B Engineer",
+  "status": "READY_FOR_REVIEW",
+  "candidate_id": "Z042-CAND-002",
+  "title": "报表 parity 来源追踪与导出 guard 二轮可见流",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "allowed_files_only": true,
+  "router_index_changed": true,
+  "api_report_changed": true,
+  "report_catalog_vue_touched": false,
+  "reused_committed_product_path": true,
+  "reused_source": {
+    "source_batch": "Z039",
+    "source_candidate_id": "Z039-CAND-001",
+    "source_commit": "76694e7d0fb88804d67cf8468fc1c7550ca7a074",
+    "reused_paths": [
+      "06_前端/lingyi-pc/src/router/index.ts",
+      "06_前端/lingyi-pc/src/api/report.ts"
+    ]
+  },
+  "routes": [
+    "/financial/financialReport/customerReconciliationReport",
+    "/financial/financialProcess",
+    "/finance/bank-flow",
+    "/reportManage/collaborationReport/factoryProductStockReport",
+    "/reports/catalog"
+  ],
+  "route_status_by_route": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=customer-reconciliation-report"
+    },
+    "/financial/financialProcess": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-process-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=financial-process"
+    },
+    "/finance/bank-flow": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-bank-flow-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=bank-flow"
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=collaboration-factory-product-stock-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=factory-product-stock-report"
+    },
+    "/reports/catalog": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation"
+    }
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard/z042_cand002_report_parity_source_guard_catalog.png",
+    "format": "PNG",
+    "width": 1440,
+    "height": 1200
+  },
+  "anchors_observed": {
+    "count": 8,
+    "all_observed": true,
+    "anchors": [
+      "report-parity-entry-page",
+      "report-parity-route-state",
+      "report-catalog-filter-form",
+      "report-catalog-table",
+      "report-readonly-write-guard",
+      "z042-report-parity-source-trace",
+      "z042-report-export-guard-matrix",
+      "z042-report-fallback-explanation"
+    ]
+  },
+  "guarded_write_controls": [
+    "报表导出",
+    "财务下载",
+    "协同下载",
+    "明细导出"
+  ],
+  "auth_401_count": 25,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_exit_code": 0,
+  "worktree_check_pass": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "evidence_files": [
+    "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard/route_evidence.json",
+    "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard/screenshot_metadata.json",
+    "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard/z042_cand002_report_parity_source_guard_catalog.png"
+  ],
+  "risk_fields": {
+    "z042_cand001_readonly_fallback_risk": "auth_401_count=6, runtime_readonly_fallback_risk=true",
+    "z041_z040_z039_z038_fallback_risks": "preserved",
+    "guarded_readonly_not_write_success": true,
+    "b28_shell_wrapper_anomaly": "preserved",
+    "z033_skipped_only": "preserved",
+    "z035_screenshot_missing_risk": "preserved",
+    "remote_lifecycle_parked": true
+  },
+  "risk_fields_preserved": {
+    "current_task": {
+      "candidate_id": "Z042-CAND-002",
+      "auth_401_count": 25,
+      "runtime_readonly_fallback_risk": true,
+      "write_requests_observed_count": 0,
+      "write_request_success_observed": false,
+      "write_request_success_allowed": false,
+      "guarded_readonly_not_write_success": true
+    },
+    "previous_candidate": {
+      "candidate_id": "Z042-CAND-001",
+      "readonly_fallback_risk": {
+        "auth_401_count": 6,
+        "runtime_readonly_fallback_risk": true
+      }
+    },
+    "prior_fallback_risks": [
+      "Z041 readonly fallback risk",
+      "Z040 readonly fallback risk",
+      "Z039 readonly fallback risk",
+      "Z038 readonly fallback risks"
+    ],
+    "process_risks": [
+      "B28 shell_wrapper_anomaly",
+      "Z033 skipped_only",
+      "Z035 screenshot_missing_risk"
+    ],
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "forbidden_actions": {
+    "report_catalog_edits": false,
+    "backend_edits": false,
+    "candidate_pool_edits": false,
+    "historical_log_residual_touched": false,
+    "stage_commit_push": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle": false
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "path": "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard/z042_cand002_report_parity_source_guard_catalog.png",
+  "format": "PNG",
+  "width": 1440,
+  "height": 1200,
+  "url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation"
+}

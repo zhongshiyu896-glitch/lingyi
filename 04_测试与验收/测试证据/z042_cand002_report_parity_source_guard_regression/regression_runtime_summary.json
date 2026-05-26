@@ -1,0 +1,223 @@
+{
+  "route_status_by_route": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=customer-reconciliation-report",
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true
+    },
+    "/financial/financialProcess": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-process-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=financial-process",
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true
+    },
+    "/finance/bank-flow": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-bank-flow-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=bank-flow",
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=collaboration-factory-product-stock-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&source_entry=factory-product-stock-report",
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true
+    },
+    "/reports/catalog": {
+      "http_200": true,
+      "final_catalog_route": true,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation",
+      "source_trace_visible": true,
+      "export_guard_matrix_visible": true,
+      "fallback_explanation_visible": true
+    }
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z042_cand002_report_parity_source_guard_regression/z042_cand002_report_parity_source_guard_regression_catalog.png",
+    "format": "PNG",
+    "width": 1440,
+    "height": 1200,
+    "url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation"
+  },
+  "dom": {
+    "url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation",
+    "anchors": [
+      {
+        "anchor": "report-parity-entry-page",
+        "observed": true
+      },
+      {
+        "anchor": "report-parity-route-state",
+        "observed": true
+      },
+      {
+        "anchor": "report-catalog-filter-form",
+        "observed": true
+      },
+      {
+        "anchor": "report-catalog-table",
+        "observed": true
+      },
+      {
+        "anchor": "report-readonly-write-guard",
+        "observed": true
+      },
+      {
+        "anchor": "z042-report-parity-source-trace",
+        "observed": true
+      },
+      {
+        "anchor": "z042-report-export-guard-matrix",
+        "observed": true
+      },
+      {
+        "anchor": "z042-report-fallback-explanation",
+        "observed": true
+      }
+    ],
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true
+  },
+  "guard": {
+    "url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation",
+    "guarded_entries": [
+      {
+        "entry": "报表导出",
+        "observed": true
+      },
+      {
+        "entry": "财务下载",
+        "observed": true
+      },
+      {
+        "entry": "协同下载",
+        "observed": true
+      },
+      {
+        "entry": "明细导出",
+        "observed": true
+      }
+    ],
+    "guarded_controls_covered": true,
+    "guarded_elements": [
+      {
+        "testid": "global-auth-refresh-guard",
+        "writeGuard": "guarded:global-readonly-shell",
+        "disabled": false,
+        "text": "刷新权限"
+      },
+      {
+        "testid": "z042-global-guarded-refresh",
+        "writeGuard": "guarded:z042-global-route-context-readonly",
+        "disabled": false,
+        "text": "刷新权限"
+      },
+      {
+        "testid": null,
+        "writeGuard": "guarded:global-module-actions-readonly",
+        "disabled": false,
+        "text": "重载模块动作"
+      },
+      {
+        "testid": "global-readonly-write-guard",
+        "writeGuard": "guarded:global-readonly-confirm",
+        "disabled": true,
+        "text": "只读确认"
+      },
+      {
+        "testid": "report-catalog-export-guarded-button",
+        "writeGuard": "guarded:readonly-report-export",
+        "disabled": false,
+        "text": "导出（只读）"
+      },
+      {
+        "testid": "employee-task-guarded-confirm-button",
+        "writeGuard": "guarded:readonly-report-action",
+        "disabled": false,
+        "text": "确认（guarded）"
+      },
+      {
+        "testid": "employee-task-guarded-review-button",
+        "writeGuard": "guarded:readonly-report-action",
+        "disabled": false,
+        "text": "审核（guarded）"
+      },
+      {
+        "testid": "employee-task-export-disabled-button",
+        "writeGuard": "guarded:readonly-report-export",
+        "disabled": true,
+        "text": "导出（disabled）"
+      },
+      {
+        "testid": "employee-task-print-disabled-button",
+        "writeGuard": "guarded:readonly-report-print",
+        "disabled": true,
+        "text": "打印（disabled）"
+      },
+      {
+        "testid": "employee-task-upload-disabled-button",
+        "writeGuard": "guarded:readonly-report-upload",
+        "disabled": true,
+        "text": "上传（disabled）"
+      },
+      {
+        "testid": "approval-report-guarded-confirm-button",
+        "writeGuard": "guarded:readonly-report-action",
+        "disabled": false,
+        "text": "确认（guarded）"
+      },
+      {
+        "testid": "approval-report-guarded-review-button",
+        "writeGuard": "guarded:readonly-report-action",
+        "disabled": false,
+        "text": "审核（guarded）"
+      },
+      {
+        "testid": "approval-report-export-disabled-button",
+        "writeGuard": "guarded:readonly-report-export",
+        "disabled": true,
+        "text": "导出（disabled）"
+      },
+      {
+        "testid": "approval-report-print-disabled-button",
+        "writeGuard": "guarded:readonly-report-print",
+        "disabled": true,
+        "text": "打印（disabled）"
+      },
+      {
+        "testid": "approval-report-upload-disabled-button",
+        "writeGuard": "guarded:readonly-report-upload",
+        "disabled": true,
+        "text": "上传（disabled）"
+      }
+    ],
+    "export_button": {
+      "count": 1,
+      "enabled": true,
+      "visible": true
+    },
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "network": {
+    "total_requests_observed": 139,
+    "total_responses_observed": 139,
+    "auth_401_count": 25,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_requests_observed": [],
+    "write_request_success_observed": false,
+    "write_request_success_count": 0,
+    "write_request_success_allowed": false
+  }
+}
