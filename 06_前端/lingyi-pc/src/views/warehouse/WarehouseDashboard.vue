@@ -154,9 +154,18 @@
         </el-tooltip>
       </div>
 
+      <el-alert
+        title="仓库看板只读收口：库存筛选、KPI、主表与预警可见；导出、写入和安全库存设置保持禁用或 guard。"
+        type="info"
+        :closable="false"
+        class="scope-alert"
+        data-testid="warehouse-readonly-state"
+      />
+
       <div class="local-write-row" data-testid="warehouse-stock-local-write-section">
         <el-input
           v-model="localWriteForm.scenario_tag"
+          :disabled="localWriteReadonlyGuarded"
           placeholder="scenario_tag: Z003-WAREHOUSE-YYYYMMDD-NNN"
           aria-label="仓库草稿写入 scenario_tag"
           data-testid="warehouse-stock-scenario-tag-input"
@@ -164,6 +173,7 @@
         />
         <el-input
           v-model="localWriteForm.warehouse"
+          :disabled="localWriteReadonlyGuarded"
           placeholder="草稿仓库"
           aria-label="草稿仓库"
           data-testid="warehouse-draft-warehouse-input"
@@ -171,6 +181,7 @@
         />
         <el-date-picker
           v-model="localWriteForm.business_date"
+          :disabled="localWriteReadonlyGuarded"
           type="date"
           value-format="YYYY-MM-DD"
           placeholder="业务日期"
@@ -179,6 +190,7 @@
         />
         <el-input
           v-model="localWriteForm.item_code"
+          :disabled="localWriteReadonlyGuarded"
           placeholder="库存款号/物料"
           aria-label="库存款号/物料"
           data-testid="warehouse-draft-item-code-input"
@@ -186,6 +198,7 @@
         />
         <el-input-number
           v-model="localWriteForm.qty"
+          :disabled="localWriteReadonlyGuarded"
           :min="0.01"
           :step="1"
           :precision="2"
@@ -195,6 +208,7 @@
         />
         <el-input
           v-model="localWriteForm.source_ref"
+          :disabled="localWriteReadonlyGuarded"
           placeholder="source_ref（将自动补 scenario_tag）"
           aria-label="source_ref"
           data-testid="warehouse-draft-source-ref-input"
@@ -225,6 +239,7 @@
         </el-button>
         <el-input
           v-model="localWriteForm.cancel_reason"
+          :disabled="localWriteReadonlyGuarded"
           placeholder="取消原因（将自动补 scenario_tag）"
           aria-label="草稿取消原因"
           data-testid="warehouse-stock-entry-draft-cancel-reason-input"

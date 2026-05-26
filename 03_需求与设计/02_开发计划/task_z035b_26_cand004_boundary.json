@@ -1,0 +1,162 @@
+{
+  "cycle_id": "Z035",
+  "source_task": "TASK-Z035B-25-PREP",
+  "candidate_id": "Z035-CAND-004",
+  "candidate_original_fields": {
+    "candidate_id": "Z035-CAND-004",
+    "title": "仓库看板与库存卡片可见收口",
+    "page_scope": [
+      "库存台账"
+    ],
+    "routes": [
+      "/warehouse"
+    ],
+    "visible_acceptance_goal": "用户能在仓库看板看到成品库存台账、KPI 卡片、仓库筛选、库存主表、库存预警与禁用写入口。",
+    "browser_evidence_plan": [
+      "warehouse dashboard screenshot",
+      "KPI DOM capture",
+      "guarded button state capture"
+    ],
+    "field_button_state_anchors": [
+      "warehouse-page",
+      "warehouse-stock-summary-section",
+      "warehouse-stock-filters",
+      "warehouse-kpi-grid",
+      "warehouse-stock-main-table",
+      "warehouse-stock-open-ledger-button",
+      "warehouse-stock-export-guarded-button"
+    ],
+    "read_write_boundary": {
+      "read_only": true,
+      "write_boundary": "只允许仓库看板可视化、KPI、只读按钮状态与跳转锚点；不得开启仓库写入或后端变更。"
+    },
+    "capture_contract_integration": true,
+    "expected_allowed_file_scope": [
+      "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+      "06_前端/lingyi-pc/src/api/warehouse.ts"
+    ],
+    "forbidden_scope": [
+      "historical_dirty_forbidden_paths",
+      "log_control_dirty_paths",
+      "07_后端/lingyi_service/app",
+      "07_后端/lingyi_service/tests",
+      "candidate pool files",
+      "runtime/cache",
+      "remote lifecycle"
+    ],
+    "touches_historical_dirty": false,
+    "candidate_blocked": false
+  },
+  "title": "仓库看板与库存卡片可见收口",
+  "page_scope": [
+    "库存台账"
+  ],
+  "routes": [
+    "/warehouse"
+  ],
+  "visible_acceptance_goal": "用户能在仓库看板看到成品库存台账、KPI 卡片、仓库筛选、库存主表、库存预警与禁用写入口。",
+  "read_only": true,
+  "backend_allowed": false,
+  "implementation_workdir": "/Users/hh/Desktop/领意服装管理系统",
+  "frontend_workdir": "06_前端/lingyi-pc",
+  "expected_allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+    "06_前端/lingyi-pc/src/api/warehouse.ts"
+  ],
+  "allowed_files_exist": {
+    "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue": true,
+    "06_前端/lingyi-pc/src/api/warehouse.ts": true
+  },
+  "allowed_files_dirty": {
+    "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue": false,
+    "06_前端/lingyi-pc/src/api/warehouse.ts": false
+  },
+  "route_static_check": {
+    "status": "PASS",
+    "route": "/warehouse",
+    "route_file": "06_前端/lingyi-pc/src/router/index.ts",
+    "route_path_line": 152,
+    "route_component_line": 154,
+    "component": "@/views/warehouse/WarehouseDashboard.vue"
+  },
+  "field_button_state_anchors": [
+    "warehouse-page",
+    "warehouse-stock-summary-section",
+    "warehouse-stock-filters",
+    "warehouse-kpi-grid",
+    "warehouse-stock-main-table",
+    "warehouse-stock-open-ledger-button",
+    "warehouse-stock-export-guarded-button"
+  ],
+  "current_anchor_static_check": {
+    "warehouse-page": true,
+    "warehouse-stock-summary-section": true,
+    "warehouse-stock-filters": true,
+    "warehouse-kpi-grid": true,
+    "warehouse-stock-main-table": true,
+    "warehouse-stock-open-ledger-button": true,
+    "warehouse-stock-export-guarded-button": true
+  },
+  "browser_evidence_plan": [
+    "warehouse dashboard screenshot",
+    "KPI DOM capture",
+    "guarded button state capture"
+  ],
+  "capture_contract_integration": true,
+  "forbidden_scope": [
+    "historical_dirty_forbidden_paths",
+    "log_control_dirty_paths",
+    "B37 residual artifacts",
+    "07_后端/lingyi_service/app",
+    "07_后端/lingyi_service/tests",
+    "candidate pool files",
+    "runtime/cache",
+    "remote lifecycle"
+  ],
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "archived_candidates": [
+    {
+      "candidate_id": "Z035-CAND-001",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "a09666b0d3001a92c575d49b49aa743b6ade42eb"
+    },
+    {
+      "candidate_id": "Z035-CAND-002",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "4cbf16a986a0e41f871ef729e254e1708ffd42e4"
+    },
+    {
+      "candidate_id": "Z035-CAND-003",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit": "d02d605e401bf1a7b07e83ed3e632ee5b6034eb6"
+    }
+  ],
+  "head": "d02d605e401bf1a7b07e83ed3e632ee5b6034eb6",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "diff_check_pass": true,
+  "remote_lifecycle_parked": true,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z035B-27-IMPL",
+  "run_this_task": false
+}

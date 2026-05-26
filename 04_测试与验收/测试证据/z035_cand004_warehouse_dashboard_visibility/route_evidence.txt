@@ -1,0 +1,13 @@
+TASK-Z035B-27-IMPL route evidence
+
+Route checked: /warehouse
+Result: PASS
+
+Static route/source evidence:
+- 06_前端/lingyi-pc/src/router/index.ts:152 path: /warehouse
+- 06_前端/lingyi-pc/src/router/index.ts:154 component: @/views/warehouse/WarehouseDashboard.vue
+- 06_前端/lingyi-pc/src/views/HomePage.vue:127 entry path: /warehouse
+
+Notes:
+- Browser was not launched in this task.
+- This evidence is static route/source evidence only.

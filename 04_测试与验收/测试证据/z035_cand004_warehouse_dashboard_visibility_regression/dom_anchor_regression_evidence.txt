@@ -1,0 +1,21 @@
+TASK-Z035B-28-REGRESSION-CAND004 DOM anchor regression evidence
+
+Source file: 06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue
+Result: PASS
+
+Required anchors:
+- warehouse-page: present at line 2
+- warehouse-stock-summary-section: present at line 3
+- warehouse-stock-filters: present at line 44
+- warehouse-kpi-grid: present at line 108
+- warehouse-stock-open-ledger-button: present at line 144
+- warehouse-stock-export-guarded-button: present at line 150, disabled with data-write-guard
+- warehouse-readonly-state: present at line 162
+- warehouse-stock-main-table: present at line 998
+
+Read-only guard regression:
+- localWriteReadonlyGuarded computed returns true.
+- warehouse draft inputs remain disabled through localWriteReadonlyGuarded.
+- create/cancel draft buttons remain disabled through canStockEntryWrite.
+- export and safety stock actions remain disabled or data-write-guard protected.
+- No new backend write chain was detected in this task.

@@ -1,0 +1,12 @@
+TASK-Z035B-28-REGRESSION-CAND004 typecheck regression evidence
+
+workdir: 06_前端/lingyi-pc
+command: npm run typecheck
+run_count: 1
+exit_code: 0
+
+Observed output summary:
+> lingyi-pc@0.1.0 typecheck
+> vue-tsc --noEmit -p tsconfig.json
+
+Result: PASS

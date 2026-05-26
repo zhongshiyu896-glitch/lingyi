@@ -1,0 +1,16 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-004",
+  "source_task": "TASK-Z035B-26-PREP",
+  "evidence_type": "implementation_static_route_dom_typecheck",
+  "route": "/warehouse",
+  "route_evidence": "04_测试与验收/测试证据/z035_cand004_warehouse_dashboard_visibility/route_evidence.txt",
+  "dom_anchor_evidence": "04_测试与验收/测试证据/z035_cand004_warehouse_dashboard_visibility/dom_anchor_evidence.txt",
+  "typecheck_evidence": "04_测试与验收/测试证据/z035_cand004_warehouse_dashboard_visibility/typecheck_evidence.txt",
+  "screenshot_skip_reason": "04_测试与验收/测试证据/z035_cand004_warehouse_dashboard_visibility/screenshot_skip_reason.txt",
+  "screenshot_files": [],
+  "required_anchors_present": true,
+  "readonly_boundary_preserved": true,
+  "typecheck_exit_code": 0,
+  "browser_screenshot_attempted": false
+}

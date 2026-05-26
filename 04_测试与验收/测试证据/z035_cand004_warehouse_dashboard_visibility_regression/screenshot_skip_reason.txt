@@ -1,0 +1,7 @@
+TASK-Z035B-28-REGRESSION-CAND004 screenshot skip reason
+
+browser_screenshot_attempted=false
+screenshot_files=[]
+
+Skip reason:
+No existing verified local frontend dev server was used for this regression task. To keep the task read-only and avoid leaving a long-running browser/dev-server process, verification used static route/source evidence, DOM anchor regression evidence, and one allowed frontend typecheck command instead of browser screenshots.

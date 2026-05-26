@@ -1,0 +1,72 @@
+{
+  "cycle_id": "Z035",
+  "source_task": "TASK-Z035B-27-IMPL",
+  "candidate_id": "Z035-CAND-004",
+  "head": "d02d605e401bf1a7b07e83ed3e632ee5b6034eb6",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue"
+  ],
+  "api_warehouse_changed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "vue-tsc --noEmit -p tsconfig.json PASS",
+  "route_regression_evidence": {
+    "route": "/warehouse",
+    "status": "PASS",
+    "evidence_file": "04_测试与验收/测试证据/z035_cand004_warehouse_dashboard_visibility_regression/route_regression_evidence.txt",
+    "route_file": "06_前端/lingyi-pc/src/router/index.ts",
+    "component": "@/views/warehouse/WarehouseDashboard.vue"
+  },
+  "dom_anchor_regression_evidence": {
+    "status": "PASS",
+    "evidence_file": "04_测试与验收/测试证据/z035_cand004_warehouse_dashboard_visibility_regression/dom_anchor_regression_evidence.txt",
+    "anchors": {
+      "warehouse-page": true,
+      "warehouse-stock-summary-section": true,
+      "warehouse-stock-filters": true,
+      "warehouse-kpi-grid": true,
+      "warehouse-stock-main-table": true,
+      "warehouse-stock-open-ledger-button": true,
+      "warehouse-stock-export-guarded-button": true,
+      "warehouse-readonly-state": true
+    },
+    "readonly_guard": {
+      "localWriteReadonlyGuarded_true": true,
+      "draft_inputs_disabled": true,
+      "create_cancel_buttons_guarded": true,
+      "export_safety_actions_guarded": true
+    }
+  },
+  "screenshots": [],
+  "screenshot_skip_reason": "No existing verified local frontend dev server was used; regression used static route/source evidence, DOM anchor evidence, and one allowed frontend typecheck command to avoid leaving a long-running browser/dev-server process.",
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z035B-29-LEDGER-CAND004",
+  "run_this_task": false
+}

@@ -1,0 +1,22 @@
+TASK-Z035B-27-IMPL DOM anchor evidence
+
+Source file: 06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue
+Result: PASS
+
+Required anchors:
+- warehouse-page: present at line 2
+- warehouse-stock-summary-section: present at line 3
+- warehouse-stock-filters: present at line 44
+- warehouse-kpi-grid: present at line 108
+- warehouse-stock-open-ledger-button: present at line 144
+- warehouse-stock-export-guarded-button: present at line 150, disabled with data-write-guard
+- warehouse-stock-main-table: present at line 998
+
+Additional readonly anchor:
+- warehouse-readonly-state: present at line 162
+
+Read-only boundary evidence:
+- localWriteReadonlyGuarded is computed as true.
+- create/cancel draft buttons remain disabled through canStockEntryWrite.
+- draft form inputs now bind :disabled="localWriteReadonlyGuarded".
+- export and safety stock actions remain disabled or data-write-guard protected.

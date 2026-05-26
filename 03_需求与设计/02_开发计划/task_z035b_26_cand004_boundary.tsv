@@ -1,0 +1,39 @@
+field	value
+cycle_id	Z035
+source_task	TASK-Z035B-25-PREP
+candidate_id	Z035-CAND-004
+title	仓库看板与库存卡片可见收口
+page_scope	["库存台账"]
+routes	["/warehouse"]
+visible_acceptance_goal	用户能在仓库看板看到成品库存台账、KPI 卡片、仓库筛选、库存主表、库存预警与禁用写入口。
+read_only	true
+backend_allowed	false
+implementation_workdir	/Users/hh/Desktop/领意服装管理系统
+frontend_workdir	06_前端/lingyi-pc
+expected_allowed_file_scope	["06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue","06_前端/lingyi-pc/src/api/warehouse.ts"]
+allowed_files_exist	{"06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue":true,"06_前端/lingyi-pc/src/api/warehouse.ts":true}
+allowed_files_dirty	{"06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue":false,"06_前端/lingyi-pc/src/api/warehouse.ts":false}
+route_static_check	PASS:/warehouse -> 06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue
+field_button_state_anchors	["warehouse-page","warehouse-stock-summary-section","warehouse-stock-filters","warehouse-kpi-grid","warehouse-stock-main-table","warehouse-stock-open-ledger-button","warehouse-stock-export-guarded-button"]
+browser_evidence_plan	["warehouse dashboard screenshot","KPI DOM capture","guarded button state capture"]
+intersections_with_historical_dirty	[]
+intersections_with_log_control_dirty	[]
+intersections_with_residual_artifacts	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+shell_wrapper_anomaly_preserved	true
+z033_skipped_only_evidence	true
+z033_actual_passed_count	0
+z033_skipped_count	4
+remote_lifecycle_parked	true
+stage	false
+commit	false
+push	false
+tag	false
+PR	false
+release	false
+production_readback	false
+go_live	false
+project_completion	false
+next_task	TASK-Z035B-27-IMPL
+run_this_task	false
