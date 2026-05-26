@@ -1,0 +1,37 @@
+field	value
+task_id	TASK-Z037B-18-PREP
+role	B Engineer
+source_task	TASK-Z037B-17-PREP
+cycle_id	Z037
+candidate_id	Z037-CAND-003
+title	基础资料客户与仓库引用只读可见流
+result	PASS
+head	9092e5fcf0ef6b18c4d8e62344fd1f663a7a020d
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+routes	/sales-inventory/references,/foundation/customer
+read_only	true
+backend_allowed	false
+expected_allowed_file_scope	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue; 06_前端/lingyi-pc/src/api/sales_inventory.ts
+allowed_files_exist	true
+allowed_files_dirty	false
+forbidden_sales_order_and_stock_ledger_excluded	true
+routes_located	true
+route_static_check	/sales-inventory/references direct component; /foundation/customer redirect to /sales-inventory/references?tab=customers&parity=foundation-customer
+anchors_required	references-tabs; references-customers-filter-form; references-customers-table; references-warehouses-filter-form; references-warehouses-table; references-readonly-detail-drawer; references-permission-state; references-write-guard
+write_entries_guard_required	客户详情; 仓库详情; 基础资料同步; 导出
+browser_evidence_requirement_for_b19	screenshot, redirect route evidence, runtime DOM anchors, guarded state, write request observation
+intersections_with_historical_dirty	[]
+intersections_with_log_control_dirty	[]
+intersections_with_z034_residual_artifacts	[]
+intersections_with_z035_z036_committed_product_paths	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+prior_readonly_fallback_risks	true
+guarded_readonly_not_write_success	true
+B28_shell_wrapper_anomaly	true
+Z033_skipped_only	true
+Z035_screenshot_missing_risk	true
+next_task	TASK-Z037B-19-IMPL
+run_this_task	false

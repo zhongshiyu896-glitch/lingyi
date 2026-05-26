@@ -1,0 +1,28 @@
+field	value
+task_id	TASK-Z037B-19-IMPL
+candidate_id	Z037-CAND-003
+head	9092e5fcf0ef6b18c4d8e62344fd1f663a7a020d
+changed_files	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue
+allowed_files_only	true
+api_file_changed	false
+forbidden_sales_order_and_stock_ledger_touched	false
+routes_verified	/sales-inventory/references PASS; /foundation/customer parity PASS
+anchors_observed	8/8
+screenshot	04_测试与验收/测试证据/z037_cand003_sales_inventory_references_readonly_flow/sales_inventory_references_runtime_fullpage.png
+runtime_dom_evidence	04_测试与验收/测试证据/z037_cand003_sales_inventory_references_readonly_flow/sales_inventory_references_runtime_dom_evidence.json
+guarded_write_controls	客户详情; 仓库详情; 基础资料同步; 导出
+typecheck_command	npm run typecheck
+typecheck_exit_code	0
+auth_401_count	1
+write_requests_observed_count	0
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+runtime_readonly_fallback_risk	true
+prior_readonly_fallback_risks_preserved	true
+guarded_readonly_not_write_success	true
+B28_shell_wrapper_anomaly_preserved	true
+Z033_skipped_only_risk_preserved	true
+Z035_screenshot_missing_risk	true
+next_task	TASK-Z037B-20-REGRESSION-CAND003
+run_this_task	false

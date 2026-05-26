@@ -1,0 +1,21 @@
+{
+  "observed_request_count": 37,
+  "write_requests_observed_count": 0,
+  "write_requests": [],
+  "auth_401_count": 1,
+  "api_401_count": 1,
+  "auth_401_responses": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "requestMethod": "GET"
+    }
+  ],
+  "console_401_messages": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    }
+  ],
+  "readonly_fallback_risk": true
+}

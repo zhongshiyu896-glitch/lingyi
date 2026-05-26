@@ -1,0 +1,70 @@
+{
+  "recaptured": true,
+  "guarded_readonly": true,
+  "expected_write_entries": [
+    "客户详情",
+    "仓库详情",
+    "基础资料同步",
+    "导出"
+  ],
+  "overview_guarded_controls": [
+    {
+      "testid": "references-write-guard",
+      "text": "只读写入口保护客户详情、仓库详情、基础资料同步与导出只允许查看，不触发写入请求。 基础资料同步 导出",
+      "dataWriteGuard": "readonly:sales-inventory-references",
+      "guardState": "guarded_readonly",
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "testid": "references-sync-guarded-button",
+      "text": "基础资料同步",
+      "dataWriteGuard": "readonly:references-sync",
+      "guardState": "guarded_readonly",
+      "disabled": true,
+      "visible": true
+    },
+    {
+      "testid": "references-export-guarded-button",
+      "text": "导出",
+      "dataWriteGuard": "readonly:references-export",
+      "guardState": "guarded_readonly",
+      "disabled": true,
+      "visible": true
+    },
+    {
+      "testid": "references-customers-detail-button",
+      "text": "明细",
+      "dataWriteGuard": "readonly:customer-detail",
+      "guardState": "guarded_readonly",
+      "disabled": false,
+      "visible": true
+    },
+    {
+      "testid": "references-warehouses-detail-button",
+      "text": "明细",
+      "dataWriteGuard": "readonly:warehouse-detail",
+      "guardState": "guarded_readonly",
+      "disabled": false,
+      "visible": false
+    },
+    {
+      "testid": "references-warehouses-detail-button",
+      "text": "明细",
+      "dataWriteGuard": "readonly:warehouse-detail",
+      "guardState": "guarded_readonly",
+      "disabled": false,
+      "visible": false
+    }
+  ],
+  "guarded_control_count": 6,
+  "guarded_entries_covered": [
+    "只读写入口保护客户详情、仓库详情、基础资料同步与导出只允许查看，不触发写入请求。 基础资料同步 导出",
+    "基础资料同步",
+    "导出",
+    "明细",
+    "明细",
+    "明细"
+  ],
+  "non_disabled_guarded_controls_are_readonly_only": true
+}

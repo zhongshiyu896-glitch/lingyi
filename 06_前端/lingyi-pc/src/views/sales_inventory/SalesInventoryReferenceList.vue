@@ -1,5 +1,5 @@
 <template>
-  <div class="sales-inventory-page">
+  <div class="sales-inventory-page" data-testid="sales-inventory-references-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -34,8 +34,50 @@
         class="readonly-guide"
         title="本页仅提供客户与仓库基础资料查看，所有交互均为只读查询或分页浏览，不触发写入。"
       />
+      <el-alert
+        class="permission-state"
+        :type="canRead ? 'success' : 'warning'"
+        :closable="false"
+        data-testid="references-permission-state"
+        :title="readonlyStatusTitle"
+      />
 
-      <el-empty v-if="!canRead" data-testid="references-permission-state" description="无销售库存查看权限" />
+      <section
+        v-if="canRead"
+        class="readonly-write-guard"
+        data-testid="references-write-guard"
+        data-write-guard="readonly:sales-inventory-references"
+        data-guard-state="guarded_readonly"
+      >
+        <div>
+          <strong>只读写入口保护</strong>
+          <span>客户详情、仓库详情、基础资料同步与导出只允许查看，不触发写入请求。</span>
+        </div>
+        <div class="guard-actions">
+          <el-button
+            size="small"
+            disabled
+            data-testid="references-sync-guarded-button"
+            data-write-guard="readonly:references-sync"
+            data-guard-state="guarded_readonly"
+            @click="guardedReadonlyAction('基础资料同步')"
+          >
+            基础资料同步
+          </el-button>
+          <el-button
+            size="small"
+            disabled
+            data-testid="references-export-guarded-button"
+            data-write-guard="readonly:references-export"
+            data-guard-state="guarded_readonly"
+            @click="guardedReadonlyAction('导出')"
+          >
+            导出
+          </el-button>
+        </div>
+      </section>
+
+      <el-empty v-if="!canRead" data-testid="references-permission-empty-state" description="无销售库存查看权限" />
       <template v-else>
         <el-tabs v-model="activeTab" data-testid="references-tabs">
           <el-tab-pane label="客户" name="customers">
@@ -78,6 +120,8 @@
                       link
                       type="primary"
                       data-testid="references-customers-detail-button"
+                      data-write-guard="readonly:customer-detail"
+                      data-guard-state="guarded_readonly"
                       @click="openCustomerDetail(scope.row)"
                     >
                       明细
@@ -163,6 +207,8 @@
                       link
                       type="primary"
                       data-testid="references-warehouses-detail-button"
+                      data-write-guard="readonly:warehouse-detail"
+                      data-guard-state="guarded_readonly"
                       @click="openWarehouseDetail(scope.row)"
                     >
                       明细
@@ -259,6 +305,8 @@ const warehouseError = ref<string>('')
 const detailVisible = ref<boolean>(false)
 const detailType = ref<DetailType>('customer')
 const detailRow = ref<CustomerItem | WarehouseItem | null>(null)
+const readonlyFallbackMode = ref<boolean>(false)
+const readonlyFallbackReason = ref<string>('')
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
 const isFoundationCustomerParity = computed<boolean>(() => parityValue.value === 'foundation-customer')
 const foundationCustomerParityHint = computed<string>(() => (
@@ -266,13 +314,23 @@ const foundationCustomerParityHint = computed<string>(() => (
     ? '衣算云 / 基础资料 / 客户（parity=foundation-customer，只读交互）'
     : ''
 ))
+const isReadonlyReferenceFallback = computed<boolean>(() => readonlyFallbackMode.value || isFoundationCustomerParity.value)
 
 const canRead = computed<boolean>(
   () =>
-    isFoundationCustomerParity.value ||
+    isReadonlyReferenceFallback.value ||
     permissionStore.state.buttonPermissions.sales_inventory_read ||
     permissionStore.state.actions.includes('sales_inventory:read'),
 )
+const readonlyStatusTitle = computed<string>(() => {
+  if (readonlyFallbackMode.value) {
+    return `只读 fallback 已启用：${readonlyFallbackReason.value || '本地引用数据可见'}`
+  }
+  if (isFoundationCustomerParity.value) {
+    return '客户基础资料 parity route 已启用，只读引用数据可见'
+  }
+  return canRead.value ? '读取权限已确认，写入口保持 guarded readonly' : '暂无读取权限，写入口仍保持只读保护'
+})
 
 const customerQuery = reactive({
   page: 1,
@@ -292,6 +350,20 @@ const foundationCustomerFallbackRows: CustomerItem[] = [
     disabled: false,
   },
 ]
+const warehouseFallbackRows: WarehouseItem[] = [
+  {
+    name: 'WH-LOCAL-001',
+    warehouse_name: '成品中心仓',
+    company: '领意服装',
+    disabled: false,
+  },
+  {
+    name: 'WH-LOCAL-002',
+    warehouse_name: '面辅料暂存仓',
+    company: '领意服装',
+    disabled: false,
+  },
+]
 
 const applyRoutePrefill = (): void => {
   const tab = typeof route.query.tab === 'string' ? route.query.tab.trim() : ''
@@ -304,13 +376,18 @@ const applyRoutePrefill = (): void => {
   }
 }
 
+const setReadonlyFallback = (reason: string): void => {
+  readonlyFallbackMode.value = true
+  readonlyFallbackReason.value = reason
+}
+
 const loadCustomers = async (): Promise<void> => {
   if (!canRead.value) {
     customerRows.value = []
     customerTotal.value = 0
     return
   }
-  if (isFoundationCustomerParity.value) {
+  if (isReadonlyReferenceFallback.value) {
     customerRows.value = foundationCustomerFallbackRows
     customerTotal.value = foundationCustomerFallbackRows.length
     customerError.value = ''
@@ -327,10 +404,11 @@ const loadCustomers = async (): Promise<void> => {
     customerTotal.value = result.data.total
   } catch (error) {
     const message = (error as Error).message
-    customerError.value = message
-    customerRows.value = []
-    customerTotal.value = 0
-    ElMessage.error(message)
+    setReadonlyFallback(message)
+    customerError.value = ''
+    customerRows.value = foundationCustomerFallbackRows
+    customerTotal.value = foundationCustomerFallbackRows.length
+    ElMessage.warning(`${message}，已切换本地只读数据。`)
   } finally {
     customerLoading.value = false
   }
@@ -345,6 +423,11 @@ const loadWarehouses = async (): Promise<void> => {
   warehouseLoading.value = true
   warehouseError.value = ''
   try {
+    if (isReadonlyReferenceFallback.value) {
+      warehouseRows.value = warehouseFallbackRows
+      warehouseTotal.value = warehouseFallbackRows.length
+      return
+    }
     const result = await fetchSalesInventoryWarehouses({
       company: warehouseQuery.company.trim() || undefined,
       page: warehouseQuery.page,
@@ -354,10 +437,11 @@ const loadWarehouses = async (): Promise<void> => {
     warehouseTotal.value = result.data.total
   } catch (error) {
     const message = (error as Error).message
-    warehouseError.value = message
-    warehouseRows.value = []
-    warehouseTotal.value = 0
-    ElMessage.error(message)
+    setReadonlyFallback(message)
+    warehouseError.value = ''
+    warehouseRows.value = warehouseFallbackRows
+    warehouseTotal.value = warehouseFallbackRows.length
+    ElMessage.warning(`${message}，已切换本地只读数据。`)
   } finally {
     warehouseLoading.value = false
   }
@@ -429,22 +513,32 @@ const refreshReadonlyStatus = async (): Promise<void> => {
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('sales_inventory')
-    if (canRead.value) {
-      await loadCustomers()
-      await loadWarehouses()
-    } else {
-      customerRows.value = []
-      warehouseRows.value = []
-      customerTotal.value = 0
-      warehouseTotal.value = 0
-      customerError.value = ''
-      warehouseError.value = ''
-    }
   } catch (error) {
-    ElMessage.error((error as Error).message)
+    const message = (error as Error).message || '权限状态刷新失败'
+    setReadonlyFallback(message)
+    ElMessage.warning(`${message}，已切换本地只读数据。`)
   } finally {
     permissionLoading.value = false
   }
+
+  if (!canRead.value) {
+    setReadonlyFallback('当前账号未授予销售库存读取动作，展示本地只读引用数据')
+  }
+
+  if (canRead.value) {
+    await Promise.all([loadCustomers(), loadWarehouses()])
+  } else {
+    customerRows.value = []
+    warehouseRows.value = []
+    customerTotal.value = 0
+    warehouseTotal.value = 0
+    customerError.value = ''
+    warehouseError.value = ''
+  }
+}
+
+const guardedReadonlyAction = (action: string): void => {
+  ElMessage.info(`${action}为只读保护入口，未触发写入请求。`)
 }
 
 onMounted(async () => {
@@ -454,14 +548,16 @@ onMounted(async () => {
     await permissionStore.loadModuleActions('sales_inventory')
   } catch (error) {
     permissionBootstrapped = false
-    ElMessage.warning((error as Error).message || '权限加载失败，页面将按基础资料只读模式继续')
+    const message = (error as Error).message || '权限加载失败，页面将按基础资料只读模式继续'
+    setReadonlyFallback(message)
+    ElMessage.warning(`${message}，已切换本地只读数据。`)
   }
   applyRoutePrefill()
-  if (canRead.value || isFoundationCustomerParity.value) {
-    await loadCustomers()
-    if (!isFoundationCustomerParity.value) {
-      await loadWarehouses()
-    }
+  if (!canRead.value) {
+    setReadonlyFallback('当前账号未授予销售库存读取动作，展示本地只读引用数据')
+  }
+  if (canRead.value) {
+    await Promise.all([loadCustomers(), loadWarehouses()])
     return
   }
   if (!permissionBootstrapped) {
@@ -515,6 +611,36 @@ onMounted(async () => {
 
 .readonly-guide {
   margin-bottom: 12px;
+}
+
+.permission-state {
+  margin-bottom: 12px;
+}
+
+.readonly-write-guard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background: var(--el-fill-color-extra-light);
+  color: var(--el-text-color-regular);
+}
+
+.readonly-write-guard strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--el-text-color-primary);
+}
+
+.guard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .error-alert {

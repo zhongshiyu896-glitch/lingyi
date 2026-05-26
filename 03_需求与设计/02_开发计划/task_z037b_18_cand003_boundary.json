@@ -1,0 +1,107 @@
+{
+  "task_id": "TASK-Z037B-18-PREP",
+  "role": "B Engineer",
+  "source_task": "TASK-Z037B-17-PREP",
+  "cycle_id": "Z037",
+  "candidate_id": "Z037-CAND-003",
+  "title": "基础资料客户与仓库引用只读可见流",
+  "result": "PASS",
+  "head": "9092e5fcf0ef6b18c4d8e62344fd1f663a7a020d",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "selected_candidate": "Z037-CAND-003",
+  "page_scope": "基础资料 / 销售库存引用",
+  "routes": [
+    "/sales-inventory/references",
+    "/foundation/customer"
+  ],
+  "read_only": true,
+  "backend_allowed": false,
+  "expected_allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+    "06_前端/lingyi-pc/src/api/sales_inventory.ts"
+  ],
+  "allowed_files_exist": true,
+  "allowed_files_dirty": false,
+  "forbidden_scope": [
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+    "07_后端",
+    "candidate pool",
+    "historical dirty",
+    "log/control dirty",
+    "Z034 residual artifacts",
+    "Z035/Z036 committed product paths",
+    "runtime/cache/test-results"
+  ],
+  "forbidden_sales_order_and_stock_ledger_excluded": true,
+  "route_static_check": {
+    "/sales-inventory/references": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts",
+      "component": "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue"
+    },
+    "/foundation/customer": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts",
+      "redirect": "/sales-inventory/references?tab=customers&parity=foundation-customer"
+    }
+  },
+  "routes_located": true,
+  "anchors_required": [
+    "references-tabs",
+    "references-customers-filter-form",
+    "references-customers-table",
+    "references-warehouses-filter-form",
+    "references-warehouses-table",
+    "references-readonly-detail-drawer",
+    "references-permission-state",
+    "references-write-guard"
+  ],
+  "anchors_current_static_observed": [
+    "references-tabs",
+    "references-customers-filter-form",
+    "references-customers-table",
+    "references-warehouses-filter-form",
+    "references-warehouses-table",
+    "references-readonly-detail-drawer",
+    "references-permission-state"
+  ],
+  "anchors_to_standardize_in_b19": [
+    "references-write-guard"
+  ],
+  "write_entries_guard_required": [
+    "客户详情",
+    "仓库详情",
+    "基础资料同步",
+    "导出"
+  ],
+  "browser_evidence_requirement_for_b19": {
+    "screenshot_required": true,
+    "route_redirect_evidence_required": true,
+    "runtime_dom_anchors_required": true,
+    "guarded_readonly_state_required": true,
+    "write_request_observation_required": true,
+    "pure_static_fallback_allowed": false
+  },
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_z034_residual_artifacts": [],
+  "intersections_with_z035_z036_committed_product_paths": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "prior_readonly_fallback_risks": true,
+  "guarded_readonly_not_write_success": true,
+  "b28_shell_wrapper_anomaly": true,
+  "z033_skipped_only": true,
+  "z035_screenshot_missing_risk": true,
+  "push_tag_pr_release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z037B-19-IMPL",
+  "run_this_task": false
+}

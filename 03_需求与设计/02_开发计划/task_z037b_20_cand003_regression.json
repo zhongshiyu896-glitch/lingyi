@@ -1,0 +1,80 @@
+{
+  "task_id": "TASK-Z037B-20-REGRESSION-CAND003",
+  "source_task": "TASK-Z037B-19-IMPL",
+  "candidate_id": "Z037-CAND-003",
+  "head": "9092e5fcf0ef6b18c4d8e62344fd1f663a7a020d",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue"
+  ],
+  "api_file_forced_into_changed_files": false,
+  "forbidden_sales_order_and_stock_ledger_touched": false,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_z036_committed_product_paths_touched": false,
+  "routes_verified": [
+    {
+      "route": "/sales-inventory/references",
+      "pass": true,
+      "final_url": "http://127.0.0.1:5173/sales-inventory/references"
+    },
+    {
+      "route": "/foundation/customer",
+      "type": "redirect_or_parity",
+      "pass": true,
+      "final_url": "http://127.0.0.1:5173/sales-inventory/references?tab=customers&parity=foundation-customer"
+    }
+  ],
+  "anchors_required": [
+    "references-tabs",
+    "references-customers-filter-form",
+    "references-customers-table",
+    "references-warehouses-filter-form",
+    "references-warehouses-table",
+    "references-readonly-detail-drawer",
+    "references-permission-state",
+    "references-write-guard"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "screenshot_reused_or_recaptured": "recaptured",
+  "screenshot": "04_测试与验收/测试证据/z037_cand003_sales_inventory_references_readonly_flow_regression/sales_inventory_references_regression_fullpage.png",
+  "screenshot_dimensions": "1440x1000",
+  "screenshot_skip_reason": null,
+  "route_evidence": "04_测试与验收/测试证据/z037_cand003_sales_inventory_references_readonly_flow_regression/sales_inventory_references_regression_route_parity_evidence.json",
+  "runtime_dom_evidence": "04_测试与验收/测试证据/z037_cand003_sales_inventory_references_readonly_flow_regression/sales_inventory_references_regression_dom_evidence.json",
+  "guarded_write_controls_evidence": "04_测试与验收/测试证据/z037_cand003_sales_inventory_references_readonly_flow_regression/sales_inventory_references_regression_guarded_write_controls.json",
+  "network_observation_evidence": "04_测试与验收/测试证据/z037_cand003_sales_inventory_references_readonly_flow_regression/sales_inventory_references_regression_network_observation.json",
+  "guarded_write_controls": {
+    "guarded_readonly": true,
+    "entries": [
+      "客户详情",
+      "仓库详情",
+      "基础资料同步",
+      "导出"
+    ],
+    "guarded_control_count": 6,
+    "non_disabled_guarded_controls_are_readonly_only": true
+  },
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "vue-tsc --noEmit -p tsconfig.json PASS",
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "prior_readonly_fallback_risks_preserved": true,
+  "guarded_readonly_not_write_success": true,
+  "B28_shell_wrapper_anomaly_preserved": true,
+  "Z033_skipped_only_risk_preserved": true,
+  "Z035_screenshot_missing_risk": true,
+  "next_task": "TASK-Z037B-21-LEDGER-CAND003",
+  "run_this_task": false
+}

@@ -1,0 +1,238 @@
+{
+  "required_anchors": [
+    "references-tabs",
+    "references-customers-filter-form",
+    "references-customers-table",
+    "references-warehouses-filter-form",
+    "references-warehouses-table",
+    "references-readonly-detail-drawer",
+    "references-permission-state",
+    "references-write-guard"
+  ],
+  "overview": {
+    "route": "/sales-inventory/references",
+    "url": "http://127.0.0.1:5173/sales-inventory/references",
+    "anchors": [
+      {
+        "id": "references-tabs",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "客户仓库操作 查询客户 重置客户编号客户名称禁用状态操作CUS-LOCAL-001本地只读客户示例启用中 明细 1 Total 120/page公司操作 查询仓库 重置仓库编号仓库名称公司禁用状态操作WH-LOCAL-001成品中心仓领意服装启用中 明细 WH-LOCAL-002面辅料暂存仓领意服装启用中 明细 1 T"
+      },
+      {
+        "id": "references-customers-filter-form",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "操作 查询客户 重置"
+      },
+      {
+        "id": "references-customers-table",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "客户编号客户名称禁用状态操作CUS-LOCAL-001本地只读客户示例启用中 明细"
+      },
+      {
+        "id": "references-warehouses-filter-form",
+        "count": 1,
+        "observed": true,
+        "visible": false,
+        "sample_text": "公司操作 查询仓库 重置"
+      },
+      {
+        "id": "references-warehouses-table",
+        "count": 1,
+        "observed": true,
+        "visible": false,
+        "sample_text": "仓库编号仓库名称公司禁用状态操作WH-LOCAL-001成品中心仓领意服装启用中 明细 WH-LOCAL-002面辅料暂存仓领意服装启用中 明细"
+      },
+      {
+        "id": "references-readonly-detail-drawer",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "参考资料明细类型客户资料编号CUS-LOCAL-001客户名称本地只读客户示例禁用状态启用中"
+      },
+      {
+        "id": "references-permission-state",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "只读 fallback 已启用：当前账号未授予销售库存读取动作，展示本地只读引用数据"
+      },
+      {
+        "id": "references-write-guard",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "只读写入口保护客户详情、仓库详情、基础资料同步与导出只允许查看，不触发写入请求。 基础资料同步 导出"
+      }
+    ],
+    "guarded_controls": [
+      {
+        "testid": "references-write-guard",
+        "text": "只读写入口保护客户详情、仓库详情、基础资料同步与导出只允许查看，不触发写入请求。 基础资料同步 导出",
+        "dataWriteGuard": "readonly:sales-inventory-references",
+        "guardState": "guarded_readonly",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "testid": "references-sync-guarded-button",
+        "text": "基础资料同步",
+        "dataWriteGuard": "readonly:references-sync",
+        "guardState": "guarded_readonly",
+        "disabled": true,
+        "visible": true
+      },
+      {
+        "testid": "references-export-guarded-button",
+        "text": "导出",
+        "dataWriteGuard": "readonly:references-export",
+        "guardState": "guarded_readonly",
+        "disabled": true,
+        "visible": true
+      },
+      {
+        "testid": "references-customers-detail-button",
+        "text": "明细",
+        "dataWriteGuard": "readonly:customer-detail",
+        "guardState": "guarded_readonly",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "testid": "references-warehouses-detail-button",
+        "text": "明细",
+        "dataWriteGuard": "readonly:warehouse-detail",
+        "guardState": "guarded_readonly",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "testid": "references-warehouses-detail-button",
+        "text": "明细",
+        "dataWriteGuard": "readonly:warehouse-detail",
+        "guardState": "guarded_readonly",
+        "disabled": false,
+        "visible": false
+      }
+    ]
+  },
+  "parity_route": {
+    "route": "/foundation/customer",
+    "url": "http://127.0.0.1:5173/sales-inventory/references?tab=customers&parity=foundation-customer",
+    "anchors": [
+      {
+        "id": "references-tabs",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "客户仓库操作 查询客户 重置客户编号客户名称禁用状态操作CUS-LOCAL-001本地只读客户示例启用中 明细 1 Total 120/page公司操作 查询仓库 重置仓库编号仓库名称公司禁用状态操作WH-LOCAL-001成品中心仓领意服装启用中 明细 WH-LOCAL-002面辅料暂存仓领意服装启用中 明细 1 T"
+      },
+      {
+        "id": "references-customers-filter-form",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "操作 查询客户 重置"
+      },
+      {
+        "id": "references-customers-table",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "客户编号客户名称禁用状态操作CUS-LOCAL-001本地只读客户示例启用中 明细"
+      },
+      {
+        "id": "references-warehouses-filter-form",
+        "count": 1,
+        "observed": true,
+        "visible": false,
+        "sample_text": "公司操作 查询仓库 重置"
+      },
+      {
+        "id": "references-warehouses-table",
+        "count": 1,
+        "observed": true,
+        "visible": false,
+        "sample_text": "仓库编号仓库名称公司禁用状态操作WH-LOCAL-001成品中心仓领意服装启用中 明细 WH-LOCAL-002面辅料暂存仓领意服装启用中 明细"
+      },
+      {
+        "id": "references-readonly-detail-drawer",
+        "count": 1,
+        "observed": true,
+        "visible": false,
+        "sample_text": "参考资料明细"
+      },
+      {
+        "id": "references-permission-state",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "客户基础资料 parity route 已启用，只读引用数据可见"
+      },
+      {
+        "id": "references-write-guard",
+        "count": 1,
+        "observed": true,
+        "visible": true,
+        "sample_text": "只读写入口保护客户详情、仓库详情、基础资料同步与导出只允许查看，不触发写入请求。 基础资料同步 导出"
+      }
+    ],
+    "guarded_controls": [
+      {
+        "testid": "references-write-guard",
+        "text": "只读写入口保护客户详情、仓库详情、基础资料同步与导出只允许查看，不触发写入请求。 基础资料同步 导出",
+        "dataWriteGuard": "readonly:sales-inventory-references",
+        "guardState": "guarded_readonly",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "testid": "references-sync-guarded-button",
+        "text": "基础资料同步",
+        "dataWriteGuard": "readonly:references-sync",
+        "guardState": "guarded_readonly",
+        "disabled": true,
+        "visible": true
+      },
+      {
+        "testid": "references-export-guarded-button",
+        "text": "导出",
+        "dataWriteGuard": "readonly:references-export",
+        "guardState": "guarded_readonly",
+        "disabled": true,
+        "visible": true
+      },
+      {
+        "testid": "references-customers-detail-button",
+        "text": "明细",
+        "dataWriteGuard": "readonly:customer-detail",
+        "guardState": "guarded_readonly",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "testid": "references-warehouses-detail-button",
+        "text": "明细",
+        "dataWriteGuard": "readonly:warehouse-detail",
+        "guardState": "guarded_readonly",
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "testid": "references-warehouses-detail-button",
+        "text": "明细",
+        "dataWriteGuard": "readonly:warehouse-detail",
+        "guardState": "guarded_readonly",
+        "disabled": false,
+        "visible": false
+      }
+    ]
+  },
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

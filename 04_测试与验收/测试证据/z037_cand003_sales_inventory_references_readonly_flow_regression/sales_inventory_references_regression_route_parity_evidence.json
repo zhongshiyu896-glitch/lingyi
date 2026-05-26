@@ -1,0 +1,17 @@
+{
+  "base_url": "http://127.0.0.1:5173",
+  "recaptured": true,
+  "routes_verified": [
+    {
+      "route": "/sales-inventory/references",
+      "final_url": "http://127.0.0.1:5173/sales-inventory/references",
+      "pass": true
+    },
+    {
+      "route": "/foundation/customer",
+      "expected": "/sales-inventory/references?tab=customers&parity=foundation-customer",
+      "final_url": "http://127.0.0.1:5173/sales-inventory/references?tab=customers&parity=foundation-customer",
+      "pass": true
+    }
+  ]
+}
