@@ -1,0 +1,13 @@
+{
+  "evidence_type": "runtime_screenshot_dom_route",
+  "task_id": "TASK-Z036B-19-IMPL",
+  "candidate_id": "Z036-CAND-003",
+  "files": [
+    "runtime_dom_route_evidence.json",
+    "route_runtime_evidence.json",
+    "dom_anchor_runtime_evidence.json",
+    "style_profit_list_runtime_fullpage.png",
+    "style_profit_detail_runtime_fullpage.png"
+  ],
+  "write_requests_observed_count": 0
+}

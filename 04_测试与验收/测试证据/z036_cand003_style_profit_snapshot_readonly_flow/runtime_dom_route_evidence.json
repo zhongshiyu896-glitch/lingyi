@@ -1,0 +1,107 @@
+{
+  "task_id": "TASK-Z036B-19-IMPL",
+  "candidate_id": "Z036-CAND-003",
+  "base_url": "http://127.0.0.1:5174",
+  "routes": [
+    {
+      "route": "/reports/style-profit",
+      "final_url": "http://127.0.0.1:5174/reports/style-profit",
+      "navigation_ok": true,
+      "status": 200,
+      "screenshot": "04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow/style_profit_list_runtime_fullpage.png",
+      "screenshot_size_bytes": 76075,
+      "anchors": {
+        "style-profit-page": 1,
+        "style-profit-query-form": 1,
+        "style-profit-summary-grid": 1,
+        "style-profit-table": 1,
+        "style-profit-archive-button": 1,
+        "style-profit-detail-page": 0,
+        "style-profit-source-map-table": 0,
+        "style-profit-readonly-hint": 1
+      },
+      "guarded_write_controls": 11,
+      "console_messages": [
+        {
+          "type": "debug",
+          "text": "[vite] connecting..."
+        },
+        {
+          "type": "debug",
+          "text": "[vite] connected."
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "failed_requests": [],
+      "error_responses": [
+        {
+          "url": "http://127.0.0.1:5174/api/auth/me",
+          "status": 401,
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "route": "/reports/style-profit/detail?id=101&parity=style-profit",
+      "final_url": "http://127.0.0.1:5174/reports/style-profit/detail?id=101&parity=style-profit",
+      "navigation_ok": true,
+      "status": 200,
+      "screenshot": "04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow/style_profit_detail_runtime_fullpage.png",
+      "screenshot_size_bytes": 173850,
+      "anchors": {
+        "style-profit-page": 0,
+        "style-profit-query-form": 0,
+        "style-profit-summary-grid": 0,
+        "style-profit-table": 0,
+        "style-profit-archive-button": 0,
+        "style-profit-detail-page": 1,
+        "style-profit-source-map-table": 1,
+        "style-profit-readonly-hint": 1
+      },
+      "guarded_write_controls": 5,
+      "console_messages": [
+        {
+          "type": "debug",
+          "text": "[vite] connecting..."
+        },
+        {
+          "type": "debug",
+          "text": "[vite] connected."
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+        }
+      ],
+      "failed_requests": [],
+      "error_responses": [
+        {
+          "url": "http://127.0.0.1:5174/api/auth/me",
+          "status": 401,
+          "method": "GET"
+        }
+      ]
+    }
+  ],
+  "anchors_required": [
+    "style-profit-page",
+    "style-profit-query-form",
+    "style-profit-summary-grid",
+    "style-profit-table",
+    "style-profit-archive-button",
+    "style-profit-detail-page",
+    "style-profit-source-map-table",
+    "style-profit-readonly-hint"
+  ],
+  "write_requests_observed_count": 0,
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow/style_profit_list_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow/style_profit_detail_runtime_fullpage.png"
+  ],
+  "screenshot_skip_reason": null,
+  "runtime_alternative_evidence": null,
+  "generated_at": "2026-05-26T11:26:06.519Z"
+}

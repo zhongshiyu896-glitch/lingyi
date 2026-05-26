@@ -1,0 +1,156 @@
+{
+  "cycle_id": "Z036",
+  "task_id": "TASK-Z036B-18-PREP",
+  "source_task_id": "TASK-Z036B-17-PREP",
+  "selected_candidate_id": "Z036-CAND-003",
+  "implementation_workdir": "/Users/hh/Desktop/领意服装管理系统",
+  "frontend_workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc",
+  "head": "268de6b57e70a225bdee128249a57d44b9719aa6",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "diff_check_pass": true,
+  "candidate_original_fields": {
+    "candidate_id": "Z036-CAND-003",
+    "title": "款式利润快照与来源映射只读流",
+    "page_scope": "款式利润",
+    "routes": [
+      "/reports/style-profit",
+      "/reports/style-profit/detail"
+    ],
+    "visible_acceptance_goal": "用户能在款式利润快照列表筛选并查看汇总卡片、快照表格，进入详情后看到来源映射、利润明细和只读写入口状态。",
+    "browser_evidence_plan": [
+      "采集 /reports/style-profit 页面截图",
+      "采集 /reports/style-profit/detail 详情运行态 DOM anchors",
+      "采集只读 guarded 写入口状态",
+      "若无法截图，必须记录 screenshot_skip_reason，并提供运行态 DOM/route 替代证据"
+    ],
+    "field_button_state_anchors": [
+      "style-profit-page",
+      "style-profit-query-form",
+      "style-profit-summary-grid",
+      "style-profit-table",
+      "style-profit-archive-button",
+      "style-profit-detail-page",
+      "style-profit-source-map-table",
+      "style-profit-readonly-hint"
+    ],
+    "read_write_boundary": "read_only=true; 仅允许快照筛选、详情查看和来源映射展示；归档、清空、确认、导出等入口必须 guarded 或禁用。",
+    "capture_contract_integration": true,
+    "expected_allowed_file_scope": [
+      "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue",
+      "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue",
+      "06_前端/lingyi-pc/src/api/style_profit.ts"
+    ],
+    "forbidden_scope": [
+      "07_后端",
+      "candidate pool",
+      "historical dirty forbidden",
+      "log/control dirty",
+      "Z034 B37 residual artifacts",
+      "runtime/cache/test-results",
+      "Z035 committed product files"
+    ],
+    "touches_historical_dirty": false,
+    "candidate_blocked": false,
+    "backend_allowed": false,
+    "read_only": true
+  },
+  "title": "款式利润快照与来源映射只读流",
+  "page_scope": "款式利润",
+  "routes": [
+    "/reports/style-profit",
+    "/reports/style-profit/detail"
+  ],
+  "visible_acceptance_goal": "用户能在款式利润快照列表筛选并查看汇总卡片、快照表格，进入详情后看到来源映射、利润明细和只读写入口状态。",
+  "read_only": true,
+  "backend_allowed": false,
+  "expected_allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue",
+    "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue",
+    "06_前端/lingyi-pc/src/api/style_profit.ts"
+  ],
+  "forbidden_scope": [
+    "07_后端",
+    "backend app/tests",
+    "candidate pool",
+    "historical dirty forbidden",
+    "log/control dirty",
+    "Z034 B37 residual artifacts",
+    "Z035 committed product files",
+    "runtime/cache/test-results"
+  ],
+  "allowed_files_exist": {
+    "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue": true,
+    "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue": true,
+    "06_前端/lingyi-pc/src/api/style_profit.ts": true
+  },
+  "allowed_files_dirty": {
+    "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue": false,
+    "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue": false,
+    "06_前端/lingyi-pc/src/api/style_profit.ts": false
+  },
+  "route_static_check": {
+    "/reports/style-profit": true,
+    "/reports/style-profit/detail": true,
+    "source": "06_前端/lingyi-pc/src/router/index.ts:98-106",
+    "details": [
+      "98:    path: '/reports/style-profit',",
+      "99:    name: 'StyleProfitSnapshotList',",
+      "100:    component: () => import('@/views/style_profit/StyleProfitSnapshotList.vue'),",
+      "104:    path: '/reports/style-profit/detail',",
+      "105:    name: 'StyleProfitSnapshotDetail',",
+      "106:    component: () => import('@/views/style_profit/StyleProfitSnapshotDetail.vue'),"
+    ]
+  },
+  "field_button_state_anchors": [
+    "style-profit-page",
+    "style-profit-query-form",
+    "style-profit-summary-grid",
+    "style-profit-table",
+    "style-profit-archive-button",
+    "style-profit-detail-page",
+    "style-profit-source-map-table",
+    "style-profit-readonly-hint"
+  ],
+  "browser_evidence_plan": [
+    "采集 /reports/style-profit 页面截图",
+    "采集 /reports/style-profit/detail 详情运行态 DOM anchors",
+    "采集只读 guarded 写入口状态",
+    "若无法截图，必须记录 screenshot_skip_reason，并提供运行态 DOM/route 替代证据"
+  ],
+  "screenshot_or_runtime_dom_required": true,
+  "screenshot_skip_requires_runtime_alternative": true,
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "intersections_with_z035_committed_product_files": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "cand001_runtime_readonly_fallback_risk": true,
+  "cand001_console_401_errors_observed": 4,
+  "cand001_network_401_errors_observed": 4,
+  "cand001_write_chain_success": false,
+  "cand001_permission_misread_as_success": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_evidence": true,
+  "z033_cand003_actual_passed_count": 0,
+  "z033_cand003_skipped_count": 4,
+  "screenshot_missing_risk_for_Z035": true,
+  "code_edits_performed": false,
+  "tests_browser_typecheck_run": false,
+  "screenshot_collected": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "cleanup_reset_restore_performed": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z036B-19-IMPL",
+  "run_this_task": false
+}

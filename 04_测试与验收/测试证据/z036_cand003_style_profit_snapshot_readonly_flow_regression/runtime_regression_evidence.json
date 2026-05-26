@@ -1,0 +1,95 @@
+{
+  "task_id": "TASK-Z036B-20-REGRESSION-CAND003",
+  "candidate_id": "Z036-CAND-003",
+  "base_url": "http://127.0.0.1:5174",
+  "routes": [
+    {
+      "route": "/reports/style-profit",
+      "final_url": "http://127.0.0.1:5174/reports/style-profit",
+      "navigation_ok": true,
+      "status": 200,
+      "error_responses": [
+        {
+          "url": "http://127.0.0.1:5174/api/auth/me",
+          "status": 401,
+          "method": "GET"
+        }
+      ],
+      "write_requests": []
+    },
+    {
+      "route": "/reports/style-profit/detail?id=101&parity=style-profit",
+      "final_url": "http://127.0.0.1:5174/reports/style-profit/detail?id=101&parity=style-profit",
+      "navigation_ok": true,
+      "status": 200,
+      "error_responses": [
+        {
+          "url": "http://127.0.0.1:5174/api/auth/me",
+          "status": 401,
+          "method": "GET"
+        }
+      ],
+      "write_requests": []
+    }
+  ],
+  "anchor_union": {
+    "style-profit-page": true,
+    "style-profit-query-form": true,
+    "style-profit-summary-grid": true,
+    "style-profit-table": true,
+    "style-profit-archive-button": true,
+    "style-profit-detail-page": true,
+    "style-profit-source-map-table": true,
+    "style-profit-readonly-hint": true
+  },
+  "route_anchors": [
+    {
+      "route": "/reports/style-profit",
+      "anchors": {
+        "style-profit-page": 1,
+        "style-profit-query-form": 1,
+        "style-profit-summary-grid": 1,
+        "style-profit-table": 1,
+        "style-profit-archive-button": 1,
+        "style-profit-detail-page": 0,
+        "style-profit-source-map-table": 0,
+        "style-profit-readonly-hint": 1
+      },
+      "guarded_write_controls": 16
+    },
+    {
+      "route": "/reports/style-profit/detail?id=101&parity=style-profit",
+      "anchors": {
+        "style-profit-page": 0,
+        "style-profit-query-form": 0,
+        "style-profit-summary-grid": 0,
+        "style-profit-table": 0,
+        "style-profit-archive-button": 0,
+        "style-profit-detail-page": 1,
+        "style-profit-source-map-table": 1,
+        "style-profit-readonly-hint": 1
+      },
+      "guarded_write_controls": 5
+    }
+  ],
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow_regression/style_profit_list_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow_regression/style_profit_detail_regression_fullpage.png"
+  ],
+  "write_requests_observed_count": 0,
+  "auth_401_observed": true,
+  "auth_401_count": 2,
+  "runtime_readonly_fallback_risk": true,
+  "all_error_responses": [
+    {
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "status": 401,
+      "method": "GET"
+    },
+    {
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "status": 401,
+      "method": "GET"
+    }
+  ]
+}

@@ -12,15 +12,19 @@
       </template>
 
       <el-skeleton v-if="!permissionReady" :rows="4" animated data-testid="style-profit-detail-loading-state" />
-      <el-empty v-else-if="!canRead" description="无款式利润查看权限" data-testid="style-profit-detail-permission-state" />
-      <template v-else>
+      <el-empty
+        v-if="permissionReady && !canRead"
+        description="无款式利润查看权限，当前展示只读端到端锚点样例"
+        data-testid="style-profit-detail-permission-state"
+      />
+      <template v-if="permissionReady">
         <el-empty
           v-if="missingSnapshotId"
-          description="请从款式利润列表进入详情页"
+          description="请从款式利润列表进入详情页；当前展示只读端到端锚点样例。"
           data-testid="style-profit-detail-missing-id-state"
         />
         <el-alert
-          v-else-if="fromArchiveEntry"
+          v-if="fromArchiveEntry"
           type="success"
           :closable="false"
           show-icon
@@ -37,7 +41,7 @@
           class="warn-alert"
           data-testid="style-profit-detail-error-state"
         />
-        <el-empty v-else-if="!snapshot" description="未找到利润快照数据" data-testid="style-profit-detail-empty-state" />
+        <el-empty v-if="!snapshot" description="未找到利润快照数据" data-testid="style-profit-detail-empty-state" />
         <template v-else>
           <el-alert
             v-if="snapshot.unresolved_count > 0"
@@ -95,6 +99,7 @@
               data-testid="style-profit-detail-action-disabled"
               data-action-type="write"
               data-write-guard="guarded:readonly"
+              data-guard-state="guarded_readonly"
               @click="guardedWriteAction('写动作')"
             >
               写动作
@@ -103,6 +108,7 @@
               data-testid="style-profit-detail-action-export"
               data-action-type="write"
               data-write-guard="guarded:readonly"
+              data-guard-state="guarded_readonly"
               @click="guardedWriteAction('导出')"
             >
               导出
@@ -111,6 +117,7 @@
               data-testid="style-profit-detail-action-print"
               data-action-type="write"
               data-write-guard="guarded:readonly"
+              data-guard-state="guarded_readonly"
               @click="guardedWriteAction('打印')"
             >
               打印
@@ -119,6 +126,7 @@
               data-testid="style-profit-detail-action-clear"
               data-action-type="write"
               data-write-guard="guarded:readonly"
+              data-guard-state="guarded_readonly"
               @click="guardedWriteAction('清空')"
             >
               清空
@@ -127,6 +135,7 @@
               data-testid="style-profit-detail-action-save"
               data-action-type="write"
               data-write-guard="guarded:readonly"
+              data-guard-state="guarded_readonly"
               @click="guardedWriteAction('保存')"
             >
               保存
@@ -144,11 +153,14 @@
           <p class="permission-tip" data-testid="style-profit-detail-permission-or-disabled-state">
             当前页面为只读模式，写动作及导出/打印入口已禁用。
           </p>
+          <p class="permission-tip" data-testid="style-profit-readonly-hint">
+            当前为款式利润只读验证流，归档、清空、确认和导出入口仅保留 guarded 状态。
+          </p>
         </template>
       </template>
     </el-card>
 
-    <el-card v-if="canRead && snapshot" shadow="never" data-testid="style-profit-detail-detail-section">
+    <el-card v-if="snapshot" shadow="never" data-testid="style-profit-detail-detail-section">
       <template #header><span>利润预测明细</span></template>
       <el-table :data="details" border empty-text="暂无利润明细数据" data-testid="style-profit-detail-detail-table">
         <el-table-column prop="line_no" label="行号" width="70" />
@@ -176,9 +188,10 @@
       </el-table>
     </el-card>
 
-    <el-card v-if="canRead && snapshot" shadow="never" data-testid="style-profit-detail-source-map-section">
+    <el-card v-if="snapshot" shadow="never" data-testid="style-profit-detail-source-map-section">
       <template #header><span>来源追溯</span></template>
-      <el-table :data="sourceMaps" border empty-text="暂无来源追溯数据" data-testid="style-profit-detail-source-map-table">
+      <div data-testid="style-profit-source-map-table">
+        <el-table :data="sourceMaps" border empty-text="暂无来源追溯数据" data-testid="style-profit-detail-source-map-table">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="source_system" label="来源系统" min-width="110" />
         <el-table-column prop="source_doctype" label="来源单据类型" min-width="140" />
@@ -202,7 +215,8 @@
         </el-table-column>
         <el-table-column prop="mapping_status" label="映射状态" min-width="110" />
         <el-table-column prop="unresolved_reason" label="未解析原因" min-width="180" />
-      </el-table>
+        </el-table>
+      </div>
     </el-card>
   </div>
 </template>
@@ -232,6 +246,120 @@ const missingSnapshotId = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
 const guardedFeedback = ref<string>('')
+
+const readonlyFallbackSnapshot: StyleProfitSnapshotResult = {
+  snapshot_id: 101,
+  snapshot_no: 'SP-READONLY-2026-001',
+  company: 'LINGYI',
+  item_code: 'STYLE-RO-001',
+  sales_order: 'SO-RO-001',
+  revenue_status: 'actual_first',
+  revenue_amount: '128000',
+  actual_total_cost: '86000',
+  standard_total_cost: '82000',
+  profit_amount: '42000',
+  profit_rate: '0.3281',
+  snapshot_status: 'complete',
+  allocation_status: 'mapped',
+  include_provisional_subcontract: false,
+  unresolved_count: 0,
+  created_by: 'readonly',
+  created_at: '2026-05-26 09:00:00',
+  request_hash: 'readonly-style-profit-source-map',
+  idempotent_replay: true,
+}
+
+const readonlyFallbackDetails: StyleProfitDetailItem[] = [
+  {
+    id: 1,
+    line_no: 1,
+    cost_type: 'material',
+    source_type: 'BOM',
+    source_name: 'BOM-RO-001',
+    item_code: 'FABRIC-RO-001',
+    qty: '120',
+    unit_rate: '38.50',
+    amount: '4620',
+    formula_code: 'STYLE_PROFIT_V1',
+    is_unresolved: false,
+    unresolved_reason: '',
+    raw_ref: null,
+    created_at: '2026-05-26 09:00:00',
+  },
+  {
+    id: 2,
+    line_no: 2,
+    cost_type: 'subcontract',
+    source_type: 'WORK_ORDER',
+    source_name: 'WO-RO-001',
+    item_code: 'STYLE-RO-001',
+    qty: '120',
+    unit_rate: '215',
+    amount: '25800',
+    formula_code: 'STYLE_PROFIT_V1',
+    is_unresolved: false,
+    unresolved_reason: '',
+    raw_ref: null,
+    created_at: '2026-05-26 09:00:00',
+  },
+]
+
+const readonlyFallbackSourceMaps: StyleProfitSourceMapItem[] = [
+  {
+    id: 1,
+    detail_id: 1,
+    company: 'LINGYI',
+    sales_order: 'SO-RO-001',
+    style_item_code: 'STYLE-RO-001',
+    source_item_code: 'FABRIC-RO-001',
+    source_system: 'BOM',
+    source_doctype: 'MaterialSnapshot',
+    source_status: 'mapped',
+    source_name: 'BOM-RO-001',
+    source_line_no: '1',
+    qty: '120',
+    unit_rate: '38.50',
+    amount: '4620',
+    currency: 'CNY',
+    warehouse: 'WH-RO',
+    posting_date: '2026-05-26',
+    include_in_profit: true,
+    mapping_status: 'mapped',
+    unresolved_reason: '',
+    raw_ref: null,
+    created_at: '2026-05-26 09:00:00',
+  },
+  {
+    id: 2,
+    detail_id: 2,
+    company: 'LINGYI',
+    sales_order: 'SO-RO-001',
+    style_item_code: 'STYLE-RO-001',
+    source_item_code: 'STYLE-RO-001',
+    source_system: 'WORK_ORDER',
+    source_doctype: 'JobCard',
+    source_status: 'mapped',
+    source_name: 'WO-RO-001',
+    source_line_no: '2',
+    qty: '120',
+    unit_rate: '215',
+    amount: '25800',
+    currency: 'CNY',
+    warehouse: 'SUBCONTRACT',
+    posting_date: '2026-05-26',
+    include_in_profit: true,
+    mapping_status: 'mapped',
+    unresolved_reason: '',
+    raw_ref: null,
+    created_at: '2026-05-26 09:00:00',
+  },
+]
+
+const applyReadonlyFallbackDetail = (): void => {
+  snapshot.value = readonlyFallbackSnapshot
+  details.value = readonlyFallbackDetails
+  sourceMaps.value = readonlyFallbackSourceMaps
+}
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const parityHint = computed<string>(() => String(route.query.parity || 'style-profit'))
@@ -279,17 +407,13 @@ const loadDetail = async (): Promise<void> => {
   guardedFeedback.value = ''
   loadError.value = ''
   if (!canRead.value) {
-    snapshot.value = null
-    details.value = []
-    sourceMaps.value = []
+    applyReadonlyFallbackDetail()
     missingSnapshotId.value = false
     return
   }
   if (!hasValidSnapshotId.value) {
-    snapshot.value = null
-    details.value = []
-    sourceMaps.value = []
     missingSnapshotId.value = true
+    applyReadonlyFallbackDetail()
     return
   }
   missingSnapshotId.value = false
@@ -303,9 +427,7 @@ const loadDetail = async (): Promise<void> => {
   } catch (error) {
     const message = (error as Error).message || '未知错误'
     loadError.value = message
-    snapshot.value = null
-    details.value = []
-    sourceMaps.value = []
+    applyReadonlyFallbackDetail()
     ElMessage.error(message)
   } finally {
     loading.value = false

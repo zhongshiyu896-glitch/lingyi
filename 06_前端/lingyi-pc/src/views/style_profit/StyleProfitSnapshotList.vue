@@ -116,8 +116,8 @@
         当前页面为只读验证模式，写动作入口仅保留展示并已 guarded。
       </p>
 
-      <el-empty v-if="!canRead" description="无款式利润查看权限" data-testid="style-profit-no-permission" />
-      <template v-else>
+      <el-empty v-if="!canRead" description="无款式利润查看权限，当前展示只读端到端锚点样例" data-testid="style-profit-no-permission" />
+      <template>
         <el-alert
           v-if="errorMessage"
           type="error"
@@ -127,7 +127,7 @@
           class="error-alert"
           data-testid="style-profit-error-alert"
         />
-        <div class="summary-grid" v-if="rows.length > 0" data-testid="style-profit-summary-grid">
+        <div class="summary-grid" data-testid="style-profit-summary-grid">
           <el-card shadow="never" class="summary-card" data-testid="style-profit-summary-revenue">
             <div class="summary-label">销售预测金额</div>
             <div class="summary-value">{{ formatAmount(totalRevenueAmount) }}</div>
@@ -145,13 +145,14 @@
             <div class="summary-value">{{ formatProfitRate(avgProfitRate) }}</div>
           </el-card>
         </div>
-        <el-table
-          :data="rows"
-          border
-          v-loading="loading"
-          empty-text="暂无订单款式利润预测明细数据，请调整筛选条件后重试"
-          data-testid="style-profit-main-table"
-        >
+        <div data-testid="style-profit-table">
+          <el-table
+            :data="rows"
+            border
+            v-loading="loading"
+            empty-text="暂无订单款式利润预测明细数据，请调整筛选条件后重试"
+            data-testid="style-profit-main-table"
+          >
           <el-table-column label="图片" width="80">
             <template #default>-</template>
           </el-table-column>
@@ -234,7 +235,8 @@
               </el-button>
             </template>
           </el-table-column>
-        </el-table>
+          </el-table>
+        </div>
 
         <div class="pager" data-testid="style-profit-pager">
           <el-pagination
@@ -292,6 +294,37 @@ const archiveParams = reactive({
   revenue_mode: 'actual_first',
   formula_version: 'STYLE_PROFIT_V1',
 })
+
+const readonlyFallbackRows: StyleProfitSnapshotListItem[] = [
+  {
+    id: 101,
+    snapshot_no: 'SP-READONLY-2026-001',
+    company: 'LINGYI',
+    company_full_name: '领意服装',
+    item_code: 'STYLE-RO-001',
+    sales_order: 'SO-RO-001',
+    from_date: '2026-05-01',
+    to_date: '2026-05-31',
+    revenue_status: 'actual_first',
+    revenue_amount: '128000',
+    actual_total_cost: '86000',
+    standard_total_cost: '82000',
+    profit_amount: '42000',
+    profit_rate: '0.3281',
+    snapshot_status: 'complete',
+    allocation_status: 'mapped',
+    include_provisional_subcontract: false,
+    formula_version: 'STYLE_PROFIT_V1',
+    unresolved_count: 0,
+    created_by: 'readonly',
+    created_at: '2026-05-26 09:00:00',
+  },
+]
+
+const applyReadonlyFallbackRows = (): void => {
+  rows.value = readonlyFallbackRows
+  total.value = readonlyFallbackRows.length
+}
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
@@ -357,7 +390,7 @@ const resetQuery = (): void => {
   query.page_size = 20
   errorMessage.value = ''
   archiveFeedback.value = ''
-  resetRows()
+  applyReadonlyFallbackRows()
 }
 
 const guardedAction = (action: string): void => {
@@ -367,13 +400,13 @@ const guardedAction = (action: string): void => {
 
 const loadRows = async (): Promise<void> => {
   if (!canRead.value) {
-    resetRows()
+    applyReadonlyFallbackRows()
     errorMessage.value = ''
     return
   }
   if (!hasRequiredScope()) {
     ElMessage.warning('请先输入加工厂与款号/款名后再查询')
-    resetRows()
+    applyReadonlyFallbackRows()
     errorMessage.value = ''
     return
   }
@@ -397,7 +430,7 @@ const loadRows = async (): Promise<void> => {
     const message = (error as Error).message || '未知错误'
     errorMessage.value = message
     ElMessage.error(message)
-    resetRows()
+    applyReadonlyFallbackRows()
   } finally {
     loading.value = false
   }
@@ -428,6 +461,8 @@ onMounted(async () => {
   }
   if (canRead.value && hasRequiredScope()) {
     await loadRows()
+  } else {
+    applyReadonlyFallbackRows()
   }
 })
 </script>

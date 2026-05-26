@@ -1,0 +1,22 @@
+field	value
+source_task_id	TASK-Z036B-17-PREP
+selected_candidate_id	Z036-CAND-003
+implementation_workdir	/Users/hh/Desktop/领意服装管理系统
+frontend_workdir	/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc
+routes	["/reports/style-profit","/reports/style-profit/detail"]
+expected_allowed_file_scope	["06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue","06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue","06_前端/lingyi-pc/src/api/style_profit.ts"]
+forbidden_scope	["07_后端","backend app/tests","candidate pool","historical dirty forbidden","log/control dirty","Z034 B37 residual artifacts","Z035 committed product files","runtime/cache/test-results"]
+next_task	TASK-Z036B-19-IMPL
+allowed_files_exist	{"06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue":true,"06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue":true,"06_前端/lingyi-pc/src/api/style_profit.ts":true}
+allowed_files_dirty	{"06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue":false,"06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue":false,"06_前端/lingyi-pc/src/api/style_profit.ts":false}
+route_static_check	{"/reports/style-profit":true,"/reports/style-profit/detail":true,"source":"06_前端/lingyi-pc/src/router/index.ts:98-106"}
+intersections_with_historical_dirty	[]
+intersections_with_log_control_dirty	[]
+intersections_with_residual_artifacts	[]
+intersections_with_z035_committed_product_files	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+cand001_runtime_readonly_fallback_risk	true
+shell_wrapper_anomaly_preserved	true
+z033_skipped_only_risk_preserved	true
+screenshot_missing_risk_for_Z035	true

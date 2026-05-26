@@ -1,0 +1,34 @@
+{
+  "task_id": "TASK-Z036B-20-REGRESSION-CAND003",
+  "candidate_id": "Z036-CAND-003",
+  "routes": [
+    {
+      "route": "/reports/style-profit",
+      "final_url": "http://127.0.0.1:5174/reports/style-profit",
+      "navigation_ok": true,
+      "status": 200,
+      "error_responses": [
+        {
+          "url": "http://127.0.0.1:5174/api/auth/me",
+          "status": 401,
+          "method": "GET"
+        }
+      ],
+      "write_requests": []
+    },
+    {
+      "route": "/reports/style-profit/detail?id=101&parity=style-profit",
+      "final_url": "http://127.0.0.1:5174/reports/style-profit/detail?id=101&parity=style-profit",
+      "navigation_ok": true,
+      "status": 200,
+      "error_responses": [
+        {
+          "url": "http://127.0.0.1:5174/api/auth/me",
+          "status": 401,
+          "method": "GET"
+        }
+      ],
+      "write_requests": []
+    }
+  ]
+}

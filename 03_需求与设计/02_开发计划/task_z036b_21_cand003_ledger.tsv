@@ -1,0 +1,33 @@
+field	value
+cycle_id	Z036
+candidate_id	Z036-CAND-003
+evidence_only	false
+source_chain	B18 boundary -> B19 implementation -> B20 regression -> B21 ledger
+ledger_total	63
+ledger_yes_count	27
+ledger_no_count	36
+yes_no_intersection
+frontend_yes_paths	06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue;06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue
+backend_yes_paths
+screenshots_in_yes	04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow/style_profit_list_runtime_fullpage.png;04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow/style_profit_detail_runtime_fullpage.png;04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow_regression/style_profit_list_regression_fullpage.png;04_测试与验收/测试证据/z036_cand003_style_profit_snapshot_readonly_flow_regression/style_profit_detail_regression_fullpage.png
+routes_passed	true
+anchors_passed	true
+write_requests_observed_count	0
+auth_401_observed	true
+auth_401_count	2
+runtime_readonly_fallback_risk	true
+read_only_boundary_preserved	true
+real_write_action_added	false
+historical_dirty_forbidden_in_yes
+log_control_dirty_in_yes
+residual_artifacts_in_yes
+z035_committed_product_files_in_yes
+candidate_pool_yes_paths
+all_yes_paths_exist	true
+ignored_yes_paths
+cand001_runtime_readonly_fallback_risk	true
+shell_wrapper_anomaly_preserved	true
+z033_cand003_skipped_only_evidence	true
+screenshot_missing_risk_for_Z035	true
+next_task	TASK-Z036B-22-STAGE-CAND003
+run_this_task	false

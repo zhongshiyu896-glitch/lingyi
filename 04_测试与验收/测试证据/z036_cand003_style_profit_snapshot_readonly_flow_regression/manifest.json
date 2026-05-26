@@ -1,0 +1,15 @@
+{
+  "evidence_type": "runtime_regression_screenshot_dom_route",
+  "task_id": "TASK-Z036B-20-REGRESSION-CAND003",
+  "candidate_id": "Z036-CAND-003",
+  "files": [
+    "runtime_regression_evidence.json",
+    "route_regression_evidence.json",
+    "dom_anchor_regression_evidence.json",
+    "style_profit_list_regression_fullpage.png",
+    "style_profit_detail_regression_fullpage.png"
+  ],
+  "write_requests_observed_count": 0,
+  "auth_401_observed": true,
+  "auth_401_count": 2
+}
