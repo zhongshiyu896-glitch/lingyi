@@ -1,0 +1,40 @@
+{
+  "candidate_id": "Z033-CAND-005",
+  "source_task": "TASK-Z033B-29-PREP",
+  "current_head": "30d1b457851c299624b2f379fb5d7e87e43e6005",
+  "exact_workdir": "07_后端/lingyi_service",
+  "exact_command": ".venv/bin/python -m pytest tests/test_style_profit_snapshot_idempotency.py -q",
+  "command_run_count": 1,
+  "exit_code": 0,
+  "result": "PASS",
+  "pytest_summary": "5 passed, 1 warning in 0.38s",
+  "stdout_path": "03_需求与设计/02_开发计划/task_z033b_30_cand005_stdout.txt",
+  "target_test": "07_后端/lingyi_service/tests/test_style_profit_snapshot_idempotency.py",
+  "target_test_dirty_diff_before": false,
+  "target_test_dirty_diff_after": false,
+  "fix_attempt": false,
+  "rerun_performed": false,
+  "continued_after_fail": false,
+  "archived_candidate_notes": [
+    {
+      "candidate_id": "Z033-CAND-003",
+      "archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+      "commit_hash": "1433e6721f3cf917b61484ae7fa9b55a36efcd6a",
+      "evidence_only": true,
+      "skipped_only_evidence": true,
+      "actual_passed_count": 0,
+      "skipped_count": 4,
+      "risk_note": "CAND003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."
+    }
+  ],
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false
+}
