@@ -1,0 +1,31 @@
+field	value
+task_id	TASK-Z040B-04-REGRESSION-CAND001
+candidate_id	Z040-CAND-001
+code_modified_in_this_task	false
+changed_files_observed	06_前端/lingyi-pc/src/App.vue
+permission_store_changed	false
+auth_api_changed	false
+forbidden_router_or_views_touched	false
+routes	/home;/permissions/governance;/reports/catalog
+route_status_by_route	/home=200 shell_visible=true;/permissions/governance=200 shell_visible=true;/reports/catalog=200 shell_visible=true
+shell_visible_by_route	/home=true;/permissions/governance=true;/reports/catalog=true
+screenshot	04_测试与验收/测试证据/z040_cand001_global_readonly_shell_regression/home_global_readonly_shell_regression.png;1440x1200;png
+anchors_observed	8/8
+guarded_write_controls	global-auth-refresh-guard:guarded:global-readonly-shell;module-reload:guarded:global-module-actions-readonly;global-readonly-write-guard:guarded:global-readonly-confirm disabled=true
+dataReadonlyBoundary	true
+dataWriteRequestSuccessAllowed	false
+dataRealWriteActionAdded	false
+auth_401_count	6
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_command	npm run typecheck
+typecheck_exit_code	0
+worktree_check_pass	true
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+dev_server_started	true
+dev_server_stopped	true
+remote_lifecycle_parked	true

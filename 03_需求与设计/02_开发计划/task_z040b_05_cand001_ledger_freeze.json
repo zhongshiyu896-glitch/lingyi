@@ -1,0 +1,48 @@
+{
+  "task_id": "TASK-Z040B-05-LEDGER-CAND001",
+  "candidate_id": "Z040-CAND-001",
+  "evidence_only": false,
+  "source_chain": "TASK-Z040B-02-PREP -> TASK-Z040B-03-IMPL -> TASK-Z040B-04-REGRESSION -> TASK-Z040B-05-LEDGER",
+  "ledger_total": 42,
+  "yes_count": 26,
+  "no_count": 16,
+  "yes_no_intersection": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/App.vue"
+  ],
+  "forbidden_paths_in_yes": [],
+  "yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "routes_status": {
+    "/home": 200,
+    "/permissions/governance": 200,
+    "/reports/catalog": 200
+  },
+  "shell_visible_by_route": {
+    "/home": true,
+    "/permissions/governance": true,
+    "/reports/catalog": true
+  },
+  "screenshots_in_yes": [
+    "04_测试与验收/测试证据/z040_cand001_global_readonly_shell/home_global_readonly_shell.png",
+    "04_测试与验收/测试证据/z040_cand001_global_readonly_shell_regression/home_global_readonly_shell_regression.png"
+  ],
+  "anchors_observed": "8/8",
+  "guarded_write_controls": [
+    "刷新权限",
+    "模块动作重载",
+    "只读确认"
+  ],
+  "auth_401_count": 6,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_exit_code": 0,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "next_task": "TASK-Z040B-06-STAGE-CAND001",
+  "run_this_task": false,
+  "remote_lifecycle_parked": true
+}

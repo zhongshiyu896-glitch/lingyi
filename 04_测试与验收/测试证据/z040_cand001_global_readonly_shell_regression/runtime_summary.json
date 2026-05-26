@@ -1,0 +1,63 @@
+{
+  "route_status_by_route": {
+    "/home": {
+      "http_status": 200,
+      "shell_visible": true,
+      "url": "http://127.0.0.1:5180/home"
+    },
+    "/permissions/governance": {
+      "http_status": 200,
+      "shell_visible": true,
+      "url": "http://127.0.0.1:5180/permissions/governance"
+    },
+    "/reports/catalog": {
+      "http_status": 200,
+      "shell_visible": true,
+      "url": "http://127.0.0.1:5180/reports/catalog"
+    }
+  },
+  "shell_visible_by_route": {
+    "/home": true,
+    "/permissions/governance": true,
+    "/reports/catalog": true
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z040_cand001_global_readonly_shell_regression/home_global_readonly_shell_regression.png",
+    "width": 1440,
+    "height": 1200,
+    "format": "png"
+  },
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_controls": [
+    {
+      "id": "global-auth-refresh-guard",
+      "text": "刷新权限",
+      "disabled": false,
+      "dataWriteGuard": "guarded:global-readonly-shell",
+      "dataReadonlyAction": "fetchCurrentUser"
+    },
+    {
+      "id": null,
+      "text": "重载模块动作",
+      "disabled": false,
+      "dataWriteGuard": "guarded:global-module-actions-readonly",
+      "dataReadonlyAction": "fetchModuleActions"
+    },
+    {
+      "id": "global-readonly-write-guard",
+      "text": "只读确认",
+      "disabled": true,
+      "dataWriteGuard": "guarded:global-readonly-confirm",
+      "dataReadonlyAction": null
+    }
+  ],
+  "dataReadonlyBoundary": "true",
+  "dataWriteRequestSuccessAllowed": "false",
+  "dataRealWriteActionAdded": "false",
+  "auth_401_count": 6,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false
+}

@@ -1,0 +1,106 @@
+{
+  "generated_at": "2026-05-26T20:46:02.124Z",
+  "route": "/home",
+  "anchors": [
+    {
+      "anchor": "global-readonly-shell",
+      "observed": true,
+      "tag": "section",
+      "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges/home readonly boundary 刷新权限 重载模块动作 只读确认 remote lifecycle parked",
+      "disabled": false,
+      "data": {
+        "v-7a7a37b1": "",
+        "testid": "global-readonly-shell",
+        "readonlyBoundary": "true",
+        "writeRequestSuccessAllowed": "false",
+        "realWriteActionAdded": "false"
+      }
+    },
+    {
+      "anchor": "global-permission-state",
+      "observed": true,
+      "tag": "div",
+      "text": "模块权限：guest fallback, no write privileges/home readonly boundary",
+      "disabled": false,
+      "data": {
+        "v-7a7a37b1": "",
+        "testid": "global-permission-state",
+        "module": "global",
+        "permissionStatus": "guest"
+      }
+    },
+    {
+      "anchor": "global-auth-fallback-state",
+      "observed": true,
+      "tag": "span",
+      "text": "guest/readonly fallback",
+      "disabled": false,
+      "data": {
+        "v-7a7a37b1": "",
+        "testid": "global-auth-fallback-state",
+        "authStatus": "readonly-fallback"
+      }
+    },
+    {
+      "anchor": "global-route-readonly-badge",
+      "observed": true,
+      "tag": "span",
+      "text": "/home readonly boundary",
+      "disabled": false,
+      "data": {
+        "v-7a7a37b1": "",
+        "testid": "global-route-readonly-badge",
+        "route": "/home"
+      }
+    },
+    {
+      "anchor": "global-permission-actions-preview",
+      "observed": true,
+      "tag": "div",
+      "text": "刷新权限 重载模块动作 只读确认 remote lifecycle parked",
+      "disabled": false,
+      "data": {
+        "v-7a7a37b1": "",
+        "testid": "global-permission-actions-preview"
+      }
+    },
+    {
+      "anchor": "global-auth-refresh-guard",
+      "observed": true,
+      "tag": "button",
+      "text": "刷新权限",
+      "disabled": false,
+      "data": {
+        "v-7a7a37b1": "",
+        "testid": "global-auth-refresh-guard",
+        "writeGuard": "guarded:global-readonly-shell",
+        "readonlyAction": "fetchCurrentUser"
+      }
+    },
+    {
+      "anchor": "global-readonly-write-guard",
+      "observed": true,
+      "tag": "button",
+      "text": "只读确认",
+      "disabled": true,
+      "data": {
+        "v-7a7a37b1": "",
+        "testid": "global-readonly-write-guard",
+        "writeGuard": "guarded:global-readonly-confirm"
+      }
+    },
+    {
+      "anchor": "global-remote-lifecycle-parked",
+      "observed": true,
+      "tag": "span",
+      "text": "remote lifecycle parked",
+      "disabled": false,
+      "data": {
+        "v-7a7a37b1": "",
+        "testid": "global-remote-lifecycle-parked"
+      }
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

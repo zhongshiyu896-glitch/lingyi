@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-05-26T20:46:02.127Z",
+  "auth_401_count": 6,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "write_requests": [],
+  "auth_401_responses": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "requestMethod": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5180/api/reports/employee-task-statistics",
+      "requestMethod": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5180/api/reports/catalog?source_module=finance&report_type=financial",
+      "requestMethod": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5180/api/reports/approval-reports",
+      "requestMethod": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5180/api/reports/catalog/factory_product_stock_report",
+      "requestMethod": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5180/api/auth/me",
+      "requestMethod": "GET"
+    }
+  ]
+}

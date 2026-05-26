@@ -1,0 +1,20 @@
+field	value
+task_id	TASK-Z040B-02-PREP
+candidate_id	Z040-CAND-001
+source_task	TASK-Z040B-01-PREP-PRODUCT-POOL
+title	全局会话权限只读降级可见流
+routes	/home;/permissions/governance;/reports/catalog
+allowed_files	06_前端/lingyi-pc/src/App.vue;06_前端/lingyi-pc/src/stores/permission.ts;06_前端/lingyi-pc/src/api/auth.ts
+allowed_files_exist	true
+allowed_files_dirty	false
+required_anchors	global-readonly-shell;global-permission-state;global-auth-fallback-state;global-route-readonly-badge;global-permission-actions-preview;global-auth-refresh-guard;global-readonly-write-guard;global-remote-lifecycle-parked
+allowed_read_flows	fetchCurrentUser;fetchModuleActions
+guarded_write_entries	权限刷新;模块动作重载;只读降级确认
+evidence_requirement	screenshot;route evidence;runtime DOM anchors;guarded/readonly state;write request observation;pure_static_fallback_allowed=false
+dirty_intersections	empty
+unknown_dirty	[]
+must_block_before_continue	[]
+next_task	TASK-Z040B-03-IMPL
+run_this_task	false
+remote_lifecycle_parked	true
+implementation_started	false

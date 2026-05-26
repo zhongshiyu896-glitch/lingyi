@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-05-26T20:40:13.324Z",
+  "routes": [
+    {
+      "route": "/home",
+      "url": "http://127.0.0.1:5180/home",
+      "http_status": 200,
+      "shell_visible": true
+    },
+    {
+      "route": "/permissions/governance",
+      "url": "http://127.0.0.1:5180/permissions/governance",
+      "http_status": 200,
+      "shell_visible": true
+    },
+    {
+      "route": "/reports/catalog",
+      "url": "http://127.0.0.1:5180/reports/catalog",
+      "http_status": 200,
+      "shell_visible": true
+    }
+  ]
+}
