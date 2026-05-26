@@ -1,0 +1,45 @@
+field	value
+status	READY_FOR_REVIEW
+task_id	TASK-Z037B-34-PREP
+role	B Engineer
+cycle_id	Z037
+candidate_id	Z037-CAND-005
+title	外发单履约列表详情只读可见流
+head	1cfc74e7bd1343f527a062c89672b85181e1592a
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+source_task	TASK-Z037B-33-PREP
+routes	["/subcontract/list","/subcontract/detail","/materialPurchase/materialPurchaseProcess"]
+read_only	true
+backend_allowed	false
+expected_allowed_file_scope	["06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue","06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue","06_前端/lingyi-pc/src/api/subcontract.ts"]
+allowed_files_exist	true
+allowed_files_dirty	false
+routes_located	true
+route_subcontract_list	06_前端/lingyi-pc/src/router/index.ts -> SubcontractOrderList.vue
+route_subcontract_detail	06_前端/lingyi-pc/src/router/index.ts -> SubcontractOrderDetail.vue
+route_material_purchase_process	06_前端/lingyi-pc/src/router/index.ts -> redirect /subcontract/list?parity=material-purchase
+anchors_required	["subcontract-list-page","subcontract-filter-form","subcontract-table","subcontract-guarded-actions","subcontract-detail-page","subcontract-detail-main-fields","subcontract-detail-guarded-actions","subcontract-write-guard"]
+write_entries_guard_required	["新建外发单","发料","回料","验货","结算预览","同步重试","导出","打印"]
+b35_screenshot_required	/subcontract/list
+b35_runtime_route_evidence_required	/subcontract/detail
+b35_redirect_route_evidence_required	/materialPurchase/materialPurchaseProcess
+b35_runtime_dom_anchors_required	true
+b35_guarded_write_control_state_required	true
+b35_write_request_observation_required	true
+pure_static_fallback_allowed	false
+intersections_with_historical_dirty	[]
+intersections_with_log_control_dirty	[]
+intersections_with_residual_artifacts	[]
+intersections_with_z035_committed_product_paths	[]
+intersections_with_z036_committed_product_paths	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+current_prior_readonly_fallback_risks	preserved
+guarded_readonly_not_write_success	preserved
+B28_shell_wrapper_anomaly	preserved
+Z033_skipped_only	preserved
+Z035_screenshot_missing_risk	preserved
+next_task	TASK-Z037B-35-IMPL
+run_this_task	false

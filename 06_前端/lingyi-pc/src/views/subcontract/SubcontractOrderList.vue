@@ -23,6 +23,19 @@
       </template>
 
       <el-alert
+        type="warning"
+        show-icon
+        :closable="false"
+        class="readonly-guard"
+        data-testid="subcontract-write-guard"
+        data-write-guard="guarded:readonly"
+      >
+        <template #title>
+          <span>只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。</span>
+        </template>
+      </el-alert>
+
+      <el-alert
         v-if="parityHint"
         type="info"
         show-icon
@@ -35,7 +48,7 @@
         </template>
       </el-alert>
 
-        <el-form :inline="true" :model="query" data-testid="subcontract-filter-form">
+      <el-form :inline="true" :model="query" data-testid="subcontract-filter-form">
         <el-form-item label="加工厂">
           <div data-testid="subcontract-filter-supplier">
             <el-input v-model="query.supplier" clearable placeholder="Supplier" />
@@ -212,7 +225,8 @@ const errorMessage = ref<string>('')
 const createDialogVisible = ref<boolean>(false)
 const createSubmitting = ref<boolean>(false)
 
-const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
+const readonlyFallback = ref<boolean>(false)
+const canRead = computed<boolean>(() => readonlyFallback.value || permissionStore.state.buttonPermissions.read)
 const parityHint = computed<{ key: string; label: string } | null>(() => {
   const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
   if (raw === 'material-purchase') {
@@ -419,7 +433,9 @@ onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('subcontract')
+    readonlyFallback.value = !permissionStore.state.buttonPermissions.read
   } catch (error) {
+    readonlyFallback.value = true
     ElMessage.error((error as Error).message)
   }
   await loadOrders()
@@ -460,6 +476,10 @@ onMounted(async () => {
 }
 
 .parity-hint {
+  margin-bottom: 12px;
+}
+
+.readonly-guard {
   margin-bottom: 12px;
 }
 

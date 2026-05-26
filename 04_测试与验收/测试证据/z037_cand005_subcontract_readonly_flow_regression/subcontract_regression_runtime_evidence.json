@@ -1,0 +1,496 @@
+{
+  "task_id": "TASK-Z037B-36-REGRESSION-CAND005",
+  "candidate_id": "Z037-CAND-005",
+  "captured_at": "2026-05-26T17:07:19.173Z",
+  "base_url": "http://127.0.0.1:5174",
+  "routes": [
+    {
+      "route": "/subcontract/list",
+      "requested_url": "http://127.0.0.1:5174/subcontract/list",
+      "final_url": "http://127.0.0.1:5174/subcontract/list",
+      "http_status_observed": "spa_domcontentloaded",
+      "dom": {
+        "routeName": "/subcontract/list",
+        "title": "Lingyi PC",
+        "anchors": {
+          "subcontract-list-page": true,
+          "subcontract-filter-form": true,
+          "subcontract-table": true,
+          "subcontract-guarded-actions": true,
+          "subcontract-detail-page": false,
+          "subcontract-detail-main-fields": false,
+          "subcontract-detail-guarded-actions": false,
+          "subcontract-write-guard": true
+        },
+        "guards": [
+          {
+            "tag": "button",
+            "testid": "subcontract-create-open-button",
+            "guard": "guarded:readonly",
+            "text": "新建外发单",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "div",
+            "testid": "subcontract-write-guard",
+            "guard": "guarded:readonly",
+            "text": "只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。",
+            "disabled": false,
+            "visible": true
+          }
+        ],
+        "guardedReadonlyCount": 2,
+        "bodyTextSample": "外发单列表 新建外发单 刷新 只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。 加工厂 状态 全部状态 查询 重置 登录已失效，请重新登录 外发单号 公司 加工厂 款式 工序 计划数量 已发料 已回料 已验货 净应付金额 状态 库存同步状态 操作 暂无外发单数据 1 Total 0 20/page 登录已失效，请重新登录 新建外发单 仅可在授权流程中执行，当前为只读模式"
+      },
+      "dom_before_guard_clicks": {
+        "routeName": "/subcontract/list",
+        "title": "Lingyi PC",
+        "anchors": {
+          "subcontract-list-page": true,
+          "subcontract-filter-form": true,
+          "subcontract-table": true,
+          "subcontract-guarded-actions": true,
+          "subcontract-detail-page": false,
+          "subcontract-detail-main-fields": false,
+          "subcontract-detail-guarded-actions": false,
+          "subcontract-write-guard": true
+        },
+        "guards": [
+          {
+            "tag": "button",
+            "testid": "subcontract-create-open-button",
+            "guard": "guarded:readonly",
+            "text": "新建外发单",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "div",
+            "testid": "subcontract-write-guard",
+            "guard": "guarded:readonly",
+            "text": "只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。",
+            "disabled": false,
+            "visible": true
+          }
+        ],
+        "guardedReadonlyCount": 2,
+        "bodyTextSample": "外发单列表 新建外发单 刷新 只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。 加工厂 状态 全部状态 查询 重置 登录已失效，请重新登录 外发单号 公司 加工厂 款式 工序 计划数量 已发料 已回料 已验货 净应付金额 状态 库存同步状态 操作 暂无外发单数据 1 Total 0 20/page 登录已失效，请重新登录"
+      },
+      "clicked_guard_controls": [
+        {
+          "testid": "subcontract-create-open-button",
+          "guard": "guarded:readonly",
+          "text": "新建外发单",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "subcontract-write-guard",
+          "guard": "guarded:readonly",
+          "text": "只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。",
+          "write_requests_after_click": 0
+        }
+      ],
+      "write_requests_after_guard_clicks": 0,
+      "screenshot": "04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow_regression/subcontract_list_regression_fullpage.png"
+    },
+    {
+      "route": "/subcontract/detail",
+      "requested_url": "http://127.0.0.1:5174/subcontract/detail",
+      "final_url": "http://127.0.0.1:5174/subcontract/detail",
+      "http_status_observed": "spa_domcontentloaded",
+      "dom": {
+        "routeName": "/subcontract/detail",
+        "title": "Lingyi PC",
+        "anchors": {
+          "subcontract-list-page": false,
+          "subcontract-filter-form": false,
+          "subcontract-table": false,
+          "subcontract-guarded-actions": false,
+          "subcontract-detail-page": true,
+          "subcontract-detail-main-fields": true,
+          "subcontract-detail-guarded-actions": true,
+          "subcontract-write-guard": true
+        },
+        "guards": [
+          {
+            "tag": "section",
+            "testid": "subcontract-detail-readonly-fallback",
+            "guard": "guarded:readonly",
+            "text": "只读履约视图：详情数据不可用时仍展示字段与写入口 guard，不发起写请求。 外发单号 readonly-subcontract 状态 只读投影 加工厂 只读加工厂 款式 readonly-style 工序 缝制 履约状态 发料 / 回料 / 验货 / 结算候选已冻结为只读 发料 回料 验货 结算预览 同步重试 导出 打印",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "发料",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "回料",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "验货",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "结算预览",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "同步重试",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "导出",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "打印",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "div",
+            "testid": "subcontract-write-guard",
+            "guard": "guarded:readonly",
+            "text": "当前页面为只读履约投影基线，普通前端已冻结新建外发单、发料、回料、验货和同步重试入口。",
+            "disabled": false,
+            "visible": true
+          }
+        ],
+        "guardedReadonlyCount": 9,
+        "bodyTextSample": "外发单详情 返回 请从外发单列表进入详情页 只读履约视图：详情数据不可用时仍展示字段与写入口 guard，不发起写请求。 外发单号 readonly-subcontract 状态 只读投影 加工厂 只读加工厂 款式 readonly-style 工序 缝制 履约状态 发料 / 回料 / 验货 / 结算候选已冻结为只读 发料 回料 验货 结算预览 同步重试 导出 打印 当前页面为只读履约投影基线，普通前端已冻结新建外发单、发料、回料、验货和同步重试入口。 当前为只读模式，发料已禁用。 当前为只读模式，回料已禁用。 当前为只读模式，验货已禁用。 当前为只读模式，结算预览已禁用。 当前为只读模式，同步重试已禁用。 当前为只读模式，导出已禁用。 当前为只读模式，打印已禁用。"
+      },
+      "dom_before_guard_clicks": {
+        "routeName": "/subcontract/detail",
+        "title": "Lingyi PC",
+        "anchors": {
+          "subcontract-list-page": false,
+          "subcontract-filter-form": false,
+          "subcontract-table": false,
+          "subcontract-guarded-actions": false,
+          "subcontract-detail-page": true,
+          "subcontract-detail-main-fields": true,
+          "subcontract-detail-guarded-actions": true,
+          "subcontract-write-guard": true
+        },
+        "guards": [
+          {
+            "tag": "section",
+            "testid": "subcontract-detail-readonly-fallback",
+            "guard": "guarded:readonly",
+            "text": "只读履约视图：详情数据不可用时仍展示字段与写入口 guard，不发起写请求。 外发单号 readonly-subcontract 状态 只读投影 加工厂 只读加工厂 款式 readonly-style 工序 缝制 履约状态 发料 / 回料 / 验货 / 结算候选已冻结为只读 发料 回料 验货 结算预览 同步重试 导出 打印",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "发料",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "回料",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "验货",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "结算预览",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "同步重试",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "导出",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "button",
+            "testid": "",
+            "guard": "guarded:readonly",
+            "text": "打印",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "div",
+            "testid": "subcontract-write-guard",
+            "guard": "guarded:readonly",
+            "text": "当前页面为只读履约投影基线，普通前端已冻结新建外发单、发料、回料、验货和同步重试入口。",
+            "disabled": false,
+            "visible": true
+          }
+        ],
+        "guardedReadonlyCount": 9,
+        "bodyTextSample": "外发单详情 返回 请从外发单列表进入详情页 只读履约视图：详情数据不可用时仍展示字段与写入口 guard，不发起写请求。 外发单号 readonly-subcontract 状态 只读投影 加工厂 只读加工厂 款式 readonly-style 工序 缝制 履约状态 发料 / 回料 / 验货 / 结算候选已冻结为只读 发料 回料 验货 结算预览 同步重试 导出 打印 当前页面为只读履约投影基线，普通前端已冻结新建外发单、发料、回料、验货和同步重试入口。"
+      },
+      "clicked_guard_controls": [
+        {
+          "testid": "subcontract-detail-readonly-fallback",
+          "guard": "guarded:readonly",
+          "text": "只读履约视图：详情数据不可用时仍展示字段与写入口 guard，不发起写请求。 外发单号 readonly-subcontract 状态 只读投影 加工厂 只读加工厂 款式 readonly-style 工序 缝制 履约状态 发料 / 回料 / 验货 / 结算候选已冻结为只读 发料 回料 验货 结算预览 同步重试 导出 打印",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "",
+          "guard": "guarded:readonly",
+          "text": "发料",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "",
+          "guard": "guarded:readonly",
+          "text": "回料",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "",
+          "guard": "guarded:readonly",
+          "text": "验货",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "",
+          "guard": "guarded:readonly",
+          "text": "结算预览",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "",
+          "guard": "guarded:readonly",
+          "text": "同步重试",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "",
+          "guard": "guarded:readonly",
+          "text": "导出",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "",
+          "guard": "guarded:readonly",
+          "text": "打印",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "subcontract-write-guard",
+          "guard": "guarded:readonly",
+          "text": "当前页面为只读履约投影基线，普通前端已冻结新建外发单、发料、回料、验货和同步重试入口。",
+          "write_requests_after_click": 0
+        }
+      ],
+      "write_requests_after_guard_clicks": 0,
+      "screenshot": "04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow_regression/subcontract_detail_regression_fullpage.png"
+    },
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "requested_url": "http://127.0.0.1:5174/materialPurchase/materialPurchaseProcess",
+      "final_url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+      "http_status_observed": "spa_domcontentloaded",
+      "dom": {
+        "routeName": "/subcontract/list?parity=material-purchase",
+        "title": "Lingyi PC",
+        "anchors": {
+          "subcontract-list-page": true,
+          "subcontract-filter-form": true,
+          "subcontract-table": true,
+          "subcontract-guarded-actions": true,
+          "subcontract-detail-page": false,
+          "subcontract-detail-main-fields": false,
+          "subcontract-detail-guarded-actions": false,
+          "subcontract-write-guard": true
+        },
+        "guards": [
+          {
+            "tag": "button",
+            "testid": "subcontract-create-open-button",
+            "guard": "guarded:readonly",
+            "text": "新建外发单",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "div",
+            "testid": "subcontract-write-guard",
+            "guard": "guarded:readonly",
+            "text": "只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。",
+            "disabled": false,
+            "visible": true
+          }
+        ],
+        "guardedReadonlyCount": 2,
+        "bodyTextSample": "外发单列表 新建外发单 刷新 只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。 当前入口：物料采购进度只读视图（material-purchase） 加工厂 状态 全部状态 查询 重置 登录已失效，请重新登录 外发单号 公司 加工厂 款式 工序 计划数量 已发料 已回料 已验货 净应付金额 状态 库存同步状态 操作 暂无外发单数据 1 Total 0 20/page 登录已失效，请重新登录 新建外发单 仅可在授权流程中执行，当前为只读模式"
+      },
+      "dom_before_guard_clicks": {
+        "routeName": "/subcontract/list?parity=material-purchase",
+        "title": "Lingyi PC",
+        "anchors": {
+          "subcontract-list-page": true,
+          "subcontract-filter-form": true,
+          "subcontract-table": true,
+          "subcontract-guarded-actions": true,
+          "subcontract-detail-page": false,
+          "subcontract-detail-main-fields": false,
+          "subcontract-detail-guarded-actions": false,
+          "subcontract-write-guard": true
+        },
+        "guards": [
+          {
+            "tag": "button",
+            "testid": "subcontract-create-open-button",
+            "guard": "guarded:readonly",
+            "text": "新建外发单",
+            "disabled": false,
+            "visible": true
+          },
+          {
+            "tag": "div",
+            "testid": "subcontract-write-guard",
+            "guard": "guarded:readonly",
+            "text": "只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。",
+            "disabled": false,
+            "visible": true
+          }
+        ],
+        "guardedReadonlyCount": 2,
+        "bodyTextSample": "外发单列表 新建外发单 刷新 只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。 当前入口：物料采购进度只读视图（material-purchase） 加工厂 状态 全部状态 查询 重置 登录已失效，请重新登录 外发单号 公司 加工厂 款式 工序 计划数量 已发料 已回料 已验货 净应付金额 状态 库存同步状态 操作 暂无外发单数据 1 Total 0 20/page 登录已失效，请重新登录"
+      },
+      "clicked_guard_controls": [
+        {
+          "testid": "subcontract-create-open-button",
+          "guard": "guarded:readonly",
+          "text": "新建外发单",
+          "write_requests_after_click": 0
+        },
+        {
+          "testid": "subcontract-write-guard",
+          "guard": "guarded:readonly",
+          "text": "只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。",
+          "write_requests_after_click": 0
+        }
+      ],
+      "write_requests_after_guard_clicks": 0
+    }
+  ],
+  "routes_verified": [
+    {
+      "route": "/subcontract/list",
+      "final_url": "http://127.0.0.1:5174/subcontract/list",
+      "status": "PASS",
+      "screenshot": "04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow_regression/subcontract_list_regression_fullpage.png"
+    },
+    {
+      "route": "/subcontract/detail",
+      "final_url": "http://127.0.0.1:5174/subcontract/detail",
+      "status": "PASS",
+      "screenshot": "04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow_regression/subcontract_detail_regression_fullpage.png"
+    },
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "final_url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+      "status": "PASS",
+      "redirected_or_parity_to_subcontract_list": true,
+      "screenshot": null
+    }
+  ],
+  "redirect_or_parity_routes": [
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "final_url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+      "redirected_or_parity_to": "/subcontract/list?parity=material-purchase",
+      "pass": true
+    }
+  ],
+  "anchors_observed": {
+    "subcontract-list-page": true,
+    "subcontract-filter-form": true,
+    "subcontract-table": true,
+    "subcontract-guarded-actions": true,
+    "subcontract-detail-page": true,
+    "subcontract-detail-main-fields": true,
+    "subcontract-detail-guarded-actions": true,
+    "subcontract-write-guard": true
+  },
+  "anchors_observed_all": true,
+  "guarded_write_controls": {
+    "新建外发单": true,
+    "发料": true,
+    "回料": true,
+    "验货": true,
+    "结算预览": true,
+    "同步重试": true,
+    "导出": true,
+    "打印": true
+  },
+  "guarded_write_controls_all_observed": true,
+  "guarded_readonly": true,
+  "auth_401_count": 1,
+  "network_401_count": 3,
+  "auth_401_observed": true,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "screenshots": [
+    "04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow_regression/subcontract_list_regression_fullpage.png",
+    "04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow_regression/subcontract_detail_regression_fullpage.png"
+  ],
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false
+}

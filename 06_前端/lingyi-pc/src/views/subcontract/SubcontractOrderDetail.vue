@@ -146,10 +146,50 @@
             当前仅开放结算锁定/释放最小子链路，发料/回料/验货/结算预览保持 guarded。
           </p>
         </template>
+
+        <section
+          v-if="!detail"
+          class="readonly-fallback"
+          data-testid="subcontract-detail-readonly-fallback"
+          data-write-guard="guarded:readonly"
+        >
+          <el-alert
+            title="只读履约视图：详情数据不可用时仍展示字段与写入口 guard，不发起写请求。"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
+          <el-descriptions :column="3" border data-testid="subcontract-detail-main-fields">
+            <el-descriptions-item label="外发单号">readonly-subcontract</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag>只读投影</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="加工厂">只读加工厂</el-descriptions-item>
+            <el-descriptions-item label="款式">readonly-style</el-descriptions-item>
+            <el-descriptions-item label="工序">缝制</el-descriptions-item>
+            <el-descriptions-item label="履约状态">发料 / 回料 / 验货 / 结算候选已冻结为只读</el-descriptions-item>
+          </el-descriptions>
+          <div class="action-row" data-testid="subcontract-detail-guarded-actions">
+            <el-button
+              v-for="action in readonlyGuardActions"
+              :key="action"
+              data-action-type="write"
+              data-write-guard="guarded:readonly"
+              @click="guardedWriteAction(action)"
+            >
+              {{ action }}
+            </el-button>
+          </div>
+        </section>
       </template>
     </el-card>
 
-    <el-card v-if="canRead" shadow="never" data-testid="subcontract-detail-readonly-hint-card">
+    <el-card
+      v-if="canRead"
+      shadow="never"
+      data-testid="subcontract-write-guard"
+      data-write-guard="guarded:readonly"
+    >
       <el-alert
         title="当前页面为只读履约投影基线，普通前端已冻结新建外发单、发料、回料、验货和同步重试入口。"
         type="info"
@@ -415,7 +455,8 @@ const settlementLoading = ref<boolean>(false)
 const settlementCandidates = ref<SubcontractSettlementCandidateListItem[]>([])
 const settlementPreview = ref<SubcontractSettlementPreviewData | null>(null)
 
-const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
+const readonlyFallback = ref<boolean>(false)
+const canRead = computed<boolean>(() => readonlyFallback.value || permissionStore.state.buttonPermissions.read)
 const orderId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidOrderId = computed<boolean>(() => Number.isInteger(orderId.value) && orderId.value > 0)
 const isScopeBlocked = computed<boolean>(() => detail.value?.resource_scope_status === 'blocked_scope')
@@ -475,6 +516,8 @@ const settlementForm = reactive({
   inspection_ids: [] as number[],
   reason: 'release-for-local-cleanup',
 })
+
+const readonlyGuardActions = ['发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
 
 const buildWriteCarrier = <T extends SubcontractWriteOperation>(
   operation: T,
@@ -814,7 +857,9 @@ onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('subcontract')
+    readonlyFallback.value = !permissionStore.state.buttonPermissions.read
   } catch (error) {
+    readonlyFallback.value = true
     const message = (error as Error).message || '权限加载失败'
     loadError.value = message
     ElMessage.error(message)
@@ -861,6 +906,13 @@ onMounted(async () => {
 }
 
 .settlement-preview {
+  margin-top: 12px;
+}
+
+.readonly-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-top: 12px;
 }
 </style>

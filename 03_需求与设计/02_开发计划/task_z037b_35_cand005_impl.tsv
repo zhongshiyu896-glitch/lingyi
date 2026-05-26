@@ -1,0 +1,45 @@
+field	value
+status	READY_FOR_REVIEW
+task_id	TASK-Z037B-35-IMPL
+role	B Engineer
+cycle_id	Z037
+candidate_id	Z037-CAND-005
+source_task	TASK-Z037B-34-PREP
+head	1cfc74e7bd1343f527a062c89672b85181e1592a
+changed_files	["06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue","06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"]
+api_subcontract_changed	false
+allowed_files_only	true
+routes_verified	["/subcontract/list","/subcontract/detail","/materialPurchase/materialPurchaseProcess"]
+redirect_or_parity_routes	["/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"]
+anchors_observed_all	true
+anchors_observed	["subcontract-list-page","subcontract-filter-form","subcontract-table","subcontract-guarded-actions","subcontract-detail-page","subcontract-detail-main-fields","subcontract-detail-guarded-actions","subcontract-write-guard"]
+screenshots	["04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow/subcontract_list_runtime_fullpage.png","04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow/subcontract_detail_runtime_fullpage.png"]
+screenshot_skip_reason	null
+runtime_dom_evidence	04_测试与验收/测试证据/z037_cand005_subcontract_readonly_flow/subcontract_runtime_evidence.json
+guarded_write_controls	observed
+typecheck_command	npm run typecheck
+typecheck_workdir	06_前端/lingyi-pc
+typecheck_exit_code	0
+auth_401_count	1
+network_401_count	3
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+backend_allowed	false
+backend_touched	false
+candidate_pool_touched	false
+historical_dirty_touched	false
+log_control_dirty_touched	false
+residual_artifacts_touched	false
+z035_z036_committed_product_paths_touched	false
+runtime_cache_test_results_touched	false
+remote_lifecycle_touched	false
+current_prior_readonly_fallback_risks	preserved
+guarded_readonly_not_write_success	preserved
+B28_shell_wrapper_anomaly	preserved
+Z033_skipped_only	preserved
+Z035_screenshot_missing_risk	preserved
+next_task	TASK-Z037B-36-REGRESSION-CAND005
+run_this_task	false
