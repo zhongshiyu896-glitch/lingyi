@@ -1,0 +1,244 @@
+{
+  "task_id": "TASK-Z036B-27-IMPL",
+  "candidate_id": "Z036-CAND-004",
+  "base_url": "http://127.0.0.1:5179",
+  "routes_checked": [
+    {
+      "route": "/workshop/tickets?parity=workshop-ticket-wage",
+      "final_url": "http://127.0.0.1:5179/workshop/tickets?parity=workshop-ticket-wage",
+      "http_status": 200,
+      "screenshot": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_tickets_runtime_fullpage.png",
+      "anchors": {
+        "workshop-ticket-list-page": true,
+        "workshop-ticket-filter-form": true,
+        "workshop-ticket-table": true,
+        "workshop-ticket-guarded-actions": true,
+        "workshop-ticket-sync-status": true,
+        "workshop-daily-wage-page": false,
+        "workshop-wage-rate-page": false,
+        "workshop-write-guard": true
+      }
+    },
+    {
+      "route": "/workshop/daily-wages?parity=workshop-ticket-wage",
+      "final_url": "http://127.0.0.1:5179/workshop/daily-wages?parity=workshop-ticket-wage",
+      "http_status": 200,
+      "screenshot": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_daily_wages_runtime_fullpage.png",
+      "anchors": {
+        "workshop-ticket-list-page": false,
+        "workshop-ticket-filter-form": false,
+        "workshop-ticket-table": false,
+        "workshop-ticket-guarded-actions": false,
+        "workshop-ticket-sync-status": false,
+        "workshop-daily-wage-page": true,
+        "workshop-wage-rate-page": false,
+        "workshop-write-guard": true
+      }
+    },
+    {
+      "route": "/workshop/wage-rates?parity=workshop-ticket-wage",
+      "final_url": "http://127.0.0.1:5179/workshop/wage-rates?parity=workshop-ticket-wage",
+      "http_status": 200,
+      "screenshot": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_wage_rates_runtime_fullpage.png",
+      "anchors": {
+        "workshop-ticket-list-page": false,
+        "workshop-ticket-filter-form": false,
+        "workshop-ticket-table": false,
+        "workshop-ticket-guarded-actions": false,
+        "workshop-ticket-sync-status": false,
+        "workshop-daily-wage-page": false,
+        "workshop-wage-rate-page": true,
+        "workshop-write-guard": true
+      }
+    }
+  ],
+  "required_anchors": [
+    "workshop-ticket-list-page",
+    "workshop-ticket-filter-form",
+    "workshop-ticket-table",
+    "workshop-ticket-guarded-actions",
+    "workshop-ticket-sync-status",
+    "workshop-daily-wage-page",
+    "workshop-wage-rate-page",
+    "workshop-write-guard"
+  ],
+  "anchors_observed": [
+    "workshop-ticket-list-page",
+    "workshop-ticket-filter-form",
+    "workshop-ticket-table",
+    "workshop-ticket-guarded-actions",
+    "workshop-ticket-sync-status",
+    "workshop-daily-wage-page",
+    "workshop-wage-rate-page",
+    "workshop-write-guard"
+  ],
+  "anchors_missing": [],
+  "per_route_anchors": {
+    "tickets": {
+      "workshop-ticket-list-page": true,
+      "workshop-ticket-filter-form": true,
+      "workshop-ticket-table": true,
+      "workshop-ticket-guarded-actions": true,
+      "workshop-ticket-sync-status": true,
+      "workshop-daily-wage-page": false,
+      "workshop-wage-rate-page": false,
+      "workshop-write-guard": true
+    },
+    "daily_wages": {
+      "workshop-ticket-list-page": false,
+      "workshop-ticket-filter-form": false,
+      "workshop-ticket-table": false,
+      "workshop-ticket-guarded-actions": false,
+      "workshop-ticket-sync-status": false,
+      "workshop-daily-wage-page": true,
+      "workshop-wage-rate-page": false,
+      "workshop-write-guard": true
+    },
+    "wage_rates": {
+      "workshop-ticket-list-page": false,
+      "workshop-ticket-filter-form": false,
+      "workshop-ticket-table": false,
+      "workshop-ticket-guarded-actions": false,
+      "workshop-ticket-sync-status": false,
+      "workshop-daily-wage-page": false,
+      "workshop-wage-rate-page": true,
+      "workshop-write-guard": true
+    }
+  },
+  "guarded_states": [
+    {
+      "route": "/workshop/tickets?parity=workshop-ticket-wage",
+      "guarded": [
+        {
+          "testid": "workshop-write-guard",
+          "writeGuard": "readonly:workshop-ticket-actions",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": ""
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-ticket-register",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "工票登记"
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-ticket-batch",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "批量导入"
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:job-card-sync-retry",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "重试同步"
+        }
+      ]
+    },
+    {
+      "route": "/workshop/daily-wages?parity=workshop-ticket-wage",
+      "guarded": [
+        {
+          "testid": "workshop-write-guard",
+          "writeGuard": "readonly:workshop-daily-wage-actions",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": ""
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-daily-wage-export",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "导出"
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-daily-wage-generate",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "生成"
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-daily-wage-sync",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "同步"
+        }
+      ]
+    },
+    {
+      "route": "/workshop/wage-rates?parity=workshop-ticket-wage",
+      "guarded": [
+        {
+          "testid": "workshop-write-guard",
+          "writeGuard": "readonly:wage-rate-actions",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": ""
+        },
+        {
+          "testid": "wage-rates-create-action",
+          "writeGuard": "readonly:wage-rate-create",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "新增工价"
+        },
+        {
+          "testid": "wage-rates-deactivate-action",
+          "writeGuard": "readonly:wage-rate-deactivate",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "停用"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_tickets_runtime_fullpage.png",
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_daily_wages_runtime_fullpage.png",
+    "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_wage_rates_runtime_fullpage.png"
+  ],
+  "screenshot_skip_reason": null,
+  "runtime_alternative_evidence": null,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "api_401_observed": false,
+  "api_401_count": 0,
+  "api_401": [],
+  "console_messages": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    }
+  ],
+  "request_count": 60,
+  "read_only_runtime_mock_used": true,
+  "write_chain_success": false,
+  "permission_misread_as_success": false
+}

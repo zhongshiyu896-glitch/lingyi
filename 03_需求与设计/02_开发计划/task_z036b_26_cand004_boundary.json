@@ -1,0 +1,176 @@
+{
+  "cycle_id": "Z036",
+  "task_id": "TASK-Z036B-26-PREP",
+  "role": "B Engineer",
+  "mode": "boundary_freeze_PREP_only",
+  "source_task_id": "TASK-Z036B-25-PREP",
+  "code_modified": false,
+  "tests_browser_typecheck_run": false,
+  "head": "5c529e82a00723f05fc50e900765d9a0491acfb6",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "diff_check_pass": true,
+  "diff_check_output": "",
+  "b25_selected_candidate": "Z036-CAND-004",
+  "b25_next_task": "TASK-Z036B-26-PREP",
+  "selected_candidate_id": "Z036-CAND-004",
+  "candidate_raw_fields_match_b01_b25": true,
+  "boundary": {
+    "candidate_id": "Z036-CAND-004",
+    "title": "车间工票与工资只读可见流",
+    "page_scope": "车间工票",
+    "routes": [
+      "/workshop/tickets",
+      "/workshop/daily-wages",
+      "/workshop/wage-rates"
+    ],
+    "visible_acceptance_goal": "用户能在车间工票查看筛选、工票表格、同步状态、日薪统计与工价档案，并看到登记、批量、重试等写入口保持只读 guard。",
+    "read_only": true,
+    "backend_allowed": false,
+    "expected_allowed_file_scope": [
+      "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+      "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+      "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+      "06_前端/lingyi-pc/src/api/workshop.ts"
+    ],
+    "field_button_state_anchors": [
+      "workshop-ticket-list-page",
+      "workshop-ticket-filter-form",
+      "workshop-ticket-table",
+      "workshop-ticket-guarded-actions",
+      "workshop-ticket-sync-status",
+      "workshop-daily-wage-page",
+      "workshop-wage-rate-page",
+      "workshop-write-guard"
+    ],
+    "browser_evidence_requirement_for_B27": "截图或运行态 DOM/route 替代证据必须保留；若无法截图，必须记录 screenshot_skip_reason 与运行态 DOM/route 替代证据",
+    "read_write_boundary": "read_only=true; 仅允许工票/工资查询与汇总查看；登记、批量、同步重试、工价维护写入口必须 guarded 或禁用。",
+    "capture_contract_integration": true,
+    "next_task": "TASK-Z036B-27-IMPL",
+    "run_this_task": false
+  },
+  "implementation_workdir": "/Users/hh/Desktop/领意服装管理系统",
+  "frontend_workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc",
+  "route_static_check": [
+    {
+      "route": "/workshop/tickets",
+      "status": "PASS",
+      "source": "06_前端/lingyi-pc/src/router/index.ts:50-52",
+      "component": "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue"
+    },
+    {
+      "route": "/workshop/daily-wages",
+      "status": "PASS",
+      "source": "06_前端/lingyi-pc/src/router/index.ts:68-70",
+      "component": "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue"
+    },
+    {
+      "route": "/workshop/wage-rates",
+      "status": "PASS",
+      "source": "06_前端/lingyi-pc/src/router/index.ts:74-76",
+      "component": "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue"
+    }
+  ],
+  "anchor_static_check": {
+    "exact_observed": [
+      {
+        "anchor": "workshop-ticket-list-page",
+        "source": "WorkshopTicketList.vue:2"
+      },
+      {
+        "anchor": "workshop-ticket-filter-form",
+        "source": "WorkshopTicketList.vue:35"
+      },
+      {
+        "anchor": "workshop-ticket-table",
+        "source": "WorkshopTicketList.vue:122"
+      },
+      {
+        "anchor": "workshop-ticket-guarded-actions",
+        "source": "WorkshopTicketList.vue:7"
+      },
+      {
+        "anchor": "workshop-ticket-sync-status",
+        "source": "WorkshopTicketList.vue:139"
+      },
+      {
+        "anchor": "workshop-daily-wage-page",
+        "source": "WorkshopDailyWage.vue:2"
+      }
+    ],
+    "equivalent_observed": [
+      {
+        "requested_anchor": "workshop-wage-rate-page",
+        "current_anchor": "wage-rates-page",
+        "source": "OperationWageRate.vue:2",
+        "action_for_B27": "normalize or add requested anchor without widening scope"
+      },
+      {
+        "requested_anchor": "workshop-write-guard",
+        "current_evidence": "data-write-guard present on guarded write entries across WorkshopTicketList.vue, WorkshopDailyWage.vue, OperationWageRate.vue",
+        "action_for_B27": "add explicit aggregate anchor or preserve guarded write state with requested anchor"
+      }
+    ],
+    "frozen_required_anchors": [
+      "workshop-ticket-list-page",
+      "workshop-ticket-filter-form",
+      "workshop-ticket-table",
+      "workshop-ticket-guarded-actions",
+      "workshop-ticket-sync-status",
+      "workshop-daily-wage-page",
+      "workshop-wage-rate-page",
+      "workshop-write-guard"
+    ]
+  },
+  "allowed_files_exist": {
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue": true,
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue": true,
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue": true,
+    "06_前端/lingyi-pc/src/api/workshop.ts": true
+  },
+  "allowed_files_all_exist": true,
+  "allowed_files_dirty": {
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue": false,
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue": false,
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue": false,
+    "06_前端/lingyi-pc/src/api/workshop.ts": false
+  },
+  "allowed_files_all_dirty_false": true,
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "intersections_with_z035_committed_product_files": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "risk_carry_forward": {
+    "cand001_runtime_readonly_fallback_risk": true,
+    "cand001_console_401_errors_observed": 4,
+    "cand001_network_401_errors_observed": 4,
+    "cand003_auth_401_count": 2,
+    "cand003_runtime_readonly_fallback_risk": true,
+    "shell_wrapper_anomaly_preserved": true,
+    "z033_skipped_only_risk_preserved": true,
+    "screenshot_missing_risk_for_Z035": true
+  },
+  "forbidden_scope": [
+    "07_后端",
+    "candidate pool",
+    "historical dirty forbidden",
+    "log/control dirty",
+    "Z034 B37 residual artifacts",
+    "runtime/cache/test-results",
+    "Z035 committed product files"
+  ],
+  "remote_lifecycle_parked": true,
+  "push_performed": false,
+  "tag_performed": false,
+  "pr_performed": false,
+  "release_performed": false,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "new_candidate_started": false,
+  "next_task": "TASK-Z036B-27-IMPL",
+  "run_this_task": false
+}

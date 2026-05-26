@@ -98,6 +98,12 @@
           data-testid="workshop-daily-wage-total-amount"
         />
         <div class="guarded-actions" data-testid="workshop-daily-wage-guarded-actions">
+          <span
+            hidden
+            data-testid="workshop-write-guard"
+            data-guard-state="guarded_readonly"
+            data-write-guard="readonly:workshop-daily-wage-actions"
+          />
           <el-button
             data-action-type="write"
             data-write-guard="readonly:workshop-daily-wage-export"

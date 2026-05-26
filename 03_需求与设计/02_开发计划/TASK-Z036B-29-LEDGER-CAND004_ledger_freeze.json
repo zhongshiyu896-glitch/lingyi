@@ -1,0 +1,426 @@
+{
+  "cycle_id": "Z036",
+  "task_id": "TASK-Z036B-29-LEDGER-CAND004",
+  "role": "B Engineer",
+  "mode": "ledger_only_freeze",
+  "candidate_id": "Z036-CAND-004",
+  "evidence_only": false,
+  "source_chain": "B26 boundary -> B27 IMPL -> B28 REGRESSION -> B29 ledger",
+  "head": "5c529e82a00723f05fc50e900765d9a0491acfb6",
+  "expected_head": "5c529e82a00723f05fc50e900765d9a0491acfb6",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "cached_paths": [],
+  "head_tag_empty": true,
+  "head_tags": [],
+  "source_tasks": {
+    "boundary": "TASK-Z036B-26-PREP",
+    "implementation": "TASK-Z036B-27-IMPL",
+    "regression": "TASK-Z036B-28-REGRESSION-CAND004",
+    "ledger": "TASK-Z036B-29-LEDGER-CAND004"
+  },
+  "candidate_scope": {
+    "title": "车间工票与工资只读可见流",
+    "routes": [
+      "/workshop/tickets",
+      "/workshop/daily-wages",
+      "/workshop/wage-rates"
+    ],
+    "read_only": true,
+    "backend_allowed": false,
+    "expected_allowed_file_scope": [
+      "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+      "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+      "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+      "06_前端/lingyi-pc/src/api/workshop.ts"
+    ],
+    "unmodified_allowed_files_excluded_from_yes": [
+      "06_前端/lingyi-pc/src/api/workshop.ts"
+    ]
+  },
+  "actual_modified_files": [
+    "\"06_\\345\\211\\215\\347\\253\\257/lingyi-pc/src/views/workshop/OperationWageRate.vue\"",
+    "\"06_\\345\\211\\215\\347\\253\\257/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue\"",
+    "\"06_\\345\\211\\215\\347\\253\\257/lingyi-pc/src/views/workshop/WorkshopTicketList.vue\""
+  ],
+  "actual_modified_workshop_view_files": [
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue"
+  ],
+  "allowed_files_only": false,
+  "visible_acceptance_goal_met": true,
+  "visible_acceptance_goal_still_met": true,
+  "routes_passed": {
+    "passed": true,
+    "count": 3,
+    "total": 3,
+    "implementation_routes": [
+      {
+        "route": "/workshop/tickets?parity=workshop-ticket-wage",
+        "final_url": "http://127.0.0.1:5179/workshop/tickets?parity=workshop-ticket-wage",
+        "http_status": 200
+      },
+      {
+        "route": "/workshop/daily-wages?parity=workshop-ticket-wage",
+        "final_url": "http://127.0.0.1:5179/workshop/daily-wages?parity=workshop-ticket-wage",
+        "http_status": 200
+      },
+      {
+        "route": "/workshop/wage-rates?parity=workshop-ticket-wage",
+        "final_url": "http://127.0.0.1:5179/workshop/wage-rates?parity=workshop-ticket-wage",
+        "http_status": 200
+      }
+    ],
+    "regression_routes": [
+      {
+        "route": "/workshop/tickets?parity=workshop-ticket-wage&regression=z036-b28",
+        "final_url": "http://127.0.0.1:5180/workshop/tickets?parity=workshop-ticket-wage&regression=z036-b28",
+        "http_status": 200
+      },
+      {
+        "route": "/workshop/daily-wages?parity=workshop-ticket-wage&regression=z036-b28",
+        "final_url": "http://127.0.0.1:5180/workshop/daily-wages?parity=workshop-ticket-wage&regression=z036-b28",
+        "http_status": 200
+      },
+      {
+        "route": "/workshop/wage-rates?parity=workshop-ticket-wage&regression=z036-b28",
+        "final_url": "http://127.0.0.1:5180/workshop/wage-rates?parity=workshop-ticket-wage&regression=z036-b28",
+        "http_status": 200
+      }
+    ]
+  },
+  "anchors_passed": {
+    "passed": true,
+    "count": 8,
+    "total": 8,
+    "anchors_observed": [
+      "workshop-ticket-list-page",
+      "workshop-ticket-filter-form",
+      "workshop-ticket-table",
+      "workshop-ticket-guarded-actions",
+      "workshop-ticket-sync-status",
+      "workshop-daily-wage-page",
+      "workshop-wage-rate-page",
+      "workshop-write-guard"
+    ]
+  },
+  "typecheck": {
+    "implementation_exit_code": 0,
+    "regression_exit_code": 0,
+    "exit_code": 0
+  },
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_tickets_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_daily_wages_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_wage_rates_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_tickets_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_daily_wages_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_wage_rates_regression_fullpage.png"
+  ],
+  "screenshot_captured": true,
+  "screenshots_in_yes": [
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_tickets_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_daily_wages_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_wage_rates_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_tickets_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_daily_wages_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_wage_rates_regression_fullpage.png"
+  ],
+  "runtime_evidence_in_yes": [
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/runtime_evidence.json",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/runtime_regression_evidence.json"
+  ],
+  "runtime_evidence": {
+    "write_requests_observed_count": 0,
+    "guarded_readonly": true,
+    "read_only_boundary_preserved": true,
+    "real_write_action_added": false,
+    "backend_api_added": false,
+    "guarded_write_controls": [
+      {
+        "route": "/workshop/tickets?parity=workshop-ticket-wage&regression=z036-b28",
+        "control_count": 4,
+        "controls": [
+          {
+            "testid": "workshop-write-guard",
+            "writeGuard": "readonly:workshop-ticket-actions",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": ""
+          },
+          {
+            "testid": null,
+            "writeGuard": "readonly:workshop-ticket-register",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": "工票登记"
+          },
+          {
+            "testid": null,
+            "writeGuard": "readonly:workshop-ticket-batch",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": "批量导入"
+          },
+          {
+            "testid": null,
+            "writeGuard": "readonly:job-card-sync-retry",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": "重试同步"
+          }
+        ]
+      },
+      {
+        "route": "/workshop/daily-wages?parity=workshop-ticket-wage&regression=z036-b28",
+        "control_count": 4,
+        "controls": [
+          {
+            "testid": "workshop-write-guard",
+            "writeGuard": "readonly:workshop-daily-wage-actions",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": ""
+          },
+          {
+            "testid": null,
+            "writeGuard": "readonly:workshop-daily-wage-export",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": "导出"
+          },
+          {
+            "testid": null,
+            "writeGuard": "readonly:workshop-daily-wage-generate",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": "生成"
+          },
+          {
+            "testid": null,
+            "writeGuard": "readonly:workshop-daily-wage-sync",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": "同步"
+          }
+        ]
+      },
+      {
+        "route": "/workshop/wage-rates?parity=workshop-ticket-wage&regression=z036-b28",
+        "control_count": 3,
+        "controls": [
+          {
+            "testid": "workshop-write-guard",
+            "writeGuard": "readonly:wage-rate-actions",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": ""
+          },
+          {
+            "testid": "wage-rates-create-action",
+            "writeGuard": "readonly:wage-rate-create",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": "新增工价"
+          },
+          {
+            "testid": "wage-rates-deactivate-action",
+            "writeGuard": "readonly:wage-rate-deactivate",
+            "guardState": "guarded_readonly",
+            "disabled": false,
+            "text": "停用"
+          }
+        ]
+      }
+    ],
+    "non_disabled_guarded_controls_observed": true,
+    "non_disabled_guarded_controls_misread_as_write_success": false
+  },
+  "risk_carry_forward": {
+    "cand001_readonly_fallback_risk": true,
+    "cand001_console_401_errors_observed": 4,
+    "cand001_network_401_errors_observed": 4,
+    "cand001_write_chain_success": false,
+    "cand001_permission_misread_as_success": false,
+    "cand003_readonly_fallback_risk": true,
+    "cand003_auth_401_count": 2,
+    "shell_wrapper_anomaly_preserved": true,
+    "z033_skipped_only_risk_preserved": true,
+    "z035_screenshot_missing_risk": true
+  },
+  "ledger_total": 61,
+  "ledger_yes_count": 24,
+  "ledger_no_count": 37,
+  "yes_count": 24,
+  "no_count": 37,
+  "yes_paths": [
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+    "03_需求与设计/02_开发计划/TASK-Z036B-26-PREP_CAND004_边界冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z036b_26_cand004_boundary.json",
+    "03_需求与设计/02_开发计划/task_z036b_26_cand004_boundary.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z036B-27-IMPL_CAND004_实施报告.md",
+    "03_需求与设计/02_开发计划/task_z036b_27_cand004_impl.json",
+    "03_需求与设计/02_开发计划/task_z036b_27_cand004_impl.tsv",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/runtime_evidence.json",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_daily_wages_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_tickets_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_wage_rates_runtime_fullpage.png",
+    "03_需求与设计/02_开发计划/TASK-Z036B-28-REGRESSION-CAND004_车间工票只读流回归报告.md",
+    "03_需求与设计/02_开发计划/task_z036b_28_cand004_regression.json",
+    "03_需求与设计/02_开发计划/task_z036b_28_cand004_regression.tsv",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/runtime_regression_evidence.json",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_daily_wages_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_tickets_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_wage_rates_regression_fullpage.png",
+    "03_需求与设计/02_开发计划/TASK-Z036B-29-LEDGER-CAND004_ledger冻结报告.md",
+    "03_需求与设计/02_开发计划/TASK-Z036B-29-LEDGER-CAND004_ledger_freeze.json",
+    "03_需求与设计/02_开发计划/task_z036b_29_cand004_ledger.json",
+    "03_需求与设计/02_开发计划/task_z036b_29_cand004_ledger.tsv"
+  ],
+  "no_paths": [
+    "06_前端/lingyi-pc/src/api/workshop.ts",
+    "07_后端/",
+    "03_需求与设计/02_开发计划/task_z036b_01_product_candidate_pool.json",
+    "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+    "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "07_后端/lingyi_service/app/schemas/report.py",
+    "07_后端/lingyi_service/app/services/report_catalog_service.py",
+    "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+    "07_后端/lingyi_service/tests/test_bom_permissions.py",
+    "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+    "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+    "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+    "07_后端/lingyi_service/tests/test_style_profit_api.py",
+    "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+    "07_后端/lingyi_service/tests/test_workshop_permissions.py",
+    "00_交接与日志/HANDOVER_STATUS.md",
+    "03_需求与设计/01_架构设计/架构师会话日志.md",
+    "03_需求与设计/02_开发计划/工程师会话日志.md",
+    "03_需求与设计/02_开发计划/TASK-Z034B-37-COMMIT-CAND005_提交报告.md",
+    "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.json",
+    "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.tsv",
+    "06_前端/lingyi-pc/src/views/HomePage.vue",
+    "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+    "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+    "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue",
+    "06_前端/lingyi-pc/src/views/system/SystemManagement.vue",
+    "06_前端/lingyi-pc/src/api/system_management.ts",
+    "06_前端/lingyi-pc/test-results/",
+    "runtime/cache/test-results/",
+    "03_需求与设计/02_开发计划/TASK-Z036B-25-PREP_剩余候选刷新报告.md",
+    "03_需求与设计/02_开发计划/task_z036b_25_remaining_refresh.json",
+    "03_需求与设计/02_开发计划/task_z036b_25_remaining_refresh.tsv"
+  ],
+  "yes_no_intersection": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue"
+  ],
+  "backend_yes_paths": [],
+  "backend_app_yes_paths": [],
+  "candidate_pool_yes_paths": [],
+  "historical_dirty_forbidden_in_yes": [],
+  "log_control_dirty_in_yes": [],
+  "residual_artifacts_in_yes": [],
+  "z035_committed_product_files_in_yes": [],
+  "cand005_scope_in_yes": [],
+  "forbidden_paths_in_yes": [],
+  "ignored_yes_paths": [],
+  "yes_files_exist": {
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue": true,
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue": true,
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue": true,
+    "03_需求与设计/02_开发计划/TASK-Z036B-26-PREP_CAND004_边界冻结报告.md": true,
+    "03_需求与设计/02_开发计划/task_z036b_26_cand004_boundary.json": true,
+    "03_需求与设计/02_开发计划/task_z036b_26_cand004_boundary.tsv": true,
+    "03_需求与设计/02_开发计划/TASK-Z036B-27-IMPL_CAND004_实施报告.md": true,
+    "03_需求与设计/02_开发计划/task_z036b_27_cand004_impl.json": true,
+    "03_需求与设计/02_开发计划/task_z036b_27_cand004_impl.tsv": true,
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/runtime_evidence.json": true,
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_daily_wages_runtime_fullpage.png": true,
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_tickets_runtime_fullpage.png": true,
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_wage_rates_runtime_fullpage.png": true,
+    "03_需求与设计/02_开发计划/TASK-Z036B-28-REGRESSION-CAND004_车间工票只读流回归报告.md": true,
+    "03_需求与设计/02_开发计划/task_z036b_28_cand004_regression.json": true,
+    "03_需求与设计/02_开发计划/task_z036b_28_cand004_regression.tsv": true,
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/runtime_regression_evidence.json": true,
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_daily_wages_regression_fullpage.png": true,
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_tickets_regression_fullpage.png": true,
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_wage_rates_regression_fullpage.png": true,
+    "03_需求与设计/02_开发计划/TASK-Z036B-29-LEDGER-CAND004_ledger冻结报告.md": true,
+    "03_需求与设计/02_开发计划/TASK-Z036B-29-LEDGER-CAND004_ledger_freeze.json": true,
+    "03_需求与设计/02_开发计划/task_z036b_29_cand004_ledger.json": true,
+    "03_需求与设计/02_开发计划/task_z036b_29_cand004_ledger.tsv": true
+  },
+  "all_yes_paths_exist": true,
+  "no_scope_explanation": {
+    "unmodified_allowed_file": "06_前端/lingyi-pc/src/api/workshop.ts",
+    "backend": "07_后端/",
+    "candidate_pool": "03_需求与设计/02_开发计划/task_z036b_01_product_candidate_pool.json",
+    "b25_refresh_source_reference_only": [
+      "03_需求与设计/02_开发计划/TASK-Z036B-25-PREP_剩余候选刷新报告.md",
+      "03_需求与设计/02_开发计划/task_z036b_25_remaining_refresh.json",
+      "03_需求与设计/02_开发计划/task_z036b_25_remaining_refresh.tsv"
+    ],
+    "historical_dirty_forbidden": [
+      "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+      "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+      "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+      "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+      "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+      "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+      "07_后端/lingyi_service/app/schemas/report.py",
+      "07_后端/lingyi_service/app/services/report_catalog_service.py",
+      "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+      "07_后端/lingyi_service/tests/test_bom_permissions.py",
+      "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+      "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+      "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+      "07_后端/lingyi_service/tests/test_style_profit_api.py",
+      "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+      "07_后端/lingyi_service/tests/test_workshop_permissions.py"
+    ],
+    "log_control_dirty": [
+      "00_交接与日志/HANDOVER_STATUS.md",
+      "03_需求与设计/01_架构设计/架构师会话日志.md",
+      "03_需求与设计/02_开发计划/工程师会话日志.md"
+    ],
+    "z034_residual_artifacts": [
+      "03_需求与设计/02_开发计划/TASK-Z034B-37-COMMIT-CAND005_提交报告.md",
+      "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.json",
+      "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.tsv"
+    ],
+    "z035_committed_product_files": [
+      "06_前端/lingyi-pc/src/views/HomePage.vue",
+      "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+      "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+      "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+      "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue"
+    ],
+    "cand005_scope": [
+      "06_前端/lingyi-pc/src/views/system/SystemManagement.vue",
+      "06_前端/lingyi-pc/src/api/system_management.ts"
+    ],
+    "runtime_cache_test_results": [
+      "06_前端/lingyi-pc/test-results/",
+      "runtime/cache/test-results/"
+    ]
+  },
+  "push_tag_pr_release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z036B-30-STAGE-CAND004",
+  "run_this_task": false,
+  "generated_at": "2026-05-26T12:33:18.837Z"
+}

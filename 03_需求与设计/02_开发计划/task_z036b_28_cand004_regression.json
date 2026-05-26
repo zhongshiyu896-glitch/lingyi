@@ -1,0 +1,199 @@
+{
+  "cycle_id": "Z036",
+  "task_id": "TASK-Z036B-28-REGRESSION-CAND004",
+  "role": "B Engineer",
+  "source_task": "TASK-Z036B-27-IMPL",
+  "candidate_id": "Z036-CAND-004",
+  "head": "5c529e82a00723f05fc50e900765d9a0491acfb6",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue"
+  ],
+  "current_candidate_diff_allowed_files_only": true,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "PASS; vue-tsc --noEmit -p tsconfig.json exited 0",
+  "routes_verified": [
+    {
+      "route": "/workshop/tickets?parity=workshop-ticket-wage&regression=z036-b28",
+      "final_url": "http://127.0.0.1:5180/workshop/tickets?parity=workshop-ticket-wage&regression=z036-b28",
+      "http_status": 200
+    },
+    {
+      "route": "/workshop/daily-wages?parity=workshop-ticket-wage&regression=z036-b28",
+      "final_url": "http://127.0.0.1:5180/workshop/daily-wages?parity=workshop-ticket-wage&regression=z036-b28",
+      "http_status": 200
+    },
+    {
+      "route": "/workshop/wage-rates?parity=workshop-ticket-wage&regression=z036-b28",
+      "final_url": "http://127.0.0.1:5180/workshop/wage-rates?parity=workshop-ticket-wage&regression=z036-b28",
+      "http_status": 200
+    }
+  ],
+  "screenshot_reused_or_recaptured": "recaptured",
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_tickets_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_daily_wages_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow_regression/workshop_wage_rates_regression_fullpage.png"
+  ],
+  "screenshot_skip_reason": null,
+  "anchors_required": [
+    "workshop-ticket-list-page",
+    "workshop-ticket-filter-form",
+    "workshop-ticket-table",
+    "workshop-ticket-guarded-actions",
+    "workshop-ticket-sync-status",
+    "workshop-daily-wage-page",
+    "workshop-wage-rate-page",
+    "workshop-write-guard"
+  ],
+  "anchors_observed": [
+    "workshop-ticket-list-page",
+    "workshop-ticket-filter-form",
+    "workshop-ticket-table",
+    "workshop-ticket-guarded-actions",
+    "workshop-ticket-sync-status",
+    "workshop-daily-wage-page",
+    "workshop-wage-rate-page",
+    "workshop-write-guard"
+  ],
+  "anchors_missing": [],
+  "guarded_write_controls": [
+    {
+      "route": "/workshop/tickets?parity=workshop-ticket-wage&regression=z036-b28",
+      "control_count": 4,
+      "controls": [
+        {
+          "testid": "workshop-write-guard",
+          "writeGuard": "readonly:workshop-ticket-actions",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": ""
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-ticket-register",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "工票登记"
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-ticket-batch",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "批量导入"
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:job-card-sync-retry",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "重试同步"
+        }
+      ]
+    },
+    {
+      "route": "/workshop/daily-wages?parity=workshop-ticket-wage&regression=z036-b28",
+      "control_count": 4,
+      "controls": [
+        {
+          "testid": "workshop-write-guard",
+          "writeGuard": "readonly:workshop-daily-wage-actions",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": ""
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-daily-wage-export",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "导出"
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-daily-wage-generate",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "生成"
+        },
+        {
+          "testid": null,
+          "writeGuard": "readonly:workshop-daily-wage-sync",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "同步"
+        }
+      ]
+    },
+    {
+      "route": "/workshop/wage-rates?parity=workshop-ticket-wage&regression=z036-b28",
+      "control_count": 3,
+      "controls": [
+        {
+          "testid": "workshop-write-guard",
+          "writeGuard": "readonly:wage-rate-actions",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": ""
+        },
+        {
+          "testid": "wage-rates-create-action",
+          "writeGuard": "readonly:wage-rate-create",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "新增工价"
+        },
+        {
+          "testid": "wage-rates-deactivate-action",
+          "writeGuard": "readonly:wage-rate-deactivate",
+          "guardState": "guarded_readonly",
+          "disabled": false,
+          "text": "停用"
+        }
+      ]
+    }
+  ],
+  "non_disabled_guarded_controls_present": true,
+  "guarded_status_not_write_success": true,
+  "write_requests_observed_count": 0,
+  "api_401_observed": false,
+  "api_401_count": 0,
+  "runtime_readonly_fallback_risk": false,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "backend_allowed": false,
+  "visible_acceptance_goal_still_met": true,
+  "diff_check_pass": true,
+  "diff_check_output": "",
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_committed_product_files_touched": false,
+  "cand005_started": false,
+  "risk_fields_preserved": {
+    "cand001_readonly_fallback_risk": true,
+    "cand003_readonly_fallback_risk": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true
+  },
+  "forbidden_actions": {
+    "code_edits": false,
+    "stage_commit_push": false,
+    "pr_tag_release": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle": false,
+    "cand005_started": false
+  },
+  "next_task": "TASK-Z036B-29-LEDGER-CAND004",
+  "run_this_task": false
+}

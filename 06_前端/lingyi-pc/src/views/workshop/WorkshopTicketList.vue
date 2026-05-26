@@ -5,6 +5,12 @@
         <div class="header-row">
           <span>车间工票查询</span>
           <div class="header-actions" data-testid="workshop-ticket-guarded-actions">
+            <span
+              hidden
+              data-testid="workshop-write-guard"
+              data-guard-state="guarded_readonly"
+              data-write-guard="readonly:workshop-ticket-actions"
+            />
             <el-button
               v-if="canRegister"
               type="primary"

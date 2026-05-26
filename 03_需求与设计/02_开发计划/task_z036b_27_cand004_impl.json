@@ -1,0 +1,108 @@
+{
+  "cycle_id": "Z036",
+  "task_id": "TASK-Z036B-27-IMPL",
+  "role": "B Engineer",
+  "source_task": "TASK-Z036B-26-PREP",
+  "candidate_id": "Z036-CAND-004",
+  "head": "5c529e82a00723f05fc50e900765d9a0491acfb6",
+  "implementation_workdir": "/Users/hh/Desktop/领意服装管理系统",
+  "frontend_workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue"
+  ],
+  "allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+    "06_前端/lingyi-pc/src/api/workshop.ts"
+  ],
+  "allowed_files_only": true,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_committed_product_files_touched": false,
+  "cand005_started": false,
+  "routes_checked": [
+    {
+      "route": "/workshop/tickets?parity=workshop-ticket-wage",
+      "final_url": "http://127.0.0.1:5179/workshop/tickets?parity=workshop-ticket-wage",
+      "http_status": 200
+    },
+    {
+      "route": "/workshop/daily-wages?parity=workshop-ticket-wage",
+      "final_url": "http://127.0.0.1:5179/workshop/daily-wages?parity=workshop-ticket-wage",
+      "http_status": 200
+    },
+    {
+      "route": "/workshop/wage-rates?parity=workshop-ticket-wage",
+      "final_url": "http://127.0.0.1:5179/workshop/wage-rates?parity=workshop-ticket-wage",
+      "http_status": 200
+    }
+  ],
+  "anchors_required": [
+    "workshop-ticket-list-page",
+    "workshop-ticket-filter-form",
+    "workshop-ticket-table",
+    "workshop-ticket-guarded-actions",
+    "workshop-ticket-sync-status",
+    "workshop-daily-wage-page",
+    "workshop-wage-rate-page",
+    "workshop-write-guard"
+  ],
+  "anchors_observed": [
+    "workshop-ticket-list-page",
+    "workshop-ticket-filter-form",
+    "workshop-ticket-table",
+    "workshop-ticket-guarded-actions",
+    "workshop-ticket-sync-status",
+    "workshop-daily-wage-page",
+    "workshop-wage-rate-page",
+    "workshop-write-guard"
+  ],
+  "anchors_missing": [],
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_tickets_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_daily_wages_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/workshop_wage_rates_runtime_fullpage.png"
+  ],
+  "screenshot_skip_reason": null,
+  "runtime_alternative_evidence": "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow/runtime_evidence.json",
+  "runtime_evidence_dir": "04_测试与验收/测试证据/z036_cand004_workshop_readonly_flow",
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "PASS; final run after template formatting exited 0",
+  "diff_check_pass": true,
+  "diff_check_output": "",
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "api_401_observed": false,
+  "api_401_count": 0,
+  "runtime_readonly_fallback_risk": false,
+  "visible_acceptance_goal_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "backend_allowed": false,
+  "risk_fields_preserved": {
+    "cand001_readonly_fallback_risk": true,
+    "cand003_readonly_fallback_risk": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true
+  },
+  "forbidden_actions": {
+    "stage_commit_push": false,
+    "pr_tag_release": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle": false,
+    "cand005_started": false
+  },
+  "next_task": "TASK-Z036B-28-REGRESSION-CAND004",
+  "run_this_task": false
+}

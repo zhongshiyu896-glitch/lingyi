@@ -1,10 +1,20 @@
 <template>
-  <div class="operation-wage-rate" data-testid="wage-rates-page">
+  <div
+    class="operation-wage-rate"
+    data-testid="workshop-wage-rate-page"
+    data-legacy-testid="wage-rates-page"
+  >
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
           <span>工价档案</span>
           <div class="header-actions">
+            <span
+              hidden
+              data-testid="workshop-write-guard"
+              data-guard-state="guarded_readonly"
+              data-write-guard="readonly:wage-rate-actions"
+            />
             <el-button
               data-testid="wage-rates-back-to-tickets"
               data-action-type="navigation"
