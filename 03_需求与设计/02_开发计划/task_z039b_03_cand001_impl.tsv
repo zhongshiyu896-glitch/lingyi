@@ -1,0 +1,37 @@
+field	value
+status	READY_FOR_REVIEW
+task_id	TASK-Z039B-03-IMPL
+role	B Engineer
+candidate_id	Z039-CAND-001
+changed_files	["06_前端/lingyi-pc/src/router/index.ts","06_前端/lingyi-pc/src/api/report.ts"]
+allowed_files_only	true
+router_index_changed	true
+api_report_changed	true
+report_catalog_vue_touched	false
+parity_routes	["/financial/financialReport/customerReconciliationReport","/financial/financialProcess","/finance/bank-flow","/finance/receipts-payments","/finance/reconciliation","/reportManage/collaborationReport/factoryProductStockReport"]
+route_status_by_route	all_6_routes_http_200_and_parity_to_reports_catalog
+final_catalog_route_status	/reports/catalog_http_200
+screenshot	04_测试与验收/测试证据/z039_cand001_report_parity_readonly/report_parity_runtime_fullpage.png
+screenshot_size	1440x2843_png
+runtime_dom_evidence	04_测试与验收/测试证据/z039_cand001_report_parity_readonly/report_parity_runtime_dom_guard_network.json
+anchors_observed	8/8
+guarded_write_controls	guarded:readonly-report-export;guarded:readonly-report-action;guarded:readonly-report-print;guarded:readonly-report-upload;guarded:report-finance-download-readonly;guarded:report-collaboration-download-readonly;guarded:report-detail-export-readonly;dataReadonlyBoundary=true;dataWriteRequestSuccessAllowed=false
+auth_401_count	33
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_command	npm run typecheck
+typecheck_exit_code	0
+worktree_check_pass	true
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+dev_server_started	true
+dev_server_stopped	true
+forbidden_report_catalog_edits	false
+forbidden_backend_edits	false
+forbidden_candidate_pool_edits	false
+forbidden_stage_commit_push	false
+forbidden_cleanup_reset_restore	false
+forbidden_remote_lifecycle	false

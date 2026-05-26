@@ -1,0 +1,307 @@
+{
+  "task_id": "TASK-Z039B-03-IMPL",
+  "candidate_id": "Z039-CAND-001",
+  "base_url": "http://127.0.0.1:5174",
+  "viewport": {
+    "width": 1440,
+    "height": 1200
+  },
+  "parity_routes": [
+    "/financial/financialReport/customerReconciliationReport",
+    "/financial/financialProcess",
+    "/finance/bank-flow",
+    "/finance/receipts-payments",
+    "/finance/reconciliation",
+    "/reportManage/collaborationReport/factoryProductStockReport"
+  ],
+  "route_status_by_route": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=financial-customer-reconciliation-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/financial/financialProcess": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-process-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=financial-process-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/bank-flow": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-bank-flow-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=finance-bank-flow-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/receipts-payments": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-receipts-payments-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=finance-receipts-payments-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/reconciliation": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-reconciliation-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=finance-reconciliation-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=collaboration-factory-product-stock-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=collaboration-factory-product-stock-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    }
+  },
+  "final_catalog_route_status": {
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/reports/catalog",
+    "final_pathname": "/reports/catalog"
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z039_cand001_report_parity_readonly/report_parity_runtime_fullpage.png",
+    "format": "png",
+    "width": 1440,
+    "height": 2843,
+    "bytes": 459768
+  },
+  "required_anchors": [
+    "report-parity-entry-page",
+    "report-parity-route-state",
+    "report-catalog-filter-form",
+    "report-catalog-table",
+    "report-catalog-detail-drawer",
+    "report-finance-parity-source",
+    "report-collaboration-parity-source",
+    "report-readonly-write-guard"
+  ],
+  "observed_anchors": [
+    "report-parity-entry-page",
+    "report-parity-route-state",
+    "report-catalog-filter-form",
+    "report-catalog-table",
+    "report-catalog-detail-drawer",
+    "report-finance-parity-source",
+    "report-collaboration-parity-source",
+    "report-readonly-write-guard"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "visible_acceptance": {
+    "hasCatalogFilter": true,
+    "hasDetailEntry": true,
+    "hasFinanceSourceHint": true,
+    "hasCollaborationSourceHint": true,
+    "hasGuardedExport": true
+  },
+  "guarded_write_controls": [
+    {
+      "tag": "BUTTON",
+      "text": "导出（只读）",
+      "dataWriteGuard": "guarded:readonly-report-export",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "确认（guarded）",
+      "dataWriteGuard": "guarded:readonly-report-action",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "审核（guarded）",
+      "dataWriteGuard": "guarded:readonly-report-action",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "导出（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-export",
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "打印（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-print",
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "上传（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-upload",
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "确认（guarded）",
+      "dataWriteGuard": "guarded:readonly-report-action",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "审核（guarded）",
+      "dataWriteGuard": "guarded:readonly-report-action",
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "导出（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-export",
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "打印（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-print",
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "上传（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-upload",
+      "disabled": true
+    }
+  ],
+  "auth_401_count": 33,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "write_requests": [],
+  "relevant_requests": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    }
+  ],
+  "final_page_url_for_dom_evidence": "http://127.0.0.1:5174/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1"
+}

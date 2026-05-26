@@ -1,0 +1,230 @@
+{
+  "task_id": "TASK-Z039B-05-LEDGER-CAND001",
+  "role": "B Engineer",
+  "candidate_id": "Z039-CAND-001",
+  "evidence_only": false,
+  "source_chain": "TASK-Z039B-02-PREP -> TASK-Z039B-03-IMPL -> TASK-Z039B-04-REGRESSION -> TASK-Z039B-05-LEDGER",
+  "head": "138700cf418fc2453b88bffe930d07cee115c02a",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "ledger_total": 29,
+  "yes_count": 19,
+  "no_count": 10,
+  "yes_no_intersection": [],
+  "yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "report_catalog_in_yes": false,
+  "yes_paths": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/report.ts",
+    "03_需求与设计/02_开发计划/TASK-Z039B-02-PREP_CAND001_边界冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z039b_02_cand001_boundary.json",
+    "03_需求与设计/02_开发计划/task_z039b_02_cand001_boundary.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z039B-03-IMPL_CAND001_财务协同报表parity只读流实施报告.md",
+    "03_需求与设计/02_开发计划/task_z039b_03_cand001_impl_result.json",
+    "03_需求与设计/02_开发计划/task_z039b_03_cand001_impl.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z039B-04-REGRESSION-CAND001_财务协同报表parity只读流回归报告.md",
+    "03_需求与设计/02_开发计划/task_z039b_04_cand001_regression_result.json",
+    "03_需求与设计/02_开发计划/task_z039b_04_cand001_regression.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z039B-05-LEDGER-CAND001_ledger冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z039b_05_cand001_ledger.json",
+    "03_需求与设计/02_开发计划/task_z039b_05_cand001_ledger.tsv",
+    "03_需求与设计/02_开发计划/task_z039b_05_cand001_ledger_freeze.json",
+    "04_测试与验收/测试证据/z039_cand001_report_parity_readonly/report_parity_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z039_cand001_report_parity_readonly/report_parity_runtime_dom_guard_network.json",
+    "04_测试与验收/测试证据/z039_cand001_report_parity_readonly_regression/report_parity_regression_fullpage.png",
+    "04_测试与验收/测试证据/z039_cand001_report_parity_readonly_regression/report_parity_regression_dom_guard_network.json"
+  ],
+  "no_scope_groups": [
+    {
+      "name": "forbidden_report_catalog_view",
+      "paths": [
+        "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue"
+      ]
+    },
+    {
+      "name": "backend_forbidden",
+      "paths": [
+        "07_后端/**"
+      ]
+    },
+    {
+      "name": "candidate_pool_forbidden",
+      "paths": [
+        "03_需求与设计/02_开发计划/TASK-Z039B-01-PREP-PRODUCT-POOL_候选池报告.md",
+        "03_需求与设计/02_开发计划/task_z039b_01_product_candidate_pool.json",
+        "03_需求与设计/02_开发计划/task_z039b_01_product_candidate_pool.tsv"
+      ]
+    },
+    {
+      "name": "historical_product_test_dirty",
+      "paths": [
+        "06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue",
+        "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue",
+        "06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue",
+        "06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue",
+        "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+        "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+        "07_后端/lingyi_service/app/schemas/report.py",
+        "07_后端/lingyi_service/app/services/report_catalog_service.py",
+        "07_后端/lingyi_service/app/services/system_config_catalog_service.py",
+        "07_后端/lingyi_service/tests/test_bom_permissions.py",
+        "07_后端/lingyi_service/tests/test_logging_sanitization.py",
+        "07_后端/lingyi_service/tests/test_permission_governance_audit_export.py",
+        "07_后端/lingyi_service/tests/test_request_id_sanitization.py",
+        "07_后端/lingyi_service/tests/test_style_profit_api.py",
+        "07_后端/lingyi_service/tests/test_subcontract_company_permission.py",
+        "07_后端/lingyi_service/tests/test_workshop_permissions.py"
+      ]
+    },
+    {
+      "name": "log_control_dirty",
+      "paths": [
+        "00_交接与日志/HANDOVER_STATUS.md",
+        "03_需求与设计/01_架构设计/架构师会话日志.md",
+        "03_需求与设计/02_开发计划/工程师会话日志.md"
+      ]
+    },
+    {
+      "name": "z034_residual_artifacts",
+      "paths": [
+        "03_需求与设计/02_开发计划/TASK-Z034B-37-COMMIT-CAND005_提交报告.md",
+        "03_需求与设计/02_开发计划/TASK-Z034B-37-COMMIT-RETURN-FIX1_out_of_scope产物披露报告.md",
+        "03_需求与设计/02_开发计划/TASK-Z034B-37-COMMIT-RETURN_CAND005提交事实正式回交报告.md",
+        "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.json",
+        "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.tsv",
+        "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_return.json",
+        "03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_return.tsv",
+        "03_需求与设计/02_开发计划/task_z034b_37_commit_return_fix1_result.json",
+        "03_需求与设计/02_开发计划/task_z034b_37_commit_return_fix1_result.tsv"
+      ]
+    },
+    {
+      "name": "z035_z036_z037_z038_committed_product_paths",
+      "paths": [
+        "06_前端/lingyi-pc/src/views/HomePage.vue",
+        "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+        "06_前端/lingyi-pc/src/views/bom/BomList.vue",
+        "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue",
+        "06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementDetail.vue",
+        "06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementList.vue",
+        "06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementPrint.vue",
+        "06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue",
+        "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+        "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+        "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+        "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotDetail.vue",
+        "06_前端/lingyi-pc/src/views/style_profit/StyleProfitSnapshotList.vue",
+        "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue",
+        "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+        "06_前端/lingyi-pc/src/views/system/PermissionGovernance.vue",
+        "06_前端/lingyi-pc/src/views/system/SystemManagement.vue",
+        "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+        "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue",
+        "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+        "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue",
+        "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+        "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+      ]
+    },
+    {
+      "name": "runtime_cache_test_results",
+      "paths": [
+        "06_前端/lingyi-pc/test-results/**",
+        "runtime/cache/test-results/**"
+      ]
+    },
+    {
+      "name": "remote_prod_go_live",
+      "paths": [
+        "remote lifecycle",
+        "production readback",
+        "go-live"
+      ]
+    },
+    {
+      "name": "future_task_artifacts",
+      "paths": [
+        "TASK-Z039B-06-*",
+        "task_z039b_06_*",
+        "TASK-Z039B-07-*",
+        "task_z039b_07_*"
+      ]
+    }
+  ],
+  "parity_routes_status": "PASS",
+  "route_status_by_route": {
+    "/financial/financialReport/customerReconciliationReport": "HTTP 200 -> /reports/catalog",
+    "/financial/financialProcess": "HTTP 200 -> /reports/catalog",
+    "/finance/bank-flow": "HTTP 200 -> /reports/catalog",
+    "/finance/receipts-payments": "HTTP 200 -> /reports/catalog",
+    "/finance/reconciliation": "HTTP 200 -> /reports/catalog",
+    "/reportManage/collaborationReport/factoryProductStockReport": "HTTP 200 -> /reports/catalog"
+  },
+  "final_catalog_route_status": "PASS",
+  "screenshots_in_yes": [
+    {
+      "path": "04_测试与验收/测试证据/z039_cand001_report_parity_readonly/report_parity_runtime_fullpage.png",
+      "format": "png",
+      "width": 1440,
+      "height": 2843
+    },
+    {
+      "path": "04_测试与验收/测试证据/z039_cand001_report_parity_readonly_regression/report_parity_regression_fullpage.png",
+      "format": "png",
+      "width": 1440,
+      "height": 2791
+    }
+  ],
+  "runtime_evidence_in_yes": [
+    "04_测试与验收/测试证据/z039_cand001_report_parity_readonly/report_parity_runtime_dom_guard_network.json",
+    "04_测试与验收/测试证据/z039_cand001_report_parity_readonly_regression/report_parity_regression_dom_guard_network.json"
+  ],
+  "anchors_observed": {
+    "count": 8,
+    "total": 8,
+    "all_observed": true
+  },
+  "guarded_write_controls": [
+    "guarded:readonly-report-export",
+    "guarded:report-finance-download-readonly",
+    "guarded:report-collaboration-download-readonly",
+    "guarded:report-detail-export-readonly",
+    "dataReadonlyBoundary=true",
+    "dataWriteRequestSuccessAllowed=false"
+  ],
+  "auth_401_count": 33,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_exit_code": 0,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "risk_fields_preserved": {
+    "z039_current_readonly_fallback_risk": true,
+    "z038_cand001_cand002_fallback_risks": true,
+    "prior_readonly_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true
+  },
+  "next_task": "TASK-Z039B-06-STAGE-CAND001",
+  "run_this_task": false,
+  "forbidden_actions": {
+    "code_edits": false,
+    "tests_browser_typecheck": false,
+    "stage_commit_push": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle": false
+  }
+}

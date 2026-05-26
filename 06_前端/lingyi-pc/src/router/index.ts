@@ -253,27 +253,45 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/financial/financialReport/customerReconciliationReport',
-    redirect: { path: '/reports/catalog', query: { parity: 'customer-reconciliation' } },
+    redirect: {
+      path: '/reports/catalog',
+      query: { parity: 'financial-customer-reconciliation-report', readonly_probe: '1' },
+    },
   },
   {
     path: '/financial/financialProcess',
-    redirect: { path: '/reports/catalog', query: { parity: 'customer-reconciliation' } },
+    redirect: {
+      path: '/reports/catalog',
+      query: { parity: 'financial-process-report', readonly_probe: '1' },
+    },
   },
   {
     path: '/finance/bank-flow',
-    redirect: { path: '/factory-statements/list', query: { parity: 'finance-bank-ledger' } },
+    redirect: {
+      path: '/reports/catalog',
+      query: { parity: 'finance-bank-flow-report', readonly_probe: '1' },
+    },
   },
   {
     path: '/finance/receipts-payments',
-    redirect: { path: '/factory-statements/list', query: { parity: 'finance-expense-payment' } },
+    redirect: {
+      path: '/reports/catalog',
+      query: { parity: 'finance-receipts-payments-report', readonly_probe: '1' },
+    },
   },
   {
     path: '/finance/reconciliation',
-    redirect: { path: '/factory-statements/list', query: { parity: 'finance-customer-reconciliation' } },
+    redirect: {
+      path: '/reports/catalog',
+      query: { parity: 'finance-reconciliation-report', readonly_probe: '1' },
+    },
   },
   {
     path: '/reportManage/collaborationReport/factoryProductStockReport',
-    redirect: { path: '/reports/catalog', query: { parity: 'factory-product-stock' } },
+    redirect: {
+      path: '/reports/catalog',
+      query: { parity: 'collaboration-factory-product-stock-report', readonly_probe: '1' },
+    },
   },
   {
     path: '/app/:pathMatch(.*)*',

@@ -1,0 +1,134 @@
+{
+  "task_id": "TASK-Z039B-04-REGRESSION-CAND001",
+  "role": "B Engineer",
+  "candidate_id": "Z039-CAND-001",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/api/report.ts",
+    "06_前端/lingyi-pc/src/router/index.ts"
+  ],
+  "report_catalog_vue_touched": false,
+  "allowed_diff_only": true,
+  "parity_routes": [
+    "/financial/financialReport/customerReconciliationReport",
+    "/financial/financialProcess",
+    "/finance/bank-flow",
+    "/finance/receipts-payments",
+    "/finance/reconciliation",
+    "/reportManage/collaborationReport/factoryProductStockReport"
+  ],
+  "route_status_by_route": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "http_status": 200,
+      "final_pathname": "/reports/catalog",
+      "parity_to_reports_catalog": true
+    },
+    "/financial/financialProcess": {
+      "http_status": 200,
+      "final_pathname": "/reports/catalog",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/bank-flow": {
+      "http_status": 200,
+      "final_pathname": "/reports/catalog",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/receipts-payments": {
+      "http_status": 200,
+      "final_pathname": "/reports/catalog",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/reconciliation": {
+      "http_status": 200,
+      "final_pathname": "/reports/catalog",
+      "parity_to_reports_catalog": true
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "http_status": 200,
+      "final_pathname": "/reports/catalog",
+      "parity_to_reports_catalog": true
+    }
+  },
+  "final_catalog_route_status": {
+    "route": "/reports/catalog",
+    "http_status": 200,
+    "final_pathname": "/reports/catalog"
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z039_cand001_report_parity_readonly_regression/report_parity_regression_fullpage.png",
+    "format": "png",
+    "width": 1440,
+    "height": 2791,
+    "bytes": 448264
+  },
+  "runtime_dom_guard_network_evidence": "04_测试与验收/测试证据/z039_cand001_report_parity_readonly_regression/report_parity_regression_dom_guard_network.json",
+  "required_anchors": [
+    "report-parity-entry-page",
+    "report-parity-route-state",
+    "report-catalog-filter-form",
+    "report-catalog-table",
+    "report-catalog-detail-drawer",
+    "report-finance-parity-source",
+    "report-collaboration-parity-source",
+    "report-readonly-write-guard"
+  ],
+  "anchors_observed": {
+    "count": 8,
+    "total": 8,
+    "all_observed": true
+  },
+  "visible_acceptance": {
+    "has_catalog_filter": true,
+    "has_detail_entry": true,
+    "has_finance_source_hint": true,
+    "has_collaboration_source_hint": true,
+    "has_guarded_export": true
+  },
+  "guarded_write_controls": [
+    "guarded:readonly-report-export",
+    "guarded:readonly-report-action",
+    "guarded:readonly-report-print",
+    "guarded:readonly-report-upload",
+    "guarded:report-finance-download-readonly",
+    "guarded:report-collaboration-download-readonly",
+    "guarded:report-detail-export-readonly",
+    "dataReadonlyBoundary=true",
+    "dataWriteRequestSuccessAllowed=false"
+  ],
+  "auth_401_count": 33,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "worktree_check_command": "git diff --check",
+  "worktree_check_pass": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "risk_fields_preserved": {
+    "current_auth_401_readonly_fallback_risk": true,
+    "z038_cand001_fallback_risk_preserved": true,
+    "z038_cand002_fallback_risk_preserved": true,
+    "prior_readonly_fallback_risks_preserved": true,
+    "guarded_readonly_not_write_success": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true
+  },
+  "forbidden_actions": {
+    "code_edits": false,
+    "report_catalog_edits": false,
+    "backend_edits": false,
+    "candidate_pool_edits": false,
+    "stage_commit_push": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle": false
+  },
+  "next_role": "C Auditor"
+}

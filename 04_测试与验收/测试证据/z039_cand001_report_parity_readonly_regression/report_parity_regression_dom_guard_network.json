@@ -1,0 +1,422 @@
+{
+  "task_id": "TASK-Z039B-04-REGRESSION-CAND001",
+  "candidate_id": "Z039-CAND-001",
+  "base_url": "http://127.0.0.1:5174",
+  "viewport": {
+    "width": 1440,
+    "height": 1200
+  },
+  "parity_routes": [
+    "/financial/financialReport/customerReconciliationReport",
+    "/financial/financialProcess",
+    "/finance/bank-flow",
+    "/finance/receipts-payments",
+    "/finance/reconciliation",
+    "/reportManage/collaborationReport/factoryProductStockReport"
+  ],
+  "route_status_by_route": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=financial-customer-reconciliation-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/financial/financialProcess": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-process-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=financial-process-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/bank-flow": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-bank-flow-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=finance-bank-flow-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/receipts-payments": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-receipts-payments-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=finance-receipts-payments-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/finance/reconciliation": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-reconciliation-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=finance-reconciliation-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=collaboration-factory-product-stock-report&readonly_probe=1",
+      "final_pathname": "/reports/catalog",
+      "final_search": "?parity=collaboration-factory-product-stock-report&readonly_probe=1",
+      "parity_to_reports_catalog": true
+    }
+  },
+  "final_catalog_route_status": {
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/reports/catalog",
+    "final_pathname": "/reports/catalog"
+  },
+  "final_page_url_for_dom_evidence": "http://127.0.0.1:5174/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1",
+  "required_anchors": [
+    "report-parity-entry-page",
+    "report-parity-route-state",
+    "report-catalog-filter-form",
+    "report-catalog-table",
+    "report-catalog-detail-drawer",
+    "report-finance-parity-source",
+    "report-collaboration-parity-source",
+    "report-readonly-write-guard"
+  ],
+  "observed_anchors": [
+    "report-parity-entry-page",
+    "report-parity-route-state",
+    "report-catalog-filter-form",
+    "report-catalog-table",
+    "report-catalog-detail-drawer",
+    "report-finance-parity-source",
+    "report-collaboration-parity-source",
+    "report-readonly-write-guard"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_write_controls": [
+    {
+      "tag": "BUTTON",
+      "text": "导出（只读）",
+      "dataWriteGuard": "guarded:readonly-report-export",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "确认（guarded）",
+      "dataWriteGuard": "guarded:readonly-report-action",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "审核（guarded）",
+      "dataWriteGuard": "guarded:readonly-report-action",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "导出（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-export",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "打印（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-print",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "上传（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-upload",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "查看",
+      "dataWriteGuard": null,
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "确认",
+      "dataWriteGuard": null,
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "审核",
+      "dataWriteGuard": null,
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "确认（guarded）",
+      "dataWriteGuard": "guarded:readonly-report-action",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "审核（guarded）",
+      "dataWriteGuard": "guarded:readonly-report-action",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "导出（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-export",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "打印（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-print",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "上传（disabled）",
+      "dataWriteGuard": "guarded:readonly-report-upload",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": true
+    },
+    {
+      "tag": "BUTTON",
+      "text": "查看",
+      "dataWriteGuard": null,
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "确认",
+      "dataWriteGuard": null,
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    },
+    {
+      "tag": "BUTTON",
+      "text": "审核",
+      "dataWriteGuard": null,
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "disabled": false
+    }
+  ],
+  "text_guard_hints": [
+    "guarded:readonly-report-export",
+    "guarded:report-finance-download-readonly",
+    "guarded:report-collaboration-download-readonly",
+    "guarded:report-detail-export-readonly",
+    "dataReadonlyBoundary=true",
+    "dataWriteRequestSuccessAllowed=false"
+  ],
+  "visible_acceptance": {
+    "hasCatalogFilter": true,
+    "hasDetailEntry": true,
+    "hasFinanceSourceHint": true,
+    "hasCollaborationSourceHint": true,
+    "hasGuardedExport": true
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z039_cand001_report_parity_readonly_regression/report_parity_regression_fullpage.png",
+    "format": "png",
+    "width": 1440,
+    "height": 2791,
+    "bytes": 448264
+  },
+  "auth_401_count": 33,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests": [],
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "relevant_responses": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports",
+      "method": "GET"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report",
+      "method": "GET"
+    }
+  ]
+}
