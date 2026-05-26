@@ -1,0 +1,22 @@
+{
+  "task_id": "TASK-Z036B-11-IMPL",
+  "generated_at": "2026-05-26T10:36:19.742Z",
+  "source_file": "06_前端/lingyi-pc/src/router/index.ts",
+  "routes": [
+    {
+      "route": "/factory-statements/list",
+      "component": "@/views/factory_statement/FactoryStatementList.vue",
+      "runtime_result": "PASS"
+    },
+    {
+      "route": "/factory-statements/detail",
+      "component": "@/views/factory_statement/FactoryStatementDetail.vue",
+      "runtime_result": "PASS"
+    },
+    {
+      "route": "/factory-statements/print",
+      "component": "@/views/factory_statement/FactoryStatementPrint.vue",
+      "runtime_result": "PASS"
+    }
+  ]
+}

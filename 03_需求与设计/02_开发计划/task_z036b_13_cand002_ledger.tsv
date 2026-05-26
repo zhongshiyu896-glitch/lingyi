@@ -1,0 +1,66 @@
+decision	path	reason
+YES	06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementList.vue	candidate frontend change
+YES	06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementDetail.vue	candidate frontend change
+YES	06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementPrint.vue	candidate frontend change
+YES	03_需求与设计/02_开发计划/TASK-Z036B-10-PREP_CAND002_边界冻结报告.md	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_10_cand002_boundary.json	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_10_cand002_boundary.tsv	candidate evidence chain
+YES	03_需求与设计/02_开发计划/TASK-Z036B-11-IMPL_CAND002_加工厂对账只读流实施报告.md	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_11_cand002_impl_result.json	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_11_cand002_impl.tsv	candidate evidence chain
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/dom_anchor_runtime_evidence.json	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_detail_runtime_fullpage.png	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_list_runtime_fullpage.png	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_print_runtime_fullpage.png	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/manifest.json	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/route_source_evidence.json	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/runtime_dom_route_evidence.json	candidate runtime evidence
+YES	03_需求与设计/02_开发计划/TASK-Z036B-12-REGRESSION-CAND002_加工厂对账只读流回归报告.md	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_12_cand002_regression_result.json	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_12_cand002_regression.tsv	candidate evidence chain
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/dom_anchor_regression_evidence.json	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_detail_regression_fullpage.png	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_list_regression_fullpage.png	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_print_regression_fullpage.png	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/manifest.json	candidate runtime evidence
+YES	04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/runtime_regression_evidence.json	candidate runtime evidence
+YES	03_需求与设计/02_开发计划/TASK-Z036B-13-LEDGER-CAND002_加工厂对账账本冻结报告.md	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_13_cand002_freeze.json	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_13_cand002_ledger.json	candidate evidence chain
+YES	03_需求与设计/02_开发计划/task_z036b_13_cand002_ledger.tsv	candidate evidence chain
+NO	06_前端/lingyi-pc/src/api/factory_statement.ts	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/TASK-Z036B-01-PREP-PRODUCT-POOL_Z036产品可见候选池报告.md	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/task_z036b_01_product_candidate_pool.json	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/task_z036b_01_product_candidate_pool.tsv	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/cross_module/CrossModuleView.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionDetail.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/quality/QualityInspectionList.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue	forbidden or source reference excluded
+NO	07_后端/lingyi_service/app/schemas/report.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/app/services/report_catalog_service.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/app/services/system_config_catalog_service.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/tests/test_bom_permissions.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/tests/test_logging_sanitization.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/tests/test_permission_governance_audit_export.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/tests/test_request_id_sanitization.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/tests/test_style_profit_api.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/tests/test_subcontract_company_permission.py	forbidden or source reference excluded
+NO	07_后端/lingyi_service/tests/test_workshop_permissions.py	forbidden or source reference excluded
+NO	00_交接与日志/HANDOVER_STATUS.md	forbidden or source reference excluded
+NO	03_需求与设计/01_架构设计/架构师会话日志.md	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/工程师会话日志.md	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/TASK-Z034B-37-COMMIT-CAND005_提交报告.md	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.json	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/task_z034b_37_cand005_commit_result.tsv	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/HomePage.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/bom/BomDetail.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/src/views/production/ProductionPlanDetail.vue	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/TASK-Z036B-09-PREP_剩余候选刷新报告.md	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/task_z036b_09_remaining_refresh.json	forbidden or source reference excluded
+NO	03_需求与设计/02_开发计划/task_z036b_09_remaining_refresh.tsv	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/test-results/	forbidden or source reference excluded
+NO	06_前端/lingyi-pc/.tmp_task_z004b33_browser_capture.mjs	forbidden or source reference excluded

@@ -37,6 +37,15 @@
           {{ readonlyParityHint }}
         </el-tag>
       </div>
+      <p
+        class="readonly-guard-tip"
+        data-testid="factory-statement-write-guard"
+        data-action-type="write"
+        data-write-guard="guarded:factory-statement-readonly-flow"
+        data-guard-state="disabled"
+      >
+        新建、确认、取消、同步、导出与打印入口保持 guard 或只读提示；本候选不新增真实写链路。
+      </p>
 
       <div class="statement-kpi-grid" data-testid="factory-statement-kpi-grid">
         <div class="statement-kpi-card" data-testid="factory-statement-kpi-total">
@@ -197,13 +206,14 @@
       />
       <el-empty v-if="!canRead" description="无加工厂对账单查看权限" data-testid="factory-statement-no-permission" />
       <template v-else>
-        <el-table
-          :data="displayRows"
-          border
-          v-loading="loading"
-          empty-text="暂无款式打板下单对账数据"
-          data-testid="factory-statement-main-table"
-        >
+        <div class="factory-statement-table-anchor" data-testid="factory-statement-table">
+          <el-table
+            :data="displayRows"
+            border
+            v-loading="loading"
+            empty-text="暂无款式打板下单对账数据"
+            data-testid="factory-statement-main-table"
+          >
           <el-table-column prop="sample_order_no" label="打板单号" min-width="180" />
           <el-table-column prop="style_code" label="款号" min-width="140" />
           <el-table-column prop="factory_name" label="工厂" min-width="140" />
@@ -317,7 +327,8 @@
               </el-button>
             </template>
           </el-table-column>
-        </el-table>
+          </el-table>
+        </div>
 
         <div class="pager">
           <el-pagination
@@ -5608,6 +5619,12 @@ onMounted(async () => {
   margin-bottom: 12px;
 }
 
+.readonly-guard-tip {
+  margin: 0 0 12px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+
 .statement-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -5764,6 +5781,10 @@ onMounted(async () => {
 
 .error-alert {
   margin-bottom: 12px;
+}
+
+.factory-statement-table-anchor {
+  width: 100%;
 }
 
 .pager {

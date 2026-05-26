@@ -1,0 +1,286 @@
+{
+  "task_id": "TASK-Z036B-12-REGRESSION-CAND002",
+  "source_task": "TASK-Z036B-11-IMPL",
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-002",
+  "generated_at": "2026-05-26T10:43:05.207Z",
+  "browser_runtime": "existing_vite_dev_server_with_playwright_runtime_api_mocks",
+  "screenshot_reused_or_recaptured": "recaptured",
+  "b11_screenshot_reference": [
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_list_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_detail_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_print_runtime_fullpage.png"
+  ],
+  "route_regression_evidence": [
+    {
+      "label": "list",
+      "route": "/factory-statements/list",
+      "requested_url": "http://127.0.0.1:5173/factory-statements/list",
+      "final_url": "http://127.0.0.1:5173/factory-statements/list",
+      "elapsed_ms": 2476,
+      "result": "PASS",
+      "anchors": {
+        "factory-statement-list-page": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "加工厂对账单列表\n创建对账单\n款式打板下单对账表（TASK-Y22B-P1-02）\n\n本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。\n\n新建、确认、取消、同步、导出与打印入口保持 guard 或只读提示；本候选不新增真实写链路。\n\n当前记录\n1\n列表筛选结果\n草稿单\n1\n待确认/待取消处理\n应付待同步\n0\nOutbox pending/processing\n实付金额汇总\n12480.00\n当前页业务金额\n来源条数汇总\n3.00\n对账明细覆盖规模\n供应商\n状态\n请选择状态\n开始日期\n结束日期\nsc"
+        },
+        "factory-statement-kpi-grid": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "当前记录\n1\n列表筛选结果\n草稿单\n1\n待确认/待取消处理\n应付待同步\n0\nOutbox pending/processing\n实付金额汇总\n12480.00\n当前页业务金额\n来源条数汇总\n3.00\n对账明细覆盖规模"
+        },
+        "factory-statement-query-form": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "供应商\n状态\n请选择状态\n开始日期\n结束日期\nscenario_tag\n操作\n查询\n重置"
+        },
+        "factory-statement-table": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "打板单号\n\t\n款号\n\t\n工厂\n\t\n下单时间\n\t\n下单金额\n\t\n对账单号\n\t\n公司\n\t\n供应商\n\t\n期间\n\t\n数量\n\t\n加工费\n\t\n扣款\n\t\n实付金额\n\t\n状态\n\t\n应付草稿同步\n\t\nERP 发票草稿\n\t\n创建时间\n\t\n操作\nFS-Z036-002-001\n\t\nPI-DRAFT-Z036-002\n\t\n示例加工厂A\n\t\n2026-05-26\n\t\n12480.00\n\t\nFS-Z036-002-001\n\t\n领意服装\n\t\n示例加工厂A\n\t\n2026-05-01 ~ 2026-05-26\n\t\n3\n\t\n12800.00\n\t\n320.00\n\t\n12480.00\n\t\n草稿\n\t\n-\n\t\nPI-DRAFT-Z036"
+        },
+        "factory-statement-status-tag": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "草稿"
+        },
+        "factory-statement-write-guard": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "新建、确认、取消、同步、导出与打印入口保持 guard 或只读提示；本候选不新增真实写链路。"
+        }
+      },
+      "write_guard_count": 7,
+      "disabled_or_guarded_write_count": 7,
+      "screenshot_path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_list_regression_fullpage.png"
+    },
+    {
+      "label": "detail",
+      "route": "/factory-statements/detail",
+      "requested_url": "http://127.0.0.1:5173/factory-statements/detail?id=101",
+      "final_url": "http://127.0.0.1:5173/factory-statements/detail?id=101",
+      "elapsed_ms": 1465,
+      "result": "PASS",
+      "anchors": {
+        "factory-statement-detail-page": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "加工厂对账单详情\n返回列表\n对账单号\tFS-Z036-002-001\t状态\t\n草稿\n\t供应商\t示例加工厂A\n公司\t领意服装\t期间\t2026-05-01 ~ 2026-05-26\t来源条数\t3\n加工费\t12800.00\t扣款\t320.00\t实付金额\t12480.00\n验货总数\t300.00\t次品总数\t5.00\t次品率\t1.80%\n对账明细行\n2\n用于复核加工费拆分\n操作日志行\n1\n状态变更追踪\n次品率\n1.80%\n质量风险观察\n应付同步态\n已闭合\n仅支持只读跟踪\n单据 草稿\nOutbox 已闭合\n摘要完整\n模式 只读\n应付 / Outbox 同步状态\n应付草稿同步\t-\tERP 发票草稿\tPI-D"
+        },
+        "factory-statement-status-tag": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "单据 草稿"
+        },
+        "factory-statement-write-guard": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "当前页面仅提供只读浏览，所有写动作与导出打印动作均已禁用。"
+        }
+      },
+      "write_guard_count": 6,
+      "disabled_or_guarded_write_count": 6,
+      "screenshot_path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_detail_regression_fullpage.png"
+    },
+    {
+      "label": "print",
+      "route": "/factory-statements/print",
+      "requested_url": "http://127.0.0.1:5173/factory-statements/print?id=101",
+      "final_url": "http://127.0.0.1:5173/factory-statements/print?id=101",
+      "elapsed_ms": 1439,
+      "result": "PASS",
+      "anchors": {
+        "factory-statement-print-page": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "返回详情\n打印\n\n打印、导出、确认、取消与应付草稿入口保持只读 guard。\n\n领意服装管理系统\n加工厂对账单\n对账单号：FS-Z036-002-001\n公司：领意服装\n供应商：示例加工厂A\n期间：2026-05-01 ~ 2026-05-26\n状态：\n草稿\n应付草稿同步：\n-\nERP 发票草稿：PI-DRAFT-Z036-002\n加工费：12800.00\n扣款：320.00\n实付金额：12480.00\n来源条数\n3\n验货总数\n300\n次品总数\n5\n次品率\n0.0180\n\n当前页面为只读打印预览模式，打印/导出/确认/取消/应付草稿动作已禁用。\n\n对账明细\n验货单号\t外发单号\t合格数量\t次品数"
+        },
+        "factory-statement-write-guard": {
+          "exists": true,
+          "count": 1,
+          "visible": true,
+          "text": "打印、导出、确认、取消与应付草稿入口保持只读 guard。"
+        }
+      },
+      "write_guard_count": 2,
+      "disabled_or_guarded_write_count": 2,
+      "screenshot_path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_print_regression_fullpage.png"
+    }
+  ],
+  "dom_anchor_regression_evidence": {
+    "factory-statement-list-page": true,
+    "factory-statement-kpi-grid": true,
+    "factory-statement-query-form": true,
+    "factory-statement-table": true,
+    "factory-statement-detail-page": true,
+    "factory-statement-status-tag": true,
+    "factory-statement-print-page": true,
+    "factory-statement-write-guard": true
+  },
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_list_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_detail_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_print_regression_fullpage.png"
+  ],
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "runtime_api_mocked_for_readonly_visual_evidence": true,
+  "network_401_errors_observed": 0,
+  "network_401_errors": [],
+  "console_messages": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    }
+  ],
+  "api_hits": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/actions?module=factory_statement",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/expense-reimbursement-payments?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/bank-deposits?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/bank-withdrawals?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/bank-ledgers?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/customer-evaluations?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/customer-reconciliations?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/customer-unpaid-reports?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/customer-receivable-summaries?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/factory-evaluations?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/factory-reconciliations?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/factory-payable-summaries?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/supplier-evaluations?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/supplier-reconciliations?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/supplier-payable-summaries?page=1&page_size=20",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/actions?module=factory_statement",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/101",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/me",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/auth/actions?module=factory_statement",
+      "mocked": true
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5173/api/factory-statements/101",
+      "mocked": true
+    }
+  ]
+}

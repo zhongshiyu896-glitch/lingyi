@@ -11,6 +11,15 @@
         打印
       </el-button>
     </div>
+    <p
+      class="readonly-tip no-print"
+      data-testid="factory-statement-write-guard"
+      data-action-type="write"
+      data-write-guard="guarded:readonly-print"
+      data-guard-state="disabled"
+    >
+      打印、导出、确认、取消与应付草稿入口保持只读 guard。
+    </p>
 
     <el-skeleton v-if="!permissionReady" :rows="4" animated />
     <el-empty

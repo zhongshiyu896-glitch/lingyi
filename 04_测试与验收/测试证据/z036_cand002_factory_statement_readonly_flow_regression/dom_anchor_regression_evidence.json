@@ -1,0 +1,26 @@
+{
+  "task_id": "TASK-Z036B-12-REGRESSION-CAND002",
+  "generated_at": "2026-05-26T10:43:05.207Z",
+  "required_anchors": [
+    "factory-statement-list-page",
+    "factory-statement-kpi-grid",
+    "factory-statement-query-form",
+    "factory-statement-table",
+    "factory-statement-detail-page",
+    "factory-statement-status-tag",
+    "factory-statement-print-page",
+    "factory-statement-write-guard"
+  ],
+  "anchor_coverage": {
+    "factory-statement-list-page": true,
+    "factory-statement-kpi-grid": true,
+    "factory-statement-query-form": true,
+    "factory-statement-table": true,
+    "factory-statement-detail-page": true,
+    "factory-statement-status-tag": true,
+    "factory-statement-print-page": true,
+    "factory-statement-write-guard": true
+  },
+  "all_required_anchors_observed": true,
+  "runtime_evidence_file": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/runtime_regression_evidence.json"
+}

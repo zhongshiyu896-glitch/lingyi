@@ -1,0 +1,43 @@
+{
+  "task_id": "TASK-Z036B-11-IMPL",
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-002",
+  "generated_at": "2026-05-26T10:36:19.742Z",
+  "evidence_dir": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow",
+  "files": [
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_list_runtime_fullpage.png",
+      "type": "runtime_screenshot"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_detail_runtime_fullpage.png",
+      "type": "runtime_screenshot"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_print_runtime_fullpage.png",
+      "type": "runtime_screenshot"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/runtime_dom_route_evidence.json",
+      "type": "runtime_dom_route_evidence"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/route_source_evidence.json",
+      "type": "route_source_evidence"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/dom_anchor_runtime_evidence.json",
+      "type": "runtime_dom_anchor_evidence"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/manifest.json",
+      "type": "manifest"
+    }
+  ],
+  "screenshots_collected": true,
+  "screenshot_skip_reason": "",
+  "runtime_alternative_evidence": "",
+  "all_required_anchors_observed": true,
+  "write_requests_observed_count": 0,
+  "read_only_boundary_preserved": true
+}

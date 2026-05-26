@@ -1,0 +1,111 @@
+{
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-002",
+  "task_id": "TASK-Z036B-12-REGRESSION-CAND002",
+  "source_task": "TASK-Z036B-11-IMPL",
+  "head": "9d655fb666b473d1aedbf7263ff705545719dd83",
+  "result": "PASS",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementList.vue",
+    "06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementDetail.vue",
+    "06_前端/lingyi-pc/src/views/factory_statement/FactoryStatementPrint.vue"
+  ],
+  "unchanged_allowed_files": [
+    "06_前端/lingyi-pc/src/api/factory_statement.ts"
+  ],
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "vue-tsc --noEmit -p tsconfig.json",
+  "route_regression_evidence": {
+    "evidence_file": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/runtime_regression_evidence.json",
+    "routes_checked": [
+      "/factory-statements/list",
+      "/factory-statements/detail?id=101",
+      "/factory-statements/print?id=101"
+    ],
+    "route_results": {
+      "/factory-statements/list": "PASS",
+      "/factory-statements/detail": "PASS",
+      "/factory-statements/print": "PASS"
+    },
+    "runtime_api_mocked_for_readonly_visual_evidence": true
+  },
+  "dom_anchor_regression_evidence": {
+    "evidence_file": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/dom_anchor_regression_evidence.json",
+    "anchors_checked": [
+      "factory-statement-list-page",
+      "factory-statement-kpi-grid",
+      "factory-statement-query-form",
+      "factory-statement-table",
+      "factory-statement-detail-page",
+      "factory-statement-status-tag",
+      "factory-statement-print-page",
+      "factory-statement-write-guard"
+    ],
+    "anchor_results": {
+      "factory-statement-list-page": true,
+      "factory-statement-kpi-grid": true,
+      "factory-statement-query-form": true,
+      "factory-statement-table": true,
+      "factory-statement-detail-page": true,
+      "factory-statement-status-tag": true,
+      "factory-statement-print-page": true,
+      "factory-statement-write-guard": true
+    }
+  },
+  "screenshot_reused_or_recaptured": "recaptured",
+  "screenshots": [
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_list_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_detail_regression_fullpage.png",
+    "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_print_regression_fullpage.png"
+  ],
+  "b11_screenshots_verified": [
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_list_runtime_fullpage.png",
+      "dimensions": "1440x7293 PNG"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_detail_runtime_fullpage.png",
+      "dimensions": "1440x1070 PNG"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow/factory_statement_print_runtime_fullpage.png",
+      "dimensions": "1440x900 PNG"
+    }
+  ],
+  "write_requests_observed_count": 0,
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "z035_committed_product_files_touched": false,
+  "cand001_runtime_readonly_fallback_risk": true,
+  "cand001_console_401_errors_observed": 4,
+  "cand001_network_401_errors_observed": 4,
+  "cand001_write_chain_success": false,
+  "cand001_permission_misread_as_success": false,
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_evidence": true,
+  "z033_cand003_actual_passed_count": 0,
+  "z033_cand003_skipped_count": 4,
+  "z033_cand003_skipped_only_risk": {
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4
+  },
+  "screenshot_missing_risk_for_Z035": true,
+  "stage/commit/push/tag/PR/release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z036B-13-LEDGER-CAND002",
+  "run_this_task": false
+}

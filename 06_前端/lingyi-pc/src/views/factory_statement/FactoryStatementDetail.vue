@@ -75,7 +75,13 @@
         </div>
 
         <div class="detail-status-strip" data-testid="factory-statement-detail-status-strip">
-          <el-tag :type="statusTag(detail.statement_status)" effect="plain">单据 {{ statementStatusLabel(detail.statement_status) }}</el-tag>
+          <el-tag
+            :type="statusTag(detail.statement_status)"
+            effect="plain"
+            data-testid="factory-statement-status-tag"
+          >
+            单据 {{ statementStatusLabel(detail.statement_status) }}
+          </el-tag>
           <el-tag :type="hasActivePayableOutbox ? 'warning' : 'success'" effect="plain">
             Outbox {{ hasActivePayableOutbox ? '同步中/待同步' : '已闭合' }}
           </el-tag>
@@ -170,9 +176,16 @@
           data-testid="factory-statement-detail-guarded-feedback"
         />
 
-        <p class="state-tip" data-testid="factory-statement-detail-permission-or-disabled-state">
-          当前页面仅提供只读浏览，所有写动作与导出打印动作均已禁用。
-        </p>
+        <div
+          data-testid="factory-statement-write-guard"
+          data-action-type="write"
+          data-write-guard="guarded:readonly-detail"
+          data-guard-state="disabled"
+        >
+          <p class="state-tip" data-testid="factory-statement-detail-permission-or-disabled-state">
+            当前页面仅提供只读浏览，所有写动作与导出打印动作均已禁用。
+          </p>
+        </div>
 
         <el-empty
           v-if="showEmptyState"

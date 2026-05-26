@@ -1,0 +1,38 @@
+{
+  "task_id": "TASK-Z036B-12-REGRESSION-CAND002",
+  "cycle_id": "Z036",
+  "candidate_id": "Z036-CAND-002",
+  "generated_at": "2026-05-26T10:43:05.207Z",
+  "evidence_dir": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression",
+  "screenshot_reused_or_recaptured": "recaptured",
+  "files": [
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_list_regression_fullpage.png",
+      "type": "runtime_screenshot"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_detail_regression_fullpage.png",
+      "type": "runtime_screenshot"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/factory_statement_print_regression_fullpage.png",
+      "type": "runtime_screenshot"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/runtime_regression_evidence.json",
+      "type": "runtime_dom_route_regression_evidence"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/dom_anchor_regression_evidence.json",
+      "type": "runtime_dom_anchor_regression_evidence"
+    },
+    {
+      "path": "04_测试与验收/测试证据/z036_cand002_factory_statement_readonly_flow_regression/manifest.json",
+      "type": "manifest"
+    }
+  ],
+  "screenshots_collected": true,
+  "all_required_anchors_observed": true,
+  "write_requests_observed_count": 0,
+  "read_only_boundary_preserved": true
+}
