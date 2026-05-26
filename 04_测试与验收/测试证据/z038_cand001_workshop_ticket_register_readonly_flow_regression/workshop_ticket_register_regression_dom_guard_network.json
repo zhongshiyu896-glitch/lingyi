@@ -1,0 +1,95 @@
+{
+  "task_id": "TASK-Z038B-04-REGRESSION-CAND001",
+  "candidate_id": "Z038-CAND-001",
+  "route": "/workshop/tickets/register",
+  "url": "http://127.0.0.1:5173/workshop/tickets/register",
+  "http_status": 200,
+  "final_url": "http://127.0.0.1:5173/workshop/tickets/register",
+  "screenshot": "04_测试与验收/测试证据/z038_cand001_workshop_ticket_register_readonly_flow_regression/workshop_ticket_register_regression_fullpage.png",
+  "anchors": [
+    {
+      "anchor": "workshop-ticket-register-page",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "workshop-ticket-register-form",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "workshop-ticket-register-actions",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "workshop-ticket-register-submit-button",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "workshop-ticket-register-permission-or-disabled-state",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "workshop-ticket-register-readonly-draft-preview",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "workshop-ticket-register-validation-hint",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    },
+    {
+      "anchor": "workshop-ticket-register-guarded-feedback",
+      "count": 1,
+      "observed": true,
+      "visible": true
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_write_controls": {
+    "submit_register_or_reversal_button": {
+      "text": "提交登记（只读预览）",
+      "disabled": false,
+      "dataActionType": "write",
+      "dataWriteGuard": "guarded:workshop-ticket-register-readonly",
+      "dataWriteAllowlist": "workshop-ticket-register",
+      "dataGuardState": "readonly-no-write",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false"
+    },
+    "guarded_feedback": "只读治理已拦截登记写请求；已生成本地 request_id=Z003-WORKSHOP-TICKET-20260527-039-RW-R-37E-9C5-37E-D82-21F-AB6，未调用登记/撤销 API。",
+    "validation_hint": "只读校验提示：提交登记需 ticket_key、job_card、employee、process_name、work_date、source_ref；提交撤销需 original_ticket_id 与 reason。",
+    "permission_state": "当前账号无提交权限；页面仍保持只读预览，登记/撤销写动作已被 guard 拦截。",
+    "data_write_guard_traceable": true,
+    "data_readonly_boundary_true": true,
+    "data_write_request_success_allowed_false": true,
+    "guarded_readonly": true
+  },
+  "write_requests_observed_count": 0,
+  "write_requests": [],
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "auth_401_count": 1,
+  "auth_401_responses": [
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5173/api/auth/me"
+    }
+  ],
+  "network_request_count": 18,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false
+}

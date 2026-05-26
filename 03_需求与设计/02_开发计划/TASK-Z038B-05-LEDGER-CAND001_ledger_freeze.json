@@ -1,0 +1,41 @@
+{
+  "cycle_id": "Z038",
+  "task_id": "TASK-Z038B-05-LEDGER-CAND001",
+  "candidate_id": "Z038-CAND-001",
+  "freeze_status": "READY_FOR_REVIEW",
+  "evidence_only": false,
+  "source_chain": "B02 boundary -> B03 IMPL -> B04 REGRESSION -> B05 ledger",
+  "ledger_total": 71,
+  "yes_count": 18,
+  "no_count": 53,
+  "yes_no_intersection": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+  ],
+  "backend_yes_paths": [],
+  "ignored_yes_paths": [],
+  "forbidden_paths_in_yes": [],
+  "screenshots_in_yes": [
+    "04_测试与验收/测试证据/z038_cand001_workshop_ticket_register_readonly_flow/workshop_ticket_register_runtime_fullpage.png",
+    "04_测试与验收/测试证据/z038_cand001_workshop_ticket_register_readonly_flow_regression/workshop_ticket_register_regression_fullpage.png"
+  ],
+  "runtime_evidence_in_yes": [
+    "04_测试与验收/测试证据/z038_cand001_workshop_ticket_register_readonly_flow/workshop_ticket_register_runtime_dom_guard_network.json",
+    "04_测试与验收/测试证据/z038_cand001_workshop_ticket_register_readonly_flow_regression/workshop_ticket_register_regression_dom_guard_network.json"
+  ],
+  "route_pass": true,
+  "anchors_observed": "8/8",
+  "dataWriteGuard": "guarded:workshop-ticket-register-readonly",
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "typecheck_exit_code": 0,
+  "next_task": "TASK-Z038B-06-STAGE-CAND001"
+}

@@ -101,23 +101,24 @@
             :loading="submitting"
             data-action-type="write"
             data-testid="workshop-ticket-register-submit-button"
-            :data-write-guard="mode === 'register' ? 'allowed:workshop-ticket-register-local-only' : 'allowed:workshop-ticket-reversal-local-only'"
+            :data-write-guard="mode === 'register' ? 'guarded:workshop-ticket-register-readonly' : 'guarded:workshop-ticket-reversal-readonly'"
             :data-write-allowlist="mode === 'register' ? 'workshop-ticket-register' : 'workshop-ticket-reversal'"
-            :data-guard-state="activePermission ? 'allowlist-local-dev' : 'guarded-no-permission'"
+            data-guard-state="readonly-no-write"
+            data-readonly-boundary="true"
+            data-write-request-success-allowed="false"
             @click="submit"
           >
-            {{ mode === 'register' ? '提交登记' : '提交撤销' }}
+            {{ mode === 'register' ? '提交登记（只读预览）' : '提交撤销（只读预览）' }}
           </el-button>
         </el-form-item>
       </el-form>
 
       <el-alert
-        v-if="validationHint"
         type="warning"
         data-testid="workshop-ticket-register-validation-hint"
         :closable="false"
         show-icon
-        :title="validationHint"
+        :title="validationHint || '只读校验提示：提交登记需 ticket_key、job_card、employee、process_name、work_date、source_ref；提交撤销需 original_ticket_id 与 reason。'"
       />
       <el-alert
         v-if="guardedFeedback"
@@ -130,8 +131,8 @@
       <p class="permission-tip" data-testid="workshop-ticket-register-permission-or-disabled-state">
         {{
           activePermission
-            ? '当前页面允许本地测试库写入：登记/撤销仅在 local-dev gate + scenario_tag 通过后触发。'
-            : '当前账号无提交权限，登记/撤销写动作已禁用。'
+            ? '当前页面处于只读治理模式：登记/撤销仅生成本地 request_id 与 scenario_tag 预览，不提交写请求。'
+            : '当前账号无提交权限；页面仍保持只读预览，登记/撤销写动作已被 guard 拦截。'
         }}
       </p>
     </el-card>
@@ -163,11 +164,6 @@ import { ElMessage } from 'element-plus'
 import {
   buildWorkshopTicketRequestId,
   ensureWorkshopTicketScenarioTag,
-  fetchWorkshopTickets,
-  registerWorkshopTicket,
-  reverseWorkshopTicket,
-  type WorkshopTicketRegisterPayload,
-  type WorkshopTicketReversalPayload,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -244,15 +240,6 @@ const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string)
   return `${tag}-${fallbackSuffix}`
 }
 
-const readbackAfterWrite = async (jobCard: string): Promise<number> => {
-  const result = await fetchWorkshopTickets({
-    job_card: jobCard,
-    page: 1,
-    page_size: 20,
-  })
-  return result.data.total
-}
-
 const submit = async (): Promise<void> => {
   guardedFeedback.value = ''
   validationHint.value = ''
@@ -261,12 +248,6 @@ const submit = async (): Promise<void> => {
     ElMessage.warning(validationHint.value)
     return
   }
-  if (!activePermission.value) {
-    guardedFeedback.value = '当前账号无提交权限，写动作已禁用。'
-    ElMessage.warning(guardedFeedback.value)
-    return
-  }
-
   const scenarioTag = resolveScenarioTag()
   const operatorId = form.employee.trim() || 'operator-local'
   const batchNo = `${scenarioTag}-BATCH-001`
@@ -291,56 +272,10 @@ const submit = async (): Promise<void> => {
 
   submitting.value = true
   try {
-    if (mode.value === 'register') {
-      const payload: WorkshopTicketRegisterPayload = {
-        scenario_tag: scenarioTag,
-        idempotency_key: idempotencyKey,
-        ticket_key: form.ticket_key,
-        job_card: form.job_card.trim(),
-        employee: form.employee.trim(),
-        process_name: form.process_name.trim(),
-        color: form.color.trim() || undefined,
-        size: form.size.trim() || undefined,
-        qty: form.qty,
-        work_date: form.work_date,
-        source: form.source,
-        source_ref: form.source_ref.trim(),
-        operation: 'register',
-        operator_id: operatorId,
-        batch_no: batchNo,
-      }
-      const result = await registerWorkshopTicket(payload, { requestId })
-      if (!form.original_ticket_id) form.original_ticket_id = result.data.ticket_id
-      const total = await readbackAfterWrite(payload.job_card)
-      guardedFeedback.value = `登记成功（ticket_id=${result.data.ticket_id}），回读总数=${total}。`
-      ElMessage.success('工票登记成功（local-dev）')
-      return
-    }
-
-    const payload: WorkshopTicketReversalPayload = {
-      scenario_tag: scenarioTag,
-      idempotency_key: idempotencyKey,
-      ticket_key: form.ticket_key,
-      job_card: form.job_card.trim(),
-      employee: form.employee.trim(),
-      process_name: form.process_name.trim(),
-      color: form.color.trim() || undefined,
-      size: form.size.trim() || undefined,
-      qty: form.qty,
-      work_date: form.work_date,
-      original_ticket_id: form.original_ticket_id,
-      source_ref: form.source_ref.trim(),
-      reason: form.reason.trim(),
-      operation: 'reversal',
-      operator_id: operatorId,
-      batch_no: batchNo,
-    }
-    const result = await reverseWorkshopTicket(payload, { requestId })
-    const total = await readbackAfterWrite(payload.job_card)
-    guardedFeedback.value = `撤销成功（ticket_id=${result.data.ticket_id}），回读总数=${total}。`
-    ElMessage.success('工票撤销成功（local-dev）')
+    guardedFeedback.value = `只读治理已拦截${mode.value === 'register' ? '登记' : '撤销'}写请求；已生成本地 request_id=${requestId}，未调用登记/撤销 API。`
+    ElMessage.warning('只读治理模式：写请求未发送')
   } catch (error) {
-    guardedFeedback.value = `提交失败（fail-closed）：${(error as Error).message}`
+    guardedFeedback.value = `只读 guard 生成失败（fail-closed）：${(error as Error).message}`
     ElMessage.error(guardedFeedback.value)
   } finally {
     submitting.value = false
