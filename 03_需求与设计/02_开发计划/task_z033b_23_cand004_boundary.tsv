@@ -1,0 +1,29 @@
+field	value
+cycle_id	Z033
+candidate_id	Z033-CAND-004
+source_task	TASK-Z033B-22-PREP
+current_head	1433e6721f3cf917b61484ae7fa9b55a36efcd6a
+frozen_workdir	07_后端/lingyi_service
+frozen_command	.venv/bin/python -m pytest tests/test_style_profit_api_source_adapter.py -q
+frozen_command_is_single_file_readonly_pytest	true
+target_test	07_后端/lingyi_service/tests/test_style_profit_api_source_adapter.py
+target_test_exists	true
+target_test_dirty_diff	false
+source_evidence	["07_后端/lingyi_service/tests/test_style_profit_api_source_adapter.py"]
+source_evidence_missing	[]
+reuse_check.reused_from_Z015_Z032	false
+reuse_check.reused_target_tests	[]
+historical_dirty_forbidden_staged	[]
+archived_candidate_notes	[{"candidate_id":"Z033-CAND-003","archive_status":"COMMITTED_AND_ARCHIVED_LOCAL_ONLY","commit_hash":"1433e6721f3cf917b61484ae7fa9b55a36efcd6a","evidence_only":true,"skipped_only_evidence":true,"actual_passed_count":0,"skipped_count":4,"risk_note":"CAND003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."}]
+stage	false
+commit	false
+push	false
+tag	false
+PR	false
+release	false
+remote_lifecycle_parked	true
+production_readback	false
+go_live	false
+project_completion	false
+next_task	TASK-Z033B-24-IMPL
+run_this_task	false
