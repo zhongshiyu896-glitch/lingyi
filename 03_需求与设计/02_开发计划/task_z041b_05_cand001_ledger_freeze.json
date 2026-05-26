@@ -1,0 +1,21 @@
+{
+  "freeze_status": "FROZEN",
+  "task_id": "TASK-Z041B-05-LEDGER-CAND001",
+  "candidate_id": "Z041-CAND-001",
+  "evidence_only": false,
+  "source_chain": "TASK-Z041B-02-PREP -> TASK-Z041B-03-IMPL -> TASK-Z041B-04-REGRESSION -> TASK-Z041B-05-LEDGER",
+  "ledger_file": "03_需求与设计/02_开发计划/task_z041b_05_cand001_ledger.json",
+  "yes_count": 20,
+  "no_count": 8,
+  "yes_no_intersection": [],
+  "yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue"
+  ],
+  "forbidden_paths_in_yes": [],
+  "next_task": "TASK-Z041B-06-STAGE-CAND001",
+  "run_this_task": false
+}

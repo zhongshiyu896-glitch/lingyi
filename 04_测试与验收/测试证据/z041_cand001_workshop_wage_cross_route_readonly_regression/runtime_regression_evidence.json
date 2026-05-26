@@ -1,0 +1,1158 @@
+{
+  "candidate_id": "Z041-CAND-001",
+  "regression_task_id": "TASK-Z041B-04-REGRESSION-CAND001",
+  "base_url": "http://127.0.0.1:5174",
+  "routes": [
+    "/workshop/tickets",
+    "/workshop/daily-wages",
+    "/workshop/wage-rates"
+  ],
+  "route_status_by_route": {
+    "/workshop/tickets": {
+      "requested_url": "http://127.0.0.1:5174/workshop/tickets",
+      "final_url": "http://127.0.0.1:5174/workshop/tickets",
+      "http_status": 200,
+      "pass": true,
+      "screenshot": {
+        "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z041_cand001_workshop_wage_cross_route_readonly_regression/workshop_tickets_regression_cross_route_readonly.png",
+        "format": "png",
+        "width": 1440,
+        "height": 1200
+      }
+    },
+    "/workshop/daily-wages": {
+      "requested_url": "http://127.0.0.1:5174/workshop/daily-wages",
+      "final_url": "http://127.0.0.1:5174/workshop/daily-wages",
+      "http_status": 200,
+      "pass": true
+    },
+    "/workshop/wage-rates": {
+      "requested_url": "http://127.0.0.1:5174/workshop/wage-rates",
+      "final_url": "http://127.0.0.1:5174/workshop/wage-rates",
+      "http_status": 200,
+      "pass": true
+    }
+  },
+  "required_anchors": [
+    "workshop-ticket-list-page",
+    "workshop-ticket-filter-form",
+    "workshop-ticket-guarded-actions",
+    "workshop-ticket-summary-dialog",
+    "workshop-daily-wage-page",
+    "workshop-daily-wage-guarded-actions",
+    "workshop-wage-rate-page",
+    "workshop-ticket-wage-cross-route-guard"
+  ],
+  "anchors_by_route": {
+    "/workshop/tickets": {
+      "workshop-ticket-list-page": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      },
+      "workshop-ticket-filter-form": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      },
+      "workshop-ticket-guarded-actions": {
+        "count": 1,
+        "visible_count": 0,
+        "observed": true
+      },
+      "workshop-ticket-summary-dialog": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      },
+      "workshop-daily-wage-page": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-daily-wage-guarded-actions": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-wage-rate-page": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-ticket-wage-cross-route-guard": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      }
+    },
+    "/workshop/daily-wages": {
+      "workshop-ticket-list-page": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-ticket-filter-form": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-ticket-guarded-actions": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-ticket-summary-dialog": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-daily-wage-page": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      },
+      "workshop-daily-wage-guarded-actions": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      },
+      "workshop-wage-rate-page": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-ticket-wage-cross-route-guard": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      }
+    },
+    "/workshop/wage-rates": {
+      "workshop-ticket-list-page": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-ticket-filter-form": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-ticket-guarded-actions": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-ticket-summary-dialog": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-daily-wage-page": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-daily-wage-guarded-actions": {
+        "count": 0,
+        "visible_count": 0,
+        "observed": false
+      },
+      "workshop-wage-rate-page": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      },
+      "workshop-ticket-wage-cross-route-guard": {
+        "count": 1,
+        "visible_count": 1,
+        "observed": true
+      }
+    }
+  },
+  "anchors_observed": [
+    "workshop-ticket-list-page",
+    "workshop-ticket-filter-form",
+    "workshop-ticket-guarded-actions",
+    "workshop-ticket-summary-dialog",
+    "workshop-ticket-wage-cross-route-guard",
+    "workshop-daily-wage-page",
+    "workshop-daily-wage-guarded-actions",
+    "workshop-wage-rate-page"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_write_controls": {
+    "/workshop/tickets": [
+      {
+        "tag": "section",
+        "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges/workshop/tickets readonly boundary 刷新权限 重载模块动作 只读确认 remote lifecycle parked",
+        "dataTestid": "global-readonly-shell",
+        "dataWriteGuard": null,
+        "dataGuardState": null,
+        "dataReadonlyBoundary": "true",
+        "dataWriteRequestSuccessAllowed": "false",
+        "dataRealWriteActionAdded": "false",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "刷新权限",
+        "dataTestid": "global-auth-refresh-guard",
+        "dataWriteGuard": "guarded:global-readonly-shell",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "重载模块动作",
+        "dataTestid": null,
+        "dataWriteGuard": "guarded:global-module-actions-readonly",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "只读确认",
+        "dataTestid": "global-readonly-write-guard",
+        "dataWriteGuard": "guarded:global-readonly-confirm",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": true,
+        "visible": true
+      },
+      {
+        "tag": "span",
+        "text": "",
+        "dataTestid": "workshop-write-guard",
+        "dataWriteGuard": "readonly:workshop-ticket-actions",
+        "dataGuardState": "guarded_readonly",
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "tag": "section",
+        "text": "三路由只读一致性工票查询 / 日薪统计 / 工价档案共享只读边界，当前来源：/workshop/tickets。筛选、汇总弹层与同步重试仅做只读可见验收。复用 Z036-CAND-004 clean product path，禁止真实写请求成功。工票登记 guarded批量导入 guardedJob Card 同步重试",
+        "dataTestid": "workshop-ticket-wage-cross-route-guard",
+        "dataWriteGuard": null,
+        "dataGuardState": "guarded_readonly",
+        "dataReadonlyBoundary": "true",
+        "dataWriteRequestSuccessAllowed": "false",
+        "dataRealWriteActionAdded": "false",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "div",
+        "text": "工票登记 guarded批量导入 guardedJob Card 同步重试 guarded 汇总弹层只读预览 日薪导出 guarded生成/同步日薪 guarded新增/停用工价 guarded",
+        "dataTestid": "workshop-ticket-wage-guarded-entry-list",
+        "dataWriteGuard": null,
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      }
+    ],
+    "/workshop/daily-wages": [
+      {
+        "tag": "section",
+        "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges/workshop/daily-wages readonly boundary 刷新权限 重载模块动作 只读确认 remote lifecycle parked",
+        "dataTestid": "global-readonly-shell",
+        "dataWriteGuard": null,
+        "dataGuardState": null,
+        "dataReadonlyBoundary": "true",
+        "dataWriteRequestSuccessAllowed": "false",
+        "dataRealWriteActionAdded": "false",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "刷新权限",
+        "dataTestid": "global-auth-refresh-guard",
+        "dataWriteGuard": "guarded:global-readonly-shell",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "重载模块动作",
+        "dataTestid": null,
+        "dataWriteGuard": "guarded:global-module-actions-readonly",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "只读确认",
+        "dataTestid": "global-readonly-write-guard",
+        "dataWriteGuard": "guarded:global-readonly-confirm",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": true,
+        "visible": true
+      },
+      {
+        "tag": "section",
+        "text": "三路由只读一致性工票查询 / 日薪统计 / 工价档案共享只读边界，当前来源：/workshop/daily-wages。日薪筛选、合计与导出/生成/同步入口仅做只读可见验收。复用 Z036-CAND-004 clean product path，禁止真实写请求成功。工票登记 guarded批量导入 guardedJob",
+        "dataTestid": "workshop-ticket-wage-cross-route-guard",
+        "dataWriteGuard": null,
+        "dataGuardState": "guarded_readonly",
+        "dataReadonlyBoundary": "true",
+        "dataWriteRequestSuccessAllowed": "false",
+        "dataRealWriteActionAdded": "false",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "div",
+        "text": "工票登记 guarded批量导入 guardedJob Card 同步重试 guarded 日薪导出 guarded 生成/同步日薪 guarded新增/停用工价 guarded",
+        "dataTestid": "workshop-ticket-wage-guarded-entry-list",
+        "dataWriteGuard": null,
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      }
+    ],
+    "/workshop/wage-rates": [
+      {
+        "tag": "section",
+        "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges/workshop/wage-rates readonly boundary 刷新权限 重载模块动作 只读确认 remote lifecycle parked",
+        "dataTestid": "global-readonly-shell",
+        "dataWriteGuard": null,
+        "dataGuardState": null,
+        "dataReadonlyBoundary": "true",
+        "dataWriteRequestSuccessAllowed": "false",
+        "dataRealWriteActionAdded": "false",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "刷新权限",
+        "dataTestid": "global-auth-refresh-guard",
+        "dataWriteGuard": "guarded:global-readonly-shell",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "重载模块动作",
+        "dataTestid": null,
+        "dataWriteGuard": "guarded:global-module-actions-readonly",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "button",
+        "text": "只读确认",
+        "dataTestid": "global-readonly-write-guard",
+        "dataWriteGuard": "guarded:global-readonly-confirm",
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": true,
+        "visible": true
+      },
+      {
+        "tag": "span",
+        "text": "",
+        "dataTestid": "workshop-write-guard",
+        "dataWriteGuard": "readonly:wage-rate-actions",
+        "dataGuardState": "guarded_readonly",
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": false
+      },
+      {
+        "tag": "button",
+        "text": "新增工价",
+        "dataTestid": "wage-rates-create-action",
+        "dataWriteGuard": "readonly:wage-rate-create",
+        "dataGuardState": "guarded_readonly",
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": true,
+        "visible": true
+      },
+      {
+        "tag": "section",
+        "text": "三路由只读一致性工票查询 / 日薪统计 / 工价档案共享只读边界，当前来源：/workshop/wage-rates。工价筛选、档案表、新增与停用入口仅做只读可见验收。复用 Z036-CAND-004 clean product path，禁止真实写请求成功。工票登记 guarded批量导入 guardedJob Ca",
+        "dataTestid": "workshop-ticket-wage-cross-route-guard",
+        "dataWriteGuard": null,
+        "dataGuardState": "guarded_readonly",
+        "dataReadonlyBoundary": "true",
+        "dataWriteRequestSuccessAllowed": "false",
+        "dataRealWriteActionAdded": "false",
+        "disabled": false,
+        "visible": true
+      },
+      {
+        "tag": "div",
+        "text": "工票登记 guarded批量导入 guardedJob Card 同步重试 guarded日薪导出 guarded生成/同步日薪 guarded新增/停用工价 guarded",
+        "dataTestid": "workshop-ticket-wage-guarded-entry-list",
+        "dataWriteGuard": null,
+        "dataGuardState": null,
+        "dataReadonlyBoundary": null,
+        "dataWriteRequestSuccessAllowed": null,
+        "dataRealWriteActionAdded": null,
+        "disabled": false,
+        "visible": true
+      }
+    ]
+  },
+  "auth_401_count": 4,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "network_observation": [
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/workshop/tickets",
+      "resourceType": "document"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/workshop/tickets",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/main.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/router/index.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopTicketList.vue",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopTicketList.vue",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/workshop.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopTicketList.vue?vue&type=style&index=0&scoped=1bbec098&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopTicketList.vue?vue&type=style&index=0&scoped=1bbec098&lang.css",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/workshop.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "type": "response",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/workshop/daily-wages",
+      "resourceType": "document"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/workshop/daily-wages",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/main.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/router/index.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopDailyWage.vue",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopDailyWage.vue",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/workshop.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopDailyWage.vue?vue&type=style&index=0&scoped=a0d0c3fd&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopDailyWage.vue?vue&type=style&index=0&scoped=a0d0c3fd&lang.css",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/api/workshop.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "type": "response",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/workshop/wage-rates",
+      "resourceType": "document"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/workshop/wage-rates",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/main.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/router/index.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/workshop/OperationWageRate.vue",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/workshop/OperationWageRate.vue",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/workshop.ts",
+      "resourceType": "script"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/workshop/OperationWageRate.vue?vue&type=style&index=0&scoped=08004263&lang.css",
+      "resourceType": "script"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/api/workshop.ts",
+      "method": "GET"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/workshop/OperationWageRate.vue?vue&type=style&index=0&scoped=08004263&lang.css",
+      "method": "GET"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "resourceType": "fetch"
+    },
+    {
+      "type": "response",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "method": "GET"
+    }
+  ],
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "reused_committed_product_path": true,
+  "reused_source": "Z036-CAND-004 / b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45",
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "dev_server_started": true,
+  "dev_server_url": "http://127.0.0.1:5174",
+  "code_modified_in_this_task": false
+}

@@ -1,0 +1,41 @@
+field	value
+status	READY_FOR_REVIEW
+task_id	TASK-Z041B-02-PREP
+role	B Engineer
+source_task	TASK-Z041B-01-PREP-PRODUCT-POOL-FIX1
+candidate_id	Z041-CAND-001
+title	车间工票工资三路由只读一致性二轮可见流
+page_scope	车间工票查询、日薪统计、工价档案跨路由只读一致性
+routes	/workshop/tickets,/workshop/daily-wages,/workshop/wage-rates
+visible_acceptance_goal	在三条已提交且当前 clean 的车间工票/工资路径上新增二轮跨路由一致性验收：统一只读状态、route 来源提示、权限边界说明、筛选与详情/汇总/工价表 guarded 可见性，且所有写入口不得形成真实写请求成功。
+read_only	true
+backend_allowed	false
+reused_committed_product_path	true
+reused_source	Z036|Z036-CAND-004|b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45
+allowed_files	06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue;06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue;06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue
+allowed_files_exist	true
+allowed_files_dirty	false
+router_source_located	true
+required_anchors	workshop-ticket-list-page;workshop-ticket-filter-form;workshop-ticket-guarded-actions;workshop-ticket-summary-dialog;workshop-daily-wage-page;workshop-daily-wage-guarded-actions;workshop-wage-rate-page;workshop-ticket-wage-cross-route-guard
+guarded_write_entries	工票登记;批量导入;Job Card 同步重试;日薪导出;生成日薪;同步日薪;新增工价;停用工价
+write_request_success_allowed	false
+guarded_readonly_not_write_success	true
+pure_static_fallback_allowed	false
+evidence_requirement	截图;route evidence;运行态 DOM anchors;guarded/readonly state;write request observation;pure_static_fallback_allowed=false
+head	ee0d7d826d1f0bbf959321cbfc1d74915a36aa16
+branch	codex/sprint4-seal
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+next_task	TASK-Z041B-03-IMPL
+run_this_task	false
+remote_lifecycle_parked	true
+code edits	false
+tests/browser/typecheck	false
+stage/commit/push	false
+cleanup/reset/restore	false
+implementation started	false
+remote lifecycle	false

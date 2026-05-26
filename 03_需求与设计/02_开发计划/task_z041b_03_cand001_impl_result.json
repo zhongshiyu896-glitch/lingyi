@@ -1,0 +1,115 @@
+{
+  "status": "READY_FOR_REVIEW",
+  "task_id": "TASK-Z041B-03-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z041-CAND-001",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+    "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue"
+  ],
+  "allowed_files_only": true,
+  "reused_committed_product_path": true,
+  "reused_source": {
+    "source_batch": "Z036",
+    "source_candidate_id": "Z036-CAND-004",
+    "source_commit": "b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45",
+    "reused_paths": [
+      "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketList.vue",
+      "06_前端/lingyi-pc/src/views/workshop/WorkshopDailyWage.vue",
+      "06_前端/lingyi-pc/src/views/workshop/OperationWageRate.vue"
+    ]
+  },
+  "routes": [
+    "/workshop/tickets",
+    "/workshop/daily-wages",
+    "/workshop/wage-rates"
+  ],
+  "route_status_by_route": {
+    "/workshop/tickets": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/workshop/tickets",
+      "pass": true
+    },
+    "/workshop/daily-wages": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/workshop/daily-wages",
+      "pass": true
+    },
+    "/workshop/wage-rates": {
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/workshop/wage-rates",
+      "pass": true
+    }
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z041_cand001_workshop_wage_cross_route_readonly/workshop_tickets_cross_route_readonly.png",
+    "format": "png",
+    "width": 1440,
+    "height": 1200
+  },
+  "runtime_dom_network_evidence": "04_测试与验收/测试证据/z041_cand001_workshop_wage_cross_route_readonly/runtime_evidence.json",
+  "anchors_observed": {
+    "count": 8,
+    "all_observed": true,
+    "items": [
+      "workshop-ticket-list-page",
+      "workshop-ticket-filter-form",
+      "workshop-ticket-guarded-actions",
+      "workshop-ticket-summary-dialog",
+      "workshop-daily-wage-page",
+      "workshop-daily-wage-guarded-actions",
+      "workshop-wage-rate-page",
+      "workshop-ticket-wage-cross-route-guard"
+    ]
+  },
+  "guarded_write_controls": [
+    "工票登记",
+    "批量导入",
+    "Job Card 同步重试",
+    "日薪导出",
+    "生成日薪",
+    "同步日薪",
+    "新增工价",
+    "停用工价"
+  ],
+  "auth_401_count": 4,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "worktree_check_command": "git diff --check",
+  "worktree_check_pass": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "dev_server_started": true,
+  "dev_server_url": "http://127.0.0.1:5174/",
+  "dev_server_stopped": true,
+  "browser_runtime_note": "in-app Browser iab unavailable; runtime evidence collected with local Playwright fallback",
+  "risk_fields_preserved": {
+    "z040_readonly_fallback_risk": {
+      "auth_401_count": 6,
+      "runtime_readonly_fallback_risk": true
+    },
+    "z039_cand001_fallback_risk": true,
+    "z038_fallback_risks": true,
+    "prior_readonly_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true
+  },
+  "remote_lifecycle_parked": true,
+  "forbidden_actions": {
+    "backend_edits": false,
+    "candidate_pool_edits": false,
+    "historical_log_residual_touched": false,
+    "stage_commit_push": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle": false
+  }
+}

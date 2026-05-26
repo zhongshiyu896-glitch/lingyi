@@ -73,6 +73,36 @@
         data-testid="workshop-daily-wage-parity-hint"
       />
 
+      <section
+        class="cross-route-readonly"
+        data-testid="workshop-ticket-wage-cross-route-guard"
+        data-route-source="/workshop/daily-wages"
+        data-reused-source="Z036-CAND-004:b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45"
+        data-readonly-boundary="true"
+        data-write-request-success-allowed="false"
+        data-real-write-action-added="false"
+        data-guard-state="guarded_readonly"
+      >
+        <div class="cross-route-readonly__main">
+          <strong>三路由只读一致性</strong>
+          <span>工票查询 / 日薪统计 / 工价档案共享只读边界，当前来源：/workshop/daily-wages。</span>
+        </div>
+        <div class="cross-route-readonly__meta">
+          <span>日薪筛选、合计与导出/生成/同步入口仅做只读可见验收。</span>
+          <span>复用 Z036-CAND-004 clean product path，禁止真实写请求成功。</span>
+        </div>
+        <div class="cross-route-readonly__guards" data-testid="workshop-ticket-wage-guarded-entry-list">
+          <el-tag type="info" effect="plain">工票登记 guarded</el-tag>
+          <el-tag type="info" effect="plain">批量导入 guarded</el-tag>
+          <el-tag type="info" effect="plain">Job Card 同步重试 guarded</el-tag>
+          <el-tag data-testid="workshop-daily-wage-guarded-actions" type="info" effect="plain">
+            日薪导出 guarded
+          </el-tag>
+          <el-tag type="info" effect="plain">生成/同步日薪 guarded</el-tag>
+          <el-tag type="info" effect="plain">新增/停用工价 guarded</el-tag>
+        </div>
+      </section>
+
       <el-skeleton v-if="!permissionReady" :rows="4" animated />
       <el-empty
         v-else-if="!canRead"
@@ -289,6 +319,32 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.cross-route-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+  color: var(--el-text-color-regular);
+}
+
+.cross-route-readonly__main,
+.cross-route-readonly__meta,
+.cross-route-readonly__guards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cross-route-readonly__meta {
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
 }
 
 .empty-state {
