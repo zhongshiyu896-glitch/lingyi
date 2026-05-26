@@ -1,0 +1,11 @@
+Browser screenshot was not collected in B20 regression.
+
+Reason:
+- No existing local frontend dev server was confirmed for this task.
+- B20 is regression-only and must not modify configuration or leave a background process.
+- Static route/source/DOM evidence plus a successful typecheck were collected instead.
+
+Compensating evidence:
+- route_regression_evidence.txt
+- dom_anchor_regression_evidence.txt
+- typecheck_regression_evidence.txt

@@ -1,0 +1,19 @@
+Z035-CAND-003 DOM anchor evidence
+
+Required anchors:
+- stock-ledger-page: FOUND at SalesInventoryStockLedger.vue:2
+- stock-ledger-filters: FOUND at SalesInventoryStockLedger.vue:19
+- stock-ledger-table: FOUND at SalesInventoryStockLedger.vue:278
+- stock-ledger-pagination: FOUND at SalesInventoryStockLedger.vue:315
+- finished-goods-count-section: FOUND at SalesInventoryStockLedger.vue:2671
+- finished-goods-transfer-section: FOUND at SalesInventoryStockLedger.vue:3106
+- semi-finished-inventory-section: FOUND at SalesInventoryStockLedger.vue:1131
+
+Read-only / guard evidence:
+- stock-ledger-readonly-state: FOUND at SalesInventoryStockLedger.vue:112
+- data-write-guard guarded local draft buttons: FOUND at SalesInventoryStockLedger.vue:118 and 126
+- data-write-guard true actions across stock ledger, count, transfer and related visible blocks: FOUND
+
+Conclusion:
+- Required stock ledger visible anchors are present.
+- Write entries remain guarded, disabled by permission/export state, or routed to guarded prompt handlers.

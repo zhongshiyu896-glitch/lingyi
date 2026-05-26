@@ -1,5 +1,5 @@
 <template>
-  <div class="sales-inventory-page">
+  <div class="sales-inventory-page" data-testid="stock-ledger-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -12,7 +12,13 @@
       </template>
 
       <section class="stock-ledger-section" data-testid="stock-ledger-section">
-          <el-form :inline="true" :model="query" class="query-form" data-testid="stock-ledger-filter-form">
+          <el-form
+            :inline="true"
+            :model="query"
+            class="query-form"
+            data-testid="stock-ledger-filters"
+            data-legacy-testid="stock-ledger-filter-form"
+          >
           <el-form-item label="款号">
             <el-input
               v-model="query.item_code"
@@ -103,6 +109,9 @@
         />
 
         <div class="toolbar-row" data-testid="stock-ledger-guarded-actions">
+          <el-tag type="info" effect="plain" data-testid="stock-ledger-readonly-state">
+            库存台账写入口保持只读 guard
+          </el-tag>
           <el-button
             type="primary"
             :disabled="!canRead || localWriteLoading || isMaterialStockParity"

@@ -1,0 +1,13 @@
+Z035-CAND-003 typecheck evidence
+
+Workdir:
+- 06_前端/lingyi-pc
+
+Command:
+- npm run typecheck
+
+Exit code:
+- 0
+
+Summary:
+- vue-tsc --noEmit -p tsconfig.json completed successfully.

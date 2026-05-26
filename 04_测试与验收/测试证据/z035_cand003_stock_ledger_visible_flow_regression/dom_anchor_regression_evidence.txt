@@ -1,0 +1,25 @@
+Z035-CAND-003 regression DOM anchor evidence
+
+Required anchors:
+- stock-ledger-page: FOUND at SalesInventoryStockLedger.vue:2
+- stock-ledger-filters: FOUND at SalesInventoryStockLedger.vue:19
+- stock-ledger-table: FOUND at SalesInventoryStockLedger.vue:278
+- stock-ledger-pagination: FOUND at SalesInventoryStockLedger.vue:315
+- finished-goods-count-section: FOUND at SalesInventoryStockLedger.vue:2671
+- finished-goods-transfer-section: FOUND at SalesInventoryStockLedger.vue:3106
+- semi-finished-inventory-section: FOUND at SalesInventoryStockLedger.vue:1131
+- stock-ledger-readonly-state: FOUND at SalesInventoryStockLedger.vue:112
+
+Read-only / guard evidence:
+- guarded local draft buttons: FOUND data-write-guard at SalesInventoryStockLedger.vue:118 and 126
+- stock ledger toolbar guarded prompt buttons: FOUND data-write-guard at SalesInventoryStockLedger.vue:132, 133, 134
+- material count write prompts: FOUND data-write-guard around SalesInventoryStockLedger.vue:599, 602, 605, 608, 611
+- finished goods count write prompts: FOUND data-write-guard around SalesInventoryStockLedger.vue:2766, 2773, 2780, 2787, 2794
+- finished goods transfer write prompts: FOUND data-write-guard around SalesInventoryStockLedger.vue:3211, 3218, 3225, 3232, 3239
+
+B19 evidence retained:
+- 04_测试与验收/测试证据/z035_cand003_stock_ledger_visible_flow/dom_anchor_evidence.txt
+
+Conclusion:
+- Required anchors remain present.
+- Stock ledger, finished goods count, and finished goods transfer write entries remain guarded or permission/export disabled.

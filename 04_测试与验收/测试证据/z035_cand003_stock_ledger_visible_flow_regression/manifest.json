@@ -1,0 +1,23 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-003",
+  "task_id": "TASK-Z035B-20-REGRESSION-CAND003",
+  "source_task": "TASK-Z035B-19-IMPL",
+  "route_regression_evidence_files": [
+    "04_测试与验收/测试证据/z035_cand003_stock_ledger_visible_flow_regression/route_regression_evidence.txt"
+  ],
+  "dom_anchor_regression_evidence_files": [
+    "04_测试与验收/测试证据/z035_cand003_stock_ledger_visible_flow_regression/dom_anchor_regression_evidence.txt"
+  ],
+  "typecheck_regression_evidence_files": [
+    "04_测试与验收/测试证据/z035_cand003_stock_ledger_visible_flow_regression/typecheck_regression_evidence.txt"
+  ],
+  "screenshot_files": [],
+  "screenshot_skip_reason_file": "04_测试与验收/测试证据/z035_cand003_stock_ledger_visible_flow_regression/screenshot_skip_reason.txt",
+  "typecheck_command": "npm run typecheck",
+  "typecheck_exit_code": 0,
+  "code_modified_in_this_task": false,
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false
+}

@@ -1,0 +1,17 @@
+Z035-CAND-003 regression route evidence
+
+Route checked:
+- /sales-inventory/stock-ledger
+
+Static source result:
+- FOUND: 06_前端/lingyi-pc/src/router/index.ts:140 path: '/sales-inventory/stock-ledger'
+- FOUND: 06_前端/lingyi-pc/src/router/index.ts:141 name: 'SalesInventoryStockLedger'
+- FOUND: 06_前端/lingyi-pc/src/router/index.ts:142 component import: '@/views/sales_inventory/SalesInventoryStockLedger.vue'
+- FOUND: redirect parity anchors at 06_前端/lingyi-pc/src/router/index.ts:240 and 244
+
+B19 evidence retained:
+- 04_测试与验收/测试证据/z035_cand003_stock_ledger_visible_flow/route_evidence.txt
+
+Conclusion:
+- /sales-inventory/stock-ledger still points to SalesInventoryStockLedger.vue.
+- No route configuration was changed in B20.

@@ -1,0 +1,11 @@
+Browser screenshot was not collected.
+
+Reason:
+- No existing local frontend dev server was confirmed for this task.
+- The task allowed static route/source/DOM evidence when screenshots cannot be safely collected.
+- I did not install dependencies, change configuration, or leave a background dev server process.
+
+Compensating evidence:
+- route_evidence.txt
+- dom_anchor_evidence.txt
+- typecheck_evidence.txt
