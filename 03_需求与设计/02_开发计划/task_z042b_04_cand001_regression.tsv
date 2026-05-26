@@ -1,0 +1,38 @@
+field	value
+status	READY_FOR_REVIEW
+task_id	TASK-Z042B-04-REGRESSION-CAND001
+role	B Engineer
+candidate_id	Z042-CAND-001
+code_modified_in_this_task	false
+changed_files_observed	06_前端/lingyi-pc/src/App.vue
+reused_committed_product_path	true
+reused_source	Z040-CAND-001 / ee0d7d826d1f0bbf959321cbfc1d74915a36aa16 / App.vue
+routes	/home,/reports/catalog,/workshop/tickets
+route_status_by_route	/home=200 shell_visible=true route_category=home; /reports/catalog=200 shell_visible=true route_category=report-catalog; /workshop/tickets=200 shell_visible=true route_category=workshop-ticket
+shell_visible_by_route	/home=true; /reports/catalog=true; /workshop/tickets=true
+route_category_by_route	/home=home; /reports/catalog=report-catalog; /workshop/tickets=workshop-ticket
+screenshot	04_测试与验收/测试证据/z042_cand001_global_route_context_readonly_regression/home_global_route_context_readonly_regression.png PNG 1440x1200
+runtime_evidence	04_测试与验收/测试证据/z042_cand001_global_route_context_readonly_regression/runtime_evidence_regression.json
+anchors_observed	8/8
+guarded_write_controls	guarded:global-readonly-shell; guarded:z042-global-route-context-readonly; guarded:global-module-actions-readonly; guarded:global-readonly-confirm; readonly:workshop-ticket-actions
+auth_401_count	6
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_command	npm run typecheck
+typecheck_exit_code	0
+worktree_check_pass	true
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+dev_server_started	true
+dev_server_stopped	true
+code_edits	false
+backend_edits	false
+candidate_pool_edits	false
+historical_log_residual_touched	false
+stage_commit_push	false
+cleanup_reset_restore	false
+remote_lifecycle	false
+next_role	C Auditor

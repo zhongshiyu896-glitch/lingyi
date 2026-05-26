@@ -26,6 +26,15 @@
     >
       <span>模块权限：{{ permissionStateText }}</span>
       <span
+        id="z042-global-route-context"
+        class="global-readonly-shell__context"
+        data-testid="z042-global-route-context"
+        :data-route-category="routeCategory"
+        :data-route-path="route.path"
+      >
+        {{ routeContextText }}
+      </span>
+      <span
         id="global-route-readonly-badge"
         class="global-readonly-shell__badge"
         data-testid="global-route-readonly-badge"
@@ -49,7 +58,13 @@
         :disabled="permissionStore.state.loading"
         @click="refreshReadonlySession"
       >
-        刷新权限
+        <span
+          id="z042-global-guarded-refresh"
+          data-testid="z042-global-guarded-refresh"
+          data-write-guard="guarded:z042-global-route-context-readonly"
+        >
+          刷新权限
+        </span>
       </button>
       <button
         type="button"
@@ -78,6 +93,14 @@
       >
         remote lifecycle parked
       </span>
+      <span
+        id="z042-global-fallback-explanation"
+        class="global-readonly-shell__fallback"
+        data-testid="z042-global-fallback-explanation"
+        :data-readonly-fallback-reason="fallbackReason"
+      >
+        {{ fallbackExplanationText }}
+      </span>
     </div>
   </section>
   <router-view />
@@ -98,6 +121,14 @@ const routeModule = computed(() => {
   if (route.path.startsWith('/workshop')) return 'workshop'
   if (route.path.startsWith('/sales-inventory')) return 'sales_inventory'
   return 'global'
+})
+
+const routeCategory = computed(() => {
+  if (route.path === '/home' || route.path === '/') return 'home'
+  if (route.path.startsWith('/reports')) return 'report-catalog'
+  if (route.path.startsWith('/workshop')) return 'workshop-ticket'
+  if (route.path.startsWith('/permissions')) return 'permission-governance'
+  return 'global-readonly'
 })
 
 const authStatus = computed(() => {
@@ -125,6 +156,32 @@ const permissionStateText = computed(() => {
 })
 
 const routeBadgeText = computed(() => `${route.path || '/'} readonly boundary`)
+
+const routeContextText = computed(() => {
+  const categoryText: Record<string, string> = {
+    home: '首页上下文',
+    'report-catalog': '报表目录上下文',
+    'workshop-ticket': '车间工票上下文',
+    'permission-governance': '权限治理上下文',
+    'global-readonly': '全局只读上下文',
+  }
+  return `路由分类：${categoryText[routeCategory.value]}`
+})
+
+const fallbackReason = computed(() => {
+  if (permissionStore.state.status === 'guest' || !permissionStore.state.username) return 'guest-readonly-fallback'
+  if (permissionStore.state.loading) return 'permission-loading-readonly'
+  return 'authenticated-readonly-boundary'
+})
+
+const fallbackExplanationText = computed(() => {
+  const explanations: Record<string, string> = {
+    'guest-readonly-fallback': 'fallback 原因：未取得写权限，会话保持只读',
+    'permission-loading-readonly': 'fallback 原因：权限读取中，写入口继续 guarded',
+    'authenticated-readonly-boundary': 'fallback 原因：当前会话仍受只读边界保护',
+  }
+  return explanations[fallbackReason.value]
+})
 
 const loadReadonlyState = async (): Promise<void> => {
   try {
@@ -202,7 +259,9 @@ watch(
 }
 
 .global-readonly-shell__badge,
-.global-readonly-shell__parked {
+.global-readonly-shell__parked,
+.global-readonly-shell__context,
+.global-readonly-shell__fallback {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -212,6 +271,18 @@ watch(
   color: #405168;
   border-radius: 6px;
   white-space: nowrap;
+}
+
+.global-readonly-shell__context {
+  border-color: #b8c7d9;
+  background: #eef5ff;
+  color: #25456b;
+}
+
+.global-readonly-shell__fallback {
+  border-color: #d2c3a7;
+  background: #fff8eb;
+  color: #5f4723;
 }
 
 .global-readonly-shell__button {

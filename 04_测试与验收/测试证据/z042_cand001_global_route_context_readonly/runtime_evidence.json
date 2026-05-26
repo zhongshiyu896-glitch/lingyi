@@ -1,0 +1,582 @@
+{
+  "task_id": "TASK-Z042B-03-IMPL",
+  "candidate_id": "Z042-CAND-001",
+  "baseURL": "http://127.0.0.1:4173",
+  "routes": [
+    "/home",
+    "/reports/catalog",
+    "/workshop/tickets"
+  ],
+  "route_status_by_route": {
+    "/home": {
+      "httpStatus": 200,
+      "finalUrl": "http://127.0.0.1:4173/home",
+      "shellVisible": true,
+      "routeCategory": "home",
+      "anchorsObserved": 8
+    },
+    "/reports/catalog": {
+      "httpStatus": 200,
+      "finalUrl": "http://127.0.0.1:4173/reports/catalog",
+      "shellVisible": true,
+      "routeCategory": "report-catalog",
+      "anchorsObserved": 8
+    },
+    "/workshop/tickets": {
+      "httpStatus": 200,
+      "finalUrl": "http://127.0.0.1:4173/workshop/tickets",
+      "shellVisible": true,
+      "routeCategory": "workshop-ticket",
+      "anchorsObserved": 8
+    }
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z042_cand001_global_route_context_readonly/home_global_route_context_readonly.png",
+    "width": 1440,
+    "height": 1200,
+    "format": "png"
+  },
+  "required_anchors": [
+    "global-readonly-shell",
+    "global-route-readonly-badge",
+    "global-auth-fallback-state",
+    "global-permission-state",
+    "global-readonly-write-guard",
+    "z042-global-route-context",
+    "z042-global-fallback-explanation",
+    "z042-global-guarded-refresh"
+  ],
+  "anchors_observed": [
+    "global-readonly-shell",
+    "global-route-readonly-badge",
+    "global-auth-fallback-state",
+    "global-permission-state",
+    "global-readonly-write-guard",
+    "z042-global-route-context",
+    "z042-global-fallback-explanation",
+    "z042-global-guarded-refresh"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "dom_by_route": {
+    "/home": {
+      "url": "http://127.0.0.1:4173/home",
+      "shellVisible": true,
+      "routeCategory": "home",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": "false",
+      "anchors": {
+        "global-readonly-shell": {
+          "exists": true,
+          "visible": true,
+          "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges路由分类：首页上下文/home readonly boundary 刷新权限  重载模块动作  只读确认  remote lifecycle parked fallback 原因：未取得写权限，会话保持只读",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-route-readonly-badge": {
+          "exists": true,
+          "visible": true,
+          "text": "/home readonly boundary",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-auth-fallback-state": {
+          "exists": true,
+          "visible": true,
+          "text": "guest/readonly fallback",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-permission-state": {
+          "exists": true,
+          "visible": true,
+          "text": "模块权限：guest fallback, no write privileges路由分类：首页上下文/home readonly boundary",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-readonly-write-guard": {
+          "exists": true,
+          "visible": true,
+          "text": "只读确认",
+          "dataWriteGuard": "guarded:global-readonly-confirm",
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "z042-global-route-context": {
+          "exists": true,
+          "visible": true,
+          "text": "路由分类：首页上下文",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": "home",
+          "dataFallbackReason": null
+        },
+        "z042-global-fallback-explanation": {
+          "exists": true,
+          "visible": true,
+          "text": "fallback 原因：未取得写权限，会话保持只读",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": "guest-readonly-fallback"
+        },
+        "z042-global-guarded-refresh": {
+          "exists": true,
+          "visible": true,
+          "text": "刷新权限",
+          "dataWriteGuard": "guarded:z042-global-route-context-readonly",
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        }
+      },
+      "guardedControls": [
+        {
+          "id": "global-auth-refresh-guard",
+          "tag": "button",
+          "text": "刷新权限",
+          "disabled": false,
+          "dataWriteGuard": "guarded:global-readonly-shell",
+          "dataReadonlyAction": "fetchCurrentUser"
+        },
+        {
+          "id": "z042-global-guarded-refresh",
+          "tag": "span",
+          "text": "刷新权限",
+          "disabled": false,
+          "dataWriteGuard": "guarded:z042-global-route-context-readonly",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "重载模块动作",
+          "disabled": false,
+          "dataWriteGuard": "guarded:global-module-actions-readonly",
+          "dataReadonlyAction": "fetchModuleActions"
+        },
+        {
+          "id": "global-readonly-write-guard",
+          "tag": "button",
+          "text": "只读确认",
+          "disabled": true,
+          "dataWriteGuard": "guarded:global-readonly-confirm",
+          "dataReadonlyAction": null
+        }
+      ]
+    },
+    "/reports/catalog": {
+      "url": "http://127.0.0.1:4173/reports/catalog",
+      "shellVisible": true,
+      "routeCategory": "report-catalog",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": "false",
+      "anchors": {
+        "global-readonly-shell": {
+          "exists": true,
+          "visible": true,
+          "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges路由分类：报表目录上下文/reports/catalog readonly boundary 刷新权限  重载模块动作  只读确认  remote lifecycle parked fallback 原因：未取得写权限，会话保持只读",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-route-readonly-badge": {
+          "exists": true,
+          "visible": true,
+          "text": "/reports/catalog readonly boundary",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-auth-fallback-state": {
+          "exists": true,
+          "visible": true,
+          "text": "guest/readonly fallback",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-permission-state": {
+          "exists": true,
+          "visible": true,
+          "text": "模块权限：guest fallback, no write privileges路由分类：报表目录上下文/reports/catalog readonly boundary",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-readonly-write-guard": {
+          "exists": true,
+          "visible": true,
+          "text": "只读确认",
+          "dataWriteGuard": "guarded:global-readonly-confirm",
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "z042-global-route-context": {
+          "exists": true,
+          "visible": true,
+          "text": "路由分类：报表目录上下文",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": "report-catalog",
+          "dataFallbackReason": null
+        },
+        "z042-global-fallback-explanation": {
+          "exists": true,
+          "visible": true,
+          "text": "fallback 原因：未取得写权限，会话保持只读",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": "guest-readonly-fallback"
+        },
+        "z042-global-guarded-refresh": {
+          "exists": true,
+          "visible": true,
+          "text": "刷新权限",
+          "dataWriteGuard": "guarded:z042-global-route-context-readonly",
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        }
+      },
+      "guardedControls": [
+        {
+          "id": "global-auth-refresh-guard",
+          "tag": "button",
+          "text": "刷新权限",
+          "disabled": false,
+          "dataWriteGuard": "guarded:global-readonly-shell",
+          "dataReadonlyAction": "fetchCurrentUser"
+        },
+        {
+          "id": "z042-global-guarded-refresh",
+          "tag": "span",
+          "text": "刷新权限",
+          "disabled": false,
+          "dataWriteGuard": "guarded:z042-global-route-context-readonly",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "重载模块动作",
+          "disabled": false,
+          "dataWriteGuard": "guarded:global-module-actions-readonly",
+          "dataReadonlyAction": "fetchModuleActions"
+        },
+        {
+          "id": "global-readonly-write-guard",
+          "tag": "button",
+          "text": "只读确认",
+          "disabled": true,
+          "dataWriteGuard": "guarded:global-readonly-confirm",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "导出（只读）",
+          "disabled": false,
+          "dataWriteGuard": "guarded:readonly-report-export",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "确认（guarded）",
+          "disabled": false,
+          "dataWriteGuard": "guarded:readonly-report-action",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "审核（guarded）",
+          "disabled": false,
+          "dataWriteGuard": "guarded:readonly-report-action",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "导出（disabled）",
+          "disabled": true,
+          "dataWriteGuard": "guarded:readonly-report-export",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "打印（disabled）",
+          "disabled": true,
+          "dataWriteGuard": "guarded:readonly-report-print",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "上传（disabled）",
+          "disabled": true,
+          "dataWriteGuard": "guarded:readonly-report-upload",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "确认（guarded）",
+          "disabled": false,
+          "dataWriteGuard": "guarded:readonly-report-action",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "审核（guarded）",
+          "disabled": false,
+          "dataWriteGuard": "guarded:readonly-report-action",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "导出（disabled）",
+          "disabled": true,
+          "dataWriteGuard": "guarded:readonly-report-export",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "打印（disabled）",
+          "disabled": true,
+          "dataWriteGuard": "guarded:readonly-report-print",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "上传（disabled）",
+          "disabled": true,
+          "dataWriteGuard": "guarded:readonly-report-upload",
+          "dataReadonlyAction": null
+        }
+      ]
+    },
+    "/workshop/tickets": {
+      "url": "http://127.0.0.1:4173/workshop/tickets",
+      "shellVisible": true,
+      "routeCategory": "workshop-ticket",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": "false",
+      "anchors": {
+        "global-readonly-shell": {
+          "exists": true,
+          "visible": true,
+          "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges路由分类：车间工票上下文/workshop/tickets readonly boundary 刷新权限  重载模块动作  只读确认  remote lifecycle parked fallback 原因：未取得写权限，会话保持只读",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-route-readonly-badge": {
+          "exists": true,
+          "visible": true,
+          "text": "/workshop/tickets readonly boundary",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-auth-fallback-state": {
+          "exists": true,
+          "visible": true,
+          "text": "guest/readonly fallback",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-permission-state": {
+          "exists": true,
+          "visible": true,
+          "text": "模块权限：guest fallback, no write privileges路由分类：车间工票上下文/workshop/tickets readonly boundary",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "global-readonly-write-guard": {
+          "exists": true,
+          "visible": true,
+          "text": "只读确认",
+          "dataWriteGuard": "guarded:global-readonly-confirm",
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        },
+        "z042-global-route-context": {
+          "exists": true,
+          "visible": true,
+          "text": "路由分类：车间工票上下文",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": "workshop-ticket",
+          "dataFallbackReason": null
+        },
+        "z042-global-fallback-explanation": {
+          "exists": true,
+          "visible": true,
+          "text": "fallback 原因：未取得写权限，会话保持只读",
+          "dataWriteGuard": null,
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": "guest-readonly-fallback"
+        },
+        "z042-global-guarded-refresh": {
+          "exists": true,
+          "visible": true,
+          "text": "刷新权限",
+          "dataWriteGuard": "guarded:z042-global-route-context-readonly",
+          "dataReadonlyBoundary": "true",
+          "dataWriteRequestSuccessAllowed": "false",
+          "dataRouteCategory": null,
+          "dataFallbackReason": null
+        }
+      },
+      "guardedControls": [
+        {
+          "id": "global-auth-refresh-guard",
+          "tag": "button",
+          "text": "刷新权限",
+          "disabled": false,
+          "dataWriteGuard": "guarded:global-readonly-shell",
+          "dataReadonlyAction": "fetchCurrentUser"
+        },
+        {
+          "id": "z042-global-guarded-refresh",
+          "tag": "span",
+          "text": "刷新权限",
+          "disabled": false,
+          "dataWriteGuard": "guarded:z042-global-route-context-readonly",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "button",
+          "text": "重载模块动作",
+          "disabled": false,
+          "dataWriteGuard": "guarded:global-module-actions-readonly",
+          "dataReadonlyAction": "fetchModuleActions"
+        },
+        {
+          "id": "global-readonly-write-guard",
+          "tag": "button",
+          "text": "只读确认",
+          "disabled": true,
+          "dataWriteGuard": "guarded:global-readonly-confirm",
+          "dataReadonlyAction": null
+        },
+        {
+          "id": null,
+          "tag": "span",
+          "text": "",
+          "disabled": false,
+          "dataWriteGuard": "readonly:workshop-ticket-actions",
+          "dataReadonlyAction": null
+        }
+      ]
+    }
+  },
+  "guarded_write_controls": [
+    "guarded:global-readonly-shell",
+    "guarded:z042-global-route-context-readonly",
+    "guarded:global-module-actions-readonly",
+    "guarded:global-readonly-confirm",
+    "readonly:workshop-ticket-actions"
+  ],
+  "auth_401_count": 6,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "network_observation": {
+    "writeRequests": [],
+    "auth401": [
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/api/auth/me",
+        "status": 401
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/api/reports/catalog?source_module=finance&report_type=financial",
+        "status": 401
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/api/reports/employee-task-statistics",
+        "status": 401
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/api/reports/approval-reports",
+        "status": 401
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/api/reports/catalog/factory_product_stock_report",
+        "status": 401
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:4173/api/auth/me",
+        "status": 401
+      }
+    ],
+    "response_count": 77
+  },
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false
+}

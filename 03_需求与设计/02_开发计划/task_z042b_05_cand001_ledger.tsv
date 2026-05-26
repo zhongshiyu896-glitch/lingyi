@@ -1,0 +1,40 @@
+field	value
+status	READY_FOR_REVIEW
+task_id	TASK-Z042B-05-LEDGER-CAND001
+role	B Engineer
+candidate_id	Z042-CAND-001
+evidence_only	false
+source_chain	TASK-Z042B-02-PREP -> TASK-Z042B-03-IMPL -> TASK-Z042B-04-REGRESSION -> TASK-Z042B-05-LEDGER
+reused_committed_product_path	true
+reused_source	Z040-CAND-001 / ee0d7d826d1f0bbf959321cbfc1d74915a36aa16 / App.vue
+ledger_total	26
+yes_count	18
+no_count	8
+yes_no_intersection	[]
+frontend_yes_paths	06_前端/lingyi-pc/src/App.vue
+forbidden_paths_in_yes	[]
+yes_files_exist	true
+ignored_yes_paths	[]
+routes_status	/home=PASS; /reports/catalog=PASS; /workshop/tickets=PASS
+shell_visible_by_route	/home=true; /reports/catalog=true; /workshop/tickets=true
+route_category_by_route	/home=home; /reports/catalog=report-catalog; /workshop/tickets=workshop-ticket
+screenshots_in_yes	04_测试与验收/测试证据/z042_cand001_global_route_context_readonly/home_global_route_context_readonly.png; 04_测试与验收/测试证据/z042_cand001_global_route_context_readonly_regression/home_global_route_context_readonly_regression.png
+anchors_observed	8/8
+guarded_write_controls	guarded:global-readonly-shell; guarded:z042-global-route-context-readonly; guarded:global-module-actions-readonly; guarded:global-readonly-confirm; readonly:workshop-ticket-actions
+auth_401_count	6
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_exit_code	0
+read_only_boundary_preserved	true
+real_write_action_added	false
+backend_api_added	false
+next_task	TASK-Z042B-06-STAGE-CAND001
+run_this_task	false
+code_edits	false
+tests_browser_typecheck	false
+stage_commit_push	false
+cleanup_reset_restore	false
+remote_lifecycle	false
+next_role	C Auditor

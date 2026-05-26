@@ -1,0 +1,123 @@
+{
+  "status": "READY_FOR_REVIEW",
+  "task_id": "TASK-Z042B-03-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z042-CAND-001",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/App.vue"
+  ],
+  "allowed_files_only": true,
+  "reused_committed_product_path": true,
+  "reused_source": {
+    "source_batch": "Z040",
+    "source_candidate_id": "Z040-CAND-001",
+    "source_commit": "ee0d7d826d1f0bbf959321cbfc1d74915a36aa16",
+    "reused_paths": [
+      "06_前端/lingyi-pc/src/App.vue"
+    ]
+  },
+  "routes": [
+    "/home",
+    "/reports/catalog",
+    "/workshop/tickets"
+  ],
+  "route_status_by_route": {
+    "/home": {
+      "httpStatus": 200,
+      "finalUrl": "http://127.0.0.1:4173/home",
+      "shellVisible": true,
+      "routeCategory": "home",
+      "anchorsObserved": 8
+    },
+    "/reports/catalog": {
+      "httpStatus": 200,
+      "finalUrl": "http://127.0.0.1:4173/reports/catalog",
+      "shellVisible": true,
+      "routeCategory": "report-catalog",
+      "anchorsObserved": 8
+    },
+    "/workshop/tickets": {
+      "httpStatus": 200,
+      "finalUrl": "http://127.0.0.1:4173/workshop/tickets",
+      "shellVisible": true,
+      "routeCategory": "workshop-ticket",
+      "anchorsObserved": 8
+    }
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z042_cand001_global_route_context_readonly/home_global_route_context_readonly.png",
+    "width": 1440,
+    "height": 1200,
+    "format": "png"
+  },
+  "runtime_evidence": {
+    "path": "04_测试与验收/测试证据/z042_cand001_global_route_context_readonly/runtime_evidence.json"
+  },
+  "required_anchors": [
+    "global-readonly-shell",
+    "global-route-readonly-badge",
+    "global-auth-fallback-state",
+    "global-permission-state",
+    "global-readonly-write-guard",
+    "z042-global-route-context",
+    "z042-global-fallback-explanation",
+    "z042-global-guarded-refresh"
+  ],
+  "anchors_observed": [
+    "global-readonly-shell",
+    "global-route-readonly-badge",
+    "global-auth-fallback-state",
+    "global-permission-state",
+    "global-readonly-write-guard",
+    "z042-global-route-context",
+    "z042-global-fallback-explanation",
+    "z042-global-guarded-refresh"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_write_controls": [
+    "guarded:global-readonly-shell",
+    "guarded:z042-global-route-context-readonly",
+    "guarded:global-module-actions-readonly",
+    "guarded:global-readonly-confirm",
+    "readonly:workshop-ticket-actions"
+  ],
+  "auth_401_count": 6,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "worktree_check_command": "git diff --check",
+  "worktree_check_pass": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "backend_allowed": false,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "risk_fields_preserved": {
+    "z041_readonly_fallback_risk": {
+      "auth_401_count": 4,
+      "runtime_readonly_fallback_risk": true
+    },
+    "z040_z039_z038_fallback_risks": "preserved",
+    "prior_readonly_fallback_risks": "preserved",
+    "guarded_readonly_not_write_success": true,
+    "B28_shell_wrapper_anomaly": "preserved",
+    "Z033_skipped_only": "preserved",
+    "Z035_screenshot_missing_risk": "preserved",
+    "remote_lifecycle_parked": true
+  },
+  "forbidden_actions": {
+    "backend_edits": false,
+    "candidate_pool_edits": false,
+    "historical_log_residual_touched": false,
+    "stage_commit_push": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle": false
+  },
+  "next_role": "C Auditor"
+}
