@@ -1,0 +1,195 @@
+{
+  "cycle_id": "Z035",
+  "source_task": "TASK-Z035B-09-PREP",
+  "candidate_id": "Z035-CAND-002",
+  "current_head": "a09666b0d3001a92c575d49b49aa743b6ade42eb",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "diff_check_pass": true,
+  "selected_candidate_confirmed": true,
+  "cand001_archive_status": "COMMITTED_AND_ARCHIVED_LOCAL_ONLY",
+  "cand001_commit_hash": "a09666b0d3001a92c575d49b49aa743b6ade42eb",
+  "candidate_original_fields": {
+    "candidate_id": "Z035-CAND-002",
+    "title": "BOM 列表与详情只读业务流",
+    "page_scope": [
+      "BOM"
+    ],
+    "routes": [
+      "/bom/list",
+      "/bom/detail"
+    ],
+    "visible_acceptance_goal": "用户能在 BOM 列表筛选、查看 BOM 编号/状态，并进入详情 drawer 或详情页看到 BOM 主字段、状态、物料/工序区块与只读写入口状态。",
+    "browser_evidence_plan": [
+      "BOM list screenshot",
+      "BOM detail drawer screenshot",
+      "DOM data-testid capture"
+    ],
+    "field_button_state_anchors": [
+      "bom-main-list-section",
+      "bom-main-list-filters",
+      "bom-main-table",
+      "bom-main-detail-button",
+      "bom-main-detail-drawer",
+      "bom-detail-page",
+      "bom-detail-status-tag",
+      "bom-detail-actions"
+    ],
+    "read_write_boundary": {
+      "read_only": true,
+      "write_boundary": "可调整前端只读展示和按钮禁用提示；不得修改真实 BOM 写接口或权限测试。"
+    },
+    "capture_contract_integration": true,
+    "expected_allowed_file_scope": [
+      "06_前端/lingyi-pc/src/views/bom/BomList.vue",
+      "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+      "06_前端/lingyi-pc/src/api/bom.ts"
+    ],
+    "forbidden_scope": [
+      "07_后端/lingyi_service/tests/test_bom_permissions.py",
+      "historical_dirty_forbidden_paths",
+      "log_control_dirty_paths",
+      "07_后端/lingyi_service/app",
+      "candidate pool files",
+      "runtime/cache",
+      "remote lifecycle"
+    ],
+    "touches_historical_dirty": false,
+    "candidate_blocked": false
+  },
+  "title": "BOM 列表与详情只读业务流",
+  "page_scope": "BOM",
+  "implementation_workdir": "/Users/hh/Desktop/领意服装管理系统",
+  "frontend_workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc",
+  "routes": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "route_static_check": [
+    {
+      "route": "/bom/list",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/router/index.ts:14",
+      "component": "06_前端/lingyi-pc/src/views/bom/BomList.vue"
+    },
+    {
+      "route": "/bom/detail",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/router/index.ts:20",
+      "component": "06_前端/lingyi-pc/src/views/bom/BomDetail.vue"
+    }
+  ],
+  "visible_acceptance_goal": "用户能在 BOM 列表筛选、查看 BOM 编号/状态，并进入详情 drawer 或详情页看到 BOM 主字段、状态、物料/工序区块与只读写入口状态。",
+  "read_only": true,
+  "backend_allowed": false,
+  "expected_allowed_file_scope": [
+    "06_前端/lingyi-pc/src/views/bom/BomList.vue",
+    "06_前端/lingyi-pc/src/views/bom/BomDetail.vue",
+    "06_前端/lingyi-pc/src/api/bom.ts"
+  ],
+  "allowed_files_exist": {
+    "06_前端/lingyi-pc/src/views/bom/BomList.vue": true,
+    "06_前端/lingyi-pc/src/views/bom/BomDetail.vue": true,
+    "06_前端/lingyi-pc/src/api/bom.ts": true
+  },
+  "allowed_files_dirty": {
+    "06_前端/lingyi-pc/src/views/bom/BomList.vue": false,
+    "06_前端/lingyi-pc/src/views/bom/BomDetail.vue": false,
+    "06_前端/lingyi-pc/src/api/bom.ts": false
+  },
+  "field_button_state_anchors": [
+    "bom-main-list-section",
+    "bom-main-list-filters",
+    "bom-main-table",
+    "bom-main-detail-button",
+    "bom-main-detail-drawer",
+    "bom-detail-page",
+    "bom-detail-status-tag",
+    "bom-detail-actions"
+  ],
+  "field_button_state_anchor_static_check": [
+    {
+      "anchor": "bom-main-list-section",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/views/bom/BomList.vue:3"
+    },
+    {
+      "anchor": "bom-main-list-filters",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/views/bom/BomList.vue:4"
+    },
+    {
+      "anchor": "bom-main-table",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/views/bom/BomList.vue:205"
+    },
+    {
+      "anchor": "bom-main-detail-button",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/views/bom/BomList.vue:225"
+    },
+    {
+      "anchor": "bom-main-detail-drawer",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/views/bom/BomList.vue:253"
+    },
+    {
+      "anchor": "bom-detail-page",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/views/bom/BomDetail.vue:2"
+    },
+    {
+      "anchor": "bom-detail-status-tag",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/views/bom/BomDetail.vue:52"
+    },
+    {
+      "anchor": "bom-detail-actions",
+      "status": "located",
+      "source": "06_前端/lingyi-pc/src/views/bom/BomDetail.vue:71"
+    }
+  ],
+  "browser_evidence_plan": [
+    "BOM list screenshot",
+    "BOM detail drawer screenshot",
+    "DOM data-testid capture"
+  ],
+  "forbidden_scope": [
+    "07_后端/**",
+    "backend app",
+    "backend tests",
+    "candidate pool",
+    "historical_dirty_forbidden_paths",
+    "log_control_dirty_paths",
+    "B37 residual artifacts",
+    "runtime/cache",
+    "remote lifecycle",
+    "real write actions"
+  ],
+  "intersections_with_historical_dirty": [],
+  "intersections_with_log_control_dirty": [],
+  "intersections_with_residual_artifacts": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4,
+    "risk_note": "Z033-CAND-003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z035B-11-IMPL",
+  "run_this_task": false
+}

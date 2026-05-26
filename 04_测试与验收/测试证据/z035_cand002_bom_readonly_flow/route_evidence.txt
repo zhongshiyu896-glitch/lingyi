@@ -1,0 +1,16 @@
+TASK_ID: TASK-Z035B-11-IMPL
+candidate_id: Z035-CAND-002
+evidence_type: route/source static evidence
+generated_at: 2026-05-26T14:06:07+0800
+
+Route checks:
+- /bom/list located in 06_前端/lingyi-pc/src/router/index.ts:14 and loads @/views/bom/BomList.vue.
+- /bom/detail located in 06_前端/lingyi-pc/src/router/index.ts:20 and loads @/views/bom/BomDetail.vue.
+
+Navigation/source checks:
+- BomList detail page entry uses router.push({ path: '/bom/detail', query: { id: String(id) } }) at 06_前端/lingyi-pc/src/views/bom/BomList.vue:2885.
+- BomList create-template navigation also points to /bom/detail with query from=create at 06_前端/lingyi-pc/src/views/bom/BomList.vue:2898, but the visible create entry is disabled by permission/read-only guard.
+
+Conclusion:
+- /bom/list and /bom/detail are statically routable without router changes.
+- Route evidence was collected without browser execution.

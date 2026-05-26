@@ -1,0 +1,26 @@
+field	value
+cycle_id	Z035
+source_task	TASK-Z035B-09-PREP
+candidate_id	Z035-CAND-002
+head	a09666b0d3001a92c575d49b49aa743b6ade42eb
+branch	codex/sprint4-seal
+implementation_workdir	/Users/hh/Desktop/领意服装管理系统
+frontend_workdir	/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc
+title	BOM 列表与详情只读业务流
+routes	/bom/list,/bom/detail
+expected_allowed_file_scope	06_前端/lingyi-pc/src/views/bom/BomList.vue;06_前端/lingyi-pc/src/views/bom/BomDetail.vue;06_前端/lingyi-pc/src/api/bom.ts
+allowed_files_exist	true
+allowed_files_dirty	false
+route_static_check	/bom/list=located;/bom/detail=located
+field_button_state_anchors	bom-main-list-section;bom-main-list-filters;bom-main-table;bom-main-detail-button;bom-main-detail-drawer;bom-detail-page;bom-detail-status-tag;bom-detail-actions
+intersections_with_historical_dirty	[]
+intersections_with_log_control_dirty	[]
+intersections_with_residual_artifacts	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+backend_allowed	false
+read_only	true
+shell_wrapper_anomaly_preserved	true
+z033_skipped_only	skipped_only_evidence=true;actual_passed_count=0;skipped_count=4
+next_task	TASK-Z035B-11-IMPL
+run_this_task	false

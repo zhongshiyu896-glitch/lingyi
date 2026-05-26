@@ -1,0 +1,24 @@
+TASK_ID: TASK-Z035B-12-REGRESSION-CAND002
+candidate_id: Z035-CAND-002
+evidence_type: DOM/source anchor regression evidence
+generated_at: 2026-05-26T14:12:30+0800
+
+Required anchors still present:
+- bom-main-list-section: 06_前端/lingyi-pc/src/views/bom/BomList.vue:3
+- bom-main-list-filters: 06_前端/lingyi-pc/src/views/bom/BomList.vue:4
+- bom-main-table: 06_前端/lingyi-pc/src/views/bom/BomList.vue:205
+- bom-main-detail-button: 06_前端/lingyi-pc/src/views/bom/BomList.vue:225
+- bom-main-detail-drawer: 06_前端/lingyi-pc/src/views/bom/BomList.vue:253
+- bom-detail-page: 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:2
+- bom-detail-status-tag: 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:52
+- bom-detail-actions: 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:75
+- bom-detail-readonly-state: 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:68
+
+Read-only guard regression:
+- detailReadOnlyMode remains true at 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:463.
+- canDraftCreate/canDraftUpdate/canPublish/canDeactivate/canSetDefault/canExplode remain gated by !detailReadOnlyMode.
+- Write buttons remain disabled with detailReadOnlyMode.
+- Material/operation add/remove entries remain disabled with data-write-guard="guarded:readonly".
+
+Conclusion:
+- B11 DOM anchors and read-only boundary remain preserved.

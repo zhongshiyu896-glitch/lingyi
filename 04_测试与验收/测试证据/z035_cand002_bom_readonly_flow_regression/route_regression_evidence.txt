@@ -1,0 +1,16 @@
+TASK_ID: TASK-Z035B-12-REGRESSION-CAND002
+candidate_id: Z035-CAND-002
+evidence_type: route/source regression evidence
+generated_at: 2026-05-26T14:12:30+0800
+
+Regression route checks:
+- /bom/list remains located in 06_前端/lingyi-pc/src/router/index.ts:14 and loads @/views/bom/BomList.vue.
+- /bom/detail remains located in 06_前端/lingyi-pc/src/router/index.ts:20 and loads @/views/bom/BomDetail.vue.
+
+B11 source evidence preserved:
+- B11 route evidence file exists: 04_测试与验收/测试证据/z035_cand002_bom_readonly_flow/route_evidence.txt
+- BomList detail page entry still pushes to /bom/detail at 06_前端/lingyi-pc/src/views/bom/BomList.vue:2885.
+
+Conclusion:
+- /bom/list and /bom/detail route/source evidence remains valid.
+- Regression was collected without browser execution.

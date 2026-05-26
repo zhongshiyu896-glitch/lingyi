@@ -1,0 +1,82 @@
+{
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-002",
+  "source_task": "TASK-Z035B-11-IMPL",
+  "head": "a09666b0d3001a92c575d49b49aa743b6ade42eb",
+  "result": "PASS",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/bom/BomDetail.vue"
+  ],
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "typecheck_summary": "PASS",
+  "route_regression_evidence": {
+    "routes_checked": [
+      "/bom/list",
+      "/bom/detail"
+    ],
+    "route_static_check_pass": true,
+    "evidence_files": [
+      "04_测试与验收/测试证据/z035_cand002_bom_readonly_flow_regression/route_regression_evidence.txt"
+    ]
+  },
+  "dom_anchor_regression_evidence": {
+    "anchors_checked": [
+      "bom-main-list-section",
+      "bom-main-list-filters",
+      "bom-main-table",
+      "bom-main-detail-button",
+      "bom-main-detail-drawer",
+      "bom-detail-page",
+      "bom-detail-status-tag",
+      "bom-detail-actions",
+      "bom-detail-readonly-state"
+    ],
+    "required_anchor_pass": true,
+    "readonly_guard_pass": true,
+    "evidence_files": [
+      "04_测试与验收/测试证据/z035_cand002_bom_readonly_flow_regression/dom_anchor_regression_evidence.txt"
+    ]
+  },
+  "screenshots": [],
+  "screenshot_skip_reason": "本任务为 regression-only；未启动本地前端 dev server，未安装依赖，未改配置，未扩大浏览器生命周期。已提供 /bom/list、/bom/detail route/source 静态复核证据、DOM anchor 静态复核证据，并完成一次 npm run typecheck，exit_code=0。",
+  "visible_acceptance_goal_still_met": true,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_changed": false,
+  "tests_changed": false,
+  "candidate_pool_changed": false,
+  "historical_dirty_touched": false,
+  "log_control_dirty_touched": false,
+  "residual_artifacts_touched": false,
+  "evidence_dir": "04_测试与验收/测试证据/z035_cand002_bom_readonly_flow_regression",
+  "evidence_files": [
+    "04_测试与验收/测试证据/z035_cand002_bom_readonly_flow_regression/route_regression_evidence.txt",
+    "04_测试与验收/测试证据/z035_cand002_bom_readonly_flow_regression/dom_anchor_regression_evidence.txt",
+    "04_测试与验收/测试证据/z035_cand002_bom_readonly_flow_regression/typecheck_regression_evidence.txt",
+    "04_测试与验收/测试证据/z035_cand002_bom_readonly_flow_regression/screenshot_skip_reason.txt",
+    "04_测试与验收/测试证据/z035_cand002_bom_readonly_flow_regression/manifest.json"
+  ],
+  "shell_wrapper_anomaly_preserved": true,
+  "z033_cand003_skipped_only_risk": {
+    "candidate_id": "Z033-CAND-003",
+    "skipped_only_evidence": true,
+    "actual_passed_count": 0,
+    "skipped_count": 4,
+    "risk_note": "Z033-CAND-003 committed evidence has PASS exit code but contains skipped-only pytest evidence; no test passed in that single-file run."
+  },
+  "stage": false,
+  "commit": false,
+  "push": false,
+  "tag": false,
+  "PR": false,
+  "release": false,
+  "remote_lifecycle_parked": true,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z035B-13-LEDGER-CAND002",
+  "run_this_task": false
+}

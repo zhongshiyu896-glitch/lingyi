@@ -44,7 +44,7 @@
           <el-form-item label="版本号">
             <el-input
               v-model="form.version_no"
-              :disabled="!canDraftUpdate"
+              :disabled="detailReadOnlyMode || !canDraftUpdate"
               data-testid="bom-detail-field-version-no"
             />
           </el-form-item>
@@ -64,17 +64,21 @@
           </el-form-item>
         </el-form>
 
-        <p class="state-tip" data-testid="bom-detail-local-test-db-tip">
-          当前仅允许本地测试库场景写入：create_draft / update_draft / activate / set_default / deactivate / explode。
-        </p>
+        <el-alert
+          data-testid="bom-detail-readonly-state"
+          title="当前 BOM 详情为只读业务流，保存、创建、发布、默认、停用与展开计算入口均保持禁用。"
+          type="info"
+          show-icon
+          :closable="false"
+        />
 
-        <div class="actions" data-testid="bom-detail-actions">
+        <div class="actions" data-testid="bom-detail-actions" data-readonly-state="true">
           <el-button
             data-testid="bom-detail-action-save-draft"
             data-action-type="write"
             :data-write-guard="canDraftUpdate ? 'allowed:update_bom_draft' : 'guarded:readonly'"
             :loading="savingDraft"
-            :disabled="savingDraft || creatingDraft"
+            :disabled="detailReadOnlyMode || savingDraft || creatingDraft"
             @click="handleSaveDraft"
           >
             保存草稿
@@ -84,7 +88,7 @@
             data-action-type="write"
             :data-write-guard="canDraftCreate ? 'allowed:create_bom' : 'guarded:readonly'"
             :loading="creatingDraft"
-            :disabled="savingDraft || creatingDraft"
+            :disabled="detailReadOnlyMode || savingDraft || creatingDraft"
             @click="handleCreateDraft"
           >
             创建 BOM
@@ -94,7 +98,7 @@
             data-action-type="write"
             :data-write-guard="canSetDefault ? 'allowed:set_default_bom' : 'guarded:readonly'"
             :loading="settingDefault"
-            :disabled="creatingDraft || savingDraft || activatingBom || settingDefault || deactivatingBom"
+            :disabled="detailReadOnlyMode || creatingDraft || savingDraft || activatingBom || settingDefault || deactivatingBom"
             @click="handleSetDefault"
           >
             设为默认
@@ -104,7 +108,7 @@
             data-action-type="write"
             :data-write-guard="canPublish ? 'allowed:activate_bom' : 'guarded:readonly'"
             :loading="activatingBom"
-            :disabled="creatingDraft || savingDraft || activatingBom || settingDefault || deactivatingBom"
+            :disabled="detailReadOnlyMode || creatingDraft || savingDraft || activatingBom || settingDefault || deactivatingBom"
             @click="handleActivateBom"
           >
             发布
@@ -114,7 +118,7 @@
             data-action-type="write"
             :data-write-guard="canDeactivate ? 'allowed:deactivate_bom' : 'guarded:readonly'"
             :loading="deactivatingBom"
-            :disabled="creatingDraft || savingDraft || activatingBom || settingDefault || deactivatingBom"
+            :disabled="detailReadOnlyMode || creatingDraft || savingDraft || activatingBom || settingDefault || deactivatingBom"
             @click="handleDeactivateBom"
           >
             停用
@@ -124,7 +128,7 @@
             data-action-type="write"
             :data-write-guard="canExplode ? 'allowed:explode_bom' : 'guarded:readonly'"
             :loading="explodingBom"
-            :disabled="creatingDraft || savingDraft || activatingBom || settingDefault || deactivatingBom || explodingBom"
+            :disabled="detailReadOnlyMode || creatingDraft || savingDraft || activatingBom || settingDefault || deactivatingBom || explodingBom"
             @click="handleExplode"
           >
             展开计算
@@ -162,7 +166,7 @@
         />
 
         <p class="state-tip" data-testid="bom-detail-permission-or-disabled-state">
-          当前仅开放 create_draft / update_draft / activate / set_default / deactivate / explode，本轮其他写动作保持只读禁用。
+          当前候选仅验证 BOM 可见只读业务流；所有写入口均禁用，不触发 create_draft / update_draft / activate / set_default / deactivate / explode。
         </p>
       </template>
     </el-card>
@@ -184,6 +188,7 @@
             :min="0"
             :precision="2"
             :step="1"
+            :disabled="detailReadOnlyMode"
             controls-position="right"
             data-testid="bom-detail-explode-order-qty"
           />
@@ -194,6 +199,7 @@
             type="textarea"
             :rows="3"
             placeholder='例如：{"S":10,"M":20,"L":30}'
+            :disabled="detailReadOnlyMode"
             data-testid="bom-detail-explode-size-ratio"
           />
         </el-form-item>
@@ -204,7 +210,7 @@
             data-testid="bom-detail-explode-submit"
             :data-write-guard="canExplode ? 'allowed:explode_bom' : 'guarded:readonly'"
             :loading="explodingBom"
-            :disabled="explodingBom"
+            :disabled="detailReadOnlyMode || explodingBom"
             @click="handleExplode"
           >
             计算
@@ -323,6 +329,7 @@
             data-testid="bom-detail-add-material"
             data-action-type="write"
             data-write-guard="guarded:readonly"
+            disabled
             @click="guardedWriteAction('新增物料')"
           >
             新增物料
@@ -344,6 +351,7 @@
               type="danger"
               data-action-type="write"
               data-write-guard="guarded:readonly"
+              disabled
               :data-testid="`bom-detail-remove-material-${scope.$index}`"
               @click="guardedWriteAction('删除物料')"
             >
@@ -363,6 +371,7 @@
             data-testid="bom-detail-add-operation"
             data-action-type="write"
             data-write-guard="guarded:readonly"
+            disabled
             @click="guardedWriteAction('新增工序')"
           >
             新增工序
@@ -397,6 +406,7 @@
               type="danger"
               data-action-type="write"
               data-write-guard="guarded:readonly"
+              disabled
               :data-testid="`bom-detail-remove-operation-${scope.$index}`"
               @click="guardedWriteAction('删除工序')"
             >
@@ -450,6 +460,7 @@ interface BomOperationForm {
 const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
+const detailReadOnlyMode = true
 
 const parsedId = Number(Array.isArray(route.query.id) ? route.query.id[0] : route.query.id || '0')
 const bomId = ref<number | null>(parsedId > 0 ? parsedId : null)
@@ -487,16 +498,20 @@ const explodeTolerance = 0.000001
 const BOM_SCENARIO_PATTERN = /(Z002-BOM-\d{8}-\d{3})/
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
-const canDraftCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.create)
-const canDraftUpdate = computed<boolean>(() => permissionStore.state.buttonPermissions.update)
-const canPublish = computed<boolean>(() => permissionStore.state.buttonPermissions.publish)
+const canDraftCreate = computed<boolean>(() => !detailReadOnlyMode && permissionStore.state.buttonPermissions.create)
+const canDraftUpdate = computed<boolean>(() => !detailReadOnlyMode && permissionStore.state.buttonPermissions.update)
+const canPublish = computed<boolean>(() => !detailReadOnlyMode && permissionStore.state.buttonPermissions.publish)
 const canDeactivate = computed<boolean>(
-  () => permissionStore.state.buttonPermissions.deactivate || permissionStore.state.buttonPermissions.publish,
+  () =>
+    !detailReadOnlyMode &&
+    (permissionStore.state.buttonPermissions.deactivate || permissionStore.state.buttonPermissions.publish),
 )
 const canSetDefault = computed<boolean>(
-  () => permissionStore.state.buttonPermissions.set_default || permissionStore.state.buttonPermissions.publish,
+  () =>
+    !detailReadOnlyMode &&
+    (permissionStore.state.buttonPermissions.set_default || permissionStore.state.buttonPermissions.publish),
 )
-const canExplode = computed<boolean>(() => canRead.value || canPublish.value)
+const canExplode = computed<boolean>(() => !detailReadOnlyMode && (canRead.value || canPublish.value))
 const missingId = computed<boolean>(() => bomId.value === null)
 const permissionDenied = computed<boolean>(() => !missingId.value && !loading.value && !canRead.value)
 const showEmptyState = computed<boolean>(

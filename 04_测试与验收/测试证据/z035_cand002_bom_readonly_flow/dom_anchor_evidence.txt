@@ -1,0 +1,24 @@
+TASK_ID: TASK-Z035B-11-IMPL
+candidate_id: Z035-CAND-002
+evidence_type: DOM/source anchor evidence
+generated_at: 2026-05-26T14:06:07+0800
+
+Required anchors:
+- bom-main-list-section: 06_前端/lingyi-pc/src/views/bom/BomList.vue:3
+- bom-main-list-filters: 06_前端/lingyi-pc/src/views/bom/BomList.vue:4
+- bom-main-table: 06_前端/lingyi-pc/src/views/bom/BomList.vue:205
+- bom-main-detail-button: 06_前端/lingyi-pc/src/views/bom/BomList.vue:225
+- bom-main-detail-drawer: 06_前端/lingyi-pc/src/views/bom/BomList.vue:253
+- bom-detail-page: 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:2
+- bom-detail-status-tag: 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:52
+- bom-detail-actions: 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:75
+
+Additional read-only evidence:
+- bom-detail-readonly-state: 06_前端/lingyi-pc/src/views/bom/BomDetail.vue:68
+- bom-detail-actions has data-readonly-state="true".
+- detailReadOnlyMode=true blocks canDraftCreate/canDraftUpdate/canPublish/canDeactivate/canSetDefault/canExplode.
+- Save/create/default/publish/deactivate/explode buttons now include detailReadOnlyMode in :disabled.
+- Add/remove material and add/remove operation entries are disabled with data-write-guard="guarded:readonly".
+
+Conclusion:
+- BOM list filters, table, detail page entry, detail drawer, detail status, material/operation blocks, and read-only action state are covered by source-level DOM anchors.

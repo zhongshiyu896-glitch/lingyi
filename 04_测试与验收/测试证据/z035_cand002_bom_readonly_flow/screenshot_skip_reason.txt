@@ -1,0 +1,8 @@
+TASK_ID: TASK-Z035B-11-IMPL
+candidate_id: Z035-CAND-002
+evidence_type: browser screenshot skip reason
+generated_at: 2026-05-26T14:06:07+0800
+
+browser_screenshot_attempted: false
+screenshot_files: []
+browser_screenshot_skipped_reason: 本任务允许截图但不强制截图；当前未启动本地前端 dev server，且不安装依赖、不改配置、不扩大浏览器生命周期。已提供 /bom/list、/bom/detail 的 route/source 静态证据、DOM anchor 静态证据，并完成一次 npm run typecheck，exit_code=0。

@@ -1,0 +1,8 @@
+TASK_ID: TASK-Z035B-12-REGRESSION-CAND002
+candidate_id: Z035-CAND-002
+evidence_type: browser screenshot regression skip reason
+generated_at: 2026-05-26T14:12:30+0800
+
+browser_screenshot_attempted: false
+screenshot_files: []
+screenshot_skip_reason: 本任务为 regression-only；未启动本地前端 dev server，未安装依赖，未改配置，未扩大浏览器生命周期。已提供 /bom/list、/bom/detail route/source 静态复核证据、DOM anchor 静态复核证据，并完成一次 npm run typecheck，exit_code=0。

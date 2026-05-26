@@ -1,0 +1,35 @@
+{
+  "task_id": "TASK-Z035B-11-IMPL",
+  "cycle_id": "Z035",
+  "candidate_id": "Z035-CAND-002",
+  "generated_at": "2026-05-26T14:06:07+0800",
+  "evidence_files": [
+    "route_evidence.txt",
+    "dom_anchor_evidence.txt",
+    "typecheck_evidence.txt",
+    "screenshot_skip_reason.txt"
+  ],
+  "routes_checked": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "anchors_checked": [
+    "bom-main-list-section",
+    "bom-main-list-filters",
+    "bom-main-table",
+    "bom-main-detail-button",
+    "bom-main-detail-drawer",
+    "bom-detail-page",
+    "bom-detail-status-tag",
+    "bom-detail-actions",
+    "bom-detail-readonly-state"
+  ],
+  "screenshot_files": [],
+  "browser_screenshot_skipped_reason": "Local browser screenshot was skipped; route/source static evidence, DOM anchor static evidence, and npm run typecheck evidence were collected without installing dependencies or changing dev-server configuration.",
+  "typecheck": {
+    "workdir": "06_前端/lingyi-pc",
+    "command": "npm run typecheck",
+    "exit_code": 0,
+    "summary": "PASS"
+  }
+}
