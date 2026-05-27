@@ -1,0 +1,12 @@
+{
+  "path": "04_测试与验收/测试证据/z044_cand003_batch_field_diff_retry_lock/network_write_request_observation.json",
+  "auth_401_count": 1,
+  "auth_401_urls": [
+    "http://127.0.0.1:5174/api/auth/me"
+  ],
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false
+}

@@ -1,0 +1,73 @@
+{
+  "path": "04_测试与验收/测试证据/z044_cand003_batch_field_diff_retry_lock/dom_anchors_evidence.json",
+  "anchors": [
+    "z044-batch-template-version-readback",
+    "z044-batch-field-diff-sample",
+    "z044-batch-failed-row-locator",
+    "z044-batch-retry-lock-reason",
+    "z044-batch-readonly-request-context",
+    "z044-batch-import-write-guard",
+    "z044-batch-parse-submit-guard",
+    "z044-batch-write-success-blocker"
+  ],
+  "details": [
+    {
+      "anchor": "z044-batch-template-version-readback",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "anchor": "z044-batch-field-diff-sample",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "anchor": "z044-batch-failed-row-locator",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "anchor": "z044-batch-retry-lock-reason",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "anchor": "z044-batch-readonly-request-context",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "anchor": "z044-batch-import-write-guard",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "anchor": "z044-batch-parse-submit-guard",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "anchor": "z044-batch-write-success-blocker",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}
