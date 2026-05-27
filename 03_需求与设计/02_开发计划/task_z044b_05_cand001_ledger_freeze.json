@@ -1,0 +1,60 @@
+{
+  "task_id": "TASK-Z044B-05-LEDGER-CAND001",
+  "candidate_id": "Z044-CAND-001",
+  "freeze_status": "LEDGER_FROZEN",
+  "source_chain": "B02 -> B03 -> B04 -> B05",
+  "evidence_only": false,
+  "ledger_counts": {
+    "ledger_total": 36,
+    "yes_count": 24,
+    "no_count": 12
+  },
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/App.vue"
+  ],
+  "forbidden_paths_in_yes": [],
+  "routes_passed": {
+    "/home": {
+      "http_status": 200,
+      "shell_visible": true
+    },
+    "/reports/catalog": {
+      "http_status": 200,
+      "shell_visible": true
+    },
+    "/subcontract/list": {
+      "http_status": 200,
+      "shell_visible": true
+    }
+  },
+  "screenshots_frozen": {
+    "b03_png_dimensions": "1440x1200",
+    "b04_png_dimensions": "1440x1200"
+  },
+  "runtime_evidence_frozen": {
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true,
+    "guarded_controls_covered": true,
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "auth_401_count_b03": 6,
+    "auth_401_count_b04": 6,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck_exit_code": 0,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "risk_fields_preserved": true,
+  "next_task": "TASK-Z044B-06-STAGE-CAND001"
+}

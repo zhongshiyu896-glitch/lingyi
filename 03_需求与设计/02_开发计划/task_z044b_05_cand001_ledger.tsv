@@ -1,0 +1,36 @@
+field	value
+task_id	TASK-Z044B-05-LEDGER-CAND001
+role	B Engineer
+candidate_id	Z044-CAND-001
+source_chain	B02 -> B03 -> B04 -> B05
+evidence_only	false
+ledger_total	36
+yes_count	24
+no_count	12
+yes_no_intersection	[]
+all_yes_files_exist	true
+ignored_yes_paths	[]
+frontend_yes_paths	06_前端/lingyi-pc/src/App.vue
+forbidden_paths_in_yes	[]
+routes	/home=200 shell_visible=true; /reports/catalog=200 shell_visible=true; /subcontract/list=200 shell_visible=true
+screenshots	B03=PNG 1440x1200; B04=PNG 1440x1200
+anchors_observed_count	8
+anchors_all_observed	true
+guarded_controls_covered	全局确认; 门禁刷新; 继续准备说明
+dataReadonlyBoundary	true
+dataWriteRequestSuccessAllowed	false
+dataRealWriteActionAdded	false
+auth_401_count	B03=6; B04=6
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_exit_code	0
+backend_api_added	false
+real_write_action_added	false
+read_only_boundary_preserved	true
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+risk_fields_preserved	true
+next_task	TASK-Z044B-06-STAGE-CAND001

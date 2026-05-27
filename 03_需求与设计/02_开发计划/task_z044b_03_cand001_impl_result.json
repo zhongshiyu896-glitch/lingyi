@@ -1,0 +1,147 @@
+{
+  "task_id": "TASK-Z044B-03-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z044-CAND-001",
+  "head": "e4dcf4dc774dca1a59882eb8dd64d194cef65671",
+  "branch": "codex/sprint4-seal",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/App.vue"
+  ],
+  "route_evidence": {
+    "path": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/route_evidence.json",
+    "routes_checked": [
+      "/home",
+      "/reports/catalog",
+      "/subcontract/list"
+    ],
+    "route_http_statuses": {
+      "/home": 200,
+      "/reports/catalog": 200,
+      "/subcontract/list": 200
+    },
+    "final_paths": {
+      "/home": "/home",
+      "/reports/catalog": "/reports/catalog",
+      "/subcontract/list": "/subcontract/list"
+    },
+    "shell_visible_routes": {
+      "/home": true,
+      "/reports/catalog": true,
+      "/subcontract/list": true
+    }
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/home_screenshot.png",
+    "png": true,
+    "dimensions": {
+      "width": 1440,
+      "height": 1200
+    }
+  },
+  "runtime_dom_anchors": {
+    "path": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/dom_anchors_evidence.json",
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true,
+    "anchors": [
+      "z044-global-local-gate-summary",
+      "z044-global-dirty-scope-readback",
+      "z044-global-residual-risk-badge",
+      "z044-global-remote-gate-disclaimer",
+      "z044-global-readonly-action-guard",
+      "z044-global-evidence-readiness-entry",
+      "z044-global-next-prep-recommendation",
+      "z044-global-write-success-blocker"
+    ]
+  },
+  "guarded_readonly_state": {
+    "path": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/guarded_readonly_state_evidence.json",
+    "guarded_entries_covered": [
+      "全局确认",
+      "门禁刷新",
+      "继续准备说明"
+    ],
+    "all_covered": true,
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false
+  },
+  "network_write_observation": {
+    "path": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/network_write_request_observation.json",
+    "auth_401_count": 6,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "dev_server": {
+    "started": true,
+    "requested_port": 5173,
+    "actual_url": "http://127.0.0.1:5174/",
+    "stopped": true
+  },
+  "scope_guard": {
+    "allowed_files_only": true,
+    "backend_api_added": false,
+    "real_write_action_added": false,
+    "read_only_boundary_preserved": true,
+    "dirty_intersections": [],
+    "implementation_started": true,
+    "cached_empty": true,
+    "head_tag_empty": true,
+    "worktree_check_pass": true,
+    "stage_performed": false,
+    "commit_performed": false,
+    "remote_lifecycle_released": false
+  },
+  "tooling_note": {
+    "browser_skill_attempted": true,
+    "browser_iab_available": false,
+    "fallback_runtime": "local Playwright against dev server"
+  },
+  "risk_fields_preserved": {
+    "Z043_fallback_risks": {
+      "CAND005": "4/4",
+      "CAND004": "1/1",
+      "CAND003": "1/1",
+      "CAND002": "30/30",
+      "CAND001": "2/2"
+    },
+    "Z044_CAND001_auth_401_count": 6,
+    "prior_non_allowlisted_summary_metadata_continue_excluded": true,
+    "Z042_Z041_Z040_Z039_Z038_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "z044_cand002_started": false,
+    "remote_lifecycle_released": false
+  },
+  "evidence": {
+    "report": "03_需求与设计/02_开发计划/TASK-Z044B-03-IMPL_CAND001_全局本地门禁摘要风险提示实施报告.md",
+    "result_json": "03_需求与设计/02_开发计划/task_z044b_03_cand001_impl_result.json",
+    "tsv": "03_需求与设计/02_开发计划/task_z044b_03_cand001_impl.tsv",
+    "screenshot": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/home_screenshot.png",
+    "route_evidence": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/route_evidence.json",
+    "dom_anchors_evidence": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/dom_anchors_evidence.json",
+    "guarded_readonly_state_evidence": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/guarded_readonly_state_evidence.json",
+    "network_write_request_observation": "04_测试与验收/测试证据/z044_cand001_global_local_gate_risk_notice/network_write_request_observation.json"
+  },
+  "next_task": "TASK-Z044B-04-REGRESSION-CAND001"
+}

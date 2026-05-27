@@ -1,0 +1,142 @@
+{
+  "task_id": "TASK-Z044B-02-PREP",
+  "role": "B Engineer",
+  "head": "e4dcf4dc774dca1a59882eb8dd64d194cef65671",
+  "branch": "codex/sprint4-seal",
+  "baseline": {
+    "cached_empty": true,
+    "head_tag_empty": true,
+    "worktree_check_pass": true,
+    "b01_selected_candidate": "Z044-CAND-001"
+  },
+  "candidate_id": "Z044-CAND-001",
+  "boundary": {
+    "title": "全局本地门禁摘要与风险只读提示可见流",
+    "page_scope": "应用 Shell 跨首页、报表目录与外发列表的本地门禁摘要",
+    "routes": [
+      "/home",
+      "/reports/catalog",
+      "/subcontract/list"
+    ],
+    "visible_acceptance_goal": [
+      "展示 Z044 本地门禁建议、当前 dirty/residual 摘要、远端/生产未授权提示与最近只读风险提示",
+      "全局确认、刷新与继续入口不得形成真实写请求成功"
+    ],
+    "allowed_files": [
+      "06_前端/lingyi-pc/src/App.vue"
+    ],
+    "forbidden_scope": [
+      "current 19 tracked dirty files",
+      "historical product/test dirty",
+      "log/control dirty",
+      "Z034 residual artifacts",
+      "07_后端",
+      "runtime/cache/test-results",
+      "remote/prod/go-live",
+      "prior non-allowlisted summary/metadata",
+      "candidate pool/control-plane outside this task"
+    ],
+    "reused_source": "Z043 / Z043-CAND-001 / e584624d9dee99c951de901b7864b0982db47a99",
+    "read_only": true,
+    "backend_allowed": false,
+    "write_request_success_allowed": false,
+    "real_write_action_allowed": false,
+    "pure_static_fallback_allowed": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "allowed_files_status": {
+    "06_前端/lingyi-pc/src/App.vue": {
+      "exists": true,
+      "dirty": false
+    }
+  },
+  "route_source_status": {
+    "/home": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts:21"
+    },
+    "/reports/catalog": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts:92"
+    },
+    "/subcontract/list": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts:50"
+    }
+  },
+  "required_anchors": [
+    "z044-global-local-gate-summary",
+    "z044-global-dirty-scope-readback",
+    "z044-global-residual-risk-badge",
+    "z044-global-remote-gate-disclaimer",
+    "z044-global-readonly-action-guard",
+    "z044-global-evidence-readiness-entry",
+    "z044-global-next-prep-recommendation",
+    "z044-global-write-success-blocker"
+  ],
+  "required_anchors_count": 8,
+  "guarded_entries": [
+    "全局确认",
+    "门禁刷新",
+    "继续准备说明"
+  ],
+  "evidence_requirement": {
+    "home_screenshot": true,
+    "route_evidence": [
+      "/home",
+      "/reports/catalog",
+      "/subcontract/list"
+    ],
+    "runtime_dom_anchors": true,
+    "guarded_readonly_state_evidence": [
+      "全局确认",
+      "门禁刷新",
+      "继续准备说明"
+    ],
+    "network_write_request_observation": true,
+    "auth_401_recorded_as_readonly_fallback_risk_only": true,
+    "guarded_readonly_not_write_success": true,
+    "write_requests_observed_count_must_be_zero_or_no_real_write_success": true,
+    "typecheck_command": "npm run typecheck",
+    "typecheck_workdir": "06_前端/lingyi-pc",
+    "typecheck_exit_code_required": true,
+    "dev_server_started_stopped_required": true
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "risk_fields_preserved": {
+    "Z043_fallback_risks": {
+      "CAND005": "4/4",
+      "CAND004": "1/1",
+      "CAND003": "1/1",
+      "CAND002": "30/30",
+      "CAND001": "2/2"
+    },
+    "prior_non_allowlisted_summary_metadata_continue_excluded": true,
+    "Z042_Z041_Z040_Z039_Z038_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "code_changed": false,
+    "validation_rerun": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "b03_implementation_started": false,
+    "z044_cand002_started": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z044B-03-IMPL",
+  "run_this_task": false
+}

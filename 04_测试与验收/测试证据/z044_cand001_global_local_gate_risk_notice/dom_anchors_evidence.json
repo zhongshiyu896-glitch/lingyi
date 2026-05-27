@@ -1,0 +1,78 @@
+{
+  "anchors": [
+    {
+      "id": "z044-global-local-gate-summary",
+      "observed": true,
+      "visible": true,
+      "text": "Z044 本地门禁建议：/home 仅进入 CAND001 边界与证据准备，不启动远端生命周期。dirty 摘要：tracked 19，product/test 16，log/control 3；候选只允许复用当前 clean 产品路径。Z034 residual：9 个 untracked_present 产物继续排除，不进入候选 YES 或提交推断。远端/生产未授权：push/tag/PR/release、production readback、go-live 均为 false。 全局确认 门禁刷新 继续准备说明 证据入口：/home 截图，三路由 route evidence，DOM anchors，guard state，network observation 与 typecheck。next prep：TASK-Z044B-02-PREP 已可被 A 派发；run_this_task=false。写成功阻断：全局确认、门禁刷新、继续准备说明均 guarded/readonly，write_request_success_allowed=false。",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false"
+    },
+    {
+      "id": "z044-global-dirty-scope-readback",
+      "observed": true,
+      "visible": true,
+      "text": "dirty 摘要：tracked 19，product/test 16，log/control 3；候选只允许复用当前 clean 产品路径。",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "dataRealWriteActionAdded": null
+    },
+    {
+      "id": "z044-global-residual-risk-badge",
+      "observed": true,
+      "visible": true,
+      "text": "Z034 residual：9 个 untracked_present 产物继续排除，不进入候选 YES 或提交推断。",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "dataRealWriteActionAdded": null
+    },
+    {
+      "id": "z044-global-remote-gate-disclaimer",
+      "observed": true,
+      "visible": true,
+      "text": "远端/生产未授权：push/tag/PR/release、production readback、go-live 均为 false。",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "dataRealWriteActionAdded": null
+    },
+    {
+      "id": "z044-global-readonly-action-guard",
+      "observed": true,
+      "visible": true,
+      "text": "全局确认 门禁刷新 继续准备说明",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false"
+    },
+    {
+      "id": "z044-global-evidence-readiness-entry",
+      "observed": true,
+      "visible": true,
+      "text": "证据入口：/home 截图，三路由 route evidence，DOM anchors，guard state，network observation 与 typecheck。",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "dataRealWriteActionAdded": null
+    },
+    {
+      "id": "z044-global-next-prep-recommendation",
+      "observed": true,
+      "visible": true,
+      "text": "next prep：TASK-Z044B-02-PREP 已可被 A 派发；run_this_task=false。",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": null,
+      "dataRealWriteActionAdded": null
+    },
+    {
+      "id": "z044-global-write-success-blocker",
+      "observed": true,
+      "visible": true,
+      "text": "写成功阻断：全局确认、门禁刷新、继续准备说明均 guarded/readonly，write_request_success_allowed=false。",
+      "dataReadonlyBoundary": null,
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": null
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

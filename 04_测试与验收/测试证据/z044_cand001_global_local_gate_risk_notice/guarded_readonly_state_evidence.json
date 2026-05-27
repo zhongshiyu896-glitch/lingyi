@@ -1,0 +1,29 @@
+{
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "entries": [
+    {
+      "entry": "全局确认",
+      "observed": true,
+      "disabled": true,
+      "dataReadonlyState": "guarded-readonly",
+      "dataWriteGuard": "guarded:z044-global-confirm"
+    },
+    {
+      "entry": "门禁刷新",
+      "observed": true,
+      "disabled": true,
+      "dataReadonlyState": "guarded-readonly",
+      "dataWriteGuard": "guarded:z044-local-gate-refresh"
+    },
+    {
+      "entry": "继续准备说明",
+      "observed": true,
+      "disabled": true,
+      "dataReadonlyState": "guarded-readonly",
+      "dataWriteGuard": "guarded:z044-continue-prep"
+    }
+  ],
+  "allCovered": true
+}

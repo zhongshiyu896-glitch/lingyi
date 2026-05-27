@@ -1,0 +1,41 @@
+field	value
+task_id	TASK-Z044B-02-PREP
+role	B Engineer
+head	e4dcf4dc774dca1a59882eb8dd64d194cef65671
+branch	codex/sprint4-seal
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+b01_selected_candidate	Z044-CAND-001
+candidate_id	Z044-CAND-001
+title	全局本地门禁摘要与风险只读提示可见流
+page_scope	应用 Shell 跨首页、报表目录与外发列表的本地门禁摘要
+routes	/home;/reports/catalog;/subcontract/list
+allowed_files	06_前端/lingyi-pc/src/App.vue
+allowed_files_exist	true
+allowed_files_dirty	false
+reused_source	Z043 / Z043-CAND-001 / e584624d9dee99c951de901b7864b0982db47a99
+read_only	true
+backend_allowed	false
+write_request_success_allowed	false
+real_write_action_allowed	false
+pure_static_fallback_allowed	false
+guarded_readonly_not_write_success	true
+required_anchors_count	8
+required_anchors	z044-global-local-gate-summary;z044-global-dirty-scope-readback;z044-global-residual-risk-badge;z044-global-remote-gate-disclaimer;z044-global-readonly-action-guard;z044-global-evidence-readiness-entry;z044-global-next-prep-recommendation;z044-global-write-success-blocker
+guarded_entries	全局确认;门禁刷新;继续准备说明
+evidence_requirement_present	true
+route_source_located	true
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+risk_fields_preserved	true
+code_changed	false
+validation_rerun	false
+stage_performed	false
+commit_performed	false
+b03_implementation_started	false
+z044_cand002_started	false
+remote_lifecycle_released	false
+next_task	TASK-Z044B-03-IMPL
+run_this_task	false

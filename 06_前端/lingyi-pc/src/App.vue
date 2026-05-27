@@ -158,6 +158,120 @@
         {{ nextGateDisclaimerText }}
       </span>
     </div>
+    <div
+      id="z044-global-local-gate-summary"
+      class="global-readonly-shell__z044-panel"
+      data-testid="z044-global-local-gate-summary"
+      :data-route-path="route.path"
+      data-readonly-boundary="true"
+      data-write-request-success-allowed="false"
+      data-real-write-action-added="false"
+    >
+      <span
+        class="global-readonly-shell__z044-item"
+        data-testid="z044-global-local-gate-summary-text"
+        data-local-gate="prep-only"
+      >
+        {{ z044LocalGateSummaryText }}
+      </span>
+      <span
+        id="z044-global-dirty-scope-readback"
+        class="global-readonly-shell__z044-item"
+        data-testid="z044-global-dirty-scope-readback"
+        data-tracked-dirty-count="19"
+        data-product-test-dirty-count="16"
+        data-log-control-dirty-count="3"
+      >
+        {{ z044DirtyScopeReadbackText }}
+      </span>
+      <span
+        id="z044-global-residual-risk-badge"
+        class="global-readonly-shell__z044-item"
+        data-testid="z044-global-residual-risk-badge"
+        data-z034-residual-artifacts-count="9"
+        data-z034-residual-artifacts-status="untracked_present"
+      >
+        {{ z044ResidualRiskBadgeText }}
+      </span>
+      <span
+        id="z044-global-remote-gate-disclaimer"
+        class="global-readonly-shell__z044-item global-readonly-shell__z044-item--notice"
+        data-testid="z044-global-remote-gate-disclaimer"
+        data-remote-lifecycle-parked="true"
+        data-production-readback="false"
+        data-go-live="false"
+      >
+        {{ z044RemoteGateDisclaimerText }}
+      </span>
+      <div
+        id="z044-global-readonly-action-guard"
+        class="global-readonly-shell__z044-actions"
+        data-testid="z044-global-readonly-action-guard"
+        data-readonly-boundary="true"
+        data-write-request-success-allowed="false"
+        data-real-write-action-added="false"
+      >
+        <button
+          type="button"
+          class="global-readonly-shell__button global-readonly-shell__button--disabled"
+          data-testid="z044-global-confirm-guard"
+          data-guarded-entry="全局确认"
+          data-readonly-state="guarded-readonly"
+          data-write-guard="guarded:z044-global-confirm"
+          disabled
+        >
+          全局确认
+        </button>
+        <button
+          type="button"
+          class="global-readonly-shell__button global-readonly-shell__button--disabled"
+          data-testid="z044-global-refresh-guard"
+          data-guarded-entry="门禁刷新"
+          data-readonly-state="guarded-readonly"
+          data-write-guard="guarded:z044-local-gate-refresh"
+          disabled
+        >
+          门禁刷新
+        </button>
+        <button
+          type="button"
+          class="global-readonly-shell__button global-readonly-shell__button--disabled"
+          data-testid="z044-global-continue-prep-guard"
+          data-guarded-entry="继续准备说明"
+          data-readonly-state="guarded-readonly"
+          data-write-guard="guarded:z044-continue-prep"
+          disabled
+        >
+          继续准备说明
+        </button>
+      </div>
+      <span
+        id="z044-global-evidence-readiness-entry"
+        class="global-readonly-shell__z044-item"
+        data-testid="z044-global-evidence-readiness-entry"
+        data-evidence-plan="screenshot-route-dom-guard-network-typecheck"
+      >
+        {{ z044EvidenceReadinessText }}
+      </span>
+      <span
+        id="z044-global-next-prep-recommendation"
+        class="global-readonly-shell__z044-item"
+        data-testid="z044-global-next-prep-recommendation"
+        data-next-task="TASK-Z044B-02-PREP"
+        data-run-this-task="false"
+      >
+        {{ z044NextPrepRecommendationText }}
+      </span>
+      <span
+        id="z044-global-write-success-blocker"
+        class="global-readonly-shell__z044-item global-readonly-shell__z044-item--warning"
+        data-testid="z044-global-write-success-blocker"
+        data-write-request-success-allowed="false"
+        data-guarded-readonly-not-write-success="true"
+      >
+        {{ z044WriteSuccessBlockerText }}
+      </span>
+    </div>
   </section>
   <router-view />
 </template>
@@ -264,6 +378,35 @@ const guardedActionLogText = computed(() => {
 
 const nextGateDisclaimerText = computed(
   () => 'next gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live',
+)
+
+const z044LocalGateSummaryText = computed(() => {
+  const currentRoute = route.path || '/home'
+  return `Z044 本地门禁建议：${currentRoute} 仅进入 CAND001 边界与证据准备，不启动远端生命周期。`
+})
+
+const z044DirtyScopeReadbackText = computed(
+  () => 'dirty 摘要：tracked 19，product/test 16，log/control 3；候选只允许复用当前 clean 产品路径。',
+)
+
+const z044ResidualRiskBadgeText = computed(
+  () => 'Z034 residual：9 个 untracked_present 产物继续排除，不进入候选 YES 或提交推断。',
+)
+
+const z044RemoteGateDisclaimerText = computed(
+  () => '远端/生产未授权：push/tag/PR/release、production readback、go-live 均为 false。',
+)
+
+const z044EvidenceReadinessText = computed(
+  () => '证据入口：/home 截图，三路由 route evidence，DOM anchors，guard state，network observation 与 typecheck。',
+)
+
+const z044NextPrepRecommendationText = computed(
+  () => 'next prep：TASK-Z044B-02-PREP 已可被 A 派发；run_this_task=false。',
+)
+
+const z044WriteSuccessBlockerText = computed(
+  () => '写成功阻断：全局确认、门禁刷新、继续准备说明均 guarded/readonly，write_request_success_allowed=false。',
 )
 
 const loadReadonlyState = async (): Promise<void> => {
@@ -394,6 +537,46 @@ watch(
   color: #25513a;
 }
 
+.global-readonly-shell__z044-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.global-readonly-shell__z044-item,
+.global-readonly-shell__z044-actions {
+  display: inline-flex;
+  align-items: flex-start;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid #c8d2df;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 6px;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.global-readonly-shell__z044-actions {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.global-readonly-shell__z044-item--notice {
+  border-color: #b9d3c5;
+  background: #f0f8f3;
+  color: #25513a;
+}
+
+.global-readonly-shell__z044-item--warning {
+  border-color: #e1c7a3;
+  background: #fff7ed;
+  color: #744210;
+}
+
 .global-readonly-shell__button {
   min-height: 28px;
   padding: 0 10px;
@@ -421,6 +604,10 @@ watch(
   }
 
   .global-readonly-shell__z043-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .global-readonly-shell__z044-panel {
     grid-template-columns: 1fr;
   }
 }
