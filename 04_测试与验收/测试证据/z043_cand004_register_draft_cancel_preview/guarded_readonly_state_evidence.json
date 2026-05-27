@@ -1,0 +1,89 @@
+{
+  "task_id": "TASK-Z043B-27-IMPL",
+  "route": "/workshop/tickets/register",
+  "guarded_entries_required": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "guarded_entries_covered": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "guarded_entries_covered_count": 3,
+  "all_guarded_entries_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "guarded_readonly_not_write_success": true,
+  "raw": {
+    "entries": [
+      "提交登记",
+      "提交撤销",
+      "只读降级确认"
+    ],
+    "byEntry": {
+      "提交登记": [
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": null,
+          "text": "提交登记 guarded/readonly"
+        },
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "提交登记 guarded/readonly"
+        }
+      ],
+      "提交撤销": [
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": null,
+          "text": "提交撤销 guarded/readonly"
+        },
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "提交撤销 guarded/readonly"
+        }
+      ],
+      "只读降级确认": [
+        {
+          "tag": "button",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "只读降级确认（不写入）"
+        },
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "只读降级确认 guarded/readonly"
+        }
+      ]
+    },
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "readonlyBoundaryCount": 14,
+    "writeAllowedTrueCount": 0,
+    "realWriteTrueCount": 0
+  }
+}

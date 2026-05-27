@@ -1,0 +1,68 @@
+{
+  "task_id": "TASK-Z043B-28-REGRESSION-CAND004",
+  "route": "/workshop/tickets/register",
+  "required_anchors": [
+    "workshop-ticket-register-page",
+    "workshop-ticket-register-form",
+    "workshop-ticket-register-readonly-draft-preview",
+    "workshop-ticket-register-validation-hint",
+    "z043-register-field-diff-summary",
+    "z043-register-cancel-preview",
+    "z043-register-readonly-confirm-chain",
+    "z043-register-return-source-readback"
+  ],
+  "observed_anchors": [
+    "workshop-ticket-register-page",
+    "workshop-ticket-register-form",
+    "workshop-ticket-register-readonly-draft-preview",
+    "workshop-ticket-register-validation-hint",
+    "z043-register-field-diff-summary",
+    "z043-register-cancel-preview",
+    "z043-register-readonly-confirm-chain",
+    "z043-register-return-source-readback"
+  ],
+  "observed_count": 8,
+  "all_observed": true,
+  "anchors": {
+    "workshop-ticket-register-page": {
+      "observed": true,
+      "tag": "div",
+      "text": "工票登记 / 撤销返回列表登记工票撤销工票幂等键 ticket_keyJob Card员工工序颜色/尺码数量工作日期来源manual来源单号操作提交登记（只读预览）只读校验提示：提交登记需 ticket_key、job_card、employee、process_name、work_date、source_ref；提交撤销需 original_ticket_id 与 reason。当前账号无提交权限；页面仍保持只读预览，登记/撤销写动作已被 guard 拦截。草稿变更摘要登记/撤销模式登记工票local preview关键草稿字段未填写waiting for local validation来源或撤销原因未填写来源单号readonly only request_id=Z003-WORKSHOP-TICKET-20260527-419-RW-R-878-DBB-878-8FB-94B-2F1 / scenario_tag=Z003-WORKSHOP-TICKET-20260527-419撤销原因提示切换至撤销工票后需填写原工票 ID 与撤销原因；撤销提交不会形成真实写请求成功。 提交登记"
+    },
+    "workshop-ticket-register-form": {
+      "observed": true,
+      "tag": "form",
+      "text": "幂等键 ticket_keyJob Card员工工序颜色/尺码数量工作日期来源manual来源单号操作提交登记（只读预览）"
+    },
+    "workshop-ticket-register-readonly-draft-preview": {
+      "observed": true,
+      "tag": "div",
+      "text": "本地写入草稿预览模式登记工票ticket_key-job_card-employee-process_name-work_date-qty1source/reasonmanual"
+    },
+    "workshop-ticket-register-validation-hint": {
+      "observed": true,
+      "tag": "div",
+      "text": "只读校验提示：提交登记需 ticket_key、job_card、employee、process_name、work_date、source_ref；提交撤销需 original_ticket_id 与 reason。"
+    },
+    "z043-register-field-diff-summary": {
+      "observed": true,
+      "tag": "section",
+      "text": "字段级草稿差异ticket_key未填写等待扫码或业务唯一键job_card / employee未填写关键登记字段缺失source_ref未填写返回查询来源只读记录"
+    },
+    "z043-register-cancel-preview": {
+      "observed": true,
+      "tag": "section",
+      "text": "撤销预览摘要当前为登记模式；切换撤销后将展示 original_ticket_id、reason 与 request_id 预览，不会发送撤销写请求。"
+    },
+    "z043-register-readonly-confirm-chain": {
+      "observed": true,
+      "tag": "section",
+      "text": "只读确认链路确认链路：提交登记 -> 只读降级确认 -> request_id=Z003-WORKSHOP-TICKET-20260527-419-RW-R-878-DBB-878-8FB-94B-2F1，全程 dataWriteRequestSuccessAllowed=false。提交登记 guarded/readonly 提交撤销 guarded/readonly 只读降级确认 guarded/readonly"
+    },
+    "z043-register-return-source-readback": {
+      "observed": true,
+      "tag": "section",
+      "text": "返回查询来源返回查询来源固定记录为 /workshop/tickets，scenario_tag=Z003-WORKSHOP-TICKET-20260527-419，来源单号=未填写，只读 readback 不触发真实写成功。"
+    }
+  }
+}

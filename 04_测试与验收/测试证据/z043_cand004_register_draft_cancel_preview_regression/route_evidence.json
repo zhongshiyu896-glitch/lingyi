@@ -1,0 +1,9 @@
+{
+  "task_id": "TASK-Z043B-28-REGRESSION-CAND004",
+  "route": "/workshop/tickets/register",
+  "url": "http://127.0.0.1:5174/workshop/tickets/register",
+  "http_status": 200,
+  "final_url": "http://127.0.0.1:5174/workshop/tickets/register",
+  "final_path": "/workshop/tickets/register",
+  "captured_at": "2026-05-27T05:37:25.075Z"
+}

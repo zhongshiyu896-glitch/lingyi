@@ -1,0 +1,145 @@
+{
+  "task_id": "TASK-Z043B-28-REGRESSION-CAND004",
+  "route": "/workshop/tickets/register",
+  "guarded_entries_required": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "guarded_entries_covered": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "guarded_entries_covered_count": 3,
+  "all_guarded_entries_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "guarded_readonly_not_write_success": true,
+  "raw": {
+    "entries": [
+      "提交登记",
+      "提交撤销",
+      "只读降级确认"
+    ],
+    "byEntry": {
+      "提交登记": [
+        {
+          "tag": "button",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "提交登记（只读预览）"
+        },
+        {
+          "tag": "section",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "撤销原因提示切换至撤销工票后需填写原工票 ID 与撤销原因；撤销提交不会形成真实写请求成功。 提交登记 guarded/readonly 提交撤销 guarded/readonly"
+        },
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": null,
+          "text": "提交登记 guarded/readonly"
+        },
+        {
+          "tag": "section",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "只读确认链路确认链路：提交登记 -> 只读降级确认 -> request_id=Z003-WORKSHOP-TICKET-20260527-419-RW-R-878-DBB-878-8FB-94B-2F1，全程 dataWriteRequestSuccessAllowed=false。提交登记 guarded/readonly 提交撤销 guarded/readonly 只读降级确认 guarded/readonly"
+        },
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "提交登记 guarded/readonly"
+        }
+      ],
+      "提交撤销": [
+        {
+          "tag": "section",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "撤销原因提示切换至撤销工票后需填写原工票 ID 与撤销原因；撤销提交不会形成真实写请求成功。 提交登记 guarded/readonly 提交撤销 guarded/readonly"
+        },
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": null,
+          "text": "提交撤销 guarded/readonly"
+        },
+        {
+          "tag": "section",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "只读确认链路确认链路：提交登记 -> 只读降级确认 -> request_id=Z003-WORKSHOP-TICKET-20260527-419-RW-R-878-DBB-878-8FB-94B-2F1，全程 dataWriteRequestSuccessAllowed=false。提交登记 guarded/readonly 提交撤销 guarded/readonly 只读降级确认 guarded/readonly"
+        },
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "提交撤销 guarded/readonly"
+        }
+      ],
+      "只读降级确认": [
+        {
+          "tag": "section",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "返回工票查询来源返回列表固定指向 /workshop/tickets；来源 request_id=Z003-WORKSHOP-TICKET-20260527-419-RW-R-878-DBB-878-8FB-94B-2F1 仅用于只读追踪。 只读降级确认（不写入）"
+        },
+        {
+          "tag": "button",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "只读降级确认（不写入）"
+        },
+        {
+          "tag": "section",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "只读确认链路确认链路：提交登记 -> 只读降级确认 -> request_id=Z003-WORKSHOP-TICKET-20260527-419-RW-R-878-DBB-878-8FB-94B-2F1，全程 dataWriteRequestSuccessAllowed=false。提交登记 guarded/readonly 提交撤销 guarded/readonly 只读降级确认 guarded/readonly"
+        },
+        {
+          "tag": "span",
+          "guardState": "guarded-readonly",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "text": "只读降级确认 guarded/readonly"
+        }
+      ]
+    },
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "readonlyBoundaryCount": 14,
+    "writeAllowedTrueCount": 0,
+    "realWriteTrueCount": 0
+  }
+}

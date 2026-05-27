@@ -214,6 +214,69 @@
           </el-button>
         </section>
       </div>
+
+      <div class="z043-register-grid" data-testid="z043-register-readonly-boundary">
+        <section
+          class="z043-register-section"
+          data-readonly-boundary="true"
+          data-testid="z043-register-field-diff-summary"
+        >
+          <h3>字段级草稿差异</h3>
+          <ul class="z043-register-list">
+            <li v-for="item in z043FieldDiffSummary" :key="item.field">
+              <span>{{ item.field }}</span>
+              <strong>{{ item.current }}</strong>
+              <em>{{ item.diff }}</em>
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z043-register-section"
+          data-readonly-boundary="true"
+          data-testid="z043-register-cancel-preview"
+        >
+          <h3>撤销预览摘要</h3>
+          <p>{{ z043CancelPreviewSummary }}</p>
+        </section>
+
+        <section
+          class="z043-register-section"
+          data-readonly-boundary="true"
+          data-testid="z043-register-readonly-confirm-chain"
+          data-write-guard="guarded:z043-register-readonly-confirm-chain"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+          data-guard-state="guarded-readonly"
+        >
+          <h3>只读确认链路</h3>
+          <p>{{ z043ReadonlyConfirmChain }}</p>
+          <div class="z043-register-guards">
+            <el-tag
+              v-for="entry in z043GuardedEntries"
+              :key="entry"
+              data-readonly-boundary="true"
+              :data-guard-entry="entry"
+              data-guard-state="guarded-readonly"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+              effect="plain"
+              type="info"
+            >
+              {{ entry }} guarded/readonly
+            </el-tag>
+          </div>
+        </section>
+
+        <section
+          class="z043-register-section"
+          data-readonly-boundary="true"
+          data-testid="z043-register-return-source-readback"
+        >
+          <h3>返回查询来源</h3>
+          <p>{{ z043ReturnSourceReadback }}</p>
+        </section>
+      </div>
     </el-card>
 
     <el-card shadow="never" data-testid="workshop-ticket-register-readonly-draft-preview">
@@ -349,6 +412,39 @@ const cancelReasonHint = computed<string>(() => (
 ))
 const returnRouteExplanation = computed<string>(() => (
   `返回列表固定指向 /workshop/tickets；来源 request_id=${readonlyRequestId.value} 仅用于只读追踪。`
+))
+const z043GuardedEntries = ['提交登记', '提交撤销', '只读降级确认']
+const z043FieldDiffSummary = computed(() => [
+  {
+    field: 'ticket_key',
+    current: readonlyDraft.value.ticket_key || '未填写',
+    diff: readonlyDraft.value.ticket_key ? '本地草稿存在值' : '等待扫码或业务唯一键',
+  },
+  {
+    field: 'job_card / employee',
+    current: [readonlyDraft.value.job_card, readonlyDraft.value.employee].filter(Boolean).join(' / ') || '未填写',
+    diff: requiredFieldErrors.value.some((field) => ['job_card', 'employee'].includes(field))
+      ? '关键登记字段缺失'
+      : '关键登记字段已满足本地校验',
+  },
+  {
+    field: mode.value === 'register' ? 'source_ref' : 'reason',
+    current: mode.value === 'register'
+      ? (readonlyDraft.value.source_ref || '未填写')
+      : (readonlyDraft.value.reason || '未填写'),
+    diff: mode.value === 'register' ? '返回查询来源只读记录' : '撤销预览原因只读记录',
+  },
+])
+const z043CancelPreviewSummary = computed<string>(() => (
+  mode.value === 'reversal'
+    ? `撤销预览仅本地展示：original_ticket_id=${readonlyDraft.value.original_ticket_id || '待填写'}，reason=${readonlyDraft.value.reason || '待填写'}。提交撤销仍被 guarded/readonly 拦截。`
+    : '当前为登记模式；切换撤销后将展示 original_ticket_id、reason 与 request_id 预览，不会发送撤销写请求。'
+))
+const z043ReadonlyConfirmChain = computed<string>(() => (
+  `确认链路：${mode.value === 'register' ? '提交登记' : '提交撤销'} -> 只读降级确认 -> request_id=${readonlyRequestId.value}，全程 dataWriteRequestSuccessAllowed=false。`
+))
+const z043ReturnSourceReadback = computed<string>(() => (
+  `返回查询来源固定记录为 /workshop/tickets，scenario_tag=${readonlyScenarioTag.value}，来源单号=${readonlyDraft.value.source_ref || '未填写'}，只读 readback 不触发真实写成功。`
 ))
 
 const extractScenarioTag = (value: string): string | null => {
@@ -523,8 +619,70 @@ onMounted(async () => {
   margin-top: 10px;
 }
 
+.z043-register-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.z043-register-section {
+  min-height: 156px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background: var(--el-fill-color-blank);
+}
+
+.z043-register-section h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.z043-register-section p {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.z043-register-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.z043-register-list li {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 4px 8px;
+  font-size: 12px;
+}
+
+.z043-register-list strong,
+.z043-register-list em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.z043-register-list em {
+  grid-column: 2;
+  color: var(--el-text-color-secondary);
+  font-style: normal;
+}
+
+.z043-register-guards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
 @media (max-width: 960px) {
-  .z042-register-grid {
+  .z042-register-grid,
+  .z043-register-grid {
     grid-template-columns: 1fr;
   }
 }

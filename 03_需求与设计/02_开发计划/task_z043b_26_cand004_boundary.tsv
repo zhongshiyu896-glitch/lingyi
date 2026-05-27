@@ -1,0 +1,37 @@
+field	value
+task_id	TASK-Z043B-26-PREP
+role	B Engineer
+head	20e12d99a7a2c51bd7928c6c4e9809e134a59002
+branch	codex/sprint4-seal
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+candidate_id	Z043-CAND-004
+title	工票登记草稿差异校验与撤销预览 guard 可见流
+page_scope	车间工票登记草稿、字段差异、撤销预览与只读确认
+routes	["/workshop/tickets/register"]
+allowed_files	["06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"]
+allowed_files_exist	true
+allowed_files_dirty	false
+forbidden	["06_前端/lingyi-pc/src/api/workshop.ts","07_后端","current 19 tracked dirty files","historical product/test dirty","log/control dirty","Z034 residual artifacts","runtime/cache/test-results","remote/prod/go-live","prior non-allowlisted summary/metadata"]
+reused_source	Z042 / Z042-CAND-004 / 2be2fcf067cfdb8ef1b087ab19a6d6f7c5e934ed
+read_only	true
+backend_allowed	false
+write_request_success_allowed	false
+real_write_action_allowed	false
+pure_static_fallback_allowed	false
+guarded_readonly_not_write_success	true
+route_source_located	true
+route_source_reference	06_前端/lingyi-pc/src/router/index.ts:68
+required_anchors	["workshop-ticket-register-page","workshop-ticket-register-form","workshop-ticket-register-readonly-draft-preview","workshop-ticket-register-validation-hint","z043-register-field-diff-summary","z043-register-cancel-preview","z043-register-readonly-confirm-chain","z043-register-return-source-readback"]
+guarded_entries	["提交登记","提交撤销","只读降级确认"]
+evidence_requirement_present	true
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+implementation_started	false
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+risk_fields_preserved	true
+next_task	TASK-Z043B-27-IMPL

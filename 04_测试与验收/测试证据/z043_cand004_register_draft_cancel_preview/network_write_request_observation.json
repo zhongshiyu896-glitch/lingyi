@@ -1,0 +1,18 @@
+{
+  "task_id": "TASK-Z043B-27-IMPL",
+  "route": "/workshop/tickets/register",
+  "auth_401_count": 1,
+  "auth_401_observations": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "status": 401
+    }
+  ],
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "write_request_success_observed": false,
+  "write_request_successes": [],
+  "write_request_success_allowed": false
+}

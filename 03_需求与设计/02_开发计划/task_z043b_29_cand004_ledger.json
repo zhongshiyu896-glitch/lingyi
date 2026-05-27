@@ -1,0 +1,139 @@
+{
+  "task_id": "TASK-Z043B-29-LEDGER-CAND004",
+  "role": "B Engineer",
+  "candidate_id": "Z043-CAND-004",
+  "title": "工票登记草稿差异校验与撤销预览 guard 可见流",
+  "evidence_only": false,
+  "source_chain": "B26 -> B27 -> B28 -> B29",
+  "head": "20e12d99a7a2c51bd7928c6c4e9809e134a59002",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "ledger_counts": {
+    "ledger_total": 35,
+    "yes_count": 24,
+    "no_count": 11
+  },
+  "yes_paths": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue",
+    "03_需求与设计/02_开发计划/TASK-Z043B-26-PREP_CAND004_工票登记草稿差异撤销预览边界冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z043b_26_cand004_boundary.json",
+    "03_需求与设计/02_开发计划/task_z043b_26_cand004_boundary.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z043B-27-IMPL_CAND004_工票登记草稿差异撤销预览实施报告.md",
+    "03_需求与设计/02_开发计划/task_z043b_27_cand004_impl_result.json",
+    "03_需求与设计/02_开发计划/task_z043b_27_cand004_impl.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z043B-28-REGRESSION-CAND004_工票登记草稿差异撤销预览回归报告.md",
+    "03_需求与设计/02_开发计划/task_z043b_28_cand004_regression_result.json",
+    "03_需求与设计/02_开发计划/task_z043b_28_cand004_regression.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z043B-29-LEDGER-CAND004_工票登记草稿差异撤销预览账本冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z043b_29_cand004_ledger.json",
+    "03_需求与设计/02_开发计划/task_z043b_29_cand004_ledger.tsv",
+    "03_需求与设计/02_开发计划/task_z043b_29_cand004_ledger_freeze.json",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview/workshop_ticket_register_z043_draft_cancel_preview.png",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview_regression/workshop_ticket_register_z043_draft_cancel_preview_regression.png",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview/route_evidence.json",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview_regression/route_evidence.json",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview_regression/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview_regression/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview_regression/network_write_request_observation.json"
+  ],
+  "no_paths": [
+    "06_前端/lingyi-pc/src/api/workshop.ts",
+    "07_后端",
+    "candidate pool",
+    "historical dirty",
+    "log/control dirty",
+    "Z034 residual artifacts",
+    "runtime/cache/test-results",
+    "remote/prod/go-live",
+    "prior runtime_summary/screenshot_metadata/other non-allowlisted summary/metadata",
+    "Z043-CAND-005 / future task artifacts",
+    "any non-CAND004 product path"
+  ],
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+  ],
+  "forbidden_paths_in_yes": [],
+  "api_workshop_touched": false,
+  "route_evidence_frozen": {
+    "route": "/workshop/tickets/register",
+    "http_status": 200,
+    "final_path": "/workshop/tickets/register",
+    "b27_evidence": "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview/route_evidence.json",
+    "b28_evidence": "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview_regression/route_evidence.json"
+  },
+  "screenshots_frozen": {
+    "b27": {
+      "path": "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview/workshop_ticket_register_z043_draft_cancel_preview.png",
+      "png_dimensions": "1440x1200"
+    },
+    "b28": {
+      "path": "04_测试与验收/测试证据/z043_cand004_register_draft_cancel_preview_regression/workshop_ticket_register_z043_draft_cancel_preview_regression.png",
+      "png_dimensions": "1440x1200"
+    }
+  },
+  "runtime_evidence_frozen": {
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true,
+    "guarded_controls_covered": [
+      "提交登记",
+      "提交撤销",
+      "只读降级确认"
+    ],
+    "b27_auth_401_count": 1,
+    "b28_auth_401_count": 1,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "typecheck_frozen": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "scope_guard": {
+    "backend_api_added": false,
+    "real_write_action_added": false,
+    "read_only_boundary_preserved": true,
+    "stage_performed": false,
+    "commit_performed": false,
+    "remote_lifecycle_released": false
+  },
+  "risk_fields_preserved": {
+    "cand004_b27_b28_auth_401_count": "1/1",
+    "cand003_b19_b20_auth_401_count": "1/1",
+    "cand002_b11_b12_auth_401_count": "30/30",
+    "z043_cand001_b03_b04_auth_401_count": "2/2",
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "z042_z041_z040_z039_z038_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false
+  },
+  "forbidden_actions": {
+    "code_changed": false,
+    "browser_typecheck_pytest_rerun": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "started_z043_cand005": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z043B-30-STAGE-CAND004"
+}
