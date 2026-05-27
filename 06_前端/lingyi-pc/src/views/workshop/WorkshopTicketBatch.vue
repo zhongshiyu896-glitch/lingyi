@@ -76,6 +76,57 @@
         }}
       </p>
 
+      <div class="z042-readonly-grid" data-testid="z042-batch-readonly-boundary">
+        <section
+          class="z042-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z042-batch-parse-summary"
+        >
+          <h3>JSON 解析摘要</h3>
+          <p>
+            {{
+              parseSummary
+                ? `本地解析 ${parseSummary.total} 行，可预览 ${parseSummary.valid} 行，失败 ${parseSummary.invalid} 行。`
+                : '等待本地解析；解析结果只用于预览，不会提交批量导入写请求。'
+            }}
+          </p>
+          <p class="z042-meta">
+            request_id={{ readonlyRequestId }} / scenario_tag={{ readonlyScenarioTag }}
+          </p>
+        </section>
+
+        <section
+          class="z042-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z042-batch-failure-explanation"
+        >
+          <h3>失败原因分组</h3>
+          <ul v-if="failureReasonGroups.length > 0" class="z042-failure-list">
+            <li v-for="group in failureReasonGroups" :key="group.code">
+              {{ group.code }}：{{ group.count }} 条，示例 {{ group.sample }}
+            </li>
+          </ul>
+          <p v-else>
+            暂无失败明细；若存在缺字段、反冲缺原因或 scenario_tag 不一致，将按原因分组展示。
+          </p>
+        </section>
+
+        <section
+          class="z042-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z042-batch-retry-guard"
+          data-write-guard="guarded:z042-batch-failure-retry-readonly"
+          data-write-request-success-allowed="false"
+        >
+          <h3>失败重试只读 guard</h3>
+          <p>
+            批量导入、解析后提交与失败重试均保持 guarded/readonly；页面仅记录 request_id 与 scenario_tag，未开放真实写成功路径。
+          </p>
+        </section>
+      </div>
+
       <el-alert
         v-if="batchReceipt"
         type="info"
@@ -184,6 +235,34 @@ const validationRows = ref<Array<{
 
 const canBatch = computed<boolean>(() => permissionStore.state.buttonPermissions.ticket_batch)
 const SCENARIO_PATTERN = /(Z003-WORKSHOP-TICKET-\d{8}-\d{3})/
+const readonlyScenarioTag = 'Z003-WORKSHOP-TICKET-20260527-042'
+const readonlyRequestId = buildWorkshopTicketRequestId({
+  scenarioTag: readonlyScenarioTag,
+  operation: 'batch',
+  idempotencyKey: 'Z042-BATCH-READONLY',
+  sourceRef: 'Z042-BATCH-READONLY',
+  ticketKey: 'Z042-BATCH-READONLY',
+  jobCard: 'Z042-BATCH-READONLY',
+  employeeOrOperator: 'readonly-operator',
+  batchNo: 'Z042-BATCH-GUARD',
+})
+
+const failureReasonGroups = computed<Array<{ code: string; count: number; sample: string }>>(() => {
+  const groups = new Map<string, { code: string; count: number; sample: string }>()
+  validationRows.value.forEach((row) => {
+    const current = groups.get(row.code)
+    if (current) {
+      current.count += 1
+      return
+    }
+    groups.set(row.code, {
+      code: row.code,
+      count: 1,
+      sample: row.message,
+    })
+  })
+  return Array.from(groups.values())
+})
 
 const resetParseState = (): void => {
   parseSummary.value = null
@@ -290,7 +369,7 @@ const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string)
 }
 
 const showRetryGuard = (): void => {
-  guardedFeedback.value = '导入失败重试入口仅提供只读可见状态，未开放写请求。'
+  guardedFeedback.value = `失败重试只读 guard 生效：request_id=${readonlyRequestId}，scenario_tag=${readonlyScenarioTag}，未开放写请求。`
   ElMessage.warning(guardedFeedback.value)
 }
 
@@ -408,5 +487,51 @@ onMounted(async () => {
 .permission-tip {
   margin-top: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.z042-readonly-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.z042-readonly-section {
+  min-height: 124px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--el-fill-color-lighter);
+}
+
+.z042-readonly-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.z042-readonly-section p {
+  margin: 0;
+  line-height: 1.55;
+  color: var(--el-text-color-regular);
+}
+
+.z042-meta {
+  margin-top: 8px !important;
+  font-family: var(--el-font-family);
+  word-break: break-all;
+}
+
+.z042-failure-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--el-text-color-regular);
+}
+
+@media (max-width: 960px) {
+  .z042-readonly-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

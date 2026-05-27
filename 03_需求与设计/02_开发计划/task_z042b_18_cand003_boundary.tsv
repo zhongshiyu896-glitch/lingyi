@@ -1,0 +1,30 @@
+field	value
+task_id	TASK-Z042B-18-PREP
+candidate_id	Z042-CAND-003
+title	工票批量导入失败解释与重试 guard 二轮可见流
+routes	/workshop/tickets/batch
+allowed_files	06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue
+allowed_files_exist	true
+allowed_files_dirty	false
+reused_committed_product_path	true
+reused_source	Z038 / Z038-CAND-002 / 138700cf418fc2453b88bffe930d07cee115c02a
+required_anchors_count	8
+guarded_entries	批量导入;解析后提交;失败重试
+write_request_success_allowed	false
+real_write_action_allowed	false
+pure_static_fallback_allowed	false
+route_source_located	true
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+implementation_started	false
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+remote_lifecycle_parked	true
+push_tag_pr_release	false
+production_readback	false
+go_live	false
+project_completion	false
+next_task	TASK-Z042B-19-IMPL
+run_this_task	false

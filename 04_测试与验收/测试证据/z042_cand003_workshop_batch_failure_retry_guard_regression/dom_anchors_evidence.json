@@ -1,0 +1,24 @@
+{
+  "required_anchors": [
+    "workshop-ticket-batch-page",
+    "workshop-ticket-batch-json-input",
+    "workshop-ticket-batch-readonly-preview",
+    "workshop-ticket-batch-failed-items-table",
+    "workshop-ticket-batch-submit-button",
+    "z042-batch-parse-summary",
+    "z042-batch-failure-explanation",
+    "z042-batch-retry-guard"
+  ],
+  "observed": {
+    "workshop-ticket-batch-page": true,
+    "workshop-ticket-batch-json-input": true,
+    "workshop-ticket-batch-readonly-preview": true,
+    "workshop-ticket-batch-failed-items-table": true,
+    "workshop-ticket-batch-submit-button": true,
+    "z042-batch-parse-summary": true,
+    "z042-batch-failure-explanation": true,
+    "z042-batch-retry-guard": true
+  },
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

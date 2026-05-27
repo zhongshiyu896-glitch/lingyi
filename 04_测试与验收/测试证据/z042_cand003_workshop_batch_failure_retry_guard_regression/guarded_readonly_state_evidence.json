@@ -1,0 +1,48 @@
+{
+  "guarded_entries": [
+    "批量导入",
+    "解析后提交",
+    "失败重试"
+  ],
+  "guarded_entries_covered": true,
+  "controls": {
+    "batchImport": {
+      "label": "批量导入",
+      "text": "批量导入只读预览",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:workshop-ticket-batch-readonly"
+    },
+    "parseSubmit": {
+      "label": "解析后提交",
+      "text": "失败重试只读 guard 批量导入、解析后提交与失败重试均保持 guarded/readonly；页面仅记录 request_id 与 scenario_tag，未开放真实写成功路径。",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:z042-batch-failure-retry-readonly"
+    },
+    "failureRetry": {
+      "label": "失败重试",
+      "text": "导入失败重试入口",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataGuardState": null,
+      "dataWriteGuard": "guarded:workshop-ticket-batch-failed-retry-readonly"
+    },
+    "parseSummary": {
+      "label": "JSON 解析摘要",
+      "text": "JSON 解析摘要本地解析 2 行，可预览 1 行，失败 1 行。 request_id=Z003-WORKSHOP-TICKET-20260527-042-RW-B-C49-C49-C49-C49-DDE-D20 / scenario_tag=Z003-WORKSHOP-TICKET-20260527-042",
+      "dataReadonlyBoundary": "true"
+    },
+    "failureExplanation": {
+      "label": "失败原因分组",
+      "text": "失败原因分组LOCAL_VALIDATION_MISSING_FIELDS：1 条，示例 缺少字段：job_card, process_name",
+      "dataReadonlyBoundary": "true"
+    }
+  },
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "read_only_boundary_preserved": true
+}

@@ -1,0 +1,7 @@
+{
+  "route": "/workshop/tickets/batch",
+  "requested_url": "http://127.0.0.1:5178/workshop/tickets/batch",
+  "http_status": 200,
+  "final_url": "http://127.0.0.1:5178/workshop/tickets/batch",
+  "route_source_located": true
+}

@@ -1,0 +1,101 @@
+{
+  "task_id": "TASK-Z042B-20-REGRESSION-CAND003",
+  "role": "B Engineer",
+  "candidate_id": "Z042-CAND-003",
+  "head": "0fec11f8654d5c8ac6282a3d72ec1fb6fd831b15",
+  "branch": "codex/sprint4-seal",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"
+  ],
+  "allowed_files_only": true,
+  "api_workshop_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "route_checked": "/workshop/tickets/batch",
+  "route_http_status": 200,
+  "route_evidence": "04_测试与验收/测试证据/z042_cand003_workshop_batch_failure_retry_guard_regression/route_evidence.json",
+  "screenshot_path": "04_测试与验收/测试证据/z042_cand003_workshop_batch_failure_retry_guard_regression/z042_cand003_workshop_batch_failure_retry_guard_regression.png",
+  "screenshot_format": "PNG",
+  "screenshot_png_dimensions": "1440x1200",
+  "dom_anchors_evidence": "04_测试与验收/测试证据/z042_cand003_workshop_batch_failure_retry_guard_regression/dom_anchors_evidence.json",
+  "required_anchors": [
+    "workshop-ticket-batch-page",
+    "workshop-ticket-batch-json-input",
+    "workshop-ticket-batch-readonly-preview",
+    "workshop-ticket-batch-failed-items-table",
+    "workshop-ticket-batch-submit-button",
+    "z042-batch-parse-summary",
+    "z042-batch-failure-explanation",
+    "z042-batch-retry-guard"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_readonly_state_evidence": "04_测试与验收/测试证据/z042_cand003_workshop_batch_failure_retry_guard_regression/guarded_readonly_state_evidence.json",
+  "guarded_entries": [
+    "批量导入",
+    "解析后提交",
+    "失败重试"
+  ],
+  "guarded_entries_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "network_write_request_observation": "04_测试与验收/测试证据/z042_cand003_workshop_batch_failure_retry_guard_regression/network_write_request_observation.json",
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "guarded_readonly_not_write_success": true,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "dev_server_url": "http://127.0.0.1:5178/",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "risk_fields_preserved": {
+    "current_candidate": {
+      "candidate_id": "Z042-CAND-003",
+      "b19_auth_401_count": 1,
+      "b20_auth_401_count": 1,
+      "runtime_readonly_fallback_risk": true,
+      "write_requests_observed_count": 0,
+      "write_request_success_observed": false,
+      "write_request_success_allowed": false,
+      "guarded_readonly_not_write_success": true
+    },
+    "previous_candidate": {
+      "candidate_id": "Z042-CAND-002",
+      "auth_401_count": 25,
+      "runtime_readonly_fallback_risk": true
+    },
+    "prior_fallback_risks": [
+      "Z042-CAND-001 readonly fallback risk",
+      "Z041 readonly fallback risk",
+      "Z040 readonly fallback risk",
+      "Z039 readonly fallback risk",
+      "Z038 readonly fallback risks"
+    ],
+    "process_risks": [
+      "B28 shell_wrapper_anomaly",
+      "Z033 skipped_only",
+      "Z035 screenshot_missing_risk"
+    ],
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "next_task": "TASK-Z042B-21-LEDGER-CAND003"
+}
