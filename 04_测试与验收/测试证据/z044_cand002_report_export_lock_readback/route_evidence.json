@@ -1,0 +1,129 @@
+{
+  "base_url": "http://127.0.0.1:5174",
+  "routes_checked": [
+    "/financial/financialReport/customerReconciliationReport",
+    "/financial/financialProcess",
+    "/finance/bank-flow",
+    "/reportManage/collaborationReport/factoryProductStockReport",
+    "/reports/catalog"
+  ],
+  "route_count": 5,
+  "all_http_200": true,
+  "final_catalog_route_preserved": true,
+  "evidence": [
+    {
+      "route": "/financial/financialReport/customerReconciliationReport",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&source_entry=customer-reconciliation-report",
+      "final_path": "/reports/catalog",
+      "query": {
+        "parity": "financial-customer-reconciliation-report",
+        "readonly_probe": "1",
+        "source_trace": "z042-report-parity-source-trace",
+        "export_guard": "z042-report-export-guard-matrix",
+        "fallback": "z042-report-fallback-explanation",
+        "z043_export_eligibility": "readonly-export-disabled",
+        "z043_source_grouping": "finance-and-collaboration-parity",
+        "z043_disabled_download_reason": "write-success-not-allowed",
+        "z043_final_route": "/reports/catalog",
+        "z044_source_readback": "finance-collaboration-source-group",
+        "z044_export_lock_reason": "readonly-export-lock",
+        "z044_disabled_download_readback": "download-disabled-readback",
+        "z044_final_route_readback": "/reports/catalog",
+        "source_entry": "customer-reconciliation-report"
+      },
+      "report_catalog_visible": true
+    },
+    {
+      "route": "/financial/financialProcess",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=financial-process-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&source_entry=financial-process",
+      "final_path": "/reports/catalog",
+      "query": {
+        "parity": "financial-process-report",
+        "readonly_probe": "1",
+        "source_trace": "z042-report-parity-source-trace",
+        "export_guard": "z042-report-export-guard-matrix",
+        "fallback": "z042-report-fallback-explanation",
+        "z043_export_eligibility": "readonly-export-disabled",
+        "z043_source_grouping": "finance-and-collaboration-parity",
+        "z043_disabled_download_reason": "write-success-not-allowed",
+        "z043_final_route": "/reports/catalog",
+        "z044_source_readback": "finance-collaboration-source-group",
+        "z044_export_lock_reason": "readonly-export-lock",
+        "z044_disabled_download_readback": "download-disabled-readback",
+        "z044_final_route_readback": "/reports/catalog",
+        "source_entry": "financial-process"
+      },
+      "report_catalog_visible": true
+    },
+    {
+      "route": "/finance/bank-flow",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=finance-bank-flow-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&source_entry=bank-flow",
+      "final_path": "/reports/catalog",
+      "query": {
+        "parity": "finance-bank-flow-report",
+        "readonly_probe": "1",
+        "source_trace": "z042-report-parity-source-trace",
+        "export_guard": "z042-report-export-guard-matrix",
+        "fallback": "z042-report-fallback-explanation",
+        "z043_export_eligibility": "readonly-export-disabled",
+        "z043_source_grouping": "finance-and-collaboration-parity",
+        "z043_disabled_download_reason": "write-success-not-allowed",
+        "z043_final_route": "/reports/catalog",
+        "z044_source_readback": "finance-collaboration-source-group",
+        "z044_export_lock_reason": "readonly-export-lock",
+        "z044_disabled_download_readback": "download-disabled-readback",
+        "z044_final_route_readback": "/reports/catalog",
+        "source_entry": "bank-flow"
+      },
+      "report_catalog_visible": true
+    },
+    {
+      "route": "/reportManage/collaborationReport/factoryProductStockReport",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=collaboration-factory-product-stock-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&source_entry=factory-product-stock-report",
+      "final_path": "/reports/catalog",
+      "query": {
+        "parity": "collaboration-factory-product-stock-report",
+        "readonly_probe": "1",
+        "source_trace": "z042-report-parity-source-trace",
+        "export_guard": "z042-report-export-guard-matrix",
+        "fallback": "z042-report-fallback-explanation",
+        "z043_export_eligibility": "readonly-export-disabled",
+        "z043_source_grouping": "finance-and-collaboration-parity",
+        "z043_disabled_download_reason": "write-success-not-allowed",
+        "z043_final_route": "/reports/catalog",
+        "z044_source_readback": "finance-collaboration-source-group",
+        "z044_export_lock_reason": "readonly-export-lock",
+        "z044_disabled_download_readback": "download-disabled-readback",
+        "z044_final_route_readback": "/reports/catalog",
+        "source_entry": "factory-product-stock-report"
+      },
+      "report_catalog_visible": true
+    },
+    {
+      "route": "/reports/catalog",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog",
+      "final_path": "/reports/catalog",
+      "query": {
+        "parity": "z042-report-parity-source-guard",
+        "readonly_probe": "1",
+        "source_trace": "z042-report-parity-source-trace",
+        "export_guard": "z042-report-export-guard-matrix",
+        "fallback": "z042-report-fallback-explanation",
+        "z043_export_eligibility": "readonly-export-disabled",
+        "z043_source_grouping": "finance-and-collaboration-parity",
+        "z043_disabled_download_reason": "write-success-not-allowed",
+        "z043_final_route": "/reports/catalog",
+        "z044_source_readback": "finance-collaboration-source-group",
+        "z044_export_lock_reason": "readonly-export-lock",
+        "z044_disabled_download_readback": "download-disabled-readback",
+        "z044_final_route_readback": "/reports/catalog"
+      },
+      "report_catalog_visible": true
+    }
+  ]
+}

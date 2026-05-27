@@ -1,0 +1,70 @@
+{
+  "task_id": "TASK-Z044B-13-LEDGER-CAND002",
+  "candidate_id": "Z044-CAND-002",
+  "freeze_status": "LEDGER_FROZEN",
+  "source_chain": "B10 -> B11 -> B12 -> B13",
+  "evidence_only": false,
+  "ledger_counts": {
+    "ledger_total": 38,
+    "yes_count": 25,
+    "no_count": 13
+  },
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "forbidden_paths_in_yes": [],
+  "routes_passed": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "http_status": 200,
+      "final_path": "/reports/catalog"
+    },
+    "/financial/financialProcess": {
+      "http_status": 200,
+      "final_path": "/reports/catalog"
+    },
+    "/finance/bank-flow": {
+      "http_status": 200,
+      "final_path": "/reports/catalog"
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "http_status": 200,
+      "final_path": "/reports/catalog"
+    },
+    "/reports/catalog": {
+      "http_status": 200,
+      "final_path": "/reports/catalog"
+    }
+  },
+  "screenshots_frozen": {
+    "b11_png_dimensions": "1440x1200",
+    "b12_png_dimensions": "1440x1200"
+  },
+  "runtime_evidence_frozen": {
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true,
+    "guarded_controls_covered": true,
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "auth_401_count_b11": 25,
+    "auth_401_count_b12": 25,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck_exit_code": 0,
+  "ReportCatalog_vue_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "risk_fields_preserved": true,
+  "next_task": "TASK-Z044B-14-STAGE-CAND002"
+}

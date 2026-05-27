@@ -1,0 +1,135 @@
+{
+  "task_id": "TASK-Z044B-12-REGRESSION-CAND002",
+  "role": "B Engineer",
+  "candidate_id": "Z044-CAND-002",
+  "head": "61c2bdff0ceea07c46e39477e51fbf0f1b0a7700",
+  "branch": "codex/sprint4-seal",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "route_evidence": {
+    "path": "04_测试与验收/测试证据/z044_cand002_report_export_lock_readback_regression/route_evidence.json",
+    "routes_checked": [
+      "/financial/financialReport/customerReconciliationReport",
+      "/financial/financialProcess",
+      "/finance/bank-flow",
+      "/reportManage/collaborationReport/factoryProductStockReport",
+      "/reports/catalog"
+    ],
+    "route_http_statuses": {
+      "/financial/financialReport/customerReconciliationReport": 200,
+      "/financial/financialProcess": 200,
+      "/finance/bank-flow": 200,
+      "/reportManage/collaborationReport/factoryProductStockReport": 200,
+      "/reports/catalog": 200
+    },
+    "final_paths": {
+      "/financial/financialReport/customerReconciliationReport": "/reports/catalog",
+      "/financial/financialProcess": "/reports/catalog",
+      "/finance/bank-flow": "/reports/catalog",
+      "/reportManage/collaborationReport/factoryProductStockReport": "/reports/catalog",
+      "/reports/catalog": "/reports/catalog"
+    }
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z044_cand002_report_export_lock_readback_regression/reports_catalog_regression_screenshot.png",
+    "png": true,
+    "dimensions": {
+      "width": 1440,
+      "height": 1200
+    }
+  },
+  "runtime_dom_anchors": {
+    "path": "04_测试与验收/测试证据/z044_cand002_report_export_lock_readback_regression/dom_anchors_evidence.json",
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true,
+    "anchors": [
+      "z044-report-source-readback-group",
+      "z044-report-export-lock-reason",
+      "z044-report-disabled-download-readback",
+      "z044-report-final-route-readback",
+      "z044-report-parity-entry-audit",
+      "z044-report-readonly-write-guard",
+      "z044-report-catalog-eligibility-table",
+      "z044-report-write-success-blocker"
+    ]
+  },
+  "guarded_readonly_state": {
+    "path": "04_测试与验收/测试证据/z044_cand002_report_export_lock_readback_regression/guarded_readonly_state_evidence.json",
+    "guarded_entries_covered": [
+      "报表导出",
+      "财务下载",
+      "协同下载",
+      "明细导出"
+    ],
+    "all_covered": true,
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false
+  },
+  "network_write_observation": {
+    "path": "04_测试与验收/测试证据/z044_cand002_report_export_lock_readback_regression/network_write_request_observation.json",
+    "auth_401_count": 25,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "scope_guard": {
+    "allowed_files_only": true,
+    "ReportCatalog_vue_touched": false,
+    "backend_api_added": false,
+    "real_write_action_added": false,
+    "read_only_boundary_preserved": true,
+    "dirty_intersections": [],
+    "dev_server_started": true,
+    "dev_server_stopped": true,
+    "cached_empty": true,
+    "head_tag_empty": true,
+    "worktree_check_pass": true,
+    "stage_performed": false,
+    "commit_performed": false,
+    "remote_lifecycle_released": false
+  },
+  "risk_fields_preserved": {
+    "z044_cand002_b11_readonly_fallback_risk": "auth_401_count=25",
+    "z044_cand002_b12_observed_auth_401_count": 25,
+    "z044_cand001_readonly_fallback_risk": "B03/B04 auth_401_count=6/6",
+    "z043_fallback_risks": {
+      "CAND005": "4/4",
+      "CAND004": "1/1",
+      "CAND003": "1/1",
+      "CAND002": "30/30",
+      "CAND001": "2/2"
+    },
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "z042_z041_z040_z039_z038_fallback_risks": true,
+    "guarded_readonly_not_write_success": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "code_changed": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "z044_cand003_started": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z044B-13-LEDGER-CAND002"
+}

@@ -1,0 +1,35 @@
+{
+  "path": "04_测试与验收/测试证据/z044_cand002_report_export_lock_readback_regression/guarded_readonly_state_evidence.json",
+  "guarded_entries_covered": [
+    "报表导出",
+    "财务下载",
+    "协同下载",
+    "明细导出"
+  ],
+  "details": [
+    {
+      "entry": "报表导出",
+      "visible": true,
+      "readonly_or_guarded": true
+    },
+    {
+      "entry": "财务下载",
+      "visible": true,
+      "readonly_or_guarded": true
+    },
+    {
+      "entry": "协同下载",
+      "visible": true,
+      "readonly_or_guarded": true
+    },
+    {
+      "entry": "明细导出",
+      "visible": true,
+      "readonly_or_guarded": true
+    }
+  ],
+  "all_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false
+}

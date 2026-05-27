@@ -1,0 +1,155 @@
+{
+  "task_id": "TASK-Z044B-10-PREP",
+  "role": "B Engineer",
+  "head": "61c2bdff0ceea07c46e39477e51fbf0f1b0a7700",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "candidate_id": "Z044-CAND-002",
+  "boundary": {
+    "title": "报表目录导出锁定原因与来源 readback 可见流",
+    "page_scope": "财务/协同报表 parity 入口与 /reports/catalog 的只读导出锁定 readback",
+    "routes": [
+      "/financial/financialReport/customerReconciliationReport",
+      "/financial/financialProcess",
+      "/finance/bank-flow",
+      "/reportManage/collaborationReport/factoryProductStockReport",
+      "/reports/catalog"
+    ],
+    "allowed_files": [
+      "06_前端/lingyi-pc/src/router/index.ts",
+      "06_前端/lingyi-pc/src/api/report.ts"
+    ],
+    "forbidden": [
+      "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+      "current 19 tracked dirty files",
+      "historical product/test dirty",
+      "log/control dirty",
+      "Z034 residual artifacts",
+      "07_后端",
+      "runtime/cache/test-results",
+      "remote/prod/go-live",
+      "prior non-allowlisted summary/metadata",
+      "candidate pool/control-plane outside this task"
+    ],
+    "reused_source": "Z043 / Z043-CAND-002 / d26a2c8a0faadd1f2faccd265eda99de845a774c",
+    "read_only": true,
+    "backend_allowed": false,
+    "write_request_success_allowed": false,
+    "real_write_action_allowed": false,
+    "pure_static_fallback_allowed": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "allowed_files_status": {
+    "06_前端/lingyi-pc/src/router/index.ts": {
+      "exists": true,
+      "dirty": false
+    },
+    "06_前端/lingyi-pc/src/api/report.ts": {
+      "exists": true,
+      "dirty": false
+    }
+  },
+  "route_source_status": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts"
+    },
+    "/financial/financialProcess": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts"
+    },
+    "/finance/bank-flow": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts"
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts"
+    },
+    "/reports/catalog": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts"
+    }
+  },
+  "required_anchors": [
+    "z044-report-source-readback-group",
+    "z044-report-export-lock-reason",
+    "z044-report-disabled-download-readback",
+    "z044-report-final-route-readback",
+    "z044-report-parity-entry-audit",
+    "z044-report-readonly-write-guard",
+    "z044-report-catalog-eligibility-table",
+    "z044-report-write-success-blocker"
+  ],
+  "guarded_entries": [
+    "报表导出",
+    "财务下载",
+    "协同下载",
+    "明细导出"
+  ],
+  "evidence_requirement": {
+    "screenshot": "/reports/catalog",
+    "route_evidence": [
+      "/financial/financialReport/customerReconciliationReport",
+      "/financial/financialProcess",
+      "/finance/bank-flow",
+      "/reportManage/collaborationReport/factoryProductStockReport",
+      "/reports/catalog"
+    ],
+    "runtime_dom_anchors": true,
+    "guarded_readonly_state_evidence": [
+      "报表导出",
+      "财务下载",
+      "协同下载",
+      "明细导出"
+    ],
+    "network_write_request_observation": true,
+    "auth_401_handling": "readonly fallback risk only",
+    "guarded_readonly_not_write_success": true,
+    "write_requests_observed_count_requirement": "0 or no real write success",
+    "typecheck_required": {
+      "command": "npm run typecheck",
+      "workdir": "06_前端/lingyi-pc",
+      "exit_code_required": true
+    },
+    "dev_server_started_stopped_required": true
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "risk_fields_preserved": {
+    "z044_cand001_readonly_fallback_risk": "B03/B04 auth_401_count=6/6",
+    "z043_fallback_risks": {
+      "CAND005": "4/4",
+      "CAND004": "1/1",
+      "CAND003": "1/1",
+      "CAND002": "30/30",
+      "CAND001": "2/2"
+    },
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "z042_z041_z040_z039_z038_fallback_risks": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "code_changed": false,
+    "validation_rerun": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "b11_implementation_started": false,
+    "z044_cand003_started": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z044B-11-IMPL"
+}

@@ -10,6 +10,10 @@ const z042ReportParityQuery = {
   z043_source_grouping: 'finance-and-collaboration-parity',
   z043_disabled_download_reason: 'write-success-not-allowed',
   z043_final_route: '/reports/catalog',
+  z044_source_readback: 'finance-collaboration-source-group',
+  z044_export_lock_reason: 'readonly-export-lock',
+  z044_disabled_download_readback: 'download-disabled-readback',
+  z044_final_route_readback: '/reports/catalog',
 }
 
 const routes: RouteRecordRaw[] = [

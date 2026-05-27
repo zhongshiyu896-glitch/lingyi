@@ -1,0 +1,37 @@
+field	value
+task_id	TASK-Z044B-13-LEDGER-CAND002
+role	B Engineer
+candidate_id	Z044-CAND-002
+source_chain	B10 -> B11 -> B12 -> B13
+evidence_only	false
+ledger_total	38
+yes_count	25
+no_count	13
+yes_no_intersection	[]
+all_yes_files_exist	true
+ignored_yes_paths	[]
+frontend_yes_paths	06_前端/lingyi-pc/src/router/index.ts; 06_前端/lingyi-pc/src/api/report.ts
+forbidden_paths_in_yes	[]
+routes	/financial/financialReport/customerReconciliationReport=200 final_path=/reports/catalog; /financial/financialProcess=200 final_path=/reports/catalog; /finance/bank-flow=200 final_path=/reports/catalog; /reportManage/collaborationReport/factoryProductStockReport=200 final_path=/reports/catalog; /reports/catalog=200 final_path=/reports/catalog
+screenshots	B11=PNG 1440x1200; B12=PNG 1440x1200
+anchors_observed_count	8
+anchors_all_observed	true
+guarded_controls_covered	报表导出; 财务下载; 协同下载; 明细导出
+dataReadonlyBoundary	true
+dataWriteRequestSuccessAllowed	false
+dataRealWriteActionAdded	false
+auth_401_count	B11=25; B12=25
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_exit_code	0
+ReportCatalog_vue_touched	false
+backend_api_added	false
+real_write_action_added	false
+read_only_boundary_preserved	true
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+risk_fields_preserved	true
+next_task	TASK-Z044B-14-STAGE-CAND002

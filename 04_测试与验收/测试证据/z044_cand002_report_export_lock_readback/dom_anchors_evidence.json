@@ -1,0 +1,49 @@
+{
+  "path": "04_测试与验收/测试证据/z044_cand002_report_export_lock_readback/dom_anchors_evidence.json",
+  "anchors": [
+    "z044-report-source-readback-group",
+    "z044-report-export-lock-reason",
+    "z044-report-disabled-download-readback",
+    "z044-report-final-route-readback",
+    "z044-report-parity-entry-audit",
+    "z044-report-readonly-write-guard",
+    "z044-report-catalog-eligibility-table",
+    "z044-report-write-success-blocker"
+  ],
+  "details": [
+    {
+      "anchor": "z044-report-source-readback-group",
+      "observed": true
+    },
+    {
+      "anchor": "z044-report-export-lock-reason",
+      "observed": true
+    },
+    {
+      "anchor": "z044-report-disabled-download-readback",
+      "observed": true
+    },
+    {
+      "anchor": "z044-report-final-route-readback",
+      "observed": true
+    },
+    {
+      "anchor": "z044-report-parity-entry-audit",
+      "observed": true
+    },
+    {
+      "anchor": "z044-report-readonly-write-guard",
+      "observed": true
+    },
+    {
+      "anchor": "z044-report-catalog-eligibility-table",
+      "observed": true
+    },
+    {
+      "anchor": "z044-report-write-success-blocker",
+      "observed": true
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}
