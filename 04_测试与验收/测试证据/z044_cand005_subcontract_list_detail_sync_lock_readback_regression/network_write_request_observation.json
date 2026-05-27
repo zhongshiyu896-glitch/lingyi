@@ -1,0 +1,18 @@
+{
+  "task_id": "TASK-Z044B-36-REGRESSION-CAND005",
+  "candidate_id": "Z044-CAND-005",
+  "evidence_type": "regression_network_write_request_observation",
+  "auth_401_count": 4,
+  "auth_401_urls": [
+    "http://127.0.0.1:5174/api/auth/me",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20"
+  ],
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "write_request_success_observed": false,
+  "write_request_successes": [],
+  "write_request_success_allowed": false
+}

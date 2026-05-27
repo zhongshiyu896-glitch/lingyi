@@ -1,0 +1,48 @@
+{
+  "task_id": "TASK-Z044B-36-REGRESSION-CAND005",
+  "candidate_id": "Z044-CAND-005",
+  "evidence_type": "regression_dom_anchors_evidence",
+  "required_anchors": [
+    "z044-subcontract-list-detail-diff",
+    "z044-subcontract-readback-consistency",
+    "z044-subcontract-sync-lock-reason",
+    "z044-subcontract-export-print-readonly",
+    "z044-subcontract-material-parity-readback",
+    "z044-subcontract-guarded-action-matrix",
+    "z044-subcontract-network-write-blocker",
+    "z044-subcontract-write-success-blocker"
+  ],
+  "selector_contract": "id or data-testid",
+  "list_route_anchors": {
+    "z044-subcontract-list-detail-diff": true,
+    "z044-subcontract-readback-consistency": true,
+    "z044-subcontract-sync-lock-reason": true,
+    "z044-subcontract-export-print-readonly": true,
+    "z044-subcontract-material-parity-readback": true,
+    "z044-subcontract-guarded-action-matrix": true,
+    "z044-subcontract-network-write-blocker": true,
+    "z044-subcontract-write-success-blocker": true
+  },
+  "detail_route_anchors": {
+    "z044-subcontract-list-detail-diff": true,
+    "z044-subcontract-readback-consistency": true,
+    "z044-subcontract-sync-lock-reason": true,
+    "z044-subcontract-export-print-readonly": true,
+    "z044-subcontract-material-parity-readback": true,
+    "z044-subcontract-guarded-action-matrix": true,
+    "z044-subcontract-network-write-blocker": true,
+    "z044-subcontract-write-success-blocker": true
+  },
+  "observed_anchors": [
+    "z044-subcontract-list-detail-diff",
+    "z044-subcontract-readback-consistency",
+    "z044-subcontract-sync-lock-reason",
+    "z044-subcontract-export-print-readonly",
+    "z044-subcontract-material-parity-readback",
+    "z044-subcontract-guarded-action-matrix",
+    "z044-subcontract-network-write-blocker",
+    "z044-subcontract-write-success-blocker"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

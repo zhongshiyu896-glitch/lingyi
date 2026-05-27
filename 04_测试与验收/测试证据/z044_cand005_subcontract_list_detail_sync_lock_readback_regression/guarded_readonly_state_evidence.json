@@ -1,0 +1,164 @@
+{
+  "task_id": "TASK-Z044B-36-REGRESSION-CAND005",
+  "candidate_id": "Z044-CAND-005",
+  "evidence_type": "regression_guarded_readonly_state_evidence",
+  "guarded_entries_required": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "guarded_entries_observed": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "guarded_entries_observed_count": 8,
+  "guarded_all_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "raw_guarded_entries": [
+    {
+      "entry": "新建外发单",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "发料",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "回料",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "验货",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "结算预览",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "同步重试",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "导出",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "打印",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "新建外发单",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "发料",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "回料",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "验货",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "结算预览",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "同步重试",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "导出",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    },
+    {
+      "entry": "打印",
+      "dataReadonlyBoundary": "true",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteGuard": "guarded:readonly"
+    }
+  ],
+  "dataReadonlyBoundaryAllObserved": true,
+  "dataWriteRequestSuccessAllowedAllObserved": true,
+  "dataRealWriteActionAddedAllObserved": true,
+  "semantic_runtime_fact_changed": false
+}

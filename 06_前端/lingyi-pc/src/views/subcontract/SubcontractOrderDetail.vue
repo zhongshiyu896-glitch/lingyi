@@ -13,6 +13,102 @@
           <el-button data-testid="subcontract-detail-back" @click="goBack">返回</el-button>
         </div>
       </template>
+      <section
+        class="z044-subcontract-panel"
+        data-testid="z044-subcontract-list-detail-diff"
+        data-readonly-boundary="true"
+        data-write-request-success-allowed="false"
+        data-real-write-action-added="false"
+      >
+        <div class="z044-panel-header">
+          <strong>详情 readback 差异与同步锁定</strong>
+          <el-tag type="warning" effect="plain">Z044 readonly</el-tag>
+        </div>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="列表/详情差异">
+            <span>{{ z044ListDetailDiff }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="readback 一致性">
+            <span
+              data-testid="z044-subcontract-readback-consistency"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z044ReadbackConsistency }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="同步锁定原因">
+            <span
+              data-testid="z044-subcontract-sync-lock-reason"
+              data-guard-state="guarded-readonly"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z044SyncLockReason }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="导出/打印只读">
+            <span
+              data-testid="z044-subcontract-export-print-readonly"
+              data-guard-state="guarded-readonly"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z044ExportPrintReadonly }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="materialPurchase parity 来源">
+            <span
+              data-testid="z044-subcontract-material-parity-readback"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z044MaterialParityReadback }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="network/write blocker">
+            <span
+              data-testid="z044-subcontract-network-write-blocker"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z044NetworkWriteBlocker }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="write success blocker" :span="2">
+            <span
+              data-testid="z044-subcontract-write-success-blocker"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z044WriteSuccessBlocker }}
+            </span>
+          </el-descriptions-item>
+        </el-descriptions>
+        <div class="z044-guard-actions" data-testid="z044-subcontract-guarded-action-matrix">
+          <el-tag
+            v-for="entry in z044GuardEntries"
+            :key="entry"
+            type="info"
+            effect="plain"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            data-guard-state="guarded-readonly"
+            data-readonly-boundary="true"
+            data-write-request-success-allowed="false"
+            data-real-write-action-added="false"
+            :data-guard-entry="entry"
+          >
+            {{ entry }} guarded/readonly
+          </el-tag>
+        </div>
+      </section>
       <el-skeleton v-if="!permissionReady" :rows="4" animated data-testid="subcontract-detail-loading-state" />
       <el-empty
         v-else-if="!canRead"
@@ -698,6 +794,7 @@ const settlementForm = reactive({
 const readonlyGuardActions = ['发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
 const z042GuardEntries = ['新建外发单', '发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
 const z043GuardEntries = z042GuardEntries
+const z044GuardEntries = z042GuardEntries
 const z042ParitySource = computed<{ label: string; finalRoute: string }>(() => {
   const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
   if (raw === 'material-purchase') {
@@ -734,6 +831,37 @@ const z043MaterialParitySource = computed<string>(() => {
   }
   return `${z042ParitySource.value.finalRoute}；direct detail route readonly readback`
 })
+const z044ListDetailDiff = computed<string>(() =>
+  detail.value
+    ? `${detail.value.subcontract_no} / ${detail.value.supplier} / ${statusLabel(detail.value.status)} 与列表行同步状态做只读差异对照`
+    : '未带 id 时仍展示详情 readback fallback，不回写列表或触发同步'
+)
+const z044ReadbackConsistency = computed<string>(() =>
+  detail.value
+    ? `详情主字段、发料/回料同步状态与列表 readback 使用同一只读边界`
+    : 'missing id detail route 仅记录 readback 一致性要求，等待列表入口补充 id',
+)
+const z044SyncLockReason = computed<string>(() => {
+  const issue = stockSyncLabel(detail.value?.latest_issue_sync_status)
+  const receipt = stockSyncLabel(detail.value?.latest_receipt_sync_status)
+  if (issue || receipt) {
+    return `发料:${issue || '未入列'} / 回料:${receipt || '未入列'}；同步重试锁定为 guarded/readonly`
+  }
+  return '详情未加载或无同步异常时，同步重试仍保持锁定，只展示原因'
+})
+const z044ExportPrintReadonly =
+  '导出/打印只读禁用：本地候选只允许 readback，不生成下载、打印或后端写请求'
+const z044MaterialParityReadback = computed<string>(() => {
+  const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  if (raw === 'material-purchase') {
+    return '/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase -> detail readback'
+  }
+  return 'direct subcontract detail；materialPurchase parity 来源由列表路由承接'
+})
+const z044NetworkWriteBlocker =
+  'network/write blocker：新建、发料、回料、验货、结算预览、同步、导出、打印均不得形成真实写请求成功'
+const z044WriteSuccessBlocker =
+  'write success blocker：dataWriteRequestSuccessAllowed=false，dataRealWriteActionAdded=false，guarded readonly 不等于写成功'
 
 const buildWriteCarrier = <T extends SubcontractWriteOperation>(
   operation: T,
@@ -1157,6 +1285,25 @@ onMounted(async () => {
 
 .z043-panel-header,
 .z043-guard-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.z044-subcontract-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-blank);
+}
+
+.z044-panel-header,
+.z044-guard-actions {
   display: flex;
   align-items: center;
   gap: 8px;

@@ -1,0 +1,15 @@
+{
+  "task_id": "TASK-Z044B-35-IMPL",
+  "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/network_write_request_observation.json",
+  "auth_401_count": 3,
+  "auth_401_urls": [
+    "http://127.0.0.1:5174/api/auth/me",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20"
+  ],
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_requests_observed": [],
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false
+}

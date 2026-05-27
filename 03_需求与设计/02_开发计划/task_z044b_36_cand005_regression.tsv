@@ -1,0 +1,39 @@
+field	value
+task_id	TASK-Z044B-36-REGRESSION-CAND005
+role	B Engineer
+candidate_id	Z044-CAND-005
+code_modified_in_this_task	false
+changed_files	06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue;06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue
+allowed_files_only	true
+api_subcontract_touched	false
+route_subcontract_list	HTTP 200 final_path=/subcontract/list
+route_subcontract_detail	HTTP 200 final_path=/subcontract/detail
+route_material_purchase	HTTP 200 final_path=/subcontract/list?parity=material-purchase
+material_purchase_parity_recorded	true
+list_screenshot	04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback_regression/subcontract_list_regression_screenshot.png PNG 1440x1200
+detail_screenshot	04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback_regression/subcontract_detail_regression_screenshot.png PNG 1440x1200
+runtime_dom_anchors	8/8
+guarded_entries	新建外发单;发料;回料;验货;结算预览;同步重试;导出;打印
+dataReadonlyBoundary	true
+dataWriteRequestSuccessAllowed	false
+dataRealWriteActionAdded	false
+auth_401_count	4
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_command	npm run typecheck
+typecheck_workdir	06_前端/lingyi-pc
+typecheck_exit_code	0
+dev_server_started	true
+dev_server_stopped	true
+backend_api_added	false
+real_write_action_added	false
+read_only_boundary_preserved	true
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+next_task	TASK-Z044B-37-LEDGER-CAND005

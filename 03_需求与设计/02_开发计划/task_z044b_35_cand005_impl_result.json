@@ -1,0 +1,137 @@
+{
+  "task_id": "TASK-Z044B-35-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z044-CAND-005",
+  "head": "b343e7cacadec997cdfd62ab3682baf45e270f9a",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "allowed_files_only": true,
+  "api_subcontract_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "material_purchase_parity_recorded": true,
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "route_evidence": {
+    "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/route_evidence.json",
+    "routes": [
+      {
+        "route": "/subcontract/list",
+        "http_status": 200,
+        "final_path": "/subcontract/list"
+      },
+      {
+        "route": "/subcontract/detail",
+        "http_status": 200,
+        "final_path": "/subcontract/detail"
+      },
+      {
+        "route": "/materialPurchase/materialPurchaseProcess",
+        "http_status": 200,
+        "final_path": "/subcontract/list?parity=material-purchase",
+        "parity_redirect": "/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
+      }
+    ],
+    "all_http_200": true,
+    "material_purchase_parity_recorded": true
+  },
+  "screenshots": [
+    {
+      "route": "/subcontract/list",
+      "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/subcontract_list_screenshot.png",
+      "format": "PNG",
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "route": "/subcontract/detail",
+      "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/subcontract_detail_screenshot.png",
+      "format": "PNG",
+      "width": 1440,
+      "height": 1200
+    }
+  ],
+  "runtime_dom_anchors": {
+    "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json",
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true,
+    "anchors": [
+      "z044-subcontract-list-detail-diff",
+      "z044-subcontract-readback-consistency",
+      "z044-subcontract-sync-lock-reason",
+      "z044-subcontract-export-print-readonly",
+      "z044-subcontract-material-parity-readback",
+      "z044-subcontract-guarded-action-matrix",
+      "z044-subcontract-network-write-blocker",
+      "z044-subcontract-write-success-blocker"
+    ]
+  },
+  "guarded_readonly_state": {
+    "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/guarded_readonly_state_evidence.json",
+    "guarded_entries_covered": [
+      "新建外发单",
+      "发料",
+      "回料",
+      "验货",
+      "结算预览",
+      "同步重试",
+      "导出",
+      "打印"
+    ],
+    "all_covered": true,
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "network_write_observation": {
+    "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/network_write_request_observation.json",
+    "auth_401_count": 3,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "risk_fields_preserved": {
+    "Z044_CAND005_auth_401_count": "3 readonly fallback risk",
+    "Z044_CAND004_auth_401_count": "1/1 readonly fallback risk",
+    "Z044_CAND003_auth_401_count": "1/1 readonly fallback risk",
+    "Z044_CAND002_auth_401_count": "25/25 readonly fallback risk",
+    "Z044_CAND001_auth_401_count": "6/6 readonly fallback risk",
+    "Z043_fallback_risks": true,
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "Z042_Z041_Z040_Z039_Z038_fallback_risks": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true,
+    "guarded_readonly_not_write_success": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z044B-36-REGRESSION-CAND005"
+}

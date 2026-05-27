@@ -1,0 +1,26 @@
+{
+  "task_id": "TASK-Z044B-36-REGRESSION-CAND005",
+  "candidate_id": "Z044-CAND-005",
+  "evidence_type": "regression_route_evidence",
+  "routes": [
+    {
+      "route": "/subcontract/list",
+      "http_status": 200,
+      "final_path": "/subcontract/list",
+      "url": "http://127.0.0.1:5174/subcontract/list"
+    },
+    {
+      "route": "/subcontract/detail",
+      "http_status": 200,
+      "final_path": "/subcontract/detail",
+      "url": "http://127.0.0.1:5174/subcontract/detail"
+    },
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "http_status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase",
+      "url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase"
+    }
+  ],
+  "material_purchase_parity_recorded": true
+}

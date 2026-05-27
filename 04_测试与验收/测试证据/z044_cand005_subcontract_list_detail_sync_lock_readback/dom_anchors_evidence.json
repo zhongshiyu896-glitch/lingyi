@@ -1,0 +1,212 @@
+{
+  "task_id": "TASK-Z044B-35-IMPL",
+  "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json",
+  "anchors": [
+    "z044-subcontract-list-detail-diff",
+    "z044-subcontract-readback-consistency",
+    "z044-subcontract-sync-lock-reason",
+    "z044-subcontract-export-print-readonly",
+    "z044-subcontract-material-parity-readback",
+    "z044-subcontract-guarded-action-matrix",
+    "z044-subcontract-network-write-blocker",
+    "z044-subcontract-write-success-blocker"
+  ],
+  "details": [
+    {
+      "route": "/subcontract/list",
+      "anchor": "z044-subcontract-list-detail-diff",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/list",
+      "anchor": "z044-subcontract-readback-consistency",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/list",
+      "anchor": "z044-subcontract-sync-lock-reason",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/list",
+      "anchor": "z044-subcontract-export-print-readonly",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/list",
+      "anchor": "z044-subcontract-material-parity-readback",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/list",
+      "anchor": "z044-subcontract-guarded-action-matrix",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/list",
+      "anchor": "z044-subcontract-network-write-blocker",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/list",
+      "anchor": "z044-subcontract-write-success-blocker",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/detail",
+      "anchor": "z044-subcontract-list-detail-diff",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/detail",
+      "anchor": "z044-subcontract-readback-consistency",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/detail",
+      "anchor": "z044-subcontract-sync-lock-reason",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/detail",
+      "anchor": "z044-subcontract-export-print-readonly",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/detail",
+      "anchor": "z044-subcontract-material-parity-readback",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/detail",
+      "anchor": "z044-subcontract-guarded-action-matrix",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/detail",
+      "anchor": "z044-subcontract-network-write-blocker",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    },
+    {
+      "route": "/subcontract/detail",
+      "anchor": "z044-subcontract-write-success-blocker",
+      "observed": true,
+      "attrMatch": true,
+      "htmlMatch": true,
+      "textMatch": false
+    }
+  ],
+  "summary": [
+    {
+      "anchor": "z044-subcontract-list-detail-diff",
+      "observed": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "anchor": "z044-subcontract-readback-consistency",
+      "observed": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "anchor": "z044-subcontract-sync-lock-reason",
+      "observed": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "anchor": "z044-subcontract-export-print-readonly",
+      "observed": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "anchor": "z044-subcontract-material-parity-readback",
+      "observed": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "anchor": "z044-subcontract-guarded-action-matrix",
+      "observed": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "anchor": "z044-subcontract-network-write-blocker",
+      "observed": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "anchor": "z044-subcontract-write-success-blocker",
+      "observed": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

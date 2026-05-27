@@ -1,0 +1,242 @@
+{
+  "task_id": "TASK-Z044B-35-IMPL",
+  "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/guarded_readonly_state_evidence.json",
+  "guarded_entries_covered": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "details": [
+    {
+      "route": "/subcontract/list",
+      "entry": "新建外发单",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 3,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/list",
+      "entry": "发料",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 3,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/list",
+      "entry": "回料",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 3,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/list",
+      "entry": "验货",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 3,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/list",
+      "entry": "结算预览",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 3,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/list",
+      "entry": "同步重试",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 3,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/list",
+      "entry": "导出",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 3,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/list",
+      "entry": "打印",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 3,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "entry": "新建外发单",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 2,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "entry": "发料",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 2,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "entry": "回料",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 2,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "entry": "验货",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 2,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "entry": "结算预览",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 2,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "entry": "同步重试",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 2,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "entry": "导出",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 2,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "entry": "打印",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "node_count": 2,
+      "dataWriteRequestSuccessAllowedFalse": true,
+      "dataRealWriteActionAddedFalse": true
+    }
+  ],
+  "summary": [
+    {
+      "entry": "新建外发单",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "entry": "发料",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "entry": "回料",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "entry": "验货",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "entry": "结算预览",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "entry": "同步重试",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "entry": "导出",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    },
+    {
+      "entry": "打印",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "observed_routes": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ]
+    }
+  ],
+  "all_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "dataWriteRequestSuccessAllowedFalseObserved": true,
+  "dataRealWriteActionAddedFalseObserved": true,
+  "guardedReadonlyNodes": 40,
+  "guarded_readonly_not_write_success": true
+}

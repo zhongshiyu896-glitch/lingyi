@@ -1,0 +1,144 @@
+{
+  "task_id": "TASK-Z044B-36-REGRESSION-CAND005",
+  "role": "B Engineer",
+  "candidate_id": "Z044-CAND-005",
+  "source_task": "TASK-Z044B-35-IMPL",
+  "code_modified_in_this_task": false,
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "allowed_files_only": true,
+  "api_subcontract_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "material_purchase_parity_recorded": true,
+  "route_evidence": {
+    "all_routes_http_200": true,
+    "routes": [
+      {
+        "route": "/subcontract/list",
+        "http_status": 200,
+        "final_path": "/subcontract/list"
+      },
+      {
+        "route": "/subcontract/detail",
+        "http_status": 200,
+        "final_path": "/subcontract/detail"
+      },
+      {
+        "route": "/materialPurchase/materialPurchaseProcess",
+        "http_status": 200,
+        "final_path": "/subcontract/list?parity=material-purchase"
+      }
+    ],
+    "evidence_file": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback_regression/route_evidence.json"
+  },
+  "screenshots": [
+    {
+      "route": "/subcontract/list",
+      "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback_regression/subcontract_list_regression_screenshot.png",
+      "format": "PNG",
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "route": "/subcontract/detail",
+      "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback_regression/subcontract_detail_regression_screenshot.png",
+      "format": "PNG",
+      "width": 1440,
+      "height": 1200
+    }
+  ],
+  "runtime_dom_anchors": {
+    "required": [
+      "z044-subcontract-list-detail-diff",
+      "z044-subcontract-readback-consistency",
+      "z044-subcontract-sync-lock-reason",
+      "z044-subcontract-export-print-readonly",
+      "z044-subcontract-material-parity-readback",
+      "z044-subcontract-guarded-action-matrix",
+      "z044-subcontract-network-write-blocker",
+      "z044-subcontract-write-success-blocker"
+    ],
+    "observed_count": 8,
+    "all_observed": true,
+    "evidence_file": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback_regression/dom_anchors_evidence.json"
+  },
+  "guarded_readonly_state": {
+    "entries": [
+      "新建外发单",
+      "发料",
+      "回料",
+      "验货",
+      "结算预览",
+      "同步重试",
+      "导出",
+      "打印"
+    ],
+    "entries_observed_count": 8,
+    "all_entries_observed": true,
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "evidence_file": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback_regression/guarded_readonly_state_evidence.json"
+  },
+  "network_write_observation": {
+    "auth_401_count": 4,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false,
+    "evidence_file": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback_regression/network_write_request_observation.json"
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "dev_server": {
+    "started": true,
+    "command": "npm run dev -- --host 127.0.0.1 --port 5173",
+    "actual_url": "http://127.0.0.1:5174/",
+    "stopped": true
+  },
+  "scope_guard": {
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": [],
+    "stage_performed": false,
+    "commit_performed": false,
+    "remote_lifecycle_released": false
+  },
+  "risk_fields_preserved": {
+    "z044_cand005_b35_auth_401_count": 3,
+    "z044_cand005_b36_auth_401_count": 4,
+    "z044_cand004_b27_b28_auth_401_count": "1/1",
+    "z044_cand003_b19_b20_auth_401_count": "1/1",
+    "z044_cand002_b11_b12_auth_401_count": "25/25",
+    "z044_cand001_b03_b04_auth_401_count": "6/6",
+    "z043_fallback_risks": true,
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "z042_z038_fallback_risks": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true,
+    "guarded_readonly_not_write_success": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "code_modified_in_this_task": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z044B-37-LEDGER-CAND005"
+}
