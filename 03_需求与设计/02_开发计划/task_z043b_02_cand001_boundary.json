@@ -1,0 +1,140 @@
+{
+  "task_id": "TASK-Z043B-02-PREP",
+  "role": "B Engineer",
+  "head": "c0926d15a9a8ab88160b737672a17253a0bbc5cb",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "candidate_id": "Z043-CAND-001",
+  "title": "全局只读操作轨迹与证据入口一致性可见流",
+  "page_scope": "应用 Shell 跨首页、批量导入与外发单列表的全局只读操作轨迹",
+  "routes": [
+    "/home",
+    "/workshop/tickets/batch",
+    "/subcontract/list"
+  ],
+  "visible_acceptance_goal": "展示当前 route 的只读操作轨迹、最近 guarded 入口、证据入口说明与 fallback 风险摘要；所有全局确认/刷新入口不得形成真实写请求成功",
+  "read_only": true,
+  "backend_allowed": false,
+  "candidate_blocked": false,
+  "reused_committed_product_path": true,
+  "reused_source": {
+    "source_batch": "Z042",
+    "source_candidate_id": "Z042-CAND-001",
+    "source_commit": "78fffac1d35cf7ccdeec2f46fcfceccc3423dbe9",
+    "reused_paths": [
+      "06_前端/lingyi-pc/src/App.vue"
+    ]
+  },
+  "allowed_files": [
+    "06_前端/lingyi-pc/src/App.vue"
+  ],
+  "forbidden_scope": [
+    "current 19 tracked dirty files",
+    "historical product/test dirty",
+    "log/control dirty",
+    "Z034 residual artifacts",
+    "07_后端",
+    "candidate pool outside this task",
+    "runtime/cache/test-results",
+    "remote/prod/go-live"
+  ],
+  "required_anchors": [
+    "global-readonly-shell",
+    "global-route-readonly-badge",
+    "global-auth-fallback-state",
+    "global-readonly-write-guard",
+    "z043-global-operation-trace",
+    "z043-global-evidence-entry",
+    "z043-global-guarded-action-log",
+    "z043-global-next-gate-disclaimer"
+  ],
+  "required_anchors_count": 8,
+  "guarded_entries": [
+    "全局确认",
+    "权限刷新",
+    "降级说明入口"
+  ],
+  "read_write_boundary": {
+    "global_route_display_read_only": true,
+    "operation_trace_read_only": true,
+    "guarded_entries_readonly_required": true,
+    "write_request_success_allowed": false,
+    "real_write_action_allowed": false,
+    "pure_static_fallback_allowed": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "write_request_success_allowed": false,
+  "real_write_action_allowed": false,
+  "pure_static_fallback_allowed": false,
+  "guarded_readonly_not_write_success": true,
+  "evidence_requirement": {
+    "screenshot_required": true,
+    "route_evidence_required": true,
+    "routes_required": [
+      "/home",
+      "/workshop/tickets/batch",
+      "/subcontract/list"
+    ],
+    "runtime_dom_anchors_required": true,
+    "guarded_readonly_state_required": true,
+    "write_request_observation_required": true,
+    "pure_static_fallback_allowed": false,
+    "auth_401_must_be_recorded_only_as_readonly_fallback_risk": true,
+    "no_permission_success_or_write_success_inference_allowed": true
+  },
+  "evidence_requirement_present": true,
+  "allowed_files_exist": true,
+  "allowed_files_dirty": false,
+  "route_source_located": true,
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "remote_lifecycle_parked": true,
+  "push_tag_pr_release": false,
+  "production_readback": false,
+  "go_live": false,
+  "project_completion": false,
+  "next_task": "TASK-Z043B-03-IMPL",
+  "run_this_task": false,
+  "risk_fields_preserved": {
+    "Z042_fallback_risks": {
+      "Z042-CAND-005": {
+        "B35_auth_401_count": 4,
+        "B36_auth_401_count": 3,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-004": {
+        "auth_401_count": 1,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-003": {
+        "auth_401_count": 1,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-002": {
+        "auth_401_count": 25,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-001": {
+        "auth_401_count": 6,
+        "runtime_readonly_fallback_risk": true
+      }
+    },
+    "prior_fallback_risks": [
+      "Z041 readonly fallback risk",
+      "Z040 readonly fallback risk",
+      "Z039 readonly fallback risk",
+      "Z038 readonly fallback risks"
+    ],
+    "guarded_readonly_not_write_success": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true
+  },
+  "implementation_started": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false
+}

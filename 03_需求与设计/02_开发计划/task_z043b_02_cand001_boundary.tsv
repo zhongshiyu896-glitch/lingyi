@@ -1,0 +1,32 @@
+field	value
+task_id	TASK-Z043B-02-PREP
+role	B Engineer
+head	c0926d15a9a8ab88160b737672a17253a0bbc5cb
+branch	codex/sprint4-seal
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+candidate_id	Z043-CAND-001
+title	全局只读操作轨迹与证据入口一致性可见流
+routes	/home;/workshop/tickets/batch;/subcontract/list
+allowed_files	06_前端/lingyi-pc/src/App.vue
+allowed_files_exist	true
+allowed_files_dirty	false
+reused_committed_product_path	true
+reused_source	Z042 / Z042-CAND-001 / 78fffac1d35cf7ccdeec2f46fcfceccc3423dbe9
+required_anchors_count	8
+guarded_entries	全局确认;权限刷新;降级说明入口
+write_request_success_allowed	false
+real_write_action_allowed	false
+pure_static_fallback_allowed	false
+guarded_readonly_not_write_success	true
+evidence_requirement_present	true
+route_source_located	true
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+implementation_started	false
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+next_task	TASK-Z043B-03-IMPL

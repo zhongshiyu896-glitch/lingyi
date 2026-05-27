@@ -1,0 +1,294 @@
+{
+  "auth_401_count": 2,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "auth_401_urls": [
+    "http://127.0.0.1:5174/api/auth/me",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20"
+  ],
+  "write_requests": [],
+  "responses": [
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/home"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/@vite/client"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/main.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/router/index.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/App.vue"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/HomePage.vue"
+    },
+    {
+      "method": "GET",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/HomePage.vue?vue&type=style&index=0&scoped=9b48b94e&lang.css"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/workshop/tickets/batch"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/@vite/client"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/main.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/App.vue"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/router/index.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopTicketBatch.vue"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopTicketBatch.vue?vue&type=style&index=0&scoped=db9c5680&lang.css"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/workshop.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/subcontract/list"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/@vite/client"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/main.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/App.vue"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/router/index.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper"
+    },
+    {
+      "method": "GET",
+      "status": 304,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderList.vue"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderList.vue?vue&type=style&index=0&scoped=ed1d31ed&lang.css"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/subcontract.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20"
+    }
+  ],
+  "runtime_readonly_fallback_risk": true
+}

@@ -82,9 +82,22 @@
         class="global-readonly-shell__button global-readonly-shell__button--disabled"
         data-testid="global-readonly-write-guard"
         data-write-guard="guarded:global-readonly-confirm"
+        data-guarded-entry="全局确认"
+        data-readonly-state="guarded-readonly"
         disabled
       >
-        只读确认
+        全局确认
+      </button>
+      <button
+        type="button"
+        class="global-readonly-shell__button global-readonly-shell__button--disabled"
+        data-testid="z043-global-downgrade-explanation-guard"
+        data-write-guard="guarded:z043-global-downgrade-explanation"
+        data-guarded-entry="降级说明入口"
+        data-readonly-state="guarded-readonly"
+        disabled
+      >
+        降级说明入口
       </button>
       <span
         id="global-remote-lifecycle-parked"
@@ -100,6 +113,49 @@
         :data-readonly-fallback-reason="fallbackReason"
       >
         {{ fallbackExplanationText }}
+      </span>
+    </div>
+    <div
+      id="z043-global-operation-trace"
+      class="global-readonly-shell__z043-panel"
+      data-testid="z043-global-operation-trace"
+      :data-route-path="route.path"
+      :data-route-module="routeModule"
+      data-readonly-boundary="true"
+      data-write-request-success-allowed="false"
+      data-real-write-action-added="false"
+    >
+      <span
+        id="z043-global-evidence-entry"
+        class="global-readonly-shell__z043-item"
+        data-testid="z043-global-evidence-entry"
+        data-evidence-entry="runtime-route-dom-guard-network"
+      >
+        {{ evidenceEntryText }}
+      </span>
+      <span
+        id="z043-global-guarded-action-log"
+        class="global-readonly-shell__z043-item"
+        data-testid="z043-global-guarded-action-log"
+        data-guarded-entry="权限刷新"
+        data-readonly-state="guarded-readonly"
+      >
+        {{ guardedActionLogText }}
+      </span>
+      <span
+        class="global-readonly-shell__z043-item"
+        data-testid="z043-global-risk-summary"
+        :data-readonly-fallback-risk="fallbackReason"
+      >
+        {{ operationTraceText }}
+      </span>
+      <span
+        id="z043-global-next-gate-disclaimer"
+        class="global-readonly-shell__z043-item global-readonly-shell__z043-item--notice"
+        data-testid="z043-global-next-gate-disclaimer"
+        data-next-gate-disclaimer="local-only-not-production-ready"
+      >
+        {{ nextGateDisclaimerText }}
       </span>
     </div>
   </section>
@@ -119,6 +175,7 @@ const routeModule = computed(() => {
   if (route.path.startsWith('/permissions')) return 'permission_governance'
   if (route.path.startsWith('/reports')) return 'report'
   if (route.path.startsWith('/workshop')) return 'workshop'
+  if (route.path.startsWith('/subcontract')) return 'subcontract'
   if (route.path.startsWith('/sales-inventory')) return 'sales_inventory'
   return 'global'
 })
@@ -127,6 +184,7 @@ const routeCategory = computed(() => {
   if (route.path === '/home' || route.path === '/') return 'home'
   if (route.path.startsWith('/reports')) return 'report-catalog'
   if (route.path.startsWith('/workshop')) return 'workshop-ticket'
+  if (route.path.startsWith('/subcontract')) return 'subcontract-readonly'
   if (route.path.startsWith('/permissions')) return 'permission-governance'
   return 'global-readonly'
 })
@@ -162,6 +220,7 @@ const routeContextText = computed(() => {
     home: '首页上下文',
     'report-catalog': '报表目录上下文',
     'workshop-ticket': '车间工票上下文',
+    'subcontract-readonly': '外发单上下文',
     'permission-governance': '权限治理上下文',
     'global-readonly': '全局只读上下文',
   }
@@ -182,6 +241,30 @@ const fallbackExplanationText = computed(() => {
   }
   return explanations[fallbackReason.value]
 })
+
+const operationTraceText = computed(() => {
+  const routeText = route.path || '/'
+  const guardedEntry = route.path.startsWith('/workshop')
+    ? '批量导入只读 guard'
+    : route.path.startsWith('/subcontract')
+      ? '外发单同步/导出 guard'
+      : '全局只读确认 guard'
+  return `只读操作轨迹：${routeText} -> ${guardedEntry} -> ${fallbackReason.value}`
+})
+
+const evidenceEntryText = computed(() => {
+  const evidenceRoute = route.path || '/home'
+  return `证据入口：${evidenceRoute} 需包含 route、DOM anchors、guard 与 network observation`
+})
+
+const guardedActionLogText = computed(() => {
+  const recentEntry = permissionStore.state.loading ? '权限刷新读取中' : '权限刷新 guarded/readonly'
+  return `最近 guarded 入口：${recentEntry}；全局确认与降级说明入口保持 disabled`
+})
+
+const nextGateDisclaimerText = computed(
+  () => 'next gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live',
+)
 
 const loadReadonlyState = async (): Promise<void> => {
   try {
@@ -261,7 +344,8 @@ watch(
 .global-readonly-shell__badge,
 .global-readonly-shell__parked,
 .global-readonly-shell__context,
-.global-readonly-shell__fallback {
+.global-readonly-shell__fallback,
+.global-readonly-shell__z043-item {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -283,6 +367,31 @@ watch(
   border-color: #d2c3a7;
   background: #fff8eb;
   color: #5f4723;
+}
+
+.global-readonly-shell__z043-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.global-readonly-shell__z043-item {
+  align-items: flex-start;
+  min-height: 34px;
+  padding: 6px 8px;
+  border-color: #c8d2df;
+  background: #ffffff;
+  color: #334155;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.global-readonly-shell__z043-item--notice {
+  border-color: #b9d3c5;
+  background: #f0f8f3;
+  color: #25513a;
 }
 
 .global-readonly-shell__button {
@@ -309,6 +418,10 @@ watch(
 
   .global-readonly-shell__actions {
     justify-content: flex-start;
+  }
+
+  .global-readonly-shell__z043-panel {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -1,0 +1,45 @@
+[
+  {
+    "route": "/home",
+    "requested_url": "http://127.0.0.1:5174/home",
+    "final_url": "http://127.0.0.1:5174/home",
+    "http_status": 200,
+    "shell_visible": true,
+    "title": "Lingyi PC",
+    "shellReadonlyBoundary": "true",
+    "shellWriteSuccessAllowed": "false",
+    "shellRealWriteActionAdded": "false",
+    "routeBadgeText": "/home readonly boundary",
+    "screenshot": {
+      "path": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry/z043_cand001_home.png",
+      "format": "png",
+      "dimensions": "1440x1200",
+      "width": 1440,
+      "height": 1200
+    }
+  },
+  {
+    "route": "/workshop/tickets/batch",
+    "requested_url": "http://127.0.0.1:5174/workshop/tickets/batch",
+    "final_url": "http://127.0.0.1:5174/workshop/tickets/batch",
+    "http_status": 200,
+    "shell_visible": true,
+    "title": "Lingyi PC",
+    "shellReadonlyBoundary": "true",
+    "shellWriteSuccessAllowed": "false",
+    "shellRealWriteActionAdded": "false",
+    "routeBadgeText": "/workshop/tickets/batch readonly boundary"
+  },
+  {
+    "route": "/subcontract/list",
+    "requested_url": "http://127.0.0.1:5174/subcontract/list",
+    "final_url": "http://127.0.0.1:5174/subcontract/list",
+    "http_status": 200,
+    "shell_visible": true,
+    "title": "Lingyi PC",
+    "shellReadonlyBoundary": "true",
+    "shellWriteSuccessAllowed": "false",
+    "shellRealWriteActionAdded": "false",
+    "routeBadgeText": "/subcontract/list readonly boundary"
+  }
+]

@@ -1,0 +1,295 @@
+{
+  "required_anchors": [
+    "global-readonly-shell",
+    "global-route-readonly-badge",
+    "global-auth-fallback-state",
+    "global-readonly-write-guard",
+    "z043-global-operation-trace",
+    "z043-global-evidence-entry",
+    "z043-global-guarded-action-log",
+    "z043-global-next-gate-disclaimer"
+  ],
+  "anchors_by_route": [
+    {
+      "route": "/home",
+      "anchors": [
+        {
+          "id": "global-readonly-shell",
+          "observed": true,
+          "visible": true,
+          "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges路由分类：首页上下文/home readonly boundary 刷新权限 重载模块动作 全局确认 降级说明入口 remote lifecycle parked fallback 原因：未取得写权限，会话保持只读证据入口：/home 需包含 route、DOM anchors、guard 与 network observation最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled只读操作轨迹：/home -> 全局只读确认 guard -> guest-readonly-fallbacknext gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-route-readonly-badge",
+          "observed": true,
+          "visible": true,
+          "text": "/home readonly boundary",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-auth-fallback-state",
+          "observed": true,
+          "visible": true,
+          "text": "guest/readonly fallback",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-readonly-write-guard",
+          "observed": true,
+          "visible": true,
+          "text": "全局确认",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": "全局确认",
+          "readonlyState": "guarded-readonly"
+        },
+        {
+          "id": "z043-global-operation-trace",
+          "observed": true,
+          "visible": true,
+          "text": "证据入口：/home 需包含 route、DOM anchors、guard 与 network observation最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled只读操作轨迹：/home -> 全局只读确认 guard -> guest-readonly-fallbacknext gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "z043-global-evidence-entry",
+          "observed": true,
+          "visible": true,
+          "text": "证据入口：/home 需包含 route、DOM anchors、guard 与 network observation",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "z043-global-guarded-action-log",
+          "observed": true,
+          "visible": true,
+          "text": "最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": "权限刷新",
+          "readonlyState": "guarded-readonly"
+        },
+        {
+          "id": "z043-global-next-gate-disclaimer",
+          "observed": true,
+          "visible": true,
+          "text": "next gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        }
+      ]
+    },
+    {
+      "route": "/workshop/tickets/batch",
+      "anchors": [
+        {
+          "id": "global-readonly-shell",
+          "observed": true,
+          "visible": true,
+          "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges路由分类：车间工票上下文/workshop/tickets/batch readonly boundary 刷新权限 重载模块动作 全局确认 降级说明入口 remote lifecycle parked fallback 原因：未取得写权限，会话保持只读证据入口：/workshop/tickets/batch 需包含 route、DOM anchors、guard 与 network observation最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled只读操作轨迹：/workshop/tickets/batch -> 批量导入只读 guard -> guest-readonly-fallbacknext gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-route-readonly-badge",
+          "observed": true,
+          "visible": true,
+          "text": "/workshop/tickets/batch readonly boundary",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-auth-fallback-state",
+          "observed": true,
+          "visible": true,
+          "text": "guest/readonly fallback",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-readonly-write-guard",
+          "observed": true,
+          "visible": true,
+          "text": "全局确认",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": "全局确认",
+          "readonlyState": "guarded-readonly"
+        },
+        {
+          "id": "z043-global-operation-trace",
+          "observed": true,
+          "visible": true,
+          "text": "证据入口：/workshop/tickets/batch 需包含 route、DOM anchors、guard 与 network observation最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled只读操作轨迹：/workshop/tickets/batch -> 批量导入只读 guard -> guest-readonly-fallbacknext gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "z043-global-evidence-entry",
+          "observed": true,
+          "visible": true,
+          "text": "证据入口：/workshop/tickets/batch 需包含 route、DOM anchors、guard 与 network observation",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "z043-global-guarded-action-log",
+          "observed": true,
+          "visible": true,
+          "text": "最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": "权限刷新",
+          "readonlyState": "guarded-readonly"
+        },
+        {
+          "id": "z043-global-next-gate-disclaimer",
+          "observed": true,
+          "visible": true,
+          "text": "next gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        }
+      ]
+    },
+    {
+      "route": "/subcontract/list",
+      "anchors": [
+        {
+          "id": "global-readonly-shell",
+          "observed": true,
+          "visible": true,
+          "text": "会话：Guestguest/readonly fallback模块权限：guest fallback, no write privileges路由分类：外发单上下文/subcontract/list readonly boundary 刷新权限 重载模块动作 全局确认 降级说明入口 remote lifecycle parked fallback 原因：未取得写权限，会话保持只读证据入口：/subcontract/list 需包含 route、DOM anchors、guard 与 network observation最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled只读操作轨迹：/subcontract/list -> 外发单同步/导出 guard -> guest-readonly-fallbacknext gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-route-readonly-badge",
+          "observed": true,
+          "visible": true,
+          "text": "/subcontract/list readonly boundary",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-auth-fallback-state",
+          "observed": true,
+          "visible": true,
+          "text": "guest/readonly fallback",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "global-readonly-write-guard",
+          "observed": true,
+          "visible": true,
+          "text": "全局确认",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": "全局确认",
+          "readonlyState": "guarded-readonly"
+        },
+        {
+          "id": "z043-global-operation-trace",
+          "observed": true,
+          "visible": true,
+          "text": "证据入口：/subcontract/list 需包含 route、DOM anchors、guard 与 network observation最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled只读操作轨迹：/subcontract/list -> 外发单同步/导出 guard -> guest-readonly-fallbacknext gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": "true",
+          "writeRequestSuccessAllowed": "false",
+          "realWriteActionAdded": "false",
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "z043-global-evidence-entry",
+          "observed": true,
+          "visible": true,
+          "text": "证据入口：/subcontract/list 需包含 route、DOM anchors、guard 与 network observation",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        },
+        {
+          "id": "z043-global-guarded-action-log",
+          "observed": true,
+          "visible": true,
+          "text": "最近 guarded 入口：权限刷新 guarded/readonly；全局确认与降级说明入口保持 disabled",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": "权限刷新",
+          "readonlyState": "guarded-readonly"
+        },
+        {
+          "id": "z043-global-next-gate-disclaimer",
+          "observed": true,
+          "visible": true,
+          "text": "next gate：仅本地只读候选建议，不代表远端授权、production readback 或 go-live",
+          "readonlyBoundary": null,
+          "writeRequestSuccessAllowed": null,
+          "realWriteActionAdded": null,
+          "guardedEntry": null,
+          "readonlyState": null
+        }
+      ]
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

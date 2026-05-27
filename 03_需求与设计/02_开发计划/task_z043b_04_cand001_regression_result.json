@@ -1,0 +1,119 @@
+{
+  "task_id": "TASK-Z043B-04-REGRESSION-CAND001",
+  "role": "B Engineer",
+  "candidate_id": "Z043-CAND-001",
+  "regression_status": "PASS",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/App.vue"
+  ],
+  "allowed_files_only": true,
+  "routes_checked": [
+    "/home",
+    "/workshop/tickets/batch",
+    "/subcontract/list"
+  ],
+  "route_http_statuses": {
+    "/home": 200,
+    "/workshop/tickets/batch": 200,
+    "/subcontract/list": 200
+  },
+  "shell_visible_routes": {
+    "/home": true,
+    "/workshop/tickets/batch": true,
+    "/subcontract/list": true
+  },
+  "screenshot_path": "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry_regression/z043_cand001_home_regression.png",
+  "screenshot_png_dimensions": "1440x1200",
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_entries_covered": {
+    "全局确认": true,
+    "权限刷新": true,
+    "降级说明入口": true
+  },
+  "auth_401_count": 2,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "guarded_readonly_not_write_success": true,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "risk_fields_preserved": {
+    "Z043-CAND-001": {
+      "b03_auth_401_count": 2,
+      "b04_auth_401_count": 2,
+      "runtime_readonly_fallback_risk": true,
+      "write_requests_observed_count": 0,
+      "write_request_success_observed": false,
+      "write_request_success_allowed": false,
+      "guarded_readonly_not_write_success": true
+    },
+    "Z042_fallback_risks": {
+      "Z042-CAND-005": {
+        "implementation_auth_401_count": 4,
+        "regression_auth_401_count": 3,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-004": {
+        "auth_401_count": 1,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-003": {
+        "auth_401_count": 1,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-002": {
+        "auth_401_count": 25,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-001": {
+        "auth_401_count": 6,
+        "runtime_readonly_fallback_risk": true
+      }
+    },
+    "prior_fallback_risks": [
+      "Z041 fallback risk",
+      "Z040 fallback risk",
+      "Z039 fallback risk",
+      "Z038 fallback risks"
+    ],
+    "guarded_readonly_not_write_success": true,
+    "process_risks": [
+      "B28 shell_wrapper_anomaly",
+      "Z033 skipped_only",
+      "Z035 screenshot_missing_risk"
+    ],
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "next_task": "TASK-Z043B-05-LEDGER-CAND001",
+  "evidence": {
+    "report": "03_需求与设计/02_开发计划/TASK-Z043B-04-REGRESSION-CAND001_全局只读操作轨迹证据入口回归报告.md",
+    "result_json": "03_需求与设计/02_开发计划/task_z043b_04_cand001_regression_result.json",
+    "tsv": "03_需求与设计/02_开发计划/task_z043b_04_cand001_regression.tsv",
+    "screenshot": "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry_regression/z043_cand001_home_regression.png",
+    "route_evidence": "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry_regression/route_evidence.json",
+    "dom_anchors_evidence": "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry_regression/dom_anchors_evidence.json",
+    "guarded_readonly_state_evidence": "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry_regression/guarded_readonly_state_evidence.json",
+    "network_write_request_observation": "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry_regression/network_write_request_observation.json"
+  }
+}
