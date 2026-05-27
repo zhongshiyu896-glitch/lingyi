@@ -1,0 +1,19 @@
+{
+  "path": "04_测试与验收/测试证据/z044_cand004_register_draft_cancel_readback_regression/route_evidence.json",
+  "task_id": "TASK-Z044B-28-REGRESSION-CAND004",
+  "base_url": "http://127.0.0.1:5174",
+  "routes_checked": [
+    "/workshop/tickets/register"
+  ],
+  "route_count": 1,
+  "all_http_200": true,
+  "evidence": [
+    {
+      "route": "/workshop/tickets/register",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/workshop/tickets/register",
+      "final_path": "/workshop/tickets/register",
+      "shell_visible": true
+    }
+  ]
+}

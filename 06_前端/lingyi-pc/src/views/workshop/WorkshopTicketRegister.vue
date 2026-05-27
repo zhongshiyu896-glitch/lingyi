@@ -277,6 +277,132 @@
           <p>{{ z043ReturnSourceReadback }}</p>
         </section>
       </div>
+
+      <div class="z044-register-grid" data-testid="z044-register-readonly-boundary">
+        <section
+          class="z044-register-section"
+          data-readonly-boundary="true"
+          data-testid="z044-register-draft-readback-chain"
+        >
+          <h3>草稿回读链路</h3>
+          <p>{{ z044DraftReadbackChain }}</p>
+        </section>
+
+        <section
+          class="z044-register-section"
+          data-readonly-boundary="true"
+          data-testid="z044-register-field-impact-matrix"
+        >
+          <h3>字段差异影响面</h3>
+          <ul class="z044-register-list">
+            <li v-for="item in z044FieldImpactMatrix" :key="item.field">
+              <span>{{ item.field }}</span>
+              <strong>{{ item.impact }}</strong>
+              <em>{{ item.guard }}</em>
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z044-register-section"
+          data-readonly-boundary="true"
+          data-testid="z044-register-cancel-impact-preview"
+        >
+          <h3>撤销影响预览</h3>
+          <p>{{ z044CancelImpactPreview }}</p>
+        </section>
+
+        <section
+          class="z044-register-section"
+          data-readonly-boundary="true"
+          data-testid="z044-register-return-source-readback"
+        >
+          <h3>返回查询来源</h3>
+          <p>{{ z044ReturnSourceReadback }}</p>
+        </section>
+
+        <section
+          class="z044-register-section"
+          data-readonly-boundary="true"
+          data-testid="z044-register-readonly-confirm-gate"
+          data-write-guard="guarded:z044-register-readonly-confirm-gate"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+          data-guard-state="guarded-readonly"
+        >
+          <h3>只读确认 gate</h3>
+          <p>{{ z044ReadonlyConfirmGate }}</p>
+          <el-button
+            plain
+            type="warning"
+            data-guard-entry="只读降级确认"
+            data-guard-state="guarded-readonly"
+            data-readonly-boundary="true"
+            data-write-request-success-allowed="false"
+            data-real-write-action-added="false"
+            @click="confirmReadonlyDowngrade"
+          >
+            只读降级确认 guarded/readonly
+          </el-button>
+        </section>
+
+        <section
+          class="z044-register-section"
+          data-readonly-boundary="true"
+          data-testid="z044-register-submit-write-guard"
+          data-write-guard="guarded:z044-register-submit-write-guard"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+          data-guard-state="guarded-readonly"
+        >
+          <h3>提交登记 write guard</h3>
+          <p>{{ z044SubmitWriteGuard }}</p>
+          <el-tag
+            data-guard-entry="提交登记"
+            data-guard-state="guarded-readonly"
+            data-write-request-success-allowed="false"
+            effect="plain"
+            type="info"
+          >
+            提交登记 guarded/readonly
+          </el-tag>
+        </section>
+
+        <section
+          class="z044-register-section"
+          data-readonly-boundary="true"
+          data-testid="z044-register-cancel-write-guard"
+          data-write-guard="guarded:z044-register-cancel-write-guard"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+          data-guard-state="guarded-readonly"
+        >
+          <h3>提交撤销 write guard</h3>
+          <p>{{ z044CancelWriteGuard }}</p>
+          <el-tag
+            data-guard-entry="提交撤销"
+            data-guard-state="guarded-readonly"
+            data-write-request-success-allowed="false"
+            effect="plain"
+            type="warning"
+          >
+            提交撤销 guarded/readonly
+          </el-tag>
+        </section>
+
+        <section
+          class="z044-register-section"
+          data-readonly-boundary="true"
+          data-testid="z044-register-write-success-blocker"
+          data-write-guard="guarded:z044-register-write-success-blocker"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+          data-guard-state="guarded-readonly"
+        >
+          <h3>写成功阻断说明</h3>
+          <p>{{ z044WriteSuccessBlocker }}</p>
+        </section>
+      </div>
     </el-card>
 
     <el-card shadow="never" data-testid="workshop-ticket-register-readonly-draft-preview">
@@ -445,6 +571,50 @@ const z043ReadonlyConfirmChain = computed<string>(() => (
 ))
 const z043ReturnSourceReadback = computed<string>(() => (
   `返回查询来源固定记录为 /workshop/tickets，scenario_tag=${readonlyScenarioTag.value}，来源单号=${readonlyDraft.value.source_ref || '未填写'}，只读 readback 不触发真实写成功。`
+))
+const z044DraftReadbackChain = computed<string>(() => (
+  `草稿回读链路：${mode.value === 'register' ? '登记草稿' : '撤销草稿'} -> 本地字段校验 -> request_id=${readonlyRequestId.value} -> 只读确认 gate；不调用登记/撤销 API。`
+))
+const z044FieldImpactMatrix = computed(() => [
+  {
+    field: 'ticket_key',
+    impact: readonlyDraft.value.ticket_key ? '用于本地幂等键 readback' : '缺失时阻断提交登记预览',
+    guard: '只读差异影响，不写入',
+  },
+  {
+    field: 'job_card / employee / process_name',
+    impact: requiredFieldErrors.value.some((field) => ['job_card', 'employee', 'process_name'].includes(field))
+      ? '关键登记字段缺失，进入只读确认前置提示'
+      : '关键登记字段已满足本地草稿回读',
+    guard: '提交登记 guarded/readonly',
+  },
+  {
+    field: mode.value === 'register' ? 'source_ref' : 'original_ticket_id / reason',
+    impact: mode.value === 'register'
+      ? `返回查询来源=${readonlyDraft.value.source_ref || '未填写'}`
+      : `撤销影响预览=${readonlyDraft.value.original_ticket_id || '待填写'} / ${readonlyDraft.value.reason || '待填写'}`,
+    guard: mode.value === 'register' ? '提交登记 guarded/readonly' : '提交撤销 guarded/readonly',
+  },
+])
+const z044CancelImpactPreview = computed<string>(() => (
+  mode.value === 'reversal'
+    ? `撤销影响预览仅本地展示：original_ticket_id=${readonlyDraft.value.original_ticket_id || '待填写'}，reason=${readonlyDraft.value.reason || '待填写'}，不会形成撤销写成功。`
+    : '当前为登记模式；撤销影响面保持只读待命，切换撤销后回读 original_ticket_id、reason 与 request_id。'
+))
+const z044ReturnSourceReadback = computed<string>(() => (
+  `返回查询来源固定为 /workshop/tickets，来源=${readonlyDraft.value.source || 'manual'}，source_ref=${readonlyDraft.value.source_ref || '未填写'}，scenario_tag=${readonlyScenarioTag.value}。`
+))
+const z044ReadonlyConfirmGate = computed<string>(() => (
+  `只读确认 gate：${mode.value === 'register' ? '提交登记' : '提交撤销'} -> 只读降级确认 -> write_request_success_allowed=false。`
+))
+const z044SubmitWriteGuard = computed<string>(() => (
+  `提交登记被 guarded/readonly 拦截：request_id=${readonlyRequestId.value}，dataRealWriteActionAdded=false。`
+))
+const z044CancelWriteGuard = computed<string>(() => (
+  `提交撤销被 guarded/readonly 拦截：original_ticket_id=${readonlyDraft.value.original_ticket_id || '待填写'}，dataWriteRequestSuccessAllowed=false。`
+))
+const z044WriteSuccessBlocker = computed<string>(() => (
+  '写成功阻断：提交登记、提交撤销、只读降级确认均只生成本地提示，write_request_success_observed 必须保持 false。'
 ))
 
 const extractScenarioTag = (value: string): string | null => {
@@ -680,9 +850,64 @@ onMounted(async () => {
   margin-top: 10px;
 }
 
+.z044-register-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.z044-register-section {
+  min-height: 156px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+}
+
+.z044-register-section h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.z044-register-section p {
+  margin: 0 0 10px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.z044-register-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.z044-register-list li {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 4px 8px;
+  font-size: 12px;
+}
+
+.z044-register-list strong,
+.z044-register-list em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.z044-register-list em {
+  grid-column: 2;
+  color: var(--el-text-color-secondary);
+  font-style: normal;
+}
+
 @media (max-width: 960px) {
   .z042-register-grid,
-  .z043-register-grid {
+  .z043-register-grid,
+  .z044-register-grid {
     grid-template-columns: 1fr;
   }
 }

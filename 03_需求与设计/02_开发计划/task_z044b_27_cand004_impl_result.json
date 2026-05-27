@@ -1,0 +1,104 @@
+{
+  "task_id": "TASK-Z044B-27-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z044-CAND-004",
+  "head": "719d32ae69a1c83c0bebb9acfd7b4d1f4cb93b88",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+  ],
+  "allowed_files_only": true,
+  "api_workshop_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "route_evidence": {
+    "path": "04_测试与验收/测试证据/z044_cand004_register_draft_cancel_readback/route_evidence.json",
+    "route": "/workshop/tickets/register",
+    "http_status": 200,
+    "final_path": "/workshop/tickets/register",
+    "shell_visible": true
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z044_cand004_register_draft_cancel_readback/workshop_ticket_register_screenshot.png",
+    "format": "PNG",
+    "width": 1440,
+    "height": 1200
+  },
+  "runtime_dom_anchors": {
+    "path": "04_测试与验收/测试证据/z044_cand004_register_draft_cancel_readback/dom_anchors_evidence.json",
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true,
+    "anchors": [
+      "z044-register-draft-readback-chain",
+      "z044-register-field-impact-matrix",
+      "z044-register-cancel-impact-preview",
+      "z044-register-return-source-readback",
+      "z044-register-readonly-confirm-gate",
+      "z044-register-submit-write-guard",
+      "z044-register-cancel-write-guard",
+      "z044-register-write-success-blocker"
+    ]
+  },
+  "guarded_readonly_state": {
+    "path": "04_测试与验收/测试证据/z044_cand004_register_draft_cancel_readback/guarded_readonly_state_evidence.json",
+    "guarded_entries_covered": [
+      "提交登记",
+      "提交撤销",
+      "只读降级确认"
+    ],
+    "all_covered": true,
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "network_write_observation": {
+    "path": "04_测试与验收/测试证据/z044_cand004_register_draft_cancel_readback/network_write_request_observation.json",
+    "auth_401_count": 1,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "risk_fields_preserved": {
+    "Z044_CAND004_auth_401_count": "1 readonly fallback risk",
+    "Z044_CAND003_auth_401_count": "1/1 readonly fallback risk",
+    "Z044_CAND002_auth_401_count": "25/25 readonly fallback risk",
+    "Z044_CAND001_auth_401_count": "6/6 readonly fallback risk",
+    "Z043_fallback_risks": true,
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "Z042_Z041_Z040_Z039_Z038_fallback_risks": true,
+    "B28_shell_wrapper_anomaly": true,
+    "Z033_skipped_only": true,
+    "Z035_screenshot_missing_risk": true,
+    "guarded_readonly_not_write_success": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "z044_cand005_started": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z044B-28-REGRESSION-CAND004"
+}

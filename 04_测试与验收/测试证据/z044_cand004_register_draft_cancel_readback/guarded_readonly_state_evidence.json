@@ -1,0 +1,40 @@
+{
+  "path": "04_测试与验收/测试证据/z044_cand004_register_draft_cancel_readback/guarded_readonly_state_evidence.json",
+  "guarded_entries_covered": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "details": [
+    {
+      "entry": "提交登记",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "dataGuardState": "guarded-readonly",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": null
+    },
+    {
+      "entry": "提交撤销",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "dataGuardState": "guarded-readonly",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": null
+    },
+    {
+      "entry": "只读降级确认",
+      "visible": true,
+      "readonly_or_guarded": true,
+      "dataGuardState": "guarded-readonly",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false"
+    }
+  ],
+  "all_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "guardedReadonlyNodes": 17,
+  "guarded_readonly_not_write_success": true
+}
