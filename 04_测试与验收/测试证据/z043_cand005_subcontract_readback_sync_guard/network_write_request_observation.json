@@ -1,0 +1,19 @@
+{
+  "auth_401_count": 4,
+  "auth_401_urls": [
+    "http://127.0.0.1:5174/api/auth/me",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20",
+    "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20"
+  ],
+  "write_requests_observed_count": 0,
+  "write_requests": [],
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "runtime_readonly_fallback_risk": true,
+  "response_status_counts": {
+    "200": 41,
+    "304": 54,
+    "401": 4
+  }
+}

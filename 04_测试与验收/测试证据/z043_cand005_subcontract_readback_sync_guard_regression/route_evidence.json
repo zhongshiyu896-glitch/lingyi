@@ -1,0 +1,26 @@
+[
+  {
+    "input_route": "/subcontract/list",
+    "requested_url": "http://127.0.0.1:5174/subcontract/list",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/subcontract/list",
+    "final_path": "/subcontract/list",
+    "parity_redirect": null
+  },
+  {
+    "input_route": "/subcontract/detail",
+    "requested_url": "http://127.0.0.1:5174/subcontract/detail",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/subcontract/detail",
+    "final_path": "/subcontract/detail",
+    "parity_redirect": null
+  },
+  {
+    "input_route": "/materialPurchase/materialPurchaseProcess",
+    "requested_url": "http://127.0.0.1:5174/materialPurchase/materialPurchaseProcess",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+    "final_path": "/subcontract/list?parity=material-purchase",
+    "parity_redirect": "/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
+  }
+]

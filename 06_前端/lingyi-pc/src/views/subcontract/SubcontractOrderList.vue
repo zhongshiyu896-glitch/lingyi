@@ -93,6 +93,73 @@
         </div>
       </section>
 
+      <section
+        class="z043-subcontract-panel"
+        data-testid="z043-subcontract-readback-compare"
+        data-readonly-boundary="true"
+        data-write-request-success-allowed="false"
+        data-real-write-action-added="false"
+      >
+        <div class="z043-panel-header">
+          <strong>列表/详情 readback 对照</strong>
+          <el-tag type="warning" effect="plain">guarded readonly</el-tag>
+        </div>
+        <el-descriptions :column="3" border size="small">
+          <el-descriptions-item label="列表筛选">{{ z043ReadbackCompare.listFilter }}</el-descriptions-item>
+          <el-descriptions-item label="详情主字段">{{ z043ReadbackCompare.detailFields }}</el-descriptions-item>
+          <el-descriptions-item label="写成功状态">{{ z043ReadbackCompare.writeState }}</el-descriptions-item>
+          <el-descriptions-item label="同步重试原因">
+            <span
+              data-testid="z043-subcontract-sync-retry-reason"
+              data-guard-state="guarded-readonly"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z043SyncRetryReason }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="导出/打印禁用">
+            <span
+              data-testid="z043-subcontract-export-print-disabled"
+              data-guard-state="guarded-readonly"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z043ExportPrintDisabledReason }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="materialPurchase parity 来源">
+            <span
+              data-testid="z043-subcontract-material-parity-source"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z043MaterialParitySource }}
+            </span>
+          </el-descriptions-item>
+        </el-descriptions>
+        <div class="z043-guard-actions" data-testid="z043-subcontract-list-guarded-actions">
+          <el-tag
+            v-for="entry in z043GuardEntries"
+            :key="entry"
+            type="info"
+            effect="plain"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            data-guard-state="guarded-readonly"
+            data-readonly-boundary="true"
+            data-write-request-success-allowed="false"
+            data-real-write-action-added="false"
+            :data-guard-entry="entry"
+          >
+            {{ entry }} guarded/readonly
+          </el-tag>
+        </div>
+      </section>
+
       <el-form :inline="true" :model="query" data-testid="subcontract-filter-form">
         <el-form-item label="加工厂">
           <div data-testid="subcontract-filter-supplier">
@@ -273,6 +340,7 @@ const createSubmitting = ref<boolean>(false)
 const readonlyFallback = ref<boolean>(false)
 const canRead = computed<boolean>(() => readonlyFallback.value || permissionStore.state.buttonPermissions.read)
 const z042GuardEntries = ['新建外发单', '发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
+const z043GuardEntries = z042GuardEntries
 const parityHint = computed<{ key: string; label: string } | null>(() => {
   const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
   if (raw === 'material-purchase') {
@@ -295,6 +363,28 @@ const z042ParitySource = computed<{ label: string; finalRoute: string }>(() => {
     finalRoute: '/subcontract/list',
   }
 })
+const z043ReadbackCompare = computed(() => ({
+  listFilter: `supplier=${query.supplier || '全部'} / status=${query.status || '全部'} / readonly rows=${rows.value.length}`,
+  detailFields: 'subcontract_no / supplier / status / sync_status 与详情页主字段保持只读对照',
+  writeState: 'dataWriteRequestSuccessAllowed=false，列表与详情均不推断真实写成功',
+}))
+const z043SyncRetryReason = computed<string>(() => {
+  const failedRows = rows.value.filter((row) => {
+    const issue = row.latest_issue_sync_status || ''
+    const receipt = row.latest_receipt_sync_status || ''
+    return ['failed', 'dead', 'blocked_scope'].includes(issue) || ['failed', 'dead', 'blocked_scope'].includes(receipt)
+  })
+  return failedRows.length
+    ? `存在 ${failedRows.length} 条同步异常，只显示 retry reason，不发送同步重试请求`
+    : '当前无同步异常；同步重试入口保持 guarded/readonly，不发送写请求'
+})
+const z043ExportPrintDisabledReason =
+  '导出与打印仅展示禁用原因：缺少写授权且当前为只读验收，不生成下载、打印或后端写请求'
+const z043MaterialParitySource = computed<string>(() =>
+  parityHint.value?.key === 'material-purchase'
+    ? '/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase'
+    : `${z042ParitySource.value.finalRoute}；direct list route readonly readback`,
+)
 
 const query = reactive({
   supplier: '',
@@ -554,6 +644,25 @@ onMounted(async () => {
 
 .z042-panel-header,
 .z042-guard-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.z043-subcontract-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-light);
+}
+
+.z043-panel-header,
+.z043-guard-actions {
   display: flex;
   align-items: center;
   gap: 8px;

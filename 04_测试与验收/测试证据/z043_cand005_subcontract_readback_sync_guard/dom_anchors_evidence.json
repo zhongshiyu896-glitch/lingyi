@@ -1,0 +1,70 @@
+{
+  "anchors": [
+    {
+      "anchor": "subcontract-list-page",
+      "observed": true,
+      "detail_count": 0,
+      "detail_visible_count": 0,
+      "list_count": 1,
+      "list_visible_count": 1
+    },
+    {
+      "anchor": "subcontract-filter-form",
+      "observed": true,
+      "detail_count": 0,
+      "detail_visible_count": 0,
+      "list_count": 1,
+      "list_visible_count": 1
+    },
+    {
+      "anchor": "subcontract-detail-page",
+      "observed": true,
+      "detail_count": 1,
+      "detail_visible_count": 1,
+      "list_count": 0,
+      "list_visible_count": 0
+    },
+    {
+      "anchor": "subcontract-detail-main-fields",
+      "observed": true,
+      "detail_count": 1,
+      "detail_visible_count": 1,
+      "list_count": 0,
+      "list_visible_count": 0
+    },
+    {
+      "anchor": "z043-subcontract-readback-compare",
+      "observed": true,
+      "detail_count": 1,
+      "detail_visible_count": 1,
+      "list_count": 1,
+      "list_visible_count": 1
+    },
+    {
+      "anchor": "z043-subcontract-sync-retry-reason",
+      "observed": true,
+      "detail_count": 1,
+      "detail_visible_count": 1,
+      "list_count": 1,
+      "list_visible_count": 1
+    },
+    {
+      "anchor": "z043-subcontract-export-print-disabled",
+      "observed": true,
+      "detail_count": 1,
+      "detail_visible_count": 1,
+      "list_count": 1,
+      "list_visible_count": 1
+    },
+    {
+      "anchor": "z043-subcontract-material-parity-source",
+      "observed": true,
+      "detail_count": 1,
+      "detail_visible_count": 1,
+      "list_count": 1,
+      "list_visible_count": 1
+    }
+  ],
+  "observed_count": 8,
+  "anchors_all_observed": true
+}

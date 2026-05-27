@@ -1,0 +1,137 @@
+{
+  "task_id": "TASK-Z043B-34-PREP",
+  "role": "B Engineer",
+  "head": "191fa25ebfa0d3e7979b3a1d0711069c858b5f9a",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "candidate_id": "Z043-CAND-005",
+  "boundary": {
+    "title": "外发单列表详情 readback 对照与同步 guard 可见流",
+    "page_scope": "外发单列表、详情与物料采购 parity 的 readback 对照",
+    "routes": [
+      "/subcontract/list",
+      "/subcontract/detail",
+      "/materialPurchase/materialPurchaseProcess"
+    ],
+    "material_purchase_parity_redirect": "/subcontract/list?parity=material-purchase",
+    "allowed_files": [
+      "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+      "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+    ],
+    "forbidden": [
+      "06_前端/lingyi-pc/src/api/subcontract.ts",
+      "07_后端",
+      "current 19 tracked dirty files",
+      "historical product/test dirty",
+      "log/control dirty",
+      "Z034 residual artifacts",
+      "runtime/cache/test-results",
+      "remote/prod/go-live",
+      "prior non-allowlisted summary/metadata"
+    ],
+    "reused_source": "Z042 / Z042-CAND-005 / c0926d15a9a8ab88160b737672a17253a0bbc5cb",
+    "read_only": true,
+    "backend_allowed": false,
+    "write_request_success_allowed": false,
+    "real_write_action_allowed": false,
+    "pure_static_fallback_allowed": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "allowed_files_status": {
+    "allowed_files_exist": true,
+    "allowed_files_dirty": false,
+    "files": {
+      "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue": {
+        "exists": true,
+        "dirty": false
+      },
+      "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue": {
+        "exists": true,
+        "dirty": false
+      }
+    }
+  },
+  "route_source_status": {
+    "/subcontract/list": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts:50"
+    },
+    "/subcontract/detail": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts:56"
+    },
+    "/materialPurchase/materialPurchaseProcess": {
+      "located": true,
+      "source": "06_前端/lingyi-pc/src/router/index.ts:256",
+      "parity_redirect_recorded": true,
+      "redirect_target": "/subcontract/list?parity=material-purchase"
+    }
+  },
+  "required_anchors": [
+    "subcontract-list-page",
+    "subcontract-filter-form",
+    "subcontract-detail-page",
+    "subcontract-detail-main-fields",
+    "z043-subcontract-readback-compare",
+    "z043-subcontract-sync-retry-reason",
+    "z043-subcontract-export-print-disabled",
+    "z043-subcontract-material-parity-source"
+  ],
+  "required_anchors_count": 8,
+  "guarded_entries": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "evidence_requirement": {
+    "list_screenshot_required": true,
+    "detail_screenshot_required": true,
+    "material_purchase_parity_route_evidence_required": true,
+    "three_routes_evidence_required": true,
+    "runtime_dom_anchors_required": true,
+    "guarded_readonly_state_required": true,
+    "network_write_request_observation_required": true,
+    "auth_401_readonly_fallback_risk_only": true,
+    "guarded_readonly_not_write_success": true,
+    "write_requests_observed_count_must_be_zero_or_no_real_write_success": true,
+    "typecheck_command_workdir_exit_code_required": true,
+    "dev_server_started_stopped_required": true
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "risk_fields_preserved": {
+    "cand004_b27_b28_auth_401_count": "1/1",
+    "cand003_b19_b20_auth_401_count": "1/1",
+    "cand002_b11_b12_auth_401_count": "30/30",
+    "z043_cand001_b03_b04_auth_401_count": "2/2",
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "z042_z041_z040_z039_z038_fallback_risks": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false
+  },
+  "forbidden_actions": {
+    "code_changed": false,
+    "browser_typecheck_pytest_rerun": false,
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore": false,
+    "started_b35_implementation": false,
+    "remote_lifecycle_released": false
+  },
+  "next_task": "TASK-Z043B-35-IMPL"
+}

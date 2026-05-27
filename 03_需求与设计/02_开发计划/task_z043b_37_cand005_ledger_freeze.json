@@ -1,0 +1,51 @@
+{
+  "task_id": "TASK-Z043B-37-LEDGER-CAND005",
+  "freeze_status": "LEDGER_FROZEN_LOCAL_ONLY",
+  "source_chain": "B34 -> B35 -> B35-FIX1 -> B36 -> B37",
+  "evidence_only": false,
+  "yes_count": 27,
+  "no_count": 12,
+  "ledger_total": 39,
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "forbidden_paths_in_yes": [],
+  "yes_paths": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue",
+    "03_需求与设计/02_开发计划/TASK-Z043B-34-PREP_CAND005_外发单readback同步guard边界冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z043b_34_cand005_boundary.json",
+    "03_需求与设计/02_开发计划/task_z043b_34_cand005_boundary.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z043B-35-IMPL_CAND005_外发单readback同步guard实施报告.md",
+    "03_需求与设计/02_开发计划/task_z043b_35_cand005_impl_result.json",
+    "03_需求与设计/02_开发计划/task_z043b_35_cand005_impl.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z043B-36-REGRESSION-CAND005_外发单readback同步guard回归报告.md",
+    "03_需求与设计/02_开发计划/task_z043b_36_cand005_regression_result.json",
+    "03_需求与设计/02_开发计划/task_z043b_36_cand005_regression.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z043B-37-LEDGER-CAND005_外发单readback同步guard账本冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z043b_37_cand005_ledger.json",
+    "03_需求与设计/02_开发计划/task_z043b_37_cand005_ledger.tsv",
+    "03_需求与设计/02_开发计划/task_z043b_37_cand005_ledger_freeze.json",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard/subcontract_list_z043_readback_sync_guard.png",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard/subcontract_detail_z043_readback_sync_guard.png",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard_regression/subcontract_list_z043_readback_sync_guard_regression.png",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard_regression/subcontract_detail_z043_readback_sync_guard_regression.png",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard/route_evidence.json",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard_regression/route_evidence.json",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard_regression/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard_regression/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard_regression/network_write_request_observation.json"
+  ],
+  "excluded_non_allowlisted_summary_metadata": [
+    "04_测试与验收/测试证据/z043_cand005_subcontract_readback_sync_guard/screenshot_evidence.json",
+    "prior runtime_summary/screenshot_metadata/other non-allowlisted summary metadata"
+  ],
+  "next_task": "TASK-Z043B-38-STAGE-CAND005"
+}

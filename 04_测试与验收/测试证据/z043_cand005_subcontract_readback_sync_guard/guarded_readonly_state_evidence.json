@@ -1,0 +1,179 @@
+{
+  "guarded_entries": [
+    {
+      "entry": "新建外发单",
+      "covered": true,
+      "count": 2,
+      "states": [
+        "guarded_readonly",
+        "guarded-readonly"
+      ],
+      "readonly_boundary_values": [
+        "",
+        "true"
+      ],
+      "write_request_success_allowed_values": [
+        "",
+        "false"
+      ],
+      "real_write_action_added_values": [
+        "",
+        "false"
+      ]
+    },
+    {
+      "entry": "发料",
+      "covered": true,
+      "count": 2,
+      "states": [
+        "guarded_readonly",
+        "guarded-readonly"
+      ],
+      "readonly_boundary_values": [
+        "",
+        "true"
+      ],
+      "write_request_success_allowed_values": [
+        "",
+        "false"
+      ],
+      "real_write_action_added_values": [
+        "",
+        "false"
+      ]
+    },
+    {
+      "entry": "回料",
+      "covered": true,
+      "count": 2,
+      "states": [
+        "guarded_readonly",
+        "guarded-readonly"
+      ],
+      "readonly_boundary_values": [
+        "",
+        "true"
+      ],
+      "write_request_success_allowed_values": [
+        "",
+        "false"
+      ],
+      "real_write_action_added_values": [
+        "",
+        "false"
+      ]
+    },
+    {
+      "entry": "验货",
+      "covered": true,
+      "count": 2,
+      "states": [
+        "guarded_readonly",
+        "guarded-readonly"
+      ],
+      "readonly_boundary_values": [
+        "",
+        "true"
+      ],
+      "write_request_success_allowed_values": [
+        "",
+        "false"
+      ],
+      "real_write_action_added_values": [
+        "",
+        "false"
+      ]
+    },
+    {
+      "entry": "结算预览",
+      "covered": true,
+      "count": 2,
+      "states": [
+        "guarded_readonly",
+        "guarded-readonly"
+      ],
+      "readonly_boundary_values": [
+        "",
+        "true"
+      ],
+      "write_request_success_allowed_values": [
+        "",
+        "false"
+      ],
+      "real_write_action_added_values": [
+        "",
+        "false"
+      ]
+    },
+    {
+      "entry": "同步重试",
+      "covered": true,
+      "count": 2,
+      "states": [
+        "guarded_readonly",
+        "guarded-readonly"
+      ],
+      "readonly_boundary_values": [
+        "",
+        "true"
+      ],
+      "write_request_success_allowed_values": [
+        "",
+        "false"
+      ],
+      "real_write_action_added_values": [
+        "",
+        "false"
+      ]
+    },
+    {
+      "entry": "导出",
+      "covered": true,
+      "count": 2,
+      "states": [
+        "guarded_readonly",
+        "guarded-readonly"
+      ],
+      "readonly_boundary_values": [
+        "",
+        "true"
+      ],
+      "write_request_success_allowed_values": [
+        "",
+        "false"
+      ],
+      "real_write_action_added_values": [
+        "",
+        "false"
+      ]
+    },
+    {
+      "entry": "打印",
+      "covered": true,
+      "count": 2,
+      "states": [
+        "guarded_readonly",
+        "guarded-readonly"
+      ],
+      "readonly_boundary_values": [
+        "",
+        "true"
+      ],
+      "write_request_success_allowed_values": [
+        "",
+        "false"
+      ],
+      "real_write_action_added_values": [
+        "",
+        "false"
+      ]
+    }
+  ],
+  "guarded_entries_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "semantic_runtime_fact_changed": false,
+  "code_changed": false,
+  "validation_rerun": false
+}
