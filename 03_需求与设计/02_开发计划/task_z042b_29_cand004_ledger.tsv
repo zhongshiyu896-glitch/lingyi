@@ -1,0 +1,36 @@
+field	value
+task_id	TASK-Z042B-29-LEDGER-CAND004
+candidate_id	Z042-CAND-004
+evidence_only	false
+source_chain	B26 -> B27 -> B28 -> B29
+reused_committed_product_path	true
+reused_source	Z038 / Z038-CAND-001 / e457b09523df6723821f72108d2e19790c9eb357
+ledger_total	38
+yes_count	26
+no_count	12
+yes_no_intersection	[]
+all_yes_files_exist	true
+ignored_yes_paths	[]
+frontend_yes_paths	06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue
+forbidden_paths_in_yes	[]
+api_workshop_touched	false
+route_passed	true
+screenshots_in_yes	04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/z042_cand004_register_guard.png;04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/z042_cand004_register_guard_regression.png
+runtime_evidence_in_yes	true
+anchors_observed_count	8
+anchors_all_observed	true
+guarded_controls_covered	true
+auth_401_count	1
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_exit_code	0
+risk_fields_preserved	true
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+next_task	TASK-Z042B-30-STAGE-CAND004

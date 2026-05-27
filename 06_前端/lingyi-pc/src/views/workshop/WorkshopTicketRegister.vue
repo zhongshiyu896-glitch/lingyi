@@ -103,9 +103,10 @@
             data-testid="workshop-ticket-register-submit-button"
             :data-write-guard="mode === 'register' ? 'guarded:workshop-ticket-register-readonly' : 'guarded:workshop-ticket-reversal-readonly'"
             :data-write-allowlist="mode === 'register' ? 'workshop-ticket-register' : 'workshop-ticket-reversal'"
-            data-guard-state="readonly-no-write"
+            data-guard-state="guarded-readonly"
             data-readonly-boundary="true"
             data-write-request-success-allowed="false"
+            data-real-write-action-added="false"
             @click="submit"
           >
             {{ mode === 'register' ? '提交登记（只读预览）' : '提交撤销（只读预览）' }}
@@ -135,6 +136,84 @@
             : '当前账号无提交权限；页面仍保持只读预览，登记/撤销写动作已被 guard 拦截。'
         }}
       </p>
+
+      <div class="z042-register-grid" data-testid="z042-register-readonly-boundary">
+        <section
+          class="z042-register-section"
+          data-readonly-boundary="true"
+          data-testid="z042-register-draft-change-summary"
+        >
+          <h3>草稿变更摘要</h3>
+          <ul class="z042-register-list">
+            <li v-for="item in draftChangeSummary" :key="item.label">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <em>{{ item.state }}</em>
+            </li>
+          </ul>
+          <p class="z042-register-meta">
+            request_id={{ readonlyRequestId }} / scenario_tag={{ readonlyScenarioTag }}
+          </p>
+        </section>
+
+        <section
+          class="z042-register-section"
+          data-readonly-boundary="true"
+          data-testid="z042-register-cancel-readonly-reason"
+          data-write-guard="guarded:z042-register-cancel-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+          data-guard-state="guarded-readonly"
+        >
+          <h3>撤销原因提示</h3>
+          <p>{{ cancelReasonHint }}</p>
+          <div class="z042-register-guards">
+            <el-tag
+              data-guard-entry="提交登记"
+              data-guard-state="guarded-readonly"
+              data-write-request-success-allowed="false"
+              effect="plain"
+              type="info"
+            >
+              提交登记 guarded/readonly
+            </el-tag>
+            <el-tag
+              data-guard-entry="提交撤销"
+              data-guard-state="guarded-readonly"
+              data-write-request-success-allowed="false"
+              effect="plain"
+              type="warning"
+            >
+              提交撤销 guarded/readonly
+            </el-tag>
+          </div>
+        </section>
+
+        <section
+          class="z042-register-section"
+          data-readonly-boundary="true"
+          data-testid="z042-register-return-route-guard"
+          data-write-guard="guarded:z042-register-return-route-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+          data-guard-state="guarded-readonly"
+        >
+          <h3>返回工票查询来源</h3>
+          <p>{{ returnRouteExplanation }}</p>
+          <el-button
+            plain
+            type="warning"
+            data-guard-entry="只读降级确认"
+            data-guard-state="guarded-readonly"
+            data-readonly-boundary="true"
+            data-write-request-success-allowed="false"
+            data-real-write-action-added="false"
+            @click="confirmReadonlyDowngrade"
+          >
+            只读降级确认（不写入）
+          </el-button>
+        </section>
+      </div>
     </el-card>
 
     <el-card shadow="never" data-testid="workshop-ticket-register-readonly-draft-preview">
@@ -219,6 +298,58 @@ const readonlyDraft = computed(() => ({
   original_ticket_id: form.original_ticket_id,
   reason: form.reason.trim(),
 }))
+const readonlyScenarioTag = computed<string>(() => resolveScenarioTag())
+const readonlyRequestId = computed<string>(() => {
+  const ticketKey = withScenarioCarrier(
+    form.ticket_key,
+    readonlyScenarioTag.value,
+    mode.value === 'register' ? 'TK-REG' : 'TK-REV',
+  )
+  const sourceRef = withScenarioCarrier(
+    form.source_ref,
+    readonlyScenarioTag.value,
+    mode.value === 'register' ? 'SRC-REG' : 'SRC-REV',
+  )
+  return buildWorkshopTicketRequestId({
+    scenarioTag: readonlyScenarioTag.value,
+    operation: mode.value,
+    idempotencyKey: ticketKey,
+    sourceRef,
+    ticketKey,
+    jobCard: form.job_card.trim() || 'job-card-draft',
+    employeeOrOperator: form.employee.trim() || 'operator-local',
+    batchNo: `${readonlyScenarioTag.value}-REGISTER-DRAFT`,
+  })
+})
+const draftChangeSummary = computed(() => [
+  {
+    label: '登记/撤销模式',
+    value: mode.value === 'register' ? '登记工票' : '撤销工票',
+    state: 'local preview',
+  },
+  {
+    label: '关键草稿字段',
+    value: [readonlyDraft.value.ticket_key, readonlyDraft.value.job_card, readonlyDraft.value.employee]
+      .filter(Boolean)
+      .join(' / ') || '未填写',
+    state: requiredFieldErrors.value.length === 0 ? 'ready for guard' : 'waiting for local validation',
+  },
+  {
+    label: '来源或撤销原因',
+    value: mode.value === 'register'
+      ? (readonlyDraft.value.source_ref || '未填写来源单号')
+      : (readonlyDraft.value.reason || '未填写撤销原因'),
+    state: 'readonly only',
+  },
+])
+const cancelReasonHint = computed<string>(() => (
+  mode.value === 'reversal'
+    ? `撤销原因将仅用于本地预览：${readonlyDraft.value.reason || '待填写'}；提交撤销已保持只读 guard。`
+    : '切换至撤销工票后需填写原工票 ID 与撤销原因；撤销提交不会形成真实写请求成功。'
+))
+const returnRouteExplanation = computed<string>(() => (
+  `返回列表固定指向 /workshop/tickets；来源 request_id=${readonlyRequestId.value} 仅用于只读追踪。`
+))
 
 const extractScenarioTag = (value: string): string | null => {
   const matched = value.match(SCENARIO_PATTERN)
@@ -282,6 +413,11 @@ const submit = async (): Promise<void> => {
   }
 }
 
+const confirmReadonlyDowngrade = (): void => {
+  guardedFeedback.value = `只读降级确认已记录为本地提示：request_id=${readonlyRequestId.value}，未发送登记/撤销写请求。`
+  ElMessage.warning(guardedFeedback.value)
+}
+
 const goList = (): void => {
   void router.push('/workshop/tickets')
 }
@@ -319,5 +455,77 @@ onMounted(async () => {
 .permission-tip {
   margin-top: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.z042-register-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.z042-register-section {
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+}
+
+.z042-register-section h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.z042-register-section p {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+}
+
+.z042-register-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.z042-register-list li {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 4px 8px;
+  font-size: 12px;
+}
+
+.z042-register-list strong,
+.z042-register-list em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.z042-register-list em {
+  grid-column: 2;
+  color: var(--el-text-color-secondary);
+  font-style: normal;
+}
+
+.z042-register-meta {
+  margin-top: 8px !important;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.z042-register-guards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+@media (max-width: 960px) {
+  .z042-register-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

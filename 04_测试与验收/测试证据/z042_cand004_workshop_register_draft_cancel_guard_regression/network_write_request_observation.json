@@ -1,0 +1,20 @@
+{
+  "route": "/workshop/tickets/register",
+  "route_http_status": 200,
+  "final_url": "http://127.0.0.1:5174/workshop/tickets/register",
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "write_requests": [],
+  "write_success_responses": [],
+  "auth_401_responses": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "status": 401,
+      "resourceType": "fetch"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "task_id": "TASK-Z042B-29-LEDGER-CAND004",
+  "role": "B Engineer",
+  "candidate_id": "Z042-CAND-004",
+  "head": "d592f5d712fc398113a68702460863ce3e18b88c",
+  "branch": "codex/sprint4-seal",
+  "evidence_only": false,
+  "source_chain": "B26 -> B27 -> B28 -> B29",
+  "reused_committed_product_path": true,
+  "reused_source": {
+    "source_batch": "Z038",
+    "source_candidate_id": "Z038-CAND-001",
+    "source_commit": "e457b09523df6723821f72108d2e19790c9eb357",
+    "reused_paths": [
+      "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+    ]
+  },
+  "yes": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue",
+    "03_需求与设计/02_开发计划/TASK-Z042B-26-PREP_CAND004_边界冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z042b_26_cand004_boundary.json",
+    "03_需求与设计/02_开发计划/task_z042b_26_cand004_boundary.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z042B-27-IMPL_CAND004_工票登记撤销草稿取消guard实施报告.md",
+    "03_需求与设计/02_开发计划/task_z042b_27_cand004_impl_result.json",
+    "03_需求与设计/02_开发计划/task_z042b_27_cand004_impl.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z042B-28-REGRESSION-CAND004_工票登记撤销草稿取消guard回归报告.md",
+    "03_需求与设计/02_开发计划/task_z042b_28_cand004_regression_result.json",
+    "03_需求与设计/02_开发计划/task_z042b_28_cand004_regression.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z042B-29-LEDGER-CAND004_工票登记撤销草稿取消guard账本冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z042b_29_cand004_ledger.json",
+    "03_需求与设计/02_开发计划/task_z042b_29_cand004_ledger.tsv",
+    "03_需求与设计/02_开发计划/task_z042b_29_cand004_ledger_freeze.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/z042_cand004_register_guard.png",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/route_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/screenshot_metadata.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/z042_cand004_register_guard_regression.png",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/route_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/screenshot_metadata.json"
+  ],
+  "no": [
+    "06_前端/lingyi-pc/src/api/workshop.ts",
+    "07_后端",
+    "candidate pool",
+    "historical dirty",
+    "log/control dirty",
+    "Z034 residual artifacts",
+    "Z035/Z036/Z037/Z038/Z039/Z040/Z041 committed product paths",
+    "Z042-CAND-001/CAND002/CAND003 已提交产物范围",
+    "runtime/cache/test-results",
+    "remote/prod/go-live",
+    "未来任务产物",
+    "任何未改 API/视图或推断路径"
+  ],
+  "ledger_total": 38,
+  "yes_count": 26,
+  "no_count": 12,
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+  ],
+  "forbidden_paths_in_yes": [],
+  "api_workshop_touched": false,
+  "route_passed": true,
+  "screenshots_in_yes": [
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/z042_cand004_register_guard.png",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/z042_cand004_register_guard_regression.png"
+  ],
+  "runtime_evidence_in_yes": true,
+  "runtime_evidence_paths": [
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/route_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/screenshot_metadata.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/route_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/screenshot_metadata.json"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_controls_covered": true,
+  "guarded_entries_covered": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_exit_code": 0,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "risk_fields_preserved": {
+    "current_cand004_fallback_risk": {
+      "b27_auth_401_count": 1,
+      "b28_auth_401_count": 1,
+      "runtime_readonly_fallback_risk": true
+    },
+    "z042_cand003_readonly_fallback_risk": {
+      "auth_401_count": 1,
+      "runtime_readonly_fallback_risk": true
+    },
+    "z042_cand002_readonly_fallback_risk": {
+      "auth_401_count": 25,
+      "runtime_readonly_fallback_risk": true
+    },
+    "z042_cand001_fallback_risk": "preserved",
+    "prior_fallback_risks": [
+      "Z041 fallback risk",
+      "Z040 fallback risk",
+      "Z039 fallback risk",
+      "Z038 fallback risks"
+    ],
+    "guarded_readonly_not_write_success": true,
+    "process_risks": [
+      "B28 shell_wrapper_anomaly",
+      "Z033 skipped_only",
+      "Z035 screenshot_missing_risk"
+    ],
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "next_task": "TASK-Z042B-30-STAGE-CAND004"
+}

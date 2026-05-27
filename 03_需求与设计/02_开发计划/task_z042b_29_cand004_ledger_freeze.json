@@ -1,0 +1,19 @@
+{
+  "task_id": "TASK-Z042B-29-LEDGER-CAND004",
+  "freeze_status": "FROZEN",
+  "candidate_id": "Z042-CAND-004",
+  "evidence_only": false,
+  "source_chain": "B26 -> B27 -> B28 -> B29",
+  "ledger_yes_count": 26,
+  "ledger_no_count": 12,
+  "ledger_total": 38,
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+  ],
+  "next_task": "TASK-Z042B-30-STAGE-CAND004",
+  "run_this_task": false,
+  "remote_lifecycle_parked": true
+}

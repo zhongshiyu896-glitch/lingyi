@@ -1,0 +1,66 @@
+{
+  "route": "/workshop/tickets/register",
+  "guarded_entries_covered": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "guarded_controls": [
+    {
+      "name": "提交登记",
+      "evidence": {
+        "text": "提交登记（只读预览）",
+        "attrs": {
+          "data-v-4c1ec6b6": "",
+          "aria-disabled": "false",
+          "type": "button",
+          "class": "el-button el-button--primary",
+          "data-action-type": "write",
+          "data-testid": "workshop-ticket-register-submit-button",
+          "data-write-guard": "guarded:workshop-ticket-register-readonly",
+          "data-write-allowlist": "workshop-ticket-register",
+          "data-guard-state": "guarded-readonly",
+          "data-readonly-boundary": "true",
+          "data-write-request-success-allowed": "false",
+          "data-real-write-action-added": "false"
+        }
+      }
+    },
+    {
+      "name": "提交撤销",
+      "evidence": {
+        "text": "提交撤销 guarded/readonly",
+        "attrs": {
+          "data-v-4c1ec6b6": "",
+          "class": "el-tag el-tag--warning el-tag--plain",
+          "data-guard-entry": "提交撤销",
+          "data-guard-state": "guarded-readonly",
+          "data-write-request-success-allowed": "false"
+        }
+      }
+    },
+    {
+      "name": "只读降级确认",
+      "evidence": {
+        "text": "只读降级确认（不写入）",
+        "attrs": {
+          "data-v-4c1ec6b6": "",
+          "aria-disabled": "false",
+          "type": "button",
+          "class": "el-button el-button--warning is-plain",
+          "data-guard-entry": "只读降级确认",
+          "data-guard-state": "guarded-readonly",
+          "data-readonly-boundary": "true",
+          "data-write-request-success-allowed": "false",
+          "data-real-write-action-added": "false"
+        }
+      }
+    }
+  ],
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "readonly_boundary_nodes": 6,
+  "write_request_success_allowed_false_nodes": 7,
+  "real_write_action_added_false_nodes": 5
+}

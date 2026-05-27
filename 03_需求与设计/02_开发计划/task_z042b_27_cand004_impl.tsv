@@ -1,0 +1,35 @@
+field	value
+task_id	TASK-Z042B-27-IMPL
+candidate_id	Z042-CAND-004
+changed_files	06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue
+allowed_files_only	true
+reused_committed_product_path	true
+reused_source	Z038 / Z038-CAND-001 / e457b09523df6723821f72108d2e19790c9eb357
+route_checked	/workshop/tickets/register
+route_http_status	200
+screenshot_path	04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard/z042_cand004_register_guard.png
+screenshot_png_dimensions	1440x1200
+anchors_observed_count	8
+anchors_all_observed	true
+guarded_entries_covered	提交登记;提交撤销;只读降级确认
+auth_401_count	1
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_command	npm run typecheck
+typecheck_workdir	06_前端/lingyi-pc
+typecheck_exit_code	0
+backend_api_added	false
+real_write_action_added	false
+read_only_boundary_preserved	true
+dev_server_started	true
+dev_server_stopped	true
+risk_fields_preserved	true
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+next_task	TASK-Z042B-28-REGRESSION-CAND004

@@ -1,0 +1,7 @@
+{
+  "route": "/workshop/tickets/register",
+  "requested_url": "http://127.0.0.1:5174/workshop/tickets/register",
+  "route_http_status": 200,
+  "final_url": "http://127.0.0.1:5174/workshop/tickets/register",
+  "passed": true
+}

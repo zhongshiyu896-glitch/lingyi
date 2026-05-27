@@ -1,0 +1,31 @@
+field	value
+task_id	TASK-Z042B-26-PREP
+candidate_id	Z042-CAND-004
+title	工票登记撤销草稿与取消 guard 二轮可见流
+routes	/workshop/tickets/register
+allowed_files	06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue
+allowed_files_exist	true
+allowed_files_dirty	false
+reused_committed_product_path	true
+reused_source	Z038 / Z038-CAND-001 / e457b09523df6723821f72108d2e19790c9eb357
+required_anchors_count	8
+guarded_entries	提交登记;提交撤销;只读降级确认
+write_request_success_allowed	false
+real_write_action_allowed	false
+pure_static_fallback_allowed	false
+evidence_requirement_present	true
+route_source_located	true
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+implementation_started	false
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+remote_lifecycle_parked	true
+push_tag_pr_release	false
+production_readback	false
+go_live	false
+project_completion	false
+next_task	TASK-Z042B-27-IMPL
+run_this_task	false

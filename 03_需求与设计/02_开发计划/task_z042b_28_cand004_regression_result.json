@@ -1,0 +1,85 @@
+{
+  "task_id": "TASK-Z042B-28-REGRESSION-CAND004",
+  "role": "B Engineer",
+  "candidate_id": "Z042-CAND-004",
+  "head": "d592f5d712fc398113a68702460863ce3e18b88c",
+  "branch": "codex/sprint4-seal",
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+  ],
+  "allowed_files_only": true,
+  "api_workshop_touched": false,
+  "route_checked": "/workshop/tickets/register",
+  "route_http_status": 200,
+  "route_evidence": "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/route_evidence.json",
+  "screenshot_path": "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/z042_cand004_register_guard_regression.png",
+  "screenshot_png_dimensions": "1440x1200",
+  "screenshot_metadata": "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/screenshot_metadata.json",
+  "dom_anchors_evidence": "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/dom_anchors_evidence.json",
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_readonly_state_evidence": "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/guarded_readonly_state_evidence.json",
+  "guarded_entries_covered": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "network_write_request_observation": "04_测试与验收/测试证据/z042_cand004_workshop_register_draft_cancel_guard_regression/network_write_request_observation.json",
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "guarded_readonly_not_write_success": true,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "risk_fields_preserved": {
+    "current_cand004_readonly_fallback_risk": {
+      "b27_auth_401_count": 1,
+      "b28_observed_auth_401_count": 1,
+      "runtime_readonly_fallback_risk": true
+    },
+    "z042_cand003_readonly_fallback_risk": {
+      "auth_401_count": 1,
+      "runtime_readonly_fallback_risk": true
+    },
+    "z042_cand002_readonly_fallback_risk": {
+      "auth_401_count": 25,
+      "runtime_readonly_fallback_risk": true
+    },
+    "z042_cand001_fallback_risk": "preserved",
+    "prior_fallback_risks": [
+      "Z041 fallback risk",
+      "Z040 fallback risk",
+      "Z039 fallback risk",
+      "Z038 fallback risks"
+    ],
+    "guarded_readonly_not_write_success": true,
+    "process_risks": [
+      "B28 shell_wrapper_anomaly",
+      "Z033 skipped_only",
+      "Z035 screenshot_missing_risk"
+    ],
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "next_task": "TASK-Z042B-29-LEDGER-CAND004"
+}

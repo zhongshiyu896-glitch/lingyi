@@ -1,0 +1,47 @@
+{
+  "route": "/workshop/tickets/register",
+  "anchors": [
+    {
+      "test_id": "workshop-ticket-register-page",
+      "count": 1,
+      "observed": true
+    },
+    {
+      "test_id": "workshop-ticket-register-form",
+      "count": 1,
+      "observed": true
+    },
+    {
+      "test_id": "workshop-ticket-register-readonly-draft-preview",
+      "count": 1,
+      "observed": true
+    },
+    {
+      "test_id": "workshop-ticket-register-validation-hint",
+      "count": 1,
+      "observed": true
+    },
+    {
+      "test_id": "workshop-ticket-register-submit-button",
+      "count": 1,
+      "observed": true
+    },
+    {
+      "test_id": "z042-register-draft-change-summary",
+      "count": 1,
+      "observed": true
+    },
+    {
+      "test_id": "z042-register-cancel-readonly-reason",
+      "count": 1,
+      "observed": true
+    },
+    {
+      "test_id": "z042-register-return-route-guard",
+      "count": 1,
+      "observed": true
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}
