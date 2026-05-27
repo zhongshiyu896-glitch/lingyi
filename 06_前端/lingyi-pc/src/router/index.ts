@@ -6,6 +6,10 @@ const z042ReportParityQuery = {
   source_trace: 'z042-report-parity-source-trace',
   export_guard: 'z042-report-export-guard-matrix',
   fallback: 'z042-report-fallback-explanation',
+  z043_export_eligibility: 'readonly-export-disabled',
+  z043_source_grouping: 'finance-and-collaboration-parity',
+  z043_disabled_download_reason: 'write-success-not-allowed',
+  z043_final_route: '/reports/catalog',
 }
 
 const routes: RouteRecordRaw[] = [

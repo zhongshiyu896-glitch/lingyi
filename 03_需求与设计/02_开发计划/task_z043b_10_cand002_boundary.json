@@ -1,0 +1,149 @@
+{
+  "task_id": "TASK-Z043B-10-PREP",
+  "role": "B Engineer",
+  "head": "e584624d9dee99c951de901b7864b0982db47a99",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "candidate_id": "Z043-CAND-002",
+  "title": "报表目录导出资格说明与 parity 分组只读可见流",
+  "page_scope": "财务/协同报表 parity 入口与 /reports/catalog 导出资格说明",
+  "routes": [
+    "/financial/financialReport/customerReconciliationReport",
+    "/financial/financialProcess",
+    "/finance/bank-flow",
+    "/reportManage/collaborationReport/factoryProductStockReport",
+    "/reports/catalog"
+  ],
+  "allowed_files": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "forbidden_scope": [
+    "06_前端/lingyi-pc/src/views/reports/ReportCatalog.vue",
+    "07_后端",
+    "candidate pool",
+    "historical/log/control dirty",
+    "Z034 residual artifacts",
+    "runtime/cache/test-results",
+    "remote/prod/go-live",
+    "CAND001 non-allowlisted runtime_summary.json"
+  ],
+  "reused_committed_product_path": true,
+  "reused_source": {
+    "source_batch": "Z042",
+    "source_candidate_id": "Z042-CAND-002",
+    "source_commit": "0fec11f8654d5c8ac6282a3d72ec1fb6fd831b15",
+    "reused_paths": [
+      "06_前端/lingyi-pc/src/router/index.ts",
+      "06_前端/lingyi-pc/src/api/report.ts"
+    ]
+  },
+  "read_only": true,
+  "backend_allowed": false,
+  "write_request_success_allowed": false,
+  "real_write_action_allowed": false,
+  "pure_static_fallback_allowed": false,
+  "guarded_readonly_not_write_success": true,
+  "required_anchors": [
+    "report-parity-entry-page",
+    "report-parity-route-state",
+    "report-catalog-table",
+    "report-readonly-write-guard",
+    "z043-report-export-eligibility",
+    "z043-report-source-grouping",
+    "z043-report-disabled-download-reason",
+    "z043-report-final-route-link"
+  ],
+  "required_anchors_count": 8,
+  "guarded_entries": [
+    "报表导出",
+    "财务下载",
+    "协同下载",
+    "明细导出"
+  ],
+  "evidence_requirement": {
+    "screenshot": "/reports/catalog 页面截图",
+    "route_evidence": "4 条 parity routes 与 final catalog route evidence",
+    "runtime_dom_anchors": [
+      "report-parity-entry-page",
+      "report-parity-route-state",
+      "report-catalog-table",
+      "report-readonly-write-guard",
+      "z043-report-export-eligibility",
+      "z043-report-source-grouping",
+      "z043-report-disabled-download-reason",
+      "z043-report-final-route-link"
+    ],
+    "guarded_readonly_state": [
+      "报表导出",
+      "财务下载",
+      "协同下载",
+      "明细导出"
+    ],
+    "write_request_observation": true,
+    "auth_401_policy": "auth 401 只能记录为 readonly fallback risk",
+    "guarded_readonly_not_write_success": true,
+    "write_requests_observed_requirement": "write_requests_observed_count 必须为 0 或无真实写成功",
+    "typecheck_required": {
+      "command": "npm run typecheck",
+      "workdir": "06_前端/lingyi-pc",
+      "exit_code_required": 0
+    },
+    "dev_server_started_stopped_required": true
+  },
+  "evidence_requirement_present": true,
+  "allowed_files_status": {
+    "06_前端/lingyi-pc/src/router/index.ts": {
+      "exists": true,
+      "dirty": false
+    },
+    "06_前端/lingyi-pc/src/api/report.ts": {
+      "exists": true,
+      "dirty": false
+    }
+  },
+  "route_source_status": {
+    "/financial/financialReport/customerReconciliationReport": true,
+    "/financial/financialProcess": true,
+    "/finance/bank-flow": true,
+    "/reportManage/collaborationReport/factoryProductStockReport": true,
+    "/reports/catalog": true
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "non_allowlisted_runtime_summary_continues_excluded": true,
+  "risk_fields_preserved": {
+    "Z043-CAND-001": {
+      "b03_auth_401_count": 2,
+      "b04_auth_401_count": 2,
+      "runtime_readonly_fallback_risk": true
+    },
+    "non_allowlisted_evidence_summary_paths": [
+      "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry/runtime_summary.json",
+      "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry_regression/runtime_summary.json"
+    ],
+    "Z042/Z041/Z040/Z039/Z038 fallback risks": "preserved",
+    "guarded_readonly_not_write_success": true,
+    "process_risks": [
+      "B28 shell_wrapper_anomaly",
+      "Z033 skipped_only",
+      "Z035 screenshot_missing_risk"
+    ],
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "implementation_started": false,
+  "validation_run": false,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "next_task": "TASK-Z043B-11-IMPL"
+}

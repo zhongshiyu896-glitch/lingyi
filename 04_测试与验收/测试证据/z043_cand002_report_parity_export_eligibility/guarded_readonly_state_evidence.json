@@ -1,0 +1,30 @@
+{
+  "guarded_entries": [
+    {
+      "entry": "报表导出",
+      "observed": true,
+      "readonly": true
+    },
+    {
+      "entry": "财务下载",
+      "observed": true,
+      "readonly": true
+    },
+    {
+      "entry": "协同下载",
+      "observed": true,
+      "readonly": true
+    },
+    {
+      "entry": "明细导出",
+      "observed": true,
+      "readonly": true
+    }
+  ],
+  "export_button_enabled": true,
+  "export_button_write_guard": "guarded:readonly-report-export",
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "guarded_readonly_not_write_success": true
+}

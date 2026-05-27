@@ -1,0 +1,170 @@
+{
+  "auth_401_count": 30,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "write_requests": [],
+  "sampled_api_responses": [
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/report.ts"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/report.ts"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/report.ts"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/report.ts"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/report.ts"
+    },
+    {
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+    },
+    {
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+    }
+  ]
+}

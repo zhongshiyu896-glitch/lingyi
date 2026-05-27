@@ -1,0 +1,56 @@
+{
+  "required_anchors": [
+    "report-parity-entry-page",
+    "report-parity-route-state",
+    "report-catalog-table",
+    "report-readonly-write-guard",
+    "z043-report-export-eligibility",
+    "z043-report-source-grouping",
+    "z043-report-disabled-download-reason",
+    "z043-report-final-route-link"
+  ],
+  "observed": [
+    {
+      "anchor": "report-parity-entry-page",
+      "observed": true,
+      "source": "visible_text"
+    },
+    {
+      "anchor": "report-parity-route-state",
+      "observed": true,
+      "source": "visible_text"
+    },
+    {
+      "anchor": "report-catalog-table",
+      "observed": true,
+      "source": "data-testid"
+    },
+    {
+      "anchor": "report-readonly-write-guard",
+      "observed": true,
+      "source": "visible_text"
+    },
+    {
+      "anchor": "z043-report-export-eligibility",
+      "observed": true,
+      "source": "visible_text"
+    },
+    {
+      "anchor": "z043-report-source-grouping",
+      "observed": true,
+      "source": "visible_text"
+    },
+    {
+      "anchor": "z043-report-disabled-download-reason",
+      "observed": true,
+      "source": "visible_text"
+    },
+    {
+      "anchor": "z043-report-final-route-link",
+      "observed": true,
+      "source": "visible_text"
+    }
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

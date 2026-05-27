@@ -1,0 +1,383 @@
+{
+  "task_id": "TASK-Z043B-12-REGRESSION-CAND002",
+  "role": "B Engineer",
+  "head": "e584624d9dee99c951de901b7864b0982db47a99",
+  "branch": "codex/sprint4-seal",
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "code_modified_in_this_task": false,
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "allowed_files_only": true,
+  "report_catalog_vue_touched": false,
+  "routes_checked": [
+    "/financial/financialReport/customerReconciliationReport",
+    "/financial/financialProcess",
+    "/finance/bank-flow",
+    "/reportManage/collaborationReport/factoryProductStockReport",
+    "/reports/catalog"
+  ],
+  "route_http_statuses": {
+    "/financial/financialReport/customerReconciliationReport": {
+      "http_status": 200,
+      "final_path": "/reports/catalog",
+      "final_catalog_route": true,
+      "z043_visible": true
+    },
+    "/financial/financialProcess": {
+      "http_status": 200,
+      "final_path": "/reports/catalog",
+      "final_catalog_route": true,
+      "z043_visible": true
+    },
+    "/finance/bank-flow": {
+      "http_status": 200,
+      "final_path": "/reports/catalog",
+      "final_catalog_route": true,
+      "z043_visible": true
+    },
+    "/reportManage/collaborationReport/factoryProductStockReport": {
+      "http_status": 200,
+      "final_path": "/reports/catalog",
+      "final_catalog_route": true,
+      "z043_visible": true
+    },
+    "/reports/catalog": {
+      "http_status": 200,
+      "final_path": "/reports/catalog",
+      "final_catalog_route": true,
+      "z043_visible": true
+    }
+  },
+  "final_catalog_route_all": true,
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z043_cand002_report_parity_export_eligibility_regression/reports_catalog_z043_export_eligibility_regression.png",
+    "format": "png",
+    "width": 1440,
+    "height": 1200,
+    "dimensions": "1440x1200"
+  },
+  "runtime_dom_anchors": {
+    "required_anchors": [
+      "report-parity-entry-page",
+      "report-parity-route-state",
+      "report-catalog-table",
+      "report-readonly-write-guard",
+      "z043-report-export-eligibility",
+      "z043-report-source-grouping",
+      "z043-report-disabled-download-reason",
+      "z043-report-final-route-link"
+    ],
+    "observed": [
+      {
+        "anchor": "report-parity-entry-page",
+        "observed": true,
+        "source": "visible_text"
+      },
+      {
+        "anchor": "report-parity-route-state",
+        "observed": true,
+        "source": "visible_text"
+      },
+      {
+        "anchor": "report-catalog-table",
+        "observed": true,
+        "source": "data-testid"
+      },
+      {
+        "anchor": "report-readonly-write-guard",
+        "observed": true,
+        "source": "visible_text"
+      },
+      {
+        "anchor": "z043-report-export-eligibility",
+        "observed": true,
+        "source": "visible_text"
+      },
+      {
+        "anchor": "z043-report-source-grouping",
+        "observed": true,
+        "source": "visible_text"
+      },
+      {
+        "anchor": "z043-report-disabled-download-reason",
+        "observed": true,
+        "source": "visible_text"
+      },
+      {
+        "anchor": "z043-report-final-route-link",
+        "observed": true,
+        "source": "visible_text"
+      }
+    ],
+    "anchors_observed_count": 8,
+    "anchors_all_observed": true
+  },
+  "guarded_readonly_state": {
+    "guarded_entries": [
+      {
+        "entry": "报表导出",
+        "observed": true,
+        "readonly": true
+      },
+      {
+        "entry": "财务下载",
+        "observed": true,
+        "readonly": true
+      },
+      {
+        "entry": "协同下载",
+        "observed": true,
+        "readonly": true
+      },
+      {
+        "entry": "明细导出",
+        "observed": true,
+        "readonly": true
+      }
+    ],
+    "export_button_enabled": true,
+    "export_button_write_guard": "guarded:readonly-report-export",
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "network_write_observation": {
+    "auth_401_count": 30,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false,
+    "write_requests": [],
+    "sampled_api_responses": [
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/auth.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/auth/me"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/report.ts"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/request.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/auth.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/auth/me"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/report.ts"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/request.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/auth.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/auth/me"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/report.ts"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/request.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/auth.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/auth/me"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/report.ts"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/request.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/auth.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/auth/me"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/report.ts"
+      },
+      {
+        "status": 200,
+        "url": "http://127.0.0.1:5174/src/api/request.ts"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog?source_module=finance&report_type=financial"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/employee-task-statistics"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/approval-reports"
+      },
+      {
+        "status": 401,
+        "url": "http://127.0.0.1:5174/api/reports/catalog/factory_product_stock_report"
+      }
+    ]
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "risk_fields_preserved": {
+    "current_task": {
+      "candidate_id": "Z043-CAND-002",
+      "b11_auth_401_count": 30,
+      "b12_auth_401_count": 30,
+      "runtime_readonly_fallback_risk": true,
+      "write_requests_observed_count": 0,
+      "write_request_success_observed": false,
+      "write_request_success_allowed": false,
+      "guarded_readonly_not_write_success": true
+    },
+    "previous_candidate": {
+      "Z043-CAND-001 readonly fallback risk": "B03/B04 auth_401_count=2/2",
+      "non_allowlisted_evidence_summary_excluded": [
+        "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry/runtime_summary.json",
+        "04_测试与验收/测试证据/z043_cand001_global_operation_trace_evidence_entry_regression/runtime_summary.json"
+      ]
+    },
+    "prior_fallback_risks": [
+      "Z042 CAND005 auth_401_count=4/3",
+      "Z042 CAND004 auth_401_count=1",
+      "Z042 CAND003 auth_401_count=1",
+      "Z042 CAND002 auth_401_count=25",
+      "Z042 CAND001 auth_401_count=6",
+      "Z041 readonly fallback risk",
+      "Z040 readonly fallback risk",
+      "Z039 readonly fallback risk",
+      "Z038 readonly fallback risks"
+    ],
+    "process_risks": [
+      "B28 shell_wrapper_anomaly",
+      "Z033 skipped_only",
+      "Z035 screenshot_missing_risk"
+    ],
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "evidence": {
+    "screenshot": "04_测试与验收/测试证据/z043_cand002_report_parity_export_eligibility_regression/reports_catalog_z043_export_eligibility_regression.png",
+    "route_evidence": "04_测试与验收/测试证据/z043_cand002_report_parity_export_eligibility_regression/route_evidence.json",
+    "dom_anchors_evidence": "04_测试与验收/测试证据/z043_cand002_report_parity_export_eligibility_regression/dom_anchors_evidence.json",
+    "guarded_readonly_state_evidence": "04_测试与验收/测试证据/z043_cand002_report_parity_export_eligibility_regression/guarded_readonly_state_evidence.json",
+    "network_write_request_observation": "04_测试与验收/测试证据/z043_cand002_report_parity_export_eligibility_regression/network_write_request_observation.json",
+    "screenshot_metadata": "04_测试与验收/测试证据/z043_cand002_report_parity_export_eligibility_regression/screenshot_metadata.json"
+  },
+  "next_task": "TASK-Z043B-13-LEDGER-CAND002"
+}
