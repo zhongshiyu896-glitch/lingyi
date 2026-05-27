@@ -1,0 +1,45 @@
+field	value
+task_id	TASK-Z043B-21-LEDGER-CAND003
+role	B Engineer
+candidate_id	Z043-CAND-003
+evidence_only	false
+source_chain	B18 -> B19 -> B20 -> B21
+head	d26a2c8a0faadd1f2faccd265eda99de845a774c
+branch	codex/sprint4-seal
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+ledger_total	35
+yes_count	24
+no_count	11
+yes_no_intersection	[]
+all_yes_files_exist	true
+ignored_yes_paths	[]
+frontend_yes_paths	["06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"]
+forbidden_paths_in_yes	[]
+route_evidence_frozen	/workshop/tickets/batch HTTP 200
+screenshots_frozen	B19 PNG 1440x1200; B20 PNG 1440x1200
+runtime_evidence_frozen	B19/B20 route DOM guard network evidence in YES
+anchors_observed_count	8
+anchors_all_observed	true
+guarded_controls_covered	["批量导入","解析后提交","失败重试"]
+auth_401_count_b19	1
+auth_401_count_b20	1
+runtime_readonly_fallback_risk	true
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck_command	npm run typecheck
+typecheck_workdir	06_前端/lingyi-pc
+typecheck_exit_code	0
+api_workshop_touched	false
+backend_api_added	false
+real_write_action_added	false
+read_only_boundary_preserved	true
+guarded_readonly_not_write_success	true
+cand001_cand002_non_allowlisted_summary_metadata_excluded	true
+risk_fields_preserved	true
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+next_task	TASK-Z043B-22-STAGE-CAND003

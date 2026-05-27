@@ -1,0 +1,17 @@
+field	value
+task_id	TASK-Z043B-19-IMPL
+role	B Engineer
+summary	Implemented Z043-CAND-003 readonly visible increments for workshop ticket batch template sample, field-level error locator, retry preconditions, and readonly request context.
+changed_files	["06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"]
+allowed_files_only	true
+api_workshop_touched	false
+route_evidence	{"route":"/workshop/tickets/batch","http_status":200,"final_path":"/workshop/tickets/batch","evidence_path":"04_测试与验收/测试证据/z043_cand003_batch_template_field_locator/route_evidence.json"}
+screenshot	{"path":"04_测试与验收/测试证据/z043_cand003_batch_template_field_locator/workshop_ticket_batch_z043_template_field_locator.png","png_dimensions":"1440x1200","is_png":true}
+runtime_dom_anchors	{"evidence_path":"04_测试与验收/测试证据/z043_cand003_batch_template_field_locator/dom_anchors_evidence.json","observed_count":8,"all_observed":true}
+guarded_readonly_state	{"evidence_path":"04_测试与验收/测试证据/z043_cand003_batch_template_field_locator/guarded_readonly_state_evidence.json","guarded_entries_covered":["批量导入","解析后提交","失败重试"],"dataReadonlyBoundary":true,"dataWriteRequestSuccessAllowed":false,"dataRealWriteActionAdded":false,"guarded_readonly_not_write_success":true}
+network_write_observation	{"evidence_path":"04_测试与验收/测试证据/z043_cand003_batch_template_field_locator/network_write_request_observation.json","auth_401_count":1,"runtime_readonly_fallback_risk":true,"write_requests_observed_count":0,"write_request_success_observed":false,"write_request_success_allowed":false}
+typecheck	{"command":"npm run typecheck","workdir":"06_前端/lingyi-pc","exit_code":0}
+scope_guard	{"backend_api_added":false,"real_write_action_added":false,"read_only_boundary_preserved":true,"dirty_intersections":[],"implementation_started":true,"stage_performed":false,"commit_performed":false,"remote_lifecycle_released":false,"dev_server_started":true,"dev_server_stopped":true,"cached_empty":true,"head_tag_empty":true,"worktree_check_pass":true}
+risk_fields_preserved	{"current_candidate":{"candidate_id":"Z043-CAND-003","auth_401_count":1,"runtime_readonly_fallback_risk":true,"guarded_readonly_not_write_success":true},"prior_z043_candidates":{"Z043-CAND-002 readonly fallback risk":"B11/B12 auth_401_count=30/30","Z043-CAND-001 readonly fallback risk":"B03/B04 auth_401_count=2/2"},"non_allowlisted_evidence_summary":["CAND001 runtime_summary remains excluded","CAND002 screenshot_metadata/runtime_summary remains excluded"],"prior_fallback_risks":["Z042 CAND005 auth_401_count=4/3","Z042 CAND004 auth_401_count=1","Z042 CAND003 auth_401_count=1","Z042 CAND002 auth_401_count=25","Z042 CAND001 auth_401_count=6","Z041 readonly fallback risk","Z040 readonly fallback risk","Z039 readonly fallback risk","Z038 readonly fallback risks"],"process_risks":["B28 shell_wrapper_anomaly","Z033 skipped_only","Z035 screenshot_missing_risk"],"lifecycle_gates":{"remote_lifecycle_parked":true,"push_tag_pr_release":false,"production_readback":false,"go_live":false,"project_completion":false}}
+forbidden_actions	{"stage_commit_push_tag_pr_release":false,"cleanup_reset_restore":false,"z043_cand004_started":false,"remote_lifecycle_released":false}
+next_task	TASK-Z043B-20-REGRESSION-CAND003

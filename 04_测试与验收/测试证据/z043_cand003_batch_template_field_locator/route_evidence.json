@@ -1,0 +1,9 @@
+{
+  "route": "/workshop/tickets/batch",
+  "url": "http://127.0.0.1:5174/workshop/tickets/batch",
+  "http_status": 200,
+  "final_url": "http://127.0.0.1:5174/workshop/tickets/batch",
+  "final_path": "/workshop/tickets/batch",
+  "route_passed": true,
+  "timestamp": "2026-05-27T04:48:58.800Z"
+}

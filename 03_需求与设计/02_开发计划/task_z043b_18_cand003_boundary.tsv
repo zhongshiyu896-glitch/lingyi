@@ -1,0 +1,25 @@
+field	value
+task_id	TASK-Z043B-18-PREP
+role	B Engineer
+head	d26a2c8a0faadd1f2faccd265eda99de845a774c
+branch	codex/sprint4-seal
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+candidate_id	Z043-CAND-003
+boundary	{"title":"工票批量导入模板示例与字段定位 guard 可见流","page_scope":"车间工票批量导入只读模板、字段定位与失败重试 guard","routes":["/workshop/tickets/batch"],"allowed_files":["06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"],"forbidden":["06_前端/lingyi-pc/src/api/workshop.ts","07_后端","current 19 tracked dirty files","historical product/test dirty","log/control dirty","Z034 residual artifacts","runtime/cache/test-results","remote/prod/go-live","CAND001 runtime_summary","CAND002 screenshot_metadata/runtime_summary"],"reused_source":{"source_batch":"Z042","source_candidate_id":"Z042-CAND-003","source_commit":"d592f5d712fc398113a68702460863ce3e18b88c","reused_paths":["06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"]},"read_only":true,"backend_allowed":false,"write_request_success_allowed":false,"real_write_action_allowed":false,"pure_static_fallback_allowed":false,"guarded_readonly_not_write_success":true}
+allowed_files_status	{"files":["06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"],"exist":true,"dirty":false}
+route_source_status	{"/workshop/tickets/batch":{"located":true,"source":"06_前端/lingyi-pc/src/router/index.ts:74-76","component":"06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"}}
+required_anchors	["workshop-ticket-batch-page","workshop-ticket-batch-json-input","workshop-ticket-batch-readonly-preview","workshop-ticket-batch-failed-items-table","z043-batch-template-sample","z043-batch-field-error-locator","z043-batch-retry-preconditions","z043-batch-readonly-request-context"]
+required_anchors_count	8
+guarded_entries	["批量导入","解析后提交","失败重试"]
+evidence_requirement	{"screenshot":"/workshop/tickets/batch 页面截图","route_evidence":true,"runtime_dom_anchors":true,"guarded_readonly_state_evidence":["批量导入","解析提交","失败重试"],"network_write_request_observation":true,"auth_401_policy":"auth 401 只能记录为 readonly fallback risk","guarded_readonly_policy":"不得把 guarded_readonly 解释为写成功","write_requests_observed_count_policy":"必须为 0 或无真实写成功","typecheck_required":{"command":"npm run typecheck","workdir":"06_前端/lingyi-pc","exit_code_required":true},"dev_server_started_stopped_required":true}
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+implementation_started	false
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+risk_fields_preserved	{"current_archived_candidate":{"Z043-CAND-002 readonly fallback risk":"B11/B12 auth_401_count=30/30"},"previous_candidate":{"Z043-CAND-001 readonly fallback risk":"B03/B04 auth_401_count=2/2"},"non_allowlisted_evidence_summary":["CAND001 runtime_summary remains excluded","CAND002 screenshot_metadata remains excluded"],"prior_fallback_risks":["Z042 CAND005 auth_401_count=4/3","Z042 CAND004 auth_401_count=1","Z042 CAND003 auth_401_count=1","Z042 CAND002 auth_401_count=25","Z042 CAND001 auth_401_count=6","Z041 readonly fallback risk","Z040 readonly fallback risk","Z039 readonly fallback risk","Z038 readonly fallback risks"],"process_risks":["B28 shell_wrapper_anomaly","Z033 skipped_only","Z035 screenshot_missing_risk"],"lifecycle_gates":{"remote_lifecycle_parked":true,"push_tag_pr_release":false,"production_readback":false,"go_live":false,"project_completion":false}}
+next_task	TASK-Z043B-19-IMPL

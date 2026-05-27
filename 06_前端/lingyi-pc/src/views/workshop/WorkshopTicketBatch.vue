@@ -43,6 +43,7 @@
           data-testid="workshop-ticket-batch-submit-button"
           data-write-guard="guarded:workshop-ticket-batch-readonly"
           data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
           data-write-allowlist="readonly-preview-only"
           data-guard-state="guarded-readonly"
           @click="submitBatch"
@@ -127,6 +128,62 @@
         </section>
       </div>
 
+      <div class="z043-readonly-grid" data-testid="z043-batch-template-field-guard">
+        <section
+          class="z043-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z043-batch-template-sample"
+        >
+          <h3>JSON 模板示例</h3>
+          <pre>{{ z043TemplateSample }}</pre>
+          <p>模板仅用于本地粘贴与字段对照，不会触发批量导入写请求。</p>
+        </section>
+
+        <section
+          class="z043-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z043-batch-field-error-locator"
+        >
+          <h3>字段级失败定位</h3>
+          <ul class="z043-locator-list">
+            <li v-for="item in z043FieldLocatorRows" :key="item.field">
+              {{ item.field }}：{{ item.status }}，{{ item.reason }}
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z043-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z043-batch-retry-preconditions"
+          data-write-guard="guarded:z043-batch-retry-preconditions-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>重试前置条件</h3>
+          <ul class="z043-locator-list">
+            <li v-for="item in z043RetryPreconditions" :key="item">
+              {{ item }}
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z043-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z043-batch-readonly-request-context"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>readonly request context</h3>
+          <p>request_id={{ readonlyRequestId }}</p>
+          <p>scenario_tag={{ readonlyScenarioTag }}</p>
+          <p>批量导入、解析后提交与失败重试均只记录 guard trace，不形成真实写成功。</p>
+        </section>
+      </div>
+
       <el-alert
         v-if="batchReceipt"
         type="info"
@@ -187,6 +244,7 @@
           data-testid="workshop-ticket-batch-failed-retry-guarded-button"
           data-write-guard="guarded:workshop-ticket-batch-failed-retry-readonly"
           data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
           @click="showRetryGuard"
         >
           导入失败重试入口
@@ -263,6 +321,44 @@ const failureReasonGroups = computed<Array<{ code: string; count: number; sample
   })
   return Array.from(groups.values())
 })
+
+const z043TemplateSample = JSON.stringify([
+  {
+    operation_type: 'register',
+    ticket_key: 'Z043-WORKSHOP-TICKET-20260527-001-TK',
+    job_card: 'JC-Z043-001',
+    employee: 'EMP-001',
+    process_name: 'sew',
+    qty: 10,
+    work_date: '2026-05-27',
+    scenario_tag: 'Z043-WORKSHOP-TICKET-20260527-001',
+    source_ref: 'Z043-WORKSHOP-TICKET-20260527-001-SRC',
+  },
+], null, 2)
+
+const z043FieldLocatorRows = computed<Array<{ field: string; status: string; reason: string }>>(() => {
+  if (validationRows.value.length > 0) {
+    return validationRows.value.flatMap((row) => {
+      const fields = row.message.replace('缺少字段：', '').split(',').map((field) => field.trim()).filter(Boolean)
+      return fields.map((field) => ({
+        field,
+        status: `第 ${row.row_index} 行需修正`,
+        reason: `${row.ticket_key} 只读定位：${row.code}`,
+      }))
+    })
+  }
+  return [
+    { field: 'ticket_key', status: '待本地解析', reason: '用于定位工票唯一键' },
+    { field: 'job_card', status: '待本地解析', reason: '用于定位生产工单' },
+    { field: 'scenario_tag', status: '待本地解析', reason: '用于只读 request context 校验' },
+  ]
+})
+
+const z043RetryPreconditions = [
+  '批量导入：必须先完成本地 JSON 解析摘要，入口保持 guarded/readonly。',
+  '解析后提交：字段定位无缺失后仍仅生成只读预览，不发起写请求。',
+  '失败重试：必须带 request_id 与 scenario_tag 说明，重试入口保持只读 guard。',
+]
 
 const resetParseState = (): void => {
   parseSummary.value = null
@@ -529,8 +625,59 @@ onMounted(async () => {
   color: var(--el-text-color-regular);
 }
 
+.z043-readonly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.z043-readonly-section {
+  min-height: 150px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--el-fill-color-blank);
+}
+
+.z043-readonly-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.z043-readonly-section p {
+  margin: 0 0 6px;
+  line-height: 1.55;
+  color: var(--el-text-color-regular);
+  word-break: break-all;
+}
+
+.z043-readonly-section pre {
+  max-height: 180px;
+  overflow: auto;
+  margin: 0 0 8px;
+  padding: 10px;
+  border-radius: 4px;
+  background: var(--el-fill-color-lighter);
+  color: var(--el-text-color-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.z043-locator-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--el-text-color-regular);
+}
+
 @media (max-width: 960px) {
   .z042-readonly-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .z043-readonly-grid {
     grid-template-columns: 1fr;
   }
 }

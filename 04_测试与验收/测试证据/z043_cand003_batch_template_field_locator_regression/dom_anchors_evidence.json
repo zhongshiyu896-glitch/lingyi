@@ -1,0 +1,64 @@
+{
+  "required_anchors": [
+    "workshop-ticket-batch-page",
+    "workshop-ticket-batch-json-input",
+    "workshop-ticket-batch-readonly-preview",
+    "workshop-ticket-batch-failed-items-table",
+    "z043-batch-template-sample",
+    "z043-batch-field-error-locator",
+    "z043-batch-retry-preconditions",
+    "z043-batch-readonly-request-context"
+  ],
+  "observed_count": 8,
+  "all_observed": true,
+  "anchors": [
+    {
+      "anchor": "workshop-ticket-batch-page",
+      "count": 1,
+      "visible": true,
+      "text": "工票批量导入\n返回列表\n请粘贴 JSON 数组，每行对象包含 ticket_key/job_card/employee/process_name/qty/work_date 等字段。\n解析预览\n批量导入只读预览\n检测到 1 条校验失败记录，请先修正后再尝试只读预览。\n失败重试只读 guard 生效：request_id=Z003-WORKSHOP-TICKET-20260527-042-RW-B-C49-C49-C49-C49-DDE-D20，scenario_tag=Z003-WORKSHOP-TICKET-20260527-042，未开放写请求。\n\n当前账号无批量导入权限，写动作已保持只读 guard。\n\nJSON 解析摘要\n\n本地解析 1 行，可预览 0 行，失败 1 行。\n\nrequest_id=Z003-WORKSHOP-TICKET-20260527-042-RW-B-C49-C49-C49-C49-DDE-D20 / scenario_tag=Z003-WORKSHOP-TICKET-20260527-042\n\n失败原因分组\nLOCAL_VALIDATION_MISSING_FIELDS：1 条，示例 缺少字段：job_card, process_name\n失败重试只读 guard\n\n批量导入、解析后提交与失败重试均保持 guarded/readonly；页面仅记录 request_id 与 scenario_tag，未开放真实写成功路径。\n\nJSON 模板示例\n[\n  {\n    \"operation_type\": \"register\",\n    \"ticket_key\": \"Z043-WORKSHOP-TICKET-20260527-001-TK\",\n    \"job_card\": \"JC-Z043-001\",\n    \"employee\": \"EMP-001\",\n    \"process_name\": \"sew\",\n    \"qty\": 10,\n    \"work_date\": \"2026-05-27\",\n    \"scenario_tag\": \"Z043-WORKSHOP-TICKET-20260527-001\",\n    \"source_ref\": \"Z043-WORKSHOP-TICKET-20260527-001-SRC\"\n  }\n]\n\n模板仅用于本地粘贴与字段对照，不会触发批量导入写请求。\n\n字段级失败定位\njob_card：第 1 行需修正，Z043-WORKSHOP-TICKET-20260527-001-REGRESSION 只读定位：LOCAL_VALIDATION_MISSING_FIELDS\nprocess_name：第 1 行需修正，Z043-WORKSHOP-TICKET-20260527-001-REGRESSION 只读定位：LOCAL_VALIDATION_MISSING_FIELDS\n重试前置条件\n批量导入：必须先完成本地 JSON 解析摘要，入口保持 guarded/readonly。\n解析后提交：字段定位无缺失后仍仅生成只读预览，不发起写请求。\n失败重试：必须带 request_id 与 scenario_tag 说明，重试入口保持只读 guard。\nreadonly request context\n\nrequest_id=Z003-WORKSHOP-TICKET-20260527-042-RW-B-C49-C49-C49-C49-DDE-D20\n\nscenario_tag=Z003-WORKSHOP-TICKET-20260527-042\n\n批量导入、解析后提交与失败重试均只记录 guard trace，不形成真实写成功。\n\n总行数\t1\t可预览\t0\t校验失败\t1\n行号\n\t\nticket_key\n\t\n结果码\n\t\n校验说明\n1\n\t\nZ043-WORKSHOP-TICKET-20260527-001-REGRESSION\n\t\nLOCAL_VALIDATION_MISSING_FIELDS\n\t\n缺少字段：job_card, process_name\n导入失败重试入口"
+    },
+    {
+      "anchor": "workshop-ticket-batch-json-input",
+      "count": 1,
+      "visible": true,
+      "text": ""
+    },
+    {
+      "anchor": "workshop-ticket-batch-readonly-preview",
+      "count": 1,
+      "visible": true,
+      "text": "总行数\t1\t可预览\t0\t校验失败\t1"
+    },
+    {
+      "anchor": "workshop-ticket-batch-failed-items-table",
+      "count": 1,
+      "visible": true,
+      "text": "行号\n\t\nticket_key\n\t\n结果码\n\t\n校验说明\n1\n\t\nZ043-WORKSHOP-TICKET-20260527-001-REGRESSION\n\t\nLOCAL_VALIDATION_MISSING_FIELDS\n\t\n缺少字段：job_card, process_name"
+    },
+    {
+      "anchor": "z043-batch-template-sample",
+      "count": 1,
+      "visible": true,
+      "text": "JSON 模板示例\n[\n  {\n    \"operation_type\": \"register\",\n    \"ticket_key\": \"Z043-WORKSHOP-TICKET-20260527-001-TK\",\n    \"job_card\": \"JC-Z043-001\",\n    \"employee\": \"EMP-001\",\n    \"process_name\": \"sew\",\n    \"qty\": 10,\n    \"work_date\": \"2026-05-27\",\n    \"scenario_tag\": \"Z043-WORKSHOP-TICKET-20260527-001\",\n    \"source_ref\": \"Z043-WORKSHOP-TICKET-20260527-001-SRC\"\n  }\n]\n\n模板仅用于本地粘贴与字段对照，不会触发批量导入写请求。"
+    },
+    {
+      "anchor": "z043-batch-field-error-locator",
+      "count": 1,
+      "visible": true,
+      "text": "字段级失败定位\njob_card：第 1 行需修正，Z043-WORKSHOP-TICKET-20260527-001-REGRESSION 只读定位：LOCAL_VALIDATION_MISSING_FIELDS\nprocess_name：第 1 行需修正，Z043-WORKSHOP-TICKET-20260527-001-REGRESSION 只读定位：LOCAL_VALIDATION_MISSING_FIELDS"
+    },
+    {
+      "anchor": "z043-batch-retry-preconditions",
+      "count": 1,
+      "visible": true,
+      "text": "重试前置条件\n批量导入：必须先完成本地 JSON 解析摘要，入口保持 guarded/readonly。\n解析后提交：字段定位无缺失后仍仅生成只读预览，不发起写请求。\n失败重试：必须带 request_id 与 scenario_tag 说明，重试入口保持只读 guard。"
+    },
+    {
+      "anchor": "z043-batch-readonly-request-context",
+      "count": 1,
+      "visible": true,
+      "text": "readonly request context\n\nrequest_id=Z003-WORKSHOP-TICKET-20260527-042-RW-B-C49-C49-C49-C49-DDE-D20\n\nscenario_tag=Z003-WORKSHOP-TICKET-20260527-042\n\n批量导入、解析后提交与失败重试均只记录 guard trace，不形成真实写成功。"
+    }
+  ]
+}

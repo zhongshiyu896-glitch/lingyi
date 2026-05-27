@@ -1,0 +1,78 @@
+{
+  "guarded_entries_required": [
+    "批量导入",
+    "解析后提交",
+    "失败重试"
+  ],
+  "guarded_entries_covered": [
+    "批量导入",
+    "解析后提交",
+    "失败重试"
+  ],
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "guarded_readonly_not_write_success": true,
+  "entries": [
+    {
+      "entry": "批量导入",
+      "selector": "[data-testid=\"workshop-ticket-batch-submit-button\"]",
+      "present": true,
+      "visible": true,
+      "dataReadonlyBoundary": "true",
+      "dataWriteGuard": "guarded:workshop-ticket-batch-readonly",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "text": "批量导入只读预览"
+    },
+    {
+      "entry": "解析后提交",
+      "selector": "[data-testid=\"workshop-ticket-batch-submit-button\"]",
+      "present": true,
+      "visible": true,
+      "dataReadonlyBoundary": "true",
+      "dataWriteGuard": "guarded:workshop-ticket-batch-readonly",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "text": "批量导入只读预览"
+    },
+    {
+      "entry": "失败重试",
+      "selector": "[data-testid=\"workshop-ticket-batch-failed-retry-guarded-button\"]",
+      "present": true,
+      "visible": true,
+      "dataReadonlyBoundary": "true",
+      "dataWriteGuard": "guarded:workshop-ticket-batch-failed-retry-readonly",
+      "dataGuardState": null,
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "text": "导入失败重试入口"
+    },
+    {
+      "entry": "重试前置条件",
+      "selector": "[data-testid=\"z043-batch-retry-preconditions\"]",
+      "present": true,
+      "visible": true,
+      "dataReadonlyBoundary": "true",
+      "dataWriteGuard": "guarded:z043-batch-retry-preconditions-readonly",
+      "dataGuardState": "guarded-readonly",
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "text": "重试前置条件\n批量导入：必须先完成本地 JSON 解析摘要，入口保持 guarded/readonly。\n解析后提交：字段定位无缺失后仍仅生成只读预览，不发起写请求。\n失败重试：必须带 request_id 与 scenario_tag 说明，重试入口保持只读 guard。"
+    },
+    {
+      "entry": "request context",
+      "selector": "[data-testid=\"z043-batch-readonly-request-context\"]",
+      "present": true,
+      "visible": true,
+      "dataReadonlyBoundary": "true",
+      "dataWriteGuard": null,
+      "dataGuardState": null,
+      "dataWriteRequestSuccessAllowed": "false",
+      "dataRealWriteActionAdded": "false",
+      "text": "readonly request context\n\nrequest_id=Z003-WORKSHOP-TICKET-20260527-042-RW-B-C49-C49-C49-C49-DDE-D20\n\nscenario_tag=Z003-WORKSHOP-TICKET-20260527-042\n\n批量导入、解析后提交与失败重试均只记录 guard trace，不形成真实写成功。"
+    }
+  ]
+}

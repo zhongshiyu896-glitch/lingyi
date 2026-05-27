@@ -1,0 +1,125 @@
+{
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "write_requests": [],
+  "write_successes": [],
+  "sampled_network_events": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/workshop/tickets/batch",
+      "status": 200,
+      "resourceType": "document"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/main.ts",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=2645f498",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@vite/client",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-6X6RLDOS.js?v=2645f498",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/router/index.ts",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=2645f498",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/auth.ts",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=2645f498",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopTicketBatch.vue",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/api/auth/me",
+      "status": 401,
+      "resourceType": "fetch"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/api/workshop.ts",
+      "status": 200,
+      "resourceType": "script"
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5174/src/views/workshop/WorkshopTicketBatch.vue?vue&type=style&index=0&scoped=db9c5680&lang.css",
+      "status": 200,
+      "resourceType": "script"
+    }
+  ]
+}
