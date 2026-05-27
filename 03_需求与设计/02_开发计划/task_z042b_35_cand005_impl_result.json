@@ -1,0 +1,115 @@
+{
+  "task_id": "TASK-Z042B-35-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z042-CAND-005",
+  "implementation_status": "PASS",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "allowed_files_only": true,
+  "api_subcontract_touched": false,
+  "reused_committed_product_path": true,
+  "reused_source": {
+    "source_batch": "Z037",
+    "source_candidate_id": "Z037-CAND-005",
+    "source_commit": "a6d91ea165c8e870f449f06812e57a8df4a555da",
+    "reused_paths": [
+      "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+      "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+    ]
+  },
+  "routes_checked": [
+    "/subcontract/list",
+    "/subcontract/detail",
+    "/materialPurchase/materialPurchaseProcess"
+  ],
+  "route_http_statuses": {
+    "/subcontract/list": 200,
+    "/subcontract/detail": 200,
+    "/materialPurchase/materialPurchaseProcess": 200
+  },
+  "material_purchase_parity_recorded": true,
+  "material_purchase_parity_final_url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+  "list_screenshot_path": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_list_guard_trace.png",
+  "list_screenshot_png_dimensions": "1440x1200",
+  "detail_screenshot_path": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_detail_guard_trace.png",
+  "detail_screenshot_png_dimensions": "1440x1200",
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_entries_covered": true,
+  "auth_401_count": 4,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "risk_fields_preserved": {
+    "Z042-CAND-005": {
+      "auth_401_count": 4,
+      "runtime_readonly_fallback_risk": true,
+      "write_requests_observed_count": 0,
+      "write_request_success_observed": false,
+      "write_request_success_allowed": false
+    },
+    "Z042-CAND-004": {
+      "auth_401_count": 1,
+      "runtime_readonly_fallback_risk": true
+    },
+    "Z042-CAND-003": {
+      "auth_401_count": 1,
+      "runtime_readonly_fallback_risk": true
+    },
+    "Z042-CAND-002": {
+      "auth_401_count": 25,
+      "runtime_readonly_fallback_risk": true
+    },
+    "Z042-CAND-001": {
+      "fallback_risk": "preserved"
+    },
+    "prior_fallback_risks": [
+      "Z041 fallback risk",
+      "Z040 fallback risk",
+      "Z039 fallback risk",
+      "Z038 fallback risks"
+    ],
+    "guarded_readonly_not_write_success": true,
+    "process_risks": [
+      "B28 shell_wrapper_anomaly",
+      "Z033 skipped_only",
+      "Z035 screenshot_missing_risk"
+    ],
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "next_task": "TASK-Z042B-36-REGRESSION-CAND005",
+  "evidence": {
+    "report": "03_需求与设计/02_开发计划/TASK-Z042B-35-IMPL_CAND005_外发单guard-trace与parity来源实施报告.md",
+    "result_json": "03_需求与设计/02_开发计划/task_z042b_35_cand005_impl_result.json",
+    "tsv": "03_需求与设计/02_开发计划/task_z042b_35_cand005_impl.tsv",
+    "list_screenshot": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_list_guard_trace.png",
+    "detail_screenshot": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_detail_guard_trace.png",
+    "route_evidence": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/route_evidence.json",
+    "dom_anchors_evidence": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/dom_anchors_evidence.json",
+    "guarded_readonly_state_evidence": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/guarded_readonly_state_evidence.json",
+    "network_write_request_observation": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/network_write_request_observation.json"
+  }
+}

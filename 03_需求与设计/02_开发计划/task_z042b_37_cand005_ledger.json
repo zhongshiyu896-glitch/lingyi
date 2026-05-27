@@ -1,0 +1,170 @@
+{
+  "task_id": "TASK-Z042B-37-LEDGER-CAND005",
+  "role": "B Engineer",
+  "candidate_id": "Z042-CAND-005",
+  "evidence_only": false,
+  "source_chain": "B34 -> B35 -> B36 -> B37",
+  "reused_committed_product_path": true,
+  "reused_source": {
+    "source_batch": "Z037",
+    "source_candidate_id": "Z037-CAND-005",
+    "source_commit": "a6d91ea165c8e870f449f06812e57a8df4a555da",
+    "reused_paths": [
+      "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+      "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+    ]
+  },
+  "ledger_total": 41,
+  "yes_count": 29,
+  "no_count": 12,
+  "yes_no_intersection": [],
+  "all_yes_files_exist": true,
+  "ignored_yes_paths": [],
+  "frontend_yes_paths": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "forbidden_paths_in_yes": [],
+  "api_subcontract_touched": false,
+  "routes_passed": true,
+  "route_http_statuses": {
+    "/subcontract/list": 200,
+    "/subcontract/detail": 200,
+    "/materialPurchase/materialPurchaseProcess": 200
+  },
+  "material_purchase_parity_recorded": true,
+  "screenshots_in_yes": {
+    "B35": [
+      "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_list_guard_trace.png",
+      "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_detail_guard_trace.png"
+    ],
+    "B36": [
+      "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/z042_cand005_subcontract_list_guard_trace_regression.png",
+      "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/z042_cand005_subcontract_detail_guard_trace_regression.png"
+    ],
+    "dimensions": "PNG 1440x1200"
+  },
+  "runtime_evidence_in_yes": true,
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_controls_covered": true,
+  "guarded_entries": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "auth_401_count_current_impl": 4,
+  "auth_401_count_current_regression": 3,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_exit_code": 0,
+  "read_only_boundary_preserved": true,
+  "real_write_action_added": false,
+  "backend_api_added": false,
+  "risk_fields_preserved": {
+    "current_candidate": {
+      "candidate_id": "Z042-CAND-005",
+      "b35_auth_401_count": 4,
+      "b36_auth_401_count": 3,
+      "runtime_readonly_fallback_risk": true,
+      "write_requests_observed_count": 0,
+      "write_request_success_observed": false,
+      "write_request_success_allowed": false,
+      "guarded_readonly_not_write_success": true
+    },
+    "prior_candidates": {
+      "Z042-CAND-004": {
+        "auth_401_count": 1,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-003": {
+        "auth_401_count": 1,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-002": {
+        "auth_401_count": 25,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-001": {
+        "fallback_risk_preserved": true
+      }
+    },
+    "prior_fallback_risks": [
+      "Z041 readonly fallback risk",
+      "Z040 readonly fallback risk",
+      "Z039 readonly fallback risk",
+      "Z038 readonly fallback risks"
+    ],
+    "process_risks": {
+      "B28_shell_wrapper_anomaly": true,
+      "Z033_skipped_only": true,
+      "Z035_screenshot_missing_risk": true
+    },
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "yes": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue",
+    "03_需求与设计/02_开发计划/TASK-Z042B-34-PREP_CAND005_边界冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z042b_34_cand005_boundary.json",
+    "03_需求与设计/02_开发计划/task_z042b_34_cand005_boundary.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z042B-35-IMPL_CAND005_外发单guard-trace与parity来源实施报告.md",
+    "03_需求与设计/02_开发计划/task_z042b_35_cand005_impl_result.json",
+    "03_需求与设计/02_开发计划/task_z042b_35_cand005_impl.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z042B-36-REGRESSION-CAND005_外发单guard-trace与parity来源回归报告.md",
+    "03_需求与设计/02_开发计划/task_z042b_36_cand005_regression_result.json",
+    "03_需求与设计/02_开发计划/task_z042b_36_cand005_regression.tsv",
+    "03_需求与设计/02_开发计划/TASK-Z042B-37-LEDGER-CAND005_外发单guard-trace与parity来源账本冻结报告.md",
+    "03_需求与设计/02_开发计划/task_z042b_37_cand005_ledger.json",
+    "03_需求与设计/02_开发计划/task_z042b_37_cand005_ledger.tsv",
+    "03_需求与设计/02_开发计划/task_z042b_37_cand005_ledger_freeze.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/route_evidence.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/screenshot_metadata.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_detail_guard_trace.png",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_list_guard_trace.png",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/dom_anchors_evidence.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/guarded_readonly_state_evidence.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/network_write_request_observation.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/route_evidence.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/screenshot_metadata.json",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/z042_cand005_subcontract_detail_guard_trace_regression.png",
+    "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/z042_cand005_subcontract_list_guard_trace_regression.png"
+  ],
+  "no": [
+    "06_前端/lingyi-pc/src/api/subcontract.ts",
+    "07_后端",
+    "candidate pool",
+    "historical dirty",
+    "log/control dirty",
+    "Z034 residual artifacts",
+    "Z035/Z036/Z037/Z038/Z039/Z040/Z041 committed product paths",
+    "Z042-CAND-001/CAND002/CAND003/CAND004 committed scopes",
+    "runtime/cache/test-results",
+    "remote/prod/go-live",
+    "future task artifacts",
+    "any unchanged API/view or inferred path"
+  ],
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "next_task": "TASK-Z042B-38-STAGE-CAND005"
+}

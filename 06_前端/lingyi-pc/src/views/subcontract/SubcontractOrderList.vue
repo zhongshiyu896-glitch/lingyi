@@ -1,5 +1,11 @@
 <template>
-  <div class="subcontract-list-page" data-testid="subcontract-list-page">
+  <div
+    class="subcontract-list-page"
+    data-testid="subcontract-list-page"
+    data-readonly-boundary="true"
+    data-write-request-success-allowed="false"
+    data-real-write-action-added="false"
+  >
     <el-card shadow="never" data-testid="subcontract-main-card">
       <template #header>
         <div class="header-row">
@@ -47,6 +53,45 @@
           <span data-testid="subcontract-parity-hint-text">当前入口：{{ parityHint.label }}（{{ parityHint.key }}）</span>
         </template>
       </el-alert>
+
+      <section
+        class="z042-subcontract-panel"
+        data-testid="z042-subcontract-guard-trace"
+        data-readonly-boundary="true"
+        data-write-request-success-allowed="false"
+        data-real-write-action-added="false"
+      >
+        <div class="z042-panel-header">
+          <strong>外发单只读 guard trace</strong>
+          <el-tag type="warning" effect="plain">readonly fallback</el-tag>
+        </div>
+        <el-descriptions :column="3" border size="small">
+          <el-descriptions-item label="列表筛选">加工厂 / 状态筛选仅刷新只读结果</el-descriptions-item>
+          <el-descriptions-item label="parity 来源">
+            <span data-testid="z042-subcontract-parity-source">{{ z042ParitySource.label }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="最终路由">{{ z042ParitySource.finalRoute }}</el-descriptions-item>
+          <el-descriptions-item label="fallback 解释">
+            权限或接口异常时保留列表、筛选与写入口 guard，可读不可写。
+          </el-descriptions-item>
+          <el-descriptions-item label="写请求成功">false</el-descriptions-item>
+          <el-descriptions-item label="真实写 action">未新增</el-descriptions-item>
+        </el-descriptions>
+        <div class="z042-guard-actions" data-testid="z042-subcontract-list-guard-actions">
+          <el-button
+            v-for="entry in z042GuardEntries"
+            :key="entry"
+            size="small"
+            data-action-type="write"
+            data-write-guard="guarded:readonly"
+            data-guard-state="guarded_readonly"
+            :data-guard-entry="entry"
+            @click="guardedAction(entry)"
+          >
+            {{ entry }}
+          </el-button>
+        </div>
+      </section>
 
       <el-form :inline="true" :model="query" data-testid="subcontract-filter-form">
         <el-form-item label="加工厂">
@@ -227,6 +272,7 @@ const createSubmitting = ref<boolean>(false)
 
 const readonlyFallback = ref<boolean>(false)
 const canRead = computed<boolean>(() => readonlyFallback.value || permissionStore.state.buttonPermissions.read)
+const z042GuardEntries = ['新建外发单', '发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
 const parityHint = computed<{ key: string; label: string } | null>(() => {
   const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
   if (raw === 'material-purchase') {
@@ -236,6 +282,18 @@ const parityHint = computed<{ key: string; label: string } | null>(() => {
     return { key: raw, label: '外发加工单只读视图' }
   }
   return null
+})
+const z042ParitySource = computed<{ label: string; finalRoute: string }>(() => {
+  if (parityHint.value?.key === 'material-purchase') {
+    return {
+      label: 'materialPurchase parity route -> 外发单列表只读视图',
+      finalRoute: '/subcontract/list?parity=material-purchase',
+    }
+  }
+  return {
+    label: parityHint.value ? `${parityHint.value.label} -> 外发单列表只读视图` : 'subcontract list direct route',
+    finalRoute: '/subcontract/list',
+  }
 })
 
 const query = reactive({
@@ -481,6 +539,25 @@ onMounted(async () => {
 
 .readonly-guard {
   margin-bottom: 12px;
+}
+
+.z042-subcontract-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+}
+
+.z042-panel-header,
+.z042-guard-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .empty-state {

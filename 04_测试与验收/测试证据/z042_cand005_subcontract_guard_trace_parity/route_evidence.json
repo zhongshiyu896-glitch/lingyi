@@ -1,0 +1,40 @@
+{
+  "task_id": "TASK-Z042B-35-IMPL",
+  "routes": [
+    "/subcontract/list",
+    "/subcontract/detail",
+    "/materialPurchase/materialPurchaseProcess"
+  ],
+  "route_status_by_route": {
+    "/subcontract/list": 200,
+    "/subcontract/detail": 200,
+    "/materialPurchase/materialPurchaseProcess": 200
+  },
+  "material_purchase_parity_recorded": true,
+  "route_evidence": [
+    {
+      "route": "/subcontract/list",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/subcontract/list",
+      "final_path": "/subcontract/list",
+      "final_search": "",
+      "parity_redirect": null
+    },
+    {
+      "route": "/subcontract/detail",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/subcontract/detail",
+      "final_path": "/subcontract/detail",
+      "final_search": "",
+      "parity_redirect": null
+    },
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+      "final_path": "/subcontract/list",
+      "final_search": "?parity=material-purchase",
+      "parity_redirect": "redirects to /subcontract/list?parity=material-purchase"
+    }
+  ]
+}

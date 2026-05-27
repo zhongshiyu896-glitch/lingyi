@@ -1,0 +1,15 @@
+{
+  "task_id": "TASK-Z042B-35-IMPL",
+  "list_screenshot_path": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_list_guard_trace.png",
+  "list_screenshot_png_dimensions": {
+    "width": 1440,
+    "height": 1200,
+    "format": "PNG"
+  },
+  "detail_screenshot_path": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity/z042_cand005_subcontract_detail_guard_trace.png",
+  "detail_screenshot_png_dimensions": {
+    "width": 1440,
+    "height": 1200,
+    "format": "PNG"
+  }
+}

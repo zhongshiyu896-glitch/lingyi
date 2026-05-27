@@ -1,0 +1,132 @@
+{
+  "task_id": "TASK-Z042B-36-REGRESSION-CAND005",
+  "role": "B Engineer",
+  "candidate_id": "Z042-CAND-005",
+  "code_modified_in_this_task": false,
+  "head": "2be2fcf067cfdb8ef1b087ab19a6d6f7c5e934ed",
+  "branch": "codex/sprint4-seal",
+  "changed_files_observed": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "allowed_files_only": true,
+  "api_subcontract_touched": false,
+  "routes_checked": [
+    "/subcontract/list",
+    "/subcontract/detail",
+    "/materialPurchase/materialPurchaseProcess"
+  ],
+  "route_http_statuses": {
+    "/subcontract/list": 200,
+    "/subcontract/detail": 200,
+    "/materialPurchase/materialPurchaseProcess": 200
+  },
+  "material_purchase_parity_recorded": true,
+  "material_purchase_final_route": "/subcontract/list?parity=material-purchase",
+  "list_screenshot_path": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/z042_cand005_subcontract_list_guard_trace_regression.png",
+  "list_screenshot_png_dimensions": {
+    "width": 1440,
+    "height": 1200,
+    "format": "PNG"
+  },
+  "detail_screenshot_path": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/z042_cand005_subcontract_detail_guard_trace_regression.png",
+  "detail_screenshot_png_dimensions": {
+    "width": 1440,
+    "height": 1200,
+    "format": "PNG"
+  },
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true,
+  "guarded_entries_covered": true,
+  "guarded_entries_observed": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "auth_401_count": 3,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "typecheck_command": "npm run typecheck",
+  "typecheck_workdir": "06_前端/lingyi-pc",
+  "typecheck_exit_code": 0,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "dev_server_started": true,
+  "dev_server_stopped": true,
+  "risk_fields_preserved": {
+    "current_candidate": {
+      "candidate_id": "Z042-CAND-005",
+      "b35_baseline_auth_401_count": 4,
+      "b36_observed_auth_401_count": 3,
+      "runtime_readonly_fallback_risk": true,
+      "write_requests_observed_count": 0,
+      "write_request_success_observed": false,
+      "write_request_success_allowed": false,
+      "guarded_readonly_not_write_success": true
+    },
+    "prior_candidates": {
+      "Z042-CAND-004": {
+        "auth_401_count": 1,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-003": {
+        "auth_401_count": 1,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-002": {
+        "auth_401_count": 25,
+        "runtime_readonly_fallback_risk": true
+      },
+      "Z042-CAND-001": {
+        "fallback_risk_preserved": true
+      }
+    },
+    "prior_fallback_risks": [
+      "Z041 readonly fallback risk",
+      "Z040 readonly fallback risk",
+      "Z039 readonly fallback risk",
+      "Z038 readonly fallback risks"
+    ],
+    "process_risks": {
+      "B28_shell_wrapper_anomaly": true,
+      "Z033_skipped_only": true,
+      "Z035_screenshot_missing_risk": true
+    },
+    "lifecycle_gates": {
+      "remote_lifecycle_parked": true,
+      "push_tag_pr_release": false,
+      "production_readback": false,
+      "go_live": false,
+      "project_completion": false
+    }
+  },
+  "cached_empty": true,
+  "head_tag_empty": true,
+  "worktree_check_pass": true,
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "evidence": {
+    "report": "03_需求与设计/02_开发计划/TASK-Z042B-36-REGRESSION-CAND005_外发单guard-trace与parity来源回归报告.md",
+    "result_json": "03_需求与设计/02_开发计划/task_z042b_36_cand005_regression_result.json",
+    "tsv": "03_需求与设计/02_开发计划/task_z042b_36_cand005_regression.tsv",
+    "list_screenshot": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/z042_cand005_subcontract_list_guard_trace_regression.png",
+    "detail_screenshot": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/z042_cand005_subcontract_detail_guard_trace_regression.png",
+    "route_evidence": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/route_evidence.json",
+    "dom_anchors_evidence": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/dom_anchors_evidence.json",
+    "guarded_readonly_state_evidence": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/guarded_readonly_state_evidence.json",
+    "network_write_request_observation": "04_测试与验收/测试证据/z042_cand005_subcontract_guard_trace_parity_regression/network_write_request_observation.json"
+  },
+  "next_task": "TASK-Z042B-37-LEDGER-CAND005"
+}

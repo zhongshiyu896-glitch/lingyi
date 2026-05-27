@@ -1,0 +1,57 @@
+{
+  "task_id": "TASK-Z042B-35-IMPL",
+  "required_anchors": [
+    "subcontract-list-page",
+    "subcontract-filter-form",
+    "subcontract-table",
+    "subcontract-detail-page",
+    "subcontract-detail-main-fields",
+    "subcontract-write-guard",
+    "z042-subcontract-guard-trace",
+    "z042-subcontract-parity-source"
+  ],
+  "anchors_by_page": {
+    "list": {
+      "subcontract-list-page": 1,
+      "subcontract-filter-form": 1,
+      "subcontract-table": 1,
+      "subcontract-detail-page": 0,
+      "subcontract-detail-main-fields": 0,
+      "subcontract-write-guard": 1,
+      "z042-subcontract-guard-trace": 1,
+      "z042-subcontract-parity-source": 1
+    },
+    "detail": {
+      "subcontract-list-page": 0,
+      "subcontract-filter-form": 0,
+      "subcontract-table": 0,
+      "subcontract-detail-page": 1,
+      "subcontract-detail-main-fields": 1,
+      "subcontract-write-guard": 1,
+      "z042-subcontract-guard-trace": 0,
+      "z042-subcontract-parity-source": 0
+    }
+  },
+  "combined_anchor_counts": {
+    "subcontract-list-page": 1,
+    "subcontract-filter-form": 1,
+    "subcontract-table": 1,
+    "subcontract-detail-page": 1,
+    "subcontract-detail-main-fields": 1,
+    "subcontract-write-guard": 2,
+    "z042-subcontract-guard-trace": 1,
+    "z042-subcontract-parity-source": 1
+  },
+  "anchors_observed": [
+    "subcontract-list-page",
+    "subcontract-filter-form",
+    "subcontract-table",
+    "subcontract-detail-page",
+    "subcontract-detail-main-fields",
+    "subcontract-write-guard",
+    "z042-subcontract-guard-trace",
+    "z042-subcontract-parity-source"
+  ],
+  "anchors_observed_count": 8,
+  "anchors_all_observed": true
+}

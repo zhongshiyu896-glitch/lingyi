@@ -1,0 +1,49 @@
+field	value
+task_id	TASK-Z042B-34-PREP
+role	B Engineer
+candidate_id	Z042-CAND-005
+boundary_status	PASS
+head	2be2fcf067cfdb8ef1b087ab19a6d6f7c5e934ed
+branch	codex/sprint4-seal
+cached_empty	true
+head_tag_empty	true
+worktree_check_pass	true
+title	外发单列表详情 guard trace 与 parity 来源二轮可见流
+routes	/subcontract/list,/subcontract/detail,/materialPurchase/materialPurchaseProcess
+allowed_files	06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue,06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue
+allowed_files_exist	true
+allowed_files_dirty	false
+reused_committed_product_path	true
+reused_source	Z037 / Z037-CAND-005 / a6d91ea165c8e870f449f06812e57a8df4a555da
+required_anchors_count	8
+guarded_entries	新建外发单,发料,回料,验货,结算预览,同步重试,导出,打印
+write_request_success_allowed	false
+real_write_action_allowed	false
+pure_static_fallback_allowed	false
+evidence_requirement_present	true
+route_source_located	true
+material_purchase_parity_recorded	true
+material_purchase_parity_detail	/materialPurchase/materialPurchaseProcess redirects to /subcontract/list with query parity=material-purchase
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+remote_lifecycle_parked	true
+push_tag_pr_release	false
+production_readback	false
+go_live	false
+project_completion	false
+implementation_started	false
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+risk_z042_cand004_auth_401_count	1
+risk_z042_cand003_auth_401_count	1
+risk_z042_cand002_auth_401_count	25
+risk_z042_cand001_fallback	preserved
+risk_z041_z040_z039_z038_fallbacks	preserved
+guarded_readonly_not_write_success	true
+B28_shell_wrapper_anomaly	preserved
+Z033_skipped_only	preserved
+Z035_screenshot_missing_risk	preserved
+next_task	TASK-Z042B-35-IMPL
+run_this_task	false

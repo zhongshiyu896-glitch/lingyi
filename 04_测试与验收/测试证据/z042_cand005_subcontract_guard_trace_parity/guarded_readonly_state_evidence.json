@@ -1,0 +1,27 @@
+{
+  "task_id": "TASK-Z042B-35-IMPL",
+  "guarded_entries_required": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "guarded_entries_observed": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "guarded_entries_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false
+}

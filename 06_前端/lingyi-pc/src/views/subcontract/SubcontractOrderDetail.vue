@@ -1,5 +1,11 @@
 <template>
-  <div class="subcontract-detail-page" data-testid="subcontract-detail-page">
+  <div
+    class="subcontract-detail-page"
+    data-testid="subcontract-detail-page"
+    data-readonly-boundary="true"
+    data-write-request-success-allowed="false"
+    data-real-write-action-added="false"
+  >
     <el-card shadow="never" v-loading="loading" data-testid="subcontract-detail-main-card">
       <template #header>
         <div class="header-row" data-testid="subcontract-detail-header">
@@ -69,6 +75,45 @@
             </span>
           </el-descriptions-item>
           </el-descriptions>
+
+          <section
+            class="z042-subcontract-panel"
+            data-testid="z042-subcontract-guard-trace"
+            data-readonly-boundary="true"
+            data-write-request-success-allowed="false"
+            data-real-write-action-added="false"
+          >
+            <div class="z042-panel-header">
+              <strong>外发单详情 guard trace</strong>
+              <el-tag type="warning" effect="plain">readonly fallback</el-tag>
+            </div>
+            <el-descriptions :column="3" border size="small">
+              <el-descriptions-item label="详情主字段">外发单号 / 状态 / 加工厂 / 款式 / 金额只读展示</el-descriptions-item>
+              <el-descriptions-item label="parity 来源">
+                <span data-testid="z042-subcontract-parity-source">{{ z042ParitySource.label }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="最终路由">{{ z042ParitySource.finalRoute }}</el-descriptions-item>
+              <el-descriptions-item label="fallback 解释">
+                详情加载失败或权限异常时保留主字段投影和 guard，不推断写成功。
+              </el-descriptions-item>
+              <el-descriptions-item label="写请求成功">false</el-descriptions-item>
+              <el-descriptions-item label="真实写 action">未新增</el-descriptions-item>
+            </el-descriptions>
+            <div class="z042-guard-actions" data-testid="z042-subcontract-detail-guard-actions">
+              <el-button
+                v-for="entry in z042GuardEntries"
+                :key="entry"
+                size="small"
+                data-action-type="write"
+                data-write-guard="guarded:readonly"
+                data-guard-state="guarded_readonly"
+                :data-guard-entry="entry"
+                @click="guardedWriteAction(entry)"
+              >
+                {{ entry }}
+              </el-button>
+            </div>
+          </section>
 
           <div class="action-row" data-testid="subcontract-detail-guarded-actions">
             <el-button
@@ -518,6 +563,20 @@ const settlementForm = reactive({
 })
 
 const readonlyGuardActions = ['发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
+const z042GuardEntries = ['新建外发单', '发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
+const z042ParitySource = computed<{ label: string; finalRoute: string }>(() => {
+  const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  if (raw === 'material-purchase') {
+    return {
+      label: 'materialPurchase parity route -> 外发单详情只读视图',
+      finalRoute: '/subcontract/detail?parity=material-purchase',
+    }
+  }
+  return {
+    label: 'subcontract detail direct route',
+    finalRoute: '/subcontract/detail',
+  }
+})
 
 const buildWriteCarrier = <T extends SubcontractWriteOperation>(
   operation: T,
@@ -907,6 +966,25 @@ onMounted(async () => {
 
 .settlement-preview {
   margin-top: 12px;
+}
+
+.z042-subcontract-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+}
+
+.z042-panel-header,
+.z042-guard-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .readonly-fallback {
