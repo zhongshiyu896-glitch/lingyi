@@ -1,0 +1,164 @@
+{
+  "task_id": "TASK-Z045B-03-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z045-CAND-002",
+  "source_task": "TASK-Z045B-02-PREP",
+  "head": "0c114a3b8addc096aad1e976969d3c0e58df6e14",
+  "branch": "codex/sprint4-seal",
+  "summary": "Implemented visible report catalog source lock, download denial, export lock, and final route readback through the allowed router and report API contract files only.",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/router/index.ts",
+    "06_前端/lingyi-pc/src/api/report.ts"
+  ],
+  "allowed_files_only": true,
+  "report_catalog_vue_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "route_evidence": {
+    "evidence_path": "04_测试与验收/测试证据/z045_cand002_report_source_lock_download_denial/route_evidence.json",
+    "all_http_200": true,
+    "all_final_path_reports_catalog": true,
+    "routes": [
+      {
+        "route": "/financial/financialReport/customerReconciliationReport",
+        "http_status": 200,
+        "final_path": "/reports/catalog"
+      },
+      {
+        "route": "/financial/financialProcess",
+        "http_status": 200,
+        "final_path": "/reports/catalog"
+      },
+      {
+        "route": "/finance/bank-flow",
+        "http_status": 200,
+        "final_path": "/reports/catalog"
+      },
+      {
+        "route": "/reportManage/collaborationReport/factoryProductStockReport",
+        "http_status": 200,
+        "final_path": "/reports/catalog"
+      },
+      {
+        "route": "/reports/catalog",
+        "http_status": 200,
+        "final_path": "/reports/catalog"
+      }
+    ]
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z045_cand002_report_source_lock_download_denial/reports_catalog_1440x1200.png",
+    "mime": "image/png",
+    "width": 1440,
+    "height": 1200
+  },
+  "runtime_dom_anchors": {
+    "evidence_path": "04_测试与验收/测试证据/z045_cand002_report_source_lock_download_denial/runtime_dom_anchors_evidence.json",
+    "observed_count": 8,
+    "expected_count": 8,
+    "all_observed": true,
+    "anchors": [
+      "z045-report-source-lock-readback",
+      "z045-report-download-denial-reason",
+      "z045-report-final-route-audit",
+      "z045-report-catalog-readonly-index",
+      "z045-report-export-safety-badge",
+      "z045-report-guarded-download-matrix",
+      "z045-report-network-write-blocker",
+      "z045-report-write-success-blocker"
+    ]
+  },
+  "guarded_readonly_state": {
+    "evidence_path": "04_测试与验收/测试证据/z045_cand002_report_source_lock_download_denial/guarded_readonly_state_evidence.json",
+    "entries_all_observed": true,
+    "entries": [
+      {
+        "entry": "报表导出",
+        "guarded_readonly": true
+      },
+      {
+        "entry": "财务下载",
+        "guarded_readonly": true
+      },
+      {
+        "entry": "协同下载",
+        "guarded_readonly": true
+      },
+      {
+        "entry": "明细导出",
+        "guarded_readonly": true
+      }
+    ],
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false
+  },
+  "network_write_observation": {
+    "evidence_path": "04_测试与验收/测试证据/z045_cand002_report_source_lock_download_denial/network_write_observation.json",
+    "auth_401_count": 25,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "dev_server": {
+    "started": true,
+    "command": "npm run dev -- --host 127.0.0.1 --port 5173",
+    "actual_url": "http://127.0.0.1:5174/",
+    "stopped": true
+  },
+  "direction_compliance": {
+    "mainline_or_auxiliary": "mainline",
+    "user_visible_frontend_improvement": true,
+    "interaction_experience_improvement": "The report catalog readback now exposes source grouping, download denial reason, export lock notice, and final catalog route readback so users can understand why download/export actions are unavailable from the catalog context.",
+    "one_to_one_ui_contract_focus": "Aligned to the report catalog UI contract for source grouping, disabled download state, final route readback, and export entry state.",
+    "guard_is_supporting_not_primary": true,
+    "candidate_direction_valid": true
+  },
+  "scope_guard": {
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": [],
+    "stage_performed": false,
+    "commit_performed": false,
+    "remote_lifecycle_released": false,
+    "cleanup_reset_restore_performed": false,
+    "push_tag_pr_release": false
+  },
+  "risk_fields_preserved": {
+    "z044_cand005_auth_401_count": "3/4 readonly fallback risk",
+    "z044_cand004_auth_401_count": "1/1 readonly fallback risk",
+    "z044_cand003_auth_401_count": "1/1 readonly fallback risk",
+    "z044_cand002_auth_401_count": "25/25 readonly fallback risk",
+    "z044_cand001_auth_401_count": "6/6 readonly fallback risk",
+    "z043_fallback_risks": "preserved",
+    "z042_z038_fallback_risks": "preserved",
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true,
+    "guarded_readonly_not_write_success": true,
+    "remote_lifecycle_parked": true,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore_performed": false,
+    "remote_lifecycle_released": false,
+    "modified_report_catalog_vue": false,
+    "modified_backend": false,
+    "modified_future_candidates": false
+  },
+  "next_task": "TASK-Z045B-04-REGRESSION-CAND002"
+}

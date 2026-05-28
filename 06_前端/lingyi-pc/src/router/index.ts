@@ -14,6 +14,10 @@ const z042ReportParityQuery = {
   z044_export_lock_reason: 'readonly-export-lock',
   z044_disabled_download_readback: 'download-disabled-readback',
   z044_final_route_readback: '/reports/catalog',
+  z045_source_lock_readback: 'finance-collaboration-source-lock',
+  z045_download_denial_reason: 'download-disabled-by-readonly-contract',
+  z045_export_lock_notice: 'report-export-locked-by-local-boundary',
+  z045_final_route_readback: '/reports/catalog',
 }
 
 const routes: RouteRecordRaw[] = [

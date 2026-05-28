@@ -1,0 +1,54 @@
+{
+  "anchors": [
+    {
+      "anchor": "z045-report-source-lock-readback",
+      "observed": true,
+      "text_count": 3,
+      "html_count": 3
+    },
+    {
+      "anchor": "z045-report-download-denial-reason",
+      "observed": true,
+      "text_count": 3,
+      "html_count": 3
+    },
+    {
+      "anchor": "z045-report-final-route-audit",
+      "observed": true,
+      "text_count": 3,
+      "html_count": 3
+    },
+    {
+      "anchor": "z045-report-catalog-readonly-index",
+      "observed": true,
+      "text_count": 3,
+      "html_count": 3
+    },
+    {
+      "anchor": "z045-report-export-safety-badge",
+      "observed": true,
+      "text_count": 3,
+      "html_count": 3
+    },
+    {
+      "anchor": "z045-report-guarded-download-matrix",
+      "observed": true,
+      "text_count": 3,
+      "html_count": 3
+    },
+    {
+      "anchor": "z045-report-network-write-blocker",
+      "observed": true,
+      "text_count": 3,
+      "html_count": 3
+    },
+    {
+      "anchor": "z045-report-write-success-blocker",
+      "observed": true,
+      "text_count": 5,
+      "html_count": 5
+    }
+  ],
+  "observed_count": 8,
+  "all_observed": true
+}

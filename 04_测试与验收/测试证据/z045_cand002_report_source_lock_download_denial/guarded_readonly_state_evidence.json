@@ -1,0 +1,37 @@
+{
+  "entries": [
+    {
+      "entry": "报表导出",
+      "observed": true
+    },
+    {
+      "entry": "财务下载",
+      "observed": true
+    },
+    {
+      "entry": "协同下载",
+      "observed": true
+    },
+    {
+      "entry": "明细导出",
+      "observed": true
+    }
+  ],
+  "dataReadonlyBoundary": {
+    "expected": true,
+    "observed_value": true,
+    "observed_text": "dataReadonlyBoundary=true"
+  },
+  "dataWriteRequestSuccessAllowed": {
+    "expected": false,
+    "observed_value": false,
+    "observed_text": "dataWriteRequestSuccessAllowed=false"
+  },
+  "dataRealWriteActionAdded": {
+    "expected": false,
+    "observed_value": false,
+    "observed_text": "dataRealWriteActionAdded=false"
+  },
+  "export_button_data_write_guard": "guarded:readonly-report-export",
+  "export_guard_message_observed": true
+}
