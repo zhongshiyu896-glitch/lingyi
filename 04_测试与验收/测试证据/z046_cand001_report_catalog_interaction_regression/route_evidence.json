@@ -1,0 +1,170 @@
+{
+  "base_url": "http://127.0.0.1:5178",
+  "routes": [
+    {
+      "requested_route": "/financial/financialReport/customerReconciliationReport",
+      "http_status": 200,
+      "final_path": "/reports/catalog?parity=financial-customer-reconciliation-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&z045_source_lock_readback=finance-collaboration-source-lock&z045_download_denial_reason=download-disabled-by-readonly-contract&z045_export_lock_notice=report-export-locked-by-local-boundary&z045_final_route_readback=/reports/catalog&z046_source_grouping=report-catalog-source-tabbed-readback&z046_download_disabled_hint=download-disabled-by-readonly-boundary&z046_export_lock_tooltip=export-guarded-local-only&z046_final_route_readback=/reports/catalog&z046_guarded_matrix_scope=report-export-finance-collaboration-detail&source_entry=customer-reconciliation-report",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      },
+      "guarded_entries_observed_count": 4,
+      "guarded_entries_all_observed": true,
+      "guarded_presence": {
+        "报表导出": true,
+        "财务下载": true,
+        "协同下载": true,
+        "明细导出": true
+      },
+      "guarded_boundary": {
+        "dataReadonlyBoundary": true,
+        "dataWriteRequestSuccessAllowed": false,
+        "dataRealWriteActionAdded": false,
+        "boundaryNodeObserved": true
+      },
+      "screenshot": null
+    },
+    {
+      "requested_route": "/financial/financialProcess",
+      "http_status": 200,
+      "final_path": "/reports/catalog?parity=financial-process-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&z045_source_lock_readback=finance-collaboration-source-lock&z045_download_denial_reason=download-disabled-by-readonly-contract&z045_export_lock_notice=report-export-locked-by-local-boundary&z045_final_route_readback=/reports/catalog&z046_source_grouping=report-catalog-source-tabbed-readback&z046_download_disabled_hint=download-disabled-by-readonly-boundary&z046_export_lock_tooltip=export-guarded-local-only&z046_final_route_readback=/reports/catalog&z046_guarded_matrix_scope=report-export-finance-collaboration-detail&source_entry=financial-process",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      },
+      "guarded_entries_observed_count": 4,
+      "guarded_entries_all_observed": true,
+      "guarded_presence": {
+        "报表导出": true,
+        "财务下载": true,
+        "协同下载": true,
+        "明细导出": true
+      },
+      "guarded_boundary": {
+        "dataReadonlyBoundary": true,
+        "dataWriteRequestSuccessAllowed": false,
+        "dataRealWriteActionAdded": false,
+        "boundaryNodeObserved": true
+      },
+      "screenshot": null
+    },
+    {
+      "requested_route": "/finance/bank-flow",
+      "http_status": 200,
+      "final_path": "/reports/catalog?parity=finance-bank-flow-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&z045_source_lock_readback=finance-collaboration-source-lock&z045_download_denial_reason=download-disabled-by-readonly-contract&z045_export_lock_notice=report-export-locked-by-local-boundary&z045_final_route_readback=/reports/catalog&z046_source_grouping=report-catalog-source-tabbed-readback&z046_download_disabled_hint=download-disabled-by-readonly-boundary&z046_export_lock_tooltip=export-guarded-local-only&z046_final_route_readback=/reports/catalog&z046_guarded_matrix_scope=report-export-finance-collaboration-detail&source_entry=bank-flow",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      },
+      "guarded_entries_observed_count": 4,
+      "guarded_entries_all_observed": true,
+      "guarded_presence": {
+        "报表导出": true,
+        "财务下载": true,
+        "协同下载": true,
+        "明细导出": true
+      },
+      "guarded_boundary": {
+        "dataReadonlyBoundary": true,
+        "dataWriteRequestSuccessAllowed": false,
+        "dataRealWriteActionAdded": false,
+        "boundaryNodeObserved": true
+      },
+      "screenshot": null
+    },
+    {
+      "requested_route": "/reportManage/collaborationReport/factoryProductStockReport",
+      "http_status": 200,
+      "final_path": "/reports/catalog?parity=collaboration-factory-product-stock-report&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&z045_source_lock_readback=finance-collaboration-source-lock&z045_download_denial_reason=download-disabled-by-readonly-contract&z045_export_lock_notice=report-export-locked-by-local-boundary&z045_final_route_readback=/reports/catalog&z046_source_grouping=report-catalog-source-tabbed-readback&z046_download_disabled_hint=download-disabled-by-readonly-boundary&z046_export_lock_tooltip=export-guarded-local-only&z046_final_route_readback=/reports/catalog&z046_guarded_matrix_scope=report-export-finance-collaboration-detail&source_entry=factory-product-stock-report",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      },
+      "guarded_entries_observed_count": 4,
+      "guarded_entries_all_observed": true,
+      "guarded_presence": {
+        "报表导出": true,
+        "财务下载": true,
+        "协同下载": true,
+        "明细导出": true
+      },
+      "guarded_boundary": {
+        "dataReadonlyBoundary": true,
+        "dataWriteRequestSuccessAllowed": false,
+        "dataRealWriteActionAdded": false,
+        "boundaryNodeObserved": true
+      },
+      "screenshot": null
+    },
+    {
+      "requested_route": "/reports/catalog",
+      "http_status": 200,
+      "final_path": "/reports/catalog?parity=z042-report-parity-source-guard&readonly_probe=1&source_trace=z042-report-parity-source-trace&export_guard=z042-report-export-guard-matrix&fallback=z042-report-fallback-explanation&z043_export_eligibility=readonly-export-disabled&z043_source_grouping=finance-and-collaboration-parity&z043_disabled_download_reason=write-success-not-allowed&z043_final_route=/reports/catalog&z044_source_readback=finance-collaboration-source-group&z044_export_lock_reason=readonly-export-lock&z044_disabled_download_readback=download-disabled-readback&z044_final_route_readback=/reports/catalog&z045_source_lock_readback=finance-collaboration-source-lock&z045_download_denial_reason=download-disabled-by-readonly-contract&z045_export_lock_notice=report-export-locked-by-local-boundary&z045_final_route_readback=/reports/catalog&z046_source_grouping=report-catalog-source-tabbed-readback&z046_download_disabled_hint=download-disabled-by-readonly-boundary&z046_export_lock_tooltip=export-guarded-local-only&z046_final_route_readback=/reports/catalog&z046_guarded_matrix_scope=report-export-finance-collaboration-detail",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      },
+      "guarded_entries_observed_count": 4,
+      "guarded_entries_all_observed": true,
+      "guarded_presence": {
+        "报表导出": true,
+        "财务下载": true,
+        "协同下载": true,
+        "明细导出": true
+      },
+      "guarded_boundary": {
+        "dataReadonlyBoundary": true,
+        "dataWriteRequestSuccessAllowed": false,
+        "dataRealWriteActionAdded": false,
+        "boundaryNodeObserved": true
+      },
+      "screenshot": {
+        "path": "04_测试与验收/测试证据/z046_cand001_report_catalog_interaction_regression/z046_cand001_reports_catalog_regression_1440x1200.png",
+        "width": 1440,
+        "height": 1200,
+        "png": true
+      }
+    }
+  ]
+}

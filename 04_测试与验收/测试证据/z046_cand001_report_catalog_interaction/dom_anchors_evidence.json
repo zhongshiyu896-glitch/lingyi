@@ -1,0 +1,92 @@
+{
+  "required_anchors": [
+    "z046-report-source-group-tabs",
+    "z046-report-entry-lock-reason",
+    "z046-report-download-disabled-hint",
+    "z046-report-export-lock-tooltip",
+    "z046-report-final-route-readback",
+    "z046-report-parity-source-badge",
+    "z046-report-network-write-blocker",
+    "z046-report-write-success-blocker"
+  ],
+  "required_count": 8,
+  "observed_count": 8,
+  "observed_all": true,
+  "route_anchor_presence": [
+    {
+      "requested_route": "/financial/financialReport/customerReconciliationReport",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      }
+    },
+    {
+      "requested_route": "/financial/financialProcess",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      }
+    },
+    {
+      "requested_route": "/finance/bank-flow",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      }
+    },
+    {
+      "requested_route": "/reportManage/collaborationReport/factoryProductStockReport",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      }
+    },
+    {
+      "requested_route": "/reports/catalog",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z046-report-source-group-tabs": true,
+        "z046-report-entry-lock-reason": true,
+        "z046-report-download-disabled-hint": true,
+        "z046-report-export-lock-tooltip": true,
+        "z046-report-final-route-readback": true,
+        "z046-report-parity-source-badge": true,
+        "z046-report-network-write-blocker": true,
+        "z046-report-write-success-blocker": true
+      }
+    }
+  ]
+}

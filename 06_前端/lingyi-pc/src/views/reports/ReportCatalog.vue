@@ -1,5 +1,12 @@
 <template>
-  <div class="report-catalog-page" data-testid="report-catalog-page">
+  <div
+    class="report-catalog-page"
+    data-testid="report-catalog-page"
+    :data-readonly-boundary="String(dataReadonlyBoundary)"
+    :data-write-request-success-allowed="String(dataWriteRequestSuccessAllowed)"
+    :data-real-write-action-added="String(dataRealWriteActionAdded)"
+    data-readonly-boundary-node="z046-report-readonly-boundary"
+  >
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -166,6 +173,76 @@
         data-testid="report-catalog-parity-hint"
         style="margin-bottom: 12px"
       />
+      <el-card shadow="never" class="catalog-contract-card" data-testid="z046-report-source-group-tabs">
+        <template #header>
+          <div class="header-row">
+            <span>目录入口来源分组与只读交互契约</span>
+            <el-tag effect="plain" type="warning">只读锁定</el-tag>
+          </div>
+        </template>
+        <el-tabs v-model="activeSourceGroup" class="source-group-tabs">
+          <el-tab-pane v-for="group in sourceGroupTabs" :key="group.key" :label="group.label" :name="group.key">
+            <div class="source-group-panel">
+              <el-tag type="info" effect="dark" data-testid="z046-report-parity-source-badge">
+                {{ group.badge }}
+              </el-tag>
+              <div class="source-group-meta">
+                <div>入口路由：{{ group.route }}</div>
+                <div>来源标识：{{ group.sourceEntry }}</div>
+                <div>说明：{{ group.description }}</div>
+              </div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+
+        <el-alert
+          type="warning"
+          :closable="false"
+          :title="entryLockReasonTitle"
+          data-testid="z046-report-entry-lock-reason"
+          style="margin-bottom: 12px"
+        />
+
+        <div class="catalog-contract-line" data-testid="z046-report-download-disabled-hint">
+          <span class="catalog-contract-label">下载禁用原因：</span>
+          <span>{{ downloadDisabledHint }}</span>
+        </div>
+
+        <div class="catalog-contract-line">
+          <span class="catalog-contract-label">导出锁定提示：</span>
+          <el-tooltip :content="exportLockTooltip" placement="top">
+            <el-button type="warning" plain disabled data-testid="z046-report-export-lock-tooltip">
+              导出锁定（hover查看）
+            </el-button>
+          </el-tooltip>
+        </div>
+
+        <div class="catalog-contract-line" data-testid="z046-report-final-route-readback">
+          <span class="catalog-contract-label">final route readback：</span>
+          <span>{{ finalRouteReadback }}</span>
+        </div>
+
+        <el-table :data="guardedMatrixRows" border size="small" data-testid="z046-report-guarded-matrix">
+          <el-table-column prop="entry" label="guarded entry" min-width="110" />
+          <el-table-column prop="state" label="状态" width="120" />
+          <el-table-column prop="reason" label="锁定原因" min-width="280" />
+        </el-table>
+
+        <el-alert
+          type="info"
+          :closable="false"
+          :title="networkWriteBlockerText"
+          data-testid="z046-report-network-write-blocker"
+          style="margin-top: 12px"
+        />
+        <el-alert
+          type="success"
+          :closable="false"
+          :title="writeSuccessBlockerText"
+          data-testid="z046-report-write-success-blocker"
+          style="margin-top: 8px"
+        />
+      </el-card>
       <el-alert
         v-if="scopeExpandedToOtherReports"
         type="warning"
@@ -619,7 +696,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import reportApi from '@/api/report'
@@ -677,6 +754,61 @@ const TASK_SCOPE_REPORT_KEY = 'finance_plan_report'
 const PRESERVED_REPORT_KEY = 'factory_product_stock_report'
 const TASK_SCOPE_REPORT_KEYS = new Set([TASK_SCOPE_REPORT_KEY, PRESERVED_REPORT_KEY])
 const READONLY_LOCAL_PARITY_SET = new Set(['customer-reconciliation', 'factory-product-stock'])
+const dataReadonlyBoundary = true
+const dataWriteRequestSuccessAllowed = false
+const dataRealWriteActionAdded = false
+
+interface SourceGroupTabItem {
+  key: string
+  label: string
+  badge: string
+  route: string
+  sourceEntry: string
+  description: string
+}
+
+const SOURCE_GROUP_TABS: SourceGroupTabItem[] = [
+  {
+    key: 'customer-reconciliation-report',
+    label: '客户对账入口',
+    badge: '财务来源',
+    route: '/financial/financialReport/customerReconciliationReport',
+    sourceEntry: 'customer-reconciliation-report',
+    description: '用于客户对账报表入口，目录页只读展示下载禁用与导出锁定。',
+  },
+  {
+    key: 'financial-process',
+    label: '财务流程入口',
+    badge: '财务来源',
+    route: '/financial/financialProcess',
+    sourceEntry: 'financial-process',
+    description: '用于财务流程入口回落，维持目录页只读契约。',
+  },
+  {
+    key: 'bank-flow',
+    label: '银行流水入口',
+    badge: '财务来源',
+    route: '/finance/bank-flow',
+    sourceEntry: 'bank-flow',
+    description: '用于资金流水入口回落，禁止下载与导出写链路。',
+  },
+  {
+    key: 'factory-product-stock-report',
+    label: '协同库存入口',
+    badge: '协同来源',
+    route: '/reportManage/collaborationReport/factoryProductStockReport',
+    sourceEntry: 'factory-product-stock-report',
+    description: '用于协同加工成品库存入口，展示协同下载阻断原因。',
+  },
+  {
+    key: 'catalog-direct',
+    label: '目录直达入口',
+    badge: '目录直达',
+    route: '/reports/catalog',
+    sourceEntry: 'catalog-direct',
+    description: '目录页直达场景保留只读 readback，不开放写链路动作。',
+  },
+]
 
 const LOCAL_FINANCE_CATALOG_ITEMS: ReportCatalogItem[] = [
   {
@@ -763,6 +895,81 @@ const parityHint = ref<string>('')
 const parityQuery = computed<string>(() => (typeof route.query.parity === 'string' ? route.query.parity.trim() : ''))
 const readonlyProbe = computed<boolean>(() => route.query.readonly_probe === '1')
 const readonlyLocalParityMode = computed<boolean>(() => READONLY_LOCAL_PARITY_SET.has(parityQuery.value))
+const sourceGroupTabs = SOURCE_GROUP_TABS
+const activeSourceGroup = ref<string>('catalog-direct')
+const sourceGroupMap = new Map<string, SourceGroupTabItem>(SOURCE_GROUP_TABS.map((item) => [item.key, item]))
+const routeSourceEntry = computed<string>(() =>
+  typeof route.query.source_entry === 'string' && route.query.source_entry.trim()
+    ? route.query.source_entry.trim()
+    : 'catalog-direct',
+)
+const canRead = computed<boolean>(() => permissionStore.state.actions.includes('report:read'))
+const canExport = computed<boolean>(() => permissionStore.state.actions.includes('report:export'))
+
+const resolveSourceGroupKey = (): string => {
+  const sourceEntry = routeSourceEntry.value
+  if (sourceGroupMap.has(sourceEntry)) {
+    return sourceEntry
+  }
+  return 'catalog-direct'
+}
+
+const currentSourceGroup = computed<SourceGroupTabItem>(() => {
+  const key = activeSourceGroup.value
+  return sourceGroupMap.get(key) || SOURCE_GROUP_TABS[SOURCE_GROUP_TABS.length - 1]
+})
+
+const entryLockReasonTitle = computed<string>(() => {
+  const source = currentSourceGroup.value
+  return `入口 ${source.label} 已锁定为只读：目录仅提供来源与状态 readback，不允许触发写请求。`
+})
+
+const downloadDisabledHint = computed<string>(() => {
+  if (currentSourceGroup.value.badge === '协同来源') {
+    return '协同下载依赖写链路确认，当前只读边界拦截该动作。'
+  }
+  return '财务下载依赖导出写链路确认，当前只读边界拦截该动作。'
+})
+
+const exportLockTooltip = computed<string>(() => {
+  if (!canExport.value) {
+    return '当前账号缺少 report:export 权限，且只读边界禁止导出写链路。'
+  }
+  return '当前候选只做前端交互改进，导出入口保持锁定，不执行真实写链路。'
+})
+
+const finalRouteReadback = computed<string>(() => route.fullPath || '/reports/catalog')
+
+const guardedMatrixRows = computed<Array<{ entry: string; state: string; reason: string }>>(() => [
+  {
+    entry: '报表导出',
+    state: canExport.value ? 'guarded' : 'readonly',
+    reason: canExport.value ? '导出入口保留可见，但只读边界阻断真实写请求。' : '无导出权限并处于只读边界，导出动作被阻断。',
+  },
+  {
+    entry: '财务下载',
+    state: 'readonly',
+    reason: '财务入口下载仅保留状态 readback，下载写链路不允许。',
+  },
+  {
+    entry: '协同下载',
+    state: 'readonly',
+    reason: '协同入口沿用目录只读契约，下载动作保持禁用。',
+  },
+  {
+    entry: '明细导出',
+    state: 'readonly',
+    reason: '明细导出依赖写链路确认，当前候选固定拦截。',
+  },
+])
+
+const networkWriteBlockerText = computed<string>(
+  () => 'network/write blocker：本页仅提供目录 readback，不发送写请求（write_requests_observed_count 应为 0）。',
+)
+
+const writeSuccessBlockerText = computed<string>(
+  () => 'write success blocker：dataWriteRequestSuccessAllowed=false，任何 guard 反馈均不代表写成功。',
+)
 
 const employeeTaskItems = ref<EmployeeTaskStatisticsItem[]>([])
 const selectedEmployeeTaskItem = ref<EmployeeTaskStatisticsItem | null>(null)
@@ -795,8 +1002,6 @@ const departmentOptions = ['生产计划', '仓储协同', '财务对账', '质�
 const employeeTaskStatusOptions = ['正常', '预警', '冻结']
 const approvalStatusOptions = ['待审批', '已通过', '已驳回']
 
-const canRead = computed<boolean>(() => permissionStore.state.actions.includes('report:read'))
-const canExport = computed<boolean>(() => permissionStore.state.actions.includes('report:export'))
 const queryLoading = computed<boolean>(() => loading.value || employeeTaskLoading.value || approvalLoading.value)
 const financePreviewHeaders = computed<string[]>(() => selectedFinanceItem.value?.ui_table_headers || [])
 
@@ -1192,6 +1397,7 @@ const resolveParityHint = (): void => {
 
 onMounted(() => {
   resolveParityHint()
+  activeSourceGroup.value = resolveSourceGroupKey()
   if (readonlyProbe.value || readonlyLocalParityMode.value) {
     loadCatalog().catch((error: unknown) => {
       ElMessage.error((error as Error).message || '只读样例加载失败')
@@ -1210,6 +1416,14 @@ onMounted(() => {
       })
     })
 })
+
+watch(
+  () => route.fullPath,
+  () => {
+    resolveParityHint()
+    activeSourceGroup.value = resolveSourceGroupKey()
+  },
+)
 </script>
 
 <style scoped>
@@ -1266,6 +1480,42 @@ onMounted(() => {
 
 .approval-report-card {
   margin-top: 12px;
+}
+
+.catalog-contract-card {
+  margin-bottom: 12px;
+}
+
+.source-group-tabs {
+  margin-bottom: 12px;
+}
+
+.source-group-panel {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.source-group-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--el-text-color-regular);
+}
+
+.catalog-contract-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.catalog-contract-label {
+  color: var(--el-text-color-secondary);
 }
 
 :deep(.el-card__header) {

@@ -18,6 +18,11 @@ const z042ReportParityQuery = {
   z045_download_denial_reason: 'download-disabled-by-readonly-contract',
   z045_export_lock_notice: 'report-export-locked-by-local-boundary',
   z045_final_route_readback: '/reports/catalog',
+  z046_source_grouping: 'report-catalog-source-tabbed-readback',
+  z046_download_disabled_hint: 'download-disabled-by-readonly-boundary',
+  z046_export_lock_tooltip: 'export-guarded-local-only',
+  z046_final_route_readback: '/reports/catalog',
+  z046_guarded_matrix_scope: 'report-export-finance-collaboration-detail',
 }
 
 const routes: RouteRecordRaw[] = [

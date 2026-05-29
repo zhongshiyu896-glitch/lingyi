@@ -1,0 +1,8 @@
+{
+  "auth_401_count": 25,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "write_request_details": []
+}

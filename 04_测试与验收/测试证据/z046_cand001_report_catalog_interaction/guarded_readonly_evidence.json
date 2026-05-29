@@ -1,0 +1,20 @@
+{
+  "guarded_entries": [
+    "报表导出",
+    "财务下载",
+    "协同下载",
+    "明细导出"
+  ],
+  "expected_count": 4,
+  "observed_count": 4,
+  "observed_all": true,
+  "guarded_presence": {
+    "报表导出": true,
+    "财务下载": true,
+    "协同下载": true,
+    "明细导出": true
+  },
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false
+}
