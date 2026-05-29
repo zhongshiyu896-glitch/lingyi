@@ -1,0 +1,72 @@
+{
+  "guarded_entries": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "list": {
+    "observed_count": 8,
+    "all_observed": true,
+    "presence": {
+      "新建外发单": true,
+      "发料": true,
+      "回料": true,
+      "验货": true,
+      "结算预览": true,
+      "同步重试": true,
+      "导出": true,
+      "打印": true
+    },
+    "top_level_fields": {
+      "dataReadonlyBoundary": true,
+      "dataWriteRequestSuccessAllowed": false,
+      "dataRealWriteActionAdded": false,
+      "combinedBoundaryNodeObserved": true
+    }
+  },
+  "detail": {
+    "observed_count": 8,
+    "all_observed": true,
+    "presence": {
+      "新建外发单": true,
+      "发料": true,
+      "回料": true,
+      "验货": true,
+      "结算预览": true,
+      "同步重试": true,
+      "导出": true,
+      "打印": true
+    },
+    "top_level_fields": {
+      "dataReadonlyBoundary": true,
+      "dataWriteRequestSuccessAllowed": false,
+      "dataRealWriteActionAdded": false,
+      "combinedBoundaryNodeObserved": true
+    }
+  },
+  "material_purchase_redirect_page": {
+    "observed_count": 8,
+    "all_observed": true,
+    "presence": {
+      "新建外发单": true,
+      "发料": true,
+      "回料": true,
+      "验货": true,
+      "结算预览": true,
+      "同步重试": true,
+      "导出": true,
+      "打印": true
+    },
+    "top_level_fields": {
+      "dataReadonlyBoundary": true,
+      "dataWriteRequestSuccessAllowed": false,
+      "dataRealWriteActionAdded": false,
+      "combinedBoundaryNodeObserved": true
+    }
+  }
+}

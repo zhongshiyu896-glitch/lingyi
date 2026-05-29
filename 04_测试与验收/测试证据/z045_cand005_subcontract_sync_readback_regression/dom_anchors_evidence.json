@@ -1,0 +1,48 @@
+{
+  "required_anchors": [
+    "z045-subcontract-parity-diff-audit",
+    "z045-subcontract-list-detail-readback",
+    "z045-subcontract-sync-denial-reason",
+    "z045-subcontract-export-print-lock",
+    "z045-subcontract-material-parity-source",
+    "z045-subcontract-guarded-action-matrix",
+    "z045-subcontract-network-write-blocker",
+    "z045-subcontract-write-success-blocker"
+  ],
+  "list": {
+    "z045-subcontract-parity-diff-audit": true,
+    "z045-subcontract-list-detail-readback": true,
+    "z045-subcontract-sync-denial-reason": true,
+    "z045-subcontract-export-print-lock": true,
+    "z045-subcontract-material-parity-source": true,
+    "z045-subcontract-guarded-action-matrix": true,
+    "z045-subcontract-network-write-blocker": true,
+    "z045-subcontract-write-success-blocker": true
+  },
+  "detail": {
+    "z045-subcontract-parity-diff-audit": true,
+    "z045-subcontract-list-detail-readback": true,
+    "z045-subcontract-sync-denial-reason": true,
+    "z045-subcontract-export-print-lock": true,
+    "z045-subcontract-material-parity-source": true,
+    "z045-subcontract-guarded-action-matrix": true,
+    "z045-subcontract-network-write-blocker": true,
+    "z045-subcontract-write-success-blocker": true
+  },
+  "material_purchase_redirect_page": {
+    "z045-subcontract-parity-diff-audit": true,
+    "z045-subcontract-list-detail-readback": true,
+    "z045-subcontract-sync-denial-reason": true,
+    "z045-subcontract-export-print-lock": true,
+    "z045-subcontract-material-parity-source": true,
+    "z045-subcontract-guarded-action-matrix": true,
+    "z045-subcontract-network-write-blocker": true,
+    "z045-subcontract-write-success-blocker": true
+  },
+  "observed_count_list": 8,
+  "observed_count_detail": 8,
+  "observed_count_material_purchase_redirect_page": 8,
+  "all_observed_list": true,
+  "all_observed_detail": true,
+  "all_observed_material_purchase_redirect_page": true
+}

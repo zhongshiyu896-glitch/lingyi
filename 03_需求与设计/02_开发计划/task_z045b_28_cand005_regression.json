@@ -1,0 +1,141 @@
+{
+  "task_id": "TASK-Z045B-28-REGRESSION-CAND005",
+  "role": "B Engineer",
+  "status": "PASS",
+  "head": "5ce8c37fed9ec46c31f4527142fe53da1ee429f8",
+  "branch": "codex/sprint4-seal",
+  "cached": [],
+  "head_tag": [],
+  "candidate_id": "Z045-CAND-005",
+  "code_modified_in_this_task": false,
+  "code_hash_before": {
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue": "e7486a8e720db7ad95a45e9bb424179f0ffb626f",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue": "fb517e131b960c5670b8f2cdd6a53a5996b0cd6c",
+    "06_前端/lingyi-pc/src/api/subcontract.ts": "8675222b91e241055c45a8313b415be1bdd672bb"
+  },
+  "code_hash_after": {
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue": "e7486a8e720db7ad95a45e9bb424179f0ffb626f",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue": "fb517e131b960c5670b8f2cdd6a53a5996b0cd6c",
+    "06_前端/lingyi-pc/src/api/subcontract.ts": "8675222b91e241055c45a8313b415be1bdd672bb"
+  },
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "api_subcontract_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "direction_compliance": {
+    "mainline_or_auxiliary": "mainline",
+    "user_visible_frontend_improvement": true,
+    "interaction_experience_improvement": true,
+    "one_to_one_ui_contract_focus": true,
+    "readonly_guard_role": "supporting",
+    "candidate_direction_valid": true
+  },
+  "route_evidence": {
+    "routes": [
+      {
+        "route": "/subcontract/list",
+        "http_status": 200,
+        "final_path": "/subcontract/list"
+      },
+      {
+        "route": "/subcontract/detail",
+        "http_status": 200,
+        "final_path": "/subcontract/detail"
+      },
+      {
+        "route": "/materialPurchase/materialPurchaseProcess",
+        "http_status": 200,
+        "final_path": "/subcontract/list?parity=material-purchase"
+      }
+    ],
+    "evidence_path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback_regression/route_evidence.json"
+  },
+  "material_purchase_final_path": "/subcontract/list?parity=material-purchase",
+  "screenshots": [
+    {
+      "route": "/subcontract/list",
+      "path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback_regression/z045_cand005_regression_list_1440x1200.png",
+      "png": true,
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "route": "/subcontract/detail",
+      "path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback_regression/z045_cand005_regression_detail_1440x1200.png",
+      "png": true,
+      "width": 1440,
+      "height": 1200
+    }
+  ],
+  "dom_anchors_observed": {
+    "observed": "8/8",
+    "list_observed_count": 8,
+    "detail_observed_count": 8,
+    "material_purchase_redirect_page_observed_count": 8,
+    "evidence_path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback_regression/dom_anchors_evidence.json"
+  },
+  "guarded_readonly_state": {
+    "guarded_entries": [
+      "新建外发单",
+      "发料",
+      "回料",
+      "验货",
+      "结算预览",
+      "同步重试",
+      "导出",
+      "打印"
+    ],
+    "coverage": "8/8",
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "evidence_path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback_regression/guarded_readonly_evidence.json"
+  },
+  "network_write_observation": {
+    "auth_401_count": 5,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false,
+    "evidence_path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback_regression/network_write_evidence.json"
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0,
+    "evidence_path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback_regression/typecheck_result.json"
+  },
+  "dev_server": {
+    "started": true,
+    "reused": false,
+    "actual_url": "http://127.0.0.1:5174/",
+    "stopped": true,
+    "evidence_path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback_regression/dev_server_evidence.json"
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "risk_fields": [
+    "Z045-CAND-005 B27/B28 auth_401_count=5/5 readonly fallback risk",
+    "Z045-CAND-004 auth_401_count=1/1 readonly fallback risk",
+    "Z045-CAND-003 auth_401_count=1/1 readonly fallback risk",
+    "Z045-CAND-002 auth_401_count=25/25 readonly fallback risk",
+    "Z044/Z043/Z042-Z038 fallback risks",
+    "guarded_readonly_not_write_success=true",
+    "prior non-allowlisted summary/metadata continue excluded",
+    "Z034 residual/backend/runtime/cache/remote/prod-go-live continue excluded",
+    "remote_lifecycle_parked=true",
+    "push_tag_pr_release=false",
+    "production_readback=false",
+    "go_live=false",
+    "project_completion=false"
+  ],
+  "next_task": "TASK-Z045B-29-LEDGER-CAND005"
+}

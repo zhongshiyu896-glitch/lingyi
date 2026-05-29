@@ -109,6 +109,120 @@
           </el-tag>
         </div>
       </section>
+      <section
+        class="z045-subcontract-panel"
+        data-readonly-boundary="true"
+        data-write-request-success-allowed="false"
+        data-real-write-action-added="false"
+      >
+        <div class="z045-panel-header">
+          <strong>外发详情同步与结算只读交互</strong>
+          <el-tag type="warning" effect="plain">Z045 interaction</el-tag>
+        </div>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="parity 差异审计">
+            <span
+              data-testid="z045-subcontract-parity-diff-audit"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z045ParityDiffAudit }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="列表/详情 readback">
+            <span
+              data-testid="z045-subcontract-list-detail-readback"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z045ListDetailReadback }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="同步拒写原因">
+            <span
+              data-testid="z045-subcontract-sync-denial-reason"
+              data-guard-state="guarded-readonly"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z045SyncDenialReason }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="导出/打印锁定">
+            <span
+              data-testid="z045-subcontract-export-print-lock"
+              data-guard-state="guarded-readonly"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z045ExportPrintLock }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="materialPurchase 来源">
+            <span
+              data-testid="z045-subcontract-material-parity-source"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z045MaterialParitySource }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="network/write blocker">
+            <span
+              data-testid="z045-subcontract-network-write-blocker"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z045NetworkWriteBlocker }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="write success blocker" :span="2">
+            <span
+              data-testid="z045-subcontract-write-success-blocker"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z045WriteSuccessBlocker }}
+            </span>
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-table
+          :data="z045GuardedActionMatrix"
+          size="small"
+          border
+          class="z045-guard-table"
+          data-testid="z045-subcontract-guarded-action-matrix"
+          data-readonly-boundary="true"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <el-table-column prop="entry" label="动作" width="120">
+            <template #default="scope">
+              <span
+                data-action-type="write"
+                data-write-guard="guarded:readonly"
+                data-guard-state="guarded-readonly"
+                data-readonly-boundary="true"
+                data-write-request-success-allowed="false"
+                data-real-write-action-added="false"
+                :data-guard-entry="scope.row.entry"
+              >
+                {{ scope.row.entry }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="prerequisite" label="前置条件" min-width="180" />
+          <el-table-column prop="lockReason" label="锁定原因" min-width="220" />
+          <el-table-column prop="state" label="当前状态" width="150" />
+        </el-table>
+      </section>
       <el-skeleton v-if="!permissionReady" :rows="4" animated data-testid="subcontract-detail-loading-state" />
       <el-empty
         v-else-if="!canRead"
@@ -862,6 +976,58 @@ const z044NetworkWriteBlocker =
   'network/write blocker：新建、发料、回料、验货、结算预览、同步、导出、打印均不得形成真实写请求成功'
 const z044WriteSuccessBlocker =
   'write success blocker：dataWriteRequestSuccessAllowed=false，dataRealWriteActionAdded=false，guarded readonly 不等于写成功'
+const z045GuardEntries = z042GuardEntries
+const z045ParityDiffAudit = computed<string>(() =>
+  detail.value
+    ? `${detail.value.subcontract_no} 与列表 readback 共享 materialPurchase parity 来源；差异只读呈现，不回写状态`
+    : '详情缺少 id 时仍展示 parity 差异审计，提示用户回到列表选择外发单'
+)
+const z045ListDetailReadback = computed<string>(() =>
+  detail.value
+    ? `${detail.value.supplier} / ${statusLabel(detail.value.status)} / 发料${stockSyncLabel(detail.value.latest_issue_sync_status) || '未入列'} / 回料${stockSyncLabel(detail.value.latest_receipt_sync_status) || '未入列'}`
+    : '列表/详情 readback 等待外发单 id，当前不触发同步或写入',
+)
+const z045SyncDenialReason = computed<string>(() => {
+  const issue = stockSyncLabel(detail.value?.latest_issue_sync_status)
+  const receipt = stockSyncLabel(detail.value?.latest_receipt_sync_status)
+  if (issue || receipt) {
+    return `发料:${issue || '未入列'} / 回料:${receipt || '未入列'}；同步重试仅展示拒写原因，不发送 retry 写请求`
+  }
+  return '详情未加载或无同步异常时，同步重试仍保持只读锁定，防止误判为可写成功'
+})
+const z045ExportPrintLock =
+  '导出与打印锁定：详情页仅展示禁用原因，不生成下载、打印任务或后端写请求'
+const z045MaterialParitySource = computed<string>(() => {
+  const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  if (raw === 'material-purchase') {
+    return '/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase -> detail readback'
+  }
+  return 'direct subcontract detail；materialPurchase parity 来源由列表路由承接'
+})
+const z045NetworkWriteBlocker =
+  'network/write blocker：新建、发料、回料、验货、结算预览、同步重试、导出、打印均不新增写请求'
+const z045WriteSuccessBlocker =
+  'write success blocker：dataWriteRequestSuccessAllowed=false，dataRealWriteActionAdded=false，guarded readonly 不代表写成功'
+const z045GuardedActionMatrix = computed(() =>
+  z045GuardEntries.map((entry) => {
+    const prerequisiteMap: Record<string, string> = {
+      新建外发单: '需要从列表进入并具备新建写授权',
+      发料: '需要外发单、物料批次和库存写授权',
+      回料: '需要回料批次、数量核验和库存回写授权',
+      验货: '需要回料记录、验货数量和质量状态写授权',
+      结算预览: '需要验货候选、结算单号和结算写授权',
+      同步重试: '需要同步失败原因复核和 retry 写授权',
+      导出: '需要详情导出授权与下载通道',
+      打印: '需要打印任务授权与生产打印通道',
+    }
+    return {
+      entry,
+      prerequisite: prerequisiteMap[entry] || '需要写授权',
+      lockReason: 'Z045 本地候选仅允许详情 readback 与原因展示，禁止形成真实写请求成功',
+      state: 'guarded/readonly',
+    }
+  }),
+)
 
 const buildWriteCarrier = <T extends SubcontractWriteOperation>(
   operation: T,
@@ -1291,7 +1457,8 @@ onMounted(async () => {
   flex-wrap: wrap;
 }
 
-.z044-subcontract-panel {
+.z044-subcontract-panel,
+.z045-subcontract-panel {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1303,11 +1470,16 @@ onMounted(async () => {
 }
 
 .z044-panel-header,
-.z044-guard-actions {
+.z044-guard-actions,
+.z045-panel-header {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.z045-guard-table {
+  width: 100%;
 }
 
 .readonly-fallback {

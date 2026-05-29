@@ -1,0 +1,126 @@
+{
+  "base_url": "http://127.0.0.1:5174",
+  "routes": [
+    {
+      "label": "subcontract-list",
+      "requested_route": "/subcontract/list",
+      "http_status": 200,
+      "final_path": "/subcontract/list",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z045-subcontract-parity-diff-audit": true,
+        "z045-subcontract-list-detail-readback": true,
+        "z045-subcontract-sync-denial-reason": true,
+        "z045-subcontract-export-print-lock": true,
+        "z045-subcontract-material-parity-source": true,
+        "z045-subcontract-guarded-action-matrix": true,
+        "z045-subcontract-network-write-blocker": true,
+        "z045-subcontract-write-success-blocker": true
+      },
+      "guarded_entries_observed_count": 8,
+      "guarded_entries_all_observed": true,
+      "guarded_presence": {
+        "新建外发单": true,
+        "发料": true,
+        "回料": true,
+        "验货": true,
+        "结算预览": true,
+        "同步重试": true,
+        "导出": true,
+        "打印": true
+      },
+      "guarded_boundary": {
+        "dataReadonlyBoundary": true,
+        "dataWriteRequestSuccessAllowed": false,
+        "dataRealWriteActionAdded": false,
+        "combinedBoundaryNodeObserved": true
+      },
+      "screenshot": {
+        "path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/z045_cand005_list_1440x1200.png",
+        "width": 1440,
+        "height": 1200,
+        "png": true
+      }
+    },
+    {
+      "label": "subcontract-detail",
+      "requested_route": "/subcontract/detail",
+      "http_status": 200,
+      "final_path": "/subcontract/detail",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z045-subcontract-parity-diff-audit": true,
+        "z045-subcontract-list-detail-readback": true,
+        "z045-subcontract-sync-denial-reason": true,
+        "z045-subcontract-export-print-lock": true,
+        "z045-subcontract-material-parity-source": true,
+        "z045-subcontract-guarded-action-matrix": true,
+        "z045-subcontract-network-write-blocker": true,
+        "z045-subcontract-write-success-blocker": true
+      },
+      "guarded_entries_observed_count": 8,
+      "guarded_entries_all_observed": true,
+      "guarded_presence": {
+        "新建外发单": true,
+        "发料": true,
+        "回料": true,
+        "验货": true,
+        "结算预览": true,
+        "同步重试": true,
+        "导出": true,
+        "打印": true
+      },
+      "guarded_boundary": {
+        "dataReadonlyBoundary": true,
+        "dataWriteRequestSuccessAllowed": false,
+        "dataRealWriteActionAdded": false,
+        "combinedBoundaryNodeObserved": true
+      },
+      "screenshot": {
+        "path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/z045_cand005_detail_1440x1200.png",
+        "width": 1440,
+        "height": 1200,
+        "png": true
+      }
+    },
+    {
+      "label": "material-purchase-parity",
+      "requested_route": "/materialPurchase/materialPurchaseProcess",
+      "http_status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase",
+      "anchors_observed_count": 8,
+      "anchors_all_observed": true,
+      "anchor_presence": {
+        "z045-subcontract-parity-diff-audit": true,
+        "z045-subcontract-list-detail-readback": true,
+        "z045-subcontract-sync-denial-reason": true,
+        "z045-subcontract-export-print-lock": true,
+        "z045-subcontract-material-parity-source": true,
+        "z045-subcontract-guarded-action-matrix": true,
+        "z045-subcontract-network-write-blocker": true,
+        "z045-subcontract-write-success-blocker": true
+      },
+      "guarded_entries_observed_count": 8,
+      "guarded_entries_all_observed": true,
+      "guarded_presence": {
+        "新建外发单": true,
+        "发料": true,
+        "回料": true,
+        "验货": true,
+        "结算预览": true,
+        "同步重试": true,
+        "导出": true,
+        "打印": true
+      },
+      "guarded_boundary": {
+        "dataReadonlyBoundary": true,
+        "dataWriteRequestSuccessAllowed": false,
+        "dataRealWriteActionAdded": false,
+        "combinedBoundaryNodeObserved": true
+      },
+      "screenshot": null
+    }
+  ]
+}

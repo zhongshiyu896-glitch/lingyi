@@ -1,0 +1,79 @@
+{
+  "auth_401_count": 5,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "network_events": [
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/subcontract.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/subcontract.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/auth.ts"
+    },
+    {
+      "method": "GET",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/subcontract.ts"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "url": "http://127.0.0.1:5174/src/api/request.ts"
+    },
+    {
+      "method": "GET",
+      "status": 401,
+      "url": "http://127.0.0.1:5174/api/subcontract/?page=1&page_size=20"
+    }
+  ]
+}

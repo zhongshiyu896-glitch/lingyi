@@ -1,0 +1,30 @@
+field	value
+task_id	TASK-Z045B-27-IMPL
+status	PASS
+head	5ce8c37fed9ec46c31f4527142fe53da1ee429f8
+branch	codex/sprint4-seal
+changed_files	06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue;06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue
+allowed_files_only	true
+api_subcontract_touched	false
+backend_api_added	false
+real_write_action_added	false
+read_only_boundary_preserved	true
+route_list	/subcontract/list HTTP 200 final_path=/subcontract/list
+route_detail	/subcontract/detail HTTP 200 final_path=/subcontract/detail
+route_material_purchase	/materialPurchase/materialPurchaseProcess HTTP 200 final_path=/subcontract/list?parity=material-purchase
+screenshots	04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/z045_cand005_list_1440x1200.png;04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/z045_cand005_detail_1440x1200.png
+dom_anchors_observed	8/8
+guarded_entries_observed	8/8
+auth_401_count	5
+write_requests_observed_count	0
+write_request_success_observed	false
+write_request_success_allowed	false
+typecheck	npm run typecheck exit_code=0
+dev_server	started=true;stopped=true;actual_url=http://127.0.0.1:5174/
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+stage_performed	false
+commit_performed	false
+remote_lifecycle_released	false
+next_task	TASK-Z045B-28-REGRESSION-CAND005
