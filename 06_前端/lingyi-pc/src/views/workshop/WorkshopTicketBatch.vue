@@ -295,6 +295,119 @@
         </section>
       </div>
 
+      <div class="z045-readonly-grid" data-testid="z045-batch-template-drift-locator-readback">
+        <section
+          class="z045-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z045-batch-template-drift-readback"
+        >
+          <h3>模板版本漂移 readback</h3>
+          <dl class="z045-readback-list">
+            <div v-for="item in z045TemplateDriftReadback" :key="item.label">
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.value }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section
+          class="z045-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z045-batch-field-impact-sample"
+        >
+          <h3>字段差异样例</h3>
+          <ul class="z045-locator-list">
+            <li v-for="item in z045FieldImpactSamples" :key="item.field">
+              {{ item.field }}：{{ item.expected }} / {{ item.actual }}，{{ item.readback }}
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z045-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z045-batch-failure-row-locator"
+        >
+          <h3>失败行定位</h3>
+          <ul class="z045-locator-list">
+            <li v-for="item in z045FailureRowLocatorRows" :key="`${item.row}-${item.field}`">
+              第 {{ item.row }} 行 {{ item.field }}：{{ item.reason }}
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z045-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z045-batch-retry-denial-reason"
+          data-write-guard="guarded:z045-batch-retry-denial-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>重试锁定说明</h3>
+          <ul class="z045-locator-list">
+            <li v-for="item in z045RetryDenialReasons" :key="item">{{ item }}</li>
+          </ul>
+        </section>
+
+        <section
+          class="z045-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z045-batch-request-context-audit"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>request context 审计</h3>
+          <p>request_id={{ readonlyRequestId }}</p>
+          <p>scenario_tag={{ readonlyScenarioTag }}</p>
+          <p>导入流程只展示定位与锁定说明，不开启真实写成功路径。</p>
+        </section>
+
+        <section
+          class="z045-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z045-batch-import-guard"
+          data-write-guard="guarded:z045-batch-import-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>批量导入 guarded/readonly</h3>
+          <p>仅允许本地解析预览；入口状态固定为只读 guard。</p>
+        </section>
+
+        <section
+          class="z045-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z045-batch-submit-guard"
+          data-write-guard="guarded:z045-batch-submit-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>解析后提交 guarded/readonly</h3>
+          <p>解析完成后仅更新差异样例和失败定位，不提交写请求。</p>
+        </section>
+
+        <section
+          class="z045-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z045-batch-write-success-blocker"
+          data-write-guard="guarded:z045-batch-write-success-blocker"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>写成功阻断</h3>
+          <p>批量导入、解析后提交与失败重试均保持只读阻断，write_requests_observed_count 目标为 0。</p>
+        </section>
+      </div>
+
       <el-alert
         v-if="batchReceipt"
         type="info"
@@ -515,6 +628,57 @@ const z044FailedRowLocatorRows = computed<Array<{ row: number; field: string; re
     { row: 2, field: 'source_ref', reason: '来源缺失时仅记录只读风险说明' },
   ]
 })
+
+const z045TemplateDriftReadback = [
+  { label: '当前模板版本', value: 'Z045-BATCH-TEMPLATE-V2' },
+  { label: '兼容基线', value: 'Z044-BATCH-TEMPLATE-V1' },
+  { label: '漂移处理', value: '字段差异仅做 readback，不触发写入修复' },
+]
+
+const z045FieldImpactSamples = [
+  {
+    field: 'work_date',
+    expected: 'YYYY-MM-DD',
+    actual: '空值或非日期',
+    readback: '标记失败行并提示修正格式',
+  },
+  {
+    field: 'qty',
+    expected: 'number > 0',
+    actual: 'string 或 0',
+    readback: '保留导入前差异样例，阻断写请求',
+  },
+  {
+    field: 'process_name',
+    expected: '与工序字典一致',
+    actual: '未知工序编码',
+    readback: '提示锁定原因并停留在只读导入流程',
+  },
+]
+
+const z045FailureRowLocatorRows = computed<Array<{ row: number; field: string; reason: string }>>(() => {
+  if (validationRows.value.length > 0) {
+    return validationRows.value.flatMap((row) => {
+      const fields = row.message.replace('缺少字段：', '').split(',').map((field) => field.trim()).filter(Boolean)
+      return fields.map((field) => ({
+        row: row.row_index,
+        field,
+        reason: `${row.code}：失败定位已记录，重试入口保持锁定`,
+      }))
+    })
+  }
+  return [
+    { row: 1, field: 'work_date', reason: '日期格式异常时只展示失败定位' },
+    { row: 2, field: 'qty', reason: '数量异常时只展示字段差异样例' },
+    { row: 3, field: 'process_name', reason: '工序编码异常时仅提示重试锁定' },
+  ]
+})
+
+const z045RetryDenialReasons = [
+  '失败重试需要 request_id 与 scenario_tag 一致；不满足时保持只读锁定。',
+  '批量导入入口仅保留导入流程可见提示，不触发重试写请求。',
+  '解析后提交仅作为差异确认步骤，不能进入真实写成功路径。',
+]
 
 const resetParseState = (): void => {
   parseSummary.value = null
@@ -884,6 +1048,62 @@ onMounted(async () => {
   color: var(--el-text-color-regular);
 }
 
+.z045-readonly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.z045-readonly-section {
+  min-height: 142px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--el-fill-color-blank);
+}
+
+.z045-readonly-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.z045-readonly-section p {
+  margin: 0 0 6px;
+  line-height: 1.55;
+  color: var(--el-text-color-regular);
+  word-break: break-all;
+}
+
+.z045-readback-list {
+  margin: 0;
+}
+
+.z045-readback-list div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.z045-readback-list dt {
+  color: var(--el-text-color-secondary);
+}
+
+.z045-readback-list dd {
+  margin: 0;
+  color: var(--el-text-color-regular);
+  word-break: break-all;
+}
+
+.z045-locator-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--el-text-color-regular);
+}
+
 @media (max-width: 960px) {
   .z042-readonly-grid {
     grid-template-columns: 1fr;
@@ -894,6 +1114,10 @@ onMounted(async () => {
   }
 
   .z044-readonly-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .z045-readonly-grid {
     grid-template-columns: 1fr;
   }
 }

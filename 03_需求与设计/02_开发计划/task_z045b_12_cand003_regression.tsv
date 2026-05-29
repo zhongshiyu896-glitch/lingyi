@@ -1,0 +1,84 @@
+section	key	value
+meta	task_id	TASK-Z045B-12-REGRESSION-CAND003
+meta	role	B Engineer
+meta	candidate_id	Z045-CAND-003
+meta	source_task	TASK-Z045B-11-IMPL
+meta	head	ceba34094e59c0513e442f01b45a46d3ff2ac038
+meta	branch	codex/sprint4-seal
+scope	code_modified_in_this_task	false
+scope	changed_files	["06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"]
+scope	allowed_files_only	true
+scope	api_workshop_touched	false
+scope	backend_api_added	false
+scope	real_write_action_added	false
+scope	read_only_boundary_preserved	true
+route	evidence_path	04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator_regression/route_evidence.json
+route	all_http_200	true
+route	path	/workshop/tickets/batch
+route	http_status	200
+route	final_path	/workshop/tickets/batch
+screenshot	path	04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator_regression/workshop_ticket_batch_regression_1440x1200.png
+screenshot	mime	image/png
+screenshot	width	1440
+screenshot	height	1200
+dom	evidence_path	04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator_regression/runtime_dom_anchors_evidence.json
+dom	observed_count	8
+dom	expected_count	8
+dom	all_observed	true
+dom	anchors	["z045-batch-template-drift-readback","z045-batch-field-impact-sample","z045-batch-failure-row-locator","z045-batch-retry-denial-reason","z045-batch-request-context-audit","z045-batch-import-guard","z045-batch-submit-guard","z045-batch-write-success-blocker"]
+guard	evidence_path	04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator_regression/guarded_readonly_state_evidence.json
+guard	entries	["批量导入","解析后提交","失败重试"]
+guard	entries_all_observed	true
+guard	dataReadonlyBoundary	true
+guard	dataWriteRequestSuccessAllowed	false
+guard	dataRealWriteActionAdded	false
+guard	guarded_readonly_not_write_success	true
+network	evidence_path	04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator_regression/network_write_observation.json
+network	auth_401_count	1
+network	runtime_readonly_fallback_risk	true
+network	write_requests_observed_count	0
+network	write_request_success_observed	false
+network	write_request_success_allowed	false
+typecheck	command	npm run typecheck
+typecheck	workdir	06_前端/lingyi-pc
+typecheck	exit_code	0
+dev_server	started	true
+dev_server	command	npm run dev -- --host 127.0.0.1 --port 5173
+dev_server	actual_url	http://127.0.0.1:5174/
+dev_server	stopped	true
+direction	mainline_or_auxiliary	mainline
+direction	user_visible_frontend_improvement	true
+direction	interaction_experience_improvement	导入流程内持续可见模板版本漂移、字段差异样例、失败行定位与重试锁定说明。
+direction	one_to_one_ui_contract_focus	对齐工票批量导入 UI 合同中的模板版本 readback、字段漂移样例、失败定位和导入/解析/重试 guard 状态。
+direction	guard_is_supporting_not_primary	true
+scope_guard	dirty_intersections	[]
+scope_guard	unknown_dirty	[]
+scope_guard	must_block_before_continue	[]
+scope_guard	stage_performed	false
+scope_guard	commit_performed	false
+scope_guard	remote_lifecycle_released	false
+risk	z045_cand003_b11_auth_401_count	1 readonly fallback risk
+risk	z045_cand003_b12_observed_auth_401_count	1 readonly fallback risk
+risk	z045_cand002_auth_401_count	25/25 readonly fallback risk
+risk	z044_fallback_risks	CAND005 3/4, CAND004 1/1, CAND003 1/1, CAND002 25/25, CAND001 6/6
+risk	z043_z042_z038_fallback_risks	preserved
+risk	prior_non_allowlisted_summary_metadata_excluded	true
+risk	b28_shell_wrapper_anomaly	true
+risk	z033_skipped_only	true
+risk	z035_screenshot_missing_risk	true
+risk	guarded_readonly_not_write_success	true
+risk	remote_lifecycle_parked	true
+risk	push_tag_pr_release	false
+risk	production_readback	false
+risk	go_live	false
+risk	project_completion	false
+forbidden_actions	code_modified_in_this_task	false
+forbidden_actions	stage_performed	false
+forbidden_actions	commit_performed	false
+forbidden_actions	push_tag_pr_release	false
+forbidden_actions	cleanup_reset_restore_performed	false
+forbidden_actions	remote_lifecycle_released	false
+forbidden_actions	modified_api_workshop	false
+forbidden_actions	modified_backend	false
+forbidden_actions	started_cand004_cand005	false
+next	next_task	TASK-Z045B-13-LEDGER-CAND003

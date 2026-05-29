@@ -1,0 +1,139 @@
+{
+  "task_id": "TASK-Z045B-11-IMPL",
+  "role": "B Engineer",
+  "candidate_id": "Z045-CAND-003",
+  "source_task": "TASK-Z045B-10-PREP",
+  "head": "ceba34094e59c0513e442f01b45a46d3ff2ac038",
+  "branch": "codex/sprint4-seal",
+  "summary": "Implemented visible batch import template drift readback, field impact sample, failure row locator, and retry denial guidance in WorkshopTicketBatch.vue without adding write actions or backend changes.",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue"
+  ],
+  "allowed_files_only": true,
+  "api_workshop_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "route_evidence": {
+    "evidence_path": "04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator/route_evidence.json",
+    "all_http_200": true,
+    "final_path_expected": "/workshop/tickets/batch",
+    "route": {
+      "path": "/workshop/tickets/batch",
+      "http_status": 200,
+      "final_path": "/workshop/tickets/batch"
+    }
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator/workshop_ticket_batch_1440x1200.png",
+    "mime": "image/png",
+    "width": 1440,
+    "height": 1200
+  },
+  "runtime_dom_anchors": {
+    "evidence_path": "04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator/runtime_dom_anchors_evidence.json",
+    "observed_count": 8,
+    "expected_count": 8,
+    "all_observed": true,
+    "anchors": [
+      "z045-batch-template-drift-readback",
+      "z045-batch-field-impact-sample",
+      "z045-batch-failure-row-locator",
+      "z045-batch-retry-denial-reason",
+      "z045-batch-request-context-audit",
+      "z045-batch-import-guard",
+      "z045-batch-submit-guard",
+      "z045-batch-write-success-blocker"
+    ]
+  },
+  "guarded_readonly_state": {
+    "evidence_path": "04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator/guarded_readonly_state_evidence.json",
+    "entries_all_observed": true,
+    "entries": [
+      {
+        "entry": "批量导入",
+        "guarded_readonly": true
+      },
+      {
+        "entry": "解析后提交",
+        "guarded_readonly": true
+      },
+      {
+        "entry": "失败重试",
+        "guarded_readonly": true
+      }
+    ],
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "guarded_readonly_not_write_success": true
+  },
+  "network_write_observation": {
+    "evidence_path": "04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator/network_write_observation.json",
+    "auth_401_count": 1,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "dev_server": {
+    "started": true,
+    "command": "npm run dev -- --host 127.0.0.1 --port 5173",
+    "actual_url": "http://127.0.0.1:5174/",
+    "stopped": true
+  },
+  "direction_compliance": {
+    "mainline_or_auxiliary": "mainline",
+    "user_visible_frontend_improvement": true,
+    "interaction_experience_improvement": "The batch import page now exposes template drift readback, field impact samples, failure row locator, and retry denial reasons inside the same import flow so users can understand failure and lock reasons without leaving the page.",
+    "one_to_one_ui_contract_focus": "Aligned to workshop batch import UI contract around template version readback, field drift sample, failure locator, and import/submit/retry guard state visibility.",
+    "guard_is_supporting_not_primary": true,
+    "candidate_direction_valid": true
+  },
+  "scope_guard": {
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": [],
+    "stage_performed": false,
+    "commit_performed": false,
+    "remote_lifecycle_released": false
+  },
+  "risk_fields_preserved": {
+    "z045_cand002_b03_b04_auth_401_count": "25/25 readonly fallback risk",
+    "z044_fallback_risks": {
+      "cand005": "3/4 readonly fallback risk",
+      "cand004": "1/1 readonly fallback risk",
+      "cand003": "1/1 readonly fallback risk",
+      "cand002": "25/25 readonly fallback risk",
+      "cand001": "6/6 readonly fallback risk"
+    },
+    "z043_z042_z038_fallback_risks": "preserved",
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "b28_shell_wrapper_anomaly": true,
+    "z033_skipped_only": true,
+    "z035_screenshot_missing_risk": true,
+    "guarded_readonly_not_write_success": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "next_gate_blocked_pending_explicit_authorization": true
+  },
+  "forbidden_actions": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore_performed": false,
+    "remote_lifecycle_released": false,
+    "modified_api_workshop": false,
+    "modified_backend": false,
+    "modified_candidates_outside_scope": false
+  },
+  "next_task": "TASK-Z045B-12-REGRESSION-CAND003"
+}

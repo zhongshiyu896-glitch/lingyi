@@ -1,0 +1,31 @@
+{
+  "path": "04_测试与验收/测试证据/z045_cand003_batch_template_drift_failure_locator_regression/guarded_readonly_state_evidence.json",
+  "guarded_entries_covered": [
+    "批量导入",
+    "解析后提交",
+    "失败重试"
+  ],
+  "details": [
+    {
+      "entry": "批量导入",
+      "visible": true,
+      "readonly_or_guarded": true
+    },
+    {
+      "entry": "解析后提交",
+      "visible": true,
+      "readonly_or_guarded": true
+    },
+    {
+      "entry": "失败重试",
+      "visible": true,
+      "readonly_or_guarded": true
+    }
+  ],
+  "all_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "guardedReadonlyNodes": 11,
+  "guarded_readonly_not_write_success": true
+}

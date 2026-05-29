@@ -1,0 +1,55 @@
+{
+  "anchors": [
+    {
+      "anchor": "z045-batch-template-drift-readback",
+      "observed": true,
+      "text_count": 0,
+      "html_count": 1
+    },
+    {
+      "anchor": "z045-batch-field-impact-sample",
+      "observed": true,
+      "text_count": 0,
+      "html_count": 1
+    },
+    {
+      "anchor": "z045-batch-failure-row-locator",
+      "observed": true,
+      "text_count": 0,
+      "html_count": 1
+    },
+    {
+      "anchor": "z045-batch-retry-denial-reason",
+      "observed": true,
+      "text_count": 0,
+      "html_count": 1
+    },
+    {
+      "anchor": "z045-batch-request-context-audit",
+      "observed": true,
+      "text_count": 0,
+      "html_count": 1
+    },
+    {
+      "anchor": "z045-batch-import-guard",
+      "observed": true,
+      "text_count": 0,
+      "html_count": 1
+    },
+    {
+      "anchor": "z045-batch-submit-guard",
+      "observed": true,
+      "text_count": 0,
+      "html_count": 1
+    },
+    {
+      "anchor": "z045-batch-write-success-blocker",
+      "observed": true,
+      "text_count": 0,
+      "html_count": 2
+    }
+  ],
+  "observed_count": 8,
+  "expected_count": 8,
+  "all_observed": true
+}
