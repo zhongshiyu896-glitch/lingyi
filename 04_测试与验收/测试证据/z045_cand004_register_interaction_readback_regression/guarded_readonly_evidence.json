@@ -1,0 +1,41 @@
+{
+  "guarded_entries": [
+    "提交登记",
+    "提交撤销",
+    "只读降级确认"
+  ],
+  "covered_count": 3,
+  "all_covered": true,
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false,
+  "entries": [
+    {
+      "entry": "提交登记",
+      "observed": true,
+      "guardState": "guarded-readonly",
+      "readonlyBoundary": null,
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": null,
+      "text": "提交登记 guarded/readonly"
+    },
+    {
+      "entry": "提交撤销",
+      "observed": true,
+      "guardState": "guarded-readonly",
+      "readonlyBoundary": null,
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": null,
+      "text": "提交撤销 guarded/readonly"
+    },
+    {
+      "entry": "只读降级确认",
+      "observed": true,
+      "guardState": "guarded-readonly",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": "false",
+      "text": "只读降级确认（不写入）"
+    }
+  ]
+}

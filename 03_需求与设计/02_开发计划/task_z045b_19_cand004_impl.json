@@ -1,0 +1,137 @@
+{
+  "task_id": "TASK-Z045B-19-IMPL",
+  "role": "B Engineer",
+  "task_name": "Z045-CAND-004 工票登记提交/撤销只读交互体验改进实现与取证",
+  "source_task": "TASK-Z045B-18-PREP",
+  "head": "4570a42aa179b1cd9fca592a9817f33c2561e8cb",
+  "branch": "codex/sprint4-seal",
+  "cached": [],
+  "head_tag": [],
+  "candidate_id": "Z045-CAND-004",
+  "route": "/workshop/tickets/register",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+  ],
+  "allowed_files_only": true,
+  "api_workshop_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "direction_compliance": {
+    "mainline_or_auxiliary": "mainline",
+    "user_visible_frontend_improvement": true,
+    "interaction_experience_improvement": true,
+    "one_to_one_ui_contract_focus": true,
+    "readonly_guard_role": "supporting",
+    "candidate_direction_valid": true,
+    "guard_is_supporting_not_primary": true
+  },
+  "implementation_summary": {
+    "contract_source": "ui_business_contract_source",
+    "visible_frontend_improvement": "在工票登记页补齐草稿来源比对、字段影响 readback、撤销风险确认、返回来源审计、只读降级确认、提交登记/提交撤销 guard 与写成功阻断说明。",
+    "api_or_backend_added": false,
+    "write_request_entry_added": false
+  },
+  "route_evidence": {
+    "path": "04_测试与验收/测试证据/z045_cand004_register_interaction_readback/route_evidence.json",
+    "route": "/workshop/tickets/register",
+    "http_status": 200,
+    "final_path": "/workshop/tickets/register",
+    "pass": true
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z045_cand004_register_interaction_readback/z045_cand004_register_interaction_readback.png",
+    "format": "PNG",
+    "width": 1440,
+    "height": 1200
+  },
+  "runtime_dom_anchors": {
+    "path": "04_测试与验收/测试证据/z045_cand004_register_interaction_readback/dom_anchors_evidence.json",
+    "observed_count": 8,
+    "anchors_all_observed": true,
+    "required_anchors": [
+      "z045-register-draft-source-compare",
+      "z045-register-field-impact-readback",
+      "z045-register-cancel-risk-confirm",
+      "z045-register-return-source-audit",
+      "z045-register-readonly-confirm-gate",
+      "z045-register-submit-guard",
+      "z045-register-cancel-guard",
+      "z045-register-write-success-blocker"
+    ]
+  },
+  "guarded_readonly_state": {
+    "path": "04_测试与验收/测试证据/z045_cand004_register_interaction_readback/guarded_readonly_evidence.json",
+    "covered_count": 3,
+    "all_covered": true,
+    "guarded_entries": [
+      "提交登记",
+      "提交撤销",
+      "只读降级确认"
+    ],
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false
+  },
+  "network_write_observation": {
+    "path": "04_测试与验收/测试证据/z045_cand004_register_interaction_readback/network_write_observation.json",
+    "auth_401_count": 1,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false
+  },
+  "typecheck": {
+    "path": "04_测试与验收/测试证据/z045_cand004_register_interaction_readback/typecheck_result.json",
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "dev_server": {
+    "path": "04_测试与验收/测试证据/z045_cand004_register_interaction_readback/dev_server_evidence.json",
+    "command": "npm run dev -- --host 127.0.0.1 --port 5176",
+    "started": true,
+    "stopped": true,
+    "url": "http://127.0.0.1:5176/"
+  },
+  "checks": {
+    "git_diff_check": "PASS",
+    "git_diff_cached_name_only": [],
+    "api_workshop_status": "clean",
+    "backend_changes_in_this_task": false
+  },
+  "scope_guard": {
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": [],
+    "stage_performed": false,
+    "commit_performed": false,
+    "remote_lifecycle_released": false,
+    "b20_or_cand005_started": false
+  },
+  "risk_fields_preserved": {
+    "z045_cand004_auth_401_count": "1 readonly fallback risk",
+    "z045_cand003_auth_401_count": "1/1 readonly fallback risk",
+    "z045_cand002_auth_401_count": "25/25 readonly fallback risk",
+    "z044_z043_z042_z038_fallback_risks": "preserved",
+    "guarded_readonly_not_write_success": true,
+    "prior_non_allowlisted_summary_metadata_excluded": true,
+    "z034_residual_backend_runtime_cache_remote_prod_go_live_excluded": true,
+    "remote_lifecycle_parked": true,
+    "push_tag_pr_release": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false
+  },
+  "forbidden_actions": {
+    "stage_performed": false,
+    "commit_performed": false,
+    "push_tag_pr_release": false,
+    "cleanup_reset_restore_delete_performed": false,
+    "remote_lifecycle_released": false,
+    "backend_migration_or_tests_run": false,
+    "b20_or_cand005_started": false,
+    "candidate_pool_modified": false
+  },
+  "next_task": "TASK-Z045B-20-REGRESSION-CAND004"
+}

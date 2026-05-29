@@ -1,0 +1,144 @@
+{
+  "required_anchors": [
+    "z045-register-draft-source-compare",
+    "z045-register-field-impact-readback",
+    "z045-register-cancel-risk-confirm",
+    "z045-register-return-source-audit",
+    "z045-register-readonly-confirm-gate",
+    "z045-register-submit-guard",
+    "z045-register-cancel-guard",
+    "z045-register-write-success-blocker"
+  ],
+  "observed_count": 8,
+  "anchors_all_observed": true,
+  "anchors": [
+    {
+      "anchor": "z045-register-draft-source-compare",
+      "observed": true,
+      "text": "草稿来源比对草稿来源manual / 未填写来源单号来源只读比对登记前置缺失 ticket_key, job_card, employee, process_name, work_date, source_ref提交前仅提示，不写入request/contextZ003-WORKSHOP-TICKET-20260529-719 / Z003-WORKSHOP-TICKET-20260529-719-RW-R-0E5-204-0E5-8FB-94B-D48readonly re",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": null,
+      "realWriteActionAdded": null,
+      "guardState": null,
+      "writeGuard": null,
+      "rect": {
+        "x": 29,
+        "y": 489,
+        "width": 337,
+        "height": 230
+      }
+    },
+    {
+      "anchor": "z045-register-field-impact-readback",
+      "observed": true,
+      "text": "字段影响 readbackticket_key / source_ref幂等键=待扫码，来源单号=待填写提交登记前显示来源影响面job_card / process待填写缺失时进入只读阻断提示qty / work_date数量=1，工作日期=待选择用于登记或撤销影响预览，不触发写成功",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": null,
+      "realWriteActionAdded": null,
+      "guardState": null,
+      "writeGuard": null,
+      "rect": {
+        "x": 378,
+        "y": 489,
+        "width": 337,
+        "height": 230
+      }
+    },
+    {
+      "anchor": "z045-register-cancel-risk-confirm",
+      "observed": true,
+      "text": "撤销风险确认当前为登记模式；撤销风险确认保持可见，提示用户切换撤销后将回读 original_ticket_id、reason、request_id 与影响面。",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": null,
+      "realWriteActionAdded": null,
+      "guardState": null,
+      "writeGuard": null,
+      "rect": {
+        "x": 726,
+        "y": 489,
+        "width": 337,
+        "height": 230
+      }
+    },
+    {
+      "anchor": "z045-register-return-source-audit",
+      "observed": true,
+      "text": "返回来源审计返回查询来源=/workshop/tickets；来源=manual，source_ref=未填写，request_id=Z003-WORKSHOP-TICKET-20260529-719-RW-R-0E5-204-0E5-8FB-94B-D48。",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": null,
+      "realWriteActionAdded": null,
+      "guardState": null,
+      "writeGuard": null,
+      "rect": {
+        "x": 1075,
+        "y": 489,
+        "width": 337,
+        "height": 230
+      }
+    },
+    {
+      "anchor": "z045-register-readonly-confirm-gate",
+      "observed": true,
+      "text": "只读降级确认登记提交进入只读降级确认：dataReadonlyBoundary=true，dataWriteRequestSuccessAllowed=false，dataRealWriteActionAdded=false。 只读降级确认 guarded/readonly",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": "false",
+      "guardState": "guarded-readonly",
+      "writeGuard": "guarded:z045-register-readonly-confirm-gate",
+      "rect": {
+        "x": 29,
+        "y": 731,
+        "width": 337,
+        "height": 198
+      }
+    },
+    {
+      "anchor": "z045-register-submit-guard",
+      "observed": true,
+      "text": "提交登记 guard提交登记前置条件已本地可见：仍缺 ticket_key, job_card, employee, process_name, work_date, source_ref；guard 仅支持交互提示，不发送登记写请求。 提交登记 guarded/readonly",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": "false",
+      "guardState": "guarded-readonly",
+      "writeGuard": "guarded:z045-register-submit-guard",
+      "rect": {
+        "x": 378,
+        "y": 731,
+        "width": 337,
+        "height": 198
+      }
+    },
+    {
+      "anchor": "z045-register-cancel-guard",
+      "observed": true,
+      "text": "提交撤销 guard提交撤销锁定原因：original_ticket_id=待填写，reason=待填写；撤销写入口保持 guarded/readonly。 提交撤销 guarded/readonly",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": "false",
+      "guardState": "guarded-readonly",
+      "writeGuard": "guarded:z045-register-cancel-guard",
+      "rect": {
+        "x": 726,
+        "y": 731,
+        "width": 337,
+        "height": 198
+      }
+    },
+    {
+      "anchor": "z045-register-write-success-blocker",
+      "observed": true,
+      "text": "写成功阻断写成功阻断：提交登记、提交撤销、只读降级确认都只更新本地提示；write_requests_observed_count 必须记录，write_request_success_observed=false。",
+      "readonlyBoundary": "true",
+      "writeRequestSuccessAllowed": "false",
+      "realWriteActionAdded": "false",
+      "guardState": "guarded-readonly",
+      "writeGuard": "guarded:z045-register-write-success-blocker",
+      "rect": {
+        "x": 1075,
+        "y": 731,
+        "width": 337,
+        "height": 198
+      }
+    }
+  ]
+}

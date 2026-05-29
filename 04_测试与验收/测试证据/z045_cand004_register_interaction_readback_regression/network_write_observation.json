@@ -1,0 +1,12 @@
+{
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "auth_401_urls": [
+    "http://127.0.0.1:5177/api/auth/me"
+  ],
+  "write_requests": [],
+  "write_success_responses": []
+}
