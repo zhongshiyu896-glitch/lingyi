@@ -545,6 +545,124 @@
           <p>{{ z045WriteSuccessBlocker }}</p>
         </section>
       </div>
+
+      <div
+        class="z046-register-grid"
+        data-testid="z046-register-readonly-boundary"
+        data-readonly-boundary="true"
+        data-write-request-success-allowed="false"
+        data-real-write-action-added="false"
+      >
+        <section
+          class="z046-register-section"
+          data-testid="z046-register-precondition-readback"
+          data-readonly-boundary="true"
+        >
+          <h3>提交前置条件 readback</h3>
+          <p>{{ z046PreconditionReadback }}</p>
+        </section>
+
+        <section
+          class="z046-register-section"
+          data-testid="z046-register-source-status-badge"
+          data-readonly-boundary="true"
+        >
+          <h3>草稿来源状态</h3>
+          <el-tag type="info" effect="plain">{{ z046SourceStatusBadge }}</el-tag>
+          <p class="z046-register-meta">{{ z046SourceStatusHint }}</p>
+        </section>
+
+        <section
+          class="z046-register-section"
+          data-testid="z046-register-cancel-impact-range"
+          data-readonly-boundary="true"
+        >
+          <h3>撤销影响范围</h3>
+          <p>{{ z046CancelImpactRange }}</p>
+        </section>
+
+        <section
+          class="z046-register-section"
+          data-testid="z046-register-readonly-confirmation"
+          data-readonly-boundary="true"
+          data-write-guard="guarded:z046-register-readonly-confirmation"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>只读降级确认</h3>
+          <p>{{ z046ReadonlyConfirmation }}</p>
+          <el-tag
+            data-guard-entry="只读降级确认"
+            data-guard-state="guarded-readonly"
+            data-readonly-boundary="true"
+            data-write-request-success-allowed="false"
+            data-real-write-action-added="false"
+            effect="plain"
+            type="warning"
+          >
+            只读降级确认 guarded/readonly
+          </el-tag>
+        </section>
+
+        <section
+          class="z046-register-section"
+          data-testid="z046-register-action-lock-reason"
+          data-readonly-boundary="true"
+        >
+          <h3>动作锁定原因</h3>
+          <ul class="z046-register-list">
+            <li>
+              <span>提交登记</span>
+              <em
+                data-guard-entry="提交登记"
+                data-guard-state="guarded-readonly"
+                data-write-request-success-allowed="false"
+                data-real-write-action-added="false"
+              >提交登记 guarded/readonly：{{ z046RegisterLockReason }}</em>
+            </li>
+            <li>
+              <span>提交撤销</span>
+              <em
+                data-guard-entry="提交撤销"
+                data-guard-state="guarded-readonly"
+                data-write-request-success-allowed="false"
+                data-real-write-action-added="false"
+              >提交撤销 guarded/readonly：{{ z046ReversalLockReason }}</em>
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z046-register-section"
+          data-testid="z046-register-request-context-audit"
+          data-readonly-boundary="true"
+        >
+          <h3>request/context 审计</h3>
+          <p>{{ z046RequestContextAudit }}</p>
+        </section>
+
+        <section
+          class="z046-register-section"
+          data-testid="z046-register-network-write-blocker"
+          data-readonly-boundary="true"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>网络写入阻断</h3>
+          <p>{{ z046NetworkWriteBlocker }}</p>
+        </section>
+
+        <section
+          class="z046-register-section"
+          data-testid="z046-register-write-success-blocker"
+          data-readonly-boundary="true"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>写成功阻断</h3>
+          <p>{{ z046WriteSuccessBlocker }}</p>
+        </section>
+      </div>
     </el-card>
 
     <el-card shadow="never" data-testid="workshop-ticket-register-readonly-draft-preview">
@@ -817,6 +935,44 @@ const z045CancelGuard = computed<string>(() => (
 ))
 const z045WriteSuccessBlocker = computed<string>(() => (
   '写成功阻断：提交登记、提交撤销、只读降级确认都只更新本地提示；write_requests_observed_count 必须记录，write_request_success_observed=false。'
+))
+const z046PreconditionReadback = computed<string>(() => (
+  requiredFieldErrors.value.length === 0
+    ? `前置条件已满足：ticket_key=${readonlyDraft.value.ticket_key || '-'}，job_card=${readonlyDraft.value.job_card || '-'}，employee=${readonlyDraft.value.employee || '-'}，process_name=${readonlyDraft.value.process_name || '-'}，work_date=${readonlyDraft.value.work_date || '-'}。`
+    : `前置条件待补齐：${requiredFieldErrors.value.join(', ')}；当前仅允许只读预览，不开放登记/撤销写入。`
+))
+const z046SourceStatusBadge = computed<string>(() => (
+  mode.value === 'register'
+    ? `${readonlyDraft.value.source || 'manual'} / ${readonlyDraft.value.source_ref || '未填写来源单号'}`
+    : `reversal / original_ticket_id=${readonlyDraft.value.original_ticket_id || '待填写'}`
+))
+const z046SourceStatusHint = computed<string>(() => (
+  `来源状态仅用于目录内 readback：scenario_tag=${readonlyScenarioTag.value}，request_id=${readonlyRequestId.value}。`
+))
+const z046CancelImpactRange = computed<string>(() => (
+  mode.value === 'reversal'
+    ? `撤销影响范围提示：original_ticket_id=${readonlyDraft.value.original_ticket_id || '待填写'}，reason=${readonlyDraft.value.reason || '待填写'}，影响面仅本地可见且保持只读锁定。`
+    : '当前为登记模式；撤销影响范围仍可见，切换撤销后展示原工票影响字段与锁定原因。'
+))
+const z046ReadonlyConfirmation = computed<string>(() => (
+  `${mode.value === 'register' ? '提交登记' : '提交撤销'} -> 只读降级确认 -> dataReadonlyBoundary=true，dataWriteRequestSuccessAllowed=false，dataRealWriteActionAdded=false。`
+))
+const z046RegisterLockReason = computed<string>(() => (
+  requiredFieldErrors.value.length === 0
+    ? '前置字段可见但写入口仍被只读 guard 拦截'
+    : `缺少 ${requiredFieldErrors.value.join(', ')}，继续保持只读拦截`
+))
+const z046ReversalLockReason = computed<string>(() => (
+  `original_ticket_id=${readonlyDraft.value.original_ticket_id || '待填写'}，reason=${readonlyDraft.value.reason || '待填写'}，撤销写入口保持只读。`
+))
+const z046RequestContextAudit = computed<string>(() => (
+  `request_id=${readonlyRequestId.value}，scenario_tag=${readonlyScenarioTag.value}，source_ref=${readonlyDraft.value.source_ref || '未填写'}；上下文仅用于页面回读，不触发写成功。`
+))
+const z046NetworkWriteBlocker = computed<string>(() => (
+  `网络写入阻断：登记/撤销操作仅更新本地提示；write_request_success_allowed=false，write_requests_observed_count 仅记录观察结果。`
+))
+const z046WriteSuccessBlocker = computed<string>(() => (
+  '写成功阻断：提交登记、提交撤销、只读降级确认均不会产生真实写成功回执；write_request_success_observed=false。'
 ))
 
 const extractScenarioTag = (value: string): string | null => {
@@ -1160,11 +1316,70 @@ onMounted(async () => {
   font-style: normal;
 }
 
+.z046-register-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.z046-register-section {
+  min-height: 164px;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+}
+
+.z046-register-section h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.z046-register-section p {
+  margin: 0 0 10px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.z046-register-meta {
+  margin-top: 10px !important;
+  font-size: 12px;
+}
+
+.z046-register-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.z046-register-list li {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 6px;
+  font-size: 12px;
+}
+
+.z046-register-list span,
+.z046-register-list em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.z046-register-list em {
+  color: var(--el-text-color-secondary);
+  font-style: normal;
+}
+
 @media (max-width: 960px) {
   .z042-register-grid,
   .z043-register-grid,
   .z044-register-grid,
-  .z045-register-grid {
+  .z045-register-grid,
+  .z046-register-grid {
     grid-template-columns: 1fr;
   }
 }

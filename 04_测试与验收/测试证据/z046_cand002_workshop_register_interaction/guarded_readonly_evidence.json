@@ -1,0 +1,25 @@
+{
+  "guarded_entries_count": 3,
+  "observed_count": 3,
+  "all_observed": true,
+  "guarded_entries": [
+    {
+      "entry": "提交登记",
+      "observed": true,
+      "count": 5
+    },
+    {
+      "entry": "提交撤销",
+      "observed": true,
+      "count": 5
+    },
+    {
+      "entry": "只读降级确认",
+      "observed": true,
+      "count": 5
+    }
+  ],
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false
+}

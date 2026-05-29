@@ -1,0 +1,111 @@
+{
+  "task_id": "TASK-Z046B-12-REGRESSION-CAND002",
+  "role": "B Engineer",
+  "status": "PASS",
+  "head": "1dbc3e129d3eabe27fc2b30b6d805b96112e2970",
+  "branch": "codex/sprint4-seal",
+  "cached": [],
+  "head_tag": [],
+  "candidate_id": "Z046-CAND-002",
+  "code_modified_in_this_task": false,
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/workshop/WorkshopTicketRegister.vue"
+  ],
+  "allowed_files_only": true,
+  "api_workshop_touched": false,
+  "backend_api_added": false,
+  "real_write_action_added": false,
+  "read_only_boundary_preserved": true,
+  "direction_compliance": {
+    "mainline_or_auxiliary": "mainline",
+    "user_visible_frontend_improvement": true,
+    "interaction_experience_improvement": true,
+    "one_to_one_ui_contract_focus": true,
+    "readonly_guard_role": "supporting",
+    "candidate_direction_valid": true
+  },
+  "route_evidence": {
+    "route": "/workshop/tickets/register",
+    "http_status": 200,
+    "final_path": "/workshop/tickets/register",
+    "evidence_path": "04_测试与验收/测试证据/z046_cand002_workshop_register_interaction_regression/route_evidence.json"
+  },
+  "screenshot": {
+    "path": "04_测试与验收/测试证据/z046_cand002_workshop_register_interaction_regression/workshop_register_regression_1440x1200.png",
+    "width": 1440,
+    "height": 1200,
+    "png": true,
+    "evidence_path": "04_测试与验收/测试证据/z046_cand002_workshop_register_interaction_regression/screenshot_evidence.json"
+  },
+  "dom_anchors_observed": {
+    "observed": "8/8",
+    "required_anchors": [
+      "z046-register-precondition-readback",
+      "z046-register-source-status-badge",
+      "z046-register-cancel-impact-range",
+      "z046-register-readonly-confirmation",
+      "z046-register-action-lock-reason",
+      "z046-register-request-context-audit",
+      "z046-register-network-write-blocker",
+      "z046-register-write-success-blocker"
+    ],
+    "evidence_path": "04_测试与验收/测试证据/z046_cand002_workshop_register_interaction_regression/dom_anchors_evidence.json"
+  },
+  "guarded_readonly_state": {
+    "guarded_entries": [
+      "提交登记",
+      "提交撤销",
+      "只读降级确认"
+    ],
+    "coverage": "3/3",
+    "dataReadonlyBoundary": true,
+    "dataWriteRequestSuccessAllowed": false,
+    "dataRealWriteActionAdded": false,
+    "evidence_path": "04_测试与验收/测试证据/z046_cand002_workshop_register_interaction_regression/guarded_readonly_evidence.json"
+  },
+  "network_write_observation": {
+    "auth_401_count": 1,
+    "runtime_readonly_fallback_risk": true,
+    "write_requests_observed_count": 0,
+    "write_request_success_observed": false,
+    "write_request_success_allowed": false,
+    "evidence_path": "04_测试与验收/测试证据/z046_cand002_workshop_register_interaction_regression/network_write_observation.json"
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0,
+    "evidence_path": "04_测试与验收/测试证据/z046_cand002_workshop_register_interaction_regression/typecheck_result.json"
+  },
+  "dev_server": {
+    "started": true,
+    "stopped": true,
+    "reused": false,
+    "actual_url": "http://127.0.0.1:5174",
+    "evidence_path": "04_测试与验收/测试证据/z046_cand002_workshop_register_interaction_regression/dev_server_evidence.json"
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "stage_performed": false,
+  "commit_performed": false,
+  "remote_lifecycle_released": false,
+  "risk_fields": [
+    "Z046-CAND-002 B11/B12 auth_401_count=1/1 readonly fallback risk",
+    "Z046-CAND-001 auth_401_count=25/25 readonly fallback risk",
+    "Z045-CAND-005 auth_401_count=5/5 readonly fallback risk",
+    "Z045-CAND-004 auth_401_count=1/1 readonly fallback risk",
+    "Z045-CAND-003 auth_401_count=1/1 readonly fallback risk",
+    "Z045-CAND-002 auth_401_count=25/25 readonly fallback risk",
+    "Z044/Z043/Z042-Z038 fallback risks",
+    "guarded_readonly_not_write_success=true",
+    "prior non-allowlisted summary/metadata 继续排除",
+    "Z034 residual、后端、runtime/cache、remote/prod-go-live 继续排除",
+    "remote_lifecycle_parked=true",
+    "push_tag_pr_release=false",
+    "production_readback=false",
+    "go_live=false",
+    "project_completion=false"
+  ],
+  "next_task": "TASK-Z046B-13-LEDGER-CAND002"
+}

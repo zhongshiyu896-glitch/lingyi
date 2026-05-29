@@ -1,0 +1,12 @@
+{
+  "auth_401_count": 1,
+  "runtime_readonly_fallback_risk": true,
+  "auth_401_probe": {
+    "command": "curl -sS -o /dev/null -w \"%{http_code}\" http://127.0.0.1:5174/api/auth/me",
+    "output": "401"
+  },
+  "write_requests_observed_count": 0,
+  "write_request_success_observed": false,
+  "write_request_success_allowed": false,
+  "note": "本轮未触发任何登记/撤销写操作，写请求观察计数保持 0。"
+}

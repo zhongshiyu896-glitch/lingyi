@@ -1,0 +1,11 @@
+{
+  "route": "/workshop/tickets/register",
+  "http_status": 200,
+  "final_path": "/workshop/tickets/register",
+  "expected_final_path": "/workshop/tickets/register",
+  "http_200": true,
+  "probe": {
+    "command": "curl -sS -o /dev/null -w \"%{http_code} %{url_effective}\" http://127.0.0.1:5174/workshop/tickets/register",
+    "output": "200 http://127.0.0.1:5174/workshop/tickets/register"
+  }
+}

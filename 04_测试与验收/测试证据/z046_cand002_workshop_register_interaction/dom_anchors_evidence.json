@@ -1,0 +1,47 @@
+{
+  "required_anchors_count": 8,
+  "observed_count": 8,
+  "all_observed": true,
+  "anchors": [
+    {
+      "anchor": "z046-register-precondition-readback",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-register-source-status-badge",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-register-cancel-impact-range",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-register-readonly-confirmation",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-register-action-lock-reason",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-register-request-context-audit",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-register-network-write-blocker",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-register-write-success-blocker",
+      "observed": true,
+      "count": 1
+    }
+  ]
+}
