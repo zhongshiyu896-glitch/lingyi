@@ -408,6 +408,120 @@
         </section>
       </div>
 
+      <div class="z046-readonly-grid" data-testid="z046-batch-interaction-readback">
+        <section
+          class="z046-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z046-batch-template-version-chip"
+        >
+          <h3>模板版本状态</h3>
+          <dl class="z046-readback-list">
+            <div v-for="item in z046TemplateVersionReadback" :key="item.label">
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.value }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section
+          class="z046-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z046-batch-field-drift-sample"
+        >
+          <h3>字段漂移样例</h3>
+          <ul class="z046-locator-list">
+            <li v-for="item in z046FieldDriftSamples" :key="item.field">
+              {{ item.field }}：{{ item.expected }} / {{ item.actual }}，{{ item.readback }}
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z046-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z046-batch-failure-row-index"
+        >
+          <h3>失败行定位</h3>
+          <ul class="z046-locator-list">
+            <li v-for="item in z046FailureRowIndexRows" :key="`${item.row}-${item.field}`">
+              第 {{ item.row }} 行 {{ item.field }}：{{ item.reason }}
+            </li>
+          </ul>
+        </section>
+
+        <section
+          class="z046-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z046-batch-retry-lock-reason"
+          data-write-guard="guarded:z046-batch-retry-lock-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>失败重试锁定原因</h3>
+          <ul class="z046-locator-list">
+            <li v-for="item in z046RetryLockReasons" :key="item">{{ item }}</li>
+          </ul>
+        </section>
+
+        <section
+          class="z046-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z046-batch-submit-readback"
+          data-write-guard="guarded:z046-batch-submit-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>解析后提交 readback</h3>
+          <p>{{ z046SubmitReadback }}</p>
+          <p>当前状态仅更新导入流程可见信息，不会进入真实写成功路径。</p>
+        </section>
+
+        <section
+          class="z046-readonly-section"
+          data-readonly-boundary="true"
+          data-testid="z046-batch-request-context-audit"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>request context 审计</h3>
+          <p>request_id={{ readonlyRequestId }}</p>
+          <p>scenario_tag={{ readonlyScenarioTag }}</p>
+          <p>批量导入链路只保留 readback 审计，不放行写成功。</p>
+        </section>
+
+        <section
+          class="z046-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z046-batch-network-write-blocker"
+          data-write-guard="guarded:z046-batch-import-readonly"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>网络写阻断</h3>
+          <p>批量导入入口保持 guarded/readonly，write_requests_observed_count 目标为 0。</p>
+        </section>
+
+        <section
+          class="z046-readonly-section"
+          data-action-type="write"
+          data-guard-state="guarded-readonly"
+          data-readonly-boundary="true"
+          data-testid="z046-batch-write-success-blocker"
+          data-write-guard="guarded:z046-batch-write-success-blocker"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <h3>写成功阻断</h3>
+          <p>批量导入、解析后提交、失败重试均维持只读，禁止真实写请求成功。</p>
+        </section>
+      </div>
+
       <el-alert
         v-if="batchReceipt"
         type="info"
@@ -679,6 +793,69 @@ const z045RetryDenialReasons = [
   '批量导入入口仅保留导入流程可见提示，不触发重试写请求。',
   '解析后提交仅作为差异确认步骤，不能进入真实写成功路径。',
 ]
+
+const z046TemplateVersionReadback = computed<Array<{ label: string; value: string }>>(() => [
+  { label: '模板版本', value: 'Z046-BATCH-TEMPLATE-V1' },
+  { label: '兼容基线', value: 'Z045-BATCH-TEMPLATE-V2' },
+  {
+    label: '只读状态',
+    value: canBatch.value
+      ? '可见交互已就位，批量导入写路径仍为 readonly guard'
+      : '账号权限受限且 readonly guard 生效，页面仅展示 readback',
+  },
+])
+
+const z046FieldDriftSamples = [
+  {
+    field: 'scenario_tag',
+    expected: readonlyScenarioTag,
+    actual: '缺失或与 request_id 不一致',
+    readback: '触发失败重试锁定并保留导入流程内提示',
+  },
+  {
+    field: 'qty',
+    expected: 'number > 0',
+    actual: 'string/0/空值',
+    readback: '仅给出字段修正方向，不发起真实写请求',
+  },
+  {
+    field: 'process_name',
+    expected: '匹配工序字典',
+    actual: '未知编码',
+    readback: '继续停留在只读导入流程并提示锁定原因',
+  },
+]
+
+const z046FailureRowIndexRows = computed<Array<{ row: number; field: string; reason: string }>>(() => {
+  if (validationRows.value.length > 0) {
+    return validationRows.value.flatMap((row) => {
+      const fields = row.message.replace('缺少字段：', '').split(',').map((field) => field.trim()).filter(Boolean)
+      return fields.map((field) => ({
+        row: row.row_index,
+        field,
+        reason: `${row.code}：失败行已定位，重试入口保持只读锁定`,
+      }))
+    })
+  }
+  return [
+    { row: 1, field: 'scenario_tag', reason: 'request context 不一致时仅做只读审计' },
+    { row: 2, field: 'qty', reason: '数量异常时锁定解析后提交' },
+    { row: 3, field: 'process_name', reason: '工序编码异常时锁定失败重试' },
+  ]
+})
+
+const z046RetryLockReasons = [
+  '失败重试必须保持 request_id 与 scenario_tag 一致，当前仅展示锁定原因。',
+  '解析后提交仅刷新导入页可见状态，不会触发批量写请求。',
+  '批量导入入口保持 readonly guard，auth 401 仅作为只读风险记录。',
+]
+
+const z046SubmitReadback = computed<string>(() => {
+  if (!parseSummary.value) {
+    return '尚未解析导入数据；解析后提交入口保持 guarded/readonly。'
+  }
+  return `已解析 ${parseSummary.value.total} 行，当前可预览 ${parseSummary.value.valid} 行，失败 ${parseSummary.value.invalid} 行；解析后提交仍为只读。`
+})
 
 const resetParseState = (): void => {
   parseSummary.value = null
@@ -1104,6 +1281,62 @@ onMounted(async () => {
   color: var(--el-text-color-regular);
 }
 
+.z046-readonly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.z046-readonly-section {
+  min-height: 142px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--el-fill-color-lighter);
+}
+
+.z046-readonly-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.z046-readonly-section p {
+  margin: 0 0 6px;
+  line-height: 1.55;
+  color: var(--el-text-color-regular);
+  word-break: break-all;
+}
+
+.z046-readback-list {
+  margin: 0;
+}
+
+.z046-readback-list div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.z046-readback-list dt {
+  color: var(--el-text-color-secondary);
+}
+
+.z046-readback-list dd {
+  margin: 0;
+  color: var(--el-text-color-regular);
+  word-break: break-all;
+}
+
+.z046-locator-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--el-text-color-regular);
+}
+
 @media (max-width: 960px) {
   .z042-readonly-grid {
     grid-template-columns: 1fr;
@@ -1118,6 +1351,10 @@ onMounted(async () => {
   }
 
   .z045-readonly-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .z046-readonly-grid {
     grid-template-columns: 1fr;
   }
 }

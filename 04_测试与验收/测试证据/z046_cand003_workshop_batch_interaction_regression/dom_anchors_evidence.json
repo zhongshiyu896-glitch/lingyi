@@ -1,0 +1,55 @@
+{
+  "observed": "8/8",
+  "required_anchors": [
+    "z046-batch-template-version-chip",
+    "z046-batch-field-drift-sample",
+    "z046-batch-failure-row-index",
+    "z046-batch-retry-lock-reason",
+    "z046-batch-submit-readback",
+    "z046-batch-request-context-audit",
+    "z046-batch-network-write-blocker",
+    "z046-batch-write-success-blocker"
+  ],
+  "details": [
+    {
+      "anchor": "z046-batch-template-version-chip",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-batch-field-drift-sample",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-batch-failure-row-index",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-batch-retry-lock-reason",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-batch-submit-readback",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-batch-request-context-audit",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-batch-network-write-blocker",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "anchor": "z046-batch-write-success-blocker",
+      "observed": true,
+      "count": 1
+    }
+  ]
+}

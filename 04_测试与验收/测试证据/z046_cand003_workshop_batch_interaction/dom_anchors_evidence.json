@@ -1,0 +1,23 @@
+{
+  "observed": "8/8",
+  "required_anchors": [
+    "z046-batch-template-version-chip",
+    "z046-batch-field-drift-sample",
+    "z046-batch-failure-row-index",
+    "z046-batch-retry-lock-reason",
+    "z046-batch-submit-readback",
+    "z046-batch-request-context-audit",
+    "z046-batch-network-write-blocker",
+    "z046-batch-write-success-blocker"
+  ],
+  "observed_map": {
+    "z046-batch-template-version-chip": true,
+    "z046-batch-field-drift-sample": true,
+    "z046-batch-failure-row-index": true,
+    "z046-batch-retry-lock-reason": true,
+    "z046-batch-submit-readback": true,
+    "z046-batch-request-context-audit": true,
+    "z046-batch-network-write-blocker": true,
+    "z046-batch-write-success-blocker": true
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "guarded_entries": [
+    "批量导入",
+    "解析后提交",
+    "失败重试"
+  ],
+  "coverage": "3/3",
+  "observed_map": {
+    "批量导入": true,
+    "解析后提交": true,
+    "失败重试": true
+  },
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false
+}

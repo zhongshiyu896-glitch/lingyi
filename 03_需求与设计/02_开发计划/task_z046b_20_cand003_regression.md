@@ -1,0 +1,25 @@
+# TASK-Z046B-20-REGRESSION-CAND003
+
+- status: PASS
+- head: e1c6741bcc4e1c3108cbe10b6b0eacd76e43e829
+- branch: codex/sprint4-seal
+- code_modified_in_this_task: false
+- changed_files: 06_前端/lingyi-pc/src/views/workshop/WorkshopTicketBatch.vue
+- route: /workshop/tickets/batch (HTTP 200)
+- final_path: /workshop/tickets/batch
+- screenshot: 04_测试与验收/测试证据/z046_cand003_workshop_batch_interaction_regression/workshop_batch_page_1440x1200.png (1440x1200 PNG)
+- dom_anchors_observed: 8/8
+- guarded_readonly_state: 3/3
+- dataReadonlyBoundary: true
+- dataWriteRequestSuccessAllowed: false
+- dataRealWriteActionAdded: false
+- auth_401_count: 1
+- write_requests_observed_count: 0
+- write_request_success_observed: false
+- write_request_success_allowed: false
+- typecheck: npm run typecheck (exit 0)
+- dev_server: started=true, stopped=true, reused=false, actual_url=http://127.0.0.1:5174
+- stage_performed: false
+- commit_performed: false
+- remote_lifecycle_released: false
+- next_task: TASK-Z046B-21-LEDGER-CAND003

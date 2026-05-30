@@ -1,0 +1,6 @@
+{
+  "route": "/workshop/tickets/batch",
+  "http_status": 200,
+  "final_path": "/workshop/tickets/batch",
+  "final_url": "http://127.0.0.1:5174/workshop/tickets/batch"
+}
