@@ -288,12 +288,14 @@
         <el-alert v-if="localWriteFeedback" type="info" :closable="false" :title="localWriteFeedback" class="scope-alert" />
 
         <el-descriptions v-if="draftState" border :column="2" class="draft-state">
-          <el-descriptions-item label="draft_id">{{ draftState.draft_id }}</el-descriptions-item>
+          <el-descriptions-item label="object_id">{{ draftState.object_id || draftState.draft_id }}</el-descriptions-item>
           <el-descriptions-item label="scenario_tag">{{ draftState.scenario_tag }}</el-descriptions-item>
           <el-descriptions-item label="category">{{ draftState.category }}</el-descriptions-item>
           <el-descriptions-item label="state">{{ draftState.state }}</el-descriptions-item>
           <el-descriptions-item label="reference_code">{{ draftState.reference_code }}</el-descriptions-item>
           <el-descriptions-item label="updated_at">{{ draftState.updated_at }}</el-descriptions-item>
+          <el-descriptions-item label="readback_total">{{ readbackTotal }}</el-descriptions-item>
+          <el-descriptions-item label="warehouse_snapshot_total">{{ warehouseSnapshotTotal }}</el-descriptions-item>
         </el-descriptions>
 
         <el-descriptions border :column="2" class="draft-state">
@@ -337,6 +339,7 @@ interface ReferenceRecord {
 }
 
 interface BasicReferenceDraftData {
+  object_id?: number
   draft_id: number
   scenario_tag: string
   category: ReferenceCategory
@@ -389,12 +392,34 @@ interface BasicReferenceResidualData {
   total: number
 }
 
+interface FoundationReferenceReadbackListData {
+  scenario_tag: string
+  total: number
+  records: BasicReferenceDraftData[]
+}
+
+interface FoundationWarehouseSnapshotData {
+  id: number
+  scenario_tag: string
+  warehouse_code: string
+  warehouse_name: string
+  status: string
+}
+
+interface FoundationWarehouseReadbackListData {
+  scenario_tag: string
+  total: number
+  records: FoundationWarehouseSnapshotData[]
+}
+
 const route = useRoute()
 const activeTab = ref<ReferenceCategory>('customer')
 const localWriteLoading = ref<boolean>(false)
 const localWriteFeedback = ref<string>('')
 const currentDraftId = ref<number | null>(null)
 const draftState = ref<BasicReferenceDraftData | null>(null)
+const readbackTotal = ref<number>(0)
+const warehouseSnapshotTotal = ref<number>(0)
 
 const query = reactive({
   keyword: '',
@@ -664,8 +689,11 @@ const loadRowToDraft = (row: ReferenceRecord): void => {
   ElMessage.info(`已加载 ${row.code} 到本地草稿表单`)
 }
 
+const FOUNDATION_REFERENCE_ENDPOINT = '/api/local-dev/foundation/references'
+const FOUNDATION_WAREHOUSE_ENDPOINT = '/api/local-dev/foundation/warehouses'
+
 const postDraft = async (payload: BasicReferenceDraftPayload): Promise<BasicReferenceDraftData> => {
-  const response = await request<BasicReferenceDraftData>('/api/local-dev/basic-reference-drafts', {
+  const response = await request<BasicReferenceDraftData>(FOUNDATION_REFERENCE_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -673,13 +701,22 @@ const postDraft = async (payload: BasicReferenceDraftPayload): Promise<BasicRefe
   return response.data
 }
 
+const patchDraft = async (draftId: number, payload: BasicReferenceDraftPayload): Promise<BasicReferenceDraftData> => {
+  const response = await request<BasicReferenceDraftData>(`${FOUNDATION_REFERENCE_ENDPOINT}/${draftId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return response.data
+}
+
 const getDraft = async (draftId: number): Promise<BasicReferenceDraftData> => {
-  const response = await request<BasicReferenceDraftData>(`/api/local-dev/basic-reference-drafts/${draftId}`)
+  const response = await request<BasicReferenceDraftData>(`${FOUNDATION_REFERENCE_ENDPOINT}/${draftId}`)
   return response.data
 }
 
 const cancelDraftRequest = async (draftId: number, payload: BasicReferenceCancelPayload): Promise<BasicReferenceDraftData> => {
-  const response = await request<BasicReferenceDraftData>(`/api/local-dev/basic-reference-drafts/${draftId}/cancel`, {
+  const response = await request<BasicReferenceDraftData>(`${FOUNDATION_REFERENCE_ENDPOINT}/${draftId}/cancel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -688,7 +725,7 @@ const cancelDraftRequest = async (draftId: number, payload: BasicReferenceCancel
 }
 
 const rollbackScenarioRequest = async (payload: BasicReferenceRollbackPayload): Promise<BasicReferenceRollbackData> => {
-  const response = await request<BasicReferenceRollbackData>('/api/local-dev/basic-reference-drafts/rollback-by-scenario', {
+  const response = await request<BasicReferenceRollbackData>(`${FOUNDATION_REFERENCE_ENDPOINT}/rollback-by-scenario`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -698,8 +735,20 @@ const rollbackScenarioRequest = async (payload: BasicReferenceRollbackPayload): 
 
 const fetchResidualCount = async (scenarioTag: string): Promise<number> => {
   const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
-  const response = await request<BasicReferenceResidualData>(`/api/local-dev/basic-reference-drafts/residual-count?${queryString}`)
+  const response = await request<BasicReferenceResidualData>(`${FOUNDATION_REFERENCE_ENDPOINT}/residual-count?${queryString}`)
   return response.data.total
+}
+
+const refreshLocalReadbackSummary = async (scenarioTag: string): Promise<void> => {
+  const referencesQuery = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
+  const referenceReadback = await request<FoundationReferenceReadbackListData>(
+    `${FOUNDATION_REFERENCE_ENDPOINT}?${referencesQuery}`,
+  )
+  readbackTotal.value = referenceReadback.data.total
+  const warehouseReadback = await request<FoundationWarehouseReadbackListData>(
+    `${FOUNDATION_WAREHOUSE_ENDPOINT}?${referencesQuery}`,
+  )
+  warehouseSnapshotTotal.value = warehouseReadback.data.total
 }
 
 const normalizeScenarioTag = (value: string): string => {
@@ -729,11 +778,13 @@ const saveDraft = async (): Promise<void> => {
       linkage_material: draftForm.linkageMaterial.trim(),
       note: draftForm.note.trim(),
     }
-    const saved = await postDraft(payload)
-    currentDraftId.value = saved.draft_id
+    const draftId = currentDraftId.value
+    const saved = draftId ? await patchDraft(draftId, payload) : await postDraft(payload)
+    currentDraftId.value = saved.object_id || saved.draft_id
     draftState.value = saved
+    await refreshLocalReadbackSummary(scenarioTag)
     loopState.saveSuccess = true
-    localWriteFeedback.value = `save_success=true, draft_id=${saved.draft_id}, scenario_tag=${saved.scenario_tag}`
+    localWriteFeedback.value = `save_success=true, object_id=${saved.object_id || saved.draft_id}, scenario_tag=${saved.scenario_tag}`
     ElMessage.success('本地草稿保存成功')
   } catch (error) {
     loopState.saveSuccess = false
@@ -756,6 +807,7 @@ const cancelDraft = async (): Promise<void> => {
       reason: `CANCEL-${normalizeScenarioTag(draftForm.scenarioTag)}`,
     })
     draftState.value = cancelled
+    await refreshLocalReadbackSummary(normalizeScenarioTag(draftForm.scenarioTag))
     loopState.cancelSuccess = true
     localWriteFeedback.value = `cancel_success=true, state=${cancelled.state}`
     ElMessage.success('草稿取消成功')
@@ -777,8 +829,9 @@ const readbackDraft = async (): Promise<void> => {
   try {
     const readback = await getDraft(currentDraftId.value)
     draftState.value = readback
+    await refreshLocalReadbackSummary(readback.scenario_tag)
     loopState.readbackSuccess = true
-    localWriteFeedback.value = `readback_success=true, draft_id=${readback.draft_id}, state=${readback.state}`
+    localWriteFeedback.value = `readback_success=true, object_id=${readback.object_id || readback.draft_id}, state=${readback.state}`
     ElMessage.success('草稿回读成功')
   } catch (error) {
     loopState.readbackSuccess = false
@@ -800,6 +853,10 @@ const rollbackScenario = async (): Promise<void> => {
     if (rolled.zero_residual_success) {
       currentDraftId.value = null
       draftState.value = null
+      readbackTotal.value = 0
+      warehouseSnapshotTotal.value = 0
+    } else {
+      await refreshLocalReadbackSummary(scenarioTag)
     }
     localWriteFeedback.value = `rollback_success=${rolled.rollback_success}, zero_residual_success=${rolled.zero_residual_success}, residual=${rolled.residual_records_after_rollback}`
     ElMessage.success('scenario 回滚已执行')
@@ -817,6 +874,7 @@ const checkZeroResidual = async (): Promise<void> => {
   localWriteLoading.value = true
   try {
     const total = await fetchResidualCount(scenarioTag)
+    await refreshLocalReadbackSummary(scenarioTag)
     loopState.residualRecordsAfterRollback = total
     loopState.zeroResidualSuccess = total === 0
     localWriteFeedback.value = `zero_residual_check: scenario_tag=${scenarioTag}, residual=${total}`

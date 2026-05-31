@@ -1,0 +1,22 @@
+{
+  "routes": [
+    {
+      "route": "/sales-inventory/references",
+      "target_url": "http://127.0.0.1:5174/sales-inventory/references",
+      "http_status": 200,
+      "final_path": "/sales-inventory/references"
+    },
+    {
+      "route": "/foundation/warehouse",
+      "target_url": "http://127.0.0.1:5174/foundation/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse?parity=foundation-warehouse"
+    },
+    {
+      "route": "/warehouse",
+      "target_url": "http://127.0.0.1:5174/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse"
+    }
+  ]
+}

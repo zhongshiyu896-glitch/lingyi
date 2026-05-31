@@ -1,0 +1,61 @@
+{
+  "scenario_tag": "REALOBJ-CAND001-FIX1-20260531-001",
+  "routes": [
+    {
+      "route": "/sales-inventory/references",
+      "target_url": "http://127.0.0.1:5174/sales-inventory/references",
+      "http_status": 200,
+      "final_path": "/sales-inventory/references"
+    },
+    {
+      "route": "/foundation/warehouse",
+      "target_url": "http://127.0.0.1:5174/foundation/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse?parity=foundation-warehouse"
+    },
+    {
+      "route": "/warehouse",
+      "target_url": "http://127.0.0.1:5174/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse"
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "route_sales_inventory_references.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b003_fix1_update_endpoint/route_sales_inventory_references.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    },
+    {
+      "name": "route_foundation_warehouse.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b003_fix1_update_endpoint/route_foundation_warehouse.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    },
+    {
+      "name": "route_warehouse.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b003_fix1_update_endpoint/route_warehouse.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    }
+  ],
+  "local_object_loop": {
+    "scenario_tag_present": true,
+    "create_success": true,
+    "update_success": true,
+    "local_object_id_created": true,
+    "local_object_id": 3,
+    "readback_after_update_success": true,
+    "cancel_or_rollback_success": true,
+    "zero_residual": true,
+    "residual_records": 0
+  },
+  "network_summary": {
+    "total_requests": 85,
+    "write_requests": 4
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "scenario_tag": "REALOBJ-CAND001-FIX1-20260531-001",
+  "local_dev_endpoint_prefix": "/api/local-dev/foundation/",
+  "patch_endpoint_implemented": true,
+  "patch_request_observed": true,
+  "patch_request_paths": [
+    "/api/local-dev/foundation/references/3"
+  ],
+  "patch_status_success": true,
+  "local_dev_write_requests_only": true,
+  "write_requests_observed_count": 4
+}

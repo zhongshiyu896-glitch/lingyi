@@ -1,0 +1,14 @@
+{
+  "dev_server": {
+    "host": "127.0.0.1",
+    "port": 5174,
+    "started": true,
+    "stopped": true
+  },
+  "local_dev_server": {
+    "host": "127.0.0.1",
+    "port": 8000,
+    "started": true,
+    "stopped": true
+  }
+}

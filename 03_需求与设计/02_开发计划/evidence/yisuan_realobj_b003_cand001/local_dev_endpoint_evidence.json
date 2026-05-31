@@ -1,0 +1,6 @@
+{
+  "scenario_tag": "REALOBJ-CAND001-20260531-001",
+  "local_dev_endpoint_prefix": "/api/local-dev/foundation/",
+  "local_dev_write_requests_only": true,
+  "write_requests_observed_count": 4
+}

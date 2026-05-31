@@ -1,0 +1,8 @@
+{
+  "patch_endpoint_implemented": true,
+  "patch_request_observed": true,
+  "patch_request_paths": [
+    "/api/local-dev/foundation/references/4"
+  ],
+  "patch_status_success": true
+}
