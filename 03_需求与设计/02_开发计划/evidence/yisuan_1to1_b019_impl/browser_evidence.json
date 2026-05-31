@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-05-31T13:04:56.725Z",
+  "base_url": "http://127.0.0.1:5174",
+  "routes": [
+    {
+      "route": "/bom/list",
+      "final_url": "http://127.0.0.1:5174/bom/list",
+      "final_path": "/bom/list",
+      "screenshot": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b019_impl/screenshots/bom_list_1440x1200.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      },
+      "anchors_found_count": 6
+    },
+    {
+      "route": "/bom/detail",
+      "final_url": "http://127.0.0.1:5174/bom/detail",
+      "final_path": "/bom/detail",
+      "screenshot": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b019_impl/screenshots/bom_detail_1440x1200.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      },
+      "anchors_found_count": 7
+    }
+  ],
+  "request_count": 36,
+  "response_count": 36
+}

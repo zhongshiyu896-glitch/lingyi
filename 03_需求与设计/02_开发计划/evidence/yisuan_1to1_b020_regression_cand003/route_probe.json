@@ -1,0 +1,18 @@
+[
+  {
+    "route": "/bom/list",
+    "url": "http://127.0.0.1:5174/bom/list",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/bom/list",
+    "final_path": "/bom/list",
+    "ok_200": true
+  },
+  {
+    "route": "/bom/detail",
+    "url": "http://127.0.0.1:5174/bom/detail",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/bom/detail",
+    "final_path": "/bom/detail",
+    "ok_200": true
+  }
+]

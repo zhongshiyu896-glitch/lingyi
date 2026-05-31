@@ -1,0 +1,54 @@
+{
+  "required_anchor_count": 12,
+  "required_anchors": [
+    "yisuan-1to1-bom-list-shell",
+    "yisuan-1to1-bom-list-toolbar",
+    "yisuan-1to1-bom-filter-panel",
+    "yisuan-1to1-bom-table",
+    "yisuan-1to1-bom-status-tags",
+    "yisuan-1to1-bom-detail-shell",
+    "yisuan-1to1-bom-style-summary",
+    "yisuan-1to1-bom-material-tabs",
+    "yisuan-1to1-bom-fabric-lines",
+    "yisuan-1to1-bom-trim-lines",
+    "yisuan-1to1-bom-cost-usage-panel",
+    "yisuan-1to1-ui-source-readback"
+  ],
+  "observed_anchor_count": 12,
+  "observed_anchors": [
+    "yisuan-1to1-bom-list-shell",
+    "yisuan-1to1-bom-list-toolbar",
+    "yisuan-1to1-bom-filter-panel",
+    "yisuan-1to1-bom-table",
+    "yisuan-1to1-bom-status-tags",
+    "yisuan-1to1-ui-source-readback",
+    "yisuan-1to1-bom-detail-shell",
+    "yisuan-1to1-bom-style-summary",
+    "yisuan-1to1-bom-material-tabs",
+    "yisuan-1to1-bom-fabric-lines",
+    "yisuan-1to1-bom-trim-lines",
+    "yisuan-1to1-bom-cost-usage-panel"
+  ],
+  "per_route_anchors": {
+    "/bom/list": [
+      "yisuan-1to1-bom-list-shell",
+      "yisuan-1to1-bom-list-toolbar",
+      "yisuan-1to1-bom-filter-panel",
+      "yisuan-1to1-bom-table",
+      "yisuan-1to1-bom-status-tags",
+      "yisuan-1to1-ui-source-readback"
+    ],
+    "/bom/detail": [
+      "yisuan-1to1-bom-detail-shell",
+      "yisuan-1to1-bom-style-summary",
+      "yisuan-1to1-bom-material-tabs",
+      "yisuan-1to1-bom-fabric-lines",
+      "yisuan-1to1-bom-trim-lines",
+      "yisuan-1to1-bom-cost-usage-panel",
+      "yisuan-1to1-ui-source-readback"
+    ]
+  },
+  "missing_anchors": [],
+  "anchors_observed_full": true,
+  "contract_source": "B018_PREP"
+}
