@@ -301,7 +301,7 @@
         <el-descriptions-item label="库存汇总行数">{{ summaryRows.length }}</el-descriptions-item>
       </el-descriptions>
 
-      <div class="warehouse-management-section">
+      <div class="warehouse-management-section" data-testid="mvp-basic-warehouse-card">
         <div class="management-header">
           <div class="title-wrap">
             <h3>基础资料 / 仓库管理</h3>

@@ -1,0 +1,12 @@
+{
+  "data_classification": "test_data",
+  "test_data_used": true,
+  "seed_data_used": false,
+  "not_future_production_data": true,
+  "sqlite_not_formal_database": true,
+  "sqlite_direct_reuse_for_production_forbidden": true,
+  "future_seed_data_migration_required": true,
+  "seed_data_json_csv_export_available": false,
+  "real_inventory_finance_production_records_migrated": false,
+  "real_stock_in_out_records_migrated": false
+}

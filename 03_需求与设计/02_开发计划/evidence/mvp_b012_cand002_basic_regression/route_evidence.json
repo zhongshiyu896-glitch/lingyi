@@ -1,0 +1,17 @@
+[
+  {
+    "route": "/sales-inventory/references",
+    "http_status": 200,
+    "final_path": "/sales-inventory/references"
+  },
+  {
+    "route": "/foundation/warehouse",
+    "http_status": 200,
+    "final_path": "/warehouse?parity=foundation-warehouse"
+  },
+  {
+    "route": "/warehouse",
+    "http_status": 200,
+    "final_path": "/warehouse"
+  }
+]

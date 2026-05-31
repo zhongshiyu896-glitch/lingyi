@@ -1,576 +1,753 @@
 <template>
-  <div class="sales-inventory-page" data-testid="sales-inventory-references-page">
+  <div class="basic-reference-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
           <div class="title-group">
-            <span class="title">库存参考资料</span>
-            <span class="sub-title">TASK-Y99-FE-03 / 只读真实交互首版</span>
+            <span class="title">基础资料引用中心</span>
+            <span class="sub-title">MVP-CAND-002 / 本地可用闭环</span>
             <el-tag
               v-if="foundationCustomerParityHint"
               size="small"
               type="info"
               effect="plain"
               class="parity-hint"
-              data-testid="foundation-customer-parity-hint"
             >
               {{ foundationCustomerParityHint }}
             </el-tag>
           </div>
           <div class="header-actions">
-            <el-button size="small" text @click="toggleReadonlyGuide">
-              {{ showReadonlyGuide ? '隐藏只读说明' : '显示只读说明' }}
-            </el-button>
-            <el-button size="small" :loading="permissionLoading" data-testid="references-refresh-button" @click="refreshReadonlyStatus">
-              刷新只读状态
-            </el-button>
+            <el-button size="small" @click="readbackDraft" :disabled="!currentDraftId">回读草稿</el-button>
+            <el-button size="small" @click="checkZeroResidual">校验零残留</el-button>
           </div>
         </div>
       </template>
+
       <el-alert
-        v-if="showReadonlyGuide"
         type="info"
         :closable="false"
-        class="readonly-guide"
-        title="本页仅提供客户与仓库基础资料查看，所有交互均为只读查询或分页浏览，不触发写入。"
-      />
-      <el-alert
-        class="permission-state"
-        :type="canRead ? 'success' : 'warning'"
-        :closable="false"
-        data-testid="references-permission-state"
-        :title="readonlyStatusTitle"
+        title="本页提供客户/仓库/供应商/加工厂/物料引用查询与本地草稿闭环。所有写入仅走 local-dev/sqlite/scenario_tag，不连接生产。"
+        class="scope-alert"
       />
 
-      <section
-        v-if="canRead"
-        class="readonly-write-guard"
-        data-testid="references-write-guard"
-        data-write-guard="readonly:sales-inventory-references"
-        data-guard-state="guarded_readonly"
-      >
-        <div>
-          <strong>只读写入口保护</strong>
-          <span>客户详情、仓库详情、基础资料同步与导出只允许查看，不触发写入请求。</span>
-        </div>
-        <div class="guard-actions">
-          <el-button
-            size="small"
-            disabled
-            data-testid="references-sync-guarded-button"
-            data-write-guard="readonly:references-sync"
-            data-guard-state="guarded_readonly"
-            @click="guardedReadonlyAction('基础资料同步')"
-          >
-            基础资料同步
-          </el-button>
-          <el-button
-            size="small"
-            disabled
-            data-testid="references-export-guarded-button"
-            data-write-guard="readonly:references-export"
-            data-guard-state="guarded_readonly"
-            @click="guardedReadonlyAction('导出')"
-          >
-            导出
-          </el-button>
-        </div>
+      <section class="query-panel" data-testid="mvp-basic-reference-query-filter">
+        <el-form :model="query" :inline="true">
+          <el-form-item label="关键字">
+            <el-input
+              v-model="query.keyword"
+              clearable
+              placeholder="编码/名称/联系人"
+              data-testid="mvp-basic-query-keyword"
+            />
+          </el-form-item>
+          <el-form-item label="类别">
+            <el-select v-model="query.category" clearable placeholder="全部" style="width: 130px">
+              <el-option label="全部" value="" />
+              <el-option label="客户" value="customer" />
+              <el-option label="仓库" value="warehouse" />
+              <el-option label="供应商" value="supplier" />
+              <el-option label="加工厂" value="factory" />
+              <el-option label="物料引用" value="material" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="query.status" clearable placeholder="全部" style="width: 120px">
+              <el-option label="全部" value="" />
+              <el-option label="active" value="active" />
+              <el-option label="inactive" value="inactive" />
+              <el-option label="draft" value="draft" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="仓库联动">
+            <el-input v-model="query.warehouse" clearable placeholder="仓库编码/名称" />
+          </el-form-item>
+          <el-form-item label="物料联动">
+            <el-input v-model="query.material" clearable placeholder="物料编码/名称" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="applyQuery">查询</el-button>
+            <el-button @click="resetQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
       </section>
 
-      <el-empty v-if="!canRead" data-testid="references-permission-empty-state" description="无销售库存查看权限" />
-      <template v-else>
-        <el-tabs v-model="activeTab" data-testid="references-tabs">
-          <el-tab-pane label="客户" name="customers">
-            <section data-testid="references-customers-tab">
-              <el-form :inline="true" :model="customerQuery" data-testid="references-customers-filter-form">
-                <el-form-item label="操作">
-                  <el-button type="primary" data-testid="references-customers-query-button" @click="onCustomerSearch">
-                    查询客户
-                  </el-button>
-                  <el-button data-testid="references-customers-reset-button" @click="onCustomerReset">重置</el-button>
-                </el-form-item>
-              </el-form>
+      <el-tabs v-model="activeTab" class="tabs" data-testid="mvp-basic-reference-tabs">
+        <el-tab-pane label="客户引用" name="customer">
+          <section data-testid="mvp-basic-customer-reference">
+            <el-table :data="displayRows.customer" border>
+              <el-table-column prop="code" label="客户编码" min-width="130" />
+              <el-table-column prop="name" label="客户名称" min-width="150" />
+              <el-table-column prop="contact" label="联系人" min-width="120" />
+              <el-table-column prop="phone" label="电话" min-width="130" />
+              <el-table-column label="状态" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="loadRowToDraft(row)">写入草稿</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </section>
+        </el-tab-pane>
 
-              <el-alert
-                v-if="customerError"
-                class="error-alert"
-                type="error"
-                :closable="false"
-                data-testid="references-customers-error-state"
-                :title="`客户资料加载失败：${customerError}`"
-              />
+        <el-tab-pane label="仓库引用" name="warehouse">
+          <section data-testid="mvp-basic-warehouse-reference">
+            <el-table :data="displayRows.warehouse" border>
+              <el-table-column prop="code" label="仓库编码" min-width="130" />
+              <el-table-column prop="name" label="仓库名称" min-width="150" />
+              <el-table-column prop="warehouseType" label="仓库类型" min-width="120" />
+              <el-table-column prop="address" label="仓库地址" min-width="200" />
+              <el-table-column label="状态" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="loadRowToDraft(row)">写入草稿</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </section>
+        </el-tab-pane>
 
-              <el-table :data="customerRows" border v-loading="customerLoading" data-testid="references-customers-table" empty-text="暂无客户资料">
-                <el-table-column prop="name" label="客户编号" min-width="160" />
-                <el-table-column prop="customer_name" label="客户名称" min-width="180" />
-                <el-table-column label="禁用状态" width="120">
-                  <template #default="scope">
-                    <el-tag
-                      :type="scope.row.disabled ? 'danger' : 'success'"
-                      effect="plain"
-                      data-testid="references-customers-disabled-tag"
-                    >
-                      {{ scope.row.disabled ? '已禁用' : '启用中' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="100" fixed="right">
-                  <template #default="scope">
-                    <el-button
-                      link
-                      type="primary"
-                      data-testid="references-customers-detail-button"
-                      data-write-guard="readonly:customer-detail"
-                      data-guard-state="guarded_readonly"
-                      @click="openCustomerDetail(scope.row)"
-                    >
-                      明细
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
+        <el-tab-pane label="供应商引用" name="supplier">
+          <section data-testid="mvp-basic-supplier-reference">
+            <el-table :data="displayRows.supplier" border>
+              <el-table-column prop="code" label="供应商编码" min-width="130" />
+              <el-table-column prop="name" label="供应商名称" min-width="150" />
+              <el-table-column prop="materialCategory" label="物料类别" min-width="120" />
+              <el-table-column prop="contact" label="联系方式" min-width="160" />
+              <el-table-column label="状态" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="loadRowToDraft(row)">写入草稿</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </section>
+        </el-tab-pane>
 
-              <el-empty
-                v-if="!customerLoading && !customerError && customerRows.length === 0"
-                data-testid="references-customers-empty-state"
-                description="客户资料为空"
-              />
+        <el-tab-pane label="加工厂引用" name="factory">
+          <section data-testid="mvp-basic-factory-reference">
+            <el-table :data="displayRows.factory" border>
+              <el-table-column prop="code" label="加工厂编码" min-width="130" />
+              <el-table-column prop="name" label="加工厂名称" min-width="150" />
+              <el-table-column prop="processCapability" label="工序能力" min-width="140" />
+              <el-table-column prop="contact" label="联系方式" min-width="160" />
+              <el-table-column label="状态" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="loadRowToDraft(row)">写入草稿</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </section>
+        </el-tab-pane>
 
-              <div class="pager" data-testid="references-customers-pagination">
-                <el-pagination
-                  background
-                  layout="prev, pager, next, total, sizes"
-                  :current-page="customerQuery.page"
-                  :page-size="customerQuery.page_size"
-                  :total="customerTotal"
-                  :page-sizes="[10, 20, 50, 100]"
-                  @current-change="onCustomerPageChange"
-                  @size-change="onCustomerSizeChange"
-                />
-              </div>
-            </section>
-          </el-tab-pane>
+        <el-tab-pane label="物料引用" name="material">
+          <section data-testid="mvp-basic-material-reference">
+            <el-table :data="displayRows.material" border>
+              <el-table-column prop="code" label="物料编码" min-width="140" />
+              <el-table-column prop="name" label="物料名称" min-width="150" />
+              <el-table-column prop="materialCategory" label="类别" min-width="120" />
+              <el-table-column prop="unit" label="单位" min-width="90" />
+              <el-table-column prop="defaultWarehouse" label="默认仓库" min-width="140" />
+              <el-table-column label="状态" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="120">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="loadRowToDraft(row)">写入草稿</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </section>
+        </el-tab-pane>
+      </el-tabs>
 
-          <el-tab-pane label="仓库" name="warehouses">
-            <section data-testid="references-warehouses-tab">
-              <el-form :inline="true" :model="warehouseQuery" data-testid="references-warehouses-filter-form">
-                <el-form-item label="公司">
-                  <el-input
-                    v-model="warehouseQuery.company"
-                    clearable
-                    placeholder="company"
-                    data-testid="references-warehouses-company-input"
-                    @keyup.enter="onWarehouseSearch"
-                  />
-                </el-form-item>
-                <el-form-item label="操作">
-                  <el-button type="primary" data-testid="references-warehouses-query-button" @click="onWarehouseSearch">
-                    查询仓库
-                  </el-button>
-                  <el-button data-testid="references-warehouses-reset-button" @click="onWarehouseReset">重置</el-button>
-                </el-form-item>
-              </el-form>
+      <section class="local-write-panel" data-testid="mvp-basic-local-draft">
+        <div class="local-write-title">本地草稿写闭环（local-dev/sqlite/scenario_tag）</div>
+        <el-form :inline="true" :model="draftForm">
+          <el-form-item label="scenario_tag">
+            <el-input v-model="draftForm.scenarioTag" style="width: 220px" data-testid="mvp-basic-scenario-tag" />
+          </el-form-item>
+          <el-form-item label="类别">
+            <el-select v-model="draftForm.category" style="width: 130px">
+              <el-option label="客户" value="customer" />
+              <el-option label="仓库" value="warehouse" />
+              <el-option label="供应商" value="supplier" />
+              <el-option label="加工厂" value="factory" />
+              <el-option label="物料引用" value="material" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="编码">
+            <el-input v-model="draftForm.referenceCode" style="width: 150px" />
+          </el-form-item>
+          <el-form-item label="名称">
+            <el-input v-model="draftForm.referenceName" style="width: 180px" />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-input v-model="draftForm.status" style="width: 120px" />
+          </el-form-item>
+          <el-form-item label="关键字段">
+            <el-input v-model="draftForm.keyField" style="width: 210px" />
+          </el-form-item>
+          <el-form-item label="仓库联动">
+            <el-input v-model="draftForm.linkageWarehouse" style="width: 150px" />
+          </el-form-item>
+          <el-form-item label="物料联动">
+            <el-input v-model="draftForm.linkageMaterial" style="width: 150px" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="draftForm.note" style="width: 240px" />
+          </el-form-item>
+        </el-form>
 
-              <el-alert
-                v-if="warehouseError"
-                class="error-alert"
-                type="error"
-                :closable="false"
-                data-testid="references-warehouses-error-state"
-                :title="`仓库资料加载失败：${warehouseError}`"
-              />
+        <div class="local-write-actions" data-testid="mvp-basic-local-save-cancel-readback">
+          <el-button type="primary" :loading="localWriteLoading" @click="saveDraft">保存草稿</el-button>
+          <el-button :loading="localWriteLoading" :disabled="!currentDraftId" @click="cancelDraft">取消草稿</el-button>
+          <el-button :loading="localWriteLoading" :disabled="!currentDraftId" @click="readbackDraft">回读草稿</el-button>
+        </div>
 
-              <el-table
-                :data="warehouseRows"
-                border
-                v-loading="warehouseLoading"
-                data-testid="references-warehouses-table"
-                empty-text="暂无仓库资料"
-              >
-                <el-table-column prop="name" label="仓库编号" min-width="160" />
-                <el-table-column prop="warehouse_name" label="仓库名称" min-width="180" />
-                <el-table-column prop="company" label="公司" min-width="140" />
-                <el-table-column label="禁用状态" width="120">
-                  <template #default="scope">
-                    <el-tag
-                      :type="scope.row.disabled ? 'danger' : 'success'"
-                      effect="plain"
-                      data-testid="references-warehouses-disabled-tag"
-                    >
-                      {{ scope.row.disabled ? '已禁用' : '启用中' }}
-                    </el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="100" fixed="right">
-                  <template #default="scope">
-                    <el-button
-                      link
-                      type="primary"
-                      data-testid="references-warehouses-detail-button"
-                      data-write-guard="readonly:warehouse-detail"
-                      data-guard-state="guarded_readonly"
-                      @click="openWarehouseDetail(scope.row)"
-                    >
-                      明细
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
+        <div class="local-write-actions" data-testid="mvp-basic-rollback-zero-residual">
+          <el-button :loading="localWriteLoading" @click="rollbackScenario">回滚 scenario</el-button>
+          <el-button :loading="localWriteLoading" @click="checkZeroResidual">zero_residual 校验</el-button>
+        </div>
 
-              <el-empty
-                v-if="!warehouseLoading && !warehouseError && warehouseRows.length === 0"
-                data-testid="references-warehouses-empty-state"
-                description="仓库资料为空"
-              />
+        <el-alert v-if="localWriteFeedback" type="info" :closable="false" :title="localWriteFeedback" class="scope-alert" />
 
-              <div class="pager" data-testid="references-warehouses-pagination">
-                <el-pagination
-                  background
-                  layout="prev, pager, next, total, sizes"
-                  :current-page="warehouseQuery.page"
-                  :page-size="warehouseQuery.page_size"
-                  :total="warehouseTotal"
-                  :page-sizes="[10, 20, 50, 100]"
-                  @current-change="onWarehousePageChange"
-                  @size-change="onWarehouseSizeChange"
-                />
-              </div>
-            </section>
-          </el-tab-pane>
-        </el-tabs>
+        <el-descriptions v-if="draftState" border :column="2" class="draft-state">
+          <el-descriptions-item label="draft_id">{{ draftState.draft_id }}</el-descriptions-item>
+          <el-descriptions-item label="scenario_tag">{{ draftState.scenario_tag }}</el-descriptions-item>
+          <el-descriptions-item label="category">{{ draftState.category }}</el-descriptions-item>
+          <el-descriptions-item label="state">{{ draftState.state }}</el-descriptions-item>
+          <el-descriptions-item label="reference_code">{{ draftState.reference_code }}</el-descriptions-item>
+          <el-descriptions-item label="updated_at">{{ draftState.updated_at }}</el-descriptions-item>
+        </el-descriptions>
 
-        <el-drawer
-          v-model="detailVisible"
-          title="参考资料明细"
-          size="460px"
-          append-to-body
-          data-testid="references-readonly-detail-drawer"
-        >
-          <template v-if="detailRow">
-            <el-descriptions :column="1" border>
-              <el-descriptions-item label="类型">
-                {{ detailType === 'customer' ? '客户资料' : '仓库资料' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="编号">
-                {{ detailRow.name || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item v-if="detailType === 'customer'" label="客户名称">
-                {{ (detailRow as CustomerItem).customer_name || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item v-if="detailType === 'warehouse'" label="仓库名称">
-                {{ (detailRow as WarehouseItem).warehouse_name || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item v-if="detailType === 'warehouse'" label="公司">
-                {{ (detailRow as WarehouseItem).company || '-' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="禁用状态">
-                {{ detailRow.disabled ? '已禁用' : '启用中' }}
-              </el-descriptions-item>
-            </el-descriptions>
-          </template>
-          <el-empty v-else description="暂无明细" />
-        </el-drawer>
-      </template>
+        <el-descriptions border :column="2" class="draft-state">
+          <el-descriptions-item label="save_success">{{ loopState.saveSuccess ? 'true' : 'false' }}</el-descriptions-item>
+          <el-descriptions-item label="cancel_success">{{ loopState.cancelSuccess ? 'true' : 'false' }}</el-descriptions-item>
+          <el-descriptions-item label="readback_success">{{ loopState.readbackSuccess ? 'true' : 'false' }}</el-descriptions-item>
+          <el-descriptions-item label="rollback_success">{{ loopState.rollbackSuccess ? 'true' : 'false' }}</el-descriptions-item>
+          <el-descriptions-item label="zero_residual_success">{{ loopState.zeroResidualSuccess ? 'true' : 'false' }}</el-descriptions-item>
+          <el-descriptions-item label="residual_records_after_rollback">{{ loopState.residualRecordsAfterRollback }}</el-descriptions-item>
+        </el-descriptions>
+      </section>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import {
-  fetchSalesInventoryCustomers,
-  fetchSalesInventoryWarehouses,
-  type CustomerItem,
-  type WarehouseItem,
-} from '@/api/sales_inventory'
-import { usePermissionStore } from '@/stores/permission'
+import { request, type ApiResponse } from '@/api/request'
 
-type DetailType = 'customer' | 'warehouse'
+type ReferenceCategory = 'customer' | 'warehouse' | 'supplier' | 'factory' | 'material'
+type ReferenceStatus = 'active' | 'inactive' | 'draft'
 
-const permissionStore = usePermissionStore()
+interface ReferenceRecord {
+  category: ReferenceCategory
+  code: string
+  name: string
+  status: ReferenceStatus
+  keyField: string
+  contact?: string
+  phone?: string
+  warehouseType?: string
+  address?: string
+  materialCategory?: string
+  processCapability?: string
+  unit?: string
+  defaultWarehouse?: string
+  linkageWarehouse?: string
+  linkageMaterial?: string
+}
+
+interface BasicReferenceDraftData {
+  draft_id: number
+  scenario_tag: string
+  category: ReferenceCategory
+  reference_code: string
+  reference_name: string
+  status: string
+  key_field: string
+  linkage_warehouse: string
+  linkage_material: string
+  note: string
+  state: 'saved' | 'cancelled'
+  created_at: string
+  updated_at: string
+  cancelled_at: string | null
+  cancel_reason: string | null
+}
+
+interface BasicReferenceDraftPayload {
+  draft_id?: number
+  scenario_tag: string
+  category: ReferenceCategory
+  reference_code: string
+  reference_name: string
+  status: string
+  key_field: string
+  linkage_warehouse?: string
+  linkage_material?: string
+  note?: string
+}
+
+interface BasicReferenceCancelPayload {
+  scenario_tag: string
+  reason?: string
+}
+
+interface BasicReferenceRollbackPayload {
+  scenario_tag: string
+}
+
+interface BasicReferenceRollbackData {
+  scenario_tag: string
+  deleted_count: number
+  residual_records_after_rollback: number
+  rollback_success: boolean
+  zero_residual_success: boolean
+}
+
+interface BasicReferenceResidualData {
+  scenario_tag: string
+  total: number
+}
+
 const route = useRoute()
-const activeTab = ref<'customers' | 'warehouses'>('customers')
-const customerLoading = ref<boolean>(false)
-const warehouseLoading = ref<boolean>(false)
-const customerRows = ref<CustomerItem[]>([])
-const warehouseRows = ref<WarehouseItem[]>([])
-const customerTotal = ref<number>(0)
-const warehouseTotal = ref<number>(0)
-const showReadonlyGuide = ref<boolean>(false)
-const permissionLoading = ref<boolean>(false)
-const customerError = ref<string>('')
-const warehouseError = ref<string>('')
-const detailVisible = ref<boolean>(false)
-const detailType = ref<DetailType>('customer')
-const detailRow = ref<CustomerItem | WarehouseItem | null>(null)
-const readonlyFallbackMode = ref<boolean>(false)
-const readonlyFallbackReason = ref<string>('')
-const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
-const isFoundationCustomerParity = computed<boolean>(() => parityValue.value === 'foundation-customer')
-const foundationCustomerParityHint = computed<string>(() => (
-  isFoundationCustomerParity.value
-    ? '衣算云 / 基础资料 / 客户（parity=foundation-customer，只读交互）'
-    : ''
-))
-const isReadonlyReferenceFallback = computed<boolean>(() => readonlyFallbackMode.value || isFoundationCustomerParity.value)
+const activeTab = ref<ReferenceCategory>('customer')
+const localWriteLoading = ref<boolean>(false)
+const localWriteFeedback = ref<string>('')
+const currentDraftId = ref<number | null>(null)
+const draftState = ref<BasicReferenceDraftData | null>(null)
 
-const canRead = computed<boolean>(
-  () =>
-    isReadonlyReferenceFallback.value ||
-    permissionStore.state.buttonPermissions.sales_inventory_read ||
-    permissionStore.state.actions.includes('sales_inventory:read'),
-)
-const readonlyStatusTitle = computed<string>(() => {
-  if (readonlyFallbackMode.value) {
-    return `只读 fallback 已启用：${readonlyFallbackReason.value || '本地引用数据可见'}`
-  }
-  if (isFoundationCustomerParity.value) {
-    return '客户基础资料 parity route 已启用，只读引用数据可见'
-  }
-  return canRead.value ? '读取权限已确认，写入口保持 guarded readonly' : '暂无读取权限，写入口仍保持只读保护'
+const query = reactive({
+  keyword: '',
+  category: '',
+  status: '',
+  warehouse: '',
+  material: '',
 })
 
-const customerQuery = reactive({
-  page: 1,
-  page_size: 20,
+const loopState = reactive({
+  saveSuccess: false,
+  cancelSuccess: false,
+  readbackSuccess: false,
+  rollbackSuccess: false,
+  zeroResidualSuccess: false,
+  residualRecordsAfterRollback: -1,
 })
 
-const warehouseQuery = reactive({
-  company: '',
-  page: 1,
-  page_size: 20,
+const buildDatePart = (): string => {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${yyyy}${mm}${dd}`
+}
+
+const buildDefaultScenarioTag = (): string => `MVP-BASIC-${buildDatePart()}-001`
+
+const draftForm = reactive({
+  scenarioTag: buildDefaultScenarioTag(),
+  category: 'customer' as ReferenceCategory,
+  referenceCode: '',
+  referenceName: '',
+  status: 'draft',
+  keyField: '',
+  linkageWarehouse: '',
+  linkageMaterial: '',
+  note: '',
 })
 
-const foundationCustomerFallbackRows: CustomerItem[] = [
+const foundationCustomerParityHint = computed<string>(() => {
+  const parity = String(route.query.parity || '').trim().toLowerCase()
+  return parity === 'foundation-customer' ? '衣算云 / 基础资料 / 客户（parity=foundation-customer）' : ''
+})
+
+const referenceSeeds: ReferenceRecord[] = [
   {
-    name: 'CUS-LOCAL-001',
-    customer_name: '本地只读客户示例',
-    disabled: false,
+    category: 'customer',
+    code: 'CUS-001',
+    name: '华东直营客户',
+    status: 'active',
+    keyField: '联系人:王敏',
+    contact: '王敏',
+    phone: '13800001111',
+    linkageWarehouse: 'WH-FG-01',
+    linkageMaterial: 'MAT-FAB-001',
+  },
+  {
+    category: 'customer',
+    code: 'CUS-002',
+    name: '华南分销客户',
+    status: 'inactive',
+    keyField: '联系人:李泽',
+    contact: '李泽',
+    phone: '13900002222',
+    linkageWarehouse: 'WH-FG-02',
+    linkageMaterial: 'MAT-ACC-008',
+  },
+  {
+    category: 'warehouse',
+    code: 'WH-FG-01',
+    name: '成品中心仓',
+    status: 'active',
+    keyField: '启用状态:启用',
+    warehouseType: '成品仓',
+    address: '苏州园区A-01',
+    linkageWarehouse: 'WH-FG-01',
+  },
+  {
+    category: 'warehouse',
+    code: 'WH-MAT-02',
+    name: '面辅料周转仓',
+    status: 'draft',
+    keyField: '启用状态:草稿',
+    warehouseType: '物料仓',
+    address: '苏州园区B-02',
+    linkageWarehouse: 'WH-MAT-02',
+  },
+  {
+    category: 'supplier',
+    code: 'SUP-001',
+    name: '远纺面料',
+    status: 'active',
+    keyField: '物料类别:面料',
+    materialCategory: '面料',
+    contact: '陈工 / 021-88990011',
+    linkageMaterial: 'MAT-FAB-001',
+    linkageWarehouse: 'WH-MAT-02',
+  },
+  {
+    category: 'supplier',
+    code: 'SUP-002',
+    name: '合盛辅料',
+    status: 'active',
+    keyField: '物料类别:辅料',
+    materialCategory: '辅料',
+    contact: '周工 / 021-88990022',
+    linkageMaterial: 'MAT-ACC-008',
+    linkageWarehouse: 'WH-MAT-02',
+  },
+  {
+    category: 'factory',
+    code: 'FAC-001',
+    name: '锦程加工厂',
+    status: 'active',
+    keyField: '工序能力:缝制+整烫',
+    processCapability: '缝制+整烫',
+    contact: '周主管 / 13700003333',
+    linkageMaterial: 'MAT-FAB-001',
+  },
+  {
+    category: 'factory',
+    code: 'FAC-002',
+    name: '博雅加工厂',
+    status: 'inactive',
+    keyField: '工序能力:裁剪',
+    processCapability: '裁剪',
+    contact: '韩主管 / 13700004444',
+    linkageMaterial: 'MAT-ACC-008',
+  },
+  {
+    category: 'material',
+    code: 'MAT-FAB-001',
+    name: '精梳棉布 230g',
+    status: 'active',
+    keyField: '默认仓库:WH-MAT-02',
+    materialCategory: '面料',
+    unit: '米',
+    defaultWarehouse: 'WH-MAT-02',
+    linkageWarehouse: 'WH-MAT-02',
+    linkageMaterial: 'MAT-FAB-001',
+  },
+  {
+    category: 'material',
+    code: 'MAT-ACC-008',
+    name: '树脂纽扣 18L',
+    status: 'draft',
+    keyField: '默认仓库:WH-MAT-02',
+    materialCategory: '辅料',
+    unit: '颗',
+    defaultWarehouse: 'WH-MAT-02',
+    linkageWarehouse: 'WH-MAT-02',
+    linkageMaterial: 'MAT-ACC-008',
   },
 ]
-const warehouseFallbackRows: WarehouseItem[] = [
-  {
-    name: 'WH-LOCAL-001',
-    warehouse_name: '成品中心仓',
-    company: '领意服装',
-    disabled: false,
-  },
-  {
-    name: 'WH-LOCAL-002',
-    warehouse_name: '面辅料暂存仓',
-    company: '领意服装',
-    disabled: false,
-  },
-]
 
-const applyRoutePrefill = (): void => {
-  const tab = typeof route.query.tab === 'string' ? route.query.tab.trim() : ''
-  const company = typeof route.query.company === 'string' ? route.query.company.trim() : ''
-  if (tab === 'customers' || tab === 'warehouses') {
-    activeTab.value = tab
-  }
-  if (company) {
-    warehouseQuery.company = company
-  }
-}
+const filterRows = (category: ReferenceCategory): ReferenceRecord[] => {
+  const keyword = query.keyword.trim().toLowerCase()
+  const status = query.status.trim().toLowerCase()
+  const categoryFilter = query.category.trim().toLowerCase()
+  const warehouse = query.warehouse.trim().toLowerCase()
+  const material = query.material.trim().toLowerCase()
 
-const setReadonlyFallback = (reason: string): void => {
-  readonlyFallbackMode.value = true
-  readonlyFallbackReason.value = reason
-}
-
-const loadCustomers = async (): Promise<void> => {
-  if (!canRead.value) {
-    customerRows.value = []
-    customerTotal.value = 0
-    return
-  }
-  if (isReadonlyReferenceFallback.value) {
-    customerRows.value = foundationCustomerFallbackRows
-    customerTotal.value = foundationCustomerFallbackRows.length
-    customerError.value = ''
-    return
-  }
-  customerLoading.value = true
-  customerError.value = ''
-  try {
-    const result = await fetchSalesInventoryCustomers({
-      page: customerQuery.page,
-      page_size: customerQuery.page_size,
-    })
-    customerRows.value = result.data.items
-    customerTotal.value = result.data.total
-  } catch (error) {
-    const message = (error as Error).message
-    setReadonlyFallback(message)
-    customerError.value = ''
-    customerRows.value = foundationCustomerFallbackRows
-    customerTotal.value = foundationCustomerFallbackRows.length
-    ElMessage.warning(`${message}，已切换本地只读数据。`)
-  } finally {
-    customerLoading.value = false
-  }
-}
-
-const loadWarehouses = async (): Promise<void> => {
-  if (!canRead.value) {
-    warehouseRows.value = []
-    warehouseTotal.value = 0
-    return
-  }
-  warehouseLoading.value = true
-  warehouseError.value = ''
-  try {
-    if (isReadonlyReferenceFallback.value) {
-      warehouseRows.value = warehouseFallbackRows
-      warehouseTotal.value = warehouseFallbackRows.length
-      return
+  return referenceSeeds.filter((row) => {
+    if (row.category !== category) return false
+    if (categoryFilter && row.category !== categoryFilter) return false
+    if (status && row.status.toLowerCase() !== status) return false
+    if (keyword) {
+      const merged = [
+        row.code,
+        row.name,
+        row.contact || '',
+        row.phone || '',
+        row.keyField,
+      ].join('|').toLowerCase()
+      if (!merged.includes(keyword)) return false
     }
-    const result = await fetchSalesInventoryWarehouses({
-      company: warehouseQuery.company.trim() || undefined,
-      page: warehouseQuery.page,
-      page_size: warehouseQuery.page_size,
-    })
-    warehouseRows.value = result.data.items
-    warehouseTotal.value = result.data.total
-  } catch (error) {
-    const message = (error as Error).message
-    setReadonlyFallback(message)
-    warehouseError.value = ''
-    warehouseRows.value = warehouseFallbackRows
-    warehouseTotal.value = warehouseFallbackRows.length
-    ElMessage.warning(`${message}，已切换本地只读数据。`)
-  } finally {
-    warehouseLoading.value = false
-  }
+    if (warehouse) {
+      const mergedWarehouse = [
+        row.linkageWarehouse || '',
+        row.defaultWarehouse || '',
+        row.address || '',
+      ].join('|').toLowerCase()
+      if (!mergedWarehouse.includes(warehouse)) return false
+    }
+    if (material) {
+      const mergedMaterial = [
+        row.linkageMaterial || '',
+        row.materialCategory || '',
+        row.name,
+      ].join('|').toLowerCase()
+      if (!mergedMaterial.includes(material)) return false
+    }
+    return true
+  })
 }
 
-const onCustomerSearch = (): void => {
-  customerQuery.page = 1
-  loadCustomers()
+const displayRows = computed(() => ({
+  customer: filterRows('customer'),
+  warehouse: filterRows('warehouse'),
+  supplier: filterRows('supplier'),
+  factory: filterRows('factory'),
+  material: filterRows('material'),
+}))
+
+const statusTagType = (status: string): 'success' | 'warning' | 'info' => {
+  if (status === 'active') return 'success'
+  if (status === 'inactive') return 'warning'
+  return 'info'
 }
 
-const onCustomerReset = (): void => {
-  customerQuery.page = 1
-  customerQuery.page_size = 20
-  loadCustomers()
+const applyQuery = (): void => {
+  ElMessage.success('筛选已应用')
 }
 
-const onWarehouseSearch = (): void => {
-  warehouseQuery.page = 1
-  loadWarehouses()
+const resetQuery = (): void => {
+  query.keyword = ''
+  query.category = ''
+  query.status = ''
+  query.warehouse = ''
+  query.material = ''
+  ElMessage.success('筛选条件已重置')
 }
 
-const onWarehouseReset = (): void => {
-  warehouseQuery.company = ''
-  warehouseQuery.page = 1
-  warehouseQuery.page_size = 20
-  loadWarehouses()
+const loadRowToDraft = (row: ReferenceRecord): void => {
+  activeTab.value = row.category
+  draftForm.category = row.category
+  draftForm.referenceCode = row.code
+  draftForm.referenceName = row.name
+  draftForm.status = row.status
+  draftForm.keyField = row.keyField
+  draftForm.linkageWarehouse = row.linkageWarehouse || row.defaultWarehouse || ''
+  draftForm.linkageMaterial = row.linkageMaterial || row.code
+  draftForm.note = `from:${row.category}`
+  ElMessage.info(`已加载 ${row.code} 到本地草稿表单`)
 }
 
-const onCustomerPageChange = (page: number): void => {
-  customerQuery.page = page
-  loadCustomers()
+const postDraft = async (payload: BasicReferenceDraftPayload): Promise<BasicReferenceDraftData> => {
+  const response = await request<BasicReferenceDraftData>('/api/local-dev/basic-reference-drafts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return response.data
 }
 
-const onCustomerSizeChange = (size: number): void => {
-  customerQuery.page_size = size
-  customerQuery.page = 1
-  loadCustomers()
+const getDraft = async (draftId: number): Promise<BasicReferenceDraftData> => {
+  const response = await request<BasicReferenceDraftData>(`/api/local-dev/basic-reference-drafts/${draftId}`)
+  return response.data
 }
 
-const onWarehousePageChange = (page: number): void => {
-  warehouseQuery.page = page
-  loadWarehouses()
+const cancelDraftRequest = async (draftId: number, payload: BasicReferenceCancelPayload): Promise<BasicReferenceDraftData> => {
+  const response = await request<BasicReferenceDraftData>(`/api/local-dev/basic-reference-drafts/${draftId}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return response.data
 }
 
-const onWarehouseSizeChange = (size: number): void => {
-  warehouseQuery.page_size = size
-  warehouseQuery.page = 1
-  loadWarehouses()
+const rollbackScenarioRequest = async (payload: BasicReferenceRollbackPayload): Promise<BasicReferenceRollbackData> => {
+  const response = await request<BasicReferenceRollbackData>('/api/local-dev/basic-reference-drafts/rollback-by-scenario', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return response.data
 }
 
-const openCustomerDetail = (row: CustomerItem): void => {
-  detailType.value = 'customer'
-  detailRow.value = row
-  detailVisible.value = true
+const fetchResidualCount = async (scenarioTag: string): Promise<number> => {
+  const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
+  const response = await request<BasicReferenceResidualData>(`/api/local-dev/basic-reference-drafts/residual-count?${queryString}`)
+  return response.data.total
 }
 
-const openWarehouseDetail = (row: WarehouseItem): void => {
-  detailType.value = 'warehouse'
-  detailRow.value = row
-  detailVisible.value = true
+const normalizeScenarioTag = (value: string): string => {
+  const trimmed = value.trim()
+  return trimmed || buildDefaultScenarioTag()
 }
 
-const toggleReadonlyGuide = (): void => {
-  showReadonlyGuide.value = !showReadonlyGuide.value
-}
-
-const refreshReadonlyStatus = async (): Promise<void> => {
-  permissionLoading.value = true
-  try {
-    await permissionStore.loadCurrentUser()
-    await permissionStore.loadModuleActions('sales_inventory')
-  } catch (error) {
-    const message = (error as Error).message || '权限状态刷新失败'
-    setReadonlyFallback(message)
-    ElMessage.warning(`${message}，已切换本地只读数据。`)
-  } finally {
-    permissionLoading.value = false
-  }
-
-  if (!canRead.value) {
-    setReadonlyFallback('当前账号未授予销售库存读取动作，展示本地只读引用数据')
-  }
-
-  if (canRead.value) {
-    await Promise.all([loadCustomers(), loadWarehouses()])
-  } else {
-    customerRows.value = []
-    warehouseRows.value = []
-    customerTotal.value = 0
-    warehouseTotal.value = 0
-    customerError.value = ''
-    warehouseError.value = ''
-  }
-}
-
-const guardedReadonlyAction = (action: string): void => {
-  ElMessage.info(`${action}为只读保护入口，未触发写入请求。`)
-}
-
-onMounted(async () => {
-  let permissionBootstrapped = true
-  try {
-    await permissionStore.loadCurrentUser()
-    await permissionStore.loadModuleActions('sales_inventory')
-  } catch (error) {
-    permissionBootstrapped = false
-    const message = (error as Error).message || '权限加载失败，页面将按基础资料只读模式继续'
-    setReadonlyFallback(message)
-    ElMessage.warning(`${message}，已切换本地只读数据。`)
-  }
-  applyRoutePrefill()
-  if (!canRead.value) {
-    setReadonlyFallback('当前账号未授予销售库存读取动作，展示本地只读引用数据')
-  }
-  if (canRead.value) {
-    await Promise.all([loadCustomers(), loadWarehouses()])
+const saveDraft = async (): Promise<void> => {
+  const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
+  draftForm.scenarioTag = scenarioTag
+  if (!draftForm.referenceCode.trim() || !draftForm.referenceName.trim()) {
+    ElMessage.warning('请先填写引用编码和名称')
     return
   }
-  if (!permissionBootstrapped) {
-    customerRows.value = []
-    warehouseRows.value = []
-    customerTotal.value = 0
-    warehouseTotal.value = 0
+  localWriteLoading.value = true
+  localWriteFeedback.value = ''
+  try {
+    const payload: BasicReferenceDraftPayload = {
+      draft_id: currentDraftId.value || undefined,
+      scenario_tag: scenarioTag,
+      category: draftForm.category,
+      reference_code: draftForm.referenceCode.trim(),
+      reference_name: draftForm.referenceName.trim(),
+      status: draftForm.status.trim() || 'draft',
+      key_field: draftForm.keyField.trim() || '-',
+      linkage_warehouse: draftForm.linkageWarehouse.trim(),
+      linkage_material: draftForm.linkageMaterial.trim(),
+      note: draftForm.note.trim(),
+    }
+    const saved = await postDraft(payload)
+    currentDraftId.value = saved.draft_id
+    draftState.value = saved
+    loopState.saveSuccess = true
+    localWriteFeedback.value = `save_success=true, draft_id=${saved.draft_id}, scenario_tag=${saved.scenario_tag}`
+    ElMessage.success('本地草稿保存成功')
+  } catch (error) {
+    loopState.saveSuccess = false
+    localWriteFeedback.value = `保存失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
   }
-})
+}
+
+const cancelDraft = async (): Promise<void> => {
+  if (!currentDraftId.value) {
+    ElMessage.warning('请先保存草稿')
+    return
+  }
+  localWriteLoading.value = true
+  try {
+    const cancelled = await cancelDraftRequest(currentDraftId.value, {
+      scenario_tag: normalizeScenarioTag(draftForm.scenarioTag),
+      reason: `CANCEL-${normalizeScenarioTag(draftForm.scenarioTag)}`,
+    })
+    draftState.value = cancelled
+    loopState.cancelSuccess = true
+    localWriteFeedback.value = `cancel_success=true, state=${cancelled.state}`
+    ElMessage.success('草稿取消成功')
+  } catch (error) {
+    loopState.cancelSuccess = false
+    localWriteFeedback.value = `取消失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
+const readbackDraft = async (): Promise<void> => {
+  if (!currentDraftId.value) {
+    ElMessage.warning('请先保存草稿')
+    return
+  }
+  localWriteLoading.value = true
+  try {
+    const readback = await getDraft(currentDraftId.value)
+    draftState.value = readback
+    loopState.readbackSuccess = true
+    localWriteFeedback.value = `readback_success=true, draft_id=${readback.draft_id}, state=${readback.state}`
+    ElMessage.success('草稿回读成功')
+  } catch (error) {
+    loopState.readbackSuccess = false
+    localWriteFeedback.value = `回读失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
+const rollbackScenario = async (): Promise<void> => {
+  const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
+  localWriteLoading.value = true
+  try {
+    const rolled = await rollbackScenarioRequest({ scenario_tag: scenarioTag })
+    loopState.rollbackSuccess = rolled.rollback_success
+    loopState.zeroResidualSuccess = rolled.zero_residual_success
+    loopState.residualRecordsAfterRollback = rolled.residual_records_after_rollback
+    if (rolled.zero_residual_success) {
+      currentDraftId.value = null
+      draftState.value = null
+    }
+    localWriteFeedback.value = `rollback_success=${rolled.rollback_success}, zero_residual_success=${rolled.zero_residual_success}, residual=${rolled.residual_records_after_rollback}`
+    ElMessage.success('scenario 回滚已执行')
+  } catch (error) {
+    loopState.rollbackSuccess = false
+    localWriteFeedback.value = `回滚失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
+const checkZeroResidual = async (): Promise<void> => {
+  const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
+  localWriteLoading.value = true
+  try {
+    const total = await fetchResidualCount(scenarioTag)
+    loopState.residualRecordsAfterRollback = total
+    loopState.zeroResidualSuccess = total === 0
+    localWriteFeedback.value = `zero_residual_check: scenario_tag=${scenarioTag}, residual=${total}`
+    if (total === 0) {
+      ElMessage.success('zero_residual 校验通过')
+    } else {
+      ElMessage.warning(`zero_residual 未通过，残留 ${total} 条`)
+    }
+  } catch (error) {
+    loopState.zeroResidualSuccess = false
+    localWriteFeedback.value = `zero_residual 校验失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
 </script>
 
 <style scoped>
-.sales-inventory-page {
+.basic-reference-page {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -579,29 +756,28 @@ onMounted(async () => {
 .header-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .title-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.parity-hint {
-  align-self: flex-start;
-  margin-top: 2px;
+  gap: 4px;
 }
 
 .title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 
 .sub-title {
-  font-size: 12px;
   color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.parity-hint {
+  align-self: flex-start;
 }
 
 .header-actions {
@@ -609,47 +785,43 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.readonly-guide {
-  margin-bottom: 12px;
+.scope-alert {
+  margin-top: 10px;
 }
 
-.permission-state {
-  margin-bottom: 12px;
-}
-
-.readonly-write-guard {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--el-border-color);
+.query-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
-  background: var(--el-fill-color-extra-light);
-  color: var(--el-text-color-regular);
+  background: var(--el-fill-color-lighter);
 }
 
-.readonly-write-guard strong {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--el-text-color-primary);
+.tabs {
+  margin-top: 12px;
 }
 
-.guard-actions {
+.local-write-panel {
+  margin-top: 16px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.local-write-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.local-write-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
+  margin-bottom: 10px;
 }
 
-.error-alert {
-  margin-bottom: 12px;
-}
-
-.pager {
-  margin-top: 12px;
-  display: flex;
-  justify-content: flex-end;
+.draft-state {
+  margin-top: 8px;
 }
 </style>

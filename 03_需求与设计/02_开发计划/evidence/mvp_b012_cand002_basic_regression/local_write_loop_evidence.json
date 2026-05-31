@@ -1,0 +1,12 @@
+{
+  "scenario_tag": "MVP-B012-BASIC-20260531-001",
+  "create_or_update_success": true,
+  "save_success": true,
+  "draft_id_created": true,
+  "draft_id": 3,
+  "cancel_success": true,
+  "readback_success": true,
+  "rollback_success": true,
+  "zero_residual_success": true,
+  "residual_records_after_rollback": 0
+}

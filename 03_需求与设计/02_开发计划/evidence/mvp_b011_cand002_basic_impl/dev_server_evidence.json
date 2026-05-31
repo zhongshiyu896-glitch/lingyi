@@ -1,0 +1,12 @@
+{
+  "dev_server": {
+    "command": "npm run dev -- --host 127.0.0.1 --port 5174",
+    "started": true,
+    "stopped": true
+  },
+  "local_dev_server": {
+    "command": ".venv/bin/uvicorn app.local_dev:app --host 127.0.0.1 --port 8000",
+    "started": true,
+    "stopped": true
+  }
+}

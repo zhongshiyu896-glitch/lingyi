@@ -1,0 +1,19 @@
+{
+  "scenario_tag": "MVP-BASIC-20260531-002",
+  "create_or_update_success": true,
+  "save_success": true,
+  "draft_id_created": true,
+  "cancel_success": true,
+  "readback_success": true,
+  "rollback_success": true,
+  "zero_residual_success": true,
+  "residual_records_after_rollback": 0,
+  "draft_state_text": [
+    "save_successtruecancel_successtruereadback_successtruerollback_successtruezero_residual_successtrueresidual_records_after_rollback0"
+  ],
+  "feedback": [
+    "本页提供客户/仓库/供应商/加工厂/物料引用查询与本地草稿闭环。所有写入仅走 local-dev/sqlite/scenario_tag，不连接生产。",
+    "zero_residual_check: scenario_tag=MVP-BASIC-20260531-002, residual=0"
+  ],
+  "draft_id": 1
+}

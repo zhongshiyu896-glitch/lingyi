@@ -1,0 +1,20 @@
+[
+  {
+    "route": "/sales-inventory/references",
+    "http_status": 200,
+    "final_path": "/sales-inventory/references",
+    "screenshot": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/mvp_b011_cand002_basic_impl/mvp_b011_sales_inventory_references_1440x1200.png"
+  },
+  {
+    "route": "/foundation/warehouse",
+    "http_status": 200,
+    "final_path": "/warehouse?parity=foundation-warehouse",
+    "screenshot": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/mvp_b011_cand002_basic_impl/mvp_b011_foundation_warehouse_1440x1200.png"
+  },
+  {
+    "route": "/warehouse",
+    "http_status": 200,
+    "final_path": "/warehouse",
+    "screenshot": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/mvp_b011_cand002_basic_impl/mvp_b011_warehouse_1440x1200.png"
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "required_count": 10,
+  "observed": "10/10",
+  "anchors": {
+    "mvp-basic-reference-tabs": true,
+    "mvp-basic-reference-query-filter": true,
+    "mvp-basic-customer-reference": true,
+    "mvp-basic-supplier-reference": true,
+    "mvp-basic-factory-reference": true,
+    "mvp-basic-material-reference": true,
+    "mvp-basic-local-draft": true,
+    "mvp-basic-local-save-cancel-readback": true,
+    "mvp-basic-rollback-zero-residual": true,
+    "mvp-basic-warehouse-card": true
+  }
+}
