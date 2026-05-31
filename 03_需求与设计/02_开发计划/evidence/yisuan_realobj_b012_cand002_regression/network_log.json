@@ -1,0 +1,472 @@
+[
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/bom/list",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/bom/BomList.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/bom/BomList.vue?vue&type=style&index=0&scoped=26dce185&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/list?scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  },
+  {
+    "method": "PATCH",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/8",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/list?scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/8/readback?scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/list?scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/8/readback?scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/bom/detail",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/bom/BomDetail.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/bom/BomDetail.vue?vue&type=style&index=0&scoped=8dadb670&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/bom/detail?bom_no=BOM-YS-250601-001&object_id=8&scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/bom/BomDetail.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/bom/BomDetail.vue?vue&type=style&index=0&scoped=8dadb670&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/8/readback?scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/8/readback?scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/bom/list",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/bom/BomList.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/bom/BomList.vue?vue&type=style&index=0&scoped=26dce185&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/8/rollback",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/bom/residual-count?scenario_tag=REALOBJ-CAND002-B012-20260531-001",
+    "status": 200
+  }
+]

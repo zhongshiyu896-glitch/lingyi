@@ -1,0 +1,16 @@
+{
+  "routes": [
+    {
+      "route": "/bom/list",
+      "target_url": "http://127.0.0.1:5174/bom/list",
+      "http_status": 200,
+      "final_path": "/bom/list"
+    },
+    {
+      "route": "/bom/detail",
+      "target_url": "http://127.0.0.1:5174/bom/detail",
+      "http_status": 200,
+      "final_path": "/bom/detail"
+    }
+  ]
+}

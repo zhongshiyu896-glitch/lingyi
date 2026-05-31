@@ -1,0 +1,224 @@
+{
+  "TASK_ID": "TASK-YISUAN-REALOBJ-B010-PREP-CAND002",
+  "HEAD": "1465c5256dd83641c6d4b6cd5c1bbfc755cb89f5",
+  "branch": "codex/sprint4-seal",
+  "cached_count": 0,
+  "HEAD_tag_count": 0,
+  "git_diff_check": "PASS",
+  "selected_candidate": "REALOBJ-CAND-002",
+  "module_scope": "BOM/款式/面辅料本地真实对象与回读闭环",
+  "covered_contract_ids": [
+    "A002",
+    "A005"
+  ],
+  "covered_routes": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "route_source_locations": {
+    "/bom/list": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:39-41",
+      "type": "direct",
+      "target": "@/views/bom/BomList.vue"
+    },
+    "/bom/detail": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:45-47",
+      "type": "direct",
+      "target": "@/views/bom/BomDetail.vue"
+    }
+  },
+  "contract_sources_status": {
+    "A002": {
+      "path": "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A002_business_contract_merge_20260520/yisuan_development_contract_input.json",
+      "exists": true
+    },
+    "A005": {
+      "path": "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A005_style_field_color_size_material_contract_20260521/style_development_input.json",
+      "exists": true
+    }
+  },
+  "allowed_frontend_status": {
+    "allowed_frontend_files": [
+      "06_前端/lingyi-pc/src/views/bom/BomList.vue",
+      "06_前端/lingyi-pc/src/views/bom/BomDetail.vue"
+    ],
+    "allowed_frontend_files_exist": true,
+    "allowed_frontend_files_clean": true,
+    "details": {
+      "06_前端/lingyi-pc/src/views/bom/BomList.vue": {
+        "exists": true,
+        "clean": true
+      },
+      "06_前端/lingyi-pc/src/views/bom/BomDetail.vue": {
+        "exists": true,
+        "clean": true
+      }
+    }
+  },
+  "allowed_backend_support_status": {
+    "allowed_backend_support_files": [
+      "07_后端/lingyi_service/app/local_dev.py"
+    ],
+    "allowed_backend_support_files_exist": true,
+    "allowed_backend_support_files_clean": true,
+    "details": {
+      "07_后端/lingyi_service/app/local_dev.py": {
+        "exists": true,
+        "clean": true,
+        "support_mode": "read-only in B010"
+      }
+    }
+  },
+  "local_object_model": [
+    "local_bom_header",
+    "local_bom_line",
+    "local_style_color_size_material_ref"
+  ],
+  "local_dev_endpoint_plan": [
+    "GET /local-dev/bom/list?scenario_tag=<tag>",
+    "POST /local-dev/bom (test_data only)",
+    "PATCH /local-dev/bom/:id (test_data only)",
+    "GET /local-dev/bom/:id/readback?scenario_tag=<tag>",
+    "POST /local-dev/bom/:id/rollback"
+  ],
+  "sqlite_storage_plan": [
+    "local_bom_header",
+    "local_bom_line",
+    "local_style_material_map"
+  ],
+  "frozen_contract_boundary": {
+    "inherited_from": [
+      "TASK-YISUAN-REALOBJ-B001-PREP-LOCAL-WRITE-POOL",
+      "TASK-YISUAN-REALOBJ-B009-PREP"
+    ],
+    "scenario_tag_strategy": "scenario_tag attached to bom header/line and readback snapshot; rollback by scenario_tag",
+    "create_update_readback_cancel_or_rollback_flow": "create BOM->update lines->readback verify->rollback->zero_residual",
+    "rollback_zero_residual_requirement": "mandatory",
+    "key_fields_boundary": {
+      "A005_verified_fields": [
+        "款号",
+        "款名",
+        "单位",
+        "面料",
+        "备注",
+        "可打样",
+        "创建人",
+        "修改人"
+      ],
+      "A005_partial_fields": [
+        "颜色",
+        "尺码",
+        "吊牌价",
+        "创建时间",
+        "修改时间",
+        "设计号",
+        "纸样师"
+      ],
+      "A002_popup_matrix_contract": "order_qty_matrix_popup_only_contract (readback-only, non-claim preserved)"
+    },
+    "validation_rules_boundary": [
+      "scenario_tag required on local-dev write loop",
+      "test_data only; seed_data default false",
+      "write scope limited to local-dev/sqlite structures",
+      "unknown/partial fields cannot be escalated to full confirmed business logic"
+    ],
+    "status_rules_boundary": [
+      "VERIFIED",
+      "PARTIAL",
+      "UNKNOWN",
+      "NO-GO",
+      "BLOCKED"
+    ],
+    "readonly_readback_rules_boundary": [
+      "popup-only and non-claim boundaries preserved",
+      "BOM/material line readback required",
+      "rollback required and zero_residual required"
+    ],
+    "forbidden_scope": [
+      "direct sqlite reuse as production",
+      "real procurement/inventory linkage writes",
+      "production readback/go-live/release"
+    ]
+  },
+  "frozen_write_loop_boundary": {
+    "scenario_tag_required": true,
+    "test_data_used": true,
+    "seed_data_used_default": false,
+    "create_update_object_flow": true,
+    "readback_flow": true,
+    "cancel_or_rollback_flow": true,
+    "rollback_required": true,
+    "zero_residual_required": true,
+    "forbidden_production_paths": true,
+    "forbidden_real_account_boundary": true
+  },
+  "frozen_evidence_requirement": {
+    "routes_http_200": [
+      "/bom/list",
+      "/bom/detail"
+    ],
+    "png_screenshots_1440x1200": true,
+    "local_dev_write_requests_only": true,
+    "create_update_success": true,
+    "local_object_id_created": true,
+    "bom_material_line_readback_success": true,
+    "cancel_or_rollback_success": true,
+    "zero_residual": true,
+    "scenario_tag_present": true,
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "real_production_account_used": false,
+    "sqlite_not_formal_database": true,
+    "seed_data_used": false,
+    "typecheck_exit_code": 0,
+    "dev_server_started_stopped": true,
+    "local_dev_server_started_stopped": true
+  },
+  "dirty_classification": {
+    "tracked_dirty_count": 16,
+    "frontend_dirty_count": 3,
+    "backend_or_test_dirty_count": 10,
+    "log_control_dirty_count": 3,
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": []
+  },
+  "data_boundary": {
+    "current_phase": "YISUAN-REALOBJ-LOCAL-WRITE-MAINLINE",
+    "data_classification": "local_real_object_test_data_only",
+    "test_data_used": true,
+    "scenario_tag_required": true,
+    "rollback_required": true,
+    "zero_residual_required": true,
+    "seed_data_used": false,
+    "seed_data_if_needed_rule": "must declare separately with JSON/CSV export and migration/import only",
+    "sqlite_not_formal_database": true,
+    "sqlite_direct_reuse_for_production_forbidden": true,
+    "real_inventory_finance_production_records_migrated": false,
+    "real_stock_in_out_records_migrated": false
+  },
+  "production_safety_boundary": {
+    "erpnext_production_connected": false,
+    "real_production_account_used": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "remote_lifecycle_parked": true
+  },
+  "implementation_allowed": true,
+  "next_task": "TASK-YISUAN-REALOBJ-B011-IMPL-CAND002",
+  "prohibited_actions_confirmation": {
+    "code_modified": false,
+    "browser_typecheck_pytest_rerun": false,
+    "sqlite_write_started": false,
+    "real_object_creation_started": false,
+    "stage_commit_amend": false,
+    "push_pr_tag_release": false,
+    "reset_restore_clean_delete": false,
+    "erpnext_production_connected": false,
+    "real_production_account_used": false,
+    "project_complete_or_go_live_claimed": false
+  },
+  "residual_risk": "low",
+  "NEXT_ROLE": "C Auditor"
+}

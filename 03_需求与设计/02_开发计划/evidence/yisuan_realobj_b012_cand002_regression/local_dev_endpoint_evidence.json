@@ -1,0 +1,9 @@
+{
+  "scenario_tag": "REALOBJ-CAND002-B012-20260531-001",
+  "endpoint_prefix": "/api/local-dev/bom",
+  "create_request_observed": true,
+  "update_patch_request_observed": true,
+  "rollback_request_observed": true,
+  "all_local_dev_bom_write_statuses_success": true,
+  "write_requests_only_local_dev_bom_endpoints": true
+}

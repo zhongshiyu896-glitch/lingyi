@@ -4,20 +4,22 @@
       <div class="header-row">
         <div class="header-main">
           <h2 class="page-title">物料开发 BOM 列表</h2>
-          <p class="page-subtitle">衣算云 UI 1:1 只读壳层（无写入）</p>
+          <p class="page-subtitle">衣算云 UI 1:1 + REALOBJ-CAND-002 本地写入闭环（local-dev only）</p>
         </div>
         <div class="header-actions" data-testid="yisuan-1to1-bom-list-toolbar">
           <el-button type="primary" @click="runQuery">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
+          <el-button :disabled="!currentObjectId" @click="readbackObject">回读本地对象</el-button>
+          <el-button @click="checkZeroResidual">zero_residual 校验</el-button>
         </div>
       </div>
 
       <div class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
         <el-tag type="success">source_status=found</el-tag>
         <el-tag type="primary">covered_contract_ids=A002,A005</el-tag>
-        <el-tag type="info">real_business_object_created=false</el-tag>
-        <el-tag type="info">linked_calculation_enabled=false</el-tag>
-        <span>来源：A002/A005 contract sources（B010 继承，no-write）</span>
+        <el-tag type="info">real_business_object_created=false (production)</el-tag>
+        <el-tag type="info">linked_calculation_enabled=false (cross-module)</el-tag>
+        <span>来源：A002/A005 contract sources（B010 继承，B011 local-dev/sqlite/scenario_tag/test_data）</span>
       </div>
     </el-card>
 
@@ -77,7 +79,7 @@
           <h4>validation_rules</h4>
           <ul>
             <li v-for="field in a005UnknownFields" :key="`unknown-${field}`">
-              {{ field }} => source_unknown / not_claimed
+              {{ field }} => source_unknown / pending_confirmation / not_claimed
             </li>
           </ul>
           <div class="tag-row compact">
@@ -108,7 +110,7 @@
       <el-table
         :data="filteredRows"
         border
-        height="520"
+        height="460"
         stripe
         data-testid="yisuan-1to1-bom-table"
       >
@@ -124,19 +126,124 @@
           </template>
         </el-table-column>
         <el-table-column prop="updatedAt" label="更新时间" min-width="180" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" @click="loadRowToLocalLoop(row)">写入闭环</el-button>
             <el-button link type="primary" @click="goDetail(row.bomNo)">查看详情</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-card shadow="never" class="local-write-panel" data-testid="realobj-bom-local-loop">
+      <template #header>
+        <div class="panel-header">
+          <strong>REALOBJ-CAND-002 本地对象写入闭环（BOM）</strong>
+          <el-tag type="info">local-dev/sqlite/scenario_tag/test_data only</el-tag>
+        </div>
+      </template>
+
+      <el-form :inline="true" :model="draftForm">
+        <el-form-item label="scenario_tag">
+          <el-input
+            v-model="draftForm.scenarioTag"
+            style="width: 250px"
+            data-testid="realobj-bom-scenario-tag"
+          />
+        </el-form-item>
+        <el-form-item label="BOM 编号">
+          <el-input v-model="draftForm.bomNo" style="width: 180px" />
+        </el-form-item>
+        <el-form-item label="款号">
+          <el-input v-model="draftForm.styleCode" style="width: 150px" />
+        </el-form-item>
+        <el-form-item label="款式名称">
+          <el-input v-model="draftForm.styleName" style="width: 180px" />
+        </el-form-item>
+        <el-form-item label="版本">
+          <el-input v-model="draftForm.versionNo" style="width: 110px" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="draftForm.status" style="width: 120px">
+            <el-option label="草稿" value="draft" />
+            <el-option label="审核中" value="review" />
+            <el-option label="已发布" value="published" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="draftForm.note" style="width: 260px" />
+        </el-form-item>
+      </el-form>
+
+      <div class="local-write-actions">
+        <el-button type="primary" :loading="localWriteLoading" @click="saveObject">
+          {{ saveButtonLabel }}
+        </el-button>
+        <el-button :loading="localWriteLoading" :disabled="!currentObjectId" @click="readbackObject">
+          回读本地对象
+        </el-button>
+        <el-button :loading="localWriteLoading" :disabled="!currentObjectId" @click="rollbackScenario">
+          回滚 scenario
+        </el-button>
+        <el-button :loading="localWriteLoading" @click="checkZeroResidual">zero_residual 校验</el-button>
+      </div>
+
+      <el-alert
+        v-if="localWriteFeedback"
+        type="info"
+        :closable="false"
+        :title="localWriteFeedback"
+        class="feedback-alert"
+      />
+
+      <el-descriptions border :column="2" class="readback-descriptions">
+        <el-descriptions-item label="object_id">{{ currentObjectId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="scenario_tag">{{ draftForm.scenarioTag }}</el-descriptions-item>
+        <el-descriptions-item label="readback_total">{{ readbackTotal }}</el-descriptions-item>
+        <el-descriptions-item label="residual_records">{{ loopState.residualRecordsAfterRollback }}</el-descriptions-item>
+        <el-descriptions-item label="create_success">{{ loopState.createSuccess ? 'true' : 'false' }}</el-descriptions-item>
+        <el-descriptions-item label="update_success">{{ loopState.updateSuccess ? 'true' : 'false' }}</el-descriptions-item>
+        <el-descriptions-item label="readback_success">{{ loopState.readbackSuccess ? 'true' : 'false' }}</el-descriptions-item>
+        <el-descriptions-item label="rollback_success">{{ loopState.rollbackSuccess ? 'true' : 'false' }}</el-descriptions-item>
+        <el-descriptions-item label="zero_residual_success">{{ loopState.zeroResidualSuccess ? 'true' : 'false' }}</el-descriptions-item>
+        <el-descriptions-item label="test_data_used">true</el-descriptions-item>
+      </el-descriptions>
+
+      <el-descriptions
+        v-if="readbackState"
+        border
+        :column="2"
+        class="readback-descriptions"
+        data-testid="realobj-bom-readback-evidence"
+      >
+        <el-descriptions-item label="bom_main_readback_success">
+          {{ readbackState.readback_flags.bom_main_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="style_binding_readback_success">
+          {{ readbackState.readback_flags.style_binding_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="fabric_line_readback_success">
+          {{ readbackState.readback_flags.fabric_line_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="trim_line_readback_success">
+          {{ readbackState.readback_flags.trim_line_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="status_validation_readback_success">
+          {{ readbackState.readback_flags.status_validation_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="scenario_tag_present">
+          {{ readbackState.readback_flags.scenario_tag_present ? 'true' : 'false' }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { request } from '@/api/request'
 
 type BomStatus = 'draft' | 'review' | 'published'
 
@@ -151,7 +258,91 @@ interface BomRow {
   updatedAt: string
 }
 
+interface BomLinePayload {
+  material_item_code: string
+  material_name: string
+  style_code: string
+  color: string
+  size: string
+  qty_per_piece: number
+  loss_rate: number
+  uom: string
+  remark: string
+  material_type: 'fabric' | 'trim'
+}
+
+interface BomOperationPayload {
+  process_name: string
+  sequence_no: number
+  is_subcontract: boolean
+  wage_rate: number
+  subcontract_cost_per_piece: number
+  remark: string
+}
+
+interface BomReadbackFlags {
+  scenario_tag_present: boolean
+  bom_main_readback_success: boolean
+  style_binding_readback_success: boolean
+  fabric_line_readback_success: boolean
+  trim_line_readback_success: boolean
+  status_validation_readback_success: boolean
+}
+
+interface BomReadbackData {
+  object_id: number
+  draft_id: number
+  scenario_tag: string
+  bom_main: {
+    bom_no: string
+    item_code: string
+    version_no: string
+    status: string
+    is_default: boolean
+    state: string
+    note: string
+  }
+  style_binding: {
+    style_code: string
+    style_name: string
+    style_version: string
+    material_group: string
+    binding_note: string
+  }
+  fabric_lines: BomLinePayload[]
+  trim_lines: BomLinePayload[]
+  operations: BomOperationPayload[]
+  readback_flags: BomReadbackFlags
+  state: string
+  created_at: string
+  updated_at: string
+}
+
+interface BomListData {
+  scenario_tag: string
+  total: number
+  records: BomReadbackData[]
+}
+
+interface BomRollbackData {
+  scenario_tag: string
+  object_id: number
+  deleted_count: number
+  residual_records_after_rollback: number
+  rollback_success: boolean
+  zero_residual_success: boolean
+}
+
+interface BomResidualData {
+  scenario_tag: string
+  total: number
+}
+
 const router = useRouter()
+
+const BOM_ENDPOINT = '/api/local-dev/bom'
+const BOM_LIST_ENDPOINT = '/api/local-dev/bom/list'
+const BOM_RESIDUAL_ENDPOINT = '/api/local-dev/bom/residual-count'
 
 const a005VerifiedFields = ['款号', '款名', '单位', '面料', '备注', '可打样', '创建人', '修改人']
 const a005PartialFields = ['颜色', '尺码', '吊牌价', '创建时间', '修改时间', '设计号', '纸样师']
@@ -217,12 +408,121 @@ const sourceRows: BomRow[] = [
   },
 ]
 
+const buildDatePart = (): string => {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${yyyy}${mm}${dd}`
+}
+
+const buildDefaultScenarioTag = (): string => `REALOBJ-CAND002-${buildDatePart()}-001`
+const normalizeScenarioTag = (value: string): string => value.trim() || buildDefaultScenarioTag()
+
 const query = reactive({
   keyword: '',
   styleCode: '',
   materialGroup: '',
   status: '' as '' | BomStatus,
 })
+
+const localWriteLoading = ref(false)
+const localWriteFeedback = ref('')
+const currentObjectId = ref<number | null>(null)
+const readbackState = ref<BomReadbackData | null>(null)
+const readbackTotal = ref<number>(0)
+
+const draftForm = reactive({
+  scenarioTag: buildDefaultScenarioTag(),
+  bomNo: 'BOM-YS-250601-001',
+  styleCode: 'LY-WS-2301',
+  styleName: '圆领短袖卫衣',
+  versionNo: 'V2.3',
+  status: 'draft',
+  note: 'REALOBJ-CAND-002 test_data',
+})
+
+const loopState = reactive({
+  createSuccess: false,
+  updateSuccess: false,
+  readbackSuccess: false,
+  rollbackSuccess: false,
+  zeroResidualSuccess: false,
+  residualRecordsAfterRollback: -1,
+})
+
+const bomPayloadState = reactive<{
+  fabricLines: BomLinePayload[]
+  trimLines: BomLinePayload[]
+  operations: BomOperationPayload[]
+}>({
+  fabricLines: [],
+  trimLines: [],
+  operations: [],
+})
+
+const createFabricLines = (styleCode: string): BomLinePayload[] => [
+  {
+    material_item_code: `FAB-${styleCode}-001`,
+    material_name: '精梳棉汗布',
+    style_code: styleCode,
+    color: '米白',
+    size: 'M',
+    qty_per_piece: 1.28,
+    loss_rate: 0.04,
+    uom: '米',
+    remark: '面料行 test_data',
+    material_type: 'fabric',
+  },
+]
+
+const createTrimLines = (styleCode: string): BomLinePayload[] => [
+  {
+    material_item_code: `TRM-${styleCode}-001`,
+    material_name: '树脂纽扣',
+    style_code: styleCode,
+    color: '米白',
+    size: '18L',
+    qty_per_piece: 5,
+    loss_rate: 0,
+    uom: '颗',
+    remark: '辅料行 test_data',
+    material_type: 'trim',
+  },
+]
+
+const createDefaultOperations = (): BomOperationPayload[] => [
+  {
+    process_name: '裁剪',
+    sequence_no: 10,
+    is_subcontract: false,
+    wage_rate: 0,
+    subcontract_cost_per_piece: 0,
+    remark: 'local-dev default operation',
+  },
+  {
+    process_name: '缝制',
+    sequence_no: 20,
+    is_subcontract: false,
+    wage_rate: 0,
+    subcontract_cost_per_piece: 0,
+    remark: 'local-dev default operation',
+  },
+]
+
+const ensurePayloadState = (): void => {
+  if (bomPayloadState.fabricLines.length === 0) {
+    bomPayloadState.fabricLines = createFabricLines(draftForm.styleCode)
+  }
+  if (bomPayloadState.trimLines.length === 0) {
+    bomPayloadState.trimLines = createTrimLines(draftForm.styleCode)
+  }
+  if (bomPayloadState.operations.length === 0) {
+    bomPayloadState.operations = createDefaultOperations()
+  }
+}
+
+ensurePayloadState()
 
 const filteredRows = computed(() => {
   const keyword = query.keyword.trim().toLowerCase()
@@ -238,8 +538,10 @@ const filteredRows = computed(() => {
   })
 })
 
+const saveButtonLabel = computed(() => (currentObjectId.value ? '更新本地对象' : '保存本地对象'))
+
 const runQuery = () => {
-  // UI parity no-write: query is handled by local computed filtering.
+  ElMessage.success('筛选已应用')
 }
 
 const resetQuery = () => {
@@ -247,10 +549,31 @@ const resetQuery = () => {
   query.styleCode = ''
   query.materialGroup = ''
   query.status = ''
+  ElMessage.success('筛选条件已重置')
+}
+
+const loadRowToLocalLoop = (row: BomRow) => {
+  draftForm.bomNo = row.bomNo
+  draftForm.styleCode = row.styleCode
+  draftForm.styleName = row.styleName
+  draftForm.versionNo = row.version
+  draftForm.status = row.status
+  draftForm.note = `from:${row.bomNo}`
+  bomPayloadState.fabricLines = createFabricLines(row.styleCode)
+  bomPayloadState.trimLines = createTrimLines(row.styleCode)
+  bomPayloadState.operations = createDefaultOperations()
+  ElMessage.info(`已加载 ${row.bomNo} 到本地对象表单`)
 }
 
 const goDetail = (bomNo: string) => {
-  void router.push({ path: '/bom/detail', query: { bom_no: bomNo } })
+  void router.push({
+    path: '/bom/detail',
+    query: {
+      bom_no: bomNo,
+      object_id: currentObjectId.value ? String(currentObjectId.value) : '',
+      scenario_tag: normalizeScenarioTag(draftForm.scenarioTag),
+    },
+  })
 }
 
 const statusLabel = (status: BomStatus) => {
@@ -264,6 +587,185 @@ const statusType = (status: BomStatus) => {
   if (status === 'review') return 'warning'
   return 'success'
 }
+
+const buildUpsertPayload = () => {
+  const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
+  draftForm.scenarioTag = scenarioTag
+  ensurePayloadState()
+  return {
+    scenario_tag: scenarioTag,
+    bom_main: {
+      bom_no: draftForm.bomNo.trim(),
+      item_code: draftForm.styleCode.trim(),
+      version_no: draftForm.versionNo.trim() || 'V1',
+      status: draftForm.status,
+      is_default: false,
+      style_name: draftForm.styleName.trim(),
+      note: draftForm.note.trim(),
+    },
+    style_binding: {
+      style_code: draftForm.styleCode.trim(),
+      style_name: draftForm.styleName.trim(),
+      style_version: draftForm.versionNo.trim() || 'V1',
+      material_group: 'BOM',
+      binding_note: 'REALOBJ-CAND-002 local binding',
+    },
+    fabric_lines: bomPayloadState.fabricLines,
+    trim_lines: bomPayloadState.trimLines,
+    operations: bomPayloadState.operations,
+    note: draftForm.note.trim(),
+  }
+}
+
+const postLocalBom = async (payload: Record<string, unknown>): Promise<BomReadbackData> => {
+  const response = await request<BomReadbackData>(BOM_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return response.data
+}
+
+const patchLocalBom = async (objectId: number, payload: Record<string, unknown>): Promise<BomReadbackData> => {
+  const response = await request<BomReadbackData>(`${BOM_ENDPOINT}/${objectId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  return response.data
+}
+
+const getLocalBomReadback = async (objectId: number, scenarioTag: string): Promise<BomReadbackData> => {
+  const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
+  const response = await request<BomReadbackData>(`${BOM_ENDPOINT}/${objectId}/readback?${queryString}`)
+  return response.data
+}
+
+const rollbackLocalBom = async (objectId: number, scenarioTag: string): Promise<BomRollbackData> => {
+  const response = await request<BomRollbackData>(`${BOM_ENDPOINT}/${objectId}/rollback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scenario_tag: scenarioTag }),
+  })
+  return response.data
+}
+
+const fetchBomResidualCount = async (scenarioTag: string): Promise<number> => {
+  const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
+  const response = await request<BomResidualData>(`${BOM_RESIDUAL_ENDPOINT}?${queryString}`)
+  return response.data.total
+}
+
+const refreshLocalReadbackSummary = async (scenarioTag: string): Promise<void> => {
+  const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
+  const response = await request<BomListData>(`${BOM_LIST_ENDPOINT}?${queryString}`)
+  readbackTotal.value = response.data.total
+}
+
+const saveObject = async (): Promise<void> => {
+  if (!draftForm.bomNo.trim() || !draftForm.styleCode.trim()) {
+    ElMessage.warning('请先填写 BOM 编号与款号')
+    return
+  }
+  localWriteLoading.value = true
+  localWriteFeedback.value = ''
+  try {
+    const payload = buildUpsertPayload()
+    const saved = currentObjectId.value
+      ? await patchLocalBom(currentObjectId.value, payload)
+      : await postLocalBom(payload)
+    currentObjectId.value = saved.object_id || saved.draft_id
+    readbackState.value = saved
+    await refreshLocalReadbackSummary(saved.scenario_tag)
+    if (payload && currentObjectId.value && loopState.createSuccess) {
+      loopState.updateSuccess = true
+    } else if (currentObjectId.value && !loopState.createSuccess) {
+      loopState.createSuccess = true
+    }
+    localWriteFeedback.value = `save_success=true, object_id=${currentObjectId.value}, scenario_tag=${saved.scenario_tag}`
+    ElMessage.success('本地对象写入成功')
+  } catch (error) {
+    localWriteFeedback.value = `保存失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
+const readbackObject = async (): Promise<void> => {
+  if (!currentObjectId.value) {
+    ElMessage.warning('请先保存本地对象')
+    return
+  }
+  localWriteLoading.value = true
+  try {
+    const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
+    draftForm.scenarioTag = scenarioTag
+    const readback = await getLocalBomReadback(currentObjectId.value, scenarioTag)
+    readbackState.value = readback
+    await refreshLocalReadbackSummary(scenarioTag)
+    loopState.readbackSuccess = true
+    localWriteFeedback.value = `readback_success=true, object_id=${currentObjectId.value}`
+    ElMessage.success('本地对象回读成功')
+  } catch (error) {
+    loopState.readbackSuccess = false
+    localWriteFeedback.value = `回读失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
+const rollbackScenario = async (): Promise<void> => {
+  if (!currentObjectId.value) {
+    ElMessage.warning('请先保存本地对象')
+    return
+  }
+  localWriteLoading.value = true
+  try {
+    const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
+    draftForm.scenarioTag = scenarioTag
+    const rolled = await rollbackLocalBom(currentObjectId.value, scenarioTag)
+    loopState.rollbackSuccess = rolled.rollback_success
+    loopState.zeroResidualSuccess = rolled.zero_residual_success
+    loopState.residualRecordsAfterRollback = rolled.residual_records_after_rollback
+    currentObjectId.value = null
+    readbackState.value = null
+    readbackTotal.value = 0
+    localWriteFeedback.value = `rollback_success=${rolled.rollback_success}, zero_residual_success=${rolled.zero_residual_success}, residual=${rolled.residual_records_after_rollback}`
+    ElMessage.success('scenario 回滚完成')
+  } catch (error) {
+    loopState.rollbackSuccess = false
+    localWriteFeedback.value = `回滚失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
+
+const checkZeroResidual = async (): Promise<void> => {
+  const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
+  draftForm.scenarioTag = scenarioTag
+  localWriteLoading.value = true
+  try {
+    const total = await fetchBomResidualCount(scenarioTag)
+    await refreshLocalReadbackSummary(scenarioTag)
+    loopState.residualRecordsAfterRollback = total
+    loopState.zeroResidualSuccess = total === 0
+    localWriteFeedback.value = `zero_residual_check: scenario_tag=${scenarioTag}, residual=${total}`
+    if (total === 0) {
+      ElMessage.success('zero_residual 校验通过')
+    } else {
+      ElMessage.warning(`zero_residual 未通过，残留 ${total} 条`)
+    }
+  } catch (error) {
+    loopState.zeroResidualSuccess = false
+    localWriteFeedback.value = `zero_residual 校验失败：${(error as Error).message}`
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    localWriteLoading.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -273,7 +775,8 @@ const statusType = (status: BomStatus) => {
 }
 
 .bom-header-card,
-.filter-card {
+.filter-card,
+.local-write-panel {
   border-radius: 6px;
 }
 
@@ -304,6 +807,7 @@ const statusType = (status: BomStatus) => {
 .header-actions {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -363,5 +867,27 @@ const statusType = (status: BomStatus) => {
 
 .tag-row.compact {
   margin-top: 8px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.local-write-actions {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.feedback-alert {
+  margin-top: 10px;
+}
+
+.readback-descriptions {
+  margin-top: 10px;
 }
 </style>

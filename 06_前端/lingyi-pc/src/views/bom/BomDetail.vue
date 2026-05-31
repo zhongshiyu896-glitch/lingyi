@@ -4,11 +4,13 @@
       <div class="header-row">
         <div>
           <h2 class="page-title">BOM 详情</h2>
-          <p class="page-subtitle">衣算云 UI 1:1 只读壳层（无写入）</p>
+          <p class="page-subtitle">衣算云 UI 1:1 + REALOBJ-CAND-002 回读壳层（local-dev only）</p>
         </div>
         <div class="actions">
           <el-button @click="goList">返回列表</el-button>
-          <el-button type="primary" plain disabled>编辑（只读）</el-button>
+          <el-button :disabled="!localReadbackRef.objectId" :loading="localReadbackRef.loading" @click="refreshLocalReadback">
+            刷新本地回读
+          </el-button>
         </div>
       </div>
 
@@ -16,17 +18,68 @@
         <el-tag type="success">source_status=found</el-tag>
         <el-tag type="primary">covered_contract_ids=A002,A005</el-tag>
         <el-tag type="warning">A005 partial/unknown kept pending</el-tag>
-        <span>来源：A002/A005 contract sources（B010 继承，no-write）</span>
+        <span>来源：A002/A005 contract sources（B010 继承，B011 local write/readback）</span>
       </div>
 
       <el-descriptions :column="3" border class="style-summary" data-testid="yisuan-1to1-bom-style-summary">
         <el-descriptions-item label="BOM 编号">{{ bomNo }}</el-descriptions-item>
-        <el-descriptions-item label="款号">LY-WS-2301</el-descriptions-item>
-        <el-descriptions-item label="款式名称">圆领短袖卫衣</el-descriptions-item>
-        <el-descriptions-item label="版本">V2.3</el-descriptions-item>
+        <el-descriptions-item label="款号">{{ displayStyleCode }}</el-descriptions-item>
+        <el-descriptions-item label="款式名称">{{ displayStyleName }}</el-descriptions-item>
+        <el-descriptions-item label="版本">{{ displayVersion }}</el-descriptions-item>
         <el-descriptions-item label="开发员">张工</el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag type="success">已发布</el-tag>
+          <el-tag :type="statusType(displayStatus)">{{ statusLabel(displayStatus) }}</el-tag>
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
+    <el-card shadow="never" data-testid="realobj-bom-detail-local-readback">
+      <template #header>
+        <div class="panel-header">
+          <span>REALOBJ-CAND-002 本地对象回读</span>
+          <el-tag type="info">local-dev/sqlite/scenario_tag/test_data only</el-tag>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="localReadbackRef.error"
+        type="warning"
+        :closable="false"
+        :title="localReadbackRef.error"
+      />
+      <el-alert
+        v-else-if="!localReadbackRef.data"
+        type="info"
+        :closable="false"
+        title="未携带 object_id/scenario_tag，当前显示静态回读壳层。"
+      />
+
+      <el-descriptions
+        v-if="localReadbackRef.data"
+        border
+        :column="2"
+        class="readback-descriptions"
+        data-testid="realobj-bom-main-readback"
+      >
+        <el-descriptions-item label="object_id">{{ localReadbackRef.data.object_id }}</el-descriptions-item>
+        <el-descriptions-item label="scenario_tag">{{ localReadbackRef.data.scenario_tag }}</el-descriptions-item>
+        <el-descriptions-item label="bom_main_readback_success">
+          {{ localReadbackRef.data.readback_flags.bom_main_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="style_binding_readback_success">
+          {{ localReadbackRef.data.readback_flags.style_binding_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="fabric_line_readback_success">
+          {{ localReadbackRef.data.readback_flags.fabric_line_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="trim_line_readback_success">
+          {{ localReadbackRef.data.readback_flags.trim_line_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="status_validation_readback_success">
+          {{ localReadbackRef.data.readback_flags.status_validation_readback_success ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="scenario_tag_present">
+          {{ localReadbackRef.data.readback_flags.scenario_tag_present ? 'true' : 'false' }}
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
@@ -34,7 +87,7 @@
     <el-card shadow="never">
       <el-tabs type="border-card" data-testid="yisuan-1to1-bom-material-tabs">
         <el-tab-pane label="面料">
-          <el-table :data="fabricLines" border stripe data-testid="yisuan-1to1-bom-fabric-lines">
+          <el-table :data="displayFabricLines" border stripe data-testid="yisuan-1to1-bom-fabric-lines">
             <el-table-column prop="code" label="面料编码" min-width="160" />
             <el-table-column prop="name" label="面料名称" min-width="200" />
             <el-table-column prop="spec" label="规格" min-width="160" />
@@ -45,7 +98,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="辅料">
-          <el-table :data="trimLines" border stripe data-testid="yisuan-1to1-bom-trim-lines">
+          <el-table :data="displayTrimLines" border stripe data-testid="yisuan-1to1-bom-trim-lines">
             <el-table-column prop="code" label="辅料编码" min-width="160" />
             <el-table-column prop="name" label="辅料名称" min-width="200" />
             <el-table-column prop="spec" label="规格" min-width="160" />
@@ -133,8 +186,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { request } from '@/api/request'
 
 interface MaterialLine {
   code: string
@@ -147,8 +202,48 @@ interface MaterialLine {
   unitCost: number
 }
 
-const router = useRouter()
-const route = useRoute()
+interface LocalBomReadbackLine {
+  material_item_code: string
+  material_name: string
+  style_code: string
+  color: string
+  size: string | null
+  qty_per_piece: number
+  loss_rate: number
+  uom: string
+  remark: string
+}
+
+interface LocalBomReadbackData {
+  object_id: number
+  scenario_tag: string
+  bom_main: {
+    bom_no: string
+    item_code: string
+    version_no: string
+    status: string
+    is_default: boolean
+    state: string
+    note: string
+  }
+  style_binding: {
+    style_code: string
+    style_name: string
+    style_version: string
+    material_group: string
+    binding_note: string
+  }
+  fabric_lines: LocalBomReadbackLine[]
+  trim_lines: LocalBomReadbackLine[]
+  readback_flags: {
+    scenario_tag_present: boolean
+    bom_main_readback_success: boolean
+    style_binding_readback_success: boolean
+    fabric_line_readback_success: boolean
+    trim_line_readback_success: boolean
+    status_validation_readback_success: boolean
+  }
+}
 
 type ContractFieldRow = {
   field: string
@@ -156,6 +251,9 @@ type ContractFieldRow = {
   status: string
   evidence: string
 }
+
+const router = useRouter()
+const route = useRoute()
 
 const a002StateLabels = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
 const a005BlockedActions = [
@@ -199,13 +297,42 @@ const contractFieldRows: ContractFieldRow[] = [
   { field: '只读壳层规则', contract: 'A002', status: 'VERIFIED', evidence: '无写入按钮，无真实对象创建' },
 ]
 
+const localReadbackRef = reactive<{
+  loading: boolean
+  data: LocalBomReadbackData | null
+  error: string
+  objectId: number | null
+  scenarioTag: string
+}>({
+  loading: false,
+  data: null,
+  error: '',
+  objectId: null,
+  scenarioTag: '',
+})
+
+const parseObjectId = (value: unknown): number | null => {
+  const raw = Array.isArray(value) ? value[0] : value
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) return null
+  return Math.floor(parsed)
+}
+
+const parseScenarioTag = (value: unknown): string => {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+const objectIdFromQuery = computed<number | null>(() => parseObjectId(route.query.object_id))
+const scenarioTagFromQuery = computed<string>(() => parseScenarioTag(route.query.scenario_tag))
+
 const bomNo = computed(() => {
   const queryBom = route.query.bom_no
   if (typeof queryBom === 'string' && queryBom.trim()) return queryBom.trim()
   return 'BOM-YS-250601-001'
 })
 
-const fabricLines: MaterialLine[] = [
+const staticFabricLines: MaterialLine[] = [
   {
     code: 'FAB-CT-0021',
     name: '32支精梳棉汗布',
@@ -226,7 +353,7 @@ const fabricLines: MaterialLine[] = [
   },
 ]
 
-const trimLines: MaterialLine[] = [
+const staticTrimLines: MaterialLine[] = [
   {
     code: 'TRM-LB-1022',
     name: '主唛+洗水唛套组',
@@ -247,14 +374,90 @@ const trimLines: MaterialLine[] = [
   },
 ]
 
+const toMaterialLine = (line: LocalBomReadbackLine): MaterialLine => ({
+  code: line.material_item_code,
+  name: line.material_name || line.remark || '-',
+  spec: [line.color, line.size || ''].filter(Boolean).join(' / ') || '-',
+  uom: line.uom || 'PCS',
+  usage: Number(line.qty_per_piece || 0),
+  lossRate: Number(line.loss_rate || 0) * 100,
+  remark: line.remark || '',
+  unitCost: 0,
+})
+
+const displayFabricLines = computed<MaterialLine[]>(() => {
+  if (localReadbackRef.data?.fabric_lines?.length) {
+    return localReadbackRef.data.fabric_lines.map(toMaterialLine)
+  }
+  return staticFabricLines
+})
+
+const displayTrimLines = computed<MaterialLine[]>(() => {
+  if (localReadbackRef.data?.trim_lines?.length) {
+    return localReadbackRef.data.trim_lines.map(toMaterialLine)
+  }
+  return staticTrimLines
+})
+
+const displayStyleCode = computed(() => localReadbackRef.data?.style_binding.style_code || 'LY-WS-2301')
+const displayStyleName = computed(() => localReadbackRef.data?.style_binding.style_name || '圆领短袖卫衣')
+const displayVersion = computed(() => localReadbackRef.data?.bom_main.version_no || 'V2.3')
+const displayStatus = computed(() => (localReadbackRef.data?.bom_main.status || 'published') as string)
+
+const statusLabel = (status: string) => {
+  if (status === 'draft') return '草稿'
+  if (status === 'review') return '审核中'
+  return '已发布'
+}
+
+const statusType = (status: string) => {
+  if (status === 'draft') return 'info'
+  if (status === 'review') return 'warning'
+  return 'success'
+}
+
 const fabricTotalCost = computed(() =>
-  fabricLines.reduce((sum, row) => sum + row.usage * row.unitCost * (1 + (row.lossRate ?? 0) / 100), 0),
+  displayFabricLines.value.reduce((sum, row) => sum + row.usage * row.unitCost * (1 + (row.lossRate ?? 0) / 100), 0),
 )
-const trimTotalCost = computed(() => trimLines.reduce((sum, row) => sum + row.usage * row.unitCost, 0))
+const trimTotalCost = computed(() => displayTrimLines.value.reduce((sum, row) => sum + row.usage * row.unitCost, 0))
 const totalCost = computed(() => fabricTotalCost.value + trimTotalCost.value)
 const totalLossRate = computed(() =>
-  fabricLines.reduce((sum, row) => sum + (row.lossRate ?? 0), 0) / (fabricLines.length || 1),
+  displayFabricLines.value.reduce((sum, row) => sum + (row.lossRate ?? 0), 0) / (displayFabricLines.value.length || 1),
 )
+
+const refreshLocalReadback = async () => {
+  const objectId = objectIdFromQuery.value
+  const scenarioTag = scenarioTagFromQuery.value
+  localReadbackRef.objectId = objectId
+  localReadbackRef.scenarioTag = scenarioTag
+  if (!objectId || !scenarioTag) {
+    localReadbackRef.data = null
+    localReadbackRef.error = ''
+    return
+  }
+
+  localReadbackRef.loading = true
+  localReadbackRef.error = ''
+  try {
+    const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
+    const response = await request<LocalBomReadbackData>(`/api/local-dev/bom/${objectId}/readback?${queryString}`)
+    localReadbackRef.data = response.data
+  } catch (error) {
+    localReadbackRef.data = null
+    localReadbackRef.error = `本地回读失败：${(error as Error).message}`
+    ElMessage.warning(localReadbackRef.error)
+  } finally {
+    localReadbackRef.loading = false
+  }
+}
+
+watch([objectIdFromQuery, scenarioTagFromQuery], () => {
+  void refreshLocalReadback()
+})
+
+onMounted(() => {
+  void refreshLocalReadback()
+})
 
 const goList = () => {
   void router.push('/bom/list')
@@ -310,6 +513,11 @@ const goList = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+}
+
+.readback-descriptions {
+  margin-top: 10px;
 }
 
 .cost-grid {

@@ -838,6 +838,7 @@ def _create_bom_draft_table(connection: sqlite3.Connection) -> None:
             is_default INTEGER NOT NULL DEFAULT 0,
             bom_items_json TEXT NOT NULL,
             operations_json TEXT NOT NULL,
+            style_binding_json TEXT NOT NULL DEFAULT '{}',
             note TEXT NOT NULL DEFAULT '',
             state TEXT NOT NULL DEFAULT 'saved',
             created_at TEXT NOT NULL,
@@ -847,6 +848,14 @@ def _create_bom_draft_table(connection: sqlite3.Connection) -> None:
         )
         """
     )
+    columns = {
+        str(row["name"])
+        for row in connection.execute("PRAGMA table_info(ly_local_bom_drafts)").fetchall()
+    }
+    if "style_binding_json" not in columns:
+        connection.execute(
+            "ALTER TABLE ly_local_bom_drafts ADD COLUMN style_binding_json TEXT NOT NULL DEFAULT '{}'"
+        )
     connection.commit()
 
 
@@ -880,6 +889,14 @@ def _is_trim_line(item: dict[str, Any]) -> bool:
 def _bom_draft_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     bom_items = _parse_json_payload(row["bom_items_json"])
     operations = _parse_json_payload(row["operations_json"])
+    style_binding_raw = row["style_binding_json"] if "style_binding_json" in row.keys() else "{}"
+    style_binding = {}
+    try:
+        style_binding_obj = json.loads(style_binding_raw)
+        if isinstance(style_binding_obj, dict):
+            style_binding = style_binding_obj
+    except json.JSONDecodeError:
+        style_binding = {}
     return {
         "draft_id": int(row["id"]),
         "scenario_tag": row["scenario_tag"],
@@ -888,6 +905,7 @@ def _bom_draft_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         "version_no": row["version_no"],
         "status": row["status"],
         "is_default": bool(row["is_default"]),
+        "style_binding": style_binding,
         "bom_items": bom_items,
         "operations": operations,
         "note": row["note"],
@@ -913,6 +931,7 @@ def upsert_local_bom_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any
     is_default = bool(payload.get("is_default", False))
     bom_items = payload.get("bom_items", [])
     operations = payload.get("operations", [])
+    style_binding = payload.get("style_binding", {})
 
     if not scenario_tag:
         raise HTTPException(status_code=400, detail="scenario_tag is required")
@@ -924,9 +943,12 @@ def upsert_local_bom_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any
         raise HTTPException(status_code=400, detail="bom_items is required")
     if not isinstance(operations, list) or len(operations) == 0:
         raise HTTPException(status_code=400, detail="operations is required")
+    if not isinstance(style_binding, dict):
+        raise HTTPException(status_code=400, detail="style_binding must be object")
 
     bom_items_json = json.dumps(bom_items, ensure_ascii=False)
     operations_json = json.dumps(operations, ensure_ascii=False)
+    style_binding_json = json.dumps(style_binding, ensure_ascii=False)
     now_iso = _now_iso()
 
     with _connect_local_sqlite() as connection:
@@ -946,6 +968,7 @@ def upsert_local_bom_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any
                     is_default = ?,
                     bom_items_json = ?,
                     operations_json = ?,
+                    style_binding_json = ?,
                     note = ?,
                     state = 'saved',
                     updated_at = ?,
@@ -962,6 +985,7 @@ def upsert_local_bom_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any
                     1 if is_default else 0,
                     bom_items_json,
                     operations_json,
+                    style_binding_json,
                     note,
                     now_iso,
                     draft_id,
@@ -981,11 +1005,12 @@ def upsert_local_bom_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any
                     is_default,
                     bom_items_json,
                     operations_json,
+                    style_binding_json,
                     note,
                     state,
                     created_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'saved', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'saved', ?, ?)
                 """,
                 (
                     scenario_tag,
@@ -996,6 +1021,7 @@ def upsert_local_bom_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any
                     1 if is_default else 0,
                     bom_items_json,
                     operations_json,
+                    style_binding_json,
                     note,
                     now_iso,
                     now_iso,
@@ -1096,6 +1122,332 @@ def cancel_local_bom_draft(draft_id: int, payload: dict[str, Any] = Body(...)) -
     if cancelled is None:
         raise HTTPException(status_code=500, detail="draft cancel failed")
     return _ok(_bom_draft_row_to_dict(cancelled))
+
+
+def _normalize_bom_line(
+    raw: dict[str, Any],
+    *,
+    fallback_item_code: str,
+    fallback_style_code: str,
+    fallback_type: str,
+) -> dict[str, Any]:
+    item_code = str(
+        raw.get("material_item_code")
+        or raw.get("material_code")
+        or raw.get("code")
+        or f"{fallback_item_code}-{fallback_type.upper()}"
+    ).strip()
+    material_name = str(raw.get("material_name") or raw.get("name") or raw.get("remark") or "").strip()
+    color = str(raw.get("color") or "").strip()
+    size = str(raw.get("size") or "").strip() or None
+    uom = str(raw.get("uom") or raw.get("unit") or "PCS").strip()
+    remark = str(raw.get("remark") or "").strip()
+    qty_per_piece = _to_float(raw.get("qty_per_piece", raw.get("usage", 0)), 0.0)
+    loss_rate = _to_float(raw.get("loss_rate", raw.get("lossRate", 0)), 0.0)
+    material_type = str(raw.get("material_type") or fallback_type).strip().lower()
+    return {
+        "material_item_code": item_code,
+        "material_name": material_name,
+        "style_code": str(raw.get("style_code") or fallback_style_code).strip(),
+        "color": color,
+        "size": size,
+        "qty_per_piece": qty_per_piece,
+        "loss_rate": loss_rate,
+        "uom": uom,
+        "remark": remark,
+        "material_type": material_type,
+    }
+
+
+def _normalize_bom_operations(raw_operations: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_operations, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for index, item in enumerate(raw_operations):
+        if not isinstance(item, dict):
+            continue
+        process_name = str(item.get("process_name") or item.get("name") or "").strip()
+        if not process_name:
+            continue
+        sequence_no = int(_to_float(item.get("sequence_no", index + 1), index + 1))
+        normalized.append(
+            {
+                "process_name": process_name,
+                "sequence_no": sequence_no,
+                "is_subcontract": bool(item.get("is_subcontract", False)),
+                "wage_rate": _to_float(item.get("wage_rate", 0), 0.0),
+                "subcontract_cost_per_piece": _to_float(item.get("subcontract_cost_per_piece", 0), 0.0),
+                "remark": str(item.get("remark") or "").strip(),
+            }
+        )
+    return normalized
+
+
+def _build_default_bom_operations() -> list[dict[str, Any]]:
+    return [
+        {
+            "process_name": "裁剪",
+            "sequence_no": 10,
+            "is_subcontract": False,
+            "wage_rate": 0.0,
+            "subcontract_cost_per_piece": 0.0,
+            "remark": "local-dev default",
+        },
+        {
+            "process_name": "缝制",
+            "sequence_no": 20,
+            "is_subcontract": False,
+            "wage_rate": 0.0,
+            "subcontract_cost_per_piece": 0.0,
+            "remark": "local-dev default",
+        },
+    ]
+
+
+def _normalize_realobj_bom_payload(payload: dict[str, Any], object_id: int | None = None) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+
+    bom_main = payload.get("bom_main", {})
+    if not isinstance(bom_main, dict):
+        raise HTTPException(status_code=400, detail="bom_main must be object")
+    style_binding = payload.get("style_binding", {})
+    if not isinstance(style_binding, dict):
+        raise HTTPException(status_code=400, detail="style_binding must be object")
+
+    bom_no = str(bom_main.get("bom_no") or payload.get("bom_no") or "").strip()
+    item_code = str(
+        style_binding.get("style_code")
+        or bom_main.get("item_code")
+        or payload.get("item_code")
+        or ""
+    ).strip()
+    version_no = str(bom_main.get("version_no") or payload.get("version_no") or "V1").strip()
+    status = str(bom_main.get("status") or payload.get("status") or "draft").strip()
+    note = str(payload.get("note") or bom_main.get("note") or "").strip()
+    is_default = bool(bom_main.get("is_default", payload.get("is_default", False)))
+
+    if not bom_no:
+        raise HTTPException(status_code=400, detail="bom_no is required")
+    if not item_code:
+        raise HTTPException(status_code=400, detail="style_code/item_code is required")
+
+    raw_fabric_lines = payload.get("fabric_lines", [])
+    raw_trim_lines = payload.get("trim_lines", [])
+    if not isinstance(raw_fabric_lines, list):
+        raw_fabric_lines = []
+    if not isinstance(raw_trim_lines, list):
+        raw_trim_lines = []
+
+    if len(raw_fabric_lines) == 0 and len(raw_trim_lines) == 0:
+        bom_items_raw = payload.get("bom_items", [])
+        if isinstance(bom_items_raw, list):
+            for item in bom_items_raw:
+                if not isinstance(item, dict):
+                    continue
+                if _is_fabric_line(item):
+                    raw_fabric_lines.append(item)
+                elif _is_trim_line(item):
+                    raw_trim_lines.append(item)
+
+    fabric_lines = [
+        _normalize_bom_line(
+            item,
+            fallback_item_code=item_code,
+            fallback_style_code=item_code,
+            fallback_type="fabric",
+        )
+        for item in raw_fabric_lines
+        if isinstance(item, dict)
+    ]
+    trim_lines = [
+        _normalize_bom_line(
+            item,
+            fallback_item_code=item_code,
+            fallback_style_code=item_code,
+            fallback_type="trim",
+        )
+        for item in raw_trim_lines
+        if isinstance(item, dict)
+    ]
+
+    if len(fabric_lines) == 0:
+        raise HTTPException(status_code=400, detail="fabric_lines is required")
+    if len(trim_lines) == 0:
+        raise HTTPException(status_code=400, detail="trim_lines is required")
+
+    operations = _normalize_bom_operations(payload.get("operations", []))
+    if len(operations) == 0:
+        operations = _build_default_bom_operations()
+
+    normalized_style_binding = {
+        "style_code": item_code,
+        "style_name": str(style_binding.get("style_name") or bom_main.get("style_name") or "").strip(),
+        "style_version": str(style_binding.get("style_version") or version_no).strip(),
+        "material_group": str(style_binding.get("material_group") or "").strip(),
+        "binding_note": str(style_binding.get("binding_note") or "").strip(),
+    }
+
+    merged_items = fabric_lines + trim_lines
+    result = {
+        "scenario_tag": scenario_tag,
+        "bom_no": bom_no,
+        "item_code": item_code,
+        "version_no": version_no,
+        "status": status,
+        "is_default": is_default,
+        "bom_items": merged_items,
+        "operations": operations,
+        "style_binding": normalized_style_binding,
+        "note": note,
+    }
+    if isinstance(object_id, int) and object_id > 0:
+        result["draft_id"] = object_id
+    return result
+
+
+def _build_realobj_bom_readback(draft_data: dict[str, Any]) -> dict[str, Any]:
+    bom_items = draft_data.get("bom_items", [])
+    if not isinstance(bom_items, list):
+        bom_items = []
+    fabric_lines = [item for item in bom_items if isinstance(item, dict) and (
+        str(item.get("material_type", "")).lower() == "fabric" or _is_fabric_line(item)
+    )]
+    trim_lines = [item for item in bom_items if isinstance(item, dict) and (
+        str(item.get("material_type", "")).lower() == "trim" or _is_trim_line(item)
+    )]
+    style_binding = draft_data.get("style_binding", {})
+    if not isinstance(style_binding, dict):
+        style_binding = {}
+    style_code = str(style_binding.get("style_code") or draft_data.get("item_code") or "").strip()
+    style_binding = {
+        "style_code": style_code,
+        "style_name": str(style_binding.get("style_name") or "").strip(),
+        "style_version": str(style_binding.get("style_version") or draft_data.get("version_no") or "").strip(),
+        "material_group": str(style_binding.get("material_group") or "").strip(),
+        "binding_note": str(style_binding.get("binding_note") or "").strip(),
+    }
+    bom_main = {
+        "bom_no": str(draft_data.get("bom_no") or "").strip(),
+        "item_code": str(draft_data.get("item_code") or "").strip(),
+        "version_no": str(draft_data.get("version_no") or "").strip(),
+        "status": str(draft_data.get("status") or "draft"),
+        "is_default": bool(draft_data.get("is_default", False)),
+        "state": str(draft_data.get("state") or "saved"),
+        "note": str(draft_data.get("note") or ""),
+    }
+    readback_flags = {
+        "scenario_tag_present": bool(str(draft_data.get("scenario_tag", "")).strip()),
+        "bom_main_readback_success": bool(bom_main["bom_no"] and bom_main["item_code"]),
+        "style_binding_readback_success": bool(style_code),
+        "fabric_line_readback_success": len(fabric_lines) > 0,
+        "trim_line_readback_success": len(trim_lines) > 0,
+        "status_validation_readback_success": bool(bom_main["status"] and bom_main["state"]),
+    }
+    return {
+        "object_id": draft_data.get("draft_id"),
+        "draft_id": draft_data.get("draft_id"),
+        "scenario_tag": draft_data.get("scenario_tag"),
+        "bom_main": bom_main,
+        "style_binding": style_binding,
+        "fabric_lines": fabric_lines,
+        "trim_lines": trim_lines,
+        "operations": draft_data.get("operations", []),
+        "readback_flags": readback_flags,
+        "state": draft_data.get("state"),
+        "created_at": draft_data.get("created_at"),
+        "updated_at": draft_data.get("updated_at"),
+    }
+
+
+@app.post("/api/local-dev/bom")
+def upsert_local_bom_realobj(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    normalized = _normalize_realobj_bom_payload(payload)
+    saved = upsert_local_bom_draft(normalized)
+    draft_data = saved.get("data", {})
+    if not isinstance(draft_data, dict):
+        raise HTTPException(status_code=500, detail="local bom save failed")
+    return _ok(_build_realobj_bom_readback(draft_data))
+
+
+@app.patch("/api/local-dev/bom/{object_id}")
+def patch_local_bom_realobj(object_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    normalized = _normalize_realobj_bom_payload(payload, object_id=object_id)
+    saved = upsert_local_bom_draft(normalized)
+    draft_data = saved.get("data", {})
+    if not isinstance(draft_data, dict):
+        raise HTTPException(status_code=500, detail="local bom update failed")
+    return _ok(_build_realobj_bom_readback(draft_data))
+
+
+@app.get("/api/local-dev/bom/list")
+def list_local_bom_realobj(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        rows = connection.execute(
+            "SELECT * FROM ly_local_bom_drafts WHERE scenario_tag = ? ORDER BY id DESC",
+            (scenario_tag.strip(),),
+        ).fetchall()
+    records = [_build_realobj_bom_readback(_bom_draft_row_to_dict(row)) for row in rows]
+    return _ok({"scenario_tag": scenario_tag.strip(), "total": len(records), "records": records})
+
+
+@app.get("/api/local-dev/bom/residual-count")
+def get_local_bom_realobj_residual_count(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        row = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_bom_drafts WHERE scenario_tag = ?",
+            (scenario_tag.strip(),),
+        ).fetchone()
+    total = int(row["total"]) if row else 0
+    return _ok({"scenario_tag": scenario_tag.strip(), "total": total})
+
+
+@app.get("/api/local-dev/bom/{object_id}/readback")
+def readback_local_bom_realobj(
+    object_id: int,
+    scenario_tag: str = Query(..., min_length=1),
+) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        row = _get_bom_draft_row(connection, object_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="object not found")
+    draft_data = _bom_draft_row_to_dict(row)
+    if str(draft_data.get("scenario_tag", "")).strip() != scenario_tag.strip():
+        raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+    return _ok(_build_realobj_bom_readback(draft_data))
+
+
+@app.post("/api/local-dev/bom/{object_id}/rollback")
+def rollback_local_bom_realobj(object_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        row = _get_bom_draft_row(connection, object_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="object not found")
+    row_data = _bom_draft_row_to_dict(row)
+    if str(row_data.get("scenario_tag", "")).strip() != scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+    rolled = rollback_local_bom_drafts({"scenario_tag": scenario_tag})
+    rolled_data = rolled.get("data", {})
+    if not isinstance(rolled_data, dict):
+        raise HTTPException(status_code=500, detail="rollback failed")
+    return _ok(
+        {
+            "scenario_tag": scenario_tag,
+            "object_id": object_id,
+            "deleted_count": int(rolled_data.get("deleted_count", 0)),
+            "residual_records_after_rollback": int(rolled_data.get("residual_records_after_rollback", -1)),
+            "rollback_success": bool(rolled_data.get("rollback_success", False)),
+            "zero_residual_success": bool(rolled_data.get("zero_residual_success", False)),
+        }
+    )
 
 
 def _create_sales_order_draft_table(connection: sqlite3.Connection) -> None:

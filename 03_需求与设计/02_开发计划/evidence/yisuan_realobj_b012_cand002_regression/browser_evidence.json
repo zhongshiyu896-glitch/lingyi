@@ -1,0 +1,34 @@
+{
+  "scenario_tag": "REALOBJ-CAND002-B012-20260531-001",
+  "routes": [
+    {
+      "route": "/bom/list",
+      "target_url": "http://127.0.0.1:5174/bom/list",
+      "http_status": 200,
+      "final_path": "/bom/list"
+    },
+    {
+      "route": "/bom/detail",
+      "target_url": "http://127.0.0.1:5174/bom/detail",
+      "http_status": 200,
+      "final_path": "/bom/detail"
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "route_bom_list.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b012_cand002_regression/route_bom_list.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    },
+    {
+      "name": "route_bom_detail.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b012_cand002_regression/route_bom_detail.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    }
+  ],
+  "panel_text_snapshot": "REALOBJ-CAND-002 本地对象写入闭环（BOM）\nlocal-dev/sqlite/scenario_tag/test_data only\nscenario_tag\nBOM 编号\n款号\n款式名称\n版本\n状态\n草稿\n备注\n保存本地对象\n回读本地对象\n回滚 scenario\nzero_residual 校验\nobject_id\t-\tscenario_tag\tREALOBJ-CAND002-B012-20260531-001\nreadback_total\t0\tresidual_records\t-1\ncreate_success\tfalse\tupdate_success\tfalse\nreadback_success\tfalse\trollback_success\tfalse\nzero_residual_success\tfalse\ttest_data_used\ttrue"
+}

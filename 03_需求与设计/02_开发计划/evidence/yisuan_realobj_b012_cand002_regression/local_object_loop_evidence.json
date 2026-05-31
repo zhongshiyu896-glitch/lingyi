@@ -1,0 +1,14 @@
+{
+  "scenario_tag_present": true,
+  "create_success": true,
+  "update_success": true,
+  "local_object_id_created": true,
+  "local_object_id": 8,
+  "bom_main_readback_success": true,
+  "style_binding_readback_success": true,
+  "fabric_line_readback_success": true,
+  "trim_line_readback_success": true,
+  "cancel_or_rollback_success": true,
+  "zero_residual": true,
+  "residual_records": 0
+}

@@ -1,0 +1,10 @@
+{
+  "scenario_tag": "REALOBJ-CAND002-B011-20260531-001",
+  "endpoint_prefix": "/api/local-dev/bom",
+  "create_endpoint_observed": true,
+  "update_endpoint_observed": true,
+  "readback_endpoint_observed": true,
+  "rollback_endpoint_observed": true,
+  "residual_endpoint_observed": true,
+  "write_requests_only_local_dev_bom_endpoints": true
+}
