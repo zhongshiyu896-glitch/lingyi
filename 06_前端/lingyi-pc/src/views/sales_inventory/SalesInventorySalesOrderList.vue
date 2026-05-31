@@ -29,7 +29,7 @@
           </div>
           <div class="contract-status-tags">
             <el-tag type="success" effect="plain">popup-only 已验证</el-tag>
-            <el-tag type="danger" effect="plain">主订单保存 BLOCKED</el-tag>
+            <el-tag type="danger" effect="plain">主订单写入 BLOCKED</el-tag>
           </div>
         </div>
 
@@ -38,11 +38,11 @@
             <el-tag type="success" effect="plain">VERIFIED：popup-only 本地回写</el-tag>
             <el-tag type="warning" effect="plain">PARTIAL：静态字段/按钮展示</el-tag>
             <el-tag type="info" effect="plain">UNKNOWN：payload/详情回读</el-tag>
-            <el-tag type="danger" effect="plain">BLOCKED：主订单保存</el-tag>
+            <el-tag type="danger" effect="plain">BLOCKED：主订单写入</el-tag>
             <el-tag type="danger" effect="dark">NO-GO：生产/BOM/库存/财务</el-tag>
           </div>
           <p class="guard-note">
-            DEV-CAND-005 仅统一订单页风险 guard；popup-only 只表示弹窗保存(S)本地回写当前页面矩阵，不能声明订单创建、主保存、详情回读或后端 payload 成功。
+            DEV-CAND-005 仅统一订单页风险 guard；popup-only 只表示弹窗矩阵回写(S)本地回写当前页面矩阵，不能声明订单成立、主写入、详情回读或后端 payload 成功。
           </p>
         </div>
 
@@ -75,9 +75,9 @@
               <strong>数量 {{ a006QtyPopup.quantity }}</strong>
             </div>
             <p class="contract-note">
-              弹窗 {{ a006QtyPopup.popupSaveButton }} 仅证明回写当前页面矩阵；未点击主订单保存，未形成订单。
+              弹窗 {{ a006QtyPopup.popupSaveButton }} 仅证明回写当前页面矩阵；未点击主订单写入，未形成订单。
             </p>
-            <el-tag type="warning" effect="plain">不得外推为订单创建成功</el-tag>
+            <el-tag type="warning" effect="plain">不得外推为订单成立成功</el-tag>
 
             <div class="popup-only-demo" data-testid="dev-cand-004-popup-only-demo">
               <div class="demo-toolbar">
@@ -153,7 +153,7 @@
             type="warning"
             :closable="false"
             show-icon
-            title="本弹窗只模拟前端本地回写，不保存订单、不调用 API。"
+            title="本弹窗只模拟前端本地回写，不落库订单、不调用 API。"
           />
           <div class="dialog-matrix" data-testid="popup-only-cross-cell">
             <div class="matrix-row matrix-head">
@@ -168,13 +168,13 @@
             </div>
           </div>
           <p class="contract-note">
-            证据来源限定为 G2-FIX16：黑色 / M / 2 -> 弹窗 保存(S) -> 当前页面矩阵回写 2。
+            证据来源限定为 G2-FIX16：黑色 / M / 2 -> 弹窗 矩阵回写(S) -> 当前页面矩阵回写 2。
           </p>
         </div>
         <template #footer>
-          <el-button @click="popupOnlyDialogVisible = false">取消</el-button>
+          <el-button @click="popupOnlyDialogVisible = false">关闭</el-button>
           <el-button type="primary" @click="applyPopupOnlyMatrix">
-            保存(S) 仅本地回写 / 不保存订单
+            矩阵回写(S) 仅本地回写 / 不落库订单
           </el-button>
         </template>
       </el-dialog>
@@ -691,7 +691,7 @@ const a006QtyPopup = {
   color: '黑色',
   size: 'M',
   quantity: 2,
-  popupSaveButton: '保存(S)',
+  popupSaveButton: '矩阵回写(S)',
 }
 
 const popupOnlyDialogVisible = ref<boolean>(false)
@@ -710,9 +710,9 @@ const popupOnlyMatrix = reactive({
 const popupOnlyMatrixTotal = computed<number>(() => popupOnlyMatrix.quantity)
 const popupOnlyMatrixStatusText = computed<string>(() => {
   if (popupOnlyMatrix.writebackApplied) {
-    return `弹窗 保存(S) 已仅本地回写 ${popupOnlyMatrix.color}/${popupOnlyMatrix.size}/${popupOnlyMatrix.quantity}，合计 ${popupOnlyMatrixTotal.value}；不保存订单、不调用 API`
+    return `弹窗 矩阵回写(S) 已仅本地回写 ${popupOnlyMatrix.color}/${popupOnlyMatrix.size}/${popupOnlyMatrix.quantity}，合计 ${popupOnlyMatrixTotal.value}；不落库订单、不调用 API`
   }
-  return '本地矩阵尚未回写，点击弹窗内保存(S) 后仅更新当前页面矩阵；不保存订单、不调用 API'
+  return '本地矩阵尚未回写，点击弹窗内矩阵回写(S) 后仅更新当前页面矩阵；不落库订单、不调用 API'
 })
 
 const openPopupOnlyMatrixDialog = (): void => {
@@ -750,19 +750,19 @@ const a006LinkedNogoSections = [
 ]
 
 const a006BlockedActions = [
-  '主订单保存',
+  '主订单写入',
   '详情回读 verified',
-  '提交',
+  '送审状态查看',
   '审核',
   '反审核',
-  '删除',
+  '移除阻断',
   '作废',
-  '生成生产',
-  '生成采购',
-  '生成加工单',
-  'BOM 保存',
+  '生产联动产出',
+  '采购联动产出',
+  '加工单联动产出',
+  'BOM 写入',
   '入库/出库',
-  '收款/付款/对账',
+  '收付/对账',
 ]
 
 const formatAmount = (value: string | number | null | undefined): string => {

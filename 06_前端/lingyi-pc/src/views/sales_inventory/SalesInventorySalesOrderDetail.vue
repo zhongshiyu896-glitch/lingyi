@@ -90,9 +90,9 @@
               data-testid="sales-order-detail-action-place-order"
               data-action-type="write"
               data-write-guard="guarded:readonly"
-              @click="guardedWriteAction('提交审核')"
+              @click="guardedWriteAction('送审状态查看')"
             >
-              提交审核
+              送审状态查看
             </el-button>
             <el-button
               data-testid="sales-order-detail-action-export"

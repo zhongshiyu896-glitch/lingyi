@@ -738,7 +738,7 @@
                 <el-tag type="danger" effect="dark">NO-GO：生产/库存/财务</el-tag>
               </div>
               <p class="guard-note">
-                DEV-CAND-005 仅统一 UI guard 表达；报价草稿仍只支持字段、状态和最小回读壳层，不实现保存、提交、审核、转订单、价格算法或利润公式。
+                DEV-CAND-005 仅统一 UI guard 表达；报价草稿仍只支持字段、状态和最小回读壳层，不提供写入动作；价格与收益口径仅作 blocked 说明。
               </p>
             </div>
 
