@@ -9,9 +9,20 @@ const __dirname = path.dirname(__filename)
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:8000'
-  const devAuthHeadersEnabled = env.VITE_LINGYI_DEV_AUTH_HEADERS === 'true'
-  const devUser = (env.VITE_LINGYI_DEV_USER || '').trim()
-  const devRoles = (env.VITE_LINGYI_DEV_ROLES || '').trim()
+  const explicitDevAuthFlag = (env.VITE_LINGYI_DEV_AUTH_HEADERS || '').trim().toLowerCase()
+  const isLocalProxyTarget = (() => {
+    try {
+      const parsed = new URL(apiProxyTarget)
+      return parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost'
+    } catch {
+      return false
+    }
+  })()
+  const devAuthHeadersEnabled = explicitDevAuthFlag
+    ? explicitDevAuthFlag === 'true'
+    : (mode === 'development' && isLocalProxyTarget)
+  const devUser = (env.VITE_LINGYI_DEV_USER || (devAuthHeadersEnabled ? 'local.dev' : '')).trim()
+  const devRoles = (env.VITE_LINGYI_DEV_ROLES || (devAuthHeadersEnabled ? 'System Manager' : '')).trim()
 
   return {
     plugins: [vue()],

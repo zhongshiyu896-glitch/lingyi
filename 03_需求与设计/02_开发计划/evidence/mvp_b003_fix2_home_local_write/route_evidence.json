@@ -1,0 +1,14 @@
+{
+  "routes": [
+    {
+      "route": "/home",
+      "http_status": 200,
+      "final_path": "/home"
+    },
+    {
+      "route": "/dashboard/overview",
+      "http_status": 200,
+      "final_path": "/dashboard/overview"
+    }
+  ]
+}

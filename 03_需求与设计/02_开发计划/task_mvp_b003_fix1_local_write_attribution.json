@@ -1,0 +1,104 @@
+{
+  "status": "DONE",
+  "task_id": "TASK-MVP-B003-FIX1-LOCAL-WRITE-ATTRIBUTION",
+  "role": "B Engineer",
+  "summary": {
+    "head": "e9c2f052688af4acd0e31aaaa3723016013db279",
+    "branch": "codex/sprint4-seal",
+    "cached_empty": true,
+    "blocker": "auth_401_on_local_sqlite_write_loop",
+    "root_cause": "HomePage.vue/saveLocalDraft 调用受鉴权保护的 /api/warehouse/stock-entry-drafts；当前运行态未满足 dev-auth 可用条件，POST 返回 401，导致 draft_id 未生成，后续 cancel/readback 失败。",
+    "next_task": "TASK-MVP-B003-FIX2-IMPL-PENDING-A-AUTH"
+  },
+  "failure": {
+    "failing_request_url": "http://127.0.0.1:5174/api/warehouse/stock-entry-drafts",
+    "failing_request_method": "POST",
+    "failing_status": 401,
+    "caller_file": "06_前端/lingyi-pc/src/views/HomePage.vue",
+    "caller_handler": "saveLocalDraft -> createWarehouseStockEntryDraft",
+    "draft_id_created": false,
+    "save_success": false,
+    "cancel_success": false,
+    "readback_success": false,
+    "used_auth_protected_api": true,
+    "used_erpnext_production_endpoint": false
+  },
+  "local_support": {
+    "local_sqlite_support_found": true,
+    "scenario_tag_support_found": true,
+    "support_files": [
+      {
+        "path": "06_前端/lingyi-pc/src/api/warehouse.ts",
+        "purpose": "scenario_tag/request_id 生成与 stock-entry-drafts create/fetch/cancel 封装",
+        "clean": true
+      },
+      {
+        "path": "07_后端/lingyi_service/app/routers/warehouse.py",
+        "purpose": "stock-entry-drafts 路由与 local-dev/sqlite/scenario_tag gate 校验",
+        "clean": true
+      },
+      {
+        "path": "07_后端/lingyi_service/app/core/auth.py",
+        "purpose": "get_current_user 支持 LINGYI_ALLOW_DEV_AUTH + X-LY-Dev-* 头",
+        "clean": true
+      },
+      {
+        "path": "07_后端/lingyi_service/scripts/run_local_dev_runtime.sh",
+        "purpose": "本地 runtime 启动脚本，导出 LINGYI_ALLOW_DEV_AUTH=true",
+        "clean": true
+      },
+      {
+        "path": "07_后端/lingyi_service/app/local_dev.py",
+        "purpose": "本地 dev ASGI 入口，设定 local sqlite 与 dev auth 环境",
+        "clean": false,
+        "git_status": "untracked"
+      }
+    ],
+    "support_files_clean": false,
+    "can_fix_with_original_allowed_files": false,
+    "cannot_fix_reason": "B003 现有 allowlist 仅含 HomePage.vue 与 DashboardOverview.vue；401 根因位于鉴权/运行时门禁链路，需补充前后端最小门禁配置改造或授权运行时入口，不可仅靠当前两文件保证闭环成功。",
+    "requested_allowlist_for_fix2": [
+      "06_前端/lingyi-pc/src/views/HomePage.vue",
+      "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue"
+    ],
+    "requested_additional_allowed_files": [
+      {
+        "path": "06_前端/lingyi-pc/vite.config.ts",
+        "exists": true,
+        "clean": true,
+        "why": "确保 /api 代理稳定注入 X-LY-Dev-User/X-LY-Dev-Roles（仅 local-dev）。"
+      },
+      {
+        "path": "07_后端/lingyi_service/app/local_dev.py",
+        "exists": true,
+        "clean": false,
+        "git_status": "untracked",
+        "why": "本地 runtime 依赖入口；当前未纳入版本管理。"
+      }
+    ],
+    "requested_additional_allowed_files_all_exist_and_clean": false,
+    "fix2_minimal_strategy": "先修复 local-dev 鉴权链路可达性（dev header + local runtime gate），再在 B003 两页面内完成 save/cancel/readback 闭环证据重采。"
+  },
+  "safety": {
+    "production_write_risk": "none_observed",
+    "erpnext_production_write_risk": "none_observed",
+    "real_account_risk": "medium_if_using_real_login_session",
+    "remote_lifecycle_parked": true,
+    "go_live": false,
+    "project_completion": false
+  },
+  "checks": {
+    "product_code_changed_in_fix1": false,
+    "validation_rerun": false,
+    "staged_area_empty": true,
+    "git_diff_check": "PASS",
+    "outputs_unstaged": true
+  },
+  "residual_risk": [
+    "B003 still blocked until local write loop succeeds",
+    "remote_lifecycle_parked=true",
+    "production_readback=false",
+    "go_live=false",
+    "project_completion=false"
+  ]
+}

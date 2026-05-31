@@ -1,0 +1,11 @@
+{
+  "frontend_started": true,
+  "frontend_reused": false,
+  "frontend_url": "http://127.0.0.1:5174",
+  "frontend_stopped": true,
+  "backend_local_dev_started": false,
+  "backend_local_dev_reused": true,
+  "backend_runtime": "uvicorn app.local_dev:app --host 127.0.0.1 --port 8000",
+  "backend_url": "http://127.0.0.1:8000",
+  "backend_stopped": false
+}

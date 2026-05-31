@@ -1,0 +1,39 @@
+field	value
+status	DONE
+task_id	TASK-MVP-B003-FIX1-LOCAL-WRITE-ATTRIBUTION
+role	B Engineer
+head	e9c2f052688af4acd0e31aaaa3723016013db279
+branch	codex/sprint4-seal
+cached_empty	true
+blocker	auth_401_on_local_sqlite_write_loop
+root_cause	HomePage.vue/saveLocalDraft 调用受鉴权保护 /api/warehouse/stock-entry-drafts 返回 401，draft_id 未生成导致 cancel/readback 连锁失败
+next_task	TASK-MVP-B003-FIX2-IMPL-PENDING-A-AUTH
+failing_request_url	http://127.0.0.1:5174/api/warehouse/stock-entry-drafts
+failing_request_method	POST
+failing_status	401
+caller_file	06_前端/lingyi-pc/src/views/HomePage.vue
+caller_handler	saveLocalDraft -> createWarehouseStockEntryDraft
+draft_id_created	false
+save_success	false
+cancel_success	false
+readback_success	false
+local_sqlite_support_found	true
+scenario_tag_support_found	true
+support_files	06_前端/lingyi-pc/src/api/warehouse.ts;07_后端/lingyi_service/app/routers/warehouse.py;07_后端/lingyi_service/app/core/auth.py;07_后端/lingyi_service/scripts/run_local_dev_runtime.sh;07_后端/lingyi_service/app/local_dev.py(untracked)
+support_files_clean	false
+can_fix_with_original_allowed_files	false
+requested_allowlist_for_fix2	06_前端/lingyi-pc/src/views/HomePage.vue;06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue
+requested_additional_allowed_files	06_前端/lingyi-pc/vite.config.ts(clean);07_后端/lingyi_service/app/local_dev.py(untracked)
+requested_additional_allowed_files_all_exist_and_clean	false
+fix2_minimal_strategy	先修复 local-dev 鉴权链路可达性(dev header + local runtime gate)，再在 B003 两页面内重做 save/cancel/readback 闭环
+production_write_risk	none_observed
+erpnext_production_write_risk	none_observed
+real_account_risk	medium_if_using_real_login_session
+remote_lifecycle_parked	true
+go_live	false
+project_completion	false
+product_code_changed_in_fix1	false
+validation_rerun	false
+staged_area_empty	true
+git_diff_check	PASS
+outputs_unstaged	true

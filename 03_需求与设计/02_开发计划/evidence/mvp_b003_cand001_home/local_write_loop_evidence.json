@@ -1,0 +1,10 @@
+{
+  "scenario_tag": "Z003-WAREHOUSE-20260531-412",
+  "create_or_update": "反馈：本地草稿已更新：home / 待处理",
+  "save": "反馈：本地保存失败：登录已失效，请重新登录",
+  "save_draft_id": "draft_id：未生成",
+  "readback": "反馈：当前无可回读 draft_id，请先本地保存。",
+  "cancel": "反馈：当前无可取消 draft_id。",
+  "rollback": "反馈：rollback 完成，zero_residual=true",
+  "zero_residual": "zero_residual=true (residual_count=0)"
+}

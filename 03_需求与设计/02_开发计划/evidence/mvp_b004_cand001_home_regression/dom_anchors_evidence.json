@@ -1,0 +1,26 @@
+{
+  "required_anchors": [
+    "mvp-home-module-entry",
+    "mvp-home-status-panel",
+    "mvp-home-query-filter",
+    "mvp-home-local-draft",
+    "mvp-home-local-save",
+    "mvp-home-local-cancel",
+    "mvp-home-local-readback",
+    "mvp-home-rollback-zero-residual"
+  ],
+  "observed": "8/8",
+  "anchors": {
+    "mvp-home-module-entry": true,
+    "mvp-home-status-panel": true,
+    "mvp-home-query-filter": true,
+    "mvp-home-local-draft": true,
+    "mvp-home-local-save": true,
+    "mvp-home-local-cancel": true,
+    "mvp-home-local-readback": true,
+    "mvp-home-rollback-zero-residual": true
+  },
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false
+}

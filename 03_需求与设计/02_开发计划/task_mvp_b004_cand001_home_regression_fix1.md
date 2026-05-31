@@ -1,0 +1,48 @@
+# TASK-MVP-B004-REGRESSION-CAND001-FIX1
+
+## SUMMARY
+- head: `e9c2f052688af4acd0e31aaaa3723016013db279`
+- branch: `codex/sprint4-seal`
+- fix_scope: `screenshot_dimension_only`
+- code_modified_in_fix1: `false`
+- screenshots_fixed: `true`
+- next_task: `TASK-MVP-B005-LEDGER-CAND001`
+
+## SCREENSHOTS
+- home_screenshot: `03_需求与设计/02_开发计划/evidence/mvp_b004_cand001_home_regression_fix1/mvp_b004_fix1_home_1440x1200.png`
+- home_png: `true`
+- home_width: `1440`
+- home_height: `1200`
+- dashboard_screenshot: `03_需求与设计/02_开发计划/evidence/mvp_b004_cand001_home_regression_fix1/mvp_b004_fix1_dashboard_overview_1440x1200.png`
+- dashboard_png: `true`
+- dashboard_width: `1440`
+- dashboard_height: `1200`
+
+## UNCHANGED_FACTS
+- routes_http_200: `true`
+- dom_anchors_observed: `8/8`
+- local_write_loop_success: `true`
+- auth_401_count: `0`
+- production_write_requests: `0`
+- erpnext_production_write_requests: `0`
+- real_production_account_used: `false`
+- typecheck_exit_code: `0`
+
+## CHECKS
+- cached_empty: `true`
+- head_tag_empty: `true`
+- git_diff_check: `PASS`
+- product_code_changed_in_fix1=false
+- outputs_unstaged=true
+- dev_server_started: `true`
+- dev_server_stopped: `true`
+
+## RESIDUAL_RISK
+- local_dev.py remains untracked support file and must be governed in ledger/stage
+- remote_lifecycle_parked=true
+- production_readback=false
+- go_live=false
+- project_completion=false
+
+## NEXT_RECOMMENDED_TASK
+- `TASK-MVP-B005-LEDGER-CAND001`

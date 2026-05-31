@@ -114,6 +114,43 @@
         data-testid="dashboard-overview-flow-feedback"
       />
 
+      <div class="mvp-home-mirror" data-testid="mvp-home-status-panel">
+        <div class="mvp-home-mirror__header">
+          <div>
+            <h3>首页工作台镜像（MVP-CAND-001）</h3>
+            <p>与 /home 保持一致：六模块入口状态、本地草稿摘要、只读生产边界。</p>
+          </div>
+          <div class="mvp-home-mirror__meta">
+            <span>scenario_tag: {{ mvpHomeScenarioTag }}</span>
+            <span>draft_id: {{ mvpHomeDraftId ?? '未生成' }}</span>
+            <span>draft_status: {{ mvpHomeDraftStatus || '未生成' }}</span>
+          </div>
+        </div>
+        <div class="mvp-home-mirror__filter" data-testid="mvp-home-query-filter">
+          <el-input v-model="mvpMirrorFilter.keyword" placeholder="按模块名/摘要过滤" clearable />
+          <el-select v-model="mvpMirrorFilter.status" style="width: 180px">
+            <el-option label="全部状态" value="all" />
+            <el-option label="已就绪" value="ready" />
+            <el-option label="待处理" value="pending" />
+            <el-option label="阻断" value="blocked" />
+          </el-select>
+          <el-button @click="refreshMvpHomeMirror">回读镜像</el-button>
+          <el-button @click="openFlowRoute('/home')">打开首页工作台</el-button>
+        </div>
+        <div class="mvp-home-mirror__grid" data-testid="mvp-home-module-entry">
+          <article v-for="item in filteredMvpHomeModules" :key="item.key" class="mvp-home-mirror__card">
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag :type="mvpMirrorStatusTag(item.status)" effect="plain">{{ mvpMirrorStatusText(item.status) }}</el-tag>
+            </header>
+            <p>{{ item.route }}</p>
+            <p>待办：{{ item.todo }}</p>
+            <p>最近动作：{{ item.last_action || '暂无' }}</p>
+            <el-button link type="primary" @click="openFlowRoute(item.route)">进入模块</el-button>
+          </article>
+        </div>
+      </div>
+
       <div class="home-enhanced-section" data-testid="dashboard-overview-home-section">
         <div class="section-header">
           <div class="title-wrap">
@@ -335,6 +372,121 @@ import {
 import { usePermissionStore } from '@/stores/permission'
 
 const LOCAL_ERROR_TOKEN = '__error__'
+const MVP_HOME_STORAGE_KEY = 'lingyi.mvp.home.snapshot.v1'
+
+type MvpMirrorStatus = 'ready' | 'pending' | 'blocked'
+type MvpMirrorFilterStatus = MvpMirrorStatus | 'all'
+
+interface MvpMirrorModule {
+  key: string
+  title: string
+  route: string
+  todo: string
+  status: MvpMirrorStatus
+  note: string
+  last_action: string
+}
+
+interface MvpMirrorSnapshot {
+  scenario_tag: string
+  draft_id: number | null
+  draft_status: string
+  module_states: Record<string, { status: MvpMirrorStatus, note: string, last_action: string }>
+}
+
+const mvpMirrorBaseModules: Array<Pick<MvpMirrorModule, 'key' | 'title' | 'route' | 'todo'>> = [
+  { key: 'home', title: '首页', route: '/home', todo: '入口状态回读' },
+  { key: 'foundation', title: '基础资料', route: '/sales-inventory/references', todo: '主数据可用性检查' },
+  { key: 'material-dev', title: '物料开发', route: '/bom/list', todo: 'BOM 结构与绑定准备' },
+  { key: 'bulk', title: '大货管理', route: '/sales-inventory/sales-orders', todo: '草稿订单准备' },
+  { key: 'purchase', title: '物料采购', route: '/materialPurchase/materialPurchaseProcess', todo: '采购前置单据连通' },
+  { key: 'stock', title: '物料进销存', route: '/sales-inventory/stock-ledger', todo: '库存流水回读' },
+]
+
+const buildDefaultMvpMirrorSnapshot = (): MvpMirrorSnapshot => ({
+  scenario_tag: '',
+  draft_id: null,
+  draft_status: '',
+  module_states: Object.fromEntries(
+    mvpMirrorBaseModules.map((item) => [item.key, { status: 'pending', note: '', last_action: '初始化' }]),
+  ),
+})
+
+const mvpMirrorSnapshot = ref<MvpMirrorSnapshot>(buildDefaultMvpMirrorSnapshot())
+const mvpMirrorFilter = reactive<{ keyword: string, status: MvpMirrorFilterStatus }>({
+  keyword: '',
+  status: 'all',
+})
+
+const mvpHomeScenarioTag = computed<string>(() => mvpMirrorSnapshot.value.scenario_tag || '未生成')
+const mvpHomeDraftId = computed<number | null>(() => mvpMirrorSnapshot.value.draft_id)
+const mvpHomeDraftStatus = computed<string>(() => mvpMirrorSnapshot.value.draft_status)
+
+const mvpHomeModules = computed<MvpMirrorModule[]>(() => (
+  mvpMirrorBaseModules.map((item) => {
+    const state = mvpMirrorSnapshot.value.module_states[item.key]
+    return {
+      ...item,
+      status: state?.status ?? 'pending',
+      note: state?.note ?? '',
+      last_action: state?.last_action ?? '',
+    }
+  })
+))
+
+const filteredMvpHomeModules = computed<MvpMirrorModule[]>(() => {
+  const keyword = mvpMirrorFilter.keyword.trim().toLowerCase()
+  return mvpHomeModules.value.filter((item) => {
+    const statusMatched = mvpMirrorFilter.status === 'all' || item.status === mvpMirrorFilter.status
+    if (!statusMatched) return false
+    if (!keyword) return true
+    return `${item.title}|${item.todo}|${item.note}`.toLowerCase().includes(keyword)
+  })
+})
+
+const mvpMirrorStatusText = (status: MvpMirrorStatus): string => {
+  if (status === 'ready') return '已就绪'
+  if (status === 'blocked') return '阻断'
+  return '待处理'
+}
+
+const mvpMirrorStatusTag = (status: MvpMirrorStatus): 'success' | 'warning' | 'danger' => {
+  if (status === 'ready') return 'success'
+  if (status === 'blocked') return 'danger'
+  return 'warning'
+}
+
+const refreshMvpHomeMirror = (): void => {
+  if (typeof window === 'undefined') return
+  const raw = window.localStorage.getItem(MVP_HOME_STORAGE_KEY)
+  if (!raw) {
+    mvpMirrorSnapshot.value = buildDefaultMvpMirrorSnapshot()
+    return
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<MvpMirrorSnapshot>
+    const merged = buildDefaultMvpMirrorSnapshot()
+    merged.scenario_tag = parsed.scenario_tag ?? ''
+    merged.draft_id = typeof parsed.draft_id === 'number' ? parsed.draft_id : null
+    merged.draft_status = parsed.draft_status ?? ''
+    if (parsed.module_states) {
+      for (const item of mvpMirrorBaseModules) {
+        const state = parsed.module_states[item.key]
+        if (state) {
+          merged.module_states[item.key] = {
+            status: state.status ?? 'pending',
+            note: state.note ?? '',
+            last_action: state.last_action ?? '',
+          }
+        }
+      }
+    }
+    mvpMirrorSnapshot.value = merged
+  } catch {
+    mvpMirrorSnapshot.value = buildDefaultMvpMirrorSnapshot()
+  }
+}
+
 const permissionStore = usePermissionStore()
 const router = useRouter()
 
@@ -596,6 +748,7 @@ const openDetail = async (row: DashboardKanbanMessageRow): Promise<void> => {
 }
 
 onMounted(async () => {
+  refreshMvpHomeMirror()
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('dashboard')
@@ -703,6 +856,76 @@ const FlowNodeCard = defineComponent({
 
 .state-alert {
   margin-bottom: 10px;
+}
+
+.mvp-home-mirror {
+  margin-bottom: 12px;
+  border: 1px solid #dbe2ea;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.mvp-home-mirror__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mvp-home-mirror__header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mvp-home-mirror__header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.mvp-home-mirror__meta {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: #475569;
+  min-width: 250px;
+}
+
+.mvp-home-mirror__filter {
+  display: grid;
+  grid-template-columns: 1fr 180px auto auto;
+  gap: 8px;
+}
+
+.mvp-home-mirror__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mvp-home-mirror__card {
+  border: 1px solid #dbe2ea;
+  border-radius: 6px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.mvp-home-mirror__card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.mvp-home-mirror__card p {
+  margin: 0;
+  font-size: 12px;
+  color: #475569;
 }
 
 .home-enhanced-section {
@@ -885,5 +1108,23 @@ const FlowNodeCard = defineComponent({
   color: #64748b;
   background: #f1f5f9;
   font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .mvp-home-mirror__header {
+    flex-direction: column;
+  }
+
+  .mvp-home-mirror__meta {
+    min-width: 0;
+  }
+
+  .mvp-home-mirror__filter {
+    grid-template-columns: 1fr;
+  }
+
+  .mvp-home-mirror__grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -1,0 +1,120 @@
+{
+  "status": "DONE",
+  "task_id": "TASK-MVP-B004-REGRESSION-CAND001",
+  "role": "B Engineer",
+  "summary": {
+    "head": "e9c2f052688af4acd0e31aaaa3723016013db279",
+    "branch": "codex/sprint4-seal",
+    "regression_only": true,
+    "code_modified_in_this_task": false,
+    "changed_files": [
+      "06_前端/lingyi-pc/src/views/HomePage.vue",
+      "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue",
+      "06_前端/lingyi-pc/vite.config.ts"
+    ],
+    "local_mvp_loop_complete": true,
+    "next_task": "TASK-MVP-B005-LEDGER-CAND001"
+  },
+  "evidence": {
+    "routes": [
+      {
+        "route": "/home",
+        "http_status": 200,
+        "final_path": "/home"
+      },
+      {
+        "route": "/dashboard/overview",
+        "http_status": 200,
+        "final_path": "/dashboard/overview"
+      }
+    ],
+    "screenshots": [
+      {
+        "route": "/home",
+        "path": "03_需求与设计/02_开发计划/evidence/mvp_b004_cand001_home_regression/mvp_b004_home_1440x1200.png",
+        "png": true,
+        "width": 1440,
+        "height": 1200
+      },
+      {
+        "route": "/dashboard/overview",
+        "path": "03_需求与设计/02_开发计划/evidence/mvp_b004_cand001_home_regression/mvp_b004_dashboard_overview_1440x1200.png",
+        "png": true,
+        "width": 1440,
+        "height": 1200
+      }
+    ],
+    "dom_anchors_observed": {
+      "required_count": 8,
+      "observed": "8/8",
+      "anchors": {
+        "mvp-home-module-entry": true,
+        "mvp-home-status-panel": true,
+        "mvp-home-query-filter": true,
+        "mvp-home-local-draft": true,
+        "mvp-home-local-save": true,
+        "mvp-home-local-cancel": true,
+        "mvp-home-local-readback": true,
+        "mvp-home-rollback-zero-residual": true
+      }
+    },
+    "local_write_loop_evidence": {
+      "scenario_tag": "Z003-WAREHOUSE-20260531-489",
+      "create_or_update_success": true,
+      "save_success": true,
+      "draft_id_created": true,
+      "draft_id": 14,
+      "readback_success": true,
+      "cancel_success": true,
+      "rollback_success": true,
+      "zero_residual_success": true,
+      "residual_records_after_rollback": 0
+    },
+    "network_write_observation": {
+      "auth_401_count": 0,
+      "production_write_requests": 0,
+      "erpnext_production_write_requests": 0,
+      "real_production_account_used": false,
+      "write_requests_observed_count": 2,
+      "write_requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:5174/api/warehouse/stock-entry-drafts",
+          "status": 201
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:5174/api/warehouse/stock-entry-drafts/14/cancel",
+          "status": 200
+        }
+      ]
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "workdir": "06_前端/lingyi-pc",
+      "exit_code": 0
+    },
+    "dev_server_started": true,
+    "dev_server_stopped": true,
+    "local_dev_started": false,
+    "local_dev_stopped": false
+  },
+  "scope_guard": {
+    "authorized_changed_files_only": true,
+    "local_dev_py_status": "untracked_support_file_governed",
+    "forbidden_paths_touched": [],
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": [],
+    "git_diff_check": "PASS",
+    "cached_empty": true
+  },
+  "residual_risk": {
+    "local_dev_py_remains_untracked_support_file_and_must_be_governed_in_ledger_stage": true,
+    "remote_lifecycle_parked": true,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false
+  },
+  "next_recommended_task": "TASK-MVP-B005-LEDGER-CAND001"
+}

@@ -1,0 +1,18 @@
+{
+  "scenario_tag": "Z003-WAREHOUSE-20260531-540",
+  "create_or_update_feedback": "反馈：本地草稿已更新：home / 待处理\n\ndraft_id：未生成\n\ndraft_status：未生成\n\n最近回读：暂无",
+  "save_feedback": "反馈：本地保存成功：draft_id=13，scenario_tag=Z003-WAREHOUSE-20260531-540\n\ndraft_id：13\n\ndraft_status：pending_outbox\n\n最近回读：2026-05-31T02:41:55.433Z",
+  "readback_feedback": "反馈：回读成功：draft_id=13 status=pending_outbox\n\ndraft_id：13\n\ndraft_status：pending_outbox\n\n最近回读：2026-05-31T02:41:55.463Z",
+  "cancel_feedback": "反馈：本地取消成功：status=cancelled\n\ndraft_id：未生成\n\ndraft_status：cancelled\n\n最近回读：2026-05-31T02:41:55.463Z",
+  "rollback_feedback": "反馈：rollback 完成，zero_residual=true\n\ndraft_id：未生成\n\ndraft_status：未生成\n\n最近回读：2026-05-31T02:41:55.530Z",
+  "zero_residual_text": "zero_residual=true (residual_count=0)",
+  "create_or_update_success": true,
+  "save_success": true,
+  "draft_id_created": true,
+  "draft_id": 13,
+  "readback_success": true,
+  "cancel_success": true,
+  "rollback_success": true,
+  "zero_residual_success": true,
+  "residual_records_after_rollback": 0
+}
