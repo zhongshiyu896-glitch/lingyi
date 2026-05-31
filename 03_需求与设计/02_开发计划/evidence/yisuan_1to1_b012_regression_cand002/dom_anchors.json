@@ -1,0 +1,60 @@
+{
+  "required_anchor_count": 12,
+  "required_anchors": [
+    "yisuan-1to1-reference-shell",
+    "yisuan-1to1-reference-toolbar",
+    "yisuan-1to1-reference-filter-panel",
+    "yisuan-1to1-reference-customer-list",
+    "yisuan-1to1-reference-supplier-list",
+    "yisuan-1to1-reference-material-list",
+    "yisuan-1to1-warehouse-shell",
+    "yisuan-1to1-warehouse-parity-readback",
+    "yisuan-1to1-warehouse-summary-cards",
+    "yisuan-1to1-warehouse-location-table",
+    "yisuan-1to1-basic-data-empty-state",
+    "yisuan-1to1-ui-source-readback"
+  ],
+  "observed_anchor_count": 12,
+  "observed_anchors": [
+    "yisuan-1to1-reference-shell",
+    "yisuan-1to1-reference-toolbar",
+    "yisuan-1to1-reference-filter-panel",
+    "yisuan-1to1-reference-customer-list",
+    "yisuan-1to1-reference-supplier-list",
+    "yisuan-1to1-reference-material-list",
+    "yisuan-1to1-basic-data-empty-state",
+    "yisuan-1to1-ui-source-readback",
+    "yisuan-1to1-warehouse-shell",
+    "yisuan-1to1-warehouse-parity-readback",
+    "yisuan-1to1-warehouse-summary-cards",
+    "yisuan-1to1-warehouse-location-table"
+  ],
+  "per_route_anchors": {
+    "/sales-inventory/references": [
+      "yisuan-1to1-reference-shell",
+      "yisuan-1to1-reference-toolbar",
+      "yisuan-1to1-reference-filter-panel",
+      "yisuan-1to1-reference-customer-list",
+      "yisuan-1to1-reference-supplier-list",
+      "yisuan-1to1-reference-material-list",
+      "yisuan-1to1-basic-data-empty-state",
+      "yisuan-1to1-ui-source-readback"
+    ],
+    "/foundation/warehouse": [
+      "yisuan-1to1-warehouse-shell",
+      "yisuan-1to1-warehouse-parity-readback",
+      "yisuan-1to1-warehouse-summary-cards",
+      "yisuan-1to1-warehouse-location-table",
+      "yisuan-1to1-ui-source-readback"
+    ],
+    "/warehouse": [
+      "yisuan-1to1-warehouse-shell",
+      "yisuan-1to1-warehouse-parity-readback",
+      "yisuan-1to1-warehouse-summary-cards",
+      "yisuan-1to1-ui-source-readback"
+    ]
+  },
+  "missing_anchors": [],
+  "anchors_observed_full": true,
+  "contract_source": "B010_PREP"
+}

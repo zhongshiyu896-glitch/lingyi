@@ -1,0 +1,42 @@
+section	field	value
+meta	STATUS	DONE
+meta	TASK_ID	TASK-YISUAN-1TO1-B011-IMPL
+meta	ROLE	B Engineer
+summary	head	18855ae9bd2c4ae2db1f0e3a653dbe8e6fac5f7c
+summary	branch	codex/sprint4-seal
+summary	changed_files	06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue;06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue
+summary	forbidden_paths_touched	[]
+summary	next_task	TASK-YISUAN-1TO1-B012-REGRESSION-CAND002
+route	/sales-inventory/references	HTTP 200
+route	/foundation/warehouse	HTTP 200;final_path=/warehouse?parity=foundation-warehouse
+route	/warehouse	HTTP 200
+screenshot	references	03_需求与设计/02_开发计划/evidence/yisuan_1to1_b011_impl/screenshots/sales_inventory_references_1440x1200.png|1440x1200
+screenshot	warehouse	03_需求与设计/02_开发计划/evidence/yisuan_1to1_b011_impl/screenshots/warehouse_1440x1200.png|1440x1200
+ui_source	source_status	found
+ui_source	ui_source_readback_present	true
+ui_source	a001_a006_business_contract_merged	false
+ui_source	ui_source_summary_file	03_需求与设计/02_开发计划/evidence/yisuan_1to1_b011_impl/ui_source_summary.json
+dom	anchors_observed	12/12
+dom	dom_anchors_file	03_需求与设计/02_开发计划/evidence/yisuan_1to1_b011_impl/dom_anchors.json
+network	write_requests_observed_count	0
+network	production_write_requests	0
+network	erpnext_production_write_requests	0
+network	real_production_account_used	false
+network	auth_401_count	0
+network	network_file	03_需求与设计/02_开发计划/evidence/yisuan_1to1_b011_impl/network_write_observation.json
+typecheck	command	npm run typecheck
+typecheck	workdir	06_前端/lingyi-pc
+typecheck	exit_code	0
+typecheck	result_file	03_需求与设计/02_开发计划/evidence/yisuan_1to1_b011_impl/typecheck_result.json
+dev_server	started	true
+dev_server	stopped	true
+data_boundary	data_classification	ui_parity_no_write
+data_boundary	test_data_used	false
+data_boundary	seed_data_used	false
+data_boundary	sqlite_not_formal_database	true
+data_boundary	erpnext_production_forbidden	true
+data_boundary	real_production_account_forbidden	true
+data_boundary	real_inventory_finance_production_records_migration_forbidden	true
+scope_guard	dirty_intersections	[]
+scope_guard	unknown_dirty	[]
+scope_guard	must_block_before_continue	[]

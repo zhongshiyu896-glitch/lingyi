@@ -1,0 +1,10 @@
+{
+  "source_status": "found",
+  "ui_source_readback_present": true,
+  "a001_a006_business_contract_merged": false,
+  "ui_sources": [
+    "04_测试与验收/测试证据/yisuan_incremental_capture/20260517T211026Z/screenshots/sidebar_modules/02_基础资料.png",
+    "04_测试与验收/测试证据/yisuan_business_shadow_capture/G0_baseline_20260518/module_entry_baseline.json"
+  ],
+  "route_parity_readback": "/foundation/warehouse -> /warehouse?parity=foundation-warehouse"
+}

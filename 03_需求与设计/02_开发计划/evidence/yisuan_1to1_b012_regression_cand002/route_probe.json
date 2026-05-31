@@ -1,0 +1,26 @@
+[
+  {
+    "route": "/sales-inventory/references",
+    "url": "http://127.0.0.1:5174/sales-inventory/references",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/sales-inventory/references",
+    "final_path": "/sales-inventory/references",
+    "ok_200": true
+  },
+  {
+    "route": "/foundation/warehouse",
+    "url": "http://127.0.0.1:5174/foundation/warehouse",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/warehouse?parity=foundation-warehouse",
+    "final_path": "/warehouse?parity=foundation-warehouse",
+    "ok_200": true
+  },
+  {
+    "route": "/warehouse",
+    "url": "http://127.0.0.1:5174/warehouse",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/warehouse",
+    "final_path": "/warehouse",
+    "ok_200": true
+  }
+]

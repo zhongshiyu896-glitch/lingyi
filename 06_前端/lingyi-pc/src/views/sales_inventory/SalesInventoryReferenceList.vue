@@ -1,8 +1,8 @@
 <template>
-  <div class="basic-reference-page">
+  <div class="basic-reference-page" data-testid="yisuan-1to1-reference-shell">
     <el-card shadow="never">
       <template #header>
-        <div class="header-row">
+        <div class="header-row" data-testid="yisuan-1to1-reference-toolbar">
           <div class="title-group">
             <span class="title">基础资料引用中心</span>
             <span class="sub-title">MVP-CAND-002 / 本地可用闭环</span>
@@ -30,7 +30,7 @@
         class="scope-alert"
       />
 
-      <section class="query-panel" data-testid="mvp-basic-reference-query-filter">
+      <section class="query-panel" data-testid="yisuan-1to1-reference-filter-panel">
         <el-form :model="query" :inline="true">
           <el-form-item label="关键字">
             <el-input
@@ -73,7 +73,7 @@
 
       <el-tabs v-model="activeTab" class="tabs" data-testid="mvp-basic-reference-tabs">
         <el-tab-pane label="客户引用" name="customer">
-          <section data-testid="mvp-basic-customer-reference">
+          <section data-testid="yisuan-1to1-reference-customer-list">
             <el-table :data="displayRows.customer" border>
               <el-table-column prop="code" label="客户编码" min-width="130" />
               <el-table-column prop="name" label="客户名称" min-width="150" />
@@ -115,7 +115,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="供应商引用" name="supplier">
-          <section data-testid="mvp-basic-supplier-reference">
+          <section data-testid="yisuan-1to1-reference-supplier-list">
             <el-table :data="displayRows.supplier" border>
               <el-table-column prop="code" label="供应商编码" min-width="130" />
               <el-table-column prop="name" label="供应商名称" min-width="150" />
@@ -157,7 +157,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="物料引用" name="material">
-          <section data-testid="mvp-basic-material-reference">
+          <section data-testid="yisuan-1to1-reference-material-list">
             <el-table :data="displayRows.material" border>
               <el-table-column prop="code" label="物料编码" min-width="140" />
               <el-table-column prop="name" label="物料名称" min-width="150" />
@@ -178,6 +178,20 @@
           </section>
         </el-tab-pane>
       </el-tabs>
+
+      <el-empty
+        v-show="activeRows.length === 0"
+        data-testid="yisuan-1to1-basic-data-empty-state"
+        description="当前筛选下暂无基础资料数据"
+      />
+
+      <el-alert
+        data-testid="yisuan-1to1-ui-source-readback"
+        type="info"
+        :closable="false"
+        title="UI source readback: incremental capture + G0 baseline（基础资料）"
+        class="scope-alert"
+      />
 
       <section class="local-write-panel" data-testid="mvp-basic-local-draft">
         <div class="local-write-title">本地草稿写闭环（local-dev/sqlite/scenario_tag）</div>
@@ -542,6 +556,11 @@ const displayRows = computed(() => ({
   factory: filterRows('factory'),
   material: filterRows('material'),
 }))
+
+const activeRows = computed<ReferenceRecord[]>(() => {
+  const rows = displayRows.value[activeTab.value as keyof typeof displayRows.value]
+  return Array.isArray(rows) ? rows : []
+})
 
 const statusTagType = (status: string): 'success' | 'warning' | 'info' => {
   if (status === 'active') return 'success'

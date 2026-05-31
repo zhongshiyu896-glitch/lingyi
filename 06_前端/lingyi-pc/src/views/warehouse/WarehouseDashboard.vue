@@ -1,38 +1,40 @@
 <template>
-  <div class="warehouse-page" data-testid="mvp-cand006-warehouse-page" data-legacy-testid="warehouse-page">
+  <div class="warehouse-page" data-testid="yisuan-1to1-warehouse-shell" data-legacy-testid="warehouse-page">
     <el-card shadow="never" data-testid="warehouse-stock-summary-section">
       <template #header>
         <div class="header-row">
           <div class="title-wrap">
             <h2>成品进销存 / 成品库存</h2>
             <span class="subtitle">成品库存台账（只读首版）</span>
-            <el-tag
-              v-if="isFinishedGoodsParity"
-              size="small"
-              type="info"
-              effect="plain"
-              data-testid="finished-goods-stock-parity-hint"
-            >
-              {{ finishedGoodsParityHint }}
-            </el-tag>
-            <el-tag
-              v-else-if="isFoundationWarehouseParity"
-              size="small"
-              type="warning"
-              effect="plain"
-              data-testid="foundation-warehouse-parity-hint"
-            >
-              {{ foundationWarehouseParityHint }}
-            </el-tag>
-            <el-tag
-              v-else
-              size="small"
-              type="info"
-              effect="plain"
-              data-testid="warehouse-stock-parity-hint"
-            >
-              {{ finishedGoodsParityHint }}
-            </el-tag>
+            <span data-testid="yisuan-1to1-warehouse-parity-readback">
+              <el-tag
+                v-if="isFinishedGoodsParity"
+                size="small"
+                type="info"
+                effect="plain"
+                data-legacy-testid="finished-goods-stock-parity-hint"
+              >
+                {{ finishedGoodsParityHint }}
+              </el-tag>
+              <el-tag
+                v-else-if="isFoundationWarehouseParity"
+                size="small"
+                type="warning"
+                effect="plain"
+                data-legacy-testid="foundation-warehouse-parity-hint"
+              >
+                {{ foundationWarehouseParityHint }}
+              </el-tag>
+              <el-tag
+                v-else
+                size="small"
+                type="info"
+                effect="plain"
+                data-legacy-testid="warehouse-stock-parity-hint"
+              >
+                {{ finishedGoodsParityHint }}
+              </el-tag>
+            </span>
           </div>
           <el-radio-group v-model="displayMode" size="small" data-testid="warehouse-stock-display-mode-toggle">
             <el-radio-button label="vertical">竖向</el-radio-button>
@@ -107,7 +109,7 @@
 
       <div
         class="warehouse-kpi-grid"
-        data-testid="mvp-cand006-warehouse-summary-cards"
+        data-testid="yisuan-1to1-warehouse-summary-cards"
         data-legacy-testid="warehouse-kpi-grid"
       >
         <div class="warehouse-kpi-card" data-testid="warehouse-kpi-sku-count">
@@ -172,6 +174,13 @@
         :closable="false"
         class="scope-alert"
         data-testid="warehouse-readonly-state"
+      />
+      <el-alert
+        title="UI source readback: incremental capture + G0 baseline（基础资料/仓库）"
+        type="info"
+        :closable="false"
+        class="scope-alert"
+        data-testid="yisuan-1to1-ui-source-readback"
       />
 
       <div class="local-write-row" data-testid="warehouse-stock-local-write-section">
@@ -446,6 +455,7 @@
           border
           empty-text="暂无仓库管理目录数据"
           class="management-table"
+          data-testid="yisuan-1to1-warehouse-location-table"
         >
           <el-table-column prop="warehouse_code" label="仓库编码" min-width="120" />
           <el-table-column prop="warehouse_name" label="仓库名称" min-width="140" />
