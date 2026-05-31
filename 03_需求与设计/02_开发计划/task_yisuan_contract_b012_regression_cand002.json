@@ -1,0 +1,113 @@
+{
+  "status": "DONE",
+  "task_id": "TASK-YISUAN-CONTRACT-B012-REGRESSION-CAND002",
+  "role": "B Engineer",
+  "head": "a58fb48689688ed02870667a22eb2de375722ac1",
+  "branch": "codex/sprint4-seal",
+  "cached_count": 0,
+  "head_tag_count": 0,
+  "code_modified_in_this_task": false,
+  "changed_files_attribution": {
+    "source_impl_task": "TASK-YISUAN-CONTRACT-B011-IMPL-CAND002",
+    "expected_changed_files": [
+      "06_前端/lingyi-pc/src/views/bom/BomList.vue",
+      "06_前端/lingyi-pc/src/views/bom/BomDetail.vue"
+    ],
+    "regression_touched_product_files": []
+  },
+  "routes_evidence": [
+    {
+      "route": "/bom/list",
+      "http_status": 200,
+      "final_path": "/bom/list"
+    },
+    {
+      "route": "/bom/detail",
+      "http_status": 200,
+      "final_path": "/bom/detail"
+    }
+  ],
+  "screenshot_evidence": [
+    {
+      "route": "/bom/list",
+      "file": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b012_cand002_regression/screenshots/bom_list.png",
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "route": "/bom/detail",
+      "file": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b012_cand002_regression/screenshots/bom_detail.png",
+      "width": 1440,
+      "height": 1200
+    }
+  ],
+  "contract_readback": {
+    "contract_source_readback_present": true,
+    "covered_contract_ids": [
+      "A002",
+      "A005"
+    ],
+    "ui_source_readback_present": true
+  },
+  "observed_contract_fields": {
+    "key_fields_observed": true,
+    "validation_rules_observed": true,
+    "status_rules_observed": true,
+    "readonly_readback_observed": true
+  },
+  "a005_partial_unknown_boundary": {
+    "a005_partial_unknown_fields_preserved": true,
+    "a005_partial_unknown_fields_claimed_as_confirmed": false
+  },
+  "network_write_evidence": {
+    "write_requests_observed_count": 0,
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "real_production_account_used": false,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "auth_401_count": 0
+  },
+  "typecheck_evidence": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "dev_server": {
+    "started": true,
+    "stopped": true,
+    "base_url": "http://127.0.0.1:4173"
+  },
+  "git_diff_check": "PASS",
+  "data_boundary": {
+    "data_classification": "contract_merge_no_real_object",
+    "test_data_used": false,
+    "seed_data_used": false,
+    "sqlite_not_formal_database": true,
+    "sqlite_direct_reuse_for_production_forbidden": true,
+    "erpnext_production_connected": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "remote_lifecycle_parked": true
+  },
+  "prohibited_actions_confirmation": {
+    "code_modified": false,
+    "local_dev_modified": false,
+    "router_api_backend_modified": false,
+    "stage_commit_amend_used": false,
+    "push_pr_tag_release_used": false,
+    "reset_restore_clean_delete_used": false,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "erpnext_production_connected": false,
+    "real_production_account_used": false,
+    "a005_partial_unknown_promoted_to_confirmed": false
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "evidence_dir": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b012_cand002_regression",
+  "residual_risk": "A005 partial/unknown 字段仍保持 pending/source_unknown/not_claimed；未宣称确认，后续实现仍需按合同边界推进。",
+  "next_role": "C Auditor"
+}

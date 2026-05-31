@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-05-31T17:41:12.090Z",
+  "routes": [
+    {
+      "route": "/bom/list",
+      "http_status": 200,
+      "final_path": "/bom/list"
+    },
+    {
+      "route": "/bom/detail",
+      "http_status": 200,
+      "final_path": "/bom/detail"
+    }
+  ]
+}

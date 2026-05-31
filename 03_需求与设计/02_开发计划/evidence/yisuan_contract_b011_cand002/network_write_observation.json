@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-05-31T17:32:33.159Z",
+  "total_requests_observed": 36,
+  "write_requests_observed_count": 0,
+  "write_requests": [],
+  "production_write_requests": 0,
+  "erpnext_production_write_requests": 0,
+  "real_production_account_used": false,
+  "auth_401_count": 0
+}

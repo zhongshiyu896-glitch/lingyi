@@ -14,7 +14,9 @@
 
       <div class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
         <el-tag type="success">source_status=found</el-tag>
-        <span>来源：incremental capture / G0 baseline（B018 继承）</span>
+        <el-tag type="primary">covered_contract_ids=A002,A005</el-tag>
+        <el-tag type="warning">A005 partial/unknown kept pending</el-tag>
+        <span>来源：A002/A005 contract sources（B010 继承，no-write）</span>
       </div>
 
       <el-descriptions :column="3" border class="style-summary" data-testid="yisuan-1to1-bom-style-summary">
@@ -83,6 +85,50 @@
       </div>
     </el-card>
 
+    <el-card shadow="never" class="contract-card">
+      <template #header>
+        <div class="panel-header">
+          <span>合同字段与规则回读（A002/A005）</span>
+          <el-tag type="danger" effect="plain">not_claimed_for_unknown_fields</el-tag>
+        </div>
+      </template>
+
+      <el-table :data="contractFieldRows" border stripe class="contract-field-table" data-testid="yisuan-contract-fields-observation">
+        <el-table-column prop="field" label="字段" min-width="160" />
+        <el-table-column prop="contract" label="合同来源" min-width="130" />
+        <el-table-column prop="status" label="状态" min-width="170" />
+        <el-table-column prop="evidence" label="页面策略" min-width="220" />
+      </el-table>
+
+      <div class="contract-block" data-testid="yisuan-contract-validation-rules">
+        <h4>validation_rules</h4>
+        <ul>
+          <li v-for="field in a005UnknownFields" :key="`unknown-${field}`">
+            {{ field }} => source_unknown / pending_confirmation / not_claimed
+          </li>
+        </ul>
+      </div>
+
+      <div class="contract-block" data-testid="yisuan-contract-status-rules">
+        <h4>status_rules</h4>
+        <div class="tag-row">
+          <el-tag v-for="state in a002StateLabels" :key="state" type="info" effect="light">{{ state }}</el-tag>
+          <el-tag type="warning" effect="light">quote_draft_status=待提交</el-tag>
+        </div>
+      </div>
+
+      <div class="contract-block" data-testid="yisuan-contract-readonly-readback-rules">
+        <h4>readonly/readback rules</h4>
+        <ul>
+          <li v-for="rule in explicitNonClaimRules" :key="rule">{{ rule }}</li>
+        </ul>
+        <div class="tag-row compact">
+          <el-tag v-for="action in a005BlockedActions" :key="`blocked-${action}`" type="danger" effect="plain">
+            {{ action }} blocked
+          </el-tag>
+        </div>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -103,6 +149,55 @@ interface MaterialLine {
 
 const router = useRouter()
 const route = useRoute()
+
+type ContractFieldRow = {
+  field: string
+  contract: string
+  status: string
+  evidence: string
+}
+
+const a002StateLabels = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
+const a005BlockedActions = [
+  '样板生成/生成样衣/确定推送',
+  '提交',
+  '审核',
+  '反审核',
+  '删除',
+  '作废',
+  'BOM',
+  '生产制单',
+  '加工单',
+  '库存入库',
+  '库存出库',
+  '领料',
+  '完工',
+  '财务收付款',
+  '报价/订单联动',
+]
+const a005UnknownFields = ['完整颜色尺码矩阵规则', '设计号生成/录入规则', '纸样师选择规则', '价格规则']
+const explicitNonClaimRules = [
+  'UI 静态证据不等同业务算法 1:1',
+  '报价提交未验证',
+  '审核未验证',
+  '转订单未验证',
+  'mainOrderSaveClicked=false',
+  'orderCreated=false',
+  'orderNumberGenerated=false',
+]
+const contractFieldRows: ContractFieldRow[] = [
+  { field: '款号', contract: 'A005', status: 'VERIFIED', evidence: '主信息区直接回读' },
+  { field: '款名', contract: 'A005', status: 'VERIFIED', evidence: '主信息区直接回读' },
+  { field: '单位', contract: 'A005', status: 'VERIFIED', evidence: '物料明细单位列' },
+  { field: '面料', contract: 'A005', status: 'VERIFIED', evidence: '面料 Tab 明细' },
+  { field: '备注', contract: 'A005', status: 'VERIFIED', evidence: '辅料 Tab 备注列' },
+  { field: '可打样', contract: 'A005', status: 'VERIFIED', evidence: '只读标记展示' },
+  { field: '创建人/修改人', contract: 'A005', status: 'VERIFIED', evidence: '主信息区展示' },
+  { field: '颜色/尺码', contract: 'A005', status: 'PARTIAL pending_confirmation', evidence: '标注未确认，不参与联动计算' },
+  { field: '吊牌价', contract: 'A005', status: 'PARTIAL pending_confirmation', evidence: '仅状态占位，禁止宣称已确认' },
+  { field: '设计号/纸样师', contract: 'A005', status: 'PARTIAL pending_confirmation', evidence: '保留为待确认字段' },
+  { field: '只读壳层规则', contract: 'A002', status: 'VERIFIED', evidence: '无写入按钮，无真实对象创建' },
+]
 
 const bomNo = computed(() => {
   const queryBom = route.query.bom_no
@@ -242,6 +337,42 @@ const goList = () => {
   font-size: 18px;
   color: #111827;
   letter-spacing: 0;
+}
+
+.contract-card {
+  border-radius: 6px;
+}
+
+.contract-field-table {
+  margin-bottom: 12px;
+}
+
+.contract-block {
+  margin-top: 10px;
+}
+
+.contract-block h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.contract-block ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-row.compact {
+  margin-top: 8px;
 }
 
 @media (max-width: 1180px) {

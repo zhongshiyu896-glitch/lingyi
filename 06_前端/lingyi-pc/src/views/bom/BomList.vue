@@ -14,7 +14,10 @@
 
       <div class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
         <el-tag type="success">source_status=found</el-tag>
-        <span>来源：incremental capture / G0 baseline（B018 继承）</span>
+        <el-tag type="primary">covered_contract_ids=A002,A005</el-tag>
+        <el-tag type="info">real_business_object_created=false</el-tag>
+        <el-tag type="info">linked_calculation_enabled=false</el-tag>
+        <span>来源：A002/A005 contract sources（B010 继承，no-write）</span>
       </div>
     </el-card>
 
@@ -46,6 +49,58 @@
         <el-tag type="info">草稿</el-tag>
         <el-tag type="warning">审核中</el-tag>
         <el-tag type="success">已发布</el-tag>
+      </div>
+    </el-card>
+
+    <el-card shadow="never" class="contract-boundary-card">
+      <template #header>
+        <div class="contract-header">
+          <strong>合同边界回读（A002/A005）</strong>
+          <el-tag type="warning">A005 partial/unknown 不宣称已确认</el-tag>
+        </div>
+      </template>
+
+      <div class="contract-grid">
+        <div class="contract-block" data-testid="yisuan-contract-key-fields">
+          <h4>key_fields</h4>
+          <div class="tag-row">
+            <el-tag v-for="field in a005VerifiedFields" :key="`verified-${field}`" type="success" effect="light">
+              {{ field }} VERIFIED
+            </el-tag>
+            <el-tag v-for="field in a005PartialFields" :key="`partial-${field}`" type="warning" effect="plain">
+              {{ field }} pending_confirmation
+            </el-tag>
+          </div>
+        </div>
+
+        <div class="contract-block" data-testid="yisuan-contract-validation-rules">
+          <h4>validation_rules</h4>
+          <ul>
+            <li v-for="field in a005UnknownFields" :key="`unknown-${field}`">
+              {{ field }} => source_unknown / not_claimed
+            </li>
+          </ul>
+          <div class="tag-row compact">
+            <el-tag v-for="action in a005BlockedActions" :key="`blocked-${action}`" type="danger" effect="plain">
+              {{ action }} blocked
+            </el-tag>
+          </div>
+        </div>
+
+        <div class="contract-block" data-testid="yisuan-contract-status-rules">
+          <h4>status_rules</h4>
+          <div class="tag-row">
+            <el-tag v-for="state in a002StateLabels" :key="state" type="info" effect="light">{{ state }}</el-tag>
+            <el-tag type="warning" effect="light">quote_draft_status=待提交</el-tag>
+          </div>
+        </div>
+
+        <div class="contract-block" data-testid="yisuan-contract-readonly-readback-rules">
+          <h4>readonly/readback rules</h4>
+          <ul>
+            <li v-for="rule in explicitNonClaimRules" :key="rule">{{ rule }}</li>
+          </ul>
+        </div>
       </div>
     </el-card>
 
@@ -97,6 +152,37 @@ interface BomRow {
 }
 
 const router = useRouter()
+
+const a005VerifiedFields = ['款号', '款名', '单位', '面料', '备注', '可打样', '创建人', '修改人']
+const a005PartialFields = ['颜色', '尺码', '吊牌价', '创建时间', '修改时间', '设计号', '纸样师']
+const a005UnknownFields = ['完整颜色尺码矩阵规则', '设计号生成/录入规则', '纸样师选择规则', '价格规则']
+const a005BlockedActions = [
+  '样板生成/生成样衣/确定推送',
+  '提交',
+  '审核',
+  '反审核',
+  '删除',
+  '作废',
+  'BOM',
+  '生产制单',
+  '加工单',
+  '库存入库',
+  '库存出库',
+  '领料',
+  '完工',
+  '财务收付款',
+  '报价/订单联动',
+]
+const a002StateLabels = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
+const explicitNonClaimRules = [
+  'UI 静态证据不等同业务算法 1:1',
+  '报价提交未验证',
+  '审核未验证',
+  '转订单未验证',
+  'mainOrderSaveClicked=false',
+  'orderCreated=false',
+  'orderNumberGenerated=false',
+]
 
 const sourceRows: BomRow[] = [
   {
@@ -236,5 +322,46 @@ const statusType = (status: BomStatus) => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.contract-boundary-card {
+  border-radius: 6px;
+}
+
+.contract-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.contract-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.contract-block h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.contract-block ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-row.compact {
+  margin-top: 8px;
 }
 </style>

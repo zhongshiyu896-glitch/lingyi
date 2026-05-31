@@ -1,0 +1,215 @@
+{
+  "task_id": "TASK-YISUAN-CONTRACT-B010-PREP-CAND002",
+  "role": "B Engineer",
+  "head": "a58fb48689688ed02870667a22eb2de375722ac1",
+  "branch": "codex/sprint4-seal",
+  "cached_count": 0,
+  "head_tag_count": 0,
+  "git_diff_check": "PASS",
+  "selected_candidate": "CONTRACT-CAND-002",
+  "covered_contract_ids": [
+    "A002",
+    "A005"
+  ],
+  "module_scope": "物料/BOM 契约合并",
+  "routes": [
+    "/bom/list",
+    "/bom/detail"
+  ],
+  "route_source_locations": {
+    "/bom/list": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:39-41",
+      "type": "direct",
+      "target": "@/views/bom/BomList.vue"
+    },
+    "/bom/detail": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:45-47",
+      "type": "direct",
+      "target": "@/views/bom/BomDetail.vue"
+    }
+  },
+  "allowed_files": [
+    "06_前端/lingyi-pc/src/views/bom/BomList.vue",
+    "06_前端/lingyi-pc/src/views/bom/BomDetail.vue"
+  ],
+  "allowed_files_status": {
+    "allowed_files_exist": true,
+    "allowed_files_clean": true,
+    "details": [
+      "06_前端/lingyi-pc/src/views/bom/BomList.vue|exists=true|clean=true",
+      "06_前端/lingyi-pc/src/views/bom/BomDetail.vue|exists=true|clean=true"
+    ]
+  },
+  "contract_sources": [
+    "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A002_business_contract_merge_20260520/yisuan_development_contract_input.json",
+    "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A005_style_field_color_size_material_contract_20260521/style_development_input.json"
+  ],
+  "contract_sources_status": {
+    "contract_sources_exist": true,
+    "details": [
+      "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A002_business_contract_merge_20260520/yisuan_development_contract_input.json|exists=true",
+      "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A005_style_field_color_size_material_contract_20260521/style_development_input.json|exists=true"
+    ]
+  },
+  "optional_support_files": [
+    "07_后端/lingyi_service/app/local_dev.py"
+  ],
+  "optional_support_status": {
+    "support_files_exist": true,
+    "support_files_clean": true,
+    "support_mode": "local-dev support only",
+    "details": [
+      "07_后端/lingyi_service/app/local_dev.py|exists=true|clean=true|modifiable_in_b010=false"
+    ]
+  },
+  "frozen_contract_boundary": {
+    "business_contract_summary": "BOM 字段、状态、款式颜色尺码与物料引用按 A002/A005 输入合并。",
+    "key_fields": {
+      "A005_verified_fields": [
+        "款号",
+        "款名",
+        "单位",
+        "面料",
+        "备注",
+        "可打样",
+        "创建人",
+        "修改人"
+      ],
+      "A005_partial_fields": [
+        "颜色",
+        "尺码",
+        "吊牌价",
+        "创建时间",
+        "修改时间",
+        "设计号",
+        "纸样师"
+      ],
+      "A002_contract_ids": [
+        "YISUAN-DEV-CONTRACT-baseline_reference",
+        "YISUAN-DEV-CONTRACT-base_objects_reference_contract",
+        "YISUAN-DEV-CONTRACT-style_min_create_readback_contract",
+        "YISUAN-DEV-CONTRACT-quote_draft_min_save_readback_contract",
+        "YISUAN-DEV-CONTRACT-order_qty_matrix_popup_only_contract",
+        "YISUAN-DEV-CONTRACT-ui_route_field_button_readonly_shell_contract"
+      ]
+    },
+    "validation_rules": {
+      "A005_unknown_fields_no_claim": [
+        "完整颜色尺码矩阵规则",
+        "设计号生成/录入规则",
+        "纸样师选择规则",
+        "价格规则"
+      ],
+      "A005_blocked_actions_no_enable": [
+        "样板生成/生成样衣/确定推送",
+        "提交",
+        "审核",
+        "反审核",
+        "删除",
+        "作废",
+        "BOM",
+        "生产制单",
+        "加工单",
+        "库存入库",
+        "库存出库",
+        "领料",
+        "完工",
+        "财务收付款",
+        "报价/订单联动"
+      ]
+    },
+    "status_rules": {
+      "A002_state_labels": [
+        "VERIFIED",
+        "PARTIAL",
+        "UNKNOWN",
+        "NO-GO",
+        "BLOCKED"
+      ],
+      "A002_quote_draft_status_reference": "待提交"
+    },
+    "readonly_readback_rules": {
+      "contract_source_readback_required": true,
+      "explicit_non_claim": [
+        "UI 静态证据不等同业务算法 1:1",
+        "报价提交未验证",
+        "审核未验证",
+        "转订单未验证",
+        "mainOrderSaveClicked=false",
+        "orderCreated=false",
+        "orderNumberGenerated=false"
+      ]
+    },
+    "forbidden_scope": [
+      "生产对象与库存财务联动计算",
+      "production readback / remote lifecycle / go-live"
+    ]
+  },
+  "frozen_evidence_requirement": {
+    "routes_http_200": [
+      "/bom/list",
+      "/bom/detail"
+    ],
+    "route_final_path_if_applicable": "N/A",
+    "png_screenshot_1440x1200": true,
+    "contract_source_readback_present": true,
+    "covered_contract_ids": [
+      "A002",
+      "A005"
+    ],
+    "key_fields_observed": true,
+    "validation_rules_observed": true,
+    "status_rules_observed": true,
+    "readonly_readback_rules_observed": true,
+    "write_requests_observed_count": 0,
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "real_production_account_used": false,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "typecheck_exit_code": 0,
+    "dev_server_started_stopped": true
+  },
+  "dirty_classification": {
+    "tracked_dirty_count": 16,
+    "frontend_dirty_count": 3,
+    "backend_or_test_dirty_count": 10,
+    "log_control_dirty_count": 3,
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": []
+  },
+  "implementation_allowed": true,
+  "data_boundary": {
+    "phase": "YISUAN-A001-A006-CONTRACT-MERGE-MAINLINE",
+    "data_classification": "contract_merge_no_real_object",
+    "test_data_used": false,
+    "test_data_future_requirement_if_needed": "scenario_tag + rollback + zero_residual required",
+    "seed_data_used": false,
+    "sqlite_not_formal_database": true,
+    "sqlite_direct_reuse_for_production_forbidden": true,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "erpnext_production_connected": false,
+    "real_production_account_used": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "remote_lifecycle_parked": true
+  },
+  "prohibited_actions_confirmation": {
+    "code_modified": false,
+    "browser_typecheck_pytest_rerun": false,
+    "stage_commit_amend_used": false,
+    "push_pr_tag_release": false,
+    "reset_restore_clean_delete": false,
+    "erpnext_production_connected": false,
+    "real_production_account_used": false,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "project_complete_or_go_live_claimed": false
+  },
+  "next_task": "TASK-YISUAN-CONTRACT-B011-IMPL-CAND002",
+  "residual_risk": "B010 仅冻结边界；A005 仍含 partial/unknown 字段，B011 必须按边界实现并保持 non-claim 与 no-write 约束。",
+  "next_role": "C Auditor"
+}

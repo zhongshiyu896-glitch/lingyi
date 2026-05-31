@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-05-31T17:41:12.091Z",
+  "source_status": "found",
+  "contract_source_readback_present": true,
+  "covered_contract_ids": [
+    "A002",
+    "A005"
+  ],
+  "ui_source_readback_present": true
+}

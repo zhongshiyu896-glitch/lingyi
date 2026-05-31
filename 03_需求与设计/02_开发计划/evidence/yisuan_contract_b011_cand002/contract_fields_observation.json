@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-05-31T17:32:33.159Z",
+  "covered_contract_ids": [
+    "A002",
+    "A005"
+  ],
+  "key_fields_observed": true,
+  "validation_rules_observed": true,
+  "status_rules_observed": true,
+  "readonly_readback_rules_observed": true,
+  "a005_partial_unknown_fields_preserved": true,
+  "a005_partial_unknown_fields_claimed_as_confirmed": false,
+  "observed_key_fields": [
+    "款号",
+    "款名",
+    "单位",
+    "面料",
+    "备注",
+    "可打样",
+    "创建人",
+    "修改人"
+  ],
+  "observed_partial_fields": [
+    "颜色",
+    "尺码",
+    "吊牌价",
+    "创建时间",
+    "修改时间",
+    "设计号",
+    "纸样师"
+  ],
+  "observed_unknown_fields": [
+    "完整颜色尺码矩阵规则",
+    "设计号生成/录入规则",
+    "纸样师选择规则",
+    "价格规则"
+  ],
+  "observed_status_labels": [
+    "VERIFIED",
+    "PARTIAL",
+    "UNKNOWN",
+    "NO-GO",
+    "BLOCKED"
+  ]
+}
