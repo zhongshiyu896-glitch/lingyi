@@ -1,24 +1,26 @@
 <template>
-  <div class="sales-order-list-page">
+  <div class="sales-order-list-page" data-testid="yisuan-1to1-sales-order-list-shell">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
           <div>
             <h2>大货管理 / 销售订单</h2>
-            <p class="sub-title">MVP-CAND-004 本地可用闭环（local-dev/sqlite/scenario_tag）</p>
+            <p class="sub-title">衣算云 UI 1:1 对齐（只读态，无写请求）</p>
           </div>
-          <el-button size="small" @click="goProductionPlans">查看生产计划</el-button>
+          <div class="header-actions">
+            <el-button size="small" @click="goProductionPlans">生产计划</el-button>
+            <el-button size="small" type="primary" plain @click="goHome">返回工作台</el-button>
+          </div>
         </div>
       </template>
 
-      <el-alert
-        type="info"
-        :closable="false"
-        title="本页仅展示和查询销售订单草稿，写入动作在详情页完成；所有写入必须走 local-dev endpoint。"
-        class="scope-alert"
-      />
+      <el-alert type="info" :closable="false" class="scope-alert">
+        <template #title>
+          页面仅做 UI parity 展示，保留列表筛选、状态观察与详情跳转，不触发新增/更新写操作。
+        </template>
+      </el-alert>
 
-      <section class="query-panel" data-testid="mvp-sales-order-list-query">
+      <section class="query-panel" data-testid="yisuan-1to1-sales-order-filter-panel">
         <el-form :model="query" inline>
           <el-form-item label="关键字">
             <el-input v-model="query.keyword" clearable placeholder="订单号/客户/款号" />
@@ -30,214 +32,160 @@
             <el-input v-model="query.styleCode" clearable placeholder="款号" />
           </el-form-item>
           <el-form-item label="状态">
-            <el-select
-              v-model="query.status"
-              clearable
-              placeholder="全部"
-              style="width: 160px"
-              data-testid="mvp-sales-order-status-filter"
-            >
+            <el-select v-model="query.status" clearable placeholder="全部" style="width: 160px">
               <el-option label="全部" value="" />
-              <el-option label="draft" value="draft" />
-              <el-option label="saved" value="saved" />
-              <el-option label="cancelled" value="cancelled" />
+              <el-option label="待确认" value="待确认" />
+              <el-option label="已排产" value="已排产" />
+              <el-option label="待交期评估" value="待交期评估" />
             </el-select>
           </el-form-item>
-          <el-form-item label="scenario_tag">
-            <el-input v-model="query.scenarioTag" clearable placeholder="MVP-CAND004-..." />
+          <el-form-item label="交期档位">
+            <el-select v-model="query.deliveryBucket" clearable placeholder="全部" style="width: 140px">
+              <el-option label="本周" value="week" />
+              <el-option label="两周内" value="two_weeks" />
+              <el-option label="本月" value="month" />
+            </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="loading" @click="refreshRows">查询</el-button>
-            <el-button @click="resetQuery">重置</el-button>
+            <el-button @click="resetQuery">重置筛选</el-button>
           </el-form-item>
         </el-form>
       </section>
 
-      <el-table :data="filteredRows" border v-loading="loading" class="result-table">
-        <el-table-column prop="orderNo" label="订单号" min-width="170" />
-        <el-table-column prop="customerName" label="客户" min-width="140" />
-        <el-table-column prop="styleCode" label="款号" min-width="140" />
-        <el-table-column prop="deliveryDate" label="交期" min-width="130" />
-        <el-table-column prop="status" label="状态" min-width="110">
-          <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="matrixTotal" label="矩阵数量" min-width="100" />
-        <el-table-column prop="plannedQty" label="已排产数量" min-width="110" />
-        <el-table-column prop="deltaQty" label="差异数量" min-width="100" />
-        <el-table-column prop="scenarioTag" label="scenario_tag" min-width="220" />
-        <el-table-column label="操作" width="140">
-          <template #default="{ row }">
-            <el-button link type="primary" @click="openDetail(row)">编辑草稿</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <section data-testid="yisuan-1to1-sales-order-table">
+        <el-table :data="filteredRows" border class="result-table">
+          <el-table-column prop="orderNo" label="订单号" min-width="170" />
+          <el-table-column prop="customerName" label="客户" min-width="140" />
+          <el-table-column prop="styleCode" label="款号" min-width="130" />
+          <el-table-column prop="deliveryDate" label="交期" min-width="120" />
+          <el-table-column prop="orderQty" label="订单数" min-width="100" />
+          <el-table-column prop="plannedQty" label="排产数" min-width="100" />
+          <el-table-column prop="delayRisk" label="交期风险" min-width="110" />
+          <el-table-column prop="status" label="状态" min-width="130">
+            <template #default="{ row }">
+              <span data-testid="yisuan-1to1-sales-order-status-tags">
+                <el-tag :type="statusTagType(row.status)" effect="plain">{{ row.status }}</el-tag>
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openDetail(row)">查看详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { request } from '@/api/request'
 
-interface SalesOrderMatrixCell {
-  color: string
-  size: string
-  ordered_qty: number
-  planned_qty: number
-  delta_qty: number
-}
-
-interface SalesOrderDraftData {
-  draft_id: number
-  scenario_tag: string
-  order_no: string
-  customer_name: string
-  style_code: string
-  delivery_date: string
-  status: string
-  quantity_matrix: SalesOrderMatrixCell[]
-  linked_plan_draft_id: number | null
-  state: string
-}
-
-interface SalesOrderDraftListResponse {
-  items: SalesOrderDraftData[]
-  total: number
-}
-
-interface SalesOrderRowView {
-  draftId: number | null
+interface SalesOrderRow {
   orderNo: string
   customerName: string
   styleCode: string
   deliveryDate: string
-  status: string
-  scenarioTag: string
-  matrixTotal: number
+  orderQty: number
   plannedQty: number
-  deltaQty: number
+  delayRisk: string
+  status: string
 }
 
 const router = useRouter()
-
-const loading = ref(false)
-const draftRows = ref<SalesOrderRowView[]>([])
 
 const query = reactive({
   keyword: '',
   customer: '',
   styleCode: '',
   status: '',
-  scenarioTag: '',
+  deliveryBucket: '',
 })
 
-const demoRows: SalesOrderRowView[] = [
+const rows: SalesOrderRow[] = [
   {
-    draftId: null,
-    orderNo: 'SO-DEMO-2401',
-    customerName: '蓝小姐工坊',
-    styleCode: 'STYLE-TEE-01',
-    deliveryDate: '2026-06-20',
-    status: 'draft',
-    scenarioTag: 'MVP-CAND004-DEMO-BASELINE',
-    matrixTotal: 120,
-    plannedQty: 80,
-    deltaQty: 40,
+    orderNo: 'SO-YS-260601',
+    customerName: '青禾服饰',
+    styleCode: 'JK-2410',
+    deliveryDate: '2026-06-12',
+    orderQty: 1280,
+    plannedQty: 900,
+    delayRisk: '中',
+    status: '已排产',
+  },
+  {
+    orderNo: 'SO-YS-260614',
+    customerName: '曜石商贸',
+    styleCode: 'DR-8831',
+    deliveryDate: '2026-06-21',
+    orderQty: 860,
+    plannedQty: 420,
+    delayRisk: '高',
+    status: '待交期评估',
+  },
+  {
+    orderNo: 'SO-YS-260626',
+    customerName: '北岸零售',
+    styleCode: 'TS-1077',
+    deliveryDate: '2026-06-29',
+    orderQty: 1560,
+    plannedQty: 0,
+    delayRisk: '中',
+    status: '待确认',
   },
 ]
 
-const statusTagType = (status: string): 'success' | 'warning' | 'danger' | 'info' => {
-  if (status === 'saved' || status === 'active') return 'success'
-  if (status === 'cancelled') return 'danger'
-  if (status === 'draft') return 'warning'
-  return 'info'
+const withinBucket = (deliveryDate: string, bucket: string): boolean => {
+  if (!bucket) return true
+  const today = new Date('2026-06-01')
+  const delivery = new Date(deliveryDate)
+  const delta = Math.floor((delivery.getTime() - today.getTime()) / (24 * 3600 * 1000))
+  if (bucket === 'week') return delta <= 7
+  if (bucket === 'two_weeks') return delta <= 14
+  if (bucket === 'month') return delta <= 30
+  return true
 }
 
-const calculateSummary = (matrix: SalesOrderMatrixCell[]): { matrixTotal: number; plannedQty: number; deltaQty: number } => {
-  const matrixTotal = matrix.reduce((sum, cell) => sum + Number(cell.ordered_qty || 0), 0)
-  const plannedQty = matrix.reduce((sum, cell) => sum + Number(cell.planned_qty || 0), 0)
-  return {
-    matrixTotal,
-    plannedQty,
-    deltaQty: matrixTotal - plannedQty,
-  }
-}
-
-const mapDraftToRow = (draft: SalesOrderDraftData): SalesOrderRowView => {
-  const summary = calculateSummary(draft.quantity_matrix || [])
-  return {
-    draftId: draft.draft_id,
-    orderNo: draft.order_no,
-    customerName: draft.customer_name,
-    styleCode: draft.style_code,
-    deliveryDate: draft.delivery_date,
-    status: draft.state || draft.status || 'draft',
-    scenarioTag: draft.scenario_tag,
-    matrixTotal: summary.matrixTotal,
-    plannedQty: summary.plannedQty,
-    deltaQty: summary.deltaQty,
-  }
-}
-
-const filteredRows = computed<SalesOrderRowView[]>(() => {
-  const source = draftRows.value.length > 0 ? draftRows.value : demoRows
+const filteredRows = computed<SalesOrderRow[]>(() => {
   const keyword = query.keyword.trim().toLowerCase()
   const customer = query.customer.trim().toLowerCase()
   const styleCode = query.styleCode.trim().toLowerCase()
-  const status = query.status.trim().toLowerCase()
-  const scenarioTag = query.scenarioTag.trim()
-  return source.filter((row) => {
+  const status = query.status.trim()
+  return rows.filter((row) => {
     if (keyword && !`${row.orderNo} ${row.customerName} ${row.styleCode}`.toLowerCase().includes(keyword)) return false
     if (customer && !row.customerName.toLowerCase().includes(customer)) return false
     if (styleCode && !row.styleCode.toLowerCase().includes(styleCode)) return false
-    if (status && row.status.toLowerCase() !== status) return false
-    if (scenarioTag && row.scenarioTag !== scenarioTag) return false
+    if (status && row.status !== status) return false
+    if (!withinBucket(row.deliveryDate, query.deliveryBucket.trim())) return false
     return true
   })
 })
-
-const refreshRows = async (): Promise<void> => {
-  loading.value = true
-  try {
-    const params = new URLSearchParams()
-    if (query.keyword.trim()) params.set('keyword', query.keyword.trim())
-    if (query.customer.trim()) params.set('customer_name', query.customer.trim())
-    if (query.styleCode.trim()) params.set('style_code', query.styleCode.trim())
-    if (query.status.trim()) params.set('status', query.status.trim())
-    if (query.scenarioTag.trim()) params.set('scenario_tag', query.scenarioTag.trim())
-    const queryString = params.toString()
-    const url = queryString ? `/api/local-dev/sales-order-drafts?${queryString}` : '/api/local-dev/sales-order-drafts'
-    const response = await request<SalesOrderDraftListResponse>(url)
-    draftRows.value = response.data.items.map(mapDraftToRow)
-  } catch (error) {
-    ElMessage.error(`查询失败：${(error as Error).message}`)
-  } finally {
-    loading.value = false
-  }
-}
 
 const resetQuery = (): void => {
   query.keyword = ''
   query.customer = ''
   query.styleCode = ''
   query.status = ''
-  query.scenarioTag = ''
-  void refreshRows()
+  query.deliveryBucket = ''
 }
 
-const openDetail = (row: SalesOrderRowView): void => {
+const statusTagType = (status: string): 'success' | 'warning' | 'danger' | 'info' => {
+  if (status === '已排产') return 'success'
+  if (status === '待交期评估') return 'danger'
+  if (status === '待确认') return 'warning'
+  return 'info'
+}
+
+const openDetail = (row: SalesOrderRow): void => {
   router.push({
     path: '/sales-inventory/sales-orders/detail',
     query: {
-      draft_id: row.draftId ? String(row.draftId) : undefined,
-      scenario_tag: row.scenarioTag || undefined,
       order_no: row.orderNo,
-      style_code: row.styleCode,
       customer_name: row.customerName,
+      style_code: row.styleCode,
+      parity: 'yisuan-1to1-cand004',
     },
   })
 }
@@ -246,15 +194,14 @@ const goProductionPlans = (): void => {
   router.push({
     path: '/production/plans',
     query: {
-      scenario_tag: query.scenarioTag || undefined,
-      parity: 'sales-order-local-plan',
+      parity: 'sales-order-ui-parity',
     },
   })
 }
 
-onMounted(() => {
-  void refreshRows()
-})
+const goHome = (): void => {
+  router.push('/home')
+}
 </script>
 
 <style scoped>
@@ -269,6 +216,11 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .header-row h2 {
@@ -289,6 +241,7 @@ onMounted(() => {
 
 .query-panel {
   margin-bottom: 8px;
+  padding: 8px 0 0;
 }
 
 .result-table {

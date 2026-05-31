@@ -1,0 +1,78 @@
+{
+  "required_anchors": [
+    "yisuan-1to1-sales-order-list-shell",
+    "yisuan-1to1-sales-order-filter-panel",
+    "yisuan-1to1-sales-order-table",
+    "yisuan-1to1-sales-order-status-tags",
+    "yisuan-1to1-sales-order-detail-shell",
+    "yisuan-1to1-sales-order-header-summary",
+    "yisuan-1to1-sales-order-quantity-matrix",
+    "yisuan-1to1-sales-order-progress-panel",
+    "yisuan-1to1-production-plan-shell",
+    "yisuan-1to1-production-plan-table",
+    "yisuan-1to1-production-plan-status-board",
+    "yisuan-1to1-ui-source-readback"
+  ],
+  "contract_source": "B026_PREP",
+  "observed_by_route": {
+    "/sales-inventory/sales-orders": {
+      "yisuan-1to1-sales-order-list-shell": true,
+      "yisuan-1to1-sales-order-filter-panel": true,
+      "yisuan-1to1-sales-order-table": true,
+      "yisuan-1to1-sales-order-status-tags": true,
+      "yisuan-1to1-sales-order-detail-shell": false,
+      "yisuan-1to1-sales-order-header-summary": false,
+      "yisuan-1to1-sales-order-quantity-matrix": false,
+      "yisuan-1to1-sales-order-progress-panel": false,
+      "yisuan-1to1-production-plan-shell": false,
+      "yisuan-1to1-production-plan-table": false,
+      "yisuan-1to1-production-plan-status-board": false,
+      "yisuan-1to1-ui-source-readback": false
+    },
+    "/sales-inventory/sales-orders/detail": {
+      "yisuan-1to1-sales-order-list-shell": false,
+      "yisuan-1to1-sales-order-filter-panel": false,
+      "yisuan-1to1-sales-order-table": false,
+      "yisuan-1to1-sales-order-status-tags": false,
+      "yisuan-1to1-sales-order-detail-shell": true,
+      "yisuan-1to1-sales-order-header-summary": true,
+      "yisuan-1to1-sales-order-quantity-matrix": true,
+      "yisuan-1to1-sales-order-progress-panel": true,
+      "yisuan-1to1-production-plan-shell": false,
+      "yisuan-1to1-production-plan-table": false,
+      "yisuan-1to1-production-plan-status-board": false,
+      "yisuan-1to1-ui-source-readback": false
+    },
+    "/production/plans": {
+      "yisuan-1to1-sales-order-list-shell": false,
+      "yisuan-1to1-sales-order-filter-panel": false,
+      "yisuan-1to1-sales-order-table": false,
+      "yisuan-1to1-sales-order-status-tags": false,
+      "yisuan-1to1-sales-order-detail-shell": false,
+      "yisuan-1to1-sales-order-header-summary": false,
+      "yisuan-1to1-sales-order-quantity-matrix": false,
+      "yisuan-1to1-sales-order-progress-panel": false,
+      "yisuan-1to1-production-plan-shell": true,
+      "yisuan-1to1-production-plan-table": true,
+      "yisuan-1to1-production-plan-status-board": true,
+      "yisuan-1to1-ui-source-readback": true
+    }
+  },
+  "observed_global": {
+    "yisuan-1to1-sales-order-list-shell": true,
+    "yisuan-1to1-sales-order-filter-panel": true,
+    "yisuan-1to1-sales-order-table": true,
+    "yisuan-1to1-sales-order-status-tags": true,
+    "yisuan-1to1-sales-order-detail-shell": true,
+    "yisuan-1to1-sales-order-header-summary": true,
+    "yisuan-1to1-sales-order-quantity-matrix": true,
+    "yisuan-1to1-sales-order-progress-panel": true,
+    "yisuan-1to1-production-plan-shell": true,
+    "yisuan-1to1-production-plan-table": true,
+    "yisuan-1to1-production-plan-status-board": true,
+    "yisuan-1to1-ui-source-readback": true
+  },
+  "observed_count": 12,
+  "expected_count": 12,
+  "observed_all": true
+}
