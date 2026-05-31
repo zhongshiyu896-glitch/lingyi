@@ -1,0 +1,75 @@
+field	value
+TASK_ID	TASK-YISUAN-CONTRACT-B018-PREP-CAND003
+ROLE	B Engineer
+HEAD	767dd71a2fcf4af58c60d4cf658eff5f8cb89afb
+branch	codex/sprint4-seal
+cached_count	0
+HEAD_tag_count	0
+git_diff_check	PASS
+selected_candidate	CONTRACT-CAND-003
+covered_contract_ids	["A002","A006"]
+module_scope	销售订单/大货计划契约合并
+routes	["/sales-inventory/sales-orders","/sales-inventory/sales-orders/detail","/production/plans"]
+route_source_locations	{"/sales-inventory/sales-orders":{"source":"06_前端/lingyi-pc/src/router/index.ts:162-164","type":"direct","target":"@/views/sales_inventory/SalesInventorySalesOrderList.vue"},"/sales-inventory/sales-orders/detail":{"source":"06_前端/lingyi-pc/src/router/index.ts:168-170","type":"direct","target":"@/views/sales_inventory/SalesInventorySalesOrderDetail.vue"},"/production/plans":{"source":"06_前端/lingyi-pc/src/router/index.ts:51-53","type":"direct","target":"@/views/production/ProductionPlanList.vue"}}
+allowed_files	["06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue","06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue","06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue"]
+allowed_files_exist	true
+allowed_files_clean	true
+contract_sources	["04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A002_business_contract_merge_20260520/yisuan_development_contract_input.json","04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A006_order_page_static_field_button_nogo_contract_20260521/order_page_development_input.json"]
+contract_sources_exist	true
+optional_support_files	["07_后端/lingyi_service/app/local_dev.py"]
+optional_support_status	{"exists":true,"clean":true,"mode":"local-dev support only","modifiable_in_b018":false}
+business_contract_summary	订单静态字段、按钮NO-GO边界与计划看板字段按A002/A006输入合并
+key_fields	A002_contract_ids(6)+A006_verified_contracts(1)+A006_allowed_display_sample(12)
+validation_rules	A006_partial_static_ui_contracts(3)+A006_forbidden_actions(17)
+status_rules	A002_state_labels(5)+A006_blocked_or_unknown_contracts(10)
+readonly_readback_rules	contract_source_readback_required=true + A002_explicit_non_claim + A006_development_boundary
+forbidden_scope	["主订单真实写入","生产联动计算","production readback / remote lifecycle / go-live"]
+B019_routes_http_200	["/sales-inventory/sales-orders","/sales-inventory/sales-orders/detail","/production/plans"]
+B019_png_1440x1200	true
+B019_contract_source_readback_present	true
+B019_covered_contract_ids	["A002","A006"]
+B019_key_fields_observed	true
+B019_validation_rules_observed	true
+B019_status_rules_observed	true
+B019_readonly_readback_rules_observed	true
+B019_partial_unknown_fields_preserved	true
+B019_partial_unknown_fields_claimed_as_confirmed	false
+B019_write_requests_observed_count	0
+B019_production_write_requests	0
+B019_erpnext_production_write_requests	0
+B019_real_production_account_used	false
+B019_real_business_object_created	false
+B019_linked_calculation_enabled	false
+B019_typecheck_exit_code	0
+B019_dev_server_started_stopped	true
+tracked_dirty_count	16
+frontend_dirty_count	3
+backend_or_test_dirty_count	10
+log_control_dirty_count	3
+dirty_intersections	[]
+unknown_dirty	[]
+must_block_before_continue	[]
+implementation_allowed	true
+next_task	TASK-YISUAN-CONTRACT-B019-IMPL-CAND003
+data_classification	contract_merge_no_real_object
+test_data_used	false
+test_data_future_requirement_if_needed	scenario_tag + rollback + zero_residual required
+seed_data_used	false
+sqlite_not_formal_database	true
+sqlite_direct_reuse_for_production_forbidden	true
+real_business_object_created	false
+linked_calculation_enabled	false
+erpnext_production_connected	false
+real_production_account_used	false
+production_readback	false
+go_live	false
+project_completion	false
+remote_lifecycle_parked	true
+prohibited_code_modified	false
+prohibited_validation_rerun	false
+prohibited_stage_commit_amend	false
+prohibited_push_pr_tag_release	false
+prohibited_reset_restore_clean_delete	false
+prohibited_backend_router_api_modification	false
+residual_risk	A006 has blocked/unknown contract items and must remain no-claim and no-action in B019
+NEXT_ROLE	C Auditor

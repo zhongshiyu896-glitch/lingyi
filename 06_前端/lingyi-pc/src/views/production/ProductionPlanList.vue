@@ -20,6 +20,15 @@
         </template>
       </el-alert>
 
+      <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
+        <el-tag type="success">contract_source_readback_present=true</el-tag>
+        <el-tag type="primary">covered_contract_ids=A002,A006</el-tag>
+        <el-tag type="warning">A006 blocked/unknown => not_claimed</el-tag>
+        <el-tag type="info">real_business_object_created=false</el-tag>
+        <el-tag type="info">linked_calculation_enabled=false</el-tag>
+        <span>来源：A002/A006 contract sources（B018 继承，no-write）</span>
+      </section>
+
       <section class="status-board" data-testid="yisuan-1to1-production-plan-status-board">
         <el-card v-for="card in statusBoard" :key="card.name" shadow="never" class="status-card">
           <div class="status-name">{{ card.name }}</div>
@@ -69,10 +78,50 @@
         </el-table>
       </section>
 
-      <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
-        <p>UI Source: /sidebar_modules/08_大货管理.png + G0 module_entry_baseline + TASK-Y34B-01 parity report</p>
-        <p>A001-A006 business contract merged: false</p>
-      </section>
+      <el-card shadow="never" class="contract-boundary-card">
+        <template #header>
+          <div class="contract-header">
+            <strong>合同边界回读（A002/A006）</strong>
+            <el-tag type="danger" effect="plain">popup_only / blocked / source_unknown / not_claimed</el-tag>
+          </div>
+        </template>
+
+        <div class="contract-grid">
+          <div class="contract-block" data-testid="yisuan-contract-key-fields">
+            <h4>key_fields</h4>
+            <div class="tag-row">
+              <el-tag v-for="field in keyFields" :key="`key-${field}`" type="success" effect="light">
+                {{ field }} VERIFIED
+              </el-tag>
+            </div>
+          </div>
+
+          <div class="contract-block" data-testid="yisuan-contract-validation-rules">
+            <h4>validation_rules</h4>
+            <ul>
+              <li v-for="rule in validationRules" :key="`rule-${rule}`">
+                {{ rule }} => blocked / source_unknown / pending_confirmation / not_claimed
+              </li>
+            </ul>
+          </div>
+
+          <div class="contract-block" data-testid="yisuan-contract-status-rules">
+            <h4>status_rules</h4>
+            <div class="tag-row">
+              <el-tag v-for="state in statusRules" :key="`state-${state}`" type="info" effect="light">{{ state }}</el-tag>
+              <el-tag type="warning" effect="light">A006_popup_only_boundary=true</el-tag>
+              <el-tag type="danger" effect="light">A006_blocked_unknown_claimed_as_confirmed=false</el-tag>
+            </div>
+          </div>
+
+          <div class="contract-block" data-testid="yisuan-contract-readonly-readback-rules">
+            <h4>readonly/readback rules</h4>
+            <ul>
+              <li v-for="rule in readbackRules" :key="`readback-${rule}`">{{ rule }}</li>
+            </ul>
+          </div>
+        </div>
+      </el-card>
     </el-card>
   </div>
 </template>
@@ -137,6 +186,46 @@ const statusBoard = [
   { name: '待锁定计划', value: '3', note: '交期确认前不可下发' },
   { name: '进行中计划', value: '8', note: '本周执行中的生产单' },
   { name: '异常待处理', value: '2', note: '涉及面料或工序冲突' },
+]
+
+const keyFields = [
+  '订单',
+  '客户',
+  '下单日期',
+  '业务员',
+  '汇率',
+  '币种',
+  '备注',
+  '款号',
+  '款名',
+  '颜色',
+  '尺码',
+  '单价',
+  '计划数量',
+  '计划状态',
+]
+
+const validationRules = [
+  '主订单保存',
+  '订单详情回读动作',
+  '生产制单',
+  '加工单',
+  'BOM',
+  '工序',
+  '库存',
+  '财务',
+  '提交/审核/删除/作废',
+  '生成生产/采购/加工单',
+]
+
+const statusRules = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
+
+const readbackRules = [
+  'UI 静态证据不等同业务算法 1:1',
+  'mainOrderSaveClicked=false',
+  'orderCreated=false',
+  'orderNumberGenerated=false',
+  'A006 blocked/unknown fields only for shell expression',
 ]
 
 const filteredPlans = computed(() => {
@@ -206,6 +295,16 @@ const goHome = (): void => {
   margin-bottom: 12px;
 }
 
+.source-readback {
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
 .status-board {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -242,14 +341,37 @@ const goHome = (): void => {
   width: 100%;
 }
 
-.source-readback {
+.contract-boundary-card {
   margin-top: 12px;
+}
+
+.contract-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.contract-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.contract-block h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.contract-block ul {
+  margin: 0;
+  padding-left: 18px;
   color: var(--el-text-color-secondary);
-  font-size: 12px;
   line-height: 1.5;
 }
 
-.source-readback p {
-  margin: 0;
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

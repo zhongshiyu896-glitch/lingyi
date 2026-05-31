@@ -1,0 +1,6 @@
+{
+  "command": "npm run typecheck",
+  "workdir": "06_前端/lingyi-pc",
+  "exit_code": 0,
+  "passed": true
+}

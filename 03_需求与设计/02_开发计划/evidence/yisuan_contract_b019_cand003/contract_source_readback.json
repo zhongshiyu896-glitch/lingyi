@@ -1,0 +1,15 @@
+{
+  "contract_source_readback_present": true,
+  "covered_contract_ids": [
+    "A002",
+    "A006"
+  ],
+  "ui_source_markers": {
+    "covered_contract_ids": true,
+    "blocked": true,
+    "source_unknown": true,
+    "pending_confirmation": true,
+    "popup_only": true,
+    "not_claimed": true
+  }
+}

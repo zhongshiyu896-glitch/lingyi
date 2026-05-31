@@ -20,6 +20,59 @@
         </template>
       </el-alert>
 
+      <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
+        <el-tag type="success">contract_source_readback_present=true</el-tag>
+        <el-tag type="primary">covered_contract_ids=A002,A006</el-tag>
+        <el-tag type="warning">A006 blocked/unknown = not_claimed</el-tag>
+        <el-tag type="info">real_business_object_created=false</el-tag>
+        <el-tag type="info">linked_calculation_enabled=false</el-tag>
+        <span>来源：A002/A006 contract sources（B018 继承，no-write）</span>
+      </section>
+
+      <el-card shadow="never" class="contract-boundary-card">
+        <template #header>
+          <div class="contract-header">
+            <strong>合同边界回读（A002/A006）</strong>
+            <el-tag type="danger" effect="plain">popup_only / not_claimed</el-tag>
+          </div>
+        </template>
+
+        <div class="contract-grid">
+          <div class="contract-block" data-testid="yisuan-contract-key-fields">
+            <h4>key_fields</h4>
+            <div class="tag-row">
+              <el-tag v-for="field in keyFields" :key="`key-${field}`" type="success" effect="light">
+                {{ field }} VERIFIED
+              </el-tag>
+            </div>
+          </div>
+
+          <div class="contract-block" data-testid="yisuan-contract-validation-rules">
+            <h4>validation_rules</h4>
+            <ul>
+              <li v-for="rule in validationRules" :key="`validation-${rule}`">
+                {{ rule }} => blocked / source_unknown / pending_confirmation / not_claimed
+              </li>
+            </ul>
+          </div>
+
+          <div class="contract-block" data-testid="yisuan-contract-status-rules">
+            <h4>status_rules</h4>
+            <div class="tag-row">
+              <el-tag v-for="state in statusRules" :key="`state-${state}`" type="info" effect="light">{{ state }}</el-tag>
+              <el-tag type="warning" effect="light">A006_popup_only_boundary=true</el-tag>
+            </div>
+          </div>
+
+          <div class="contract-block" data-testid="yisuan-contract-readonly-readback-rules">
+            <h4>readonly/readback rules</h4>
+            <ul>
+              <li v-for="rule in readbackRules" :key="`readback-${rule}`">{{ rule }}</li>
+            </ul>
+          </div>
+        </div>
+      </el-card>
+
       <section class="query-panel" data-testid="yisuan-1to1-sales-order-filter-panel">
         <el-form :model="query" inline>
           <el-form-item label="关键字">
@@ -68,6 +121,13 @@
               </span>
             </template>
           </el-table-column>
+          <el-table-column label="契约边界" min-width="220">
+            <template #default="{ row }">
+              <el-tag type="info" effect="plain">{{ row.contractBoundary }}</el-tag>
+              <el-tag size="small" type="warning" effect="plain">popup_only</el-tag>
+              <el-tag size="small" type="danger" effect="plain">not_claimed</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="120">
             <template #default="{ row }">
               <el-button link type="primary" @click="openDetail(row)">查看详情</el-button>
@@ -92,6 +152,7 @@ interface SalesOrderRow {
   plannedQty: number
   delayRisk: string
   status: string
+  contractBoundary: string
 }
 
 const router = useRouter()
@@ -114,6 +175,7 @@ const rows: SalesOrderRow[] = [
     plannedQty: 900,
     delayRisk: '中',
     status: '已排产',
+    contractBoundary: 'VERIFIED',
   },
   {
     orderNo: 'SO-YS-260614',
@@ -124,6 +186,7 @@ const rows: SalesOrderRow[] = [
     plannedQty: 420,
     delayRisk: '高',
     status: '待交期评估',
+    contractBoundary: 'PARTIAL',
   },
   {
     orderNo: 'SO-YS-260626',
@@ -134,7 +197,46 @@ const rows: SalesOrderRow[] = [
     plannedQty: 0,
     delayRisk: '中',
     status: '待确认',
+    contractBoundary: 'BLOCKED',
   },
+]
+
+const keyFields = [
+  '订单',
+  '客户',
+  '下单日期',
+  '业务员',
+  '汇率',
+  '币种',
+  '备注',
+  '款号',
+  '款名',
+  '颜色',
+  '尺码',
+  '单价',
+]
+
+const validationRules = [
+  '主订单保存',
+  '订单详情回读动作',
+  '生产制单',
+  '加工单',
+  'BOM',
+  '工序',
+  '库存',
+  '财务',
+  '提交/审核/删除/作废',
+  '生成生产/采购/加工单',
+]
+
+const statusRules = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
+
+const readbackRules = [
+  'UI 静态证据不等同业务算法 1:1',
+  'mainOrderSaveClicked=false',
+  'orderCreated=false',
+  'orderNumberGenerated=false',
+  'A006 blocked/unknown fields only for shell expression',
 ]
 
 const withinBucket = (deliveryDate: string, bucket: string): boolean => {
@@ -237,6 +339,49 @@ const goHome = (): void => {
 
 .scope-alert {
   margin-bottom: 12px;
+}
+
+.source-readback {
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.contract-boundary-card {
+  margin-bottom: 12px;
+}
+
+.contract-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.contract-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.contract-block h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.contract-block ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.5;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .query-panel {
