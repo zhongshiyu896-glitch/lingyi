@@ -1,0 +1,214 @@
+{
+  "status": "DONE",
+  "task_id": "TASK-YISUAN-CONTRACT-B002-PREP-CAND001",
+  "role": "B Engineer",
+  "prep_only": true,
+  "selected_candidate": "CONTRACT-CAND-001",
+  "baseline": {
+    "repo": "/Users/hh/Desktop/领意服装管理系统",
+    "branch": "codex/sprint4-seal",
+    "head": "0a0c6e36e9792a8fdde27360167c9e1c4e724995",
+    "cached_empty": true,
+    "head_tag_empty": true,
+    "b001_selected_candidate": "CONTRACT-CAND-001",
+    "b001_candidate_pool_status": "PASS",
+    "remote_lifecycle_parked": true,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false
+  },
+  "inherited_from_b001": {
+    "candidate_id": "CONTRACT-CAND-001",
+    "module_scope": "基础资料契约合并",
+    "covered_contract_ids": [
+      "A001",
+      "A003"
+    ],
+    "contract_source_files": [
+      "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A001_evidence_coverage_matrix_20260520/evidence_coverage_matrix.json",
+      "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A003_ui_route_field_button_readonly_contract_20260520/ui_contract_development_input.json"
+    ],
+    "routes": [
+      "/sales-inventory/references",
+      "/foundation/warehouse",
+      "/warehouse"
+    ],
+    "allowed_files": [
+      "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+      "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue"
+    ],
+    "optional_support_files": [],
+    "business_contract_summary": "基础资料字段、引用关系、只读态和按钮禁用态按 A001/A003 合同合并到页面实现。"
+  },
+  "route_source_locations": {
+    "/sales-inventory/references": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:180-182",
+      "type": "direct",
+      "target": "@/views/sales_inventory/SalesInventoryReferenceList.vue"
+    },
+    "/foundation/warehouse": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:233-234",
+      "type": "redirect",
+      "target": "/warehouse?parity=foundation-warehouse"
+    },
+    "/warehouse": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:186-188",
+      "type": "direct",
+      "target": "@/views/warehouse/WarehouseDashboard.vue"
+    }
+  },
+  "allowed_files_clean_status": {
+    "all_exist": true,
+    "all_clean": true,
+    "details": {
+      "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue": {
+        "exists": true,
+        "clean": true,
+        "gitignored": false
+      },
+      "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue": {
+        "exists": true,
+        "clean": true,
+        "gitignored": false
+      }
+    }
+  },
+  "optional_support_files_status": {
+    "inherited_optional_support_files": [],
+    "all_exist": true,
+    "all_clean": true,
+    "notes": "No optional support files inherited from B001 for CONTRACT-CAND-001."
+  },
+  "contract_source_files_exist": true,
+  "key_fields": {
+    "reference_page_display_fields": [
+      "协同状态",
+      "状态",
+      "简称",
+      "全称",
+      "客户等级",
+      "联系人",
+      "业务员",
+      "电话",
+      "结算方式",
+      "银行及账户",
+      "开票类型",
+      "开票信息",
+      "协同账号",
+      "地址"
+    ],
+    "reference_grouping_fields": [
+      "customer:简称",
+      "supplier:简称",
+      "factory:简称",
+      "fabric:名称",
+      "fabric:类型",
+      "fabric:用量单位"
+    ],
+    "warehouse_parity_fields": [
+      "warehouse parity readback",
+      "warehouse summary/status display",
+      "location/inventory summary display"
+    ],
+    "source_trace": [
+      "A001 evidence_coverage_matrix.json -> rows[module_name=基础对象]",
+      "A003 ui_contract_development_input.json -> uiDisplayFields"
+    ]
+  },
+  "validation_rules": {
+    "ui_shell_only": true,
+    "can_use_for_ui_shell": true,
+    "can_use_for_action_logic": false,
+    "must_not_implement_actions": [
+      "新建",
+      "导入",
+      "导出",
+      "编辑",
+      "删除",
+      "保存",
+      "提交审核",
+      "审核",
+      "反审核",
+      "作废",
+      "生成类动作"
+    ],
+    "must_mark_blocked_or_unknown_for_high_risk": true,
+    "foundation_warehouse_redirect_must_preserve": "/warehouse?parity=foundation-warehouse",
+    "source_trace": [
+      "A003 ui_contract_development_input.json -> mustNotImplementActions",
+      "A003 ui_contract_development_input.json -> mustMarkBlockedOrUnknown"
+    ]
+  },
+  "status_rules": {
+    "display_status_tags": [
+      "状态",
+      "协同状态",
+      "停用默认为否"
+    ],
+    "status_definitions": {
+      "VERIFIED": "已有保存/回读/审计闭环，可支撑对应范围开发。",
+      "PARTIAL": "有 UI/字段/静态/局部证据，但不足以声明完整 1:1。",
+      "UNKNOWN": "证据不足，不能判断。",
+      "NO-GO": "明确禁止推进或禁止声明。",
+      "BLOCKED": "需要用户授权、产品确认或高风险前置条件。"
+    },
+    "source_trace": [
+      "A001 evidence_coverage_matrix.json -> statusDefinitions",
+      "A003 ui_contract_development_input.json -> uiDisplayStatusTags"
+    ]
+  },
+  "readonly_readback_requirements": {
+    "readonly_display_only_for_high_risk_buttons": true,
+    "readback_must_be_display_level_only": true,
+    "no_action_logic_enablement": true,
+    "contract_source_readback_required": true,
+    "covered_contract_ids_visible_in_evidence": true
+  },
+  "forbidden_scope": [
+    "A001-A006 之外契约扩展",
+    "真实业务对象创建",
+    "订单/BOM/物料/采购/库存/生产联动计算",
+    "production readback",
+    "remote lifecycle release",
+    "ERPNext production connection",
+    "real production account usage",
+    "real business data migration"
+  ],
+  "b003_evidence_requirement": {
+    "routes_http_200": [
+      "/sales-inventory/references",
+      "/foundation/warehouse",
+      "/warehouse"
+    ],
+    "foundation_warehouse_final_path": "/warehouse?parity=foundation-warehouse",
+    "screenshots_png_1440x1200": true,
+    "contract_source_readback_present": true,
+    "covered_contract_ids_fully_shown": true,
+    "key_fields_validation_rules_status_rules_locatable": true,
+    "a001_a006_contract_merge_scope_true": true,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "real_production_account_used": false,
+    "npm_run_typecheck_exit_code": 0,
+    "dev_server_started_stopped": true
+  },
+  "data_boundary": {
+    "data_classification": "contract_merge_no_real_object",
+    "test_data_default_rule": "test_data + scenario_tag",
+    "test_data_used": false,
+    "seed_data_used": false,
+    "sqlite_not_formal_database": true,
+    "sqlite_direct_reuse_for_production_forbidden": true,
+    "rollback_zero_residual_requirement": "required_if_local_auto_verification_or_write_loop_enabled",
+    "erpnext_production_forbidden": true,
+    "real_production_account_forbidden": true,
+    "real_inventory_finance_production_records_migration_forbidden": true,
+    "real_stock_in_out_procurement_subcontract_records_migration_forbidden": true
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "next_task": "TASK-YISUAN-CONTRACT-B003-IMPL-CAND001"
+}

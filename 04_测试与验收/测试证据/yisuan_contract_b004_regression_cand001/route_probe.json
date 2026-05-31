@@ -1,0 +1,23 @@
+{
+  "base_url": "http://127.0.0.1:5174",
+  "routes": [
+    {
+      "route": "/sales-inventory/references",
+      "http_status": 200,
+      "final_path": "/sales-inventory/references",
+      "ok": true
+    },
+    {
+      "route": "/foundation/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse?parity=foundation-warehouse",
+      "ok": true
+    },
+    {
+      "route": "/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse",
+      "ok": true
+    }
+  ]
+}

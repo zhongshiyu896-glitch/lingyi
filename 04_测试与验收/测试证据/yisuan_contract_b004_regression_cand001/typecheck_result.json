@@ -1,0 +1,6 @@
+{
+  "command": "npm run typecheck",
+  "workdir": "/Users/hh/Desktop/领意服装管理系统/06_前端/lingyi-pc",
+  "exit_code": 0,
+  "passed": true
+}

@@ -29,6 +29,49 @@
         title="本页提供客户/仓库/供应商/加工厂/物料引用查询与本地草稿闭环。所有写入仅走 local-dev/sqlite/scenario_tag，不连接生产。"
         class="scope-alert"
       />
+      <section class="contract-merge-panel" data-testid="contract-cand001-source-readback">
+        <div class="contract-merge-title">A001/A003 契约合并回读</div>
+        <div class="contract-tag-row">
+          <span class="contract-inline-label">covered_contract_ids:</span>
+          <el-tag
+            v-for="contractId in coveredContractIds"
+            :key="contractId"
+            size="small"
+            effect="plain"
+            type="success"
+            class="contract-id-tag"
+          >
+            {{ contractId }}
+          </el-tag>
+          <el-tag size="small" effect="plain" type="info">A001-A006 contract merge scope=true</el-tag>
+        </div>
+        <div class="contract-readback-grid">
+          <el-card shadow="never" class="contract-readback-card" data-testid="contract-source-files-readback">
+            <template #header>contract source readback</template>
+            <ul>
+              <li v-for="sourceFile in contractSourceFiles" :key="sourceFile">{{ sourceFile }}</li>
+            </ul>
+          </el-card>
+          <el-card shadow="never" class="contract-readback-card" data-testid="contract-key-fields-readback">
+            <template #header>key_fields</template>
+            <ul>
+              <li v-for="field in contractKeyFields" :key="field">{{ field }}</li>
+            </ul>
+          </el-card>
+          <el-card shadow="never" class="contract-readback-card" data-testid="contract-validation-rules-readback">
+            <template #header>validation_rules</template>
+            <ul>
+              <li v-for="rule in contractValidationRules" :key="rule">{{ rule }}</li>
+            </ul>
+          </el-card>
+          <el-card shadow="never" class="contract-readback-card" data-testid="contract-status-rules-readback">
+            <template #header>status_rules / readonly_readback</template>
+            <ul>
+              <li v-for="rule in contractStatusAndReadonlyRules" :key="rule">{{ rule }}</li>
+            </ul>
+          </el-card>
+        </div>
+      </section>
 
       <section class="query-panel" data-testid="yisuan-1to1-reference-filter-panel">
         <el-form :model="query" :inline="true">
@@ -396,6 +439,33 @@ const foundationCustomerParityHint = computed<string>(() => {
   const parity = String(route.query.parity || '').trim().toLowerCase()
   return parity === 'foundation-customer' ? '衣算云 / 基础资料 / 客户（parity=foundation-customer）' : ''
 })
+
+const coveredContractIds: string[] = ['A001', 'A003']
+const contractSourceFiles: string[] = [
+  '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A001_evidence_coverage_matrix_20260520/evidence_coverage_matrix.json',
+  '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A003_ui_route_field_button_readonly_contract_20260520/ui_contract_development_input.json',
+]
+const contractKeyFields: string[] = [
+  '协同状态/状态/停用默认为否',
+  '简称/全称/客户等级/联系人/业务员/电话',
+  '结算方式/银行及账户/开票类型/开票信息/协同账号/地址',
+  'customer:简称 / supplier:简称 / factory:简称',
+  'fabric:名称 / fabric:类型 / fabric:用量单位',
+  'warehouse parity readback / warehouse summary status',
+]
+const contractValidationRules: string[] = [
+  'ui_shell_only=true',
+  'can_use_for_action_logic=false',
+  '高风险按钮仅展示，不实现动作',
+  '高风险语义必须标记为 BLOCKED/UNKNOWN',
+  '保留 /foundation/warehouse -> /warehouse?parity=foundation-warehouse',
+]
+const contractStatusAndReadonlyRules: string[] = [
+  '状态定义: VERIFIED / PARTIAL / UNKNOWN / NO-GO / BLOCKED',
+  '只读展示: 保存/提交/审核/删除/作废/生成类动作禁用',
+  'readback 仅限展示层，不创建真实业务对象',
+  'contract source readback present=true',
+]
 
 const referenceSeeds: ReferenceRecord[] = [
   {
@@ -806,6 +876,53 @@ const checkZeroResidual = async (): Promise<void> => {
 
 .scope-alert {
   margin-top: 10px;
+}
+
+.contract-merge-panel {
+  margin-top: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f7fafc;
+}
+
+.contract-merge-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.contract-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.contract-inline-label {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.contract-id-tag {
+  letter-spacing: 0;
+}
+
+.contract-readback-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.contract-readback-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.contract-readback-card li {
+  margin: 4px 0;
+  line-height: 1.35;
 }
 
 .query-panel {

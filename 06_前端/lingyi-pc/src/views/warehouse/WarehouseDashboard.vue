@@ -184,6 +184,44 @@
         class="scope-alert"
         data-testid="yisuan-1to1-ui-source-readback"
       />
+      <section class="contract-merge-panel" data-testid="contract-cand001-source-readback">
+        <div class="contract-merge-title">A001/A003 契约合并回读（基础资料 / 仓库）</div>
+        <div class="contract-tag-row">
+          <span class="contract-inline-label">covered_contract_ids:</span>
+          <el-tag
+            v-for="contractId in contractCoveredIds"
+            :key="contractId"
+            size="small"
+            effect="plain"
+            type="success"
+          >
+            {{ contractId }}
+          </el-tag>
+          <el-tag size="small" effect="plain" type="info">A001-A006 contract merge scope=true</el-tag>
+          <el-tag size="small" effect="plain" type="warning">real_business_object_created=false</el-tag>
+          <el-tag size="small" effect="plain" type="warning">linked_calculation_enabled=false</el-tag>
+        </div>
+        <div class="contract-readback-grid">
+          <el-card shadow="never" class="contract-readback-card" data-testid="contract-source-files-readback">
+            <template #header>contract source files</template>
+            <ul>
+              <li v-for="sourceFile in contractSourceFiles" :key="sourceFile">{{ sourceFile }}</li>
+            </ul>
+          </el-card>
+          <el-card shadow="never" class="contract-readback-card" data-testid="contract-key-validation-status-readback">
+            <template #header>key_fields / validation_rules / status_rules</template>
+            <ul>
+              <li v-for="item in contractFieldRuleReadback" :key="item">{{ item }}</li>
+            </ul>
+          </el-card>
+          <el-card shadow="never" class="contract-readback-card" data-testid="contract-readonly-readback-requirements">
+            <template #header>readonly / readback requirements</template>
+            <ul>
+              <li v-for="item in contractReadonlyReadbackRequirements" :key="item">{{ item }}</li>
+            </ul>
+          </el-card>
+        </div>
+      </section>
 
       <div class="local-write-row" data-testid="warehouse-stock-local-write-section">
         <el-input
@@ -1664,6 +1702,24 @@ const foundationWarehouseParityHint = computed<string>(() => (
   '衣算云 / 基础资料 / 仓库管理（parity=foundation-warehouse，只读交互）'
 ))
 const localWriteReadonlyGuarded = computed<boolean>(() => isFinishedGoodsParity.value || isFoundationWarehouseParity.value)
+const contractCoveredIds: string[] = ['A001', 'A003']
+const contractSourceFiles: string[] = [
+  '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A001_evidence_coverage_matrix_20260520/evidence_coverage_matrix.json',
+  '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A003_ui_route_field_button_readonly_contract_20260520/ui_contract_development_input.json',
+]
+const contractFieldRuleReadback: string[] = [
+  'key_fields: 仓库摘要、状态标签、仓库目录/库位/库存联动展示',
+  'key_fields: customer/supplier/factory/fabric 引用关系字段保持可读',
+  'validation_rules: ui_shell_only=true, can_use_for_action_logic=false',
+  'validation_rules: 高风险动作仅展示，禁止启用真实写入逻辑',
+  'status_rules: VERIFIED / PARTIAL / UNKNOWN / NO-GO / BLOCKED',
+]
+const contractReadonlyReadbackRequirements: string[] = [
+  'readonly/readback: readback 仅限展示层，不创建真实业务对象',
+  'readonly/readback: 不启用跨模块联动计算',
+  'readonly/readback: contract source readback present=true',
+  'readonly/readback: covered_contract_ids 可定位并全量展示',
+]
 
 const canRead = computed<boolean>(() => (
   isFinishedGoodsParity.value
@@ -2742,6 +2798,49 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.contract-merge-panel {
+  margin: 10px 0 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #f8fbff;
+}
+
+.contract-merge-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.contract-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.contract-inline-label {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.contract-readback-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.contract-readback-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.contract-readback-card li {
+  margin: 4px 0;
+  line-height: 1.35;
 }
 
 .local-write-row {

@@ -1,0 +1,141 @@
+{
+  "key_fields_observed": [
+    {
+      "token": "协同状态",
+      "observed": true
+    },
+    {
+      "token": "状态",
+      "observed": true
+    },
+    {
+      "token": "简称",
+      "observed": true
+    },
+    {
+      "token": "全称",
+      "observed": true
+    },
+    {
+      "token": "客户等级",
+      "observed": true
+    },
+    {
+      "token": "联系人",
+      "observed": true
+    },
+    {
+      "token": "业务员",
+      "observed": true
+    },
+    {
+      "token": "电话",
+      "observed": true
+    },
+    {
+      "token": "结算方式",
+      "observed": true
+    },
+    {
+      "token": "银行及账户",
+      "observed": true
+    },
+    {
+      "token": "开票类型",
+      "observed": true
+    },
+    {
+      "token": "开票信息",
+      "observed": true
+    },
+    {
+      "token": "协同账号",
+      "observed": true
+    },
+    {
+      "token": "地址",
+      "observed": true
+    },
+    {
+      "token": "customer:简称",
+      "observed": true
+    },
+    {
+      "token": "supplier:简称",
+      "observed": true
+    },
+    {
+      "token": "factory:简称",
+      "observed": true
+    },
+    {
+      "token": "fabric:名称",
+      "observed": true
+    },
+    {
+      "token": "fabric:类型",
+      "observed": true
+    },
+    {
+      "token": "fabric:用量单位",
+      "observed": true
+    }
+  ],
+  "validation_rules_observed": [
+    {
+      "token": "ui_shell_only=true",
+      "observed": true
+    },
+    {
+      "token": "can_use_for_action_logic=false",
+      "observed": true
+    },
+    {
+      "token": "高风险按钮仅展示，不实现动作",
+      "observed": true
+    },
+    {
+      "token": "BLOCKED/UNKNOWN",
+      "observed": true
+    }
+  ],
+  "status_rules_observed": [
+    {
+      "token": "VERIFIED",
+      "observed": true
+    },
+    {
+      "token": "PARTIAL",
+      "observed": true
+    },
+    {
+      "token": "UNKNOWN",
+      "observed": true
+    },
+    {
+      "token": "NO-GO",
+      "observed": true
+    },
+    {
+      "token": "BLOCKED",
+      "observed": true
+    }
+  ],
+  "readonly_readback_requirements_observed": [
+    {
+      "token": "readback 仅限展示层",
+      "observed": true
+    },
+    {
+      "token": "contract source readback present=true",
+      "observed": true
+    }
+  ],
+  "key_fields_all_observed": true,
+  "validation_rules_all_observed": true,
+  "status_rules_all_observed": true,
+  "readonly_readback_all_observed": true,
+  "real_business_object_created": false,
+  "linked_calculation_enabled": false,
+  "a001_a006_contract_merge_scope": true
+}

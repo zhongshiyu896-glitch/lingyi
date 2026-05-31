@@ -1,0 +1,32 @@
+{
+  "covered_contract_ids": [
+    "A001",
+    "A003"
+  ],
+  "covered_contract_ids_observed": [
+    {
+      "token": "A001",
+      "observed": true
+    },
+    {
+      "token": "A003",
+      "observed": true
+    }
+  ],
+  "contract_source_files": [
+    "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A001_evidence_coverage_matrix_20260520/evidence_coverage_matrix.json",
+    "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A003_ui_route_field_button_readonly_contract_20260520/ui_contract_development_input.json"
+  ],
+  "contract_source_files_observed": [
+    {
+      "source_file": "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A001_evidence_coverage_matrix_20260520/evidence_coverage_matrix.json",
+      "observed": true
+    },
+    {
+      "source_file": "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A003_ui_route_field_button_readonly_contract_20260520/ui_contract_development_input.json",
+      "observed": true
+    }
+  ],
+  "contract_source_readback_present": true,
+  "covered_contract_ids_present": true
+}

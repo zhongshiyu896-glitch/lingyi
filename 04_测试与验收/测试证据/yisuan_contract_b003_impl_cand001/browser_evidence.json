@@ -1,0 +1,35 @@
+{
+  "observation_method": "playwright_cli_screenshot",
+  "viewport": {
+    "width": 1440,
+    "height": 1200
+  },
+  "routes": [
+    {
+      "route": "/sales-inventory/references",
+      "screenshot": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/yisuan_contract_b003_impl_cand001/screenshots/references.png",
+      "pixel_width": 1440,
+      "pixel_height": 1200,
+      "png_1440x1200": true
+    },
+    {
+      "route": "/foundation/warehouse",
+      "screenshot": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/yisuan_contract_b003_impl_cand001/screenshots/foundation_warehouse.png",
+      "pixel_width": 1440,
+      "pixel_height": 1200,
+      "png_1440x1200": true
+    },
+    {
+      "route": "/warehouse",
+      "screenshot": "/Users/hh/Desktop/领意服装管理系统/04_测试与验收/测试证据/yisuan_contract_b003_impl_cand001/screenshots/warehouse.png",
+      "pixel_width": 1440,
+      "pixel_height": 1200,
+      "png_1440x1200": true
+    }
+  ],
+  "all_png_1440x1200": true,
+  "dev_server": {
+    "started": true,
+    "stopped": true
+  }
+}

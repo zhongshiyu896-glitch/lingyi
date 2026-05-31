@@ -1,0 +1,97 @@
+{
+  "status": "DONE",
+  "task_id": "TASK-YISUAN-CONTRACT-B003-IMPL-CAND001",
+  "role": "B Engineer",
+  "implementation_scope": "A001/A003 contract merge implementation",
+  "changed_files": [
+    "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryReferenceList.vue",
+    "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue"
+  ],
+  "forbidden_paths_touched": [],
+  "routes": [
+    {
+      "route": "/sales-inventory/references",
+      "http_status": 200,
+      "final_path": "/sales-inventory/references"
+    },
+    {
+      "route": "/foundation/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse?parity=foundation-warehouse"
+    },
+    {
+      "route": "/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse"
+    }
+  ],
+  "screenshots": [
+    {
+      "route": "/sales-inventory/references",
+      "file": "04_测试与验收/测试证据/yisuan_contract_b003_impl_cand001/screenshots/references.png",
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "route": "/foundation/warehouse",
+      "file": "04_测试与验收/测试证据/yisuan_contract_b003_impl_cand001/screenshots/foundation_warehouse.png",
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "route": "/warehouse",
+      "file": "04_测试与验收/测试证据/yisuan_contract_b003_impl_cand001/screenshots/warehouse.png",
+      "width": 1440,
+      "height": 1200
+    }
+  ],
+  "covered_contract_ids": [
+    "A001",
+    "A003"
+  ],
+  "contract_observation": {
+    "contract_source_readback_present": true,
+    "covered_contract_ids_present": true,
+    "key_fields_observed": true,
+    "validation_rules_observed": true,
+    "status_rules_observed": true,
+    "readonly_readback_requirements_observed": true
+  },
+  "real_business_object_created": false,
+  "linked_calculation_enabled": false,
+  "network_write_safety": {
+    "write_requests_observed_count": 0,
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "real_production_account_used": false,
+    "auth_401_count": 0
+  },
+  "dev_server": {
+    "started": true,
+    "stopped": true,
+    "log_file": "04_测试与验收/测试证据/yisuan_contract_b003_impl_cand001/dev_server.log"
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "workdir": "06_前端/lingyi-pc",
+    "exit_code": 0
+  },
+  "data_boundary": {
+    "data_classification": "contract_merge_no_real_object",
+    "test_data_used": false,
+    "scenario_tag_present": false,
+    "seed_data_used": false,
+    "sqlite_not_formal_database": true,
+    "sqlite_direct_reuse_for_production_forbidden": true,
+    "rollback_zero_residual_requirement": "required_if_local_auto_verification_or_write_loop_enabled",
+    "erpnext_production_forbidden": true,
+    "real_production_account_forbidden": true,
+    "real_inventory_finance_production_records_migration_forbidden": true,
+    "real_stock_in_out_procurement_subcontract_records_migration_forbidden": true
+  },
+  "dirty_intersections": [],
+  "unknown_dirty": [],
+  "must_block_before_continue": [],
+  "evidence_dir": "04_测试与验收/测试证据/yisuan_contract_b003_impl_cand001",
+  "next_task": "TASK-YISUAN-CONTRACT-B004-REGRESSION-CAND001"
+}
