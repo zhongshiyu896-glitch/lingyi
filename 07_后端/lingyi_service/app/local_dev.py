@@ -1696,3 +1696,415 @@ def cancel_local_purchase_subcontract_draft(
     if cancelled is None:
         raise HTTPException(status_code=500, detail="draft cancel failed")
     return _ok(_purchase_subcontract_draft_row_to_dict(cancelled))
+
+
+def _create_inventory_operation_draft_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ly_local_inventory_operation_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scenario_tag TEXT NOT NULL,
+            draft_no TEXT NOT NULL,
+            operation_type TEXT NOT NULL,
+            flow_type TEXT NOT NULL,
+            material_code TEXT NOT NULL,
+            material_name TEXT NOT NULL DEFAULT '',
+            spec TEXT NOT NULL DEFAULT '',
+            uom TEXT NOT NULL DEFAULT 'Nos',
+            warehouse TEXT NOT NULL,
+            source_warehouse TEXT NOT NULL DEFAULT '',
+            target_warehouse TEXT NOT NULL DEFAULT '',
+            current_qty REAL NOT NULL DEFAULT 0,
+            operation_qty REAL NOT NULL DEFAULT 0,
+            counting_qty REAL NOT NULL DEFAULT 0,
+            diff_qty REAL NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'draft',
+            business_ref TEXT NOT NULL DEFAULT '',
+            business_time TEXT NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            state TEXT NOT NULL DEFAULT 'saved',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            cancelled_at TEXT,
+            cancel_reason TEXT
+        )
+        """
+    )
+    connection.commit()
+
+
+def _get_inventory_operation_draft_row(
+    connection: sqlite3.Connection, draft_id: int
+) -> sqlite3.Row | None:
+    return connection.execute(
+        "SELECT * FROM ly_local_inventory_operation_drafts WHERE id = ?",
+        (draft_id,),
+    ).fetchone()
+
+
+def _inventory_operation_draft_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    operation_type = str(row["operation_type"]).strip().lower()
+    transfer_saved = operation_type == "transfer" and _to_float(row["operation_qty"], 0.0) > 0
+    counting_saved = operation_type == "counting"
+    row_id = int(row["id"])
+    normalized_status = "cancelled" if str(row["state"]).strip().lower() == "cancelled" else "draft"
+    item_payload = {
+        "item_code": row["material_code"],
+        "qty": _to_float(row["operation_qty"], 0.0),
+        "uom": row["uom"],
+        "source_warehouse": row["source_warehouse"],
+        "target_warehouse": row["target_warehouse"],
+    }
+    return {
+        "id": row_id,
+        "draft_id": row_id,
+        "scenario_tag": row["scenario_tag"],
+        "draft_no": row["draft_no"],
+        "operation_type": row["operation_type"],
+        "flow_type": row["flow_type"],
+        "material_code": row["material_code"],
+        "material_name": row["material_name"],
+        "spec": row["spec"],
+        "uom": row["uom"],
+        "warehouse": row["warehouse"],
+        "source_warehouse": row["source_warehouse"],
+        "target_warehouse": row["target_warehouse"],
+        "current_qty": _to_float(row["current_qty"], 0.0),
+        "operation_qty": _to_float(row["operation_qty"], 0.0),
+        "counting_qty": _to_float(row["counting_qty"], 0.0),
+        "diff_qty": _to_float(row["diff_qty"], 0.0),
+        "status": normalized_status,
+        "status_label": row["status"],
+        "business_ref": row["business_ref"],
+        "source_id": row["business_ref"],
+        "business_time": row["business_time"],
+        "note": row["note"],
+        "state": row["state"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+        "cancelled_at": row["cancelled_at"],
+        "cancel_reason": row["cancel_reason"],
+        "transfer_saved": transfer_saved,
+        "counting_saved": counting_saved,
+        "transfer_or_counting_saved": transfer_saved or counting_saved,
+        "items": [item_payload],
+        "idempotency_key": f"{row['scenario_tag']}-LOCAL-INV-{row_id}",
+        "event_key": f"local_inventory_draft:{row_id}",
+        "outbox": {
+            "draft_id": row_id,
+            "event_id": row_id,
+            "event_type": "local_inventory_draft",
+            "status": "cancelled" if normalized_status == "cancelled" else "succeeded",
+            "retry_count": 0,
+            "external_ref": None,
+            "error_message": None,
+            "created_at": row["created_at"],
+            "processed_at": row["updated_at"],
+        },
+    }
+
+
+@app.post("/api/local-dev/inventory-operation-drafts")
+def upsert_local_inventory_operation_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    operation_type = str(payload.get("operation_type", "")).strip().lower() or "transfer"
+    flow_type = str(payload.get("flow_type", "")).strip().lower() or operation_type
+    material_code = str(payload.get("material_code", "")).strip()
+    material_name = str(payload.get("material_name", "")).strip() or material_code
+    spec = str(payload.get("spec", "")).strip()
+    uom = str(payload.get("uom", "")).strip() or "Nos"
+    warehouse = str(payload.get("warehouse", "")).strip()
+    source_warehouse = str(payload.get("source_warehouse", "")).strip() or warehouse
+    target_warehouse = str(payload.get("target_warehouse", "")).strip()
+    current_qty = _to_float(payload.get("current_qty"), 0.0)
+    transfer_qty = _to_float(payload.get("transfer_qty"), 0.0)
+    counting_qty = _to_float(payload.get("counting_qty"), current_qty)
+    operation_qty = transfer_qty if operation_type == "transfer" else abs(counting_qty - current_qty)
+    diff_qty = counting_qty - current_qty if operation_type == "counting" else 0.0
+    status = str(payload.get("status", "")).strip() or "draft"
+    business_ref = str(payload.get("business_ref", "")).strip() or f"INV-{scenario_tag}"
+    business_time = str(payload.get("business_time", "")).strip() or date.today().isoformat()
+    note = str(payload.get("note", "")).strip()
+    draft_id = payload.get("draft_id")
+
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    if operation_type not in {"transfer", "counting"}:
+        raise HTTPException(status_code=400, detail="operation_type is invalid")
+    if flow_type not in {"transfer", "counting"}:
+        raise HTTPException(status_code=400, detail="flow_type is invalid")
+    if not material_code:
+        raise HTTPException(status_code=400, detail="material_code is required")
+    if not warehouse:
+        raise HTTPException(status_code=400, detail="warehouse is required")
+    if operation_type == "transfer":
+        if not source_warehouse or not target_warehouse:
+            raise HTTPException(status_code=400, detail="source_warehouse and target_warehouse are required")
+        if transfer_qty <= 0:
+            raise HTTPException(status_code=400, detail="transfer_qty must be greater than 0")
+    if operation_type == "counting" and counting_qty < 0:
+        raise HTTPException(status_code=400, detail="counting_qty must be greater than or equal to 0")
+
+    now_iso = _now_iso()
+    with _connect_local_sqlite() as connection:
+        _create_inventory_operation_draft_table(connection)
+        if isinstance(draft_id, int) and draft_id > 0:
+            exists = _get_inventory_operation_draft_row(connection, draft_id)
+            if not exists:
+                raise HTTPException(status_code=404, detail="draft not found")
+            connection.execute(
+                """
+                UPDATE ly_local_inventory_operation_drafts
+                SET scenario_tag = ?,
+                    operation_type = ?,
+                    flow_type = ?,
+                    material_code = ?,
+                    material_name = ?,
+                    spec = ?,
+                    uom = ?,
+                    warehouse = ?,
+                    source_warehouse = ?,
+                    target_warehouse = ?,
+                    current_qty = ?,
+                    operation_qty = ?,
+                    counting_qty = ?,
+                    diff_qty = ?,
+                    status = ?,
+                    business_ref = ?,
+                    business_time = ?,
+                    note = ?,
+                    state = 'saved',
+                    updated_at = ?,
+                    cancelled_at = NULL,
+                    cancel_reason = NULL
+                WHERE id = ?
+                """,
+                (
+                    scenario_tag,
+                    operation_type,
+                    flow_type,
+                    material_code,
+                    material_name,
+                    spec,
+                    uom,
+                    warehouse,
+                    source_warehouse,
+                    target_warehouse,
+                    current_qty,
+                    operation_qty,
+                    counting_qty,
+                    diff_qty,
+                    status,
+                    business_ref,
+                    business_time,
+                    note,
+                    now_iso,
+                    draft_id,
+                ),
+            )
+            connection.commit()
+            row = _get_inventory_operation_draft_row(connection, draft_id)
+        else:
+            draft_no = f"INV-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            cursor = connection.execute(
+                """
+                INSERT INTO ly_local_inventory_operation_drafts (
+                    scenario_tag,
+                    draft_no,
+                    operation_type,
+                    flow_type,
+                    material_code,
+                    material_name,
+                    spec,
+                    uom,
+                    warehouse,
+                    source_warehouse,
+                    target_warehouse,
+                    current_qty,
+                    operation_qty,
+                    counting_qty,
+                    diff_qty,
+                    status,
+                    business_ref,
+                    business_time,
+                    note,
+                    state,
+                    created_at,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'saved', ?, ?)
+                """,
+                (
+                    scenario_tag,
+                    draft_no,
+                    operation_type,
+                    flow_type,
+                    material_code,
+                    material_name,
+                    spec,
+                    uom,
+                    warehouse,
+                    source_warehouse,
+                    target_warehouse,
+                    current_qty,
+                    operation_qty,
+                    counting_qty,
+                    diff_qty,
+                    status,
+                    business_ref,
+                    business_time,
+                    note,
+                    now_iso,
+                    now_iso,
+                ),
+            )
+            connection.commit()
+            row = _get_inventory_operation_draft_row(connection, int(cursor.lastrowid))
+
+    if row is None:
+        raise HTTPException(status_code=500, detail="draft persistence failed")
+    return _ok(_inventory_operation_draft_row_to_dict(row))
+
+
+@app.get("/api/local-dev/inventory-operation-drafts")
+def list_local_inventory_operation_drafts(
+    keyword: str | None = None,
+    material_code: str | None = None,
+    warehouse: str | None = None,
+    flow_type: str | None = None,
+    operation_type: str | None = None,
+    status: str | None = None,
+    scenario_tag: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_inventory_operation_draft_table(connection)
+        rows = connection.execute(
+            "SELECT * FROM ly_local_inventory_operation_drafts ORDER BY id DESC",
+        ).fetchall()
+
+    items = [_inventory_operation_draft_row_to_dict(row) for row in rows]
+    keyword_token = (keyword or "").strip().lower()
+    material_token = (material_code or "").strip().lower()
+    warehouse_token = (warehouse or "").strip().lower()
+    flow_token = (flow_type or "").strip().lower()
+    operation_token = (operation_type or "").strip().lower()
+    status_token = (status or "").strip().lower()
+    scenario_token = (scenario_tag or "").strip()
+
+    def _match(item: dict[str, Any]) -> bool:
+        if keyword_token and keyword_token not in (
+            f"{item['draft_no']} {item['material_code']} {item['business_ref']}".lower()
+        ):
+            return False
+        if material_token and material_token not in str(item["material_code"]).lower():
+            return False
+        if warehouse_token and warehouse_token not in str(item["warehouse"]).lower():
+            return False
+        if flow_token and flow_token != str(item["flow_type"]).lower():
+            return False
+        if operation_token and operation_token != str(item["operation_type"]).lower():
+            return False
+        if status_token and status_token != str(item["status"]).lower():
+            return False
+        if scenario_token and scenario_token != str(item["scenario_tag"]):
+            return False
+        return True
+
+    filtered = [item for item in items if _match(item)]
+    total = len(filtered)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paged_items = filtered[start:end]
+    return _ok({"items": paged_items, "total": total, "page": page, "page_size": page_size})
+
+
+@app.get("/api/local-dev/inventory-operation-drafts/residual-count")
+def get_local_inventory_operation_residual_count(
+    scenario_tag: str = Query(..., min_length=1),
+) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_inventory_operation_draft_table(connection)
+        row = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_inventory_operation_drafts WHERE scenario_tag = ?",
+            (scenario_tag.strip(),),
+        ).fetchone()
+    total = int(row["total"]) if row else 0
+    return _ok({"scenario_tag": scenario_tag.strip(), "total": total})
+
+
+@app.post("/api/local-dev/inventory-operation-drafts/rollback-by-scenario")
+def rollback_local_inventory_operation_drafts(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    with _connect_local_sqlite() as connection:
+        _create_inventory_operation_draft_table(connection)
+        before = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_inventory_operation_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+        deleted_count = int(before["total"]) if before else 0
+        connection.execute(
+            "DELETE FROM ly_local_inventory_operation_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        )
+        connection.commit()
+        after = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_inventory_operation_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+    residual = int(after["total"]) if after else 0
+    return _ok(
+        {
+            "scenario_tag": scenario_tag,
+            "deleted_count": deleted_count,
+            "residual_records_after_rollback": residual,
+            "rollback_success": residual == 0,
+            "zero_residual_success": residual == 0,
+        }
+    )
+
+
+@app.get("/api/local-dev/inventory-operation-drafts/{draft_id}")
+def get_local_inventory_operation_draft(draft_id: int) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_inventory_operation_draft_table(connection)
+        row = _get_inventory_operation_draft_row(connection, draft_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return _ok(_inventory_operation_draft_row_to_dict(row))
+
+
+@app.post("/api/local-dev/inventory-operation-drafts/{draft_id}/cancel")
+def cancel_local_inventory_operation_draft(
+    draft_id: int, payload: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    reason = str(payload.get("reason", "")).strip() or f"CANCEL-{scenario_tag or draft_id}"
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    now_iso = _now_iso()
+    with _connect_local_sqlite() as connection:
+        _create_inventory_operation_draft_table(connection)
+        row = _get_inventory_operation_draft_row(connection, draft_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        if row["scenario_tag"] != scenario_tag:
+            raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+        connection.execute(
+            """
+            UPDATE ly_local_inventory_operation_drafts
+            SET state = 'cancelled',
+                updated_at = ?,
+                cancelled_at = ?,
+                cancel_reason = ?
+            WHERE id = ?
+            """,
+            (now_iso, now_iso, reason, draft_id),
+        )
+        connection.commit()
+        cancelled = _get_inventory_operation_draft_row(connection, draft_id)
+    if cancelled is None:
+        raise HTTPException(status_code=500, detail="draft cancel failed")
+    return _ok(_inventory_operation_draft_row_to_dict(cancelled))

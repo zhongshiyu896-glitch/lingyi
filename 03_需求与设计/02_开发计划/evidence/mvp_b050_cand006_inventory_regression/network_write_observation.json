@@ -1,0 +1,30 @@
+{
+  "write_requests_observed_count": 3,
+  "local_dev_write_requests_count": 3,
+  "write_requests_only_local_dev": true,
+  "auth_401_count": 0,
+  "production_write_requests": 0,
+  "erpnext_production_write_requests": 0,
+  "erpnext_production_connected": false,
+  "real_production_account_used": false,
+  "requests_sample": [
+    {
+      "url": "http://127.0.0.1:8000/api/local-dev/inventory-operation-drafts",
+      "method": "POST",
+      "resource_type": "api_call",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8000/api/local-dev/inventory-operation-drafts/2/cancel",
+      "method": "POST",
+      "resource_type": "api_call",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8000/api/local-dev/inventory-operation-drafts/rollback-by-scenario",
+      "method": "POST",
+      "resource_type": "api_call",
+      "status": 200
+    }
+  ]
+}

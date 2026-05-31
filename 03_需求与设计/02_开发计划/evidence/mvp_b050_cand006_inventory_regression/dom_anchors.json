@@ -1,0 +1,79 @@
+{
+  "required_anchors_count": 12,
+  "observed_count": 12,
+  "observed_all": true,
+  "anchors": [
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "anchor": "mvp-cand006-stock-ledger-page",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "anchor": "mvp-cand006-stock-query-panel",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "anchor": "mvp-cand006-stock-material-filter",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "anchor": "mvp-cand006-stock-warehouse-filter",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "anchor": "mvp-cand006-stock-flow-table",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "anchor": "mvp-cand006-stock-readback-panel",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/warehouse",
+      "anchor": "mvp-cand006-warehouse-page",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/warehouse",
+      "anchor": "mvp-cand006-warehouse-summary-cards",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/warehouse",
+      "anchor": "mvp-cand006-warehouse-transfer-draft",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/warehouse",
+      "anchor": "mvp-cand006-warehouse-counting-draft",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/warehouse",
+      "anchor": "mvp-cand006-local-save-cancel-actions",
+      "observed": true,
+      "count": 1
+    },
+    {
+      "route": "/warehouse",
+      "anchor": "mvp-cand006-zero-residual-status",
+      "observed": true,
+      "count": 1
+    }
+  ]
+}

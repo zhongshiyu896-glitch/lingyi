@@ -1,0 +1,274 @@
+{
+  "scenario_tag": "MVP-CAND006-B049-20260531173941",
+  "scenario_tag_present": true,
+  "save_success": true,
+  "draft_id_created": true,
+  "transfer_or_counting_saved": true,
+  "readback_success": true,
+  "cancel_success": true,
+  "rollback_success": true,
+  "zero_residual_success": true,
+  "residual_records_after_rollback": 0,
+  "save_response": {
+    "code": "0",
+    "message": "ok",
+    "data": {
+      "id": 1,
+      "draft_id": 1,
+      "scenario_tag": "MVP-CAND006-B049-20260531173941",
+      "draft_no": "INV-20260531173941",
+      "operation_type": "transfer",
+      "flow_type": "transfer",
+      "material_code": "MAT-CAND006-001",
+      "material_name": "本地测试物料",
+      "spec": "M",
+      "uom": "件",
+      "warehouse": "WH-A",
+      "source_warehouse": "WH-A",
+      "target_warehouse": "WH-B",
+      "current_qty": 120.0,
+      "operation_qty": 15.0,
+      "counting_qty": 120.0,
+      "diff_qty": 0.0,
+      "status": "draft",
+      "status_label": "draft",
+      "business_ref": "B049-MVP-CAND006-B049-20260531173941",
+      "source_id": "B049-MVP-CAND006-B049-20260531173941",
+      "business_time": "2026-05-31",
+      "note": "B049 local inventory loop",
+      "state": "saved",
+      "created_at": "2026-05-31T17:39:41",
+      "updated_at": "2026-05-31T17:39:41",
+      "cancelled_at": null,
+      "cancel_reason": null,
+      "transfer_saved": true,
+      "counting_saved": false,
+      "transfer_or_counting_saved": true,
+      "items": [
+        {
+          "item_code": "MAT-CAND006-001",
+          "qty": 15.0,
+          "uom": "件",
+          "source_warehouse": "WH-A",
+          "target_warehouse": "WH-B"
+        }
+      ],
+      "idempotency_key": "MVP-CAND006-B049-20260531173941-LOCAL-INV-1",
+      "event_key": "local_inventory_draft:1",
+      "outbox": {
+        "draft_id": 1,
+        "event_id": 1,
+        "event_type": "local_inventory_draft",
+        "status": "succeeded",
+        "retry_count": 0,
+        "external_ref": null,
+        "error_message": null,
+        "created_at": "2026-05-31T17:39:41",
+        "processed_at": "2026-05-31T17:39:41"
+      }
+    }
+  },
+  "readback_response": {
+    "code": "0",
+    "message": "ok",
+    "data": {
+      "items": [
+        {
+          "id": 1,
+          "draft_id": 1,
+          "scenario_tag": "MVP-CAND006-B049-20260531173941",
+          "draft_no": "INV-20260531173941",
+          "operation_type": "transfer",
+          "flow_type": "transfer",
+          "material_code": "MAT-CAND006-001",
+          "material_name": "本地测试物料",
+          "spec": "M",
+          "uom": "件",
+          "warehouse": "WH-A",
+          "source_warehouse": "WH-A",
+          "target_warehouse": "WH-B",
+          "current_qty": 120.0,
+          "operation_qty": 15.0,
+          "counting_qty": 120.0,
+          "diff_qty": 0.0,
+          "status": "draft",
+          "status_label": "draft",
+          "business_ref": "B049-MVP-CAND006-B049-20260531173941",
+          "source_id": "B049-MVP-CAND006-B049-20260531173941",
+          "business_time": "2026-05-31",
+          "note": "B049 local inventory loop",
+          "state": "saved",
+          "created_at": "2026-05-31T17:39:41",
+          "updated_at": "2026-05-31T17:39:41",
+          "cancelled_at": null,
+          "cancel_reason": null,
+          "transfer_saved": true,
+          "counting_saved": false,
+          "transfer_or_counting_saved": true,
+          "items": [
+            {
+              "item_code": "MAT-CAND006-001",
+              "qty": 15.0,
+              "uom": "件",
+              "source_warehouse": "WH-A",
+              "target_warehouse": "WH-B"
+            }
+          ],
+          "idempotency_key": "MVP-CAND006-B049-20260531173941-LOCAL-INV-1",
+          "event_key": "local_inventory_draft:1",
+          "outbox": {
+            "draft_id": 1,
+            "event_id": 1,
+            "event_type": "local_inventory_draft",
+            "status": "succeeded",
+            "retry_count": 0,
+            "external_ref": null,
+            "error_message": null,
+            "created_at": "2026-05-31T17:39:41",
+            "processed_at": "2026-05-31T17:39:41"
+          }
+        }
+      ],
+      "total": 1,
+      "page": 1,
+      "page_size": 20
+    }
+  },
+  "get_response": {
+    "code": "0",
+    "message": "ok",
+    "data": {
+      "id": 1,
+      "draft_id": 1,
+      "scenario_tag": "MVP-CAND006-B049-20260531173941",
+      "draft_no": "INV-20260531173941",
+      "operation_type": "transfer",
+      "flow_type": "transfer",
+      "material_code": "MAT-CAND006-001",
+      "material_name": "本地测试物料",
+      "spec": "M",
+      "uom": "件",
+      "warehouse": "WH-A",
+      "source_warehouse": "WH-A",
+      "target_warehouse": "WH-B",
+      "current_qty": 120.0,
+      "operation_qty": 15.0,
+      "counting_qty": 120.0,
+      "diff_qty": 0.0,
+      "status": "draft",
+      "status_label": "draft",
+      "business_ref": "B049-MVP-CAND006-B049-20260531173941",
+      "source_id": "B049-MVP-CAND006-B049-20260531173941",
+      "business_time": "2026-05-31",
+      "note": "B049 local inventory loop",
+      "state": "saved",
+      "created_at": "2026-05-31T17:39:41",
+      "updated_at": "2026-05-31T17:39:41",
+      "cancelled_at": null,
+      "cancel_reason": null,
+      "transfer_saved": true,
+      "counting_saved": false,
+      "transfer_or_counting_saved": true,
+      "items": [
+        {
+          "item_code": "MAT-CAND006-001",
+          "qty": 15.0,
+          "uom": "件",
+          "source_warehouse": "WH-A",
+          "target_warehouse": "WH-B"
+        }
+      ],
+      "idempotency_key": "MVP-CAND006-B049-20260531173941-LOCAL-INV-1",
+      "event_key": "local_inventory_draft:1",
+      "outbox": {
+        "draft_id": 1,
+        "event_id": 1,
+        "event_type": "local_inventory_draft",
+        "status": "succeeded",
+        "retry_count": 0,
+        "external_ref": null,
+        "error_message": null,
+        "created_at": "2026-05-31T17:39:41",
+        "processed_at": "2026-05-31T17:39:41"
+      }
+    }
+  },
+  "cancel_response": {
+    "code": "0",
+    "message": "ok",
+    "data": {
+      "id": 1,
+      "draft_id": 1,
+      "scenario_tag": "MVP-CAND006-B049-20260531173941",
+      "draft_no": "INV-20260531173941",
+      "operation_type": "transfer",
+      "flow_type": "transfer",
+      "material_code": "MAT-CAND006-001",
+      "material_name": "本地测试物料",
+      "spec": "M",
+      "uom": "件",
+      "warehouse": "WH-A",
+      "source_warehouse": "WH-A",
+      "target_warehouse": "WH-B",
+      "current_qty": 120.0,
+      "operation_qty": 15.0,
+      "counting_qty": 120.0,
+      "diff_qty": 0.0,
+      "status": "cancelled",
+      "status_label": "draft",
+      "business_ref": "B049-MVP-CAND006-B049-20260531173941",
+      "source_id": "B049-MVP-CAND006-B049-20260531173941",
+      "business_time": "2026-05-31",
+      "note": "B049 local inventory loop",
+      "state": "cancelled",
+      "created_at": "2026-05-31T17:39:41",
+      "updated_at": "2026-05-31T17:39:41",
+      "cancelled_at": "2026-05-31T17:39:41",
+      "cancel_reason": "B049-CANCEL",
+      "transfer_saved": true,
+      "counting_saved": false,
+      "transfer_or_counting_saved": true,
+      "items": [
+        {
+          "item_code": "MAT-CAND006-001",
+          "qty": 15.0,
+          "uom": "件",
+          "source_warehouse": "WH-A",
+          "target_warehouse": "WH-B"
+        }
+      ],
+      "idempotency_key": "MVP-CAND006-B049-20260531173941-LOCAL-INV-1",
+      "event_key": "local_inventory_draft:1",
+      "outbox": {
+        "draft_id": 1,
+        "event_id": 1,
+        "event_type": "local_inventory_draft",
+        "status": "cancelled",
+        "retry_count": 0,
+        "external_ref": null,
+        "error_message": null,
+        "created_at": "2026-05-31T17:39:41",
+        "processed_at": "2026-05-31T17:39:41"
+      }
+    }
+  },
+  "rollback_response": {
+    "code": "0",
+    "message": "ok",
+    "data": {
+      "scenario_tag": "MVP-CAND006-B049-20260531173941",
+      "deleted_count": 1,
+      "residual_records_after_rollback": 0,
+      "rollback_success": true,
+      "zero_residual_success": true
+    }
+  },
+  "residual_response": {
+    "code": "0",
+    "message": "ok",
+    "data": {
+      "scenario_tag": "MVP-CAND006-B049-20260531173941",
+      "total": 0
+    }
+  }
+}

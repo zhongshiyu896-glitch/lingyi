@@ -1,5 +1,5 @@
 <template>
-  <div class="sales-inventory-page" data-testid="stock-ledger-page">
+  <div class="sales-inventory-page" data-testid="mvp-cand006-stock-ledger-page" data-legacy-testid="stock-ledger-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
@@ -16,7 +16,7 @@
             :inline="true"
             :model="query"
             class="query-form"
-            data-testid="stock-ledger-filters"
+            data-testid="mvp-cand006-stock-query-panel"
             data-legacy-testid="stock-ledger-filter-form"
           >
           <el-form-item label="款号">
@@ -24,7 +24,7 @@
               v-model="query.item_code"
               clearable
               placeholder="必填：请输入款号"
-              data-testid="stock-ledger-item-code-input"
+              data-testid="mvp-cand006-stock-material-filter"
               @keyup.enter="onSearch"
             />
           </el-form-item>
@@ -42,7 +42,7 @@
               v-model="query.warehouse"
               clearable
               placeholder="仓库"
-              data-testid="stock-ledger-warehouse-input"
+              data-testid="mvp-cand006-stock-warehouse-filter"
               @keyup.enter="onSearch"
             />
           </el-form-item>
@@ -61,6 +61,15 @@
               clearable
               placeholder="正常/低库存/缺货（本地过滤）"
               data-testid="stock-ledger-status-input"
+              @keyup.enter="onSearch"
+            />
+          </el-form-item>
+          <el-form-item label="流水类型">
+            <el-input
+              v-model="query.flow_type"
+              clearable
+              placeholder="Sales Order / Material Transfer / Inventory Count"
+              data-testid="stock-ledger-flow-type-input"
               @keyup.enter="onSearch"
             />
           </el-form-item>
@@ -220,6 +229,33 @@
             <el-button link type="primary" @click="openSalesOrderReadback(localDraft.sales_order_no)">销售单详情</el-button>
           </el-descriptions-item>
         </el-descriptions>
+        <el-descriptions
+          v-if="localInventoryReadback"
+          border
+          :column="2"
+          size="small"
+          class="local-draft-descriptions"
+          data-testid="mvp-cand006-stock-readback-panel"
+        >
+          <el-descriptions-item label="库存草稿ID">{{ localInventoryReadback.draft_id }}</el-descriptions-item>
+          <el-descriptions-item label="scenario_tag">{{ localInventoryReadback.scenario_tag }}</el-descriptions-item>
+          <el-descriptions-item label="操作类型">{{ localInventoryReadback.operation_type }}</el-descriptions-item>
+          <el-descriptions-item label="流水类型">{{ localInventoryReadback.flow_type }}</el-descriptions-item>
+          <el-descriptions-item label="物料">{{ localInventoryReadback.material_code }}</el-descriptions-item>
+          <el-descriptions-item label="仓库">{{ localInventoryReadback.warehouse }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ localInventoryReadback.state }}</el-descriptions-item>
+          <el-descriptions-item label="回读操作" :span="2">
+            <el-button link type="primary" @click="refreshLocalInventoryReadback">刷新库存回读</el-button>
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-alert
+          v-else-if="localInventoryReadbackMessage"
+          class="scope-alert"
+          type="info"
+          :closable="false"
+          :title="localInventoryReadbackMessage"
+          data-testid="mvp-cand006-stock-readback-panel"
+        />
 
         <el-alert
           v-if="requiredItemCodeGuarded"
@@ -275,7 +311,7 @@
             :data="stockLedgerFilteredRows"
             border
             v-loading="loading"
-            data-testid="stock-ledger-table"
+            data-testid="mvp-cand006-stock-flow-table"
             :empty-text="stockLedgerEmptyText"
           >
             <el-table-column prop="posting_date" label="过账日期" min-width="120" />
@@ -3377,6 +3413,7 @@ import {
   voidSalesOrderDraft,
   writeSalesOrderDraft,
 } from '@/api/sales_inventory'
+import { request, type ApiResponse } from '@/api/request'
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
@@ -3448,6 +3485,18 @@ const finishedGoodsTransferLoading = ref<boolean>(false)
 const finishedGoodsTransferRows = ref<FinishedGoodsTransferItem[]>([])
 const finishedGoodsTransferTotal = ref<number>(0)
 const finishedGoodsTransferError = ref<string>('')
+type LocalInventoryReadback = {
+  draft_id: number
+  draft_no?: string
+  scenario_tag: string
+  operation_type: 'transfer' | 'counting'
+  flow_type: 'transfer' | 'counting'
+  material_code: string
+  warehouse: string
+  state: string
+}
+const localInventoryReadback = ref<LocalInventoryReadback | null>(null)
+const localInventoryReadbackMessage = ref<string>('未检测到库存草稿回读数据')
 
 const canRead = computed<boolean>(() => {
   return (
@@ -3876,6 +3925,7 @@ const query = reactive({
   warehouse: '',
   keyword: '',
   status: '',
+  flow_type: '',
   from_date: '',
   to_date: '',
   page: 1,
@@ -3888,6 +3938,7 @@ const applyRoutePrefill = (): void => {
   const warehouse = typeof route.query.warehouse === 'string' ? route.query.warehouse.trim() : ''
   const keyword = typeof route.query.keyword === 'string' ? route.query.keyword.trim() : ''
   const status = typeof route.query.status === 'string' ? route.query.status.trim() : ''
+  const flowType = typeof route.query.flow_type === 'string' ? route.query.flow_type.trim() : ''
   if (itemCode) {
     query.item_code = itemCode
   }
@@ -3903,14 +3954,24 @@ const applyRoutePrefill = (): void => {
   if (status) {
     query.status = status
   }
+  if (flowType) {
+    query.flow_type = flowType
+  }
 }
 
 const stockLedgerFilteredRows = computed<StockLedgerItem[]>(() => {
   const keyword = query.keyword.trim().toLowerCase()
   const status = query.status.trim()
+  const flowType = query.flow_type.trim().toLowerCase()
   return rows.value.filter((row) => {
     if (status && stockLedgerStatusLabel(row) !== status) {
       return false
+    }
+    if (flowType) {
+      const voucherType = String(row.voucher_type || '').toLowerCase()
+      if (!voucherType.includes(flowType)) {
+        return false
+      }
     }
     if (!keyword) {
       return true
@@ -4761,6 +4822,7 @@ const loadFinishedGoodsTransfer = async (): Promise<void> => {
 const onSearch = (): void => {
   query.page = 1
   void loadRows()
+  void refreshLocalInventoryReadback()
 }
 
 const onReset = (): void => {
@@ -4769,10 +4831,13 @@ const onReset = (): void => {
   query.warehouse = ''
   query.keyword = ''
   query.status = ''
+  query.flow_type = ''
   query.from_date = ''
   query.to_date = ''
   query.page = 1
   query.page_size = 20
+  localInventoryReadback.value = null
+  localInventoryReadbackMessage.value = '未检测到库存草稿回读数据'
   requiredItemCodeGuarded.value = false
   lastError.value = ''
   resetRows()
@@ -4797,6 +4862,49 @@ const openSalesOrderReadback = async (salesOrderNo: string): Promise<void> => {
       path: '/sales-inventory/sales-orders/detail',
       query: { name: salesOrderNo, source: 'stock-ledger-local-draft' },
     })
+  }
+}
+
+const WAREHOUSE_SCENARIO_PATTERN = /(Z003-WAREHOUSE-\d{8}-\d{3})/
+
+const extractWarehouseScenarioTag = (value: string): string => {
+  const matched = value.match(WAREHOUSE_SCENARIO_PATTERN)
+  return matched ? matched[1] : ''
+}
+
+const detectInventoryScenarioTag = (): string => {
+  const keywordScenario = extractWarehouseScenarioTag(query.keyword.trim())
+  if (keywordScenario) return keywordScenario
+  const routeScenario = typeof route.query.keyword === 'string' ? extractWarehouseScenarioTag(route.query.keyword) : ''
+  if (routeScenario) return routeScenario
+  const statusScenario = extractWarehouseScenarioTag(query.status.trim())
+  return statusScenario
+}
+
+const refreshLocalInventoryReadback = async (): Promise<void> => {
+  const scenarioTag = detectInventoryScenarioTag()
+  if (!scenarioTag) {
+    localInventoryReadback.value = null
+    localInventoryReadbackMessage.value = '未提供库存 scenario_tag，回读面板待命。'
+    return
+  }
+  try {
+    const params = new URLSearchParams({
+      scenario_tag: scenarioTag,
+      page: '1',
+      page_size: '1',
+    }).toString()
+    const response = await request<{ items: LocalInventoryReadback[]; total: number }>(
+      `/api/local-dev/inventory-operation-drafts?${params}`,
+    )
+    const latest = response.data.items[0] || null
+    localInventoryReadback.value = latest
+    localInventoryReadbackMessage.value = latest
+      ? `inventory_readback: ${latest.draft_no || latest.draft_id}`
+      : `scenario_tag=${scenarioTag} 未找到库存草稿`
+  } catch (error) {
+    localInventoryReadback.value = null
+    localInventoryReadbackMessage.value = `库存回读失败：${(error as Error).message}`
   }
 }
 
@@ -5654,6 +5762,7 @@ onMounted(async () => {
     applyRoutePrefill()
     await loadRows({ silentGuard: true })
     await loadMaterialTransfers()
+    await refreshLocalInventoryReadback()
   }
 })
 </script>

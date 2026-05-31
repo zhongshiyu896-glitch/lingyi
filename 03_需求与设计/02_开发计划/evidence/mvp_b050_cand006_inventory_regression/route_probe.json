@@ -1,0 +1,19 @@
+{
+  "routes": [
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "url": "http://127.0.0.1:5174/sales-inventory/stock-ledger",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/sales-inventory/stock-ledger",
+      "http_200": true
+    },
+    {
+      "route": "/warehouse",
+      "url": "http://127.0.0.1:5174/warehouse",
+      "http_status": 200,
+      "final_url": "http://127.0.0.1:5174/warehouse",
+      "http_200": true
+    }
+  ],
+  "all_http_200": true
+}

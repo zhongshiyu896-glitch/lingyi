@@ -1,0 +1,9 @@
+{
+  "command": "npm run typecheck",
+  "workdir": "06_前端/lingyi-pc",
+  "exit_code": 0,
+  "stdout": [
+    "> lingyi-pc@0.1.0 typecheck",
+    "> vue-tsc --noEmit -p tsconfig.json"
+  ]
+}

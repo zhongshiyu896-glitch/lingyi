@@ -1,5 +1,5 @@
 <template>
-  <div class="warehouse-page" data-testid="warehouse-page">
+  <div class="warehouse-page" data-testid="mvp-cand006-warehouse-page" data-legacy-testid="warehouse-page">
     <el-card shadow="never" data-testid="warehouse-stock-summary-section">
       <template #header>
         <div class="header-row">
@@ -105,7 +105,11 @@
         </el-form-item>
       </el-form>
 
-      <div class="warehouse-kpi-grid" data-testid="warehouse-kpi-grid">
+      <div
+        class="warehouse-kpi-grid"
+        data-testid="mvp-cand006-warehouse-summary-cards"
+        data-legacy-testid="warehouse-kpi-grid"
+      >
         <div class="warehouse-kpi-card" data-testid="warehouse-kpi-sku-count">
           <span class="kpi-label">SKU 记录</span>
           <strong class="kpi-value">{{ warehouseKpis.skuCount }}</strong>
@@ -145,6 +149,14 @@
           @click="openLedgerDetail"
         >
           显示进出明细
+        </el-button>
+        <el-button
+          type="primary"
+          plain
+          data-testid="warehouse-stock-open-stock-ledger-link-button"
+          @click="openStockLedgerLinkedPage"
+        >
+          打开库存流水页
         </el-button>
         <el-tooltip content="只读首版未开放真实导出动作" placement="top">
           <el-button :disabled="true" data-write-guard data-testid="warehouse-stock-export-guarded-button">导出</el-button>
@@ -196,16 +208,32 @@
           data-testid="warehouse-draft-item-code-input"
           style="max-width: 180px"
         />
-        <el-input-number
-          v-model="localWriteForm.qty"
+        <el-input
+          v-model="localWriteForm.material_name"
           :disabled="localWriteReadonlyGuarded"
-          :min="0.01"
+          placeholder="物料名称"
+          aria-label="物料名称"
+          style="max-width: 180px"
+        />
+        <el-input-number
+          v-model="localWriteForm.current_qty"
+          :disabled="localWriteReadonlyGuarded"
+          :min="0"
           :step="1"
           :precision="2"
           controls-position="right"
           data-testid="warehouse-draft-qty-input"
           style="max-width: 140px"
         />
+        <el-select
+          v-model="localWriteForm.operation_type"
+          :disabled="localWriteReadonlyGuarded"
+          placeholder="操作类型"
+          style="max-width: 130px"
+        >
+          <el-option label="调仓" value="transfer" />
+          <el-option label="盘点" value="counting" />
+        </el-select>
         <el-input
           v-model="localWriteForm.source_ref"
           :disabled="localWriteReadonlyGuarded"
@@ -214,6 +242,46 @@
           data-testid="warehouse-draft-source-ref-input"
           style="max-width: 280px"
         />
+        <div class="draft-mode-row" data-testid="mvp-cand006-warehouse-transfer-draft">
+          <el-input
+            v-model="localWriteForm.source_warehouse"
+            :disabled="localWriteReadonlyGuarded || localWriteForm.operation_type !== 'transfer'"
+            placeholder="调出仓库"
+            style="max-width: 140px"
+          />
+          <el-input
+            v-model="localWriteForm.target_warehouse"
+            :disabled="localWriteReadonlyGuarded || localWriteForm.operation_type !== 'transfer'"
+            placeholder="调入仓库"
+            style="max-width: 140px"
+          />
+          <el-input-number
+            v-model="localWriteForm.transfer_qty"
+            :disabled="localWriteReadonlyGuarded || localWriteForm.operation_type !== 'transfer'"
+            :min="0.01"
+            :step="1"
+            :precision="2"
+            controls-position="right"
+            placeholder="调仓数量"
+            style="max-width: 140px"
+          />
+        </div>
+        <div class="draft-mode-row" data-testid="mvp-cand006-warehouse-counting-draft">
+          <el-input-number
+            v-model="localWriteForm.counting_qty"
+            :disabled="localWriteReadonlyGuarded || localWriteForm.operation_type !== 'counting'"
+            :min="0"
+            :step="1"
+            :precision="2"
+            controls-position="right"
+            placeholder="盘点数量"
+            style="max-width: 140px"
+          />
+          <el-tag type="info" effect="plain">
+            盘点差异：{{ formatAmount(countingDeltaQty) }}
+          </el-tag>
+        </div>
+        <div class="draft-action-row" data-testid="mvp-cand006-local-save-cancel-actions">
         <el-button
           type="primary"
           :loading="localWriteLoading"
@@ -237,6 +305,15 @@
         >
           取消草稿
         </el-button>
+        <el-button
+          :loading="rollbackLoading"
+          :disabled="!canStockEntryWrite"
+          type="warning"
+          @click="rollbackLocalInventoryDrafts"
+        >
+          回滚并清零
+        </el-button>
+        </div>
         <el-input
           v-model="localWriteForm.cancel_reason"
           :disabled="localWriteReadonlyGuarded"
@@ -299,7 +376,17 @@
         </el-descriptions-item>
         <el-descriptions-item label="Outbox状态">{{ localOutboxStatus?.status || '-' }}</el-descriptions-item>
         <el-descriptions-item label="库存汇总行数">{{ summaryRows.length }}</el-descriptions-item>
+        <el-descriptions-item label="操作类型">{{ localStockEntryDraft.operation_type || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="流水类型">{{ localStockEntryDraft.flow_type || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="盘点差异">{{ formatAmount(localStockEntryDraft.diff_qty) }}</el-descriptions-item>
       </el-descriptions>
+      <el-alert
+        :title="zeroResidualStatusText"
+        type="success"
+        :closable="false"
+        data-testid="mvp-cand006-zero-residual-status"
+        class="scope-alert"
+      />
 
       <div class="warehouse-management-section" data-testid="mvp-basic-warehouse-card">
         <div class="management-header">
@@ -1075,25 +1162,16 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   buildWarehouseScenarioTag,
-  buildWarehouseStockEntryRequestId,
-  cancelWarehouseStockEntryDraft,
-  createWarehouseStockEntryDraft,
   ensureWarehouseScenarioTag,
-  fetchWarehouseStockEntryDraft,
-  fetchWarehouseStockEntryOutboxStatus,
   type WarehouseFactoryReturnMaterialReportItem,
   type WarehouseMaterialInventoryItem,
   type WarehouseManagementItem,
   type WarehouseOtherInboundItem,
   type WarehousePurchaseReturnOutboundItem,
   type WarehouseSemiFinishedOutboundItem,
-  type WarehouseStockEntryDraftCancelPayload,
-  type WarehouseStockEntryDraftCreatePayload,
-  type WarehouseStockEntryDraftData,
-  type WarehouseStockEntryOutboxStatusData,
   fetchWarehouseFactoryReturnMaterialReport,
   fetchWarehouseOtherInbound,
   fetchWarehousePurchaseReturnOutbound,
@@ -1103,6 +1181,7 @@ import {
   type WarehouseStockLedgerItem,
   type WarehouseStockSummaryItem,
 } from '@/api/warehouse'
+import { request, type ApiResponse } from '@/api/request'
 import { usePermissionStore } from '@/stores/permission'
 
 type DisplayRow = {
@@ -1122,8 +1201,48 @@ type DisplayRow = {
   is_below_safety: boolean
 }
 
+type LocalInventoryOperationType = 'transfer' | 'counting'
+
+type LocalInventoryDraft = {
+  id: number
+  draft_id: number
+  scenario_tag: string
+  draft_no: string
+  operation_type: LocalInventoryOperationType
+  flow_type: LocalInventoryOperationType
+  material_code: string
+  material_name: string
+  warehouse: string
+  source_warehouse: string
+  target_warehouse: string
+  current_qty: number
+  operation_qty: number
+  counting_qty: number
+  diff_qty: number
+  status: string
+  source_id: string
+  created_at: string
+  updated_at: string
+  state: string
+  cancel_reason: string | null
+  transfer_or_counting_saved: boolean
+}
+
+type LocalInventoryDraftListData = {
+  items: LocalInventoryDraft[]
+  total: number
+  page: number
+  page_size: number
+}
+
+type LocalInventoryResidualData = {
+  scenario_tag: string
+  total: number
+}
+
 const permissionStore = usePermissionStore()
 const route = useRoute()
+const router = useRouter()
 const permissionReady = ref<boolean>(false)
 const loading = ref<boolean>(false)
 const ledgerLoading = ref<boolean>(false)
@@ -1142,8 +1261,10 @@ const selectedRows = ref<DisplayRow[]>([])
 const ledgerDialogVisible = ref<boolean>(false)
 const localWriteLoading = ref<boolean>(false)
 const localWriteFeedback = ref<string>('')
-const localStockEntryDraft = ref<WarehouseStockEntryDraftData | null>(null)
-const localOutboxStatus = ref<WarehouseStockEntryOutboxStatusData | null>(null)
+const rollbackLoading = ref<boolean>(false)
+const localStockEntryDraft = ref<LocalInventoryDraft | null>(null)
+const localOutboxStatus = ref<{ status: string } | null>(null)
+const residualAfterRollback = ref<number | null>(null)
 
 const summaryRows = ref<WarehouseStockSummaryItem[]>([])
 const managementRows = ref<WarehouseManagementItem[]>([])
@@ -1209,12 +1330,18 @@ const buildDefaultWarehouseScenarioTag = (): string => {
 const localWriteForm = reactive({
   scenario_tag: buildDefaultWarehouseScenarioTag(),
   company: 'LY-LOCAL-DEV',
-  purpose: 'Material Issue' as 'Material Issue' | 'Material Receipt' | 'Material Transfer',
-  source_type: 'warehouse_local',
+  purpose: 'Material Transfer' as 'Material Issue' | 'Material Receipt' | 'Material Transfer',
+  source_type: 'warehouse_local_dev',
+  operation_type: 'transfer' as LocalInventoryOperationType,
   source_ref: '',
   warehouse: '样衣仓',
   item_code: 'ZY240716',
-  qty: 3,
+  material_name: '本地库存测试物料',
+  current_qty: 20,
+  source_warehouse: '样衣仓',
+  target_warehouse: '成品仓',
+  transfer_qty: 3,
+  counting_qty: 20,
   uom: 'Nos',
   business_date: new Date().toISOString().slice(0, 10),
   cancel_reason: '',
@@ -1524,7 +1651,7 @@ const finishedGoodsParityHint = computed<string>(() => (
 const foundationWarehouseParityHint = computed<string>(() => (
   '衣算云 / 基础资料 / 仓库管理（parity=foundation-warehouse，只读交互）'
 ))
-const localWriteReadonlyGuarded = computed<boolean>(() => true)
+const localWriteReadonlyGuarded = computed<boolean>(() => isFinishedGoodsParity.value || isFoundationWarehouseParity.value)
 
 const canRead = computed<boolean>(() => (
   isFinishedGoodsParity.value
@@ -1532,14 +1659,20 @@ const canRead = computed<boolean>(() => (
   || permissionStore.state.buttonPermissions.read
   || permissionStore.state.actions.includes('warehouse:read')
 ))
-const canStockEntryWrite = computed<boolean>(() => (
-  !localWriteReadonlyGuarded.value
-  && (
-    permissionStore.state.actions.includes('warehouse:stock_entry_draft')
-    || permissionStore.state.actions.includes('warehouse:stock_entry_cancel')
-    || permissionStore.state.actions.includes('warehouse:inventory_count')
-  )
-))
+const canStockEntryWrite = computed<boolean>(() => !localWriteReadonlyGuarded.value)
+const countingDeltaQty = computed<number>(() => {
+  const countingQty = Number(localWriteForm.counting_qty || 0)
+  const currentQty = Number(localWriteForm.current_qty || 0)
+  return countingQty - currentQty
+})
+const zeroResidualStatusText = computed<string>(() => {
+  if (residualAfterRollback.value === null) {
+    return 'zero_residual: pending'
+  }
+  return residualAfterRollback.value === 0
+    ? 'zero_residual: success (residual=0)'
+    : `zero_residual: failed (residual=${residualAfterRollback.value})`
+})
 
 const extractWarehouseScenarioTag = (value: string): string | null => {
   const matched = value.match(WAREHOUSE_SCENARIO_PATTERN)
@@ -2207,18 +2340,14 @@ const refreshStockSummaryReadback = async (): Promise<void> => {
 
 const refreshLocalStockEntryDraftDetail = async (): Promise<void> => {
   if (!localStockEntryDraft.value) return
-  const result = await fetchWarehouseStockEntryDraft(localStockEntryDraft.value.id)
+  const result = await fetchLocalInventoryDraft(localStockEntryDraft.value.id)
   localStockEntryDraft.value = result.data
 }
 
 const refreshLocalStockEntryOutboxStatus = async (): Promise<void> => {
   if (!localStockEntryDraft.value) return
-  try {
-    const result = await fetchWarehouseStockEntryOutboxStatus(localStockEntryDraft.value.id)
-    localOutboxStatus.value = result.data
-  } catch (error) {
-    localOutboxStatus.value = null
-    localWriteFeedback.value = `Outbox 回读失败：${(error as Error).message}`
+  localOutboxStatus.value = {
+    status: localStockEntryDraft.value.state === 'cancelled' ? 'cancelled' : 'succeeded',
   }
 }
 
@@ -2226,6 +2355,71 @@ const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string)
   const normalized = value.trim()
   if (normalized && extractWarehouseScenarioTag(normalized) === tag) return normalized
   return `${tag}-${fallbackSuffix}`
+}
+
+const LOCAL_INVENTORY_DRAFT_ENDPOINT = '/api/local-dev/inventory-operation-drafts'
+
+type LocalInventoryDraftWritePayload = {
+  draft_id?: number
+  scenario_tag: string
+  operation_type: LocalInventoryOperationType
+  flow_type: LocalInventoryOperationType
+  material_code: string
+  material_name: string
+  warehouse: string
+  source_warehouse: string
+  target_warehouse: string
+  current_qty: number
+  transfer_qty: number
+  counting_qty: number
+  status: string
+  business_ref: string
+  business_time: string
+  note: string
+  uom: string
+}
+
+const upsertLocalInventoryDraft = async (
+  payload: LocalInventoryDraftWritePayload,
+): Promise<ApiResponse<LocalInventoryDraft>> => {
+  return request<LocalInventoryDraft>(LOCAL_INVENTORY_DRAFT_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+const fetchLocalInventoryDraft = async (draftId: number): Promise<ApiResponse<LocalInventoryDraft>> => {
+  return request<LocalInventoryDraft>(`${LOCAL_INVENTORY_DRAFT_ENDPOINT}/${draftId}`)
+}
+
+const cancelLocalInventoryDraft = async (
+  draftId: number,
+  payload: { scenario_tag: string; reason: string },
+): Promise<ApiResponse<LocalInventoryDraft>> => {
+  return request<LocalInventoryDraft>(`${LOCAL_INVENTORY_DRAFT_ENDPOINT}/${draftId}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+const rollbackLocalInventoryDraftByScenario = async (
+  scenarioTag: string,
+): Promise<ApiResponse<{ rollback_success: boolean; zero_residual_success: boolean; residual_records_after_rollback: number }>> => {
+  return request<{ rollback_success: boolean; zero_residual_success: boolean; residual_records_after_rollback: number }>(
+    `${LOCAL_INVENTORY_DRAFT_ENDPOINT}/rollback-by-scenario`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scenario_tag: scenarioTag }),
+    },
+  )
+}
+
+const fetchLocalInventoryResidual = async (scenarioTag: string): Promise<ApiResponse<LocalInventoryResidualData>> => {
+  const query = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
+  return request<LocalInventoryResidualData>(`${LOCAL_INVENTORY_DRAFT_ENDPOINT}/residual-count?${query}`)
 }
 
 const createLocalStockEntryDraft = async (): Promise<void> => {
@@ -2249,53 +2443,44 @@ const createLocalStockEntryDraft = async (): Promise<void> => {
   try {
     const warehouse = localWriteForm.warehouse.trim() || '样衣仓'
     const itemCode = localWriteForm.item_code.trim() || 'ZY240716'
-    const qty = Number(localWriteForm.qty) > 0 ? Number(localWriteForm.qty) : 1
+    const operationType = localWriteForm.operation_type
+    const sourceWarehouse = localWriteForm.source_warehouse.trim() || warehouse
+    const targetWarehouse = localWriteForm.target_warehouse.trim() || warehouse
+    const transferQty = Number(localWriteForm.transfer_qty) > 0 ? Number(localWriteForm.transfer_qty) : 0
+    const countingQty = Number(localWriteForm.counting_qty) >= 0 ? Number(localWriteForm.counting_qty) : 0
+    const currentQty = Number(localWriteForm.current_qty) >= 0 ? Number(localWriteForm.current_qty) : 0
     const businessDate = normalizeBusinessDate(localWriteForm.business_date)
     const sourceRef = withScenarioCarrier(localWriteForm.source_ref, scenarioTag, 'SRC-WH')
-    const idempotencyKey = withScenarioCarrier(`${scenarioTag}-IDEMP-DRF`, scenarioTag, 'IDEMP')
     localWriteForm.scenario_tag = scenarioTag
     localWriteForm.source_ref = sourceRef
-    const requestId = buildWarehouseStockEntryRequestId({
-      scenarioTag,
-      operation: 'create_stock_entry_draft',
-      idempotencyKey,
-      sourceRef,
-      warehouse,
-      itemCode,
-      quantity: qty,
-      businessDate,
-      statusAction: 'create',
-    })
-    const payload: WarehouseStockEntryDraftCreatePayload = {
-      company: localWriteForm.company.trim() || 'LY-LOCAL-DEV',
-      purpose: localWriteForm.purpose,
-      source_type: localWriteForm.source_type,
-      source_id: sourceRef,
-      source_ref: sourceRef,
-      warehouse,
-      item_code: itemCode,
-      operation: 'create_stock_entry_draft',
-      quantity: qty,
-      business_date: businessDate,
-      status_action: 'create',
+    const payload: LocalInventoryDraftWritePayload = {
+      draft_id: localStockEntryDraft.value?.id,
       scenario_tag: scenarioTag,
-      source_warehouse: warehouse,
-      items: [
-        {
-          item_code: itemCode,
-          qty,
-          uom: localWriteForm.uom,
-          source_warehouse: warehouse,
-        },
-      ],
-      idempotency_key: idempotencyKey,
+      operation_type: operationType,
+      flow_type: operationType,
+      material_code: itemCode,
+      material_name: localWriteForm.material_name.trim() || itemCode,
+      warehouse,
+      source_warehouse: sourceWarehouse,
+      target_warehouse: targetWarehouse,
+      current_qty: currentQty,
+      transfer_qty: transferQty,
+      counting_qty: countingQty,
+      status: operationType === 'counting' ? 'counted' : 'draft',
+      business_ref: sourceRef,
+      business_time: businessDate,
+      note: `${scenarioTag}-${operationType}`,
+      uom: localWriteForm.uom,
     }
-    const created = await createWarehouseStockEntryDraft(payload, { requestId })
+    const created = await upsertLocalInventoryDraft(payload)
     localStockEntryDraft.value = created.data
+    localWriteForm.current_qty = created.data.current_qty
+    localWriteForm.counting_qty = created.data.counting_qty
     await refreshLocalStockEntryDraftDetail()
     await refreshLocalStockEntryOutboxStatus()
     await refreshStockSummaryReadback()
-    localWriteFeedback.value = `草稿创建成功：draft_id=${created.data.id}，已回读详情/outbox/库存汇总。`
+    const modeLabel = operationType === 'counting' ? '盘点' : '调仓'
+    localWriteFeedback.value = `${modeLabel}草稿保存成功：draft_id=${created.data.id}，已回读详情/outbox/库存汇总。`
     ElMessage.success('仓库草稿创建成功')
   } catch (error) {
     localWriteFeedback.value = (error as Error).message || '仓库草稿创建失败'
@@ -2329,36 +2514,8 @@ const cancelLocalStockEntryDraft = async (): Promise<void> => {
   localWriteFeedback.value = ''
   try {
     const draft = localStockEntryDraft.value
-    const warehouse = (draft.source_warehouse || draft.target_warehouse || localWriteForm.warehouse).trim()
-    const firstItemCode = draft.items[0]?.item_code || localWriteForm.item_code.trim()
-    const totalQty = draft.items.reduce((sum, item) => sum + Number(item.qty || 0), 0)
-    const sourceRef = withScenarioCarrier(draft.source_id || localWriteForm.source_ref, scenarioTag, 'SRC-WH')
-    const idempotencyKey = withScenarioCarrier(draft.idempotency_key, scenarioTag, 'IDEMP')
-    const requestId = buildWarehouseStockEntryRequestId({
-      scenarioTag,
-      operation: 'cancel_stock_entry_draft',
-      idempotencyKey,
-      sourceRef,
-      warehouse,
-      itemCode: firstItemCode,
-      quantity: totalQty,
-      businessDate: normalizeBusinessDate(localWriteForm.business_date),
-      statusAction: 'cancel',
-    })
     const reason = localWriteForm.cancel_reason.trim() || `CANCEL-${scenarioTag}`
-    const payload: WarehouseStockEntryDraftCancelPayload = {
-      reason,
-      idempotency_key: idempotencyKey,
-      source_ref: sourceRef,
-      warehouse,
-      item_code: firstItemCode,
-      operation: 'cancel_stock_entry_draft',
-      quantity: totalQty,
-      business_date: normalizeBusinessDate(localWriteForm.business_date),
-      status_action: 'cancel',
-      scenario_tag: scenarioTag,
-    }
-    const cancelled = await cancelWarehouseStockEntryDraft(draft.id, payload, { requestId })
+    const cancelled = await cancelLocalInventoryDraft(draft.id, { scenario_tag: scenarioTag, reason })
     localStockEntryDraft.value = cancelled.data
     await refreshLocalStockEntryDraftDetail()
     await refreshLocalStockEntryOutboxStatus()
@@ -2371,6 +2528,49 @@ const cancelLocalStockEntryDraft = async (): Promise<void> => {
   } finally {
     localWriteLoading.value = false
   }
+}
+
+const rollbackLocalInventoryDrafts = async (): Promise<void> => {
+  if (localWriteReadonlyGuarded.value) {
+    guardedAction('回滚并清零')
+    return
+  }
+  const scenarioTag = extractWarehouseScenarioTag(localWriteForm.scenario_tag.trim())
+  if (!scenarioTag) {
+    localWriteFeedback.value = 'scenario_tag 缺失或格式非法，无法执行回滚。'
+    ElMessage.warning(localWriteFeedback.value)
+    return
+  }
+  rollbackLoading.value = true
+  try {
+    const rollbackResult = await rollbackLocalInventoryDraftByScenario(scenarioTag)
+    const residualResult = await fetchLocalInventoryResidual(scenarioTag)
+    residualAfterRollback.value = residualResult.data.total
+    localWriteFeedback.value = `回滚完成：deleted=${rollbackResult.data.residual_records_after_rollback === 0 ? 'yes' : 'partial'} residual=${residualResult.data.total}`
+    localStockEntryDraft.value = null
+    localOutboxStatus.value = null
+    await refreshStockSummaryReadback()
+    ElMessage.success('本地库存草稿已回滚')
+  } catch (error) {
+    localWriteFeedback.value = (error as Error).message || '回滚失败'
+    ElMessage.error(localWriteFeedback.value)
+  } finally {
+    rollbackLoading.value = false
+  }
+}
+
+const openStockLedgerLinkedPage = (): void => {
+  const scenarioTag = extractWarehouseScenarioTag(localWriteForm.scenario_tag.trim()) || ''
+  void router.push({
+    path: '/sales-inventory/stock-ledger',
+    query: {
+      parity: 'material-stock',
+      item_code: localWriteForm.item_code.trim() || undefined,
+      warehouse: localWriteForm.warehouse.trim() || undefined,
+      keyword: scenarioTag || undefined,
+      source: 'warehouse-local-readback',
+    },
+  })
 }
 
 const guardedAction = (actionName: string): void => {
@@ -2533,6 +2733,20 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.draft-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.draft-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 

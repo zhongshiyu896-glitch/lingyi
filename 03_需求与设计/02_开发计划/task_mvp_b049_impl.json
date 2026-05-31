@@ -1,0 +1,110 @@
+{
+  "status": "DONE",
+  "task_id": "TASK-MVP-B049-IMPL",
+  "role": "B Engineer",
+  "summary": {
+    "head": "b6afecfe4997c493753f062d427b2ae5613c6ca5",
+    "branch": "codex/sprint4-seal",
+    "changed_files": [
+      "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+      "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+      "07_后端/lingyi_service/app/local_dev.py"
+    ],
+    "allowed_files_only": true,
+    "local_mvp_loop_complete": true,
+    "data_classification": "test_data",
+    "next_task": "TASK-MVP-B050-REGRESSION-CAND006"
+  },
+  "implementation": {
+    "sales_inventory_stock_ledger_query": "implemented(material, warehouse, flow_type filters) and visible list updates",
+    "warehouse_summary_and_draft": "implemented(warehouse summary cards + transfer/counting draft entry + readback panel)",
+    "local_write_storage": "local-dev/sqlite/scenario_tag",
+    "scenario_tag": "MVP-CAND006-B049-20260531173941",
+    "rollback_zero_residual": "rollback_success=true, zero_residual_success=true, residual_records_after_rollback=0",
+    "local_dev_endpoint_scope": "inventory-operation-drafts local-dev endpoints only"
+  },
+  "data_boundary": {
+    "data_classification": "test_data",
+    "test_data_used": true,
+    "seed_data_used": false,
+    "scenario_tag_required": true,
+    "scenario_tag_present": true,
+    "not_future_production_data": true,
+    "sqlite_not_formal_database": true,
+    "sqlite_direct_reuse_for_production_forbidden": true,
+    "future_seed_data_migration_required": true,
+    "seed_data_json_csv_export_available": false,
+    "real_inventory_finance_production_records_migrated": false,
+    "real_stock_in_out_records_migrated": false
+  },
+  "evidence": {
+    "routes": {
+      "/sales-inventory/stock-ledger": {
+        "status": 200,
+        "final_path": "/sales-inventory/stock-ledger"
+      },
+      "/warehouse": {
+        "status": 200,
+        "final_path": "/warehouse"
+      }
+    },
+    "screenshots": {
+      "stock_ledger_png": "03_需求与设计/02_开发计划/evidence/mvp_b049_cand006_inventory_impl/sales-inventory_stock-ledger_1440x1200.png",
+      "warehouse_png": "03_需求与设计/02_开发计划/evidence/mvp_b049_cand006_inventory_impl/warehouse_1440x1200.png",
+      "dimensions": "1440x1200"
+    },
+    "dom_anchors_observed": {
+      "observed": 12,
+      "required": 12
+    },
+    "local_write_loop_evidence": {
+      "scenario_tag": "MVP-CAND006-B049-20260531173941",
+      "save_success": true,
+      "draft_id_created": true,
+      "transfer_or_counting_saved": true,
+      "readback_success": true,
+      "cancel_success": true,
+      "rollback_success": true,
+      "zero_residual_success": true,
+      "residual_records_after_rollback": 0
+    },
+    "network_write_observation": {
+      "write_requests_observed_count": 3,
+      "local_dev_write_requests_observed_count": 3,
+      "write_requests_only_local_dev": true,
+      "auth_401_count": 0,
+      "production_write_requests": 0,
+      "erpnext_production_write_requests": 0,
+      "real_production_account_used": false
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "workdir": "06_前端/lingyi-pc",
+      "exit_code": 0
+    },
+    "dev_server_started": true,
+    "dev_server_stopped": true,
+    "local_dev_started": true,
+    "local_dev_stopped": true
+  },
+  "scope_guard": {
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "real_production_account_used": false,
+    "forbidden_paths_touched": [],
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": [],
+    "git_diff_check": "PASS",
+    "cached_empty": true
+  },
+  "residual_risk": {
+    "local_dev_py_remains_local_dev_sqlite_scenario_tag_support_only": true,
+    "seed_data_boundary_must_be_carried_into_b050_plus": true,
+    "remote_lifecycle_parked": true,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false
+  },
+  "next_recommended_task": "TASK-MVP-B050-REGRESSION-CAND006"
+}
