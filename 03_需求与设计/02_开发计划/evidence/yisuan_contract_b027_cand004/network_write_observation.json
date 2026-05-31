@@ -1,0 +1,9 @@
+{
+  "write_requests_observed_count": 0,
+  "production_write_requests": 0,
+  "erpnext_production_write_requests": 0,
+  "real_production_account_used": false,
+  "request_methods_observed": [
+    "GET"
+  ]
+}

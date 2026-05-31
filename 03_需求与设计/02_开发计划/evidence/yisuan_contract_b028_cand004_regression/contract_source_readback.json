@@ -1,0 +1,9 @@
+{
+  "contract_source_readback_present": true,
+  "covered_contract_ids": [
+    "A002",
+    "A004",
+    "A006"
+  ],
+  "source_status": "found"
+}

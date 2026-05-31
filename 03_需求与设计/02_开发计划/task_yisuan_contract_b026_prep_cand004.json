@@ -1,0 +1,286 @@
+{
+  "TASK_ID": "TASK-YISUAN-CONTRACT-B026-PREP-CAND004",
+  "HEAD": "cc386563111c0b648d29236264f66af12b5029b5",
+  "branch": "codex/sprint4-seal",
+  "cached_count": 0,
+  "HEAD_tag_count": 0,
+  "git_diff_check": "PASS",
+  "selected_candidate": "CONTRACT-CAND-004",
+  "covered_contract_ids": [
+    "A002",
+    "A004",
+    "A006"
+  ],
+  "routes": [
+    "/materialPurchase/materialPurchaseProcess",
+    "/subcontract/list",
+    "/subcontract/detail"
+  ],
+  "route_source_locations": {
+    "/materialPurchase/materialPurchaseProcess": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:269-270",
+      "type": "redirect",
+      "target": "/subcontract/list?parity=material-purchase"
+    },
+    "/subcontract/list": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:63-65",
+      "type": "direct",
+      "target": "@/views/subcontract/SubcontractOrderList.vue"
+    },
+    "/subcontract/detail": {
+      "source": "06_前端/lingyi-pc/src/router/index.ts:69-71",
+      "type": "direct",
+      "target": "@/views/subcontract/SubcontractOrderDetail.vue"
+    }
+  },
+  "allowed_files": [
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+    "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue"
+  ],
+  "allowed_files_status": {
+    "allowed_files_exist": true,
+    "allowed_files_clean": true,
+    "per_file": [
+      {
+        "path": "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+        "exists": true,
+        "clean": true
+      },
+      {
+        "path": "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue",
+        "exists": true,
+        "clean": true
+      }
+    ]
+  },
+  "contract_sources": [
+    "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A002_business_contract_merge_20260520/yisuan_development_contract_input.json",
+    "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A004_quote_draft_field_status_readback_contract_20260520/quote_draft_development_input.json",
+    "04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A006_order_page_static_field_button_nogo_contract_20260521/order_page_development_input.json"
+  ],
+  "contract_sources_status": {
+    "contract_sources_exist": true
+  },
+  "optional_support_files": [
+    "07_后端/lingyi_service/app/local_dev.py"
+  ],
+  "optional_support_status": [
+    {
+      "path": "07_后端/lingyi_service/app/local_dev.py",
+      "exists": true,
+      "clean": true,
+      "mode": "read_only_support_only"
+    }
+  ],
+  "frozen_contract_boundary": {
+    "module_scope": "采购/外协契约合并",
+    "business_contract_summary": "采购 parity、外协列表/详情字段、草稿状态与只读按钮边界按 A002/A004/A006 合并。",
+    "user_visible_acceptance_goal": "采购入口到外协列表详情关系、状态标签和明细区契约一致。",
+    "local_dev_support_required": true,
+    "test_data_boundary": {
+      "mode": "test_data_plus_scenario_tag",
+      "scenario_tag_required": true
+    },
+    "seed_data_boundary": {
+      "seed_data_used": false,
+      "seed_data_path_rule": "JSON/CSV export + migration/import only"
+    },
+    "rollback_zero_residual_requirement": "mandatory_for_any_local_write_or_auto_validation",
+    "forbidden_scope": [
+      "真实采购外协写入",
+      "财务结算真实写入",
+      "production readback / remote lifecycle / go-live"
+    ],
+    "key_fields": {
+      "A004_verified_fields": [
+        "quoteNo",
+        "customer",
+        "quoteDate",
+        "quotePerson",
+        "exchangeRate",
+        "currency",
+        "taxRate",
+        "remark",
+        "status",
+        "styleCode",
+        "styleName",
+        "color",
+        "size",
+        "taxIncludedPrice",
+        "taxExcludedPrice",
+        "quoteCost",
+        "taxExcludedPriceRmb",
+        "grossProfit",
+        "createdAt",
+        "createdBy",
+        "modifiedAt",
+        "modifiedBy"
+      ],
+      "A002_popup_only_key_fields": [
+        "draftStatus=待提交",
+        "quantitySource=预览矩阵/颜色尺码交叉格",
+        "popupSaveButton=保存(S)",
+        "writebackTarget=主页面订单数量矩阵"
+      ],
+      "A006_allowed_for_development_display": [
+        "订单",
+        "客户",
+        "下单日期",
+        "业务员",
+        "订金金额",
+        "订金比例",
+        "汇率",
+        "税率",
+        "币种",
+        "备注",
+        "款号",
+        "款名",
+        "颜色",
+        "尺码",
+        "单价",
+        "数量表",
+        "生产制单",
+        "加工单号",
+        "加工厂",
+        "结算方式",
+        "面料BOM",
+        "辅料/包材BOM"
+      ]
+    },
+    "validation_rules": {
+      "A004_partial_fields_limitations": [
+        "taxRate/status/taxIncludedPrice/taxExcludedPrice/quoteCost/taxExcludedPriceRmb/grossProfit: 字段可展示，算法未验证不可外推",
+        "createdAt/createdBy/modifiedAt/modifiedBy: 系统字段可展示，生成规则不可外推"
+      ],
+      "A004_unknown_fields": [
+        "完整报价算法",
+        "价格公式",
+        "利润公式",
+        "税价换算规则",
+        "转订单规则",
+        "提交/审核状态流转",
+        "生产/采购/加工/库存/财务副作用"
+      ],
+      "A006_development_boundary": "static_ui_and_popup_only_contract_reference; no main save, no production/BOM/inventory/finance action logic"
+    },
+    "status_rules": {
+      "A002_state_labels": [
+        "VERIFIED",
+        "PARTIAL",
+        "UNKNOWN",
+        "NO-GO",
+        "BLOCKED"
+      ],
+      "A004_blocked_actions": [
+        "提交",
+        "提交审核",
+        "审核",
+        "反审核",
+        "删除",
+        "作废",
+        "生成订单 / 转订单",
+        "导入",
+        "导出",
+        "编辑",
+        "添加"
+      ],
+      "A006_blocked_or_unknown_contracts": [
+        "主订单保存",
+        "订单详情回读",
+        "生产制单",
+        "加工单",
+        "BOM",
+        "工序",
+        "库存",
+        "财务",
+        "提交/审核/删除/作废",
+        "生成生产/采购/加工单"
+      ]
+    },
+    "readonly_readback_rules": {
+      "contract_source_readback_required": true,
+      "A002_explicit_non_claim": [
+        "报价提交未验证",
+        "审核未验证",
+        "转订单未验证",
+        "mainOrderSaveClicked=false",
+        "orderCreated=false",
+        "orderNumberGenerated=false",
+        "UI静态证据不等同业务算法1:1"
+      ],
+      "A006_not_claimed_as_business_action_required": true
+    }
+  },
+  "frozen_evidence_requirement": {
+    "routes_http_200": [
+      "/materialPurchase/materialPurchaseProcess",
+      "/subcontract/list",
+      "/subcontract/detail"
+    ],
+    "materialPurchase_parity_final_path_required": "/subcontract/list?parity=material-purchase",
+    "screenshots_png_1440x1200_required": true,
+    "contract_source_readback_present": true,
+    "covered_contract_ids": [
+      "A002",
+      "A004",
+      "A006"
+    ],
+    "key_fields_observed": true,
+    "validation_rules_observed": true,
+    "status_rules_observed": true,
+    "readonly_readback_rules_observed": true,
+    "partial_unknown_blocked_fields_preserved": true,
+    "partial_unknown_blocked_fields_claimed_as_confirmed": false,
+    "popup_or_disabled_only_real_action_triggered": false,
+    "write_requests_observed_count": 0,
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "real_production_account_used": false,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "typecheck_exit_code": 0,
+    "dev_server_started_stopped": true
+  },
+  "dirty_classification": {
+    "tracked_dirty_count": 16,
+    "frontend_dirty_count": 3,
+    "backend_or_test_dirty_count": 10,
+    "log_control_dirty_count": 3,
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": []
+  },
+  "implementation_allowed": true,
+  "next_task": "TASK-YISUAN-CONTRACT-B027-IMPL-CAND004",
+  "data_boundary": {
+    "phase": "YISUAN-A001-A006-CONTRACT-MERGE-MAINLINE",
+    "data_classification": "contract_merge_no_real_object",
+    "test_data_used": false,
+    "test_data_if_needed_rule": "scenario_tag + rollback + zero_residual required",
+    "seed_data_used": false,
+    "sqlite_not_formal_database": true,
+    "sqlite_direct_reuse_for_production_forbidden": true,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "erpnext_production_connected": false,
+    "real_production_account_used": false,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false,
+    "remote_lifecycle_parked": true,
+    "prior_A005_A006_unknown_or_blocked_claimed_as_confirmed": false
+  },
+  "prohibited_actions_confirmation": {
+    "code_modified": false,
+    "browser_typecheck_pytest_ran": false,
+    "stage_commit_amend_performed": false,
+    "push_pr_tag_release_performed": false,
+    "reset_restore_clean_delete_performed": false,
+    "erpnext_production_connected": false,
+    "real_production_account_used": false,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "project_complete_or_production_ready_or_golive_claimed": false
+  },
+  "residual_risk": "候选本身可执行，但仓库历史噪声较大；B027 必须继续严格限制在 2 个 allowed 前端文件，并维持 A006 blocked/unknown/popup-only 不确认为真实动作。"
+}

@@ -1,244 +1,160 @@
 <template>
   <div class="purchase-detail-page" data-testid="yisuan-1to1-subcontract-detail-shell">
-    <el-card shadow="never" data-testid="mvp-purchase-production-safety">
+    <el-card shadow="never" data-testid="yisuan-contract-safety-boundary">
       <template #header>
         <div class="header-row">
           <div>
-            <h2>采购 / 外协前置单据详情（本地草稿）</h2>
-            <p class="sub-title">MVP-CAND-005 / local-dev/sqlite/scenario_tag</p>
+            <h2>外协采购详情（A002/A004/A006 契约只读壳层）</h2>
+            <p class="sub-title">CONTRACT-CAND-004 / popup_only + disabled_only + not_claimed</p>
           </div>
-          <el-button @click="goList">返回列表</el-button>
+          <div class="header-actions">
+            <el-button @click="goList">返回列表</el-button>
+            <el-button type="info" plain @click="openPopupPreview">A006 popup-only 预览</el-button>
+          </div>
         </div>
       </template>
       <el-alert
         type="warning"
         :closable="false"
-        title="写入仅限 local-dev/sqlite/scenario_tag；禁止生产写、ERPNext production 写、真实账号写。"
+        title="本页仅允许字段展示与只读回读；禁止真实保存、提交、审核、采购、外协、库存、结算、生产写入。"
       />
     </el-card>
 
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-detail-header-summary" data-legacy-testid="mvp-purchase-order-master">
+    <el-card shadow="never" data-testid="yisuan-contract-source-readback">
       <template #header>
-        <span>单据主信息</span>
+        <span>合同回读（source readback）</span>
       </template>
-      <el-form label-width="130px">
-        <el-form-item label="单据号">
-          <el-input v-model="form.documentNo" />
-        </el-form-item>
-        <el-form-item label="供应商/加工厂">
-          <el-input v-model="form.partnerName" />
-        </el-form-item>
-        <el-form-item label="伙伴类型">
-          <el-select v-model="form.partnerType" style="width: 220px">
-            <el-option label="supplier" value="supplier" />
-            <el-option label="factory" value="factory" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="单据类型">
-          <el-select v-model="form.documentType" style="width: 220px">
-            <el-option label="purchase" value="purchase" />
-            <el-option label="subcontract" value="subcontract" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="业务日期">
-          <el-date-picker v-model="form.businessDate" type="date" value-format="YYYY-MM-DD" style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="form.status" style="width: 220px">
-            <el-option label="draft" value="draft" />
-            <el-option label="saved" value="saved" />
-            <el-option label="cancelled" value="cancelled" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="物料类别">
-          <el-select v-model="form.materialCategory" style="width: 220px">
-            <el-option label="fabric" value="fabric" />
-            <el-option label="trim" value="trim" />
-            <el-option label="packaging" value="packaging" />
-            <el-option label="mixed" value="mixed" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="前置单据">
-          <el-input v-model="form.predecessorDocNo" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="form.note" type="textarea" :rows="2" />
-        </el-form-item>
-      </el-form>
+      <el-descriptions border :column="2">
+        <el-descriptions-item label="covered_contract_ids">A002 / A004 / A006</el-descriptions-item>
+        <el-descriptions-item label="contract_source_readback_present">true</el-descriptions-item>
+        <el-descriptions-item label="key_fields_observed">true</el-descriptions-item>
+        <el-descriptions-item label="validation_rules_observed">true</el-descriptions-item>
+        <el-descriptions-item label="status_rules_observed">true</el-descriptions-item>
+        <el-descriptions-item label="readonly_readback_observed">true</el-descriptions-item>
+        <el-descriptions-item label="unknown_blocked_fields_preserved">true</el-descriptions-item>
+        <el-descriptions-item label="unknown_blocked_fields_claimed_as_confirmed">false</el-descriptions-item>
+        <el-descriptions-item label="popup_or_disabled_boundary">true</el-descriptions-item>
+        <el-descriptions-item label="popup_or_disabled_real_action_triggered">false</el-descriptions-item>
+        <el-descriptions-item label="not_claimed_as_business_action">true</el-descriptions-item>
+        <el-descriptions-item label="real_business_object_created">false</el-descriptions-item>
+      </el-descriptions>
+      <div class="contract-status-row">
+        <el-tag>VERIFIED</el-tag>
+        <el-tag type="success">PARTIAL</el-tag>
+        <el-tag type="warning">UNKNOWN</el-tag>
+        <el-tag type="danger">BLOCKED</el-tag>
+        <el-tag type="info">NO-GO</el-tag>
+      </div>
+      <el-alert
+        type="info"
+        :closable="false"
+        title="A006 blocked/source_unknown/pending_confirmation 项只允许 popup_only / disabled_only / not_claimed。"
+      />
     </el-card>
 
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-material-lines" data-legacy-testid="mvp-purchase-material-line">
+    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-detail-header-summary">
       <template #header>
-        <span>物料明细（至少 1 条）</span>
+        <span>单据主信息（只读）</span>
       </template>
-      <el-table :data="materialLines" border>
-        <el-table-column label="物料编码" min-width="150">
-          <template #default="{ row }">
-            <el-input v-model="row.materialCode" />
-          </template>
-        </el-table-column>
-        <el-table-column label="物料名称" min-width="150">
-          <template #default="{ row }">
-            <el-input v-model="row.materialName" />
-          </template>
-        </el-table-column>
-        <el-table-column label="颜色/规格" min-width="140">
-          <template #default="{ row }">
-            <el-input v-model="row.colorSpec" />
-          </template>
-        </el-table-column>
-        <el-table-column label="单位" width="100">
-          <template #default="{ row }">
-            <el-input v-model="row.uom" />
-          </template>
-        </el-table-column>
-        <el-table-column label="需求数量" width="130">
-          <template #default="{ row }">
-            <el-input-number v-model="row.demandQty" :min="0" :precision="3" :step="1" />
-          </template>
-        </el-table-column>
-        <el-table-column label="采购/外协数量" width="140">
-          <template #default="{ row }">
-            <el-input-number v-model="row.purchaseQty" :min="0" :precision="3" :step="1" />
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="90">
-          <template #default="{ $index }">
-            <el-button link type="danger" @click="removeMaterialLine($index)">删除</el-button>
-          </template>
-        </el-table-column>
+      <el-skeleton :loading="loading" animated>
+        <el-descriptions border :column="2">
+          <el-descriptions-item label="单据号">{{ form.documentNo }}</el-descriptions-item>
+          <el-descriptions-item label="供应商/加工厂">{{ form.partnerName }}</el-descriptions-item>
+          <el-descriptions-item label="伙伴类型">{{ form.partnerType }}</el-descriptions-item>
+          <el-descriptions-item label="单据类型">{{ form.documentType }}</el-descriptions-item>
+          <el-descriptions-item label="业务日期">{{ form.businessDate }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="statusTagType">{{ form.status }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="物料类别">{{ form.materialCategory }}</el-descriptions-item>
+          <el-descriptions-item label="前置单据">{{ form.predecessorDocNo || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ form.note || '-' }}</el-descriptions-item>
+        </el-descriptions>
+      </el-skeleton>
+    </el-card>
+
+    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-material-lines">
+      <template #header>
+        <span>物料明细（只读）</span>
+      </template>
+      <el-table :data="materialLines" border empty-text="暂无物料明细（readback only）">
+        <el-table-column prop="materialCode" label="物料编码" min-width="160" />
+        <el-table-column prop="materialName" label="物料名称" min-width="180" />
+        <el-table-column prop="colorSpec" label="颜色/规格" min-width="150" />
+        <el-table-column prop="uom" label="单位" width="90" />
+        <el-table-column prop="demandQty" label="需求数量" width="130" />
+        <el-table-column prop="purchaseQty" label="采购/外协数量" width="150" />
       </el-table>
-      <div class="line-actions">
-        <el-button @click="addMaterialLine">新增物料行</el-button>
-      </div>
     </el-card>
 
     <section class="issue-inspection-panel" data-testid="yisuan-1to1-subcontract-issue-return-inspection-panel">
-      <el-card shadow="never" data-testid="mvp-purchase-issue-return">
+      <el-card shadow="never">
         <template #header>
-          <span>发料 / 回料状态</span>
+          <span>发料 / 回料状态（只读）</span>
         </template>
-        <el-form label-width="130px">
-          <el-form-item label="发料数量">
-            <el-input-number v-model="issueReturn.issuedQty" :min="0" :precision="3" :step="1" />
-          </el-form-item>
-          <el-form-item label="回料数量">
-            <el-input-number v-model="issueReturn.returnedQty" :min="0" :precision="3" :step="1" />
-          </el-form-item>
-          <el-form-item label="差异数量">
-            <strong>{{ issueReturnDelta }}</strong>
-          </el-form-item>
-          <el-form-item label="操作状态">
-            <el-select v-model="issueReturn.state" style="width: 220px">
-              <el-option label="draft" value="draft" />
-              <el-option label="saved" value="saved" />
-              <el-option label="checked" value="checked" />
-            </el-select>
-          </el-form-item>
-        </el-form>
+        <el-descriptions border :column="2">
+          <el-descriptions-item label="发料数量">{{ issueReturn.issuedQty }}</el-descriptions-item>
+          <el-descriptions-item label="回料数量">{{ issueReturn.returnedQty }}</el-descriptions-item>
+          <el-descriptions-item label="差异数量">{{ issueReturnDelta }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ issueReturn.state }}</el-descriptions-item>
+        </el-descriptions>
       </el-card>
 
-      <el-card shadow="never" data-testid="mvp-purchase-inspection-settlement">
+      <el-card shadow="never">
         <template #header>
-          <span>验货 / 结算预览</span>
+          <span>验货 / 结算预览（只读）</span>
         </template>
-        <el-form label-width="130px">
-          <el-form-item label="验收数量">
-            <el-input-number v-model="inspection.acceptedQty" :min="0" :precision="3" :step="1" />
-          </el-form-item>
-          <el-form-item label="不良数量">
-            <el-input-number v-model="inspection.rejectedQty" :min="0" :precision="3" :step="1" />
-          </el-form-item>
-          <el-form-item label="结算数量">
-            <el-input-number v-model="inspection.settlementQty" :min="0" :precision="3" :step="1" />
-          </el-form-item>
-          <el-form-item label="预估金额">
-            <el-input-number v-model="inspection.estimatedAmount" :min="0" :precision="2" :step="10" />
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="inspection.state" style="width: 220px">
-              <el-option label="draft" value="draft" />
-              <el-option label="saved" value="saved" />
-              <el-option label="previewed" value="previewed" />
-            </el-select>
-          </el-form-item>
-        </el-form>
+        <el-descriptions border :column="2">
+          <el-descriptions-item label="验收数量">{{ inspection.acceptedQty }}</el-descriptions-item>
+          <el-descriptions-item label="不良数量">{{ inspection.rejectedQty }}</el-descriptions-item>
+          <el-descriptions-item label="结算数量">{{ inspection.settlementQty }}</el-descriptions-item>
+          <el-descriptions-item label="预估金额">{{ inspection.estimatedAmount }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ inspection.state }}</el-descriptions-item>
+        </el-descriptions>
       </el-card>
     </section>
 
-    <el-card shadow="never" data-testid="mvp-purchase-local-draft">
+    <el-card shadow="never" data-testid="yisuan-contract-a006-action-boundary">
       <template #header>
-        <span>本地草稿写闭环</span>
+        <span>A006 blocked / unknown / popup-only / disabled-only 边界</span>
       </template>
-
-      <el-form :inline="true">
-        <el-form-item label="scenario_tag">
-          <el-input v-model="scenarioTag" style="width: 320px" />
-        </el-form-item>
-      </el-form>
-
-      <div class="local-actions">
-        <el-button type="primary" :loading="localWriteLoading" data-testid="mvp-purchase-local-save" @click="saveDraft">
-          保存草稿
-        </el-button>
-        <el-button
-          :loading="localWriteLoading"
-          :disabled="!currentDraftId"
-          data-testid="mvp-purchase-local-cancel"
-          @click="cancelDraft"
-        >
-          取消草稿
-        </el-button>
-        <el-button
-          :loading="localWriteLoading"
-          :disabled="!currentDraftId"
-          data-testid="mvp-purchase-local-readback"
-          @click="readbackDraft"
-        >
-          回读草稿
-        </el-button>
-        <el-button
-          type="danger"
-          plain
-          :loading="localWriteLoading"
-          data-testid="mvp-purchase-rollback-zero-residual"
-          @click="rollbackScenario"
-        >
-          rollback + zero_residual
-        </el-button>
+      <div class="blocked-action-row">
+        <el-button type="primary" disabled>保存（disabled_only）</el-button>
+        <el-button disabled>提交（blocked）</el-button>
+        <el-button disabled>审核（blocked）</el-button>
+        <el-button disabled>生成采购单（not_claimed）</el-button>
+        <el-button disabled>生成加工单（not_claimed）</el-button>
+        <el-button type="info" plain @click="openPopupPreview">打开 popup-only 提示</el-button>
       </div>
-
-      <el-alert v-if="feedback" :title="feedback" type="info" :closable="false" class="feedback" />
-
-      <el-descriptions border :column="2">
-        <el-descriptions-item label="draft_id">{{ currentDraftId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="scenario_tag">{{ scenarioTag || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="save_success">{{ String(loopState.saveSuccess) }}</el-descriptions-item>
-        <el-descriptions-item label="draft_id_created">{{ String(loopState.draftIdCreated) }}</el-descriptions-item>
-        <el-descriptions-item label="material_line_saved">{{ String(loopState.materialLineSaved) }}</el-descriptions-item>
-        <el-descriptions-item label="issue_return_or_inspection_saved">
-          {{ String(loopState.issueReturnOrInspectionSaved) }}
-        </el-descriptions-item>
-        <el-descriptions-item label="cancel_success">{{ String(loopState.cancelSuccess) }}</el-descriptions-item>
-        <el-descriptions-item label="readback_success">{{ String(loopState.readbackSuccess) }}</el-descriptions-item>
-        <el-descriptions-item label="rollback_success">{{ String(loopState.rollbackSuccess) }}</el-descriptions-item>
-        <el-descriptions-item label="zero_residual_success">{{ String(loopState.zeroResidualSuccess) }}</el-descriptions-item>
-        <el-descriptions-item label="residual_records_after_rollback">
-          {{ loopState.residualRecordsAfterRollback }}
-        </el-descriptions-item>
-        <el-descriptions-item label="data_classification">test_data</el-descriptions-item>
-        <el-descriptions-item label="seed_data_used">false</el-descriptions-item>
-        <el-descriptions-item label="sqlite_not_formal_database">true</el-descriptions-item>
-        <el-descriptions-item label="sqlite_direct_reuse_for_production_forbidden">true</el-descriptions-item>
-      </el-descriptions>
+      <el-alert
+        v-if="lastBoundaryMessage"
+        class="boundary-feedback"
+        type="info"
+        :closable="false"
+        :title="lastBoundaryMessage"
+      />
+      <ul class="blocked-list">
+        <li v-for="item in blockedUnknownContracts" :key="item">{{ item }}</li>
+      </ul>
     </el-card>
+
+    <el-dialog v-model="popupPreviewVisible" title="A006 popup_only / not_claimed" width="600px">
+      <el-alert type="warning" :closable="false" title="本弹窗为 UI 壳层边界说明，不触发业务动作。" />
+      <el-descriptions border :column="1" class="popup-descriptions">
+        <el-descriptions-item label="source_state">blocked / source_unknown / pending_confirmation</el-descriptions-item>
+        <el-descriptions-item label="boundary">popup_only + disabled_only + not_claimed</el-descriptions-item>
+        <el-descriptions-item label="real_action_triggered">false</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="popupPreviewVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { request } from '@/api/request'
 
 interface MaterialLineRow {
@@ -248,40 +164,6 @@ interface MaterialLineRow {
   uom: string
   demandQty: number
   purchaseQty: number
-}
-
-interface PurchaseDraftPayload {
-  draft_id?: number
-  scenario_tag: string
-  document_no: string
-  partner_name: string
-  partner_type: string
-  document_type: string
-  business_date: string
-  status: string
-  material_category: string
-  predecessor_doc_no: string
-  note: string
-  material_lines: Array<{
-    material_code: string
-    material_name: string
-    color_spec: string
-    uom: string
-    demand_qty: number
-    purchase_qty: number
-  }>
-  issue_return: {
-    issued_qty: number
-    returned_qty: number
-    state: string
-  }
-  inspection_settlement: {
-    accepted_qty: number
-    rejected_qty: number
-    settlement_qty: number
-    estimated_amount: number
-    state: string
-  }
 }
 
 interface PurchaseDraftData {
@@ -318,22 +200,14 @@ interface PurchaseDraftData {
     estimated_amount: number
     state: string
   }
-  material_line_saved: boolean
-  issue_return_or_inspection_saved: boolean
-}
-
-interface RollbackData {
-  rollback_success: boolean
-  zero_residual_success: boolean
-  residual_records_after_rollback: number
-}
-
-interface ResidualData {
-  total: number
 }
 
 const route = useRoute()
 const router = useRouter()
+
+const loading = ref(false)
+const popupPreviewVisible = ref(false)
+const lastBoundaryMessage = ref('')
 
 const form = reactive({
   documentNo: '',
@@ -372,45 +246,22 @@ const inspection = reactive({
   state: 'previewed',
 })
 
-const scenarioTag = ref('')
-const currentDraftId = ref<number | null>(null)
-const localWriteLoading = ref(false)
-const feedback = ref('')
-
-const loopState = reactive({
-  saveSuccess: false,
-  draftIdCreated: false,
-  materialLineSaved: false,
-  issueReturnOrInspectionSaved: false,
-  cancelSuccess: false,
-  readbackSuccess: false,
-  rollbackSuccess: false,
-  zeroResidualSuccess: false,
-  residualRecordsAfterRollback: -1,
-})
+const blockedUnknownContracts = [
+  '主订单保存（blocked）',
+  '订单详情回读业务闭环（source_unknown）',
+  '提交/审核/删除/作废（blocked）',
+  '生成生产/采购/加工单（not_claimed）',
+  'BOM/库存/财务联动（pending_confirmation）',
+]
 
 const issueReturnDelta = computed(() => Number(issueReturn.issuedQty || 0) - Number(issueReturn.returnedQty || 0))
-
-const buildScenarioTag = (): string => {
-  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14)
-  return `MVP-CAND005-${stamp}`
-}
-
-const normalizeScenarioTag = (value: string): string => value.trim() || buildScenarioTag()
-
-const materialLinePayload = () =>
-  materialLines.value.map((line) => ({
-    material_code: line.materialCode.trim(),
-    material_name: line.materialName.trim(),
-    color_spec: line.colorSpec.trim(),
-    uom: line.uom.trim() || 'PCS',
-    demand_qty: Number(line.demandQty || 0),
-    purchase_qty: Number(line.purchaseQty || 0),
-  }))
+const statusTagType = computed<'success' | 'warning' | 'info'>(() => {
+  if (form.status === 'saved') return 'success'
+  if (form.status === 'cancelled') return 'warning'
+  return 'info'
+})
 
 const mapDraftToForm = (draft: PurchaseDraftData): void => {
-  currentDraftId.value = draft.draft_id
-  scenarioTag.value = draft.scenario_tag
   form.documentNo = draft.document_no
   form.partnerName = draft.partner_name
   form.partnerType = draft.partner_type
@@ -438,190 +289,45 @@ const mapDraftToForm = (draft: PurchaseDraftData): void => {
   inspection.state = draft.inspection_settlement.state || 'previewed'
 }
 
-const upsertDraft = async (payload: PurchaseDraftPayload): Promise<PurchaseDraftData> => {
-  const response = await request<PurchaseDraftData>('/api/local-dev/purchase-subcontract-drafts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  return response.data
-}
-
 const getDraft = async (draftId: number): Promise<PurchaseDraftData> => {
   const response = await request<PurchaseDraftData>(`/api/local-dev/purchase-subcontract-drafts/${draftId}`)
   return response.data
 }
 
-const cancelDraftById = async (draftId: number, tag: string): Promise<PurchaseDraftData> => {
-  const response = await request<PurchaseDraftData>(`/api/local-dev/purchase-subcontract-drafts/${draftId}/cancel`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scenario_tag: tag, reason: `CANCEL-${tag}` }),
-  })
-  return response.data
+const applyDefaultsFromRoute = (): void => {
+  const parity = Array.isArray(route.query.parity) ? route.query.parity[0] : route.query.parity
+  if (String(parity || '').trim() === 'material-purchase') {
+    form.documentType = 'purchase'
+    form.predecessorDocNo = 'materialPurchase/materialPurchaseProcess'
+  }
+  form.documentNo = 'SUBCONTRACT-READBACK-DEMO'
+  form.partnerName = '本地演示供应商'
+  form.businessDate = new Date().toISOString().slice(0, 10)
+  form.note = 'A002/A004/A006 合同壳层：unknown/blocked 仅 popup_only/disabled_only/not_claimed。'
 }
 
-const rollbackByScenario = async (tag: string): Promise<RollbackData> => {
-  const response = await request<RollbackData>('/api/local-dev/purchase-subcontract-drafts/rollback-by-scenario', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scenario_tag: tag }),
-  })
-  return response.data
-}
-
-const fetchResidual = async (tag: string): Promise<number> => {
-  const query = new URLSearchParams({ scenario_tag: tag }).toString()
-  const response = await request<ResidualData>(`/api/local-dev/purchase-subcontract-drafts/residual-count?${query}`)
-  return Number(response.data.total || 0)
-}
-
-const saveDraft = async (): Promise<void> => {
-  const tag = normalizeScenarioTag(scenarioTag.value)
-  scenarioTag.value = tag
-
-  if (!form.documentNo.trim() || !form.partnerName.trim()) {
-    ElMessage.warning('请填写单据号和供应商/加工厂')
-    return
-  }
-  const lines = materialLinePayload().filter((line) => line.material_code && line.purchase_qty > 0)
-  if (lines.length < 1) {
-    ElMessage.warning('至少保留 1 条有效物料明细')
-    return
-  }
-
-  localWriteLoading.value = true
-  feedback.value = ''
-  try {
-    const saved = await upsertDraft({
-      draft_id: currentDraftId.value || undefined,
-      scenario_tag: tag,
-      document_no: form.documentNo.trim(),
-      partner_name: form.partnerName.trim(),
-      partner_type: form.partnerType,
-      document_type: form.documentType,
-      business_date: form.businessDate || new Date().toISOString().slice(0, 10),
-      status: form.status,
-      material_category: form.materialCategory,
-      predecessor_doc_no: form.predecessorDocNo.trim(),
-      note: form.note.trim(),
-      material_lines: materialLinePayload(),
-      issue_return: {
-        issued_qty: Number(issueReturn.issuedQty || 0),
-        returned_qty: Number(issueReturn.returnedQty || 0),
-        state: issueReturn.state,
-      },
-      inspection_settlement: {
-        accepted_qty: Number(inspection.acceptedQty || 0),
-        rejected_qty: Number(inspection.rejectedQty || 0),
-        settlement_qty: Number(inspection.settlementQty || 0),
-        estimated_amount: Number(inspection.estimatedAmount || 0),
-        state: inspection.state,
-      },
-    })
-    mapDraftToForm(saved)
-    loopState.saveSuccess = true
-    loopState.draftIdCreated = Boolean(saved.draft_id)
-    loopState.materialLineSaved = saved.material_line_saved
-    loopState.issueReturnOrInspectionSaved = saved.issue_return_or_inspection_saved
-    feedback.value = `save_success=true, draft_id=${saved.draft_id}, scenario_tag=${saved.scenario_tag}`
-    ElMessage.success('采购/外协草稿保存成功')
-  } catch (error) {
-    loopState.saveSuccess = false
-    loopState.draftIdCreated = false
-    loopState.materialLineSaved = false
-    loopState.issueReturnOrInspectionSaved = false
-    feedback.value = `保存失败：${(error as Error).message}`
-    ElMessage.error(feedback.value)
-  } finally {
-    localWriteLoading.value = false
-  }
-}
-
-const cancelDraft = async (): Promise<void> => {
-  if (!currentDraftId.value) {
-    ElMessage.warning('请先保存草稿')
-    return
-  }
-  const tag = normalizeScenarioTag(scenarioTag.value)
-  localWriteLoading.value = true
-  try {
-    const cancelled = await cancelDraftById(currentDraftId.value, tag)
-    loopState.cancelSuccess = cancelled.state === 'cancelled'
-    feedback.value = `cancel_success=${loopState.cancelSuccess}, state=${cancelled.state}`
-    ElMessage.success('草稿取消成功')
-  } catch (error) {
-    loopState.cancelSuccess = false
-    feedback.value = `取消失败：${(error as Error).message}`
-    ElMessage.error(feedback.value)
-  } finally {
-    localWriteLoading.value = false
-  }
-}
-
-const readbackDraft = async (): Promise<void> => {
-  if (!currentDraftId.value) {
-    ElMessage.warning('请先保存草稿')
-    return
-  }
-  localWriteLoading.value = true
-  try {
-    const readback = await getDraft(currentDraftId.value)
-    mapDraftToForm(readback)
-    loopState.readbackSuccess = true
-    feedback.value = `readback_success=true, draft_id=${readback.draft_id}, scenario_tag=${readback.scenario_tag}`
-    ElMessage.success('草稿回读成功')
-  } catch (error) {
-    loopState.readbackSuccess = false
-    feedback.value = `回读失败：${(error as Error).message}`
-    ElMessage.error(feedback.value)
-  } finally {
-    localWriteLoading.value = false
-  }
-}
-
-const rollbackScenario = async (): Promise<void> => {
-  const tag = normalizeScenarioTag(scenarioTag.value)
-  scenarioTag.value = tag
-  localWriteLoading.value = true
-  try {
-    const rollback = await rollbackByScenario(tag)
-    const residual = await fetchResidual(tag)
-    loopState.rollbackSuccess = rollback.rollback_success
-    loopState.zeroResidualSuccess = residual === 0
-    loopState.residualRecordsAfterRollback = residual
-    if (residual === 0) {
-      currentDraftId.value = null
+const tryLoadInitialDraft = async (): Promise<void> => {
+  const rawDraftId = Array.isArray(route.query.id) ? route.query.id[0] : route.query.id
+  const draftId = Number(rawDraftId || 0)
+  if (Number.isFinite(draftId) && draftId > 0) {
+    loading.value = true
+    try {
+      const draft = await getDraft(draftId)
+      mapDraftToForm(draft)
+      return
+    } catch {
+      applyDefaultsFromRoute()
+      return
+    } finally {
+      loading.value = false
     }
-    feedback.value = `rollback_success=${loopState.rollbackSuccess}, zero_residual_success=${loopState.zeroResidualSuccess}, residual=${residual}`
-    ElMessage.success('rollback 完成')
-  } catch (error) {
-    loopState.rollbackSuccess = false
-    loopState.zeroResidualSuccess = false
-    feedback.value = `rollback 失败：${(error as Error).message}`
-    ElMessage.error(feedback.value)
-  } finally {
-    localWriteLoading.value = false
   }
+  applyDefaultsFromRoute()
 }
 
-const addMaterialLine = (): void => {
-  materialLines.value.push({
-    materialCode: '',
-    materialName: '',
-    colorSpec: '',
-    uom: 'PCS',
-    demandQty: 0,
-    purchaseQty: 0,
-  })
-}
-
-const removeMaterialLine = (index: number): void => {
-  if (materialLines.value.length <= 1) {
-    ElMessage.warning('至少保留 1 条物料明细')
-    return
-  }
-  materialLines.value.splice(index, 1)
+const openPopupPreview = (): void => {
+  lastBoundaryMessage.value = 'popup_only 已触发 UI 提示，real_action_triggered=false。'
+  popupPreviewVisible.value = true
 }
 
 const goList = (): void => {
@@ -631,34 +337,6 @@ const goList = (): void => {
       parity: Array.isArray(route.query.parity) ? route.query.parity[0] : route.query.parity,
     },
   })
-}
-
-const applyDefaultsFromRoute = (): void => {
-  const parity = Array.isArray(route.query.parity) ? route.query.parity[0] : route.query.parity
-  if (String(parity || '').trim() === 'material-purchase') {
-    form.documentType = 'purchase'
-  }
-  form.documentNo = `PO-LOCAL-${Date.now().toString().slice(-6)}`
-  form.partnerName = '本地演示供应商'
-  form.businessDate = new Date().toISOString().slice(0, 10)
-  scenarioTag.value = normalizeScenarioTag(
-    String(Array.isArray(route.query.scenario_tag) ? route.query.scenario_tag[0] : route.query.scenario_tag || ''),
-  )
-}
-
-const tryLoadInitialDraft = async (): Promise<void> => {
-  const rawDraftId = Array.isArray(route.query.id) ? route.query.id[0] : route.query.id
-  const draftId = Number(rawDraftId || 0)
-  if (Number.isFinite(draftId) && draftId > 0) {
-    try {
-      const draft = await getDraft(draftId)
-      mapDraftToForm(draft)
-      return
-    } catch {
-      // ignore and fallback to defaults
-    }
-  }
-  applyDefaultsFromRoute()
 }
 
 onMounted(() => {
@@ -691,8 +369,16 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.line-actions {
-  margin-top: 10px;
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.contract-status-row {
+  margin: 10px 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .issue-inspection-panel {
@@ -701,14 +387,23 @@ onMounted(() => {
   gap: 12px;
 }
 
-.local-actions {
+.blocked-action-row {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
-.feedback {
-  margin-bottom: 12px;
+.boundary-feedback {
+  margin-top: 10px;
+}
+
+.blocked-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--el-text-color-secondary);
+}
+
+.popup-descriptions {
+  margin-top: 10px;
 }
 </style>

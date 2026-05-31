@@ -1,23 +1,48 @@
 <template>
   <div class="purchase-list-page" data-testid="yisuan-1to1-subcontract-list-shell">
-    <el-card shadow="never" data-testid="mvp-purchase-production-safety">
+    <el-card shadow="never" data-testid="yisuan-contract-safety-boundary">
       <template #header>
         <div class="header-row">
           <div>
-            <h2>物料采购 / 外协采购前置单据</h2>
-            <p class="sub-title">MVP-CAND-005 / local-dev/sqlite/scenario_tag</p>
+            <h2>外协采购列表（A002/A004/A006 契约壳层）</h2>
+            <p class="sub-title">CONTRACT-CAND-004 / contract_merge_no_real_object</p>
           </div>
           <div class="header-actions">
-            <el-button @click="openNewDraft">新建本地草稿</el-button>
+            <el-button type="info" plain @click="openA006PopupPreview">A006 popup-only 预览</el-button>
             <el-button type="primary" plain :loading="loading" @click="loadRows">刷新</el-button>
           </div>
         </div>
       </template>
-
       <el-alert
         type="warning"
         :closable="false"
-        title="仅允许 local-dev/sqlite 测试数据闭环；禁止生产写、ERPNext production 写、真实账号写。"
+        title="本页仅允许只读/回读 UI 壳层；禁止真实保存、提交、审核、采购、外协、库存、结算、生产写入。"
+      />
+    </el-card>
+
+    <el-card shadow="never" data-testid="yisuan-contract-source-readback">
+      <template #header>
+        <span>合同回读（source readback）</span>
+      </template>
+      <el-descriptions border :column="2">
+        <el-descriptions-item label="covered_contract_ids">A002 / A004 / A006</el-descriptions-item>
+        <el-descriptions-item label="contract_source_readback_present">true</el-descriptions-item>
+        <el-descriptions-item label="unknown_blocked_fields_preserved">true</el-descriptions-item>
+        <el-descriptions-item label="unknown_blocked_fields_claimed_as_confirmed">false</el-descriptions-item>
+        <el-descriptions-item label="popup_or_disabled_boundary">true</el-descriptions-item>
+        <el-descriptions-item label="not_claimed_as_business_action">true</el-descriptions-item>
+      </el-descriptions>
+      <div class="contract-status-row" data-testid="yisuan-1to1-subcontract-status-tags">
+        <el-tag>VERIFIED</el-tag>
+        <el-tag type="success">PARTIAL</el-tag>
+        <el-tag type="warning">UNKNOWN</el-tag>
+        <el-tag type="danger">BLOCKED</el-tag>
+        <el-tag type="info">NO-GO</el-tag>
+      </div>
+      <el-alert
+        type="info"
+        :closable="false"
+        title="A006 blocked/source_unknown/pending_confirmation 项仅支持 popup_only/disabled_only/not_claimed 表达。"
       />
     </el-card>
 
@@ -28,7 +53,7 @@
           :closable="false"
           class="parity-alert"
           data-testid="mvp-purchase-parity-material"
-          title="当前为 materialPurchase parity 采购视角：/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
+          title="materialPurchase parity：/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
         />
       </div>
 
@@ -43,15 +68,15 @@
         <el-form-item label="供应商/加工厂">
           <el-input v-model="query.partnerName" clearable placeholder="供应商或加工厂" style="width: 180px" />
         </el-form-item>
-        <el-form-item label="单据状态">
-          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 160px">
+        <el-form-item label="状态">
+          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 140px">
             <el-option label="draft" value="draft" />
             <el-option label="saved" value="saved" />
             <el-option label="cancelled" value="cancelled" />
           </el-select>
         </el-form-item>
         <el-form-item label="物料类别">
-          <el-select v-model="query.materialCategory" clearable placeholder="全部类别" style="width: 160px">
+          <el-select v-model="query.materialCategory" clearable placeholder="全部类别" style="width: 150px">
             <el-option label="fabric" value="fabric" />
             <el-option label="trim" value="trim" />
             <el-option label="packaging" value="packaging" />
@@ -65,13 +90,12 @@
       </el-form>
 
       <el-alert v-if="feedback" :title="feedback" type="info" :closable="false" class="feedback" />
-      <span class="anchor-probe" data-testid="yisuan-1to1-subcontract-status-tags" aria-hidden="true"></span>
 
       <el-table
         :data="rows"
         border
         v-loading="loading"
-        empty-text="暂无本地采购/外协草稿"
+        empty-text="暂无外协采购草稿（只读回显）"
         data-testid="yisuan-1to1-subcontract-list-table"
         data-legacy-testid="mvp-purchase-list-table"
       >
@@ -80,14 +104,14 @@
         <el-table-column prop="document_type" label="单据类型" min-width="120" />
         <el-table-column prop="business_date" label="业务日期" min-width="130" />
         <el-table-column prop="material_category" label="物料类别" min-width="120" />
-        <el-table-column label="物料明细" min-width="150">
+        <el-table-column label="物料明细" min-width="140">
           <template #default="{ row }">
             {{ row.material_lines.length }} 条
           </template>
         </el-table-column>
-        <el-table-column label="发料/回料状态" min-width="190">
+        <el-table-column label="发料/回料" min-width="180">
           <template #default="{ row }">
-            发料 {{ row.issue_return.issued_qty }} / 回料 {{ row.issue_return.returned_qty }} / 差异 {{ row.issue_return.delta_qty }}
+            发 {{ row.issue_return.issued_qty }} / 回 {{ row.issue_return.returned_qty }} / 差 {{ row.issue_return.delta_qty }}
           </template>
         </el-table-column>
         <el-table-column label="验货/结算预览" min-width="220">
@@ -96,14 +120,18 @@
             / 结算 {{ row.inspection_settlement.settlement_qty }} / 预估 {{ row.inspection_settlement.estimated_amount }}
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" min-width="110">
+        <el-table-column label="状态" min-width="110">
           <template #default="{ row }">
-            <el-tag data-testid="yisuan-1to1-subcontract-status-tags">{{ row.status }}</el-tag>
+            <el-tag :type="tagType(row.status)" data-testid="yisuan-1to1-subcontract-status-tags">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="130" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDetail(row.draft_id)">详情</el-button>
+            <div class="row-actions">
+              <el-button link type="primary" @click="openDetail(row.draft_id)">详情</el-button>
+              <el-button link type="info" disabled>提交（blocked）</el-button>
+              <el-button link type="info" disabled>审核（disabled_only）</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -119,6 +147,18 @@
         />
       </div>
     </el-card>
+
+    <el-dialog v-model="a006PopupVisible" title="A006 popup-only / not_claimed" width="560px">
+      <el-alert type="warning" :closable="false" title="本弹窗为合同边界展示，不触发任何业务动作。" />
+      <el-descriptions border :column="1" class="popup-descriptions">
+        <el-descriptions-item label="source_state">source_unknown / pending_confirmation</el-descriptions-item>
+        <el-descriptions-item label="boundary">popup_only + disabled_only + not_claimed</el-descriptions-item>
+        <el-descriptions-item label="main_save_or_submit_triggered">false</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="a006PopupVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -187,6 +227,7 @@ const rows = ref<PurchaseDraftItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 const feedback = ref('')
+const a006PopupVisible = ref(false)
 
 const query = reactive({
   keyword: '',
@@ -269,14 +310,14 @@ const openDetail = (draftId: number): void => {
   })
 }
 
-const openNewDraft = (): void => {
-  router.push({
-    path: '/subcontract/detail',
-    query: {
-      parity: parityToken.value || undefined,
-      mode: 'new',
-    },
-  })
+const tagType = (status: string): 'success' | 'warning' | 'info' => {
+  if (status === 'saved') return 'success'
+  if (status === 'cancelled') return 'warning'
+  return 'info'
+}
+
+const openA006PopupPreview = (): void => {
+  a006PopupVisible.value = true
 }
 
 onMounted(() => {
@@ -314,6 +355,13 @@ onMounted(() => {
   gap: 8px;
 }
 
+.contract-status-row {
+  margin: 10px 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .parity-alert {
   margin-bottom: 10px;
 }
@@ -322,8 +370,13 @@ onMounted(() => {
   margin: 10px 0;
 }
 
-.anchor-probe {
-  display: none;
+.row-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.popup-descriptions {
+  margin-top: 10px;
 }
 
 .pager {

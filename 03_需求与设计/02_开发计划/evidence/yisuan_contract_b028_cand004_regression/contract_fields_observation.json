@@ -1,0 +1,12 @@
+{
+  "key_fields_observed": true,
+  "validation_rules_observed": true,
+  "status_rules_observed": true,
+  "readonly_readback_observed": true,
+  "unknown_blocked_fields_preserved": true,
+  "unknown_blocked_fields_claimed_as_confirmed": false,
+  "popup_or_disabled_boundary": true,
+  "popup_or_disabled_real_action_triggered": false,
+  "not_claimed_as_business_action": true,
+  "disabled_only_controls_present": true
+}

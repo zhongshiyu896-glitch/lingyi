@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-05-31T19:23:40.392Z",
+  "base_url": "http://127.0.0.1:4173",
+  "routes": [
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "final_url": "http://127.0.0.1:4173/subcontract/list?parity=material-purchase",
+      "final_path": "/subcontract/list?parity=material-purchase",
+      "screenshot": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b027_cand004/screenshots/material_purchase_parity_1440x1200.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      }
+    },
+    {
+      "route": "/subcontract/list?parity=material-purchase",
+      "final_url": "http://127.0.0.1:4173/subcontract/list?parity=material-purchase",
+      "final_path": "/subcontract/list?parity=material-purchase",
+      "screenshot": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b027_cand004/screenshots/subcontract_list_parity_1440x1200.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      }
+    },
+    {
+      "route": "/subcontract/detail",
+      "final_url": "http://127.0.0.1:4173/subcontract/detail",
+      "final_path": "/subcontract/detail",
+      "screenshot": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b027_cand004/screenshots/subcontract_detail_1440x1200.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      }
+    }
+  ],
+  "screenshots_expected": [
+    {
+      "file": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b027_cand004/screenshots/material_purchase_parity_1440x1200.png",
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "file": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b027_cand004/screenshots/subcontract_list_parity_1440x1200.png",
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "file": "03_需求与设计/02_开发计划/evidence/yisuan_contract_b027_cand004/screenshots/subcontract_detail_1440x1200.png",
+      "width": 1440,
+      "height": 1200
+    }
+  ],
+  "dev_server_started": true,
+  "dev_server_stopped": true
+}
