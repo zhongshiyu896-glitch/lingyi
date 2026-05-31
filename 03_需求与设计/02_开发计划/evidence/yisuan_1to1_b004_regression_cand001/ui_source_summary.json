@@ -1,0 +1,12 @@
+{
+  "source_status": "found",
+  "ui_source_readback_present": true,
+  "a001_a006_business_contract_merged": false,
+  "source_readback_items": [
+    "yisuan_incremental_capture/sidebar_modules/01_首页.png",
+    "yisuan_business_shadow_capture/G0_baseline_20260518/module_entry_baseline.json",
+    "task_z014b_01_a001_a006_contract_candidate_pool.json",
+    "G2_FIX20/developer_allowed_reference_map.json",
+    "task_z007b_17_module_entry_to_list_route_parity_evidence.json"
+  ]
+}

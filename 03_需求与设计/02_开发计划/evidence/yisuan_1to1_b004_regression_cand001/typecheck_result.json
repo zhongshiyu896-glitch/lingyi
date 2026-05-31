@@ -1,0 +1,7 @@
+{
+  "task_id": "TASK-YISUAN-1TO1-B004-REGRESSION-CAND001",
+  "command": "npm run typecheck",
+  "workdir": "06_前端/lingyi-pc",
+  "exit_code": 0,
+  "passed": true
+}

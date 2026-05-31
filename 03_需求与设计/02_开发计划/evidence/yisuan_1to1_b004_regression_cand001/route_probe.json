@@ -1,0 +1,16 @@
+[
+  {
+    "route": "/home",
+    "url": "http://127.0.0.1:5174/home",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/home",
+    "ok_200": true
+  },
+  {
+    "route": "/dashboard/overview",
+    "url": "http://127.0.0.1:5174/dashboard/overview",
+    "http_status": 200,
+    "final_url": "http://127.0.0.1:5174/dashboard/overview",
+    "ok_200": true
+  }
+]

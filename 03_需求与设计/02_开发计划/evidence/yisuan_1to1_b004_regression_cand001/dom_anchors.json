@@ -1,0 +1,54 @@
+{
+  "required_anchor_count": 12,
+  "required_anchors": [
+    "yisuan-1to1-home-shell",
+    "yisuan-1to1-global-sidebar",
+    "yisuan-1to1-topbar",
+    "yisuan-1to1-module-entry-grid",
+    "yisuan-1to1-home-status-panel",
+    "yisuan-1to1-home-workbench-list",
+    "yisuan-1to1-dashboard-shell",
+    "yisuan-1to1-dashboard-kpi-strip",
+    "yisuan-1to1-dashboard-flow-panel",
+    "yisuan-1to1-dashboard-exception-list",
+    "yisuan-1to1-dashboard-quick-actions",
+    "yisuan-1to1-ui-source-readback"
+  ],
+  "observed_anchor_count": 12,
+  "observed_anchors": [
+    "yisuan-1to1-home-shell",
+    "yisuan-1to1-global-sidebar",
+    "yisuan-1to1-topbar",
+    "yisuan-1to1-module-entry-grid",
+    "yisuan-1to1-home-status-panel",
+    "yisuan-1to1-home-workbench-list",
+    "yisuan-1to1-ui-source-readback",
+    "yisuan-1to1-dashboard-shell",
+    "yisuan-1to1-dashboard-kpi-strip",
+    "yisuan-1to1-dashboard-flow-panel",
+    "yisuan-1to1-dashboard-exception-list",
+    "yisuan-1to1-dashboard-quick-actions"
+  ],
+  "per_route_anchors": {
+    "/home": [
+      "yisuan-1to1-home-shell",
+      "yisuan-1to1-global-sidebar",
+      "yisuan-1to1-topbar",
+      "yisuan-1to1-module-entry-grid",
+      "yisuan-1to1-home-status-panel",
+      "yisuan-1to1-home-workbench-list",
+      "yisuan-1to1-ui-source-readback"
+    ],
+    "/dashboard/overview": [
+      "yisuan-1to1-dashboard-shell",
+      "yisuan-1to1-dashboard-kpi-strip",
+      "yisuan-1to1-dashboard-flow-panel",
+      "yisuan-1to1-dashboard-exception-list",
+      "yisuan-1to1-dashboard-quick-actions",
+      "yisuan-1to1-ui-source-readback"
+    ]
+  },
+  "missing_anchors": [],
+  "anchors_observed_full": true,
+  "contract_source": "B002_PREP"
+}
