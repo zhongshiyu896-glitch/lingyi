@@ -1,0 +1,109 @@
+{
+  "task_id": "TASK-YISUAN-1TO1-B036-SOURCE-CAPTURE-CAND005",
+  "source_status": "found",
+  "dom_structure_map": {
+    "/subcontract/list": {
+      "anchor_contracts": [
+        "z045-subcontract-parity-diff-audit",
+        "z045-subcontract-list-detail-readback",
+        "z045-subcontract-sync-denial-reason",
+        "z045-subcontract-export-print-lock",
+        "z045-subcontract-material-parity-source",
+        "z045-subcontract-guarded-action-matrix",
+        "z045-subcontract-network-write-blocker",
+        "z045-subcontract-write-success-blocker",
+        "z044-subcontract-list-detail-diff",
+        "z044-subcontract-readback-consistency",
+        "z044-subcontract-sync-lock-reason",
+        "z044-subcontract-export-print-readonly",
+        "z044-subcontract-material-parity-readback",
+        "z044-subcontract-guarded-action-matrix",
+        "z044-subcontract-network-write-blocker",
+        "z044-subcontract-write-success-blocker"
+      ],
+      "observed_all": true,
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json"
+      ]
+    },
+    "/subcontract/detail": {
+      "anchor_contracts": [
+        "z045-subcontract-parity-diff-audit",
+        "z045-subcontract-list-detail-readback",
+        "z045-subcontract-sync-denial-reason",
+        "z045-subcontract-export-print-lock",
+        "z045-subcontract-material-parity-source",
+        "z045-subcontract-guarded-action-matrix",
+        "z045-subcontract-network-write-blocker",
+        "z045-subcontract-write-success-blocker",
+        "z044-subcontract-list-detail-diff",
+        "z044-subcontract-readback-consistency",
+        "z044-subcontract-sync-lock-reason",
+        "z044-subcontract-export-print-readonly",
+        "z044-subcontract-material-parity-readback",
+        "z044-subcontract-guarded-action-matrix",
+        "z044-subcontract-network-write-blocker",
+        "z044-subcontract-write-success-blocker"
+      ],
+      "observed_all": true,
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json"
+      ]
+    },
+    "/materialPurchase/materialPurchaseProcess": {
+      "redirect_to": "/subcontract/list?parity=material-purchase",
+      "parity_anchor_contracts": [
+        "z045-subcontract-parity-diff-audit",
+        "z045-subcontract-material-parity-source",
+        "z045-subcontract-list-detail-readback"
+      ],
+      "observed_all": true,
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+        "03_需求与设计/02_开发计划/task_z007b_17_module_entry_to_list_route_parity_evidence.json"
+      ]
+    },
+    "/sales-inventory/stock-ledger": {
+      "anchor_contracts": [
+        "mvp-cand006-stock-ledger-page",
+        "mvp-cand006-stock-query-panel",
+        "mvp-cand006-stock-material-filter",
+        "mvp-cand006-stock-warehouse-filter",
+        "mvp-cand006-stock-flow-table",
+        "mvp-cand006-stock-readback-panel"
+      ],
+      "observed_all": true,
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/dom_anchors.json"
+      ]
+    },
+    "/warehouse": {
+      "anchor_contracts": [
+        "mvp-cand006-warehouse-page",
+        "mvp-cand006-warehouse-summary-cards",
+        "mvp-cand006-warehouse-transfer-draft",
+        "mvp-cand006-warehouse-counting-draft",
+        "mvp-cand006-local-save-cancel-actions",
+        "mvp-cand006-zero-residual-status",
+        "yisuan-1to1-warehouse-shell",
+        "yisuan-1to1-warehouse-parity-readback",
+        "yisuan-1to1-warehouse-summary-cards",
+        "yisuan-1to1-warehouse-location-table",
+        "yisuan-1to1-ui-source-readback"
+      ],
+      "observed_all": true,
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/dom_anchors.json"
+      ]
+    }
+  },
+  "structure_assertions": [
+    "subcontract list/detail share readback consistency and guard boundary anchors",
+    "materialPurchase parity route resolves into subcontract list contract scope",
+    "stock-ledger and warehouse form an inventory visual contract pair: flow table + summary/location table",
+    "empty state and readonly state are part of each page contract"
+  ]
+}

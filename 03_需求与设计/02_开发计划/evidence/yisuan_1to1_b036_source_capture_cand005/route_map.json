@@ -1,0 +1,91 @@
+{
+  "task_id": "TASK-YISUAN-1TO1-B036-SOURCE-CAPTURE-CAND005",
+  "candidate_id": "YISUAN-1TO1-CAND-005",
+  "routes": [
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "route_source": "06_前端/lingyi-pc/src/router/index.ts:269-270",
+      "route_type": "redirect",
+      "final_path": "/subcontract/list?parity=material-purchase",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/task_z007b_17_module_entry_to_list_route_parity_evidence.json",
+        "04_测试与验收/测试证据/z046_cand004_subcontract_interaction_regression/route_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json"
+      ],
+      "contract_role": "material_purchase_parity_entry"
+    },
+    {
+      "route": "/subcontract/list",
+      "route_source": "06_前端/lingyi-pc/src/router/index.ts:63-65",
+      "route_type": "direct",
+      "final_path": "/subcontract/list",
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/route_evidence.json"
+      ],
+      "contract_role": "subcontract_list_entry"
+    },
+    {
+      "route": "/subcontract/detail",
+      "route_source": "06_前端/lingyi-pc/src/router/index.ts:69-71",
+      "route_type": "direct",
+      "final_path": "/subcontract/detail",
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/route_evidence.json"
+      ],
+      "contract_role": "subcontract_detail_entry"
+    },
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "route_source": "06_前端/lingyi-pc/src/router/index.ts:174-176",
+      "route_type": "direct",
+      "final_path": "/sales-inventory/stock-ledger",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/route_probe.json",
+        "03_需求与设计/02_开发计划/task_z007b_17_module_entry_to_list_route_parity_evidence.json"
+      ],
+      "contract_role": "stock_ledger_entry"
+    },
+    {
+      "route": "/warehouse",
+      "route_source": "06_前端/lingyi-pc/src/router/index.ts:186-189",
+      "route_type": "direct",
+      "final_path": "/warehouse",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/route_probe.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/route_probe.json"
+      ],
+      "contract_role": "warehouse_entry"
+    }
+  ],
+  "relations": {
+    "subcontract_list_detail_relation": {
+      "entry_from_list_to_detail": true,
+      "readback_sync_required": true,
+      "source_refs": [
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json"
+      ]
+    },
+    "material_purchase_redirect_parity_relation": {
+      "from_route": "/materialPurchase/materialPurchaseProcess",
+      "to_route": "/subcontract/list?parity=material-purchase",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/task_z007b_17_module_entry_to_list_route_parity_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json"
+      ]
+    },
+    "stock_ledger_warehouse_visual_linkage": {
+      "linked": true,
+      "linkage_basis": [
+        "库存流水与仓库摘要共享库存语义与状态视图",
+        "仓库页面提供库存摘要与操作区，库存流水页面提供流水筛选与明细表"
+      ],
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/dom_anchors.json"
+      ]
+    }
+  }
+}

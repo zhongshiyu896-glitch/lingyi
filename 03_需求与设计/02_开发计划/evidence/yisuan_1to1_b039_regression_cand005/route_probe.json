@@ -1,0 +1,29 @@
+{
+  "routes": [
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "http_status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    {
+      "route": "/subcontract/list",
+      "http_status": 200,
+      "final_path": "/subcontract/list"
+    },
+    {
+      "route": "/subcontract/detail",
+      "http_status": 200,
+      "final_path": "/subcontract/detail"
+    },
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "http_status": 200,
+      "final_path": "/sales-inventory/stock-ledger"
+    },
+    {
+      "route": "/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse"
+    }
+  ]
+}

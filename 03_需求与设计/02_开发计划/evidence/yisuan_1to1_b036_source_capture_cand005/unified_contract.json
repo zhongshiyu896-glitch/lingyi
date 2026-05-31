@@ -1,0 +1,110 @@
+{
+  "task_id": "TASK-YISUAN-1TO1-B036-SOURCE-CAPTURE-CAND005",
+  "candidate_id": "YISUAN-1TO1-CAND-005",
+  "contract_version": "v1",
+  "source_status": "found",
+  "unified_contract_available": true,
+  "missing_source_items": [],
+  "scope_routes": [
+    "/materialPurchase/materialPurchaseProcess",
+    "/subcontract/list",
+    "/subcontract/detail",
+    "/sales-inventory/stock-ledger",
+    "/warehouse"
+  ],
+  "contracts": {
+    "subcontract_list_source": {
+      "route": "/subcontract/list",
+      "entry_relation": "materialPurchase parity can enter this page",
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/subcontract_list_1440x1200.png"
+      ],
+      "field_groups": [
+        "筛选区（关键字、供应商/加工厂、状态、物料类别）",
+        "列表区（单据、供应商/加工厂、物料明细、发料/回料、验货/结算、状态）",
+        "只读与 parity 提示区"
+      ],
+      "table_density_reference": "subcontract_list_1440x1200.png"
+    },
+    "subcontract_detail_source": {
+      "route": "/subcontract/detail",
+      "entry_relation": "from list row action",
+      "readback_relation": "detail readback aligns with list readback guard",
+      "source_refs": [
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/subcontract_detail_1440x1200.png"
+      ],
+      "field_groups": [
+        "主信息区（单据、供应商/加工厂、状态、物料类别、scenario_tag）",
+        "物料明细区（物料编码/名称/规格/单位/数量）",
+        "发料/回料状态区",
+        "验货/结算预览区",
+        "本地草稿动作区（save/cancel/readback/rollback）"
+      ],
+      "button_and_state_source": "z044/z045 anchor contracts + detail screenshot"
+    },
+    "material_purchase_parity_source": {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "final_path": "/subcontract/list?parity=material-purchase",
+      "relation_to_list_detail": "redirects into subcontract list contract and shares readback boundary with detail",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/task_z007b_17_module_entry_to_list_route_parity_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/material_purchase_redirect_parity_1440x1200.png"
+      ]
+    },
+    "stock_ledger_source": {
+      "route": "/sales-inventory/stock-ledger",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/route_probe.json",
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/stock_ledger_1440x1200.png"
+      ],
+      "field_groups": [
+        "筛选区（物料、仓库、流水类型、状态、关键字）",
+        "流水明细表（流水类型、物料、仓库、数量/金额、状态、时间）",
+        "readback 状态区"
+      ],
+      "table_density_reference": "stock_ledger_1440x1200.png"
+    },
+    "warehouse_source": {
+      "route": "/warehouse",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/warehouse_1440x1200.png",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/warehouse_yisuan_reference_1440x1200.png"
+      ],
+      "field_groups": [
+        "仓库 parity/readback 区",
+        "仓库摘要卡片区",
+        "仓库目录/库位主表区",
+        "只读与空状态区"
+      ],
+      "visual_linkage_to_stock_ledger": true
+    }
+  },
+  "cross_page_relations": {
+    "list_detail_readback_relation": true,
+    "material_purchase_redirect_parity_relation": true,
+    "stock_ledger_warehouse_visual_linkage": true
+  },
+  "ui_pattern_contract": {
+    "field_grouping_source_explained": true,
+    "button_zone_source_explained": true,
+    "status_zone_source_explained": true,
+    "table_density_source_explained": true,
+    "empty_state_source_explained": true,
+    "readonly_state_source_explained": true
+  },
+  "source_file_index": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/source_file_index.json",
+  "production_safety_boundary": {
+    "erpnext_production_forbidden": true,
+    "real_production_account_forbidden": true,
+    "online_write_forbidden": true,
+    "remote_lifecycle_release_forbidden": true
+  }
+}

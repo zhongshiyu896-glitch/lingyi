@@ -1,0 +1,219 @@
+{
+  "task_id": "TASK-YISUAN-1TO1-B036-SOURCE-CAPTURE-CAND005",
+  "source_status": "found",
+  "field_layout_map": {
+    "/subcontract/list": {
+      "page_role": "subcontract_list",
+      "grouped_sections": [
+        {
+          "section": "query_panel",
+          "fields": [
+            "keyword",
+            "partnerName",
+            "status",
+            "materialCategory"
+          ],
+          "labels": [
+            "关键字",
+            "供应商/加工厂",
+            "单据状态",
+            "物料类别"
+          ]
+        },
+        {
+          "section": "result_table",
+          "columns": [
+            "单据号",
+            "供应商/加工厂",
+            "物料类别",
+            "物料明细",
+            "发料/回料状态",
+            "验货/结算预览",
+            "状态",
+            "操作"
+          ]
+        },
+        {
+          "section": "parity_readback",
+          "nodes": [
+            "mvp-purchase-parity-material"
+          ]
+        }
+      ],
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/subcontract_list_1440x1200.png"
+      ]
+    },
+    "/subcontract/detail": {
+      "page_role": "subcontract_detail",
+      "grouped_sections": [
+        {
+          "section": "master_info",
+          "fields": [
+            "draftNo",
+            "partnerName",
+            "status",
+            "materialCategory",
+            "scenarioTag"
+          ],
+          "labels": [
+            "单据号",
+            "供应商/加工厂",
+            "状态",
+            "物料类别",
+            "scenario_tag"
+          ]
+        },
+        {
+          "section": "material_lines",
+          "fields": [
+            "materialCode",
+            "materialName",
+            "spec",
+            "unit",
+            "qty"
+          ],
+          "labels": [
+            "物料编码",
+            "物料名称",
+            "规格",
+            "单位",
+            "数量"
+          ]
+        },
+        {
+          "section": "issue_return_panel",
+          "fields": [
+            "issuedQty",
+            "returnedQty",
+            "issueReturnStatus"
+          ],
+          "labels": [
+            "发料数量",
+            "回料数量",
+            "操作状态"
+          ]
+        },
+        {
+          "section": "inspection_settlement_panel",
+          "fields": [
+            "inspectionQty",
+            "settlementQty",
+            "inspectionSettlementStatus"
+          ],
+          "labels": [
+            "验货数量",
+            "结算数量",
+            "状态"
+          ]
+        },
+        {
+          "section": "list_detail_readback_controls",
+          "actions": [
+            "local_save",
+            "local_cancel",
+            "local_readback",
+            "rollback_zero_residual"
+          ]
+        }
+      ],
+      "source_refs": [
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/subcontract_detail_1440x1200.png"
+      ]
+    },
+    "/sales-inventory/stock-ledger": {
+      "page_role": "stock_ledger",
+      "grouped_sections": [
+        {
+          "section": "query_panel",
+          "fields": [
+            "materialCode",
+            "warehouse",
+            "flowType",
+            "status",
+            "keyword"
+          ],
+          "labels": [
+            "物料编码",
+            "仓库",
+            "流水类型",
+            "状态",
+            "关键字"
+          ]
+        },
+        {
+          "section": "flow_table",
+          "columns": [
+            "流水类型",
+            "物料编码",
+            "仓库",
+            "数量/金额",
+            "状态",
+            "时间"
+          ]
+        },
+        {
+          "section": "readback_panel",
+          "fields": [
+            "flow_type",
+            "material_code",
+            "warehouse",
+            "state"
+          ]
+        }
+      ],
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/stock_ledger_1440x1200.png"
+      ]
+    },
+    "/warehouse": {
+      "page_role": "warehouse_dashboard",
+      "grouped_sections": [
+        {
+          "section": "summary_cards",
+          "fields": [
+            "visibleRows",
+            "totalStockQty",
+            "stockWarningCount",
+            "directoryWarningCount"
+          ],
+          "labels": [
+            "库存台账可视条数",
+            "库存总量",
+            "库存预警",
+            "仓库目录预警"
+          ]
+        },
+        {
+          "section": "location_table",
+          "columns": [
+            "仓库编码",
+            "仓库名称",
+            "库位",
+            "库存能力",
+            "状态"
+          ]
+        },
+        {
+          "section": "parity_readback",
+          "nodes": [
+            "yisuan-1to1-warehouse-parity-readback"
+          ]
+        }
+      ],
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/warehouse_1440x1200.png"
+      ]
+    }
+  },
+  "relations": {
+    "list_detail_readback_relation": "subcontract list -> detail with readback consistency anchors",
+    "material_purchase_redirect_relation": "/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase",
+    "stock_warehouse_visual_linkage": "stock-ledger provides flow view, warehouse provides summary/location view"
+  }
+}

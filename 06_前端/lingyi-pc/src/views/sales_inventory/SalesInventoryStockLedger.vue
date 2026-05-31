@@ -1,6 +1,6 @@
 <template>
   <div class="sales-inventory-page" data-testid="mvp-cand006-stock-ledger-page" data-legacy-testid="stock-ledger-page">
-    <el-card shadow="never">
+    <el-card shadow="never" data-testid="yisuan-1to1-stock-ledger-shell">
       <template #header>
         <div class="header-row">
           <div class="title-group">
@@ -115,6 +115,13 @@
           data-testid="material-stock-parity-hint"
           title="衣算云 / 物料进销存 / 物料库存（只读交互）"
           description="当前为 parity=material-stock，本地仅开放读取、筛选、分页、空态/错误态验证。"
+        />
+        <el-alert
+          type="info"
+          :closable="false"
+          class="scope-alert"
+          data-testid="yisuan-1to1-ui-source-readback"
+          title="UI source readback: B036 unified contract + B037 boundary（采购/外协/库存统一视觉合同）"
         />
 
         <div class="toolbar-row" data-testid="stock-ledger-guarded-actions">
@@ -5816,6 +5823,10 @@ onMounted(async () => {
 }
 
 .error-alert {
+  margin-bottom: 12px;
+}
+
+.scope-alert {
   margin-bottom: 12px;
 }
 

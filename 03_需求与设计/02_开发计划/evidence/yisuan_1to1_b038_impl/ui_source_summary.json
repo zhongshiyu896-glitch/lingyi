@@ -1,0 +1,12 @@
+{
+  "source_status": "found",
+  "unified_contract_available": true,
+  "ui_source_readback_present": true,
+  "a001_a006_business_contract_merged": false,
+  "source_files": [
+    "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/unified_contract.json",
+    "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/unified_contract.md",
+    "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/unified_contract.tsv"
+  ],
+  "notes": "UI parity only; no write loop; no business contract merge."
+}

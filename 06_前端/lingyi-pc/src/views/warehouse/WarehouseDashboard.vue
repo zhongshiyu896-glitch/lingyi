@@ -107,42 +107,44 @@
         </el-form-item>
       </el-form>
 
-      <div
-        class="warehouse-kpi-grid"
-        data-testid="yisuan-1to1-warehouse-summary-cards"
-        data-legacy-testid="warehouse-kpi-grid"
-      >
-        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-sku-count">
-          <span class="kpi-label">SKU 记录</span>
-          <strong class="kpi-value">{{ warehouseKpis.skuCount }}</strong>
-          <small class="kpi-subtext">库存台账可视条数</small>
+      <section class="warehouse-linked-summary" data-testid="yisuan-1to1-warehouse-linked-summary">
+        <div
+          class="warehouse-kpi-grid"
+          data-testid="yisuan-1to1-warehouse-summary-cards"
+          data-legacy-testid="warehouse-kpi-grid"
+        >
+          <div class="warehouse-kpi-card" data-testid="warehouse-kpi-sku-count">
+            <span class="kpi-label">SKU 记录</span>
+            <strong class="kpi-value">{{ warehouseKpis.skuCount }}</strong>
+            <small class="kpi-subtext">库存台账可视条数</small>
+          </div>
+          <div class="warehouse-kpi-card" data-testid="warehouse-kpi-stock-total">
+            <span class="kpi-label">库存总量</span>
+            <strong class="kpi-value">{{ formatAmount(warehouseKpis.stockQtyTotal) }}</strong>
+            <small class="kpi-subtext">成品库存数量合计</small>
+          </div>
+          <div class="warehouse-kpi-card" data-testid="warehouse-kpi-warning-count">
+            <span class="kpi-label">库存预警</span>
+            <strong class="kpi-value">{{ warehouseKpis.warningSkuCount }}</strong>
+            <small class="kpi-subtext">低于安全/补货阈值</small>
+          </div>
+          <div class="warehouse-kpi-card" data-testid="warehouse-kpi-management-warning">
+            <span class="kpi-label">仓库目录预警</span>
+            <strong class="kpi-value">{{ warehouseKpis.managementWarningCount }}</strong>
+            <small class="kpi-subtext">仓位利用率异常</small>
+          </div>
+          <div class="warehouse-kpi-card" data-testid="warehouse-kpi-other-inbound-pending">
+            <span class="kpi-label">其他入仓待处理</span>
+            <strong class="kpi-value">{{ warehouseKpis.otherInboundPendingCount }}</strong>
+            <small class="kpi-subtext">待入仓单据</small>
+          </div>
+          <div class="warehouse-kpi-card" data-testid="warehouse-kpi-return-outbound-pending">
+            <span class="kpi-label">退料待出仓</span>
+            <strong class="kpi-value">{{ warehouseKpis.purchaseReturnPendingCount }}</strong>
+            <small class="kpi-subtext">待出仓单据</small>
+          </div>
         </div>
-        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-stock-total">
-          <span class="kpi-label">库存总量</span>
-          <strong class="kpi-value">{{ formatAmount(warehouseKpis.stockQtyTotal) }}</strong>
-          <small class="kpi-subtext">成品库存数量合计</small>
-        </div>
-        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-warning-count">
-          <span class="kpi-label">库存预警</span>
-          <strong class="kpi-value">{{ warehouseKpis.warningSkuCount }}</strong>
-          <small class="kpi-subtext">低于安全/补货阈值</small>
-        </div>
-        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-management-warning">
-          <span class="kpi-label">仓库目录预警</span>
-          <strong class="kpi-value">{{ warehouseKpis.managementWarningCount }}</strong>
-          <small class="kpi-subtext">仓位利用率异常</small>
-        </div>
-        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-other-inbound-pending">
-          <span class="kpi-label">其他入仓待处理</span>
-          <strong class="kpi-value">{{ warehouseKpis.otherInboundPendingCount }}</strong>
-          <small class="kpi-subtext">待入仓单据</small>
-        </div>
-        <div class="warehouse-kpi-card" data-testid="warehouse-kpi-return-outbound-pending">
-          <span class="kpi-label">退料待出仓</span>
-          <strong class="kpi-value">{{ warehouseKpis.purchaseReturnPendingCount }}</strong>
-          <small class="kpi-subtext">待出仓单据</small>
-        </div>
-      </div>
+      </section>
 
       <div class="action-row">
         <el-button
@@ -2696,6 +2698,10 @@ onMounted(async () => {
 
 .advanced-form {
   margin-top: -4px;
+}
+
+.warehouse-linked-summary {
+  margin-bottom: 12px;
 }
 
 .warehouse-kpi-grid {

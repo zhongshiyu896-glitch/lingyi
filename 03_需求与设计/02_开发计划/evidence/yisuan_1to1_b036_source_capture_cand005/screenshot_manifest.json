@@ -1,0 +1,42 @@
+{
+  "task_id": "TASK-YISUAN-1TO1-B036-SOURCE-CAPTURE-CAND005",
+  "required_png_1440x1200": true,
+  "screenshots": [
+    {
+      "route": "/subcontract/list",
+      "file": "subcontract_list_1440x1200.png",
+      "width": 1440,
+      "height": 1200,
+      "png": true
+    },
+    {
+      "route": "/subcontract/detail",
+      "file": "subcontract_detail_1440x1200.png",
+      "width": 1440,
+      "height": 1200,
+      "png": true
+    },
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "final_path": "/subcontract/list?parity=material-purchase",
+      "file": "material_purchase_redirect_parity_1440x1200.png",
+      "width": 1440,
+      "height": 1200,
+      "png": true
+    },
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "file": "stock_ledger_1440x1200.png",
+      "width": 1440,
+      "height": 1200,
+      "png": true
+    },
+    {
+      "route": "/warehouse",
+      "file": "warehouse_1440x1200.png",
+      "width": 1440,
+      "height": 1200,
+      "png": true
+    }
+  ]
+}

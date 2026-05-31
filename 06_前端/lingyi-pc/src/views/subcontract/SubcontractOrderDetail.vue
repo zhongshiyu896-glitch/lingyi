@@ -1,5 +1,5 @@
 <template>
-  <div class="purchase-detail-page">
+  <div class="purchase-detail-page" data-testid="yisuan-1to1-subcontract-detail-shell">
     <el-card shadow="never" data-testid="mvp-purchase-production-safety">
       <template #header>
         <div class="header-row">
@@ -17,7 +17,7 @@
       />
     </el-card>
 
-    <el-card shadow="never" data-testid="mvp-purchase-order-master">
+    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-detail-header-summary" data-legacy-testid="mvp-purchase-order-master">
       <template #header>
         <span>单据主信息</span>
       </template>
@@ -67,7 +67,7 @@
       </el-form>
     </el-card>
 
-    <el-card shadow="never" data-testid="mvp-purchase-material-line">
+    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-material-lines" data-legacy-testid="mvp-purchase-material-line">
       <template #header>
         <span>物料明细（至少 1 条）</span>
       </template>
@@ -113,56 +113,58 @@
       </div>
     </el-card>
 
-    <el-card shadow="never" data-testid="mvp-purchase-issue-return">
-      <template #header>
-        <span>发料 / 回料状态</span>
-      </template>
-      <el-form label-width="130px">
-        <el-form-item label="发料数量">
-          <el-input-number v-model="issueReturn.issuedQty" :min="0" :precision="3" :step="1" />
-        </el-form-item>
-        <el-form-item label="回料数量">
-          <el-input-number v-model="issueReturn.returnedQty" :min="0" :precision="3" :step="1" />
-        </el-form-item>
-        <el-form-item label="差异数量">
-          <strong>{{ issueReturnDelta }}</strong>
-        </el-form-item>
-        <el-form-item label="操作状态">
-          <el-select v-model="issueReturn.state" style="width: 220px">
-            <el-option label="draft" value="draft" />
-            <el-option label="saved" value="saved" />
-            <el-option label="checked" value="checked" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <section class="issue-inspection-panel" data-testid="yisuan-1to1-subcontract-issue-return-inspection-panel">
+      <el-card shadow="never" data-testid="mvp-purchase-issue-return">
+        <template #header>
+          <span>发料 / 回料状态</span>
+        </template>
+        <el-form label-width="130px">
+          <el-form-item label="发料数量">
+            <el-input-number v-model="issueReturn.issuedQty" :min="0" :precision="3" :step="1" />
+          </el-form-item>
+          <el-form-item label="回料数量">
+            <el-input-number v-model="issueReturn.returnedQty" :min="0" :precision="3" :step="1" />
+          </el-form-item>
+          <el-form-item label="差异数量">
+            <strong>{{ issueReturnDelta }}</strong>
+          </el-form-item>
+          <el-form-item label="操作状态">
+            <el-select v-model="issueReturn.state" style="width: 220px">
+              <el-option label="draft" value="draft" />
+              <el-option label="saved" value="saved" />
+              <el-option label="checked" value="checked" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
-    <el-card shadow="never" data-testid="mvp-purchase-inspection-settlement">
-      <template #header>
-        <span>验货 / 结算预览</span>
-      </template>
-      <el-form label-width="130px">
-        <el-form-item label="验收数量">
-          <el-input-number v-model="inspection.acceptedQty" :min="0" :precision="3" :step="1" />
-        </el-form-item>
-        <el-form-item label="不良数量">
-          <el-input-number v-model="inspection.rejectedQty" :min="0" :precision="3" :step="1" />
-        </el-form-item>
-        <el-form-item label="结算数量">
-          <el-input-number v-model="inspection.settlementQty" :min="0" :precision="3" :step="1" />
-        </el-form-item>
-        <el-form-item label="预估金额">
-          <el-input-number v-model="inspection.estimatedAmount" :min="0" :precision="2" :step="10" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="inspection.state" style="width: 220px">
-            <el-option label="draft" value="draft" />
-            <el-option label="saved" value="saved" />
-            <el-option label="previewed" value="previewed" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-    </el-card>
+      <el-card shadow="never" data-testid="mvp-purchase-inspection-settlement">
+        <template #header>
+          <span>验货 / 结算预览</span>
+        </template>
+        <el-form label-width="130px">
+          <el-form-item label="验收数量">
+            <el-input-number v-model="inspection.acceptedQty" :min="0" :precision="3" :step="1" />
+          </el-form-item>
+          <el-form-item label="不良数量">
+            <el-input-number v-model="inspection.rejectedQty" :min="0" :precision="3" :step="1" />
+          </el-form-item>
+          <el-form-item label="结算数量">
+            <el-input-number v-model="inspection.settlementQty" :min="0" :precision="3" :step="1" />
+          </el-form-item>
+          <el-form-item label="预估金额">
+            <el-input-number v-model="inspection.estimatedAmount" :min="0" :precision="2" :step="10" />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="inspection.state" style="width: 220px">
+              <el-option label="draft" value="draft" />
+              <el-option label="saved" value="saved" />
+              <el-option label="previewed" value="previewed" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </el-card>
+    </section>
 
     <el-card shadow="never" data-testid="mvp-purchase-local-draft">
       <template #header>
@@ -691,6 +693,12 @@ onMounted(() => {
 
 .line-actions {
   margin-top: 10px;
+}
+
+.issue-inspection-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .local-actions {

@@ -1,0 +1,146 @@
+{
+  "task_id": "TASK-YISUAN-1TO1-B036-SOURCE-CAPTURE-CAND005",
+  "source_status": "found",
+  "entries": [
+    {
+      "path": "03_需求与设计/02_开发计划/task_z007b_17_module_entry_to_list_route_parity_evidence.json",
+      "category": "route_parity_contract",
+      "covers": [
+        "/materialPurchase/materialPurchaseProcess",
+        "/subcontract/list"
+      ],
+      "authoritative_for": [
+        "materialPurchase redirect/parity chain"
+      ]
+    },
+    {
+      "path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+      "category": "route_evidence",
+      "covers": [
+        "/subcontract/list",
+        "/subcontract/detail",
+        "/materialPurchase/materialPurchaseProcess"
+      ],
+      "authoritative_for": [
+        "subcontract list/detail reachable",
+        "materialPurchase final_path=/subcontract/list?parity=material-purchase"
+      ]
+    },
+    {
+      "path": "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+      "category": "dom_contract",
+      "covers": [
+        "/subcontract/list",
+        "/subcontract/detail",
+        "/materialPurchase/materialPurchaseProcess"
+      ],
+      "authoritative_for": [
+        "subcontract parity diff/readback/guard anchors"
+      ]
+    },
+    {
+      "path": "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json",
+      "category": "dom_contract",
+      "covers": [
+        "/subcontract/list",
+        "/subcontract/detail"
+      ],
+      "authoritative_for": [
+        "list-detail sync lock/readback anchor pair"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/route_probe.json",
+      "category": "route_evidence",
+      "covers": [
+        "/sales-inventory/stock-ledger",
+        "/warehouse"
+      ],
+      "authoritative_for": [
+        "stock-ledger/warehouse route 200"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/dom_anchors.json",
+      "category": "dom_contract",
+      "covers": [
+        "/sales-inventory/stock-ledger",
+        "/warehouse"
+      ],
+      "authoritative_for": [
+        "stock-ledger/warehouse inventory anchor contract"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/route_probe.json",
+      "category": "route_evidence",
+      "covers": [
+        "/foundation/warehouse",
+        "/warehouse"
+      ],
+      "authoritative_for": [
+        "foundation warehouse parity final_path"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/dom_anchors.json",
+      "category": "dom_contract",
+      "covers": [
+        "/warehouse"
+      ],
+      "authoritative_for": [
+        "warehouse 1to1 shell/summary/location/readback anchors"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/subcontract_list_1440x1200.png",
+      "category": "screenshot",
+      "covers": [
+        "/subcontract/list"
+      ],
+      "authoritative_for": [
+        "list page visual density and grouped columns"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/subcontract_detail_1440x1200.png",
+      "category": "screenshot",
+      "covers": [
+        "/subcontract/detail"
+      ],
+      "authoritative_for": [
+        "detail page field/layout/button/status source"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/material_purchase_redirect_parity_1440x1200.png",
+      "category": "screenshot",
+      "covers": [
+        "/materialPurchase/materialPurchaseProcess"
+      ],
+      "authoritative_for": [
+        "redirect parity visual readback"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/stock_ledger_1440x1200.png",
+      "category": "screenshot",
+      "covers": [
+        "/sales-inventory/stock-ledger"
+      ],
+      "authoritative_for": [
+        "stock ledger filter panel/table/readback visual source"
+      ]
+    },
+    {
+      "path": "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/warehouse_1440x1200.png",
+      "category": "screenshot",
+      "covers": [
+        "/warehouse"
+      ],
+      "authoritative_for": [
+        "warehouse summary/location/readback visual source"
+      ]
+    }
+  ]
+}

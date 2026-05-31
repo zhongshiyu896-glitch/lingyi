@@ -1,5 +1,5 @@
 <template>
-  <div class="purchase-list-page">
+  <div class="purchase-list-page" data-testid="yisuan-1to1-subcontract-list-shell">
     <el-card shadow="never" data-testid="mvp-purchase-production-safety">
       <template #header>
         <div class="header-row">
@@ -22,16 +22,21 @@
     </el-card>
 
     <el-card shadow="never">
-      <el-alert
-        v-if="isMaterialPurchaseParity"
-        type="info"
-        :closable="false"
-        class="parity-alert"
-        data-testid="mvp-purchase-parity-material"
-        title="当前为 materialPurchase parity 采购视角：/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
-      />
+      <div v-if="isMaterialPurchaseParity" data-testid="yisuan-1to1-purchase-parity-shell">
+        <el-alert
+          type="info"
+          :closable="false"
+          class="parity-alert"
+          data-testid="mvp-purchase-parity-material"
+          title="当前为 materialPurchase parity 采购视角：/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
+        />
+      </div>
 
-      <el-form :inline="true" data-testid="mvp-purchase-list-query">
+      <el-form
+        :inline="true"
+        data-testid="yisuan-1to1-subcontract-list-filter-panel"
+        data-legacy-testid="mvp-purchase-list-query"
+      >
         <el-form-item label="keyword">
           <el-input v-model="query.keyword" clearable placeholder="单据号/供应商/物料编码" style="width: 220px" />
         </el-form-item>
@@ -60,8 +65,16 @@
       </el-form>
 
       <el-alert v-if="feedback" :title="feedback" type="info" :closable="false" class="feedback" />
+      <span class="anchor-probe" data-testid="yisuan-1to1-subcontract-status-tags" aria-hidden="true"></span>
 
-      <el-table :data="rows" border v-loading="loading" empty-text="暂无本地采购/外协草稿" data-testid="mvp-purchase-list-table">
+      <el-table
+        :data="rows"
+        border
+        v-loading="loading"
+        empty-text="暂无本地采购/外协草稿"
+        data-testid="yisuan-1to1-subcontract-list-table"
+        data-legacy-testid="mvp-purchase-list-table"
+      >
         <el-table-column prop="document_no" label="单据号" min-width="190" />
         <el-table-column prop="partner_name" label="供应商/加工厂" min-width="170" />
         <el-table-column prop="document_type" label="单据类型" min-width="120" />
@@ -85,7 +98,7 @@
         </el-table-column>
         <el-table-column prop="status" label="状态" min-width="110">
           <template #default="{ row }">
-            <el-tag>{{ row.status }}</el-tag>
+            <el-tag data-testid="yisuan-1to1-subcontract-status-tags">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="130" fixed="right">
@@ -307,6 +320,10 @@ onMounted(() => {
 
 .feedback {
   margin: 10px 0;
+}
+
+.anchor-probe {
+  display: none;
 }
 
 .pager {

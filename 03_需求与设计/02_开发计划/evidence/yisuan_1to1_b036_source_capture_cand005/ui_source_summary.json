@@ -1,0 +1,69 @@
+{
+  "task_id": "TASK-YISUAN-1TO1-B036-SOURCE-CAPTURE-CAND005",
+  "candidate_id": "YISUAN-1TO1-CAND-005",
+  "source_status": "found",
+  "unified_contract_available": true,
+  "needs_ui_source": false,
+  "missing_source_items": [],
+  "ui_source_readback_present": true,
+  "a001_a006_business_contract_merged": false,
+  "domains": {
+    "subcontract_list": {
+      "route": "/subcontract/list",
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/subcontract_list_1440x1200.png"
+      ]
+    },
+    "subcontract_detail": {
+      "route": "/subcontract/detail",
+      "source_refs": [
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/dom_anchors_evidence.json",
+        "04_测试与验收/测试证据/z044_cand005_subcontract_list_detail_sync_lock_readback/dom_anchors_evidence.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/subcontract_detail_1440x1200.png"
+      ]
+    },
+    "material_purchase_parity": {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "final_path": "/subcontract/list?parity=material-purchase",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/task_z007b_17_module_entry_to_list_route_parity_evidence.json",
+        "04_测试与验收/测试证据/z045_cand005_subcontract_sync_readback/route_evidence.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/material_purchase_redirect_parity_1440x1200.png"
+      ]
+    },
+    "stock_ledger": {
+      "route": "/sales-inventory/stock-ledger",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/route_probe.json",
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/stock_ledger_1440x1200.png"
+      ]
+    },
+    "warehouse": {
+      "route": "/warehouse",
+      "source_refs": [
+        "03_需求与设计/02_开发计划/evidence/mvp_b050_cand006_inventory_regression/route_probe.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/route_probe.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b012_regression_cand002/dom_anchors.json",
+        "03_需求与设计/02_开发计划/evidence/yisuan_1to1_b036_source_capture_cand005/warehouse_1440x1200.png"
+      ]
+    }
+  },
+  "relation_summary": {
+    "subcontract_list_to_detail_entry_relation": true,
+    "subcontract_list_detail_readback_relation": true,
+    "material_purchase_redirect_parity_relation": true,
+    "stock_ledger_warehouse_visual_linkage": true
+  },
+  "source_constraints": {
+    "local_dev_page_as_gap_check_only": true,
+    "yisuan_source_from_local_archived_evidence_only": true,
+    "erpnext_production_forbidden": true,
+    "real_production_account_forbidden": true,
+    "online_write_forbidden": true
+  }
+}
