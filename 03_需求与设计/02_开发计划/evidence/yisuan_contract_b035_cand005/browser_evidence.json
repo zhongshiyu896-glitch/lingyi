@@ -1,0 +1,37 @@
+{
+  "screenshots": [
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_contract_b035_cand005/screenshots/stock_ledger.png",
+      "width": 1440,
+      "height": 1200
+    },
+    {
+      "route": "/warehouse",
+      "file": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_contract_b035_cand005/screenshots/warehouse.png",
+      "width": 1440,
+      "height": 1200
+    }
+  ],
+  "dom_observation": {
+    "contract_source_readback_present": true,
+    "covered_contract_ids": [
+      "A001",
+      "A002",
+      "A003"
+    ],
+    "key_fields_observed": true,
+    "validation_rules_observed": true,
+    "status_rules_observed": true,
+    "readonly_readback_observed": true,
+    "partial_unknown_blocked_fields_preserved": true,
+    "partial_unknown_blocked_fields_claimed_as_confirmed": false,
+    "disabled_or_readback_only_boundary": true,
+    "disabled_or_readback_real_action_triggered": false,
+    "not_claimed_as_business_action": true,
+    "real_business_object_created": false,
+    "linked_calculation_enabled": false,
+    "real_business_object_created_marker_observed": true,
+    "linked_calculation_enabled_marker_observed": true
+  }
+}

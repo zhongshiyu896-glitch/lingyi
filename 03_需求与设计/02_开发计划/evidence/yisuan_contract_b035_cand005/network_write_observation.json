@@ -1,0 +1,11 @@
+{
+  "total_requests": 42,
+  "methods": {
+    "GET": 42
+  },
+  "write_requests_observed_count": 0,
+  "production_write_requests": 0,
+  "erpnext_production_write_requests": 0,
+  "request_methods_observed_only_GET": true,
+  "no_post_put_patch_delete_observed": true
+}

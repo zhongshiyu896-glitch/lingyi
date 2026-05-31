@@ -1,0 +1,8 @@
+{
+  "contract_source_readback_present": true,
+  "covered_contract_ids": [
+    "A001",
+    "A002",
+    "A003"
+  ]
+}

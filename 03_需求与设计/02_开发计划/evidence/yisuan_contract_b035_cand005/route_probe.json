@@ -1,0 +1,14 @@
+{
+  "routes": [
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "http_status": 200,
+      "final_path": "/sales-inventory/stock-ledger"
+    },
+    {
+      "route": "/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse"
+    }
+  ]
+}

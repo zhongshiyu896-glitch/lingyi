@@ -178,14 +178,14 @@
         data-testid="warehouse-readonly-state"
       />
       <el-alert
-        title="UI source readback: incremental capture + G0 baseline（基础资料/仓库）"
+        title="UI source readback: B034 boundary（A001/A002/A003 库存/仓库契约壳层）"
         type="info"
         :closable="false"
         class="scope-alert"
         data-testid="yisuan-1to1-ui-source-readback"
       />
-      <section class="contract-merge-panel" data-testid="contract-cand001-source-readback">
-        <div class="contract-merge-title">A001/A003 契约合并回读（基础资料 / 仓库）</div>
+      <section class="contract-merge-panel" data-testid="contract-cand005-source-readback">
+        <div class="contract-merge-title">A001/A002/A003 契约合并回读（库存流水 / 仓库）</div>
         <div class="contract-tag-row">
           <span class="contract-inline-label">covered_contract_ids:</span>
           <el-tag
@@ -198,6 +198,9 @@
             {{ contractId }}
           </el-tag>
           <el-tag size="small" effect="plain" type="info">A001-A006 contract merge scope=true</el-tag>
+          <el-tag size="small" effect="plain" type="warning">partial/unknown/blocked preserved=true</el-tag>
+          <el-tag size="small" effect="plain" type="warning">claimed_as_confirmed=false</el-tag>
+          <el-tag size="small" effect="plain" type="info">disabled_only/readback_only</el-tag>
           <el-tag size="small" effect="plain" type="warning">real_business_object_created=false</el-tag>
           <el-tag size="small" effect="plain" type="warning">linked_calculation_enabled=false</el-tag>
         </div>
@@ -1701,17 +1704,22 @@ const finishedGoodsParityHint = computed<string>(() => (
 const foundationWarehouseParityHint = computed<string>(() => (
   '衣算云 / 基础资料 / 仓库管理（parity=foundation-warehouse，只读交互）'
 ))
-const localWriteReadonlyGuarded = computed<boolean>(() => isFinishedGoodsParity.value || isFoundationWarehouseParity.value)
-const contractCoveredIds: string[] = ['A001', 'A003']
+const contractCand005ReadbackOnly = true
+const localWriteReadonlyGuarded = computed<boolean>(() => (
+  contractCand005ReadbackOnly || isFinishedGoodsParity.value || isFoundationWarehouseParity.value
+))
+const contractCoveredIds: string[] = ['A001', 'A002', 'A003']
 const contractSourceFiles: string[] = [
   '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A001_evidence_coverage_matrix_20260520/evidence_coverage_matrix.json',
+  '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A002_business_contract_merge_20260520/yisuan_development_contract_input.json',
   '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A003_ui_route_field_button_readonly_contract_20260520/ui_contract_development_input.json',
 ]
 const contractFieldRuleReadback: string[] = [
-  'key_fields: 仓库摘要、状态标签、仓库目录/库位/库存联动展示',
-  'key_fields: customer/supplier/factory/fabric 引用关系字段保持可读',
+  'key_fields: 仓库摘要、库存流水、状态标签、跨模块 readback 提示',
+  'key_fields: A001/A002/A003 契约字段只做壳层展示与提示',
   'validation_rules: ui_shell_only=true, can_use_for_action_logic=false',
-  'validation_rules: 高风险动作仅展示，禁止启用真实写入逻辑',
+  'validation_rules: partial/unknown/blocked 不得升级为 confirmed',
+  'validation_rules: disabled_only/readback_only，禁止启用真实写入逻辑',
   'status_rules: VERIFIED / PARTIAL / UNKNOWN / NO-GO / BLOCKED',
 ]
 const contractReadonlyReadbackRequirements: string[] = [
@@ -1719,6 +1727,7 @@ const contractReadonlyReadbackRequirements: string[] = [
   'readonly/readback: 不启用跨模块联动计算',
   'readonly/readback: contract source readback present=true',
   'readonly/readback: covered_contract_ids 可定位并全量展示',
+  'readonly/readback: not_claimed_as_business_action=true',
 ]
 
 const canRead = computed<boolean>(() => (

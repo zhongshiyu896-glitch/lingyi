@@ -1,0 +1,6 @@
+{
+  "started": true,
+  "stopped": true,
+  "base_url": "http://127.0.0.1:5174",
+  "note": "vite dev server was started for evidence capture and then stopped after capture/typecheck."
+}

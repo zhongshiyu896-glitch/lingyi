@@ -121,16 +121,55 @@
           :closable="false"
           class="scope-alert"
           data-testid="yisuan-1to1-ui-source-readback"
-          title="UI source readback: B036 unified contract + B037 boundary（采购/外协/库存统一视觉合同）"
+          title="UI source readback: B034 boundary（A001/A002/A003 库存/仓库契约壳层）"
         />
+        <section class="contract-merge-panel" data-testid="contract-cand005-source-readback">
+          <div class="contract-merge-title">A001/A002/A003 契约合并回读（库存流水 / 仓库）</div>
+          <div class="contract-tag-row">
+            <span class="contract-inline-label">covered_contract_ids:</span>
+            <el-tag
+              v-for="contractId in contractCoveredIds"
+              :key="contractId"
+              size="small"
+              effect="plain"
+              type="success"
+            >
+              {{ contractId }}
+            </el-tag>
+            <el-tag size="small" effect="plain" type="warning">partial/unknown/blocked preserved=true</el-tag>
+            <el-tag size="small" effect="plain" type="warning">claimed_as_confirmed=false</el-tag>
+            <el-tag size="small" effect="plain" type="info">disabled_only/readback_only</el-tag>
+            <el-tag size="small" effect="plain" type="info">not_claimed_as_business_action=true</el-tag>
+          </div>
+          <div class="contract-readback-grid">
+            <el-card shadow="never" class="contract-readback-card" data-testid="contract-source-files-readback">
+              <template #header>contract source files</template>
+              <ul>
+                <li v-for="sourceFile in contractSourceFiles" :key="sourceFile">{{ sourceFile }}</li>
+              </ul>
+            </el-card>
+            <el-card shadow="never" class="contract-readback-card" data-testid="contract-key-validation-status-readback">
+              <template #header>key_fields / validation_rules / status_rules</template>
+              <ul>
+                <li v-for="item in contractFieldRuleReadback" :key="item">{{ item }}</li>
+              </ul>
+            </el-card>
+            <el-card shadow="never" class="contract-readback-card" data-testid="contract-readonly-readback-requirements">
+              <template #header>readonly / readback requirements</template>
+              <ul>
+                <li v-for="item in contractReadonlyReadbackRequirements" :key="item">{{ item }}</li>
+              </ul>
+            </el-card>
+          </div>
+        </section>
 
         <div class="toolbar-row" data-testid="stock-ledger-guarded-actions">
           <el-tag type="info" effect="plain" data-testid="stock-ledger-readonly-state">
-            库存台账写入口保持只读 guard
+            库存台账写入口保持 disabled/readback-only（非 confirmed）
           </el-tag>
           <el-button
             type="primary"
-            :disabled="!canRead || localWriteLoading || isMaterialStockParity"
+            :disabled="!canRead || localWriteLoading || stockLedgerWriteGuarded"
             data-write-guard="guarded:readonly-dev-only"
             data-testid="stock-ledger-local-draft-open-button"
             @click="onOpenLocalDraftGuarded"
@@ -138,7 +177,7 @@
             下单（本地草稿）
           </el-button>
           <el-button
-            :disabled="!canRead || !localDraft || localWriteLoading || isMaterialStockParity"
+            :disabled="!canRead || !localDraft || localWriteLoading || stockLedgerWriteGuarded"
             data-write-guard="guarded:readonly-dev-only"
             data-testid="stock-ledger-local-draft-void-button"
             @click="onVoidLocalDraftGuarded"
@@ -154,7 +193,7 @@
           <el-form-item label="scenario_tag">
             <el-input
               v-model="localWriteForm.scenario_tag"
-              :disabled="isMaterialStockParity"
+              :disabled="stockLedgerWriteGuarded"
               clearable
               placeholder="Z003-SALES-ORDER-YYYYMMDD-NNN"
               data-testid="stock-ledger-local-scenario-tag-input"
@@ -163,7 +202,7 @@
           <el-form-item label="公司">
             <el-input
               v-model="localWriteForm.company"
-              :disabled="isMaterialStockParity"
+              :disabled="stockLedgerWriteGuarded"
               clearable
               placeholder="LY-TEST"
               data-testid="stock-ledger-local-company-input"
@@ -172,7 +211,7 @@
           <el-form-item label="客户">
             <el-input
               v-model="localWriteForm.customer"
-              :disabled="isMaterialStockParity"
+              :disabled="stockLedgerWriteGuarded"
               clearable
               placeholder="LOCAL-CUSTOMER"
               data-testid="stock-ledger-local-customer-input"
@@ -181,7 +220,7 @@
           <el-form-item label="款号">
             <el-input
               v-model="localWriteForm.item_code"
-              :disabled="isMaterialStockParity"
+              :disabled="stockLedgerWriteGuarded"
               clearable
               placeholder="SO-ITEM-001"
               data-testid="stock-ledger-local-item-code-input"
@@ -190,7 +229,7 @@
           <el-form-item label="仓库">
             <el-input
               v-model="localWriteForm.warehouse"
-              :disabled="isMaterialStockParity"
+              :disabled="stockLedgerWriteGuarded"
               clearable
               placeholder="SO-WH-001"
               data-testid="stock-ledger-local-warehouse-input"
@@ -199,7 +238,7 @@
           <el-form-item label="数量">
             <el-input
               v-model="localWriteForm.qty"
-              :disabled="isMaterialStockParity"
+              :disabled="stockLedgerWriteGuarded"
               clearable
               placeholder="1"
               data-testid="stock-ledger-local-qty-input"
@@ -3524,6 +3563,26 @@ const stockLedgerParity = computed<string>(() => {
 })
 
 const isMaterialStockParity = computed<boolean>(() => stockLedgerParity.value === 'material-stock')
+const stockLedgerReadbackOnly = computed<boolean>(() => true)
+const stockLedgerWriteGuarded = computed<boolean>(() => stockLedgerReadbackOnly.value || isMaterialStockParity.value)
+const contractCoveredIds: string[] = ['A001', 'A002', 'A003']
+const contractSourceFiles: string[] = [
+  '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A001_evidence_coverage_matrix_20260520/evidence_coverage_matrix.json',
+  '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A002_business_contract_merge_20260520/yisuan_development_contract_input.json',
+  '04_测试与验收/测试证据/yisuan_business_shadow_capture/YISUAN_CAP_A003_ui_route_field_button_readonly_contract_20260520/ui_contract_development_input.json',
+]
+const contractFieldRuleReadback: string[] = [
+  'key_fields: 库存流水主字段、仓库摘要、状态标签与跨模块回读提示',
+  'validation_rules: can_support_development=true 仅代表开发输入，不代表真实动作已验证',
+  'validation_rules: unknown/blocked/partial 必须 preserved，不得升级 confirmed',
+  'status_rules: VERIFIED / PARTIAL / UNKNOWN / NO-GO / BLOCKED',
+]
+const contractReadonlyReadbackRequirements: string[] = [
+  'readonly/readback: disabled_only/readback_only 只允许壳层表达',
+  'readonly/readback: 不创建真实业务对象，不启用联动计算',
+  'readonly/readback: contract source readback present=true',
+  'readonly/readback: not_claimed_as_business_action=true',
+]
 
 const stockLedgerTitle = computed<string>(() => {
   return isMaterialStockParity.value ? '物料库存台账' : '库存台账'
@@ -3532,7 +3591,7 @@ const stockLedgerTitle = computed<string>(() => {
 const stockLedgerSubTitle = computed<string>(() => {
   return isMaterialStockParity.value
     ? '衣算云 / 物料进销存 / 物料库存（只读交互）'
-    : 'TASK-Y99-FE-02 / 只读真实交互首版'
+    : 'A001/A002/A003 合同壳层合并（只读回读）'
 })
 
 const stockLedgerErrorTitle = computed<string>(() => {
@@ -4919,6 +4978,10 @@ const applyLocalSalesOrderDraft = async (): Promise<void> => {
   if (!canRead.value) {
     return
   }
+  if (stockLedgerWriteGuarded.value) {
+    onGuardedAction('库存流水草稿写入（readback-only）')
+    return
+  }
   const scenarioTag = extractSalesOrderScenarioTag(localWriteForm.scenario_tag.trim())
   if (!scenarioTag) {
     localWriteFeedbackType.value = 'warning'
@@ -4977,8 +5040,8 @@ const applyLocalSalesOrderDraft = async (): Promise<void> => {
 }
 
 const onOpenLocalDraftGuarded = (): void => {
-  if (isMaterialStockParity.value) {
-    onGuardedAction('物料库存草稿写入（dev-only）')
+  if (stockLedgerWriteGuarded.value) {
+    onGuardedAction('库存流水草稿写入（readback-only）')
     return
   }
   void applyLocalSalesOrderDraft()
@@ -4986,6 +5049,10 @@ const onOpenLocalDraftGuarded = (): void => {
 
 const voidLocalSalesOrderDraft = async (): Promise<void> => {
   if (!canRead.value || !localDraft.value) {
+    return
+  }
+  if (stockLedgerWriteGuarded.value) {
+    onGuardedAction('库存流水草稿作废（readback-only）')
     return
   }
   const scenarioTag =
@@ -5027,8 +5094,8 @@ const voidLocalSalesOrderDraft = async (): Promise<void> => {
 }
 
 const onVoidLocalDraftGuarded = (): void => {
-  if (isMaterialStockParity.value) {
-    onGuardedAction('物料库存草稿作废（dev-only）')
+  if (stockLedgerWriteGuarded.value) {
+    onGuardedAction('库存流水草稿作废（readback-only）')
     return
   }
   void voidLocalSalesOrderDraft()
