@@ -1,0 +1,55 @@
+{
+  "observed": "8/8",
+  "required_anchors": [
+    "z046-subcontract-list-detail-state-link",
+    "z046-subcontract-settlement-precondition",
+    "z046-subcontract-sync-retry-lock-reason",
+    "z046-subcontract-export-print-lock-reason",
+    "z046-subcontract-material-parity-source",
+    "z046-subcontract-guarded-action-matrix",
+    "z046-subcontract-network-write-blocker",
+    "z046-subcontract-write-success-blocker"
+  ],
+  "observed_map": {
+    "z046-subcontract-list-detail-state-link": true,
+    "z046-subcontract-settlement-precondition": true,
+    "z046-subcontract-sync-retry-lock-reason": true,
+    "z046-subcontract-export-print-lock-reason": true,
+    "z046-subcontract-material-parity-source": true,
+    "z046-subcontract-guarded-action-matrix": true,
+    "z046-subcontract-network-write-blocker": true,
+    "z046-subcontract-write-success-blocker": true
+  },
+  "observed_map_by_route": {
+    "/subcontract/list": {
+      "z046-subcontract-list-detail-state-link": true,
+      "z046-subcontract-settlement-precondition": true,
+      "z046-subcontract-sync-retry-lock-reason": true,
+      "z046-subcontract-export-print-lock-reason": true,
+      "z046-subcontract-material-parity-source": true,
+      "z046-subcontract-guarded-action-matrix": true,
+      "z046-subcontract-network-write-blocker": true,
+      "z046-subcontract-write-success-blocker": true
+    },
+    "/subcontract/detail": {
+      "z046-subcontract-list-detail-state-link": true,
+      "z046-subcontract-settlement-precondition": true,
+      "z046-subcontract-sync-retry-lock-reason": true,
+      "z046-subcontract-export-print-lock-reason": true,
+      "z046-subcontract-material-parity-source": true,
+      "z046-subcontract-guarded-action-matrix": true,
+      "z046-subcontract-network-write-blocker": true,
+      "z046-subcontract-write-success-blocker": true
+    },
+    "/materialPurchase/materialPurchaseProcess": {
+      "z046-subcontract-list-detail-state-link": true,
+      "z046-subcontract-settlement-precondition": true,
+      "z046-subcontract-sync-retry-lock-reason": true,
+      "z046-subcontract-export-print-lock-reason": true,
+      "z046-subcontract-material-parity-source": true,
+      "z046-subcontract-guarded-action-matrix": true,
+      "z046-subcontract-network-write-blocker": true,
+      "z046-subcontract-write-success-blocker": true
+    }
+  }
+}

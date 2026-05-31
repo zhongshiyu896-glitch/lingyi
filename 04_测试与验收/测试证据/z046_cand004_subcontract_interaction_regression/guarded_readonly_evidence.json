@@ -1,0 +1,58 @@
+{
+  "guarded_entries": [
+    "新建外发单",
+    "发料",
+    "回料",
+    "验货",
+    "结算预览",
+    "同步重试",
+    "导出",
+    "打印"
+  ],
+  "observed": "8/8",
+  "observed_map": {
+    "新建外发单": true,
+    "发料": true,
+    "回料": true,
+    "验货": true,
+    "结算预览": true,
+    "同步重试": true,
+    "导出": true,
+    "打印": true
+  },
+  "observed_map_by_route": {
+    "/subcontract/list": {
+      "新建外发单": true,
+      "发料": true,
+      "回料": true,
+      "验货": true,
+      "结算预览": true,
+      "同步重试": true,
+      "导出": true,
+      "打印": true
+    },
+    "/subcontract/detail": {
+      "新建外发单": true,
+      "发料": true,
+      "回料": true,
+      "验货": true,
+      "结算预览": true,
+      "同步重试": true,
+      "导出": true,
+      "打印": true
+    },
+    "/materialPurchase/materialPurchaseProcess": {
+      "新建外发单": true,
+      "发料": true,
+      "回料": true,
+      "验货": true,
+      "结算预览": true,
+      "同步重试": true,
+      "导出": true,
+      "打印": true
+    }
+  },
+  "dataReadonlyBoundary": true,
+  "dataWriteRequestSuccessAllowed": false,
+  "dataRealWriteActionAdded": false
+}

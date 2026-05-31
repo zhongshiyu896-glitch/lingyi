@@ -223,6 +223,120 @@
           <el-table-column prop="state" label="当前状态" width="150" />
         </el-table>
       </section>
+      <section
+        class="z045-subcontract-panel"
+        data-readonly-boundary="true"
+        data-write-request-success-allowed="false"
+        data-real-write-action-added="false"
+      >
+        <div class="z045-panel-header">
+          <strong>Z046 外协详情/列表交互 readback</strong>
+          <el-tag type="warning" effect="plain">Z046 interaction</el-tag>
+        </div>
+        <el-descriptions :column="2" border size="small">
+          <el-descriptions-item label="列表/详情状态联动">
+            <span
+              data-testid="z046-subcontract-list-detail-state-link"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z046ListDetailStateLink }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="结算预览前置条件">
+            <span
+              data-testid="z046-subcontract-settlement-precondition"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z046SettlementPrecondition }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="同步重试锁定原因">
+            <span
+              data-testid="z046-subcontract-sync-retry-lock-reason"
+              data-guard-state="guarded-readonly"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z046SyncRetryLockReason }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="导出/打印锁定原因">
+            <span
+              data-testid="z046-subcontract-export-print-lock-reason"
+              data-guard-state="guarded-readonly"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z046ExportPrintLockReason }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="materialPurchase parity 来源">
+            <span
+              data-testid="z046-subcontract-material-parity-source"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z046MaterialParitySource }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="network/write blocker">
+            <span
+              data-testid="z046-subcontract-network-write-blocker"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z046NetworkWriteBlocker }}
+            </span>
+          </el-descriptions-item>
+          <el-descriptions-item label="write success blocker" :span="2">
+            <span
+              data-testid="z046-subcontract-write-success-blocker"
+              data-readonly-boundary="true"
+              data-write-request-success-allowed="false"
+              data-real-write-action-added="false"
+            >
+              {{ z046WriteSuccessBlocker }}
+            </span>
+          </el-descriptions-item>
+        </el-descriptions>
+        <el-table
+          :data="z046GuardedActionMatrix"
+          size="small"
+          border
+          class="z045-guard-table"
+          data-testid="z046-subcontract-guarded-action-matrix"
+          data-readonly-boundary="true"
+          data-write-request-success-allowed="false"
+          data-real-write-action-added="false"
+        >
+          <el-table-column prop="entry" label="动作" width="120">
+            <template #default="scope">
+              <span
+                data-action-type="write"
+                data-write-guard="guarded:readonly"
+                data-guard-state="guarded-readonly"
+                data-readonly-boundary="true"
+                data-write-request-success-allowed="false"
+                data-real-write-action-added="false"
+                :data-guard-entry="scope.row.entry"
+              >
+                {{ scope.row.entry }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="prerequisite" label="前置条件" min-width="180" />
+          <el-table-column prop="lockReason" label="锁定原因" min-width="220" />
+          <el-table-column prop="state" label="当前状态" width="150" />
+        </el-table>
+      </section>
       <el-skeleton v-if="!permissionReady" :rows="4" animated data-testid="subcontract-detail-loading-state" />
       <el-empty
         v-else-if="!canRead"
@@ -1024,6 +1138,38 @@ const z045GuardedActionMatrix = computed(() =>
       entry,
       prerequisite: prerequisiteMap[entry] || '需要写授权',
       lockReason: 'Z045 本地候选仅允许详情 readback 与原因展示，禁止形成真实写请求成功',
+      state: 'guarded/readonly',
+    }
+  }),
+)
+const z046GuardEntries = ['新建外发单', '发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
+const z046ListDetailStateLink = computed<string>(() => z045ListDetailReadback.value)
+const z046SettlementPrecondition = computed<string>(() =>
+  detail.value
+    ? `外协单 ${detail.value.subcontract_no} 当前仅展示结算预览前置条件；缺少写授权时保持只读锁定`
+    : '详情缺少外协单 id 时，结算预览仅展示前置条件和锁定原因，不触发写请求',
+)
+const z046SyncRetryLockReason = computed<string>(() => z045SyncDenialReason.value)
+const z046ExportPrintLockReason = z045ExportPrintLock
+const z046MaterialParitySource = computed<string>(() => z045MaterialParitySource.value)
+const z046NetworkWriteBlocker = z045NetworkWriteBlocker
+const z046WriteSuccessBlocker = z045WriteSuccessBlocker
+const z046GuardedActionMatrix = computed(() =>
+  z046GuardEntries.map((entry) => {
+    const prerequisiteMap: Record<string, string> = {
+      新建外发单: '需要从列表进入并具备新建写授权',
+      发料: '需要外发单、物料批次和库存写授权',
+      回料: '需要回料批次、数量核验和库存回写授权',
+      验货: '需要回料记录、验货数量和质量状态写授权',
+      结算预览: '需要验货候选、结算单号和结算写授权',
+      同步重试: '需要同步失败原因复核和 retry 写授权',
+      导出: '需要详情导出授权与下载通道',
+      打印: '需要打印任务授权与生产打印通道',
+    }
+    return {
+      entry,
+      prerequisite: prerequisiteMap[entry] || '需要写授权',
+      lockReason: 'Z046 本地候选仅允许详情 readback 与锁定原因可见化，禁止形成真实写请求成功',
       state: 'guarded/readonly',
     }
   }),

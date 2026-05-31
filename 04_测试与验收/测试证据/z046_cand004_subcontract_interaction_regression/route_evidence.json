@@ -1,0 +1,19 @@
+{
+  "routes": [
+    {
+      "route": "/subcontract/list",
+      "http_status": 200,
+      "final_path": "/subcontract/list"
+    },
+    {
+      "route": "/subcontract/detail",
+      "http_status": 200,
+      "final_path": "/subcontract/detail"
+    },
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "http_status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    }
+  ]
+}

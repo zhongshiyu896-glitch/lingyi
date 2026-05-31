@@ -1,0 +1,36 @@
+# TASK-Z046B-28-REGRESSION-CAND004
+
+- status: PASS
+- head: 6be116ee76af8c641f4366c0b41e6f707583051c
+- branch: codex/sprint4-seal
+- code_modified_in_this_task: false
+- changed_files:
+  - 06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue
+  - 06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue
+- api_subcontract_touched: false
+- backend_api_added: false
+- real_write_action_added: false
+- read_only_boundary_preserved: true
+- route_evidence:
+  - /subcontract/list -> HTTP 200 -> /subcontract/list
+  - /subcontract/detail -> HTTP 200 -> /subcontract/detail
+  - /materialPurchase/materialPurchaseProcess -> HTTP 200 -> /subcontract/list?parity=material-purchase
+- material_purchase_final_path: /subcontract/list?parity=material-purchase
+- screenshots:
+  - 04_测试与验收/测试证据/z046_cand004_subcontract_interaction_regression/z046_cand004_regression_list_1440x1200.png (1440x1200 PNG)
+  - 04_测试与验收/测试证据/z046_cand004_subcontract_interaction_regression/z046_cand004_regression_detail_1440x1200.png (1440x1200 PNG)
+- dom_anchors_observed: 8/8
+- guarded_readonly_state: 8/8
+- dataReadonlyBoundary: true
+- dataWriteRequestSuccessAllowed: false
+- dataRealWriteActionAdded: false
+- auth_401_count: 3 (readonly fallback risk)
+- write_requests_observed_count: 0
+- write_request_success_observed: false
+- write_request_success_allowed: false
+- typecheck: npm run typecheck (exit 0)
+- dev_server: started=true, stopped=true, reused=false, actual_url=http://127.0.0.1:5174
+- stage_performed: false
+- commit_performed: false
+- remote_lifecycle_released: false
+- next_task: TASK-Z046B-29-LEDGER-CAND004
