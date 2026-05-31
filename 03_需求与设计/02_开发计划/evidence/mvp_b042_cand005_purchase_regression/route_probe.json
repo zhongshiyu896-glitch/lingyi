@@ -1,0 +1,14 @@
+{
+  "/materialPurchase/materialPurchaseProcess": {
+    "status": 200,
+    "final_path": "/subcontract/list?parity=material-purchase"
+  },
+  "/subcontract/list?parity=material-purchase": {
+    "status": 200,
+    "final_path": "/subcontract/list?parity=material-purchase"
+  },
+  "/subcontract/detail": {
+    "status": 200,
+    "final_path": "/subcontract/detail"
+  }
+}

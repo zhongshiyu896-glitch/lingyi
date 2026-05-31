@@ -1,643 +1,111 @@
 <template>
-  <div
-    class="subcontract-list-page"
-    data-testid="subcontract-list-page"
-    data-readonly-boundary="true"
-    data-write-request-success-allowed="false"
-    data-real-write-action-added="false"
-  >
-    <el-card shadow="never" data-testid="subcontract-main-card">
+  <div class="purchase-list-page">
+    <el-card shadow="never" data-testid="mvp-purchase-production-safety">
       <template #header>
         <div class="header-row">
-          <span>外发单列表</span>
-          <div class="header-actions" data-testid="subcontract-guarded-actions">
-            <el-button
-              size="small"
-              type="primary"
-              data-action-type="write"
-              data-write-guard="guarded:readonly"
-              data-testid="subcontract-create-open-button"
-              @click="openCreateDialog"
-            >
-              新建外发单
-            </el-button>
-            <el-button size="small" :disabled="!canRead" data-testid="subcontract-refresh-button" @click="loadOrders">
-              刷新
-            </el-button>
+          <div>
+            <h2>物料采购 / 外协采购前置单据</h2>
+            <p class="sub-title">MVP-CAND-005 / local-dev/sqlite/scenario_tag</p>
+          </div>
+          <div class="header-actions">
+            <el-button @click="openNewDraft">新建本地草稿</el-button>
+            <el-button type="primary" plain :loading="loading" @click="loadRows">刷新</el-button>
           </div>
         </div>
       </template>
 
       <el-alert
         type="warning"
-        show-icon
         :closable="false"
-        class="readonly-guard"
-        data-testid="subcontract-write-guard"
-        data-write-guard="guarded:readonly"
-      >
-        <template #title>
-          <span>只读履约视图：新建外发单、导出、打印与同步写入口均保持 guarded，不发起写请求。</span>
-        </template>
-      </el-alert>
-
-      <el-alert
-        v-if="parityHint"
-        type="info"
-        show-icon
-        :closable="false"
-        class="parity-hint"
-        data-testid="subcontract-parity-hint"
-      >
-        <template #title>
-          <span data-testid="subcontract-parity-hint-text">当前入口：{{ parityHint.label }}（{{ parityHint.key }}）</span>
-        </template>
-      </el-alert>
-
-      <section
-        class="z042-subcontract-panel"
-        data-testid="z042-subcontract-guard-trace"
-        data-readonly-boundary="true"
-        data-write-request-success-allowed="false"
-        data-real-write-action-added="false"
-      >
-        <div class="z042-panel-header">
-          <strong>外发单只读 guard trace</strong>
-          <el-tag type="warning" effect="plain">readonly fallback</el-tag>
-        </div>
-        <el-descriptions :column="3" border size="small">
-          <el-descriptions-item label="列表筛选">加工厂 / 状态筛选仅刷新只读结果</el-descriptions-item>
-          <el-descriptions-item label="parity 来源">
-            <span data-testid="z042-subcontract-parity-source">{{ z042ParitySource.label }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="最终路由">{{ z042ParitySource.finalRoute }}</el-descriptions-item>
-          <el-descriptions-item label="fallback 解释">
-            权限或接口异常时保留列表、筛选与写入口 guard，可读不可写。
-          </el-descriptions-item>
-          <el-descriptions-item label="写请求成功">false</el-descriptions-item>
-          <el-descriptions-item label="真实写 action">未新增</el-descriptions-item>
-        </el-descriptions>
-        <div class="z042-guard-actions" data-testid="z042-subcontract-list-guard-actions">
-          <el-button
-            v-for="entry in z042GuardEntries"
-            :key="entry"
-            size="small"
-            data-action-type="write"
-            data-write-guard="guarded:readonly"
-            data-guard-state="guarded_readonly"
-            :data-guard-entry="entry"
-            @click="guardedAction(entry)"
-          >
-            {{ entry }}
-          </el-button>
-        </div>
-      </section>
-
-      <section
-        class="z043-subcontract-panel"
-        data-testid="z043-subcontract-readback-compare"
-        data-readonly-boundary="true"
-        data-write-request-success-allowed="false"
-        data-real-write-action-added="false"
-      >
-        <div class="z043-panel-header">
-          <strong>列表/详情 readback 对照</strong>
-          <el-tag type="warning" effect="plain">guarded readonly</el-tag>
-        </div>
-        <el-descriptions :column="3" border size="small">
-          <el-descriptions-item label="列表筛选">{{ z043ReadbackCompare.listFilter }}</el-descriptions-item>
-          <el-descriptions-item label="详情主字段">{{ z043ReadbackCompare.detailFields }}</el-descriptions-item>
-          <el-descriptions-item label="写成功状态">{{ z043ReadbackCompare.writeState }}</el-descriptions-item>
-          <el-descriptions-item label="同步重试原因">
-            <span
-              data-testid="z043-subcontract-sync-retry-reason"
-              data-guard-state="guarded-readonly"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z043SyncRetryReason }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="导出/打印禁用">
-            <span
-              data-testid="z043-subcontract-export-print-disabled"
-              data-guard-state="guarded-readonly"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z043ExportPrintDisabledReason }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="materialPurchase parity 来源">
-            <span
-              data-testid="z043-subcontract-material-parity-source"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z043MaterialParitySource }}
-            </span>
-          </el-descriptions-item>
-        </el-descriptions>
-        <div class="z043-guard-actions" data-testid="z043-subcontract-list-guarded-actions">
-          <el-tag
-            v-for="entry in z043GuardEntries"
-            :key="entry"
-            type="info"
-            effect="plain"
-            data-action-type="write"
-            data-write-guard="guarded:readonly"
-            data-guard-state="guarded-readonly"
-            data-readonly-boundary="true"
-            data-write-request-success-allowed="false"
-            data-real-write-action-added="false"
-            :data-guard-entry="entry"
-          >
-            {{ entry }} guarded/readonly
-          </el-tag>
-        </div>
-      </section>
-
-      <section
-        class="z044-subcontract-panel"
-        data-testid="z044-subcontract-list-detail-diff"
-        data-readonly-boundary="true"
-        data-write-request-success-allowed="false"
-        data-real-write-action-added="false"
-      >
-        <div class="z044-panel-header">
-          <strong>列表/详情一致性差异与同步锁定</strong>
-          <el-tag type="warning" effect="plain">Z044 readonly</el-tag>
-        </div>
-        <el-descriptions :column="2" border size="small">
-          <el-descriptions-item label="列表/详情差异">
-            <span>{{ z044ListDetailDiff }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="readback 一致性">
-            <span
-              data-testid="z044-subcontract-readback-consistency"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z044ReadbackConsistency }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="同步锁定原因">
-            <span
-              data-testid="z044-subcontract-sync-lock-reason"
-              data-guard-state="guarded-readonly"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z044SyncLockReason }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="导出/打印禁用">
-            <span
-              data-testid="z044-subcontract-export-print-readonly"
-              data-guard-state="guarded-readonly"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z044ExportPrintReadonly }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="materialPurchase parity 来源">
-            <span
-              data-testid="z044-subcontract-material-parity-readback"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z044MaterialParityReadback }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="network/write blocker">
-            <span
-              data-testid="z044-subcontract-network-write-blocker"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z044NetworkWriteBlocker }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="write success blocker" :span="2">
-            <span
-              data-testid="z044-subcontract-write-success-blocker"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z044WriteSuccessBlocker }}
-            </span>
-          </el-descriptions-item>
-        </el-descriptions>
-        <div class="z044-guard-actions" data-testid="z044-subcontract-guarded-action-matrix">
-          <el-tag
-            v-for="entry in z044GuardEntries"
-            :key="entry"
-            type="info"
-            effect="plain"
-            data-action-type="write"
-            data-write-guard="guarded:readonly"
-            data-guard-state="guarded-readonly"
-            data-readonly-boundary="true"
-            data-write-request-success-allowed="false"
-            data-real-write-action-added="false"
-            :data-guard-entry="entry"
-          >
-            {{ entry }} guarded/readonly
-          </el-tag>
-        </div>
-      </section>
-
-      <section
-        class="z045-subcontract-panel"
-        data-readonly-boundary="true"
-        data-write-request-success-allowed="false"
-        data-real-write-action-added="false"
-      >
-        <div class="z045-panel-header">
-          <strong>外发列表 parity 差异与同步拒写</strong>
-          <el-tag type="warning" effect="plain">Z045 interaction</el-tag>
-        </div>
-        <el-descriptions :column="2" border size="small">
-          <el-descriptions-item label="parity 差异审计">
-            <span
-              data-testid="z045-subcontract-parity-diff-audit"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z045ParityDiffAudit }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="列表/详情 readback">
-            <span
-              data-testid="z045-subcontract-list-detail-readback"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z045ListDetailReadback }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="同步拒写原因">
-            <span
-              data-testid="z045-subcontract-sync-denial-reason"
-              data-guard-state="guarded-readonly"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z045SyncDenialReason }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="导出/打印锁定">
-            <span
-              data-testid="z045-subcontract-export-print-lock"
-              data-guard-state="guarded-readonly"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z045ExportPrintLock }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="materialPurchase 来源">
-            <span
-              data-testid="z045-subcontract-material-parity-source"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z045MaterialParitySource }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="network/write blocker">
-            <span
-              data-testid="z045-subcontract-network-write-blocker"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z045NetworkWriteBlocker }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="write success blocker" :span="2">
-            <span
-              data-testid="z045-subcontract-write-success-blocker"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z045WriteSuccessBlocker }}
-            </span>
-          </el-descriptions-item>
-        </el-descriptions>
-        <el-table
-          :data="z045GuardedActionMatrix"
-          size="small"
-          border
-          class="z045-guard-table"
-          data-testid="z045-subcontract-guarded-action-matrix"
-          data-readonly-boundary="true"
-          data-write-request-success-allowed="false"
-          data-real-write-action-added="false"
-        >
-          <el-table-column prop="entry" label="动作" width="120">
-            <template #default="scope">
-              <span
-                data-action-type="write"
-                data-write-guard="guarded:readonly"
-                data-guard-state="guarded-readonly"
-                data-readonly-boundary="true"
-                data-write-request-success-allowed="false"
-                data-real-write-action-added="false"
-                :data-guard-entry="scope.row.entry"
-              >
-                {{ scope.row.entry }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="prerequisite" label="前置条件" min-width="180" />
-          <el-table-column prop="lockReason" label="锁定原因" min-width="220" />
-          <el-table-column prop="state" label="当前状态" width="150" />
-        </el-table>
-      </section>
-
-      <section
-        class="z045-subcontract-panel"
-        data-readonly-boundary="true"
-        data-write-request-success-allowed="false"
-        data-real-write-action-added="false"
-      >
-        <div class="z045-panel-header">
-          <strong>Z046 外协列表/详情交互 readback</strong>
-          <el-tag type="warning" effect="plain">Z046 interaction</el-tag>
-        </div>
-        <el-descriptions :column="2" border size="small">
-          <el-descriptions-item label="列表/详情状态联动">
-            <span
-              data-testid="z046-subcontract-list-detail-state-link"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z046ListDetailStateLink }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="结算预览前置条件">
-            <span
-              data-testid="z046-subcontract-settlement-precondition"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z046SettlementPrecondition }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="同步重试锁定原因">
-            <span
-              data-testid="z046-subcontract-sync-retry-lock-reason"
-              data-guard-state="guarded-readonly"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z046SyncRetryLockReason }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="导出/打印锁定原因">
-            <span
-              data-testid="z046-subcontract-export-print-lock-reason"
-              data-guard-state="guarded-readonly"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z046ExportPrintLockReason }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="materialPurchase parity 来源">
-            <span
-              data-testid="z046-subcontract-material-parity-source"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z046MaterialParitySource }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="network/write blocker">
-            <span
-              data-testid="z046-subcontract-network-write-blocker"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z046NetworkWriteBlocker }}
-            </span>
-          </el-descriptions-item>
-          <el-descriptions-item label="write success blocker" :span="2">
-            <span
-              data-testid="z046-subcontract-write-success-blocker"
-              data-readonly-boundary="true"
-              data-write-request-success-allowed="false"
-              data-real-write-action-added="false"
-            >
-              {{ z046WriteSuccessBlocker }}
-            </span>
-          </el-descriptions-item>
-        </el-descriptions>
-        <el-table
-          :data="z046GuardedActionMatrix"
-          size="small"
-          border
-          class="z045-guard-table"
-          data-testid="z046-subcontract-guarded-action-matrix"
-          data-readonly-boundary="true"
-          data-write-request-success-allowed="false"
-          data-real-write-action-added="false"
-        >
-          <el-table-column prop="entry" label="动作" width="120">
-            <template #default="scope">
-              <span
-                data-action-type="write"
-                data-write-guard="guarded:readonly"
-                data-guard-state="guarded-readonly"
-                data-readonly-boundary="true"
-                data-write-request-success-allowed="false"
-                data-real-write-action-added="false"
-                :data-guard-entry="scope.row.entry"
-              >
-                {{ scope.row.entry }}
-              </span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="prerequisite" label="前置条件" min-width="180" />
-          <el-table-column prop="lockReason" label="锁定原因" min-width="220" />
-          <el-table-column prop="state" label="当前状态" width="150" />
-        </el-table>
-      </section>
-
-      <el-form :inline="true" :model="query" data-testid="subcontract-filter-form">
-        <el-form-item label="加工厂">
-          <div data-testid="subcontract-filter-supplier">
-            <el-input v-model="query.supplier" clearable placeholder="Supplier" />
-          </div>
-        </el-form-item>
-        <el-form-item label="状态">
-          <div data-testid="subcontract-filter-status">
-            <el-select
-              v-model="query.status"
-              clearable
-              placeholder="全部状态"
-              aria-label="外发单状态筛选"
-              style="width: 150px"
-            >
-              <el-option label="草稿" value="draft" />
-              <el-option label="已发料" value="issued" />
-              <el-option label="加工中" value="processing" />
-              <el-option label="待回料" value="waiting_receive" />
-              <el-option label="待验货" value="waiting_inspection" />
-              <el-option label="已完成" value="completed" />
-              <el-option label="已取消" value="cancelled" />
-            </el-select>
-          </div>
-        </el-form-item>
-        <el-form-item>
-          <div class="query-action" data-testid="subcontract-query-btn">
-            <el-button type="primary" :disabled="!canRead" @click="applyQuery">查询</el-button>
-          </div>
-          <div class="query-action" data-testid="subcontract-reset-btn">
-            <el-button :disabled="!canRead" @click="resetQuery">重置</el-button>
-          </div>
-        </el-form-item>
-      </el-form>
-
-      <el-empty v-if="!canRead" description="无外发查看权限" data-testid="subcontract-permission-empty-state" />
-      <template v-else>
-        <el-alert
-          v-if="errorMessage"
-          type="error"
-          :title="errorMessage"
-          show-icon
-          :closable="false"
-          class="error-state"
-          data-testid="subcontract-error-state"
-        />
-        <div data-testid="subcontract-table">
-          <el-table :data="rows" v-loading="loading" border empty-text="暂无外发单数据">
-          <el-table-column prop="subcontract_no" label="外发单号" min-width="220" />
-          <el-table-column prop="company" label="公司" min-width="150" />
-          <el-table-column prop="supplier" label="加工厂" min-width="160" />
-          <el-table-column prop="item_code" label="款式" min-width="140" />
-          <el-table-column prop="process_name" label="工序" min-width="120" />
-          <el-table-column prop="planned_qty" label="计划数量" width="110" />
-          <el-table-column prop="issued_qty" label="已发料" width="110" />
-          <el-table-column prop="received_qty" label="已回料" width="110" />
-          <el-table-column prop="inspected_qty" label="已验货" width="110" />
-          <el-table-column prop="net_amount" label="净应付金额" width="120" />
-          <el-table-column label="状态" min-width="180">
-            <template #default="scope">
-              <span data-testid="subcontract-status-tag">
-                <el-tag>{{ statusLabel(scope.row.status) }}</el-tag>
-              </span>
-              <el-tag v-if="scope.row.resource_scope_status === 'blocked_scope'" type="danger" class="scope-tag">
-                权限范围异常
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="库存同步状态" min-width="160">
-            <template #default="scope">{{ syncStatusLabel(scope.row) }}</template>
-          </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
-            <template #default="scope">
-              <span data-testid="subcontract-detail-entry">
-                <el-button link type="primary" @click="goDetail(scope.row.id)">详情</el-button>
-              </span>
-            </template>
-          </el-table-column>
-          </el-table>
-        </div>
-
-        <el-empty
-          v-if="!loading && !errorMessage && rows.length === 0"
-          description="暂无外发单数据"
-          class="empty-state"
-          data-testid="subcontract-empty-state"
-        />
-
-        <div class="pager" data-testid="subcontract-pagination">
-          <el-pagination
-            background
-            layout="prev, pager, next, total, sizes"
-            :current-page="query.page"
-            :page-size="query.page_size"
-            :total="total"
-            :page-sizes="[10, 20, 50, 100]"
-            @current-change="onPageChange"
-            @size-change="onSizeChange"
-          />
-        </div>
-      </template>
+        title="仅允许 local-dev/sqlite 测试数据闭环；禁止生产写、ERPNext production 写、真实账号写。"
+      />
     </el-card>
 
-    <el-dialog
-      v-model="createDialogVisible"
-      title="新建外发单"
-      width="640px"
-      destroy-on-close
-      append-to-body
-      data-testid="subcontract-create-dialog"
-    >
-      <el-form :model="createForm" label-width="120px">
-        <el-form-item label="加工厂">
-          <el-input v-model="createForm.supplier" data-testid="subcontract-create-supplier-input" />
+    <el-card shadow="never">
+      <el-alert
+        v-if="isMaterialPurchaseParity"
+        type="info"
+        :closable="false"
+        class="parity-alert"
+        data-testid="mvp-purchase-parity-material"
+        title="当前为 materialPurchase parity 采购视角：/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
+      />
+
+      <el-form :inline="true" data-testid="mvp-purchase-list-query">
+        <el-form-item label="keyword">
+          <el-input v-model="query.keyword" clearable placeholder="单据号/供应商/物料编码" style="width: 220px" />
         </el-form-item>
-        <el-form-item label="款号">
-          <el-input v-model="createForm.item_code" data-testid="subcontract-create-item-code-input" />
+        <el-form-item label="供应商/加工厂">
+          <el-input v-model="query.partnerName" clearable placeholder="供应商或加工厂" style="width: 180px" />
         </el-form-item>
-        <el-form-item label="BOM ID">
-          <el-input-number v-model="createForm.bom_id" :min="1" data-testid="subcontract-create-bom-id-input" />
+        <el-form-item label="单据状态">
+          <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 160px">
+            <el-option label="draft" value="draft" />
+            <el-option label="saved" value="saved" />
+            <el-option label="cancelled" value="cancelled" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="工序">
-          <el-input v-model="createForm.process_name" data-testid="subcontract-create-process-input" />
+        <el-form-item label="物料类别">
+          <el-select v-model="query.materialCategory" clearable placeholder="全部类别" style="width: 160px">
+            <el-option label="fabric" value="fabric" />
+            <el-option label="trim" value="trim" />
+            <el-option label="packaging" value="packaging" />
+            <el-option label="mixed" value="mixed" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="计划数量">
-          <el-input-number
-            v-model="createForm.planned_qty"
-            :min="1"
-            :step="1"
-            data-testid="subcontract-create-planned-qty-input"
-          />
-        </el-form-item>
-        <el-form-item label="销售单">
-          <el-input v-model="createForm.sales_order" data-testid="subcontract-create-sales-order-input" />
-        </el-form-item>
-        <el-form-item label="工单">
-          <el-input v-model="createForm.work_order" data-testid="subcontract-create-work-order-input" />
+        <el-form-item>
+          <el-button type="primary" :loading="loading" @click="applyQuery">查询</el-button>
+          <el-button :loading="loading" @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
-      <template #footer>
-        <el-button data-testid="subcontract-create-cancel-button" @click="createDialogVisible = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="createSubmitting"
-          data-testid="subcontract-create-submit-button"
-          @click="submitCreate"
-        >
-          保存
-        </el-button>
-      </template>
-    </el-dialog>
+
+      <el-alert v-if="feedback" :title="feedback" type="info" :closable="false" class="feedback" />
+
+      <el-table :data="rows" border v-loading="loading" empty-text="暂无本地采购/外协草稿" data-testid="mvp-purchase-list-table">
+        <el-table-column prop="document_no" label="单据号" min-width="190" />
+        <el-table-column prop="partner_name" label="供应商/加工厂" min-width="170" />
+        <el-table-column prop="document_type" label="单据类型" min-width="120" />
+        <el-table-column prop="business_date" label="业务日期" min-width="130" />
+        <el-table-column prop="material_category" label="物料类别" min-width="120" />
+        <el-table-column label="物料明细" min-width="150">
+          <template #default="{ row }">
+            {{ row.material_lines.length }} 条
+          </template>
+        </el-table-column>
+        <el-table-column label="发料/回料状态" min-width="190">
+          <template #default="{ row }">
+            发料 {{ row.issue_return.issued_qty }} / 回料 {{ row.issue_return.returned_qty }} / 差异 {{ row.issue_return.delta_qty }}
+          </template>
+        </el-table-column>
+        <el-table-column label="验货/结算预览" min-width="220">
+          <template #default="{ row }">
+            验收 {{ row.inspection_settlement.accepted_qty }} / 不良 {{ row.inspection_settlement.rejected_qty }}
+            / 结算 {{ row.inspection_settlement.settlement_qty }} / 预估 {{ row.inspection_settlement.estimated_amount }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" min-width="110">
+          <template #default="{ row }">
+            <el-tag>{{ row.status }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="130" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openDetail(row.draft_id)">详情</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pager">
+        <el-pagination
+          background
+          layout="prev, pager, next, total"
+          :current-page="query.page"
+          :page-size="query.page_size"
+          :total="total"
+          @current-change="onPageChange"
+        />
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -645,341 +113,113 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import {
-  buildSubcontractRequestId,
-  buildSubcontractScenarioTag,
-  createSubcontractOrder,
-  fetchSubcontractOrders,
-  type SubcontractOrderListItem,
-} from '@/api/subcontract'
-import { usePermissionStore } from '@/stores/permission'
+import { request } from '@/api/request'
+
+interface MaterialLine {
+  material_code: string
+  material_name: string
+  color_spec: string
+  uom: string
+  demand_qty: number
+  purchase_qty: number
+}
+
+interface IssueReturnState {
+  issued_qty: number
+  returned_qty: number
+  delta_qty: number
+  state: string
+}
+
+interface InspectionSettlementState {
+  accepted_qty: number
+  rejected_qty: number
+  settlement_qty: number
+  estimated_amount: number
+  state: string
+}
+
+interface PurchaseDraftItem {
+  draft_id: number
+  scenario_tag: string
+  document_no: string
+  partner_name: string
+  partner_type: string
+  document_type: string
+  business_date: string
+  status: string
+  material_category: string
+  predecessor_doc_no: string
+  note: string
+  state: string
+  material_lines: MaterialLine[]
+  issue_return: IssueReturnState
+  inspection_settlement: InspectionSettlementState
+  material_line_saved: boolean
+  issue_return_or_inspection_saved: boolean
+}
+
+interface ListData {
+  items: PurchaseDraftItem[]
+  total: number
+  page: number
+  page_size: number
+  parity: string
+}
 
 const route = useRoute()
 const router = useRouter()
-const permissionStore = usePermissionStore()
-const loading = ref<boolean>(false)
-const rows = ref<SubcontractOrderListItem[]>([])
-const total = ref<number>(0)
-const errorMessage = ref<string>('')
-const createDialogVisible = ref<boolean>(false)
-const createSubmitting = ref<boolean>(false)
 
-const readonlyFallback = ref<boolean>(false)
-const canRead = computed<boolean>(() => readonlyFallback.value || permissionStore.state.buttonPermissions.read)
-const z042GuardEntries = ['新建外发单', '发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
-const z043GuardEntries = z042GuardEntries
-const z044GuardEntries = z042GuardEntries
-const parityHint = computed<{ key: string; label: string } | null>(() => {
-  const raw = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
-  if (raw === 'material-purchase') {
-    return { key: raw, label: '物料采购进度只读视图' }
-  }
-  if (raw === 'subcontract-order') {
-    return { key: raw, label: '外发加工单只读视图' }
-  }
-  return null
-})
-const z042ParitySource = computed<{ label: string; finalRoute: string }>(() => {
-  if (parityHint.value?.key === 'material-purchase') {
-    return {
-      label: 'materialPurchase parity route -> 外发单列表只读视图',
-      finalRoute: '/subcontract/list?parity=material-purchase',
-    }
-  }
-  return {
-    label: parityHint.value ? `${parityHint.value.label} -> 外发单列表只读视图` : 'subcontract list direct route',
-    finalRoute: '/subcontract/list',
-  }
-})
-const z043ReadbackCompare = computed(() => ({
-  listFilter: `supplier=${query.supplier || '全部'} / status=${query.status || '全部'} / readonly rows=${rows.value.length}`,
-  detailFields: 'subcontract_no / supplier / status / sync_status 与详情页主字段保持只读对照',
-  writeState: 'dataWriteRequestSuccessAllowed=false，列表与详情均不推断真实写成功',
-}))
-const z043SyncRetryReason = computed<string>(() => {
-  const failedRows = rows.value.filter((row) => {
-    const issue = row.latest_issue_sync_status || ''
-    const receipt = row.latest_receipt_sync_status || ''
-    return ['failed', 'dead', 'blocked_scope'].includes(issue) || ['failed', 'dead', 'blocked_scope'].includes(receipt)
-  })
-  return failedRows.length
-    ? `存在 ${failedRows.length} 条同步异常，只显示 retry reason，不发送同步重试请求`
-    : '当前无同步异常；同步重试入口保持 guarded/readonly，不发送写请求'
-})
-const z043ExportPrintDisabledReason =
-  '导出与打印仅展示禁用原因：缺少写授权且当前为只读验收，不生成下载、打印或后端写请求'
-const z043MaterialParitySource = computed<string>(() =>
-  parityHint.value?.key === 'material-purchase'
-    ? '/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase'
-    : `${z042ParitySource.value.finalRoute}；direct list route readonly readback`,
-)
-const z044ListDetailDiff = computed<string>(() =>
-  `列表 rows=${rows.value.length}，详情字段以 subcontract_no/supplier/status/sync_status 回读；差异只展示不回写`,
-)
-const z044ReadbackConsistency = computed<string>(() =>
-  `筛选 supplier=${query.supplier || '全部'} / status=${query.status || '全部'} 与详情 readback 使用同一只读来源`,
-)
-const z044SyncLockReason = computed<string>(() => {
-  const lockedRows = rows.value.filter((row) => {
-    const issue = row.latest_issue_sync_status || ''
-    const receipt = row.latest_receipt_sync_status || ''
-    return ['failed', 'dead', 'blocked_scope', 'processing'].includes(issue) || ['failed', 'dead', 'blocked_scope', 'processing'].includes(receipt)
-  })
-  return lockedRows.length
-    ? `存在 ${lockedRows.length} 条同步状态需人工复核；同步重试保持 guarded/readonly`
-    : '未观察到同步异常时仍锁定同步重试，只记录 readback 差异与禁用原因'
-})
-const z044ExportPrintReadonly =
-  '导出/打印只展示禁用 readback：未授权本地候选不得生成文件、打印任务或后端写请求'
-const z044MaterialParityReadback = computed<string>(() =>
-  parityHint.value?.key === 'material-purchase'
-    ? '/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase'
-    : 'direct subcontract list；materialPurchase parity 来源保持可读不可写',
-)
-const z044NetworkWriteBlocker =
-  'network/write blocker：新建、同步、导出、打印均不发起 POST/PUT/PATCH/DELETE 写请求'
-const z044WriteSuccessBlocker =
-  'write success blocker：dataWriteRequestSuccessAllowed=false，dataRealWriteActionAdded=false，不把 guarded readonly 解释为写成功'
-const z045GuardEntries = z042GuardEntries
-const z045ParityDiffAudit = computed<string>(() =>
-  parityHint.value?.key === 'material-purchase'
-    ? 'materialPurchase parity 入口已固定到外发列表，只展示采购进度与外发单字段差异，不写回采购流程'
-    : `列表当前筛选 supplier=${query.supplier || '全部'} / status=${query.status || '全部'}，差异审计只读展示`,
-)
-const z045ListDetailReadback = computed<string>(() =>
-  `列表 rows=${rows.value.length}；详情页使用外发单号、加工厂、状态和同步字段做 1:1 readback 对照`,
-)
-const z045SyncDenialReason = computed<string>(() => {
-  const blockedRows = rows.value.filter((row) => {
-    const issue = row.latest_issue_sync_status || ''
-    const receipt = row.latest_receipt_sync_status || ''
-    return ['failed', 'dead', 'blocked_scope', 'processing'].includes(issue) || ['failed', 'dead', 'blocked_scope', 'processing'].includes(receipt)
-  })
-  return blockedRows.length
-    ? `观察到 ${blockedRows.length} 条同步待复核记录；同步重试锁定为只读确认，不触发 retry 写请求`
-    : '未观察到同步异常时仍保留同步拒写说明，避免把空状态误解为可写成功'
-})
-const z045ExportPrintLock =
-  '导出与打印显示禁用 readback：缺少远端/生产授权，不创建下载、打印任务或后端写请求'
-const z045MaterialParitySource = computed<string>(() =>
-  parityHint.value?.key === 'material-purchase'
-    ? '/materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase'
-    : 'direct subcontract list；materialPurchase parity 来源仅作为只读来源提示',
-)
-const z045NetworkWriteBlocker =
-  'network/write blocker：新建、发料、回料、验货、结算预览、同步重试、导出、打印均不新增写请求'
-const z045WriteSuccessBlocker =
-  'write success blocker：dataWriteRequestSuccessAllowed=false，dataRealWriteActionAdded=false，guarded readonly 不代表写成功'
-const z045GuardedActionMatrix = computed(() =>
-  z045GuardEntries.map((entry) => {
-    const prerequisiteMap: Record<string, string> = {
-      新建外发单: '需要合同来源、加工厂、BOM 和工序全部可写',
-      发料: '需要已选外发单、物料批次和库存写授权',
-      回料: '需要回料批次、数量核验和库存回写授权',
-      验货: '需要回料记录、验货数量和质量状态写授权',
-      结算预览: '需要验货候选、结算单号和结算写授权',
-      同步重试: '需要同步失败原因复核和 retry 写授权',
-      导出: '需要下载权限与报表导出授权',
-      打印: '需要打印任务授权与生产打印通道',
-    }
-    return {
-      entry,
-      prerequisite: prerequisiteMap[entry] || '需要写授权',
-      lockReason: 'Z045 本地候选仅允许 UI readback 与原因展示，禁止形成真实写请求成功',
-      state: 'guarded/readonly',
-    }
-  }),
-)
-const z046GuardEntries = ['新建外发单', '发料', '回料', '验货', '结算预览', '同步重试', '导出', '打印']
-const z046ListDetailStateLink = computed<string>(() => z045ListDetailReadback.value)
-const z046SettlementPrecondition = computed<string>(() =>
-  rows.value.length
-    ? `当前列表共 ${rows.value.length} 条外协单；结算预览保持只读前置条件核对，不触发结算写请求`
-    : '当前无可结算外协单；结算预览仅展示前置条件与锁定原因，不触发写请求',
-)
-const z046SyncRetryLockReason = computed<string>(() => z045SyncDenialReason.value)
-const z046ExportPrintLockReason = z045ExportPrintLock
-const z046MaterialParitySource = computed<string>(() => z045MaterialParitySource.value)
-const z046NetworkWriteBlocker = z045NetworkWriteBlocker
-const z046WriteSuccessBlocker = z045WriteSuccessBlocker
-const z046GuardedActionMatrix = computed(() =>
-  z046GuardEntries.map((entry) => {
-    const prerequisiteMap: Record<string, string> = {
-      新建外发单: '需要合同来源、加工厂、BOM 和工序全部可写',
-      发料: '需要已选外发单、物料批次和库存写授权',
-      回料: '需要回料批次、数量核验和库存回写授权',
-      验货: '需要回料记录、验货数量和质量状态写授权',
-      结算预览: '需要验货候选、结算单号和结算写授权',
-      同步重试: '需要同步失败原因复核和 retry 写授权',
-      导出: '需要下载权限与报表导出授权',
-      打印: '需要打印任务授权与生产打印通道',
-    }
-    return {
-      entry,
-      prerequisite: prerequisiteMap[entry] || '需要写授权',
-      lockReason: 'Z046 本地候选仅允许 UI readback 与锁定原因可见化，禁止形成真实写请求成功',
-      state: 'guarded/readonly',
-    }
-  }),
-)
+const rows = ref<PurchaseDraftItem[]>([])
+const total = ref(0)
+const loading = ref(false)
+const feedback = ref('')
 
 const query = reactive({
-  supplier: '',
+  keyword: '',
+  partnerName: '',
   status: '',
+  materialCategory: '',
   page: 1,
   page_size: 20,
 })
 
-const statusLabel = (value: string): string => {
-  const labels: Record<string, string> = {
-    draft: '草稿',
-    issued: '已发料',
-    processing: '加工中',
-    waiting_receive: '待回料',
-    waiting_inspection: '待验货',
-    completed: '已完成',
-    cancelled: '已取消',
-  }
-  return labels[value] || value
-}
-
-const stockSyncLabel = (status?: string | null): string => {
-  if (!status) return ''
-  const labels: Record<string, string> = {
-    pending: '待同步',
-    processing: '同步中',
-    succeeded: '已同步',
-    failed: '同步失败',
-    dead: '死信',
-    blocked_scope: '范围阻断',
-  }
-  return labels[status] || status
-}
-
-const syncStatusLabel = (row: SubcontractOrderListItem): string => {
-  const issue = stockSyncLabel(row.latest_issue_sync_status)
-  const receipt = stockSyncLabel(row.latest_receipt_sync_status)
-  if (issue && receipt) {
-    return `发料:${issue} / 回料:${receipt}`
-  }
-  if (receipt) {
-    return `回料:${receipt}`
-  }
-  if (issue) {
-    return `发料:${issue}`
-  }
-  return '未入列'
-}
-
-const guardedAction = (actionLabel: string): void => {
-  ElMessage.warning(`${actionLabel} 仅可在授权流程中执行，当前为只读模式`)
-}
-
-const createForm = reactive({
-  supplier: '示例加工厂',
-  item_code: 'DEMO-TEE',
-  bom_id: 1,
-  process_name: '缝制',
-  planned_qty: 10,
-  sales_order: '',
-  sales_order_item: '',
-  production_plan_id: undefined as number | undefined,
-  work_order: '',
-  job_card: '',
+const parityToken = computed(() => {
+  const raw = route.query.parity
+  if (Array.isArray(raw)) return String(raw[0] || '').trim()
+  return String(raw || '').trim()
 })
 
-const openCreateDialog = (): void => {
-  guardedAction('新建外发单')
+const isMaterialPurchaseParity = computed(() => parityToken.value === 'material-purchase')
+
+const buildListQuery = (): string => {
+  const params = new URLSearchParams()
+  if (query.keyword.trim()) params.set('keyword', query.keyword.trim())
+  if (query.partnerName.trim()) params.set('partner_name', query.partnerName.trim())
+  if (query.status.trim()) params.set('status', query.status.trim())
+  if (query.materialCategory.trim()) params.set('material_category', query.materialCategory.trim())
+  if (parityToken.value) params.set('parity', parityToken.value)
+  params.set('page', String(query.page))
+  params.set('page_size', String(query.page_size))
+  return params.toString()
 }
 
-const submitCreate = async (): Promise<void> => {
-  guardedAction('保存新建外发单')
-  return
-  if (createSubmitting.value) return
-  const supplier = createForm.supplier.trim()
-  const itemCode = createForm.item_code.trim()
-  const processName = createForm.process_name.trim()
-  const workOrderRef = (createForm.work_order || String(createForm.production_plan_id || '')).trim() || 'NO-WORK-ORDER'
-  if (!supplier || !itemCode || !processName || !createForm.bom_id || !createForm.planned_qty) {
-    ElMessage.warning('请先填写完整的外发单信息')
-    return
-  }
-
-  createSubmitting.value = true
+const loadRows = async (): Promise<void> => {
+  loading.value = true
+  feedback.value = ''
   try {
-    const scenarioTag = buildSubcontractScenarioTag()
-    const idempotencyKey = `${scenarioTag}-CREATE-${Date.now()}`
-    const sourceRef = `${scenarioTag}-SRC-CREATE`
-    const subcontractRef = `${scenarioTag}-SC-NEW`
-    const statusAction = 'create'
-    const requestId = buildSubcontractRequestId({
-      scenarioTag,
-      operation: 'create',
-      idempotencyKey,
-      sourceRef,
-      subcontractRef,
-      supplierRef: supplier,
-      workOrderRef,
-      itemCode,
-      statusAction,
-    })
-
-    const created = await createSubcontractOrder({
-      request_id: requestId,
-      idempotency_key: idempotencyKey,
-      scenario_tag: scenarioTag,
-      source_ref: sourceRef,
-      subcontract_ref: subcontractRef,
-      supplier_ref: supplier,
-      work_order_ref: workOrderRef,
-      operation: 'create',
-      quantity: createForm.planned_qty,
-      status_action: statusAction,
-      supplier,
-      item_code: itemCode,
-      bom_id: createForm.bom_id,
-      planned_qty: createForm.planned_qty,
-      process_name: processName,
-      sales_order: createForm.sales_order.trim() || null,
-      sales_order_item: createForm.sales_order_item.trim() || null,
-      production_plan_id: createForm.production_plan_id ?? null,
-      work_order: createForm.work_order.trim() || null,
-      job_card: createForm.job_card.trim() || null,
-      company: '示例公司',
-    })
-
-    query.page = 1
-    await loadOrders()
-    const createdRowId = rows.value.find((row) => row.subcontract_no === created.data.name)?.id
-    const nextOrderId = Number(createdRowId ?? 0)
-    if (nextOrderId > 0) {
-      goDetail(nextOrderId)
+    const queryString = buildListQuery()
+    const response = await request<ListData>(`/api/local-dev/purchase-subcontract-drafts?${queryString}`)
+    rows.value = response.data.items || []
+    total.value = Number(response.data.total || 0)
+    if (isMaterialPurchaseParity.value) {
+      feedback.value = 'materialPurchase parity 采购视角已生效（test_data only）'
     }
-    createDialogVisible.value = false
-    ElMessage.success(`外发单已创建：${created.data.name}`)
   } catch (error) {
-    ElMessage.error((error as Error).message || '新建外发单失败')
-  } finally {
-    createSubmitting.value = false
-  }
-}
-
-const loadOrders = async (): Promise<void> => {
-  if (!canRead.value) {
     rows.value = []
     total.value = 0
-    errorMessage.value = ''
-    return
-  }
-  loading.value = true
-  errorMessage.value = ''
-  try {
-    const payload = await fetchSubcontractOrders(query)
-    rows.value = payload.data.items
-    total.value = payload.data.total
-  } catch (error) {
-    const message = (error as Error).message || '外发单列表加载失败'
-    errorMessage.value = message
+    const message = (error as Error).message || '采购/外协列表加载失败'
+    feedback.value = message
     ElMessage.error(message)
   } finally {
     loading.value = false
@@ -988,47 +228,51 @@ const loadOrders = async (): Promise<void> => {
 
 const applyQuery = (): void => {
   query.page = 1
-  loadOrders()
+  void loadRows()
 }
 
 const resetQuery = (): void => {
-  query.supplier = ''
+  query.keyword = ''
+  query.partnerName = ''
   query.status = ''
+  query.materialCategory = ''
   query.page = 1
   query.page_size = 20
-  loadOrders()
-}
-
-const goDetail = (id: number): void => {
-  router.push({ path: '/subcontract/detail', query: { id: String(id) } })
+  void loadRows()
 }
 
 const onPageChange = (page: number): void => {
   query.page = page
-  loadOrders()
+  void loadRows()
 }
 
-const onSizeChange = (size: number): void => {
-  query.page_size = size
-  query.page = 1
-  loadOrders()
+const openDetail = (draftId: number): void => {
+  router.push({
+    path: '/subcontract/detail',
+    query: {
+      id: String(draftId),
+      parity: parityToken.value || undefined,
+    },
+  })
 }
 
-onMounted(async () => {
-  try {
-    await permissionStore.loadCurrentUser()
-    await permissionStore.loadModuleActions('subcontract')
-    readonlyFallback.value = !permissionStore.state.buttonPermissions.read
-  } catch (error) {
-    readonlyFallback.value = true
-    ElMessage.error((error as Error).message)
-  }
-  await loadOrders()
+const openNewDraft = (): void => {
+  router.push({
+    path: '/subcontract/detail',
+    query: {
+      parity: parityToken.value || undefined,
+      mode: 'new',
+    },
+  })
+}
+
+onMounted(() => {
+  void loadRows()
 })
 </script>
 
 <style scoped>
-.subcontract-list-page {
+.purchase-list-page {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1037,102 +281,32 @@ onMounted(async () => {
 .header-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
+}
+
+.header-row h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.sub-title {
+  margin: 2px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.query-action {
-  display: inline-flex;
-  margin-right: 8px;
+.parity-alert {
+  margin-bottom: 10px;
 }
 
-.scope-tag {
-  margin-left: 8px;
-}
-
-.error-state {
-  margin-bottom: 12px;
-}
-
-.parity-hint {
-  margin-bottom: 12px;
-}
-
-.readonly-guard {
-  margin-bottom: 12px;
-}
-
-.z042-subcontract-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-fill-color-lighter);
-}
-
-.z042-panel-header,
-.z042-guard-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.z043-subcontract-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-fill-color-light);
-}
-
-.z043-panel-header,
-.z043-guard-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.z044-subcontract-panel,
-.z045-subcontract-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  margin-bottom: 12px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-fill-color-blank);
-}
-
-.z044-panel-header,
-.z044-guard-actions,
-.z045-panel-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.z045-guard-table {
-  width: 100%;
-}
-
-.empty-state {
-  margin-top: 12px;
+.feedback {
+  margin: 10px 0;
 }
 
 .pager {

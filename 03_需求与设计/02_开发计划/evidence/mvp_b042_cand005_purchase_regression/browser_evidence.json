@@ -1,0 +1,114 @@
+{
+  "generated_at": "2026-05-31T08:28:23.474Z",
+  "base_url": "http://127.0.0.1:5174",
+  "routes": {
+    "materialPurchaseProcess": {
+      "path": "/materialPurchase/materialPurchaseProcess",
+      "status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    "subcontractListParity": {
+      "path": "/subcontract/list?parity=material-purchase",
+      "status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    "subcontractDetail": {
+      "path": "/subcontract/detail?parity=material-purchase&mode=new",
+      "status": 200,
+      "final_path": "/subcontract/detail?parity=material-purchase&mode=new"
+    },
+    "subcontractListParity_post": {
+      "path": "/subcontract/list?parity=material-purchase",
+      "status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    "subcontractDetail_post": {
+      "path": "/subcontract/detail?parity=material-purchase&mode=new",
+      "status": 200,
+      "final_path": "/subcontract/detail?parity=material-purchase&mode=new"
+    }
+  },
+  "screenshots": {
+    "list": "subcontract_list_parity_1440x1200.png",
+    "detail": "subcontract_detail_1440x1200.png",
+    "expected_dimensions": "1440x1200"
+  },
+  "redirect_parity_evidence": {
+    "path": "/materialPurchase/materialPurchaseProcess",
+    "final_path": "/subcontract/list?parity=material-purchase",
+    "expected_final_path": "/subcontract/list?parity=material-purchase",
+    "parity_ok": true
+  },
+  "dom_anchors": {
+    "required": [
+      "mvp-purchase-list-query",
+      "mvp-purchase-parity-material",
+      "mvp-purchase-order-master",
+      "mvp-purchase-material-line",
+      "mvp-purchase-issue-return",
+      "mvp-purchase-inspection-settlement",
+      "mvp-purchase-local-draft",
+      "mvp-purchase-local-save",
+      "mvp-purchase-local-cancel",
+      "mvp-purchase-local-readback",
+      "mvp-purchase-rollback-zero-residual",
+      "mvp-purchase-production-safety"
+    ],
+    "observed": {
+      "mvp-purchase-list-query": true,
+      "mvp-purchase-parity-material": true,
+      "mvp-purchase-order-master": true,
+      "mvp-purchase-material-line": true,
+      "mvp-purchase-issue-return": true,
+      "mvp-purchase-inspection-settlement": true,
+      "mvp-purchase-local-draft": true,
+      "mvp-purchase-local-save": true,
+      "mvp-purchase-local-cancel": true,
+      "mvp-purchase-local-readback": true,
+      "mvp-purchase-rollback-zero-residual": true,
+      "mvp-purchase-production-safety": true
+    },
+    "observed_count": 12,
+    "required_count": 12
+  },
+  "local_write_loop": {
+    "scenario_tag": "MVP-CAND005-REG-1780216107714",
+    "save_success": true,
+    "draft_id_created": true,
+    "material_line_saved": true,
+    "issue_return_or_inspection_saved": true,
+    "cancel_success": true,
+    "readback_success": true,
+    "rollback_success": true,
+    "zero_residual_success": true,
+    "residual_records_after_rollback": 0,
+    "save_feedback": "本地草稿写闭环\nscenario_tag\n保存草稿\n取消草稿\n回读草稿\nrollback + zero_residual\nsave_success=true, draft_id=2, scenario_tag=MVP-CAND005-REG-1780216107714\ndraft_id\t2\tscenario_tag\tMVP-CAND005-REG-1780216107714\nsave_success\ttrue\tdraft_id_created\ttrue\nmaterial_line_saved\ttrue\tissue_return_or_inspection_saved\ttrue\ncancel_success\tfalse\treadback_success\tfalse\nrollback_success\tfalse\tzero_residual_success\tfalse\nresidual_records_after_rollback\t-1\tdata_classification\ttest_data\nseed_data_used\tfalse\tsqlite_not_formal_database\ttrue\nsqlite_direct_reuse_for_production_forbidden\ttrue",
+    "cancel_feedback": "本地草稿写闭环\nscenario_tag\n保存草稿\n取消草稿\n回读草稿\nrollback + zero_residual\ncancel_success=true, state=cancelled\ndraft_id\t2\tscenario_tag\tMVP-CAND005-REG-1780216107714\nsave_success\ttrue\tdraft_id_created\ttrue\nmaterial_line_saved\ttrue\tissue_return_or_inspection_saved\ttrue\ncancel_success\ttrue\treadback_success\tfalse\nrollback_success\tfalse\tzero_residual_success\tfalse\nresidual_records_after_rollback\t-1\tdata_classification\ttest_data\nseed_data_used\tfalse\tsqlite_not_formal_database\ttrue\nsqlite_direct_reuse_for_production_forbidden\ttrue",
+    "readback_feedback": "本地草稿写闭环\nscenario_tag\n保存草稿\n取消草稿\n回读草稿\nrollback + zero_residual\nreadback_success=true, draft_id=2, scenario_tag=MVP-CAND005-REG-1780216107714\ndraft_id\t2\tscenario_tag\tMVP-CAND005-REG-1780216107714\nsave_success\ttrue\tdraft_id_created\ttrue\nmaterial_line_saved\ttrue\tissue_return_or_inspection_saved\ttrue\ncancel_success\ttrue\treadback_success\ttrue\nrollback_success\tfalse\tzero_residual_success\tfalse\nresidual_records_after_rollback\t-1\tdata_classification\ttest_data\nseed_data_used\tfalse\tsqlite_not_formal_database\ttrue\nsqlite_direct_reuse_for_production_forbidden\ttrue",
+    "rollback_feedback": "本地草稿写闭环\nscenario_tag\n保存草稿\n取消草稿\n回读草稿\nrollback + zero_residual\nrollback_success=true, zero_residual_success=true, residual=0\ndraft_id\t-\tscenario_tag\tMVP-CAND005-REG-1780216107714\nsave_success\ttrue\tdraft_id_created\ttrue\nmaterial_line_saved\ttrue\tissue_return_or_inspection_saved\ttrue\ncancel_success\ttrue\treadback_success\ttrue\nrollback_success\ttrue\tzero_residual_success\ttrue\nresidual_records_after_rollback\t0\tdata_classification\ttest_data\nseed_data_used\tfalse\tsqlite_not_formal_database\ttrue\nsqlite_direct_reuse_for_production_forbidden\ttrue"
+  },
+  "network": {
+    "write_requests_observed_count": 3,
+    "local_dev_write_requests_observed_count": 3,
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "erpnext_production_connected": false,
+    "auth_401_on_local_sqlite_write_loop": false,
+    "local_dev_401_details": [],
+    "write_requests_sample": [
+      {
+        "method": "POST",
+        "url": "http://127.0.0.1:5174/api/local-dev/purchase-subcontract-drafts"
+      },
+      {
+        "method": "POST",
+        "url": "http://127.0.0.1:5174/api/local-dev/purchase-subcontract-drafts/2/cancel"
+      },
+      {
+        "method": "POST",
+        "url": "http://127.0.0.1:5174/api/local-dev/purchase-subcontract-drafts/rollback-by-scenario"
+      }
+    ],
+    "non_local_dev_write_requests": []
+  }
+}

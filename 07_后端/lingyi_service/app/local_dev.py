@@ -1266,3 +1266,433 @@ def rollback_local_production_plan_drafts(payload: dict[str, Any] = Body(...)) -
             "zero_residual_success": residual == 0,
         }
     )
+
+
+def _create_purchase_subcontract_draft_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ly_local_purchase_subcontract_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scenario_tag TEXT NOT NULL,
+            document_no TEXT NOT NULL,
+            partner_name TEXT NOT NULL,
+            partner_type TEXT NOT NULL,
+            document_type TEXT NOT NULL,
+            business_date TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'draft',
+            material_category TEXT NOT NULL DEFAULT 'mixed',
+            predecessor_doc_no TEXT NOT NULL DEFAULT '',
+            note TEXT NOT NULL DEFAULT '',
+            material_lines_json TEXT NOT NULL,
+            issue_return_json TEXT NOT NULL,
+            inspection_settlement_json TEXT NOT NULL,
+            state TEXT NOT NULL DEFAULT 'saved',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            cancelled_at TEXT,
+            cancel_reason TEXT
+        )
+        """
+    )
+    connection.commit()
+
+
+def _get_purchase_subcontract_draft_row(connection: sqlite3.Connection, draft_id: int) -> sqlite3.Row | None:
+    return connection.execute(
+        "SELECT * FROM ly_local_purchase_subcontract_drafts WHERE id = ?",
+        (draft_id,),
+    ).fetchone()
+
+
+def _normalize_purchase_material_lines(raw_lines: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_lines, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for row in raw_lines:
+        if not isinstance(row, dict):
+            continue
+        material_code = str(row.get("material_code", "")).strip()
+        material_name = str(row.get("material_name", "")).strip()
+        color_spec = str(row.get("color_spec", "")).strip()
+        uom = str(row.get("uom", "")).strip() or "PCS"
+        demand_qty = _to_float(row.get("demand_qty"), 0.0)
+        purchase_qty = _to_float(row.get("purchase_qty"), 0.0)
+        if not material_code and not material_name:
+            continue
+        normalized.append(
+            {
+                "material_code": material_code,
+                "material_name": material_name,
+                "color_spec": color_spec,
+                "uom": uom,
+                "demand_qty": demand_qty,
+                "purchase_qty": purchase_qty,
+            }
+        )
+    return normalized
+
+
+def _normalize_issue_return(raw_state: Any) -> dict[str, Any]:
+    source = raw_state if isinstance(raw_state, dict) else {}
+    issued_qty = _to_float(source.get("issued_qty"), 0.0)
+    returned_qty = _to_float(source.get("returned_qty"), 0.0)
+    return {
+        "issued_qty": issued_qty,
+        "returned_qty": returned_qty,
+        "delta_qty": issued_qty - returned_qty,
+        "state": str(source.get("state", "")).strip() or "draft",
+    }
+
+
+def _normalize_inspection_settlement(raw_state: Any) -> dict[str, Any]:
+    source = raw_state if isinstance(raw_state, dict) else {}
+    return {
+        "accepted_qty": _to_float(source.get("accepted_qty"), 0.0),
+        "rejected_qty": _to_float(source.get("rejected_qty"), 0.0),
+        "settlement_qty": _to_float(source.get("settlement_qty"), 0.0),
+        "estimated_amount": _to_float(source.get("estimated_amount"), 0.0),
+        "state": str(source.get("state", "")).strip() or "draft",
+    }
+
+
+def _parse_json_object(value: str) -> dict[str, Any]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return {}
+    if isinstance(parsed, dict):
+        return parsed
+    return {}
+
+
+def _purchase_subcontract_draft_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    material_lines = _normalize_purchase_material_lines(_parse_json_payload(row["material_lines_json"]))
+    issue_return = _normalize_issue_return(_parse_json_object(row["issue_return_json"]))
+    inspection_settlement = _normalize_inspection_settlement(
+        _parse_json_object(row["inspection_settlement_json"])
+    )
+    material_line_saved = any(_to_float(line.get("purchase_qty"), 0.0) > 0 for line in material_lines)
+    issue_return_or_inspection_saved = (
+        _to_float(issue_return.get("issued_qty"), 0.0) > 0
+        or _to_float(issue_return.get("returned_qty"), 0.0) > 0
+        or _to_float(inspection_settlement.get("settlement_qty"), 0.0) > 0
+        or _to_float(inspection_settlement.get("accepted_qty"), 0.0) > 0
+    )
+    return {
+        "draft_id": int(row["id"]),
+        "scenario_tag": row["scenario_tag"],
+        "document_no": row["document_no"],
+        "partner_name": row["partner_name"],
+        "partner_type": row["partner_type"],
+        "document_type": row["document_type"],
+        "business_date": row["business_date"],
+        "status": row["status"],
+        "material_category": row["material_category"],
+        "predecessor_doc_no": row["predecessor_doc_no"],
+        "note": row["note"],
+        "material_lines": material_lines,
+        "issue_return": issue_return,
+        "inspection_settlement": inspection_settlement,
+        "state": row["state"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+        "cancelled_at": row["cancelled_at"],
+        "cancel_reason": row["cancel_reason"],
+        "material_line_saved": material_line_saved,
+        "issue_return_or_inspection_saved": issue_return_or_inspection_saved,
+    }
+
+
+@app.post("/api/local-dev/purchase-subcontract-drafts")
+def upsert_local_purchase_subcontract_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    document_no = str(payload.get("document_no", "")).strip()
+    partner_name = str(payload.get("partner_name", "")).strip()
+    partner_type = str(payload.get("partner_type", "")).strip() or "supplier"
+    document_type = str(payload.get("document_type", "")).strip() or "subcontract"
+    business_date = str(payload.get("business_date", "")).strip() or date.today().isoformat()
+    status = str(payload.get("status", "")).strip() or "draft"
+    material_category = str(payload.get("material_category", "")).strip() or "mixed"
+    predecessor_doc_no = str(payload.get("predecessor_doc_no", "")).strip()
+    note = str(payload.get("note", "")).strip()
+    draft_id = payload.get("draft_id")
+    material_lines = _normalize_purchase_material_lines(payload.get("material_lines"))
+    issue_return = _normalize_issue_return(payload.get("issue_return"))
+    inspection_settlement = _normalize_inspection_settlement(payload.get("inspection_settlement"))
+
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    if not document_no:
+        raise HTTPException(status_code=400, detail="document_no is required")
+    if not partner_name:
+        raise HTTPException(status_code=400, detail="partner_name is required")
+    if partner_type not in {"supplier", "factory"}:
+        raise HTTPException(status_code=400, detail="partner_type is invalid")
+    if document_type not in {"purchase", "subcontract"}:
+        raise HTTPException(status_code=400, detail="document_type is invalid")
+    if len(material_lines) < 1:
+        raise HTTPException(status_code=400, detail="material_lines requires at least 1 row")
+
+    now_iso = _now_iso()
+    material_lines_json = json.dumps(material_lines, ensure_ascii=False)
+    issue_return_json = json.dumps(issue_return, ensure_ascii=False)
+    inspection_settlement_json = json.dumps(inspection_settlement, ensure_ascii=False)
+
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        if isinstance(draft_id, int) and draft_id > 0:
+            exists = _get_purchase_subcontract_draft_row(connection, draft_id)
+            if not exists:
+                raise HTTPException(status_code=404, detail="draft not found")
+            connection.execute(
+                """
+                UPDATE ly_local_purchase_subcontract_drafts
+                SET scenario_tag = ?,
+                    document_no = ?,
+                    partner_name = ?,
+                    partner_type = ?,
+                    document_type = ?,
+                    business_date = ?,
+                    status = ?,
+                    material_category = ?,
+                    predecessor_doc_no = ?,
+                    note = ?,
+                    material_lines_json = ?,
+                    issue_return_json = ?,
+                    inspection_settlement_json = ?,
+                    state = 'saved',
+                    updated_at = ?,
+                    cancelled_at = NULL,
+                    cancel_reason = NULL
+                WHERE id = ?
+                """,
+                (
+                    scenario_tag,
+                    document_no,
+                    partner_name,
+                    partner_type,
+                    document_type,
+                    business_date,
+                    status,
+                    material_category,
+                    predecessor_doc_no,
+                    note,
+                    material_lines_json,
+                    issue_return_json,
+                    inspection_settlement_json,
+                    now_iso,
+                    draft_id,
+                ),
+            )
+            connection.commit()
+            row = _get_purchase_subcontract_draft_row(connection, draft_id)
+        else:
+            cursor = connection.execute(
+                """
+                INSERT INTO ly_local_purchase_subcontract_drafts (
+                    scenario_tag,
+                    document_no,
+                    partner_name,
+                    partner_type,
+                    document_type,
+                    business_date,
+                    status,
+                    material_category,
+                    predecessor_doc_no,
+                    note,
+                    material_lines_json,
+                    issue_return_json,
+                    inspection_settlement_json,
+                    state,
+                    created_at,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'saved', ?, ?)
+                """,
+                (
+                    scenario_tag,
+                    document_no,
+                    partner_name,
+                    partner_type,
+                    document_type,
+                    business_date,
+                    status,
+                    material_category,
+                    predecessor_doc_no,
+                    note,
+                    material_lines_json,
+                    issue_return_json,
+                    inspection_settlement_json,
+                    now_iso,
+                    now_iso,
+                ),
+            )
+            connection.commit()
+            row = _get_purchase_subcontract_draft_row(connection, int(cursor.lastrowid))
+
+    if row is None:
+        raise HTTPException(status_code=500, detail="draft persistence failed")
+    return _ok(_purchase_subcontract_draft_row_to_dict(row))
+
+
+@app.get("/api/local-dev/purchase-subcontract-drafts")
+def list_local_purchase_subcontract_drafts(
+    keyword: str | None = None,
+    partner_name: str | None = None,
+    status: str | None = None,
+    material_category: str | None = None,
+    scenario_tag: str | None = None,
+    document_type: str | None = None,
+    parity: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        rows = connection.execute(
+            "SELECT * FROM ly_local_purchase_subcontract_drafts ORDER BY id DESC",
+        ).fetchall()
+
+    items = [_purchase_subcontract_draft_row_to_dict(row) for row in rows]
+    keyword_token = (keyword or "").strip().lower()
+    partner_token = (partner_name or "").strip().lower()
+    status_token = (status or "").strip().lower()
+    category_token = (material_category or "").strip().lower()
+    scenario_token = (scenario_tag or "").strip()
+    doc_type_token = (document_type or "").strip().lower()
+    parity_token = (parity or "").strip().lower()
+
+    def _match(item: dict[str, Any]) -> bool:
+        if keyword_token and keyword_token not in (
+            f"{item['document_no']} {item['partner_name']} {item['predecessor_doc_no']}".lower()
+        ):
+            material_token = " ".join(
+                [
+                    str(line.get("material_code", "")).lower()
+                    for line in item.get("material_lines", [])
+                    if isinstance(line, dict)
+                ]
+            )
+            if keyword_token not in material_token:
+                return False
+        if partner_token and partner_token not in str(item["partner_name"]).lower():
+            return False
+        if status_token and status_token != str(item["status"]).lower():
+            return False
+        if category_token and category_token != str(item["material_category"]).lower():
+            return False
+        if scenario_token and scenario_token != str(item["scenario_tag"]):
+            return False
+        if doc_type_token and doc_type_token != str(item["document_type"]).lower():
+            return False
+        if parity_token == "material-purchase" and str(item["document_type"]).lower() not in {
+            "purchase",
+            "subcontract",
+        }:
+            return False
+        return True
+
+    filtered = [item for item in items if _match(item)]
+    total = len(filtered)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paged_items = filtered[start:end]
+    return _ok(
+        {
+            "items": paged_items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "parity": parity_token,
+        }
+    )
+
+
+@app.get("/api/local-dev/purchase-subcontract-drafts/residual-count")
+def get_local_purchase_subcontract_residual_count(
+    scenario_tag: str = Query(..., min_length=1)
+) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        row = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_purchase_subcontract_drafts WHERE scenario_tag = ?",
+            (scenario_tag.strip(),),
+        ).fetchone()
+    total = int(row["total"]) if row else 0
+    return _ok({"scenario_tag": scenario_tag.strip(), "total": total})
+
+
+@app.post("/api/local-dev/purchase-subcontract-drafts/rollback-by-scenario")
+def rollback_local_purchase_subcontract_drafts(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        before = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_purchase_subcontract_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+        deleted_count = int(before["total"]) if before else 0
+        connection.execute(
+            "DELETE FROM ly_local_purchase_subcontract_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        )
+        connection.commit()
+        after = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_purchase_subcontract_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+    residual = int(after["total"]) if after else 0
+    return _ok(
+        {
+            "scenario_tag": scenario_tag,
+            "deleted_count": deleted_count,
+            "residual_records_after_rollback": residual,
+            "rollback_success": residual == 0,
+            "zero_residual_success": residual == 0,
+        }
+    )
+
+
+@app.get("/api/local-dev/purchase-subcontract-drafts/{draft_id}")
+def get_local_purchase_subcontract_draft(draft_id: int) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        row = _get_purchase_subcontract_draft_row(connection, draft_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return _ok(_purchase_subcontract_draft_row_to_dict(row))
+
+
+@app.post("/api/local-dev/purchase-subcontract-drafts/{draft_id}/cancel")
+def cancel_local_purchase_subcontract_draft(
+    draft_id: int, payload: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    reason = str(payload.get("reason", "")).strip() or f"CANCEL-{scenario_tag or draft_id}"
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    now_iso = _now_iso()
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        row = _get_purchase_subcontract_draft_row(connection, draft_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        if row["scenario_tag"] != scenario_tag:
+            raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+        connection.execute(
+            """
+            UPDATE ly_local_purchase_subcontract_drafts
+            SET state = 'cancelled',
+                updated_at = ?,
+                cancelled_at = ?,
+                cancel_reason = ?
+            WHERE id = ?
+            """,
+            (now_iso, now_iso, reason, draft_id),
+        )
+        connection.commit()
+        cancelled = _get_purchase_subcontract_draft_row(connection, draft_id)
+    if cancelled is None:
+        raise HTTPException(status_code=500, detail="draft cancel failed")
+    return _ok(_purchase_subcontract_draft_row_to_dict(cancelled))

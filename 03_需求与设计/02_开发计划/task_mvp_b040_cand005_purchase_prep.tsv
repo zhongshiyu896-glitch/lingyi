@@ -1,0 +1,44 @@
+section	key	value
+SUMMARY	head	5d4220f04c909e9a6d8189b3491630d6e575e1d7
+SUMMARY	branch	codex/sprint4-seal
+SUMMARY	cached_empty	true
+SUMMARY	selected_candidate	MVP-CAND-005
+SUMMARY	module	物料采购
+SUMMARY	routes	/materialPurchase/materialPurchaseProcess | /subcontract/list?parity=material-purchase | /subcontract/detail
+SUMMARY	prep_only	true
+SUMMARY	next_task	TASK-MVP-B041-IMPL
+BOUNDARY	allowed_files	06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue | 06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue
+BOUNDARY	optional_support_allowed_files	07_后端/lingyi_service/app/local_dev.py
+BOUNDARY	local_dev_py_status	exists=true;tracked=true;gitignored=false;clean=true;support_scope=local-dev/sqlite/scenario_tag only
+BOUNDARY	route_source_locations	06_前端/lingyi-pc/src/router/index.ts:269-270 | 06_前端/lingyi-pc/src/router/index.ts:63 | 06_前端/lingyi-pc/src/router/index.ts:69
+BOUNDARY	key_fields_required	主信息(单据号/供应商加工厂/类型/业务日期/状态);物料(编码名称颜色规格单位需求数量采购外协数量);发料回料(发料回料差异操作状态);验货结算(验收不良结算预估金额);关联(供应商加工厂/物料/前置单据/本地草稿)
+BOUNDARY	query_flow_required	keyword;供应商加工厂筛选;单据状态筛选;物料类别筛选;parity路由采购视角;列表到详情;结果影响可见状态
+BOUNDARY	local_write_loop_design	草稿+1条物料明细+发料回料或验货结算状态+save/cancel/readback/rollback/zero_residual+scenario_tag+sqlite
+BOUNDARY	dom_anchors	mvp-purchase-list-query|mvp-purchase-parity-material|mvp-purchase-order-master|mvp-purchase-material-line|mvp-purchase-issue-return|mvp-purchase-inspection-settlement|mvp-purchase-local-draft|mvp-purchase-local-save|mvp-purchase-local-cancel|mvp-purchase-local-readback|mvp-purchase-rollback-zero-residual|mvp-purchase-production-safety
+BOUNDARY	evidence_requirement	3 routes HTTP200;3 PNG 1440x1200;anchors 12/12;local write loop success;typecheck exit 0;network production writes 0
+DATA_BOUNDARY	data_classification_default	test_data
+DATA_BOUNDARY	test_data_used_default	true
+DATA_BOUNDARY	seed_data_used_default	false
+DATA_BOUNDARY	sqlite_not_formal_database	true
+DATA_BOUNDARY	sqlite_direct_reuse_for_production_forbidden	true
+DATA_BOUNDARY	real_purchase_subcontract_inventory_finance_data_migration_forbidden	true
+DATA_BOUNDARY	future_seed_data_export_migration_required_if_used	true
+DIRTY	dirty_tracked_count	16
+DIRTY	frontend_dirty_count	3
+DIRTY	backend_dirty_count	10
+DIRTY	log_control_dirty_count	3
+DIRTY	dirty_intersections	[]
+DIRTY	unknown_dirty	[]
+DIRTY	must_block_before_continue	[]
+CHECKS	git_diff_check	PASS
+CHECKS	product_code_changed	false
+CHECKS	validation_rerun	false
+CHECKS	staged_area_empty	true
+CHECKS	outputs_unstaged	true
+RESIDUAL_RISK	local_dev_support_only	true
+RESIDUAL_RISK	seed_data_boundary_carry_into_b041_plus	true
+RESIDUAL_RISK	remote_lifecycle_parked	true
+RESIDUAL_RISK	production_readback	false
+RESIDUAL_RISK	go_live	false
+RESIDUAL_RISK	project_completion	false
+NEXT_RECOMMENDED_TASK	task	TASK-MVP-B041-IMPL

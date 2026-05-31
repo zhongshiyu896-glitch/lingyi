@@ -1,0 +1,96 @@
+{
+  "generated_at": "2026-05-31T08:18:05.726Z",
+  "base_url": "http://127.0.0.1:5174",
+  "routes": {
+    "materialPurchaseProcess": {
+      "path": "/materialPurchase/materialPurchaseProcess",
+      "status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    "subcontractListParity": {
+      "path": "/subcontract/list?parity=material-purchase",
+      "status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    "subcontractDetail": {
+      "path": "/subcontract/detail",
+      "status": 200,
+      "final_path": "/subcontract/detail?parity=material-purchase&mode=new"
+    }
+  },
+  "screenshots": {
+    "list": "subcontract_list_parity_1440x1200.png",
+    "detail": "subcontract_detail_1440x1200.png",
+    "expected_dimensions": "1440x1200"
+  },
+  "dom_anchors": {
+    "required": [
+      "mvp-purchase-list-query",
+      "mvp-purchase-parity-material",
+      "mvp-purchase-order-master",
+      "mvp-purchase-material-line",
+      "mvp-purchase-issue-return",
+      "mvp-purchase-inspection-settlement",
+      "mvp-purchase-local-draft",
+      "mvp-purchase-local-save",
+      "mvp-purchase-local-cancel",
+      "mvp-purchase-local-readback",
+      "mvp-purchase-rollback-zero-residual",
+      "mvp-purchase-production-safety"
+    ],
+    "observed": {
+      "mvp-purchase-list-query": true,
+      "mvp-purchase-parity-material": true,
+      "mvp-purchase-order-master": true,
+      "mvp-purchase-material-line": true,
+      "mvp-purchase-issue-return": true,
+      "mvp-purchase-inspection-settlement": true,
+      "mvp-purchase-local-draft": true,
+      "mvp-purchase-local-save": true,
+      "mvp-purchase-local-cancel": true,
+      "mvp-purchase-local-readback": true,
+      "mvp-purchase-rollback-zero-residual": true,
+      "mvp-purchase-production-safety": true
+    },
+    "observed_count": 12,
+    "required_count": 12
+  },
+  "local_write_loop": {
+    "scenario_tag": "MVP-CAND005-1780215482225",
+    "save_success": true,
+    "draft_id_created": true,
+    "material_line_saved": true,
+    "issue_return_or_inspection_saved": true,
+    "cancel_success": true,
+    "readback_success": true,
+    "rollback_success": true,
+    "zero_residual_success": true,
+    "residual_records_after_rollback": 0,
+    "save_feedback": "save_success=true, draft_id=1, scenario_tag=MVP-CAND005-1780215482225",
+    "cancel_feedback": "cancel_success=true, state=cancelled",
+    "readback_feedback": "readback_success=true, draft_id=1, scenario_tag=MVP-CAND005-1780215482225",
+    "rollback_feedback": "rollback_success=true, zero_residual_success=true, residual=0"
+  },
+  "network": {
+    "write_requests_observed_count": 3,
+    "local_dev_write_requests_observed_count": 3,
+    "production_write_requests": 0,
+    "erpnext_production_write_requests": 0,
+    "auth_401_on_local_sqlite_write_loop": false,
+    "local_dev_401_details": [],
+    "write_requests_sample": [
+      {
+        "method": "POST",
+        "url": "http://127.0.0.1:5174/api/local-dev/purchase-subcontract-drafts"
+      },
+      {
+        "method": "POST",
+        "url": "http://127.0.0.1:5174/api/local-dev/purchase-subcontract-drafts/1/cancel"
+      },
+      {
+        "method": "POST",
+        "url": "http://127.0.0.1:5174/api/local-dev/purchase-subcontract-drafts/rollback-by-scenario"
+      }
+    ]
+  }
+}
