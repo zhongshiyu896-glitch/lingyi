@@ -1,0 +1,12 @@
+[
+  {
+    "route": "/bom/list",
+    "http_status": 200,
+    "final_path": "/bom/list"
+  },
+  {
+    "route": "/bom/detail",
+    "http_status": 200,
+    "final_path": "/bom/detail"
+  }
+]

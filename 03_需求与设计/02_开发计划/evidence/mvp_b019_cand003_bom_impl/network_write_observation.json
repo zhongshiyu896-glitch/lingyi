@@ -1,0 +1,26 @@
+{
+  "auth_401_on_local_sqlite_write_loop": false,
+  "auth_401_count": 0,
+  "production_write_requests": 0,
+  "erpnext_production_write_requests": 0,
+  "real_production_account_used": false,
+  "write_requests_observed_count": 3,
+  "write_requests_only_local_dev": true,
+  "requests": [
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/bom-drafts",
+      "isLocalDev": true
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/bom-drafts/2/cancel",
+      "isLocalDev": true
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/bom-drafts/rollback-by-scenario",
+      "isLocalDev": true
+    }
+  ]
+}

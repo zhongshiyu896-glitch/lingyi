@@ -1,9 +1,25 @@
 <template>
   <div class="bom-list-page">
     <el-card shadow="never" data-testid="bom-main-list-section">
-      <el-form :inline="true" :model="query" data-testid="bom-main-list-filters">
+      <el-form :inline="true" :model="query" data-testid="mvp-bom-list-query-filter">
+        <el-form-item label="关键字">
+          <el-input v-model="query.keyword" clearable placeholder="BOM编号/款式编码/版本" data-testid="bom-main-keyword-filter" />
+        </el-form-item>
         <el-form-item label="款式编码">
           <el-input v-model="query.item_code" clearable placeholder="Item Code" data-testid="bom-main-item-code-filter" />
+        </el-form-item>
+        <el-form-item label="客户">
+          <el-select
+            v-model="query.customer"
+            clearable
+            placeholder="请选择客户"
+            aria-label="BOM客户筛选"
+            style="width: 160px"
+            data-testid="bom-main-customer-filter"
+          >
+            <el-option label="蓝小姐工坊" value="蓝小姐工坊" />
+            <el-option label="本地演示客户" value="本地演示客户" />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
           <el-select
@@ -17,6 +33,20 @@
             <el-option label="草稿" value="draft" />
             <el-option label="已发布" value="active" />
             <el-option label="已停用" value="inactive" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="面辅料类别">
+          <el-select
+            v-model="query.material_category"
+            clearable
+            placeholder="请选择类别"
+            aria-label="BOM面辅料类别筛选"
+            style="width: 170px"
+            data-testid="bom-main-material-category-filter"
+          >
+            <el-option label="面料+辅料" value="面料+辅料" />
+            <el-option label="面料优先" value="面料优先" />
+            <el-option label="辅料优先" value="辅料优先" />
           </el-select>
         </el-form-item>
         <el-form-item label="操作">
@@ -2173,11 +2203,46 @@ const styleBlockedActions = [
 ] as const
 
 const query = reactive({
+  keyword: '',
   item_code: '',
+  customer: '',
+  material_category: '',
   status: '',
   page: 1,
   page_size: 20,
 })
+
+const inferCustomerLabel = (row: BomListItem): string => {
+  if (row.item_code.toUpperCase().includes('DEMO')) return '本地演示客户'
+  return '蓝小姐工坊'
+}
+
+const inferMaterialCategory = (row: BomListItem): string => {
+  const bomNo = row.bom_no.toUpperCase()
+  if (bomNo.includes('FABRIC')) return '面料优先'
+  if (bomNo.includes('TRIM')) return '辅料优先'
+  return '面料+辅料'
+}
+
+const applyLocalMainListFilter = (items: BomListItem[]): BomListItem[] => {
+  const keyword = query.keyword.trim().toLowerCase()
+  const customer = query.customer.trim()
+  const materialCategory = query.material_category.trim()
+
+  return items.filter((row) => {
+    const mergedText = [row.bom_no, row.item_code, row.version_no].join('|').toLowerCase()
+    if (keyword && !mergedText.includes(keyword)) {
+      return false
+    }
+    if (customer && inferCustomerLabel(row) !== customer) {
+      return false
+    }
+    if (materialCategory && inferMaterialCategory(row) !== materialCategory) {
+      return false
+    }
+    return true
+  })
+}
 
 const fabricQuery = reactive({
   item_code: '',
@@ -2313,9 +2378,14 @@ const loadList = async (): Promise<void> => {
   loading.value = true
   listError.value = ''
   try {
-    const result = await fetchBomList(query)
-    rows.value = result.data.items
-    total.value = result.data.total
+    const result = await fetchBomList({
+      item_code: query.item_code,
+      status: query.status,
+      page: query.page,
+      page_size: query.page_size,
+    })
+    rows.value = applyLocalMainListFilter(result.data.items)
+    total.value = rows.value.length
   } catch (error) {
     rows.value = []
     total.value = 0
@@ -2332,7 +2402,10 @@ const runMainQuery = (): void => {
 }
 
 const resetMainQuery = (): void => {
+  query.keyword = ''
   query.item_code = ''
+  query.customer = ''
+  query.material_category = ''
   query.status = ''
   query.page = 1
   query.page_size = 20

@@ -1,0 +1,28 @@
+{
+  "required_count": 10,
+  "observed": "10/10",
+  "anchors": {
+    "mvp-bom-list-query-filter": true,
+    "mvp-bom-style-binding": true,
+    "mvp-bom-master-card": true,
+    "mvp-bom-fabric-line": true,
+    "mvp-bom-trim-line": true,
+    "mvp-bom-local-draft": true,
+    "mvp-bom-local-save": true,
+    "mvp-bom-local-cancel": true,
+    "mvp-bom-local-readback": true,
+    "mvp-bom-rollback-zero-residual": true
+  },
+  "required_anchors": [
+    "mvp-bom-list-query-filter",
+    "mvp-bom-style-binding",
+    "mvp-bom-master-card",
+    "mvp-bom-fabric-line",
+    "mvp-bom-trim-line",
+    "mvp-bom-local-draft",
+    "mvp-bom-local-save",
+    "mvp-bom-local-cancel",
+    "mvp-bom-local-readback",
+    "mvp-bom-rollback-zero-residual"
+  ]
+}

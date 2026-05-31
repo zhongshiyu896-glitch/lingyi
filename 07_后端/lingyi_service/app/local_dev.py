@@ -12,6 +12,7 @@ from datetime import date
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+import json
 import os
 import sqlite3
 
@@ -412,3 +413,276 @@ def cancel_local_basic_reference_draft(draft_id: int, payload: dict[str, Any] = 
     if cancelled is None:
         raise HTTPException(status_code=500, detail="draft cancel failed")
     return _ok(_draft_row_to_dict(cancelled))
+
+
+def _create_bom_draft_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ly_local_bom_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scenario_tag TEXT NOT NULL,
+            bom_no TEXT NOT NULL,
+            item_code TEXT NOT NULL,
+            version_no TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'draft',
+            is_default INTEGER NOT NULL DEFAULT 0,
+            bom_items_json TEXT NOT NULL,
+            operations_json TEXT NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            state TEXT NOT NULL DEFAULT 'saved',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            cancelled_at TEXT,
+            cancel_reason TEXT
+        )
+        """
+    )
+    connection.commit()
+
+
+def _get_bom_draft_row(connection: sqlite3.Connection, draft_id: int) -> sqlite3.Row | None:
+    return connection.execute(
+        "SELECT * FROM ly_local_bom_drafts WHERE id = ?",
+        (draft_id,),
+    ).fetchone()
+
+
+def _parse_json_payload(value: str) -> list[dict[str, Any]]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(parsed, list):
+        return [item for item in parsed if isinstance(item, dict)]
+    return []
+
+
+def _is_fabric_line(item: dict[str, Any]) -> bool:
+    token = f"{item.get('material_item_code', '')} {item.get('remark', '')}".upper()
+    return "FABRIC" in token or "FAB" in token or "面料" in token
+
+
+def _is_trim_line(item: dict[str, Any]) -> bool:
+    token = f"{item.get('material_item_code', '')} {item.get('remark', '')}".upper()
+    return "TRIM" in token or "BUTTON" in token or "辅料" in token or "包材" in token
+
+
+def _bom_draft_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    bom_items = _parse_json_payload(row["bom_items_json"])
+    operations = _parse_json_payload(row["operations_json"])
+    return {
+        "draft_id": int(row["id"]),
+        "scenario_tag": row["scenario_tag"],
+        "bom_no": row["bom_no"],
+        "item_code": row["item_code"],
+        "version_no": row["version_no"],
+        "status": row["status"],
+        "is_default": bool(row["is_default"]),
+        "bom_items": bom_items,
+        "operations": operations,
+        "note": row["note"],
+        "state": row["state"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+        "cancelled_at": row["cancelled_at"],
+        "cancel_reason": row["cancel_reason"],
+        "fabric_line_saved": any(_is_fabric_line(item) for item in bom_items),
+        "trim_line_saved": any(_is_trim_line(item) for item in bom_items),
+    }
+
+
+@app.post("/api/local-dev/bom-drafts")
+def upsert_local_bom_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    bom_no = str(payload.get("bom_no", "")).strip()
+    item_code = str(payload.get("item_code", "")).strip()
+    version_no = str(payload.get("version_no", "")).strip() or "V1"
+    status = str(payload.get("status", "")).strip() or "draft"
+    note = str(payload.get("note", "")).strip()
+    draft_id = payload.get("draft_id")
+    is_default = bool(payload.get("is_default", False))
+    bom_items = payload.get("bom_items", [])
+    operations = payload.get("operations", [])
+
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    if not bom_no:
+        raise HTTPException(status_code=400, detail="bom_no is required")
+    if not item_code:
+        raise HTTPException(status_code=400, detail="item_code is required")
+    if not isinstance(bom_items, list) or len(bom_items) == 0:
+        raise HTTPException(status_code=400, detail="bom_items is required")
+    if not isinstance(operations, list) or len(operations) == 0:
+        raise HTTPException(status_code=400, detail="operations is required")
+
+    bom_items_json = json.dumps(bom_items, ensure_ascii=False)
+    operations_json = json.dumps(operations, ensure_ascii=False)
+    now_iso = _now_iso()
+
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        if isinstance(draft_id, int) and draft_id > 0:
+            exists = _get_bom_draft_row(connection, draft_id)
+            if not exists:
+                raise HTTPException(status_code=404, detail="draft not found")
+            connection.execute(
+                """
+                UPDATE ly_local_bom_drafts
+                SET scenario_tag = ?,
+                    bom_no = ?,
+                    item_code = ?,
+                    version_no = ?,
+                    status = ?,
+                    is_default = ?,
+                    bom_items_json = ?,
+                    operations_json = ?,
+                    note = ?,
+                    state = 'saved',
+                    updated_at = ?,
+                    cancelled_at = NULL,
+                    cancel_reason = NULL
+                WHERE id = ?
+                """,
+                (
+                    scenario_tag,
+                    bom_no,
+                    item_code,
+                    version_no,
+                    status,
+                    1 if is_default else 0,
+                    bom_items_json,
+                    operations_json,
+                    note,
+                    now_iso,
+                    draft_id,
+                ),
+            )
+            connection.commit()
+            row = _get_bom_draft_row(connection, draft_id)
+        else:
+            cursor = connection.execute(
+                """
+                INSERT INTO ly_local_bom_drafts (
+                    scenario_tag,
+                    bom_no,
+                    item_code,
+                    version_no,
+                    status,
+                    is_default,
+                    bom_items_json,
+                    operations_json,
+                    note,
+                    state,
+                    created_at,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'saved', ?, ?)
+                """,
+                (
+                    scenario_tag,
+                    bom_no,
+                    item_code,
+                    version_no,
+                    status,
+                    1 if is_default else 0,
+                    bom_items_json,
+                    operations_json,
+                    note,
+                    now_iso,
+                    now_iso,
+                ),
+            )
+            connection.commit()
+            row = _get_bom_draft_row(connection, int(cursor.lastrowid))
+
+    if row is None:
+        raise HTTPException(status_code=500, detail="draft persistence failed")
+    return _ok(_bom_draft_row_to_dict(row))
+
+
+@app.get("/api/local-dev/bom-drafts/residual-count")
+def get_local_bom_draft_residual_count(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        row = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_bom_drafts WHERE scenario_tag = ?",
+            (scenario_tag.strip(),),
+        ).fetchone()
+    total = int(row["total"]) if row else 0
+    return _ok({"scenario_tag": scenario_tag.strip(), "total": total})
+
+
+@app.post("/api/local-dev/bom-drafts/rollback-by-scenario")
+def rollback_local_bom_drafts(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        before = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_bom_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+        deleted_count = int(before["total"]) if before else 0
+        connection.execute(
+            "DELETE FROM ly_local_bom_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        )
+        connection.commit()
+        after = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_bom_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+    residual = int(after["total"]) if after else 0
+    return _ok(
+        {
+            "scenario_tag": scenario_tag,
+            "deleted_count": deleted_count,
+            "residual_records_after_rollback": residual,
+            "rollback_success": residual == 0,
+            "zero_residual_success": residual == 0,
+        }
+    )
+
+
+@app.get("/api/local-dev/bom-drafts/{draft_id}")
+def get_local_bom_draft(draft_id: int) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        row = _get_bom_draft_row(connection, draft_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return _ok(_bom_draft_row_to_dict(row))
+
+
+@app.post("/api/local-dev/bom-drafts/{draft_id}/cancel")
+def cancel_local_bom_draft(draft_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    reason = str(payload.get("reason", "")).strip() or f"CANCEL-{scenario_tag or draft_id}"
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+
+    now_iso = _now_iso()
+    with _connect_local_sqlite() as connection:
+        _create_bom_draft_table(connection)
+        row = _get_bom_draft_row(connection, draft_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        if row["scenario_tag"] != scenario_tag:
+            raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+        connection.execute(
+            """
+            UPDATE ly_local_bom_drafts
+            SET state = 'cancelled',
+                updated_at = ?,
+                cancelled_at = ?,
+                cancel_reason = ?
+            WHERE id = ?
+            """,
+            (now_iso, now_iso, reason, draft_id),
+        )
+        connection.commit()
+        cancelled = _get_bom_draft_row(connection, draft_id)
+    if cancelled is None:
+        raise HTTPException(status_code=500, detail="draft cancel failed")
+    return _ok(_bom_draft_row_to_dict(cancelled))

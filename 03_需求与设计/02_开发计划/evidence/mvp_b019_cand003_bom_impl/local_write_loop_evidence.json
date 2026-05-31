@@ -1,0 +1,19 @@
+{
+  "scenario_tag": "MVP-B019-BOM-1780203719612",
+  "save_success": true,
+  "draft_id_created": true,
+  "draft_id": 2,
+  "fabric_line_saved": true,
+  "trim_line_saved": true,
+  "cancel_success": true,
+  "readback_success": true,
+  "rollback_success": true,
+  "zero_residual_success": true,
+  "residual_records_after_rollback": 0,
+  "feedback": {
+    "save": "save_success=true, draft_id=2, scenario_tag=MVP-B019-BOM-1780203719612",
+    "cancel": "cancel_success=true, state=cancelled",
+    "readback": "readback_success=true, draft_id=2, state=cancelled",
+    "rollback": "rollback_success=true, zero_residual_success=true, residual=0"
+  }
+}

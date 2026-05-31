@@ -1,0 +1,9 @@
+{
+  "started": true,
+  "stopped": true,
+  "host": "127.0.0.1",
+  "port": 8000,
+  "start_command": "07_后端/lingyi_service/.venv/bin/uvicorn app.local_dev:app --host 127.0.0.1 --port 8000",
+  "stop_method": "kill <pid>",
+  "local_dev_support_only": true
+}
