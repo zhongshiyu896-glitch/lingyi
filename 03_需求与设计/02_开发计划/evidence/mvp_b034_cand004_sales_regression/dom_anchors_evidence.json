@@ -1,0 +1,33 @@
+{
+  "required": [
+    "mvp-sales-order-list-query",
+    "mvp-sales-order-status-filter",
+    "mvp-sales-order-detail-master",
+    "mvp-sales-order-quantity-matrix",
+    "mvp-sales-order-matrix-delta",
+    "mvp-sales-order-local-draft",
+    "mvp-sales-order-local-save",
+    "mvp-sales-order-local-cancel",
+    "mvp-sales-order-local-readback",
+    "mvp-production-plan-link",
+    "mvp-production-plan-summary",
+    "mvp-sales-order-rollback-zero-residual"
+  ],
+  "observed": {
+    "mvp-sales-order-list-query": true,
+    "mvp-sales-order-status-filter": true,
+    "mvp-sales-order-detail-master": true,
+    "mvp-sales-order-quantity-matrix": true,
+    "mvp-sales-order-matrix-delta": true,
+    "mvp-sales-order-local-draft": true,
+    "mvp-sales-order-local-save": true,
+    "mvp-sales-order-local-cancel": true,
+    "mvp-sales-order-local-readback": true,
+    "mvp-production-plan-link": true,
+    "mvp-production-plan-summary": true,
+    "mvp-sales-order-rollback-zero-residual": true
+  },
+  "observed_count": 12,
+  "total": 12,
+  "all_true": true
+}

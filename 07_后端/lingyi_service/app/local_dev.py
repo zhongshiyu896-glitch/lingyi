@@ -686,3 +686,583 @@ def cancel_local_bom_draft(draft_id: int, payload: dict[str, Any] = Body(...)) -
     if cancelled is None:
         raise HTTPException(status_code=500, detail="draft cancel failed")
     return _ok(_bom_draft_row_to_dict(cancelled))
+
+
+def _create_sales_order_draft_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ly_local_sales_order_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scenario_tag TEXT NOT NULL,
+            order_no TEXT NOT NULL,
+            customer_name TEXT NOT NULL,
+            style_code TEXT NOT NULL,
+            delivery_date TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'draft',
+            quantity_matrix_json TEXT NOT NULL,
+            note TEXT NOT NULL DEFAULT '',
+            state TEXT NOT NULL DEFAULT 'saved',
+            linked_plan_draft_id INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            cancelled_at TEXT,
+            cancel_reason TEXT
+        )
+        """
+    )
+    connection.commit()
+
+
+def _create_production_plan_draft_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ly_local_production_plan_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scenario_tag TEXT NOT NULL,
+            order_draft_id INTEGER,
+            order_no TEXT NOT NULL,
+            style_code TEXT NOT NULL,
+            plan_no TEXT NOT NULL,
+            planned_qty REAL NOT NULL,
+            plan_date TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'draft',
+            note TEXT NOT NULL DEFAULT '',
+            state TEXT NOT NULL DEFAULT 'saved',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            cancelled_at TEXT,
+            cancel_reason TEXT
+        )
+        """
+    )
+    connection.commit()
+
+
+def _get_sales_order_draft_row(connection: sqlite3.Connection, draft_id: int) -> sqlite3.Row | None:
+    return connection.execute(
+        "SELECT * FROM ly_local_sales_order_drafts WHERE id = ?",
+        (draft_id,),
+    ).fetchone()
+
+
+def _get_production_plan_draft_row(connection: sqlite3.Connection, draft_id: int) -> sqlite3.Row | None:
+    return connection.execute(
+        "SELECT * FROM ly_local_production_plan_drafts WHERE id = ?",
+        (draft_id,),
+    ).fetchone()
+
+
+def _to_float(value: Any, fallback: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _normalize_sales_order_matrix(raw_matrix: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_matrix, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for item in raw_matrix:
+        if not isinstance(item, dict):
+            continue
+        color = str(item.get("color", "")).strip()
+        size = str(item.get("size", "")).strip()
+        if not color or not size:
+            continue
+        ordered_qty = _to_float(item.get("ordered_qty"), 0.0)
+        planned_qty = _to_float(item.get("planned_qty"), 0.0)
+        delta_qty = ordered_qty - planned_qty
+        normalized.append(
+            {
+                "color": color,
+                "size": size,
+                "ordered_qty": ordered_qty,
+                "planned_qty": planned_qty,
+                "delta_qty": delta_qty,
+            }
+        )
+    return normalized
+
+
+def _matrix_saved(matrix: list[dict[str, Any]]) -> bool:
+    if len(matrix) < 2:
+        return False
+    return any(_to_float(cell.get("ordered_qty"), 0) > 0 for cell in matrix)
+
+
+def _sales_order_draft_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    matrix = _normalize_sales_order_matrix(_parse_json_payload(row["quantity_matrix_json"]))
+    return {
+        "draft_id": int(row["id"]),
+        "scenario_tag": row["scenario_tag"],
+        "order_no": row["order_no"],
+        "customer_name": row["customer_name"],
+        "style_code": row["style_code"],
+        "delivery_date": row["delivery_date"],
+        "status": row["status"],
+        "quantity_matrix": matrix,
+        "note": row["note"],
+        "state": row["state"],
+        "linked_plan_draft_id": row["linked_plan_draft_id"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+        "cancelled_at": row["cancelled_at"],
+        "cancel_reason": row["cancel_reason"],
+        "quantity_matrix_saved": _matrix_saved(matrix),
+        "production_plan_draft_created": row["linked_plan_draft_id"] is not None,
+    }
+
+
+def _production_plan_draft_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "draft_id": int(row["id"]),
+        "scenario_tag": row["scenario_tag"],
+        "order_draft_id": row["order_draft_id"],
+        "order_no": row["order_no"],
+        "style_code": row["style_code"],
+        "plan_no": row["plan_no"],
+        "planned_qty": _to_float(row["planned_qty"], 0.0),
+        "plan_date": row["plan_date"],
+        "status": row["status"],
+        "note": row["note"],
+        "state": row["state"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+        "cancelled_at": row["cancelled_at"],
+        "cancel_reason": row["cancel_reason"],
+    }
+
+
+@app.post("/api/local-dev/sales-order-drafts")
+def upsert_local_sales_order_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    order_no = str(payload.get("order_no", "")).strip()
+    customer_name = str(payload.get("customer_name", "")).strip()
+    style_code = str(payload.get("style_code", "")).strip()
+    delivery_date = str(payload.get("delivery_date", "")).strip() or date.today().isoformat()
+    status = str(payload.get("status", "")).strip() or "draft"
+    note = str(payload.get("note", "")).strip()
+    draft_id = payload.get("draft_id")
+    linked_plan_draft_id_raw = payload.get("linked_plan_draft_id")
+    linked_plan_draft_id = linked_plan_draft_id_raw if isinstance(linked_plan_draft_id_raw, int) else None
+    matrix = _normalize_sales_order_matrix(payload.get("quantity_matrix", []))
+
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    if not order_no:
+        raise HTTPException(status_code=400, detail="order_no is required")
+    if not customer_name:
+        raise HTTPException(status_code=400, detail="customer_name is required")
+    if not style_code:
+        raise HTTPException(status_code=400, detail="style_code is required")
+    if len(matrix) < 2:
+        raise HTTPException(status_code=400, detail="quantity_matrix requires at least 2 cells")
+
+    now_iso = _now_iso()
+    matrix_json = json.dumps(matrix, ensure_ascii=False)
+    with _connect_local_sqlite() as connection:
+        _create_sales_order_draft_table(connection)
+        if isinstance(draft_id, int) and draft_id > 0:
+            exists = _get_sales_order_draft_row(connection, draft_id)
+            if not exists:
+                raise HTTPException(status_code=404, detail="draft not found")
+            connection.execute(
+                """
+                UPDATE ly_local_sales_order_drafts
+                SET scenario_tag = ?,
+                    order_no = ?,
+                    customer_name = ?,
+                    style_code = ?,
+                    delivery_date = ?,
+                    status = ?,
+                    quantity_matrix_json = ?,
+                    note = ?,
+                    linked_plan_draft_id = ?,
+                    state = 'saved',
+                    updated_at = ?,
+                    cancelled_at = NULL,
+                    cancel_reason = NULL
+                WHERE id = ?
+                """,
+                (
+                    scenario_tag,
+                    order_no,
+                    customer_name,
+                    style_code,
+                    delivery_date,
+                    status,
+                    matrix_json,
+                    note,
+                    linked_plan_draft_id,
+                    now_iso,
+                    draft_id,
+                ),
+            )
+            connection.commit()
+            row = _get_sales_order_draft_row(connection, draft_id)
+        else:
+            cursor = connection.execute(
+                """
+                INSERT INTO ly_local_sales_order_drafts (
+                    scenario_tag,
+                    order_no,
+                    customer_name,
+                    style_code,
+                    delivery_date,
+                    status,
+                    quantity_matrix_json,
+                    note,
+                    linked_plan_draft_id,
+                    state,
+                    created_at,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'saved', ?, ?)
+                """,
+                (
+                    scenario_tag,
+                    order_no,
+                    customer_name,
+                    style_code,
+                    delivery_date,
+                    status,
+                    matrix_json,
+                    note,
+                    linked_plan_draft_id,
+                    now_iso,
+                    now_iso,
+                ),
+            )
+            connection.commit()
+            row = _get_sales_order_draft_row(connection, int(cursor.lastrowid))
+    if row is None:
+        raise HTTPException(status_code=500, detail="draft persistence failed")
+    return _ok(_sales_order_draft_row_to_dict(row))
+
+
+@app.get("/api/local-dev/sales-order-drafts")
+def list_local_sales_order_drafts(
+    keyword: str | None = None,
+    customer_name: str | None = None,
+    status: str | None = None,
+    style_code: str | None = None,
+    scenario_tag: str | None = None,
+) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_sales_order_draft_table(connection)
+        rows = connection.execute(
+            "SELECT * FROM ly_local_sales_order_drafts ORDER BY id DESC",
+        ).fetchall()
+    items = [_sales_order_draft_row_to_dict(row) for row in rows]
+    keyword_token = (keyword or "").strip().lower()
+    customer_token = (customer_name or "").strip().lower()
+    status_token = (status or "").strip().lower()
+    style_token = (style_code or "").strip().lower()
+    scenario_token = (scenario_tag or "").strip()
+
+    def _match(item: dict[str, Any]) -> bool:
+        if keyword_token and keyword_token not in (
+            f"{item['order_no']} {item['customer_name']} {item['style_code']}".lower()
+        ):
+            return False
+        if customer_token and customer_token not in item["customer_name"].lower():
+            return False
+        if status_token and status_token != str(item["status"]).lower():
+            return False
+        if style_token and style_token not in str(item["style_code"]).lower():
+            return False
+        if scenario_token and scenario_token != str(item["scenario_tag"]):
+            return False
+        return True
+
+    filtered = [item for item in items if _match(item)]
+    return _ok({"items": filtered, "total": len(filtered)})
+
+
+@app.get("/api/local-dev/sales-order-drafts/residual-count")
+def get_local_sales_order_residual_count(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_sales_order_draft_table(connection)
+        row = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_sales_order_drafts WHERE scenario_tag = ?",
+            (scenario_tag.strip(),),
+        ).fetchone()
+    total = int(row["total"]) if row else 0
+    return _ok({"scenario_tag": scenario_tag.strip(), "total": total})
+
+
+@app.post("/api/local-dev/sales-order-drafts/rollback-by-scenario")
+def rollback_local_sales_order_drafts(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    with _connect_local_sqlite() as connection:
+        _create_sales_order_draft_table(connection)
+        before = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_sales_order_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+        deleted_count = int(before["total"]) if before else 0
+        connection.execute(
+            "DELETE FROM ly_local_sales_order_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        )
+        connection.commit()
+        after = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_sales_order_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+    residual = int(after["total"]) if after else 0
+    return _ok(
+        {
+            "scenario_tag": scenario_tag,
+            "deleted_count": deleted_count,
+            "residual_records_after_rollback": residual,
+            "rollback_success": residual == 0,
+            "zero_residual_success": residual == 0,
+        }
+    )
+
+
+@app.get("/api/local-dev/sales-order-drafts/{draft_id}")
+def get_local_sales_order_draft(draft_id: int) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_sales_order_draft_table(connection)
+        row = _get_sales_order_draft_row(connection, draft_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    return _ok(_sales_order_draft_row_to_dict(row))
+
+
+@app.post("/api/local-dev/sales-order-drafts/{draft_id}/cancel")
+def cancel_local_sales_order_draft(draft_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    reason = str(payload.get("reason", "")).strip() or f"CANCEL-{scenario_tag or draft_id}"
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    now_iso = _now_iso()
+    with _connect_local_sqlite() as connection:
+        _create_sales_order_draft_table(connection)
+        row = _get_sales_order_draft_row(connection, draft_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        if row["scenario_tag"] != scenario_tag:
+            raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+        connection.execute(
+            """
+            UPDATE ly_local_sales_order_drafts
+            SET state = 'cancelled',
+                updated_at = ?,
+                cancelled_at = ?,
+                cancel_reason = ?
+            WHERE id = ?
+            """,
+            (now_iso, now_iso, reason, draft_id),
+        )
+        connection.commit()
+        cancelled = _get_sales_order_draft_row(connection, draft_id)
+    if cancelled is None:
+        raise HTTPException(status_code=500, detail="draft cancel failed")
+    return _ok(_sales_order_draft_row_to_dict(cancelled))
+
+
+@app.post("/api/local-dev/production-plan-drafts")
+def upsert_local_production_plan_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    order_draft_id_raw = payload.get("order_draft_id")
+    order_draft_id = order_draft_id_raw if isinstance(order_draft_id_raw, int) else None
+    order_no = str(payload.get("order_no", "")).strip()
+    style_code = str(payload.get("style_code", "")).strip()
+    plan_no = str(payload.get("plan_no", "")).strip() or f"PLAN-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    plan_date = str(payload.get("plan_date", "")).strip() or date.today().isoformat()
+    status = str(payload.get("status", "")).strip() or "draft"
+    note = str(payload.get("note", "")).strip()
+    draft_id = payload.get("draft_id")
+    planned_qty = _to_float(payload.get("planned_qty"), 0.0)
+
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    if not order_no:
+        raise HTTPException(status_code=400, detail="order_no is required")
+    if not style_code:
+        raise HTTPException(status_code=400, detail="style_code is required")
+    if planned_qty <= 0:
+        raise HTTPException(status_code=400, detail="planned_qty must be greater than 0")
+
+    now_iso = _now_iso()
+    with _connect_local_sqlite() as connection:
+        _create_sales_order_draft_table(connection)
+        _create_production_plan_draft_table(connection)
+        if isinstance(draft_id, int) and draft_id > 0:
+            exists = _get_production_plan_draft_row(connection, draft_id)
+            if not exists:
+                raise HTTPException(status_code=404, detail="plan draft not found")
+            connection.execute(
+                """
+                UPDATE ly_local_production_plan_drafts
+                SET scenario_tag = ?,
+                    order_draft_id = ?,
+                    order_no = ?,
+                    style_code = ?,
+                    plan_no = ?,
+                    planned_qty = ?,
+                    plan_date = ?,
+                    status = ?,
+                    note = ?,
+                    state = 'saved',
+                    updated_at = ?,
+                    cancelled_at = NULL,
+                    cancel_reason = NULL
+                WHERE id = ?
+                """,
+                (
+                    scenario_tag,
+                    order_draft_id,
+                    order_no,
+                    style_code,
+                    plan_no,
+                    planned_qty,
+                    plan_date,
+                    status,
+                    note,
+                    now_iso,
+                    draft_id,
+                ),
+            )
+            connection.commit()
+            row = _get_production_plan_draft_row(connection, draft_id)
+            created_plan_id = draft_id
+        else:
+            cursor = connection.execute(
+                """
+                INSERT INTO ly_local_production_plan_drafts (
+                    scenario_tag,
+                    order_draft_id,
+                    order_no,
+                    style_code,
+                    plan_no,
+                    planned_qty,
+                    plan_date,
+                    status,
+                    note,
+                    state,
+                    created_at,
+                    updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'saved', ?, ?)
+                """,
+                (
+                    scenario_tag,
+                    order_draft_id,
+                    order_no,
+                    style_code,
+                    plan_no,
+                    planned_qty,
+                    plan_date,
+                    status,
+                    note,
+                    now_iso,
+                    now_iso,
+                ),
+            )
+            connection.commit()
+            created_plan_id = int(cursor.lastrowid)
+            row = _get_production_plan_draft_row(connection, created_plan_id)
+
+        if order_draft_id is not None:
+            connection.execute(
+                """
+                UPDATE ly_local_sales_order_drafts
+                SET linked_plan_draft_id = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (created_plan_id, now_iso, order_draft_id),
+            )
+            connection.commit()
+
+    if row is None:
+        raise HTTPException(status_code=500, detail="plan draft persistence failed")
+    return _ok(_production_plan_draft_row_to_dict(row))
+
+
+@app.get("/api/local-dev/production-plan-drafts")
+def list_local_production_plan_drafts(
+    scenario_tag: str | None = None,
+    order_no: str | None = None,
+    style_code: str | None = None,
+    status: str | None = None,
+    keyword: str | None = None,
+) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_production_plan_draft_table(connection)
+        rows = connection.execute(
+            "SELECT * FROM ly_local_production_plan_drafts ORDER BY id DESC",
+        ).fetchall()
+    items = [_production_plan_draft_row_to_dict(row) for row in rows]
+    scenario_token = (scenario_tag or "").strip()
+    order_token = (order_no or "").strip().lower()
+    style_token = (style_code or "").strip().lower()
+    status_token = (status or "").strip().lower()
+    keyword_token = (keyword or "").strip().lower()
+
+    def _match(item: dict[str, Any]) -> bool:
+        if scenario_token and scenario_token != str(item["scenario_tag"]):
+            return False
+        if order_token and order_token not in str(item["order_no"]).lower():
+            return False
+        if style_token and style_token not in str(item["style_code"]).lower():
+            return False
+        if status_token and status_token != str(item["status"]).lower():
+            return False
+        if keyword_token and keyword_token not in (
+            f"{item['plan_no']} {item['order_no']} {item['style_code']}".lower()
+        ):
+            return False
+        return True
+
+    filtered = [item for item in items if _match(item)]
+    return _ok({"items": filtered, "total": len(filtered)})
+
+
+@app.get("/api/local-dev/production-plan-drafts/residual-count")
+def get_local_production_plan_residual_count(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    with _connect_local_sqlite() as connection:
+        _create_production_plan_draft_table(connection)
+        row = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_production_plan_drafts WHERE scenario_tag = ?",
+            (scenario_tag.strip(),),
+        ).fetchone()
+    total = int(row["total"]) if row else 0
+    return _ok({"scenario_tag": scenario_tag.strip(), "total": total})
+
+
+@app.post("/api/local-dev/production-plan-drafts/rollback-by-scenario")
+def rollback_local_production_plan_drafts(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    with _connect_local_sqlite() as connection:
+        _create_production_plan_draft_table(connection)
+        before = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_production_plan_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+        deleted_count = int(before["total"]) if before else 0
+        connection.execute(
+            "DELETE FROM ly_local_production_plan_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        )
+        connection.commit()
+        after = connection.execute(
+            "SELECT COUNT(*) AS total FROM ly_local_production_plan_drafts WHERE scenario_tag = ?",
+            (scenario_tag,),
+        ).fetchone()
+    residual = int(after["total"]) if after else 0
+    return _ok(
+        {
+            "scenario_tag": scenario_tag,
+            "deleted_count": deleted_count,
+            "residual_records_after_rollback": residual,
+            "rollback_success": residual == 0,
+            "zero_residual_success": residual == 0,
+        }
+    )

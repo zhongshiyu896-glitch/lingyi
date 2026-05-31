@@ -1,0 +1,19 @@
+{
+  "routes": [
+    {
+      "route": "/sales-inventory/sales-orders",
+      "status": 200,
+      "final_path": "/sales-inventory/sales-orders"
+    },
+    {
+      "route": "/sales-inventory/sales-orders/detail",
+      "status": 200,
+      "final_path": "/sales-inventory/sales-orders/detail"
+    },
+    {
+      "route": "/production/plans",
+      "status": 200,
+      "final_path": "/production/plans"
+    }
+  ]
+}

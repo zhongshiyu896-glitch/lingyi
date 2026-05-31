@@ -1,0 +1,12 @@
+{
+  "scenario_tag": "MVP-CAND004-20260531070545",
+  "save_success": true,
+  "draft_id_created": true,
+  "quantity_matrix_saved": true,
+  "production_plan_draft_created": true,
+  "cancel_success": true,
+  "readback_success": true,
+  "rollback_success": true,
+  "zero_residual_success": true,
+  "residual_records_after_rollback": 0
+}

@@ -1,0 +1,207 @@
+{
+  "status": "DONE",
+  "task_id": "TASK-MVP-B032-PREP",
+  "role": "B Engineer",
+  "summary": {
+    "head": "27bce8240106c90507c9aa80e120d76ebd629e36",
+    "branch": "codex/sprint4-seal",
+    "cached_empty": true,
+    "selected_candidate": "MVP-CAND-004",
+    "module": "大货管理",
+    "routes": [
+      "/sales-inventory/sales-orders",
+      "/sales-inventory/sales-orders/detail",
+      "/production/plans"
+    ],
+    "prep_only": true,
+    "next_task": "TASK-MVP-B033-IMPL"
+  },
+  "boundary": {
+    "allowed_files": [
+      "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+      "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+      "06_前端/lingyi-pc/src/views/production/ProductionPlanList.vue"
+    ],
+    "optional_support_allowed_files": [
+      "07_后端/lingyi_service/app/local_dev.py"
+    ],
+    "local_dev_py_status": {
+      "exists": true,
+      "tracked": true,
+      "clean": true,
+      "gitignored": false,
+      "support_scope_now": [
+        "/api/local-dev/basic-reference-drafts",
+        "/api/local-dev/bom-drafts"
+      ],
+      "reused_support": false,
+      "b033_endpoint_extension_required": true
+    },
+    "route_source_locations": {
+      "/sales-inventory/sales-orders": "06_前端/lingyi-pc/src/router/index.ts:162",
+      "/sales-inventory/sales-orders/detail": "06_前端/lingyi-pc/src/router/index.ts:168",
+      "/production/plans": "06_前端/lingyi-pc/src/router/index.ts:51"
+    },
+    "key_fields_required": {
+      "sales_order_master": [
+        "订单号",
+        "客户",
+        "款号",
+        "交期",
+        "状态"
+      ],
+      "quantity_matrix": [
+        "颜色",
+        "尺码",
+        "订单数量",
+        "已排产数量",
+        "差异数量"
+      ],
+      "order_detail": [
+        "款式",
+        "物料/BOM 引用",
+        "单价或备注",
+        "交付批次"
+      ],
+      "production_plan": [
+        "计划号",
+        "订单号",
+        "款号",
+        "计划数量",
+        "计划日期",
+        "计划状态"
+      ]
+    },
+    "query_flow_required": [
+      "sales order keyword 查询",
+      "客户/状态筛选",
+      "款号筛选",
+      "生产计划状态筛选",
+      "列表选择后进入订单详情",
+      "订单详情数量矩阵变化影响页面可见状态",
+      "生产计划列表可回看本地草稿关联计划摘要"
+    ],
+    "local_write_loop_design": [
+      "新增或更新一条销售订单本地草稿",
+      "编辑数量矩阵至少 2 个尺码/颜色格",
+      "保存订单草稿",
+      "从订单草稿生成或联动一条本地生产计划草稿",
+      "cancel",
+      "readback",
+      "rollback",
+      "zero_residual",
+      "scenario_tag 必填",
+      "storage=local-dev/sqlite/scenario_tag",
+      "production_write_forbidden=true",
+      "erpnext_production_write_forbidden=true",
+      "real_production_account_forbidden=true"
+    ],
+    "dom_anchors": [
+      "mvp-sales-order-list-query",
+      "mvp-sales-order-status-filter",
+      "mvp-sales-order-detail-master",
+      "mvp-sales-order-quantity-matrix",
+      "mvp-sales-order-matrix-delta",
+      "mvp-sales-order-local-draft",
+      "mvp-sales-order-local-save",
+      "mvp-sales-order-local-cancel",
+      "mvp-sales-order-local-readback",
+      "mvp-production-plan-link",
+      "mvp-production-plan-summary",
+      "mvp-sales-order-rollback-zero-residual"
+    ],
+    "evidence_requirement": {
+      "routes_http_200": [
+        "/sales-inventory/sales-orders",
+        "/sales-inventory/sales-orders/detail",
+        "/production/plans"
+      ],
+      "screenshots_png_1440x1200": [
+        "/sales-inventory/sales-orders",
+        "/sales-inventory/sales-orders/detail",
+        "/production/plans"
+      ],
+      "dom_anchors_observed": "12/12",
+      "local_write_loop": {
+        "scenario_tag": true,
+        "save_success": true,
+        "draft_id_created": true,
+        "quantity_matrix_saved": true,
+        "production_plan_draft_created": true,
+        "cancel_success": true,
+        "readback_success": true,
+        "rollback_success": true,
+        "zero_residual_success": true,
+        "residual_records_after_rollback": 0
+      },
+      "data_boundary": {
+        "data_classification": "test_data",
+        "seed_data_used": false,
+        "sqlite_not_formal_database": true,
+        "sqlite_direct_reuse_for_production_forbidden": true,
+        "real_order_production_inventory_data_migration_forbidden": true
+      },
+      "network_write": {
+        "production_write_requests": 0,
+        "erpnext_production_write_requests": 0,
+        "real_production_account_used": false,
+        "auth_401_on_local_sqlite_write_loop": false
+      },
+      "typecheck": {
+        "command": "npm run typecheck",
+        "workdir": "06_前端/lingyi-pc",
+        "exit_code": 0
+      }
+    },
+    "forbidden_scope": [
+      "07_后端 除 07_后端/lingyi_service/app/local_dev.py 之外所有路径",
+      "06_前端/lingyi-pc/src/api/report.ts",
+      "06_前端/lingyi-pc/src/api/workshop.ts",
+      "06_前端/lingyi-pc/src/api/subcontract.ts",
+      "06_前端/lingyi-pc/src/router/index.ts",
+      "MVP-CAND-001/002/003 已提交页面",
+      "MVP-CAND-005/006 future artifacts",
+      "当前历史 dirty 文件",
+      "runtime/cache",
+      "test-results",
+      "Z034 residual",
+      "remote/prod-go-live",
+      "prior non-allowlisted summary/metadata",
+      "seed_data export/migration 产物"
+    ]
+  },
+  "data_boundary": {
+    "data_classification_default": "test_data",
+    "test_data_used_default": true,
+    "seed_data_used_default": false,
+    "sqlite_not_formal_database": true,
+    "sqlite_direct_reuse_for_production_forbidden": true,
+    "real_order_production_inventory_data_migration_forbidden": true,
+    "future_seed_data_export_migration_required_if_used": true
+  },
+  "dirty": {
+    "dirty_tracked_count": 16,
+    "frontend_dirty_count": 3,
+    "backend_dirty_count": 10,
+    "log_control_dirty_count": 3,
+    "dirty_intersections": [],
+    "unknown_dirty": [],
+    "must_block_before_continue": []
+  },
+  "checks": {
+    "git_diff_check": "PASS",
+    "product_code_changed": false,
+    "validation_rerun": false,
+    "staged_area_empty": true,
+    "outputs_unstaged": true
+  },
+  "residual_risk": {
+    "local_dev_py_remains_local_dev_support_only": true,
+    "seed_data_boundary_must_be_carried_into_b033_plus": true,
+    "remote_lifecycle_parked": true,
+    "production_readback": false,
+    "go_live": false,
+    "project_completion": false
+  },
+  "next_recommended_task": "TASK-MVP-B033-IMPL"
+}

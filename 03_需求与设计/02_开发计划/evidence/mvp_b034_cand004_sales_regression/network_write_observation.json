@@ -1,0 +1,54 @@
+{
+  "auth_401_on_local_sqlite_write_loop": false,
+  "auth_401_count": 0,
+  "write_requests_observed_count": 6,
+  "write_requests_only_local_dev": true,
+  "production_write_requests": 0,
+  "erpnext_production_write_requests": 0,
+  "erpnext_production_connected": false,
+  "real_production_account_used": false,
+  "requests": [
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/sales-order-drafts",
+      "status": 200,
+      "resourceType": "fetch",
+      "at": "2026-05-31T07:23:19.269Z"
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/production-plan-drafts",
+      "status": 200,
+      "resourceType": "fetch",
+      "at": "2026-05-31T07:23:19.280Z"
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/sales-order-drafts",
+      "status": 200,
+      "resourceType": "fetch",
+      "at": "2026-05-31T07:23:19.284Z"
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/sales-order-drafts/5/cancel",
+      "status": 200,
+      "resourceType": "fetch",
+      "at": "2026-05-31T07:23:19.351Z"
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/sales-order-drafts/rollback-by-scenario",
+      "status": 200,
+      "resourceType": "fetch",
+      "at": "2026-05-31T07:23:19.383Z"
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/production-plan-drafts/rollback-by-scenario",
+      "status": 200,
+      "resourceType": "fetch",
+      "at": "2026-05-31T07:23:19.388Z"
+    }
+  ]
+}
