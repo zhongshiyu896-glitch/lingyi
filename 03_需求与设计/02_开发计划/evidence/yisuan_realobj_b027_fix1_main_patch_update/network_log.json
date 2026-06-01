@@ -1,0 +1,492 @@
+[
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/materialPurchase/materialPurchaseProcess",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderList.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderList.vue?vue&type=style&index=0&scoped=ed1d31ed&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=subcontract",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders?parity=material-purchase&page=1&page_size=20",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderList.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderList.vue?vue&type=style&index=0&scoped=ed1d31ed&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=subcontract",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders?parity=material-purchase&page=1&page_size=20",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders?parity=material-purchase&page=1&page_size=20",
+    "status": 200
+  },
+  {
+    "method": "PATCH",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/8",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders?parity=material-purchase&page=1&page_size=20",
+    "status": 200
+  },
+  {
+    "method": "PATCH",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/8/settlement-preview",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/8/readback?scenario_tag=REALOBJ-CAND004-B027-FIX1-20260601-002",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/8/readback?scenario_tag=REALOBJ-CAND004-B027-FIX1-20260601-002",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/8/settlement-preview?scenario_tag=REALOBJ-CAND004-B027-FIX1-20260601-002",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/subcontract/detail?id=8&parity=material-purchase&scenario_tag=REALOBJ-CAND004-B027-FIX1-20260601-002",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderDetail.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderDetail.vue?vue&type=style&index=0&scoped=4d68c854&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=subcontract",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/8/readback?scenario_tag=REALOBJ-CAND004-B027-FIX1-20260601-002",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/8/readback?scenario_tag=REALOBJ-CAND004-B027-FIX1-20260601-002",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderList.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/subcontract/SubcontractOrderList.vue?vue&type=style&index=0&scoped=ed1d31ed&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders?parity=material-purchase&page=1&page_size=20",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=subcontract",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/8/rollback",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/purchase-subcontract-drafts/residual-count?scenario_tag=REALOBJ-CAND004-B027-FIX1-20260601-002",
+    "status": 200
+  }
+]

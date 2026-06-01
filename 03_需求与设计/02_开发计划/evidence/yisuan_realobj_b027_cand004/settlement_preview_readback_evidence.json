@@ -1,0 +1,16 @@
+{
+  "settlement_preview_http_status": 200,
+  "settlement_preview": {
+    "accepted_qty": 56,
+    "rejected_qty": 3,
+    "settlement_qty": 56,
+    "estimated_amount": 6800,
+    "state": "previewed"
+  },
+  "settlement_preview_readback_success": true,
+  "settlement_preview_status_observed": true,
+  "settlement_preview_amount_or_summary_observed": true,
+  "settlement_preview_real_finance_effect": false,
+  "settlement_preview_real_payment_effect": false,
+  "settlement_preview_real_inventory_effect": false
+}

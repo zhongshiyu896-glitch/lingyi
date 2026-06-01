@@ -1,0 +1,23 @@
+{
+  "code_modified_in_this_task": false,
+  "files": [
+    {
+      "path": "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderList.vue",
+      "hash_before": "34688627e7f377d0877ee598aca843b8b85a438ca01057f40e84ff702eeb1cc6",
+      "hash_after": "34688627e7f377d0877ee598aca843b8b85a438ca01057f40e84ff702eeb1cc6",
+      "unchanged": true
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/subcontract/SubcontractOrderDetail.vue",
+      "hash_before": "3b60c22d5d7ec3ed6d7fc384c76d4d8b6692cf3f484748352c2fb83daba02706",
+      "hash_after": "3b60c22d5d7ec3ed6d7fc384c76d4d8b6692cf3f484748352c2fb83daba02706",
+      "unchanged": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/local_dev.py",
+      "hash_before": "e4b82b21d677ddfc95b24c422266557682ec7f24037b7466e621fd431cd6b58d",
+      "hash_after": "e4b82b21d677ddfc95b24c422266557682ec7f24037b7466e621fd431cd6b58d",
+      "unchanged": true
+    }
+  ]
+}

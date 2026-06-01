@@ -1,0 +1,22 @@
+{
+  "routes": [
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "target_url": "http://127.0.0.1:5174/materialPurchase/materialPurchaseProcess",
+      "http_status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    {
+      "route": "/subcontract/list?parity=material-purchase",
+      "target_url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+      "http_status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    {
+      "route": "/subcontract/detail?id=5&parity=material-purchase&scenario_tag=REALOBJ-CAND004-B027-20260601-001",
+      "target_url": "http://127.0.0.1:5174/subcontract/detail?id=5&parity=material-purchase&scenario_tag=REALOBJ-CAND004-B027-20260601-001",
+      "http_status": 200,
+      "final_path": "/subcontract/detail?id=5&parity=material-purchase&scenario_tag=REALOBJ-CAND004-B027-20260601-001"
+    }
+  ]
+}

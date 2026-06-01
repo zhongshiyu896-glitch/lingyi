@@ -1,0 +1,17 @@
+{
+  "scenario_tag_present": true,
+  "create_success": true,
+  "update_success": true,
+  "local_object_id_created": true,
+  "local_object_id": 8,
+  "subcontract_or_purchase_readback_success": true,
+  "material_line_readback_success": true,
+  "issue_return_or_inspection_readback_success": true,
+  "readback_after_main_patch_success": true,
+  "settlement_preview_readback_success": true,
+  "settlement_preview_status_observed": true,
+  "settlement_preview_amount_or_summary_observed": true,
+  "cancel_or_rollback_success": true,
+  "zero_residual": true,
+  "residual_records": 0
+}

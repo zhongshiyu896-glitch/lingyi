@@ -1,0 +1,11 @@
+{
+  "scenario_tag": "REALOBJ-CAND004-B027-20260601-001",
+  "endpoint_prefixes": [
+    "/api/local-dev/subcontract/orders"
+  ],
+  "create_request_observed": true,
+  "update_request_observed": true,
+  "settlement_preview_patch_request_observed": true,
+  "rollback_request_observed": true,
+  "all_local_dev_purchase_subcontract_write_statuses_success": true
+}

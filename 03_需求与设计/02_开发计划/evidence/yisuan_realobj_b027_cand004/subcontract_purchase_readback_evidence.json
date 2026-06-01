@@ -1,0 +1,7 @@
+{
+  "readback_http_status": 200,
+  "readback_request_observed": true,
+  "subcontract_or_purchase_readback_success": true,
+  "material_line_readback_success": true,
+  "issue_return_or_inspection_readback_success": true
+}

@@ -1,0 +1,6 @@
+{
+  "cancel_or_rollback_success": true,
+  "zero_residual": true,
+  "residual_records": 0,
+  "settlement_preview_included_in_rollback": true
+}

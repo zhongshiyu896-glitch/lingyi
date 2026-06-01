@@ -2780,6 +2780,250 @@ def cancel_local_purchase_subcontract_draft(
     return _ok(_purchase_subcontract_draft_row_to_dict(cancelled))
 
 
+def _build_subcontract_settlement_preview(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return _normalize_inspection_settlement(snapshot.get("inspection_settlement"))
+
+
+def _build_subcontract_readback_flags(
+    draft_payload: dict[str, Any], settlement_preview: dict[str, Any], scenario_tag: str
+) -> dict[str, Any]:
+    material_lines = draft_payload.get("material_lines") if isinstance(draft_payload.get("material_lines"), list) else []
+    issue_return = draft_payload.get("issue_return") if isinstance(draft_payload.get("issue_return"), dict) else {}
+    settlement_preview_status = str(settlement_preview.get("state", "")).strip()
+    settlement_preview_amount_or_summary_observed = (
+        _to_float(settlement_preview.get("estimated_amount"), 0.0) > 0
+        or _to_float(settlement_preview.get("settlement_qty"), 0.0) > 0
+        or _to_float(settlement_preview.get("accepted_qty"), 0.0) > 0
+        or _to_float(settlement_preview.get("rejected_qty"), 0.0) > 0
+    )
+    issue_return_or_inspection_readback_success = (
+        _to_float(issue_return.get("issued_qty"), 0.0) >= 0
+        and _to_float(issue_return.get("returned_qty"), 0.0) >= 0
+        and settlement_preview_status != ""
+    )
+    return {
+        "scenario_tag_present": bool(str(draft_payload.get("scenario_tag", "")).strip()),
+        "subcontract_or_purchase_readback_success": True,
+        "material_line_readback_success": len(material_lines) > 0,
+        "issue_return_or_inspection_readback_success": issue_return_or_inspection_readback_success,
+        "settlement_preview_readback_success": True,
+        "settlement_preview_status_observed": settlement_preview_status != "",
+        "settlement_preview_amount_or_summary_observed": settlement_preview_amount_or_summary_observed,
+        "settlement_preview_real_finance_effect": False,
+        "settlement_preview_real_payment_effect": False,
+        "settlement_preview_real_inventory_effect": False,
+        "status_validation_readback_success": str(draft_payload.get("status", "")).strip() != "",
+        "scenario_tag_matched": str(draft_payload.get("scenario_tag", "")).strip() == scenario_tag,
+    }
+
+
+def _build_subcontract_order_readback_payload(
+    draft_payload: dict[str, Any], scenario_tag: str
+) -> dict[str, Any]:
+    settlement_preview = _build_subcontract_settlement_preview(draft_payload)
+    readback_flags = _build_subcontract_readback_flags(draft_payload, settlement_preview, scenario_tag)
+    return {
+        "object_id": int(draft_payload["draft_id"]),
+        "draft_id": int(draft_payload["draft_id"]),
+        "scenario_tag": draft_payload["scenario_tag"],
+        "subcontract_or_purchase": {
+            "document_no": draft_payload["document_no"],
+            "partner_name": draft_payload["partner_name"],
+            "partner_type": draft_payload["partner_type"],
+            "document_type": draft_payload["document_type"],
+            "business_date": draft_payload["business_date"],
+            "status": draft_payload["status"],
+            "material_category": draft_payload["material_category"],
+            "predecessor_doc_no": draft_payload["predecessor_doc_no"],
+            "note": draft_payload["note"],
+            "state": draft_payload["state"],
+        },
+        "material_lines": draft_payload["material_lines"],
+        "issue_return": draft_payload["issue_return"],
+        "inspection_settlement": draft_payload["inspection_settlement"],
+        "settlement_preview": settlement_preview,
+        "readback_flags": readback_flags,
+        "created_at": draft_payload["created_at"],
+        "updated_at": draft_payload["updated_at"],
+    }
+
+
+@app.post("/api/local-dev/subcontract/orders")
+def upsert_local_subcontract_order(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    return upsert_local_purchase_subcontract_draft(payload)
+
+
+@app.patch("/api/local-dev/subcontract/orders/{draft_id}")
+def patch_local_subcontract_order(draft_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    patch_payload = dict(payload)
+    patch_payload["draft_id"] = draft_id
+    return upsert_local_purchase_subcontract_draft(patch_payload)
+
+
+@app.get("/api/local-dev/subcontract/orders")
+def list_local_subcontract_orders(
+    keyword: str | None = None,
+    partner_name: str | None = None,
+    status: str | None = None,
+    material_category: str | None = None,
+    scenario_tag: str | None = None,
+    document_type: str | None = None,
+    parity: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+) -> dict[str, Any]:
+    return list_local_purchase_subcontract_drafts(
+        keyword=keyword,
+        partner_name=partner_name,
+        status=status,
+        material_category=material_category,
+        scenario_tag=scenario_tag,
+        document_type=document_type,
+        parity=parity,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@app.get("/api/local-dev/subcontract/orders/{draft_id}/readback")
+def get_local_subcontract_order_readback(
+    draft_id: int,
+    scenario_tag: str = Query(..., min_length=1),
+) -> dict[str, Any]:
+    tag = scenario_tag.strip()
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        row = _get_purchase_subcontract_draft_row(connection, draft_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    payload = _purchase_subcontract_draft_row_to_dict(row)
+    if str(payload.get("scenario_tag", "")).strip() != tag:
+        raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+    return _ok(_build_subcontract_order_readback_payload(payload, tag))
+
+
+@app.get("/api/local-dev/subcontract/orders/{draft_id}/settlement-preview")
+def get_local_subcontract_settlement_preview(
+    draft_id: int,
+    scenario_tag: str = Query(..., min_length=1),
+) -> dict[str, Any]:
+    tag = scenario_tag.strip()
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        row = _get_purchase_subcontract_draft_row(connection, draft_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="draft not found")
+    payload = _purchase_subcontract_draft_row_to_dict(row)
+    if str(payload.get("scenario_tag", "")).strip() != tag:
+        raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+    settlement_preview = _build_subcontract_settlement_preview(payload)
+    amount_or_summary_observed = (
+        _to_float(settlement_preview.get("estimated_amount"), 0.0) > 0
+        or _to_float(settlement_preview.get("settlement_qty"), 0.0) > 0
+        or _to_float(settlement_preview.get("accepted_qty"), 0.0) > 0
+        or _to_float(settlement_preview.get("rejected_qty"), 0.0) > 0
+    )
+    return _ok(
+        {
+            "draft_id": draft_id,
+            "scenario_tag": tag,
+            "settlement_preview": settlement_preview,
+            "settlement_preview_status_observed": str(settlement_preview.get("state", "")).strip() != "",
+            "settlement_preview_amount_or_summary_observed": amount_or_summary_observed,
+            "settlement_preview_real_finance_effect": False,
+            "settlement_preview_real_payment_effect": False,
+            "settlement_preview_real_inventory_effect": False,
+        }
+    )
+
+
+@app.patch("/api/local-dev/subcontract/orders/{draft_id}/settlement-preview")
+def patch_local_subcontract_settlement_preview(
+    draft_id: int, payload: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        row = _get_purchase_subcontract_draft_row(connection, draft_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        draft_payload = _purchase_subcontract_draft_row_to_dict(row)
+        if str(draft_payload.get("scenario_tag", "")).strip() != scenario_tag:
+            raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+
+        merged_preview = dict(draft_payload.get("inspection_settlement", {}))
+        for key in ("accepted_qty", "rejected_qty", "settlement_qty", "estimated_amount", "state"):
+            if key in payload:
+                merged_preview[key] = payload.get(key)
+        normalized_preview = _normalize_inspection_settlement(merged_preview)
+        connection.execute(
+            """
+            UPDATE ly_local_purchase_subcontract_drafts
+            SET inspection_settlement_json = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (json.dumps(normalized_preview, ensure_ascii=False), _now_iso(), draft_id),
+        )
+        connection.commit()
+        updated_row = _get_purchase_subcontract_draft_row(connection, draft_id)
+
+    if updated_row is None:
+        raise HTTPException(status_code=500, detail="settlement preview update failed")
+    updated_payload = _purchase_subcontract_draft_row_to_dict(updated_row)
+    settlement_preview = _build_subcontract_settlement_preview(updated_payload)
+    amount_or_summary_observed = (
+        _to_float(settlement_preview.get("estimated_amount"), 0.0) > 0
+        or _to_float(settlement_preview.get("settlement_qty"), 0.0) > 0
+        or _to_float(settlement_preview.get("accepted_qty"), 0.0) > 0
+        or _to_float(settlement_preview.get("rejected_qty"), 0.0) > 0
+    )
+    return _ok(
+        {
+            "draft_id": draft_id,
+            "scenario_tag": scenario_tag,
+            "settlement_preview": settlement_preview,
+            "settlement_preview_created_or_updated": True,
+            "settlement_preview_readback_success": True,
+            "settlement_preview_status_observed": str(settlement_preview.get("state", "")).strip() != "",
+            "settlement_preview_amount_or_summary_observed": amount_or_summary_observed,
+            "settlement_preview_real_finance_effect": False,
+            "settlement_preview_real_payment_effect": False,
+            "settlement_preview_real_inventory_effect": False,
+        }
+    )
+
+
+@app.post("/api/local-dev/subcontract/orders/{draft_id}/rollback")
+def rollback_local_subcontract_order(
+    draft_id: int, payload: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    with _connect_local_sqlite() as connection:
+        _create_purchase_subcontract_draft_table(connection)
+        row = _get_purchase_subcontract_draft_row(connection, draft_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        scenario = str(row["scenario_tag"]).strip()
+        if scenario != scenario_tag:
+            raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+
+    rollback_result = rollback_local_purchase_subcontract_drafts({"scenario_tag": scenario_tag})
+    data = rollback_result.get("data", {})
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=500, detail="rollback failed")
+    data["object_id"] = draft_id
+    return _ok(data)
+
+
 def _create_inventory_operation_draft_table(connection: sqlite3.Connection) -> None:
     connection.execute(
         """

@@ -1,0 +1,47 @@
+{
+  "scenario_tag": "REALOBJ-CAND004-B027-20260601-001",
+  "routes": [
+    {
+      "route": "/materialPurchase/materialPurchaseProcess",
+      "target_url": "http://127.0.0.1:5174/materialPurchase/materialPurchaseProcess",
+      "http_status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    {
+      "route": "/subcontract/list?parity=material-purchase",
+      "target_url": "http://127.0.0.1:5174/subcontract/list?parity=material-purchase",
+      "http_status": 200,
+      "final_path": "/subcontract/list?parity=material-purchase"
+    },
+    {
+      "route": "/subcontract/detail?id=5&parity=material-purchase&scenario_tag=REALOBJ-CAND004-B027-20260601-001",
+      "target_url": "http://127.0.0.1:5174/subcontract/detail?id=5&parity=material-purchase&scenario_tag=REALOBJ-CAND004-B027-20260601-001",
+      "http_status": 200,
+      "final_path": "/subcontract/detail?id=5&parity=material-purchase&scenario_tag=REALOBJ-CAND004-B027-20260601-001"
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "route_material_purchase_redirect.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b027_cand004/route_material_purchase_redirect.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    },
+    {
+      "name": "route_subcontract_list.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b027_cand004/route_subcontract_list.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    },
+    {
+      "name": "route_subcontract_detail.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b027_cand004/route_subcontract_detail.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    }
+  ],
+  "object_id": 5
+}

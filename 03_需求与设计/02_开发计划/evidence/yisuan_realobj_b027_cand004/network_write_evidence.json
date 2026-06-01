@@ -1,0 +1,53 @@
+{
+  "write_requests_observed_count": 4,
+  "local_dev_write_requests_count": 4,
+  "write_requests_only_local_dev_purchase_subcontract_endpoints": true,
+  "production_write_requests": 0,
+  "erpnext_production_write_requests": 0,
+  "real_production_account_used": false,
+  "write_requests": [
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/5/settlement-preview",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/5/rollback",
+      "status": 200
+    }
+  ],
+  "local_dev_write_requests": [
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders",
+      "status": 200
+    },
+    {
+      "method": "PATCH",
+      "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/5/settlement-preview",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5174/api/local-dev/subcontract/orders/5/rollback",
+      "status": 200
+    }
+  ],
+  "non_local_dev_write_requests": []
+}
