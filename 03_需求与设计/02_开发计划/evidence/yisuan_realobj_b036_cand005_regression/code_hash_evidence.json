@@ -1,0 +1,24 @@
+{
+  "code_modified_in_this_task": false,
+  "hash_algorithm": "sha256",
+  "files": [
+    {
+      "path": "06_前端/lingyi-pc/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+      "before": "191c879944abc688eea27d2ad882c8255c3fd4ce15be60cc2ae9b4c959843f03",
+      "after": "191c879944abc688eea27d2ad882c8255c3fd4ce15be60cc2ae9b4c959843f03",
+      "unchanged": true
+    },
+    {
+      "path": "06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue",
+      "before": "eb745996ba62d1bce88362adf11f7e5435ce1c09dccb1fac585411de66dc3a6b",
+      "after": "eb745996ba62d1bce88362adf11f7e5435ce1c09dccb1fac585411de66dc3a6b",
+      "unchanged": true
+    },
+    {
+      "path": "07_后端/lingyi_service/app/local_dev.py",
+      "before": "50c08b64916c9c386fce5ae57d8b9fd589db811f5876f4fad7416dd88be12be3",
+      "after": "50c08b64916c9c386fce5ae57d8b9fd589db811f5876f4fad7416dd88be12be3",
+      "unchanged": true
+    }
+  ]
+}

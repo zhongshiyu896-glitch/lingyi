@@ -1,0 +1,33 @@
+{
+  "scenario_tag": "REALOBJ-CAND005-B036-REG-20260601-001",
+  "routes": [
+    {
+      "route": "/sales-inventory/stock-ledger",
+      "target_url": "http://127.0.0.1:5174/sales-inventory/stock-ledger",
+      "http_status": 200,
+      "final_path": "/sales-inventory/stock-ledger"
+    },
+    {
+      "route": "/warehouse",
+      "target_url": "http://127.0.0.1:5174/warehouse",
+      "http_status": 200,
+      "final_path": "/warehouse"
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "route_stock_ledger.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b036_cand005_regression/route_stock_ledger.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    },
+    {
+      "name": "route_warehouse.png",
+      "path": "/Users/hh/Desktop/领意服装管理系统/03_需求与设计/02_开发计划/evidence/yisuan_realobj_b036_cand005_regression/route_warehouse.png",
+      "width": 1440,
+      "height": 1200,
+      "expected_size": "1440x1200"
+    }
+  ]
+}

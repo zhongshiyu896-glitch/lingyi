@@ -1704,7 +1704,7 @@ const finishedGoodsParityHint = computed<string>(() => (
 const foundationWarehouseParityHint = computed<string>(() => (
   '衣算云 / 基础资料 / 仓库管理（parity=foundation-warehouse，只读交互）'
 ))
-const contractCand005ReadbackOnly = true
+const contractCand005ReadbackOnly = false
 const localWriteReadonlyGuarded = computed<boolean>(() => (
   contractCand005ReadbackOnly || isFinishedGoodsParity.value || isFoundationWarehouseParity.value
 ))
@@ -2434,7 +2434,8 @@ const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string)
   return `${tag}-${fallbackSuffix}`
 }
 
-const LOCAL_INVENTORY_DRAFT_ENDPOINT = '/api/local-dev/inventory-operation-drafts'
+const LOCAL_STOCK_LEDGER_DRAFT_ENDPOINT = '/api/local-dev/stock-ledger/draft'
+const LOCAL_STOCK_LEDGER_RESIDUAL_ENDPOINT = '/api/local-dev/stock-ledger/residual-count'
 
 type LocalInventoryDraftWritePayload = {
   draft_id?: number
@@ -2459,7 +2460,7 @@ type LocalInventoryDraftWritePayload = {
 const upsertLocalInventoryDraft = async (
   payload: LocalInventoryDraftWritePayload,
 ): Promise<ApiResponse<LocalInventoryDraft>> => {
-  return request<LocalInventoryDraft>(LOCAL_INVENTORY_DRAFT_ENDPOINT, {
+  return request<LocalInventoryDraft>(LOCAL_STOCK_LEDGER_DRAFT_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -2467,14 +2468,14 @@ const upsertLocalInventoryDraft = async (
 }
 
 const fetchLocalInventoryDraft = async (draftId: number): Promise<ApiResponse<LocalInventoryDraft>> => {
-  return request<LocalInventoryDraft>(`${LOCAL_INVENTORY_DRAFT_ENDPOINT}/${draftId}`)
+  return request<LocalInventoryDraft>(`${LOCAL_STOCK_LEDGER_DRAFT_ENDPOINT}/${draftId}`)
 }
 
 const cancelLocalInventoryDraft = async (
   draftId: number,
   payload: { scenario_tag: string; reason: string },
 ): Promise<ApiResponse<LocalInventoryDraft>> => {
-  return request<LocalInventoryDraft>(`${LOCAL_INVENTORY_DRAFT_ENDPOINT}/${draftId}/cancel`, {
+  return request<LocalInventoryDraft>(`${LOCAL_STOCK_LEDGER_DRAFT_ENDPOINT}/${draftId}/cancel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -2482,10 +2483,11 @@ const cancelLocalInventoryDraft = async (
 }
 
 const rollbackLocalInventoryDraftByScenario = async (
+  draftId: number,
   scenarioTag: string,
 ): Promise<ApiResponse<{ rollback_success: boolean; zero_residual_success: boolean; residual_records_after_rollback: number }>> => {
   return request<{ rollback_success: boolean; zero_residual_success: boolean; residual_records_after_rollback: number }>(
-    `${LOCAL_INVENTORY_DRAFT_ENDPOINT}/rollback-by-scenario`,
+    `${LOCAL_STOCK_LEDGER_DRAFT_ENDPOINT}/${draftId}/rollback`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2496,7 +2498,7 @@ const rollbackLocalInventoryDraftByScenario = async (
 
 const fetchLocalInventoryResidual = async (scenarioTag: string): Promise<ApiResponse<LocalInventoryResidualData>> => {
   const query = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
-  return request<LocalInventoryResidualData>(`${LOCAL_INVENTORY_DRAFT_ENDPOINT}/residual-count?${query}`)
+  return request<LocalInventoryResidualData>(`${LOCAL_STOCK_LEDGER_RESIDUAL_ENDPOINT}?${query}`)
 }
 
 const createLocalStockEntryDraft = async (): Promise<void> => {
@@ -2618,9 +2620,14 @@ const rollbackLocalInventoryDrafts = async (): Promise<void> => {
     ElMessage.warning(localWriteFeedback.value)
     return
   }
+  if (!localStockEntryDraft.value) {
+    localWriteFeedback.value = '请先创建草稿，再执行回滚。'
+    ElMessage.warning(localWriteFeedback.value)
+    return
+  }
   rollbackLoading.value = true
   try {
-    const rollbackResult = await rollbackLocalInventoryDraftByScenario(scenarioTag)
+    const rollbackResult = await rollbackLocalInventoryDraftByScenario(localStockEntryDraft.value.id, scenarioTag)
     const residualResult = await fetchLocalInventoryResidual(scenarioTag)
     residualAfterRollback.value = residualResult.data.total
     localWriteFeedback.value = `回滚完成：deleted=${rollbackResult.data.residual_records_after_rollback === 0 ? 'yes' : 'partial'} residual=${residualResult.data.total}`

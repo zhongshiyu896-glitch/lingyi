@@ -1,0 +1,11 @@
+{
+  "scenario_tag": "REALOBJ-CAND005-B036-REG-20260601-001",
+  "endpoint_prefixes": [
+    "/api/local-dev/stock-ledger",
+    "/api/local-dev/warehouse/snapshot"
+  ],
+  "create_request_observed": true,
+  "update_patch_request_observed": true,
+  "rollback_request_observed": true,
+  "all_local_dev_inventory_warehouse_write_statuses_success": true
+}

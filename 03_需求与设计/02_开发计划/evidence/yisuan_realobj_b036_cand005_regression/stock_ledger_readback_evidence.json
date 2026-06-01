@@ -1,0 +1,60 @@
+{
+  "readback_http_status": 200,
+  "stock_ledger_readback_success": true,
+  "record_count": 1,
+  "latest_record": {
+    "id": 5,
+    "draft_id": 5,
+    "scenario_tag": "REALOBJ-CAND005-B036-REG-20260601-001",
+    "draft_no": "INV-20260601113129",
+    "operation_type": "transfer",
+    "flow_type": "transfer",
+    "material_code": "MAT-CAND005-REG-001",
+    "material_name": "库存回归测试物料",
+    "spec": "",
+    "uom": "Nos",
+    "warehouse": "样衣仓",
+    "source_warehouse": "样衣仓",
+    "target_warehouse": "成品仓",
+    "current_qty": 180,
+    "operation_qty": 9,
+    "counting_qty": 180,
+    "diff_qty": 0,
+    "status": "draft",
+    "status_label": "draft",
+    "business_ref": "SL-REALOBJ-CAND005-B036-REG-20260601-001",
+    "source_id": "SL-REALOBJ-CAND005-B036-REG-20260601-001",
+    "business_time": "2026-06-01",
+    "note": "REALOBJ-CAND005-B036-REG-20260601-001-update",
+    "state": "saved",
+    "created_at": "2026-06-01T11:31:29",
+    "updated_at": "2026-06-01T11:31:29",
+    "cancelled_at": null,
+    "cancel_reason": null,
+    "transfer_saved": true,
+    "counting_saved": false,
+    "transfer_or_counting_saved": true,
+    "items": [
+      {
+        "item_code": "MAT-CAND005-REG-001",
+        "qty": 9,
+        "uom": "Nos",
+        "source_warehouse": "样衣仓",
+        "target_warehouse": "成品仓"
+      }
+    ],
+    "idempotency_key": "REALOBJ-CAND005-B036-REG-20260601-001-LOCAL-INV-5",
+    "event_key": "local_inventory_draft:5",
+    "outbox": {
+      "draft_id": 5,
+      "event_id": 5,
+      "event_type": "local_inventory_draft",
+      "status": "succeeded",
+      "retry_count": 0,
+      "external_ref": null,
+      "error_message": null,
+      "created_at": "2026-06-01T11:31:29",
+      "processed_at": "2026-06-01T11:31:29"
+    }
+  }
+}

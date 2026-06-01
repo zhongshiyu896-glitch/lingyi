@@ -1,0 +1,12 @@
+{
+  "scenario_tag_present": true,
+  "create_success": true,
+  "update_success": true,
+  "local_object_id_created": true,
+  "local_object_id": 3,
+  "stock_ledger_readback_success": true,
+  "warehouse_readback_success": true,
+  "cancel_or_rollback_success": true,
+  "zero_residual": true,
+  "residual_records": 0
+}

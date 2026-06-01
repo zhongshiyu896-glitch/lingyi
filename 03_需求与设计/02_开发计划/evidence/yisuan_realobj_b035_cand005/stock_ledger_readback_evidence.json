@@ -1,0 +1,60 @@
+{
+  "readback_http_status": 200,
+  "stock_ledger_readback_success": true,
+  "record_count": 1,
+  "latest_record": {
+    "id": 3,
+    "draft_id": 3,
+    "scenario_tag": "Z003-WAREHOUSE-20260601-901",
+    "draft_no": "INV-20260601111842",
+    "operation_type": "transfer",
+    "flow_type": "transfer",
+    "material_code": "MAT-CAND005-001",
+    "material_name": "库存闭环测试物料",
+    "spec": "",
+    "uom": "Nos",
+    "warehouse": "样衣仓",
+    "source_warehouse": "样衣仓",
+    "target_warehouse": "成品仓",
+    "current_qty": 120,
+    "operation_qty": 7,
+    "counting_qty": 120,
+    "diff_qty": 0,
+    "status": "draft",
+    "status_label": "draft",
+    "business_ref": "SL-Z003-WAREHOUSE-20260601-901",
+    "source_id": "SL-Z003-WAREHOUSE-20260601-901",
+    "business_time": "2026-06-01",
+    "note": "Z003-WAREHOUSE-20260601-901-update",
+    "state": "saved",
+    "created_at": "2026-06-01T11:18:42",
+    "updated_at": "2026-06-01T11:18:42",
+    "cancelled_at": null,
+    "cancel_reason": null,
+    "transfer_saved": true,
+    "counting_saved": false,
+    "transfer_or_counting_saved": true,
+    "items": [
+      {
+        "item_code": "MAT-CAND005-001",
+        "qty": 7,
+        "uom": "Nos",
+        "source_warehouse": "样衣仓",
+        "target_warehouse": "成品仓"
+      }
+    ],
+    "idempotency_key": "Z003-WAREHOUSE-20260601-901-LOCAL-INV-3",
+    "event_key": "local_inventory_draft:3",
+    "outbox": {
+      "draft_id": 3,
+      "event_id": 3,
+      "event_type": "local_inventory_draft",
+      "status": "succeeded",
+      "retry_count": 0,
+      "external_ref": null,
+      "error_message": null,
+      "created_at": "2026-06-01T11:18:42",
+      "processed_at": "2026-06-01T11:18:42"
+    }
+  }
+}

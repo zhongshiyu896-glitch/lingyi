@@ -1,0 +1,13 @@
+{
+  "readback_http_status": 200,
+  "warehouse_readback_success": true,
+  "warehouse_count": 1,
+  "warehouses": [
+    {
+      "warehouse": "样衣仓",
+      "record_count": 1,
+      "operation_qty_total": 7,
+      "latest_business_time": "2026-06-01"
+    }
+  ]
+}

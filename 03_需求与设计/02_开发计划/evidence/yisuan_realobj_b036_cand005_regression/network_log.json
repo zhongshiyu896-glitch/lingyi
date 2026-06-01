@@ -1,0 +1,282 @@
+[
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/sales-inventory/stock-ledger",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventoryStockLedger.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/sales_inventory.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventoryStockLedger.vue?vue&type=style&index=0&scoped=32ce1aa5&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/sales-inventory/material-transfers?page=1&page_size=20",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/stock-ledger?scenario_tag=Z003-WAREHOUSE-20260601-001&page=1&page_size=1",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/warehouse",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/warehouse/WarehouseDashboard.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/warehouse.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/warehouse/WarehouseDashboard.vue?vue&type=style&index=0&scoped=f9795a07&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=warehouse",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:5174/api/local-dev/stock-ledger/draft",
+    "status": 200
+  },
+  {
+    "method": "PATCH",
+    "url": "http://127.0.0.1:5174/api/local-dev/stock-ledger/draft/5",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/stock-ledger?scenario_tag=REALOBJ-CAND005-B036-REG-20260601-001&page=1&page_size=5",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/warehouse/snapshot?scenario_tag=REALOBJ-CAND005-B036-REG-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:5174/api/local-dev/stock-ledger/draft/5/rollback",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/stock-ledger/residual-count?scenario_tag=REALOBJ-CAND005-B036-REG-20260601-001",
+    "status": 200
+  }
+]

@@ -3434,3 +3434,168 @@ def cancel_local_inventory_operation_draft(
     if cancelled is None:
         raise HTTPException(status_code=500, detail="draft cancel failed")
     return _ok(_inventory_operation_draft_row_to_dict(cancelled))
+
+
+def _build_stock_ledger_draft_payload(payload: dict[str, Any], draft_id: int | None = None) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    operation_type = str(payload.get("operation_type", "")).strip().lower() or "transfer"
+    flow_type = str(payload.get("flow_type", "")).strip().lower() or operation_type
+    material_code = str(payload.get("material_code", "")).strip()
+    warehouse = str(payload.get("warehouse", "")).strip()
+    source_warehouse = str(payload.get("source_warehouse", "")).strip() or warehouse
+    target_warehouse = str(payload.get("target_warehouse", "")).strip() or warehouse
+    transfer_qty = _to_float(payload.get("transfer_qty", payload.get("qty")), 0.0)
+    current_qty = _to_float(payload.get("current_qty"), 0.0)
+    counting_qty = _to_float(payload.get("counting_qty"), current_qty)
+    business_ref = str(payload.get("business_ref", "")).strip() or f"SL-{scenario_tag}"
+    business_time = str(payload.get("business_time", "")).strip() or date.today().isoformat()
+    status = str(payload.get("status", "")).strip() or "draft"
+    normalized: dict[str, Any] = {
+        "scenario_tag": scenario_tag,
+        "operation_type": operation_type,
+        "flow_type": flow_type,
+        "material_code": material_code,
+        "material_name": str(payload.get("material_name", "")).strip() or material_code,
+        "spec": str(payload.get("spec", "")).strip(),
+        "uom": str(payload.get("uom", "")).strip() or "Nos",
+        "warehouse": warehouse,
+        "source_warehouse": source_warehouse,
+        "target_warehouse": target_warehouse,
+        "current_qty": current_qty,
+        "transfer_qty": transfer_qty if transfer_qty > 0 else 1.0,
+        "counting_qty": counting_qty,
+        "status": status,
+        "business_ref": business_ref,
+        "business_time": business_time,
+        "note": str(payload.get("note", "")).strip() or f"{scenario_tag}-stock-ledger-draft",
+    }
+    if draft_id is not None:
+        normalized["draft_id"] = draft_id
+    return normalized
+
+
+@app.get("/api/local-dev/stock-ledger")
+def list_local_stock_ledger_records(
+    scenario_tag: str = Query(..., min_length=1),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=200),
+) -> dict[str, Any]:
+    listed = list_local_inventory_operation_drafts(
+        scenario_tag=scenario_tag.strip(),
+        page=page,
+        page_size=page_size,
+    )
+    data = listed.get("data", {})
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=500, detail="invalid stock-ledger readback payload")
+    records = data.get("items", [])
+    total = int(data.get("total", len(records) if isinstance(records, list) else 0))
+    return _ok(
+        {
+            "scenario_tag": scenario_tag.strip(),
+            "records": records,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+    )
+
+
+@app.post("/api/local-dev/stock-ledger/draft")
+def create_local_stock_ledger_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    return upsert_local_inventory_operation_draft(_build_stock_ledger_draft_payload(payload))
+
+
+@app.patch("/api/local-dev/stock-ledger/draft/{draft_id}")
+def update_local_stock_ledger_draft(draft_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    return upsert_local_inventory_operation_draft(_build_stock_ledger_draft_payload(payload, draft_id=draft_id))
+
+
+@app.get("/api/local-dev/stock-ledger/draft/{draft_id}")
+def get_local_stock_ledger_draft(draft_id: int) -> dict[str, Any]:
+    return get_local_inventory_operation_draft(draft_id)
+
+
+@app.post("/api/local-dev/stock-ledger/draft/{draft_id}/cancel")
+def cancel_local_stock_ledger_draft(draft_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    return cancel_local_inventory_operation_draft(draft_id, payload)
+
+
+@app.post("/api/local-dev/stock-ledger/draft/{draft_id}/rollback")
+def rollback_local_stock_ledger_draft(draft_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    with _connect_local_sqlite() as connection:
+        _create_inventory_operation_draft_table(connection)
+        row = _get_inventory_operation_draft_row(connection, draft_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="draft not found")
+        if str(row["scenario_tag"]).strip() != scenario_tag:
+            raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+    rolled = rollback_local_inventory_operation_drafts({"scenario_tag": scenario_tag})
+    data = rolled.get("data", {})
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=500, detail="rollback failed")
+    residual = int(data.get("residual_records_after_rollback", -1))
+    return _ok(
+        {
+            "draft_id": draft_id,
+            "scenario_tag": scenario_tag,
+            "deleted_count": int(data.get("deleted_count", 0)),
+            "residual_records_after_rollback": residual,
+            "rollback_success": bool(data.get("rollback_success", False)),
+            "zero_residual_success": residual == 0,
+        }
+    )
+
+
+@app.get("/api/local-dev/stock-ledger/residual-count")
+def get_local_stock_ledger_residual_count(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    return get_local_inventory_operation_residual_count(scenario_tag)
+
+
+@app.get("/api/local-dev/warehouse/snapshot")
+def get_local_warehouse_snapshot(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    tag = scenario_tag.strip()
+    listed = list_local_inventory_operation_drafts(
+        scenario_tag=tag,
+        page=1,
+        page_size=200,
+    )
+    data = listed.get("data", {})
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=500, detail="invalid warehouse snapshot payload")
+    records = data.get("items", [])
+    if not isinstance(records, list):
+        records = []
+    warehouse_index: dict[str, dict[str, Any]] = {}
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        warehouse_name = str(record.get("warehouse", "")).strip() or "UNKNOWN"
+        slot = warehouse_index.setdefault(
+            warehouse_name,
+            {
+                "warehouse": warehouse_name,
+                "record_count": 0,
+                "operation_qty_total": 0.0,
+                "latest_business_time": "",
+            },
+        )
+        slot["record_count"] = int(slot["record_count"]) + 1
+        slot["operation_qty_total"] = _to_float(slot.get("operation_qty_total"), 0.0) + _to_float(
+            record.get("operation_qty"), 0.0
+        )
+        business_time = str(record.get("business_time", "")).strip()
+        if business_time and business_time > str(slot["latest_business_time"]):
+            slot["latest_business_time"] = business_time
+    warehouses = sorted(warehouse_index.values(), key=lambda item: str(item["warehouse"]))
+    return _ok(
+        {
+            "scenario_tag": tag,
+            "total_records": len(records),
+            "warehouses": warehouses,
+            "latest_record": records[0] if records else None,
+        }
+    )
