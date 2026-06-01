@@ -1,0 +1,14 @@
+{
+  "scenario_tag_present": true,
+  "create_success": true,
+  "update_success": true,
+  "local_object_id_created": true,
+  "local_object_id": 8,
+  "sales_order_readback_success": true,
+  "order_detail_readback_success": true,
+  "quantity_matrix_readback_success": true,
+  "production_plan_readback_success": true,
+  "cancel_or_rollback_success": true,
+  "zero_residual": true,
+  "residual_records": 0
+}

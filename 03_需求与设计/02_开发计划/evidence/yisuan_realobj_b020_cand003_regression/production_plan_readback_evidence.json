@@ -1,0 +1,14 @@
+{
+  "production_plan_readback_success": true,
+  "production_plan": {
+    "draft_id": 11,
+    "plan_no": "PP-SO-YS-260601",
+    "planned_qty": 900,
+    "plan_date": "2026-06-08",
+    "status": "draft",
+    "state": "saved",
+    "order_no": "SO-YS-260601",
+    "style_code": "JK-2410"
+  },
+  "production_plan_list_total_after_rollback": 0
+}

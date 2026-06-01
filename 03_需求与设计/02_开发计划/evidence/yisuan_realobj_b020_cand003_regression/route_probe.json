@@ -1,0 +1,22 @@
+{
+  "routes": [
+    {
+      "route": "/sales-inventory/sales-orders",
+      "target_url": "http://127.0.0.1:5174/sales-inventory/sales-orders",
+      "http_status": 200,
+      "final_path": "/sales-inventory/sales-orders"
+    },
+    {
+      "route": "/sales-inventory/sales-orders/detail?object_id=8&scenario_tag=REALOBJ-CAND003-B020-20260601-001&order_no=SO-YS-260601",
+      "target_url": "http://127.0.0.1:5174/sales-inventory/sales-orders/detail?object_id=8&scenario_tag=REALOBJ-CAND003-B020-20260601-001&order_no=SO-YS-260601",
+      "http_status": 200,
+      "final_path": "/sales-inventory/sales-orders/detail?object_id=8&scenario_tag=REALOBJ-CAND003-B020-20260601-001&order_no=SO-YS-260601"
+    },
+    {
+      "route": "/production/plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001&object_id=11",
+      "target_url": "http://127.0.0.1:5174/production/plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001&object_id=11",
+      "http_status": 200,
+      "final_path": "/production/plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001&object_id=11"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+field	value
+TASK_ID	TASK-YISUAN-REALOBJ-B019-FIX1-CONTROL-PLANE-RESIDUAL
+HEAD	556c7ac1212e5d7b728d710f9f906983cb29aa31
+branch	codex/sprint4-seal
+cached_count	0
+HEAD_tag_count	0
+fixed_files_count	6
+removed_wrong_references	["B013 freeze YES","CAND002 freeze"]
+corrected_residual_risk_next_regression	TASK-YISUAN-REALOBJ-B020-REGRESSION-CAND003
+corrected_residual_risk_future_ledger	TASK-YISUAN-REALOBJ-B021-LEDGER-CAND003
+corrected_residual_risk_future_stage_boundary	REALOBJ-CAND-003 B021 freeze YES
+frozen_routes_http_200_preserved	true
+frozen_screenshots_1440x1200_preserved	true
+frozen_local_dev_write_loop_preserved	true
+frozen_sales_order_detail_readback_preserved	true
+frozen_quantity_matrix_readback_preserved	true
+frozen_production_plan_readback_preserved	true
+frozen_rollback_zero_residual_preserved	true
+frozen_typecheck_exit_code_0_preserved	true
+frozen_production_erpnext_writes_zero_preserved	true
+product_code_changed_in_fix1	false
+data_classification	local_real_object_test_data_only
+test_data_used	true
+scenario_tag_required	true
+rollback_required	true
+zero_residual_required	true
+seed_data_used	false
+sqlite_not_formal_database	true
+production_readback	false
+go_live	false
+project_completion	false
+remote_lifecycle_parked	true
+prohibited_stage_commit_push	true
+prohibited_reset_restore_clean_delete	true
+production_connected	false
+real_production_account_used	false
+recommended_next_task	TASK-YISUAN-REALOBJ-B020-REGRESSION-CAND003
+NEXT_ROLE	C Auditor

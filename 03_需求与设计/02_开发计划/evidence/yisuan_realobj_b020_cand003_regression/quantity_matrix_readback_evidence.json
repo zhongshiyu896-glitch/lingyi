@@ -1,0 +1,19 @@
+{
+  "quantity_matrix_readback_success": true,
+  "quantity_matrix": [
+    {
+      "color": "米白",
+      "size": "M",
+      "ordered_qty": 704,
+      "planned_qty": 495,
+      "delta_qty": 209
+    },
+    {
+      "color": "烟灰",
+      "size": "L",
+      "ordered_qty": 576,
+      "planned_qty": 405,
+      "delta_qty": 171
+    }
+  ]
+}

@@ -2030,6 +2030,326 @@ def rollback_local_production_plan_drafts(payload: dict[str, Any] = Body(...)) -
     )
 
 
+def _normalize_sales_order_realobj_payload(payload: dict[str, Any], object_id: int | None = None) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+
+    sales_order_source = payload.get("sales_order", {})
+    sales_order = sales_order_source if isinstance(sales_order_source, dict) else {}
+    order_no = str(sales_order.get("order_no") or payload.get("order_no") or "").strip()
+    customer_name = str(sales_order.get("customer_name") or payload.get("customer_name") or "").strip()
+    style_code = str(sales_order.get("style_code") or payload.get("style_code") or "").strip()
+    delivery_date = str(sales_order.get("delivery_date") or payload.get("delivery_date") or "").strip() or date.today().isoformat()
+    status = str(sales_order.get("status") or payload.get("status") or "draft").strip()
+    note = str(payload.get("note") or sales_order.get("note") or "").strip()
+
+    if not order_no:
+        raise HTTPException(status_code=400, detail="order_no is required")
+    if not customer_name:
+        raise HTTPException(status_code=400, detail="customer_name is required")
+    if not style_code:
+        raise HTTPException(status_code=400, detail="style_code is required")
+
+    matrix_source = payload.get("quantity_matrix")
+    if matrix_source is None:
+        matrix_source = sales_order.get("quantity_matrix")
+    matrix = _normalize_sales_order_matrix(matrix_source)
+    if len(matrix) < 2:
+        raise HTTPException(status_code=400, detail="quantity_matrix requires at least 2 cells")
+
+    plan_source = payload.get("production_plan", {})
+    plan_payload = plan_source if isinstance(plan_source, dict) else {}
+    fallback_planned_qty = sum(_to_float(cell.get("planned_qty"), 0.0) for cell in matrix)
+    if fallback_planned_qty <= 0:
+        fallback_planned_qty = sum(_to_float(cell.get("ordered_qty"), 0.0) for cell in matrix)
+    if fallback_planned_qty <= 0:
+        fallback_planned_qty = 1.0
+
+    normalized_order = {
+        "scenario_tag": scenario_tag,
+        "order_no": order_no,
+        "customer_name": customer_name,
+        "style_code": style_code,
+        "delivery_date": delivery_date,
+        "status": status,
+        "quantity_matrix": matrix,
+        "note": note,
+    }
+    if isinstance(object_id, int) and object_id > 0:
+        normalized_order["draft_id"] = object_id
+    elif isinstance(payload.get("draft_id"), int) and int(payload["draft_id"]) > 0:
+        normalized_order["draft_id"] = int(payload["draft_id"])
+
+    normalized_plan = {
+        "scenario_tag": scenario_tag,
+        "plan_no": str(plan_payload.get("plan_no") or "").strip() or f"PLAN-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+        "order_no": order_no,
+        "style_code": style_code,
+        "planned_qty": _to_float(plan_payload.get("planned_qty"), fallback_planned_qty),
+        "plan_date": str(plan_payload.get("plan_date") or delivery_date).strip() or date.today().isoformat(),
+        "status": str(plan_payload.get("status") or "draft").strip(),
+        "note": str(plan_payload.get("note") or note).strip(),
+    }
+    if isinstance(plan_payload.get("draft_id"), int) and int(plan_payload["draft_id"]) > 0:
+        normalized_plan["draft_id"] = int(plan_payload["draft_id"])
+
+    return {
+        "scenario_tag": scenario_tag,
+        "order_payload": normalized_order,
+        "plan_payload": normalized_plan,
+    }
+
+
+def _build_sales_order_realobj_readback(
+    order_data: dict[str, Any],
+    plan_data: dict[str, Any] | None,
+) -> dict[str, Any]:
+    quantity_matrix = order_data.get("quantity_matrix", [])
+    if not isinstance(quantity_matrix, list):
+        quantity_matrix = []
+    sales_order = {
+        "order_no": str(order_data.get("order_no") or "").strip(),
+        "customer_name": str(order_data.get("customer_name") or "").strip(),
+        "style_code": str(order_data.get("style_code") or "").strip(),
+        "delivery_date": str(order_data.get("delivery_date") or "").strip(),
+        "status": str(order_data.get("status") or "draft").strip(),
+        "state": str(order_data.get("state") or "saved").strip(),
+        "note": str(order_data.get("note") or "").strip(),
+    }
+    order_detail = {
+        "linked_plan_draft_id": order_data.get("linked_plan_draft_id"),
+        "quantity_matrix_cells": len(quantity_matrix),
+        "quantity_matrix_total_ordered": sum(_to_float(cell.get("ordered_qty"), 0.0) for cell in quantity_matrix),
+        "quantity_matrix_total_planned": sum(_to_float(cell.get("planned_qty"), 0.0) for cell in quantity_matrix),
+        "state": sales_order["state"],
+    }
+    production_plan = None
+    if isinstance(plan_data, dict):
+        production_plan = {
+            "draft_id": plan_data.get("draft_id"),
+            "plan_no": str(plan_data.get("plan_no") or "").strip(),
+            "planned_qty": _to_float(plan_data.get("planned_qty"), 0.0),
+            "plan_date": str(plan_data.get("plan_date") or "").strip(),
+            "status": str(plan_data.get("status") or "draft").strip(),
+            "state": str(plan_data.get("state") or "saved").strip(),
+            "order_no": str(plan_data.get("order_no") or "").strip(),
+            "style_code": str(plan_data.get("style_code") or "").strip(),
+        }
+
+    readback_flags = {
+        "scenario_tag_present": bool(str(order_data.get("scenario_tag") or "").strip()),
+        "sales_order_readback_success": bool(sales_order["order_no"] and sales_order["customer_name"]),
+        "order_detail_readback_success": len(quantity_matrix) > 0,
+        "quantity_matrix_readback_success": _matrix_saved(quantity_matrix),
+        "production_plan_readback_success": bool(
+            production_plan
+            and production_plan.get("draft_id")
+            and _to_float(production_plan.get("planned_qty"), 0.0) > 0
+        ),
+        "status_validation_readback_success": bool(sales_order["status"] and sales_order["state"]),
+    }
+
+    return {
+        "object_id": order_data.get("draft_id"),
+        "draft_id": order_data.get("draft_id"),
+        "scenario_tag": order_data.get("scenario_tag"),
+        "sales_order": sales_order,
+        "order_detail": order_detail,
+        "quantity_matrix": quantity_matrix,
+        "production_plan": production_plan,
+        "readback_flags": readback_flags,
+        "created_at": order_data.get("created_at"),
+        "updated_at": order_data.get("updated_at"),
+    }
+
+
+def _find_linked_plan_for_order(
+    scenario_tag: str,
+    order_data: dict[str, Any],
+) -> dict[str, Any] | None:
+    linked_plan_id = order_data.get("linked_plan_draft_id")
+    with _connect_local_sqlite() as connection:
+        _create_production_plan_draft_table(connection)
+        if isinstance(linked_plan_id, int) and linked_plan_id > 0:
+            linked_row = _get_production_plan_draft_row(connection, linked_plan_id)
+            if linked_row is not None:
+                linked_data = _production_plan_draft_row_to_dict(linked_row)
+                if str(linked_data.get("scenario_tag", "")).strip() == scenario_tag:
+                    return linked_data
+        order_id = order_data.get("draft_id")
+        if isinstance(order_id, int) and order_id > 0:
+            row = connection.execute(
+                """
+                SELECT * FROM ly_local_production_plan_drafts
+                WHERE scenario_tag = ? AND order_draft_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (scenario_tag, order_id),
+            ).fetchone()
+            if row is not None:
+                return _production_plan_draft_row_to_dict(row)
+    return None
+
+
+@app.post("/api/local-dev/sales-orders")
+def upsert_local_sales_order_realobj(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    normalized = _normalize_sales_order_realobj_payload(payload)
+    order_payload = dict(normalized["order_payload"])
+    order_saved = upsert_local_sales_order_draft(order_payload)
+    order_data = order_saved.get("data", {})
+    if not isinstance(order_data, dict):
+        raise HTTPException(status_code=500, detail="sales order save failed")
+
+    plan_payload = dict(normalized["plan_payload"])
+    order_draft_id = order_data.get("draft_id")
+    if not isinstance(order_draft_id, int) or order_draft_id <= 0:
+        raise HTTPException(status_code=500, detail="sales order object id is invalid")
+    plan_payload["order_draft_id"] = order_draft_id
+    plan_saved = upsert_local_production_plan_draft(plan_payload)
+    plan_data = plan_saved.get("data", {})
+    if not isinstance(plan_data, dict):
+        raise HTTPException(status_code=500, detail="production plan save failed")
+
+    linked_plan_id = plan_data.get("draft_id")
+    if isinstance(linked_plan_id, int) and linked_plan_id > 0:
+        relink_payload = dict(order_payload)
+        relink_payload["draft_id"] = order_draft_id
+        relink_payload["linked_plan_draft_id"] = linked_plan_id
+        relink_saved = upsert_local_sales_order_draft(relink_payload)
+        relink_data = relink_saved.get("data", {})
+        if isinstance(relink_data, dict):
+            order_data = relink_data
+
+    return _ok(_build_sales_order_realobj_readback(order_data, plan_data))
+
+
+@app.patch("/api/local-dev/sales-orders/{object_id}")
+def patch_local_sales_order_realobj(object_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    normalized = _normalize_sales_order_realobj_payload(payload, object_id=object_id)
+    order_payload = dict(normalized["order_payload"])
+    order_saved = upsert_local_sales_order_draft(order_payload)
+    order_data = order_saved.get("data", {})
+    if not isinstance(order_data, dict):
+        raise HTTPException(status_code=500, detail="sales order update failed")
+
+    plan_payload = dict(normalized["plan_payload"])
+    order_draft_id = order_data.get("draft_id")
+    if not isinstance(order_draft_id, int) or order_draft_id <= 0:
+        raise HTTPException(status_code=500, detail="sales order object id is invalid")
+    plan_payload["order_draft_id"] = order_draft_id
+    existing_linked_id = order_data.get("linked_plan_draft_id")
+    if isinstance(existing_linked_id, int) and existing_linked_id > 0:
+        plan_payload["draft_id"] = existing_linked_id
+    plan_saved = upsert_local_production_plan_draft(plan_payload)
+    plan_data = plan_saved.get("data", {})
+    if not isinstance(plan_data, dict):
+        raise HTTPException(status_code=500, detail="production plan update failed")
+
+    linked_plan_id = plan_data.get("draft_id")
+    if isinstance(linked_plan_id, int) and linked_plan_id > 0:
+        relink_payload = dict(order_payload)
+        relink_payload["draft_id"] = order_draft_id
+        relink_payload["linked_plan_draft_id"] = linked_plan_id
+        relink_saved = upsert_local_sales_order_draft(relink_payload)
+        relink_data = relink_saved.get("data", {})
+        if isinstance(relink_data, dict):
+            order_data = relink_data
+
+    return _ok(_build_sales_order_realobj_readback(order_data, plan_data))
+
+
+@app.get("/api/local-dev/sales-orders")
+def list_local_sales_order_realobj(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    scenario = scenario_tag.strip()
+    listed = list_local_sales_order_drafts(scenario_tag=scenario)
+    listed_data = listed.get("data", {})
+    items = listed_data.get("items", []) if isinstance(listed_data, dict) else []
+    records: list[dict[str, Any]] = []
+    if isinstance(items, list):
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("scenario_tag", "")).strip() != scenario:
+                continue
+            linked_plan = _find_linked_plan_for_order(scenario, item)
+            records.append(_build_sales_order_realobj_readback(item, linked_plan))
+    return _ok({"scenario_tag": scenario, "total": len(records), "records": records})
+
+
+@app.get("/api/local-dev/sales-orders/{object_id}/readback")
+def readback_local_sales_order_realobj(
+    object_id: int,
+    scenario_tag: str = Query(..., min_length=1),
+) -> dict[str, Any]:
+    scenario = scenario_tag.strip()
+    fetched = get_local_sales_order_draft(object_id)
+    order_data = fetched.get("data", {})
+    if not isinstance(order_data, dict):
+        raise HTTPException(status_code=404, detail="sales order object not found")
+    if str(order_data.get("scenario_tag", "")).strip() != scenario:
+        raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+    linked_plan = _find_linked_plan_for_order(scenario, order_data)
+    return _ok(_build_sales_order_realobj_readback(order_data, linked_plan))
+
+
+@app.get("/api/local-dev/production-plans")
+def list_local_production_plan_realobj(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    scenario = scenario_tag.strip()
+    listed = list_local_production_plan_drafts(scenario_tag=scenario)
+    listed_data = listed.get("data", {})
+    items = listed_data.get("items", []) if isinstance(listed_data, dict) else []
+    records = [
+        item
+        for item in items
+        if isinstance(item, dict) and str(item.get("scenario_tag", "")).strip() == scenario
+    ] if isinstance(items, list) else []
+    return _ok({"scenario_tag": scenario, "total": len(records), "records": records})
+
+
+@app.post("/api/local-dev/production-plans/{object_id}/rollback")
+def rollback_local_sales_production_realobj(object_id: int, payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+
+    with _connect_local_sqlite() as connection:
+        _create_production_plan_draft_table(connection)
+        plan_row = _get_production_plan_draft_row(connection, object_id)
+    if plan_row is None:
+        raise HTTPException(status_code=404, detail="production plan object not found")
+    plan_data = _production_plan_draft_row_to_dict(plan_row)
+    if str(plan_data.get("scenario_tag", "")).strip() != scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag mismatch")
+
+    sales_rollback = rollback_local_sales_order_drafts({"scenario_tag": scenario_tag})
+    plan_rollback = rollback_local_production_plan_drafts({"scenario_tag": scenario_tag})
+    sales_data = sales_rollback.get("data", {})
+    plan_data_rollback = plan_rollback.get("data", {})
+    if not isinstance(sales_data, dict) or not isinstance(plan_data_rollback, dict):
+        raise HTTPException(status_code=500, detail="rollback failed")
+
+    sales_residual = int(sales_data.get("residual_records_after_rollback", -1))
+    plan_residual = int(plan_data_rollback.get("residual_records_after_rollback", -1))
+    residual = max(sales_residual, plan_residual)
+    zero_residual = sales_residual == 0 and plan_residual == 0
+    return _ok(
+        {
+            "scenario_tag": scenario_tag,
+            "object_id": object_id,
+            "sales_deleted_count": int(sales_data.get("deleted_count", 0)),
+            "plan_deleted_count": int(plan_data_rollback.get("deleted_count", 0)),
+            "sales_residual_records_after_rollback": sales_residual,
+            "plan_residual_records_after_rollback": plan_residual,
+            "residual_records_after_rollback": residual,
+            "rollback_success": bool(sales_data.get("rollback_success", False))
+            and bool(plan_data_rollback.get("rollback_success", False)),
+            "zero_residual_success": zero_residual,
+        }
+    )
+
+
 def _create_purchase_subcontract_draft_table(connection: sqlite3.Connection) -> None:
     connection.execute(
         """

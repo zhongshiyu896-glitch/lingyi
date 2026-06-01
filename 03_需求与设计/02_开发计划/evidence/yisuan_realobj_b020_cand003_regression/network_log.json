@@ -1,0 +1,522 @@
+[
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/sales-inventory/sales-orders",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderList.vue?vue&type=style&index=0&scoped=5db14912&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/production-plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "PATCH",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders/8",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/production-plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders/8/readback?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/production-plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders/8/readback?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/sales-inventory/sales-orders/detail?object_id=8&scenario_tag=REALOBJ-CAND003-B020-20260601-001&order_no=SO-YS-260601",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderDetail.vue?vue&type=style&index=0&scoped=1e7c30c3&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders/8/readback?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders/8/readback?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/production/plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001&object_id=11",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/production/ProductionPlanList.vue",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/production/ProductionPlanList.vue?vue&type=style&index=0&scoped=d4213a41&lang.css",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=global",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/production-plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/production-plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/sales-inventory/sales-orders",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@vite/client",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/main.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/element-plus.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/vite/dist/client/env.mjs",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/element-plus/dist/index.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/router/index.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/vue-router.js?v=9695e7c7",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/stores/permission.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/@id/__x00__plugin-vue:export-helper",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/auth.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderList.vue",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/api/request.ts",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/src/views/sales_inventory/SalesInventorySalesOrderList.vue?vue&type=style&index=0&scoped=5db14912&lang.css",
+    "status": 304
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/me",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/auth/actions?module=sales_inventory",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:5174/api/local-dev/production-plans/11/rollback",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/production-plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/sales-orders?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:5174/api/local-dev/production-plans?scenario_tag=REALOBJ-CAND003-B020-20260601-001",
+    "status": 200
+  }
+]

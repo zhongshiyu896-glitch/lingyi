@@ -5,7 +5,7 @@
         <div class="header-row">
           <div>
             <h2>生产计划</h2>
-            <p class="sub-title">衣算云 UI 1:1 对齐（只读态）</p>
+            <p class="sub-title">衣算云 UI 1:1 + REALOBJ-CAND-003 回读壳层（local-dev only）</p>
           </div>
           <div class="header-actions">
             <el-button @click="goSalesOrders">销售订单</el-button>
@@ -16,7 +16,7 @@
 
       <el-alert type="info" :closable="false" class="scope-alert">
         <template #title>
-          当前页面展示计划状态看板与计划清单，仅支持筛选和观察，不触发新增、更新、下发等写动作。
+          当前页面用于生产计划 readback 汇总；可筛选与观察，不触发新增、更新、下发到生产环境。
         </template>
       </el-alert>
 
@@ -24,9 +24,8 @@
         <el-tag type="success">contract_source_readback_present=true</el-tag>
         <el-tag type="primary">covered_contract_ids=A002,A006</el-tag>
         <el-tag type="warning">A006 blocked/unknown => not_claimed</el-tag>
-        <el-tag type="info">real_business_object_created=false</el-tag>
-        <el-tag type="info">linked_calculation_enabled=false</el-tag>
-        <span>来源：A002/A006 contract sources（B018 继承，no-write）</span>
+        <el-tag type="info">real_business_object_created=false (production)</el-tag>
+        <el-tag type="info">linked_calculation_enabled=false (cross-module)</el-tag>
       </section>
 
       <section class="status-board" data-testid="yisuan-1to1-production-plan-status-board">
@@ -77,58 +76,46 @@
           </el-table-column>
         </el-table>
       </section>
+    </el-card>
 
-      <el-card shadow="never" class="contract-boundary-card">
-        <template #header>
-          <div class="contract-header">
-            <strong>合同边界回读（A002/A006）</strong>
-            <el-tag type="danger" effect="plain">popup_only / blocked / source_unknown / not_claimed</el-tag>
-          </div>
-        </template>
-
-        <div class="contract-grid">
-          <div class="contract-block" data-testid="yisuan-contract-key-fields">
-            <h4>key_fields</h4>
-            <div class="tag-row">
-              <el-tag v-for="field in keyFields" :key="`key-${field}`" type="success" effect="light">
-                {{ field }} VERIFIED
-              </el-tag>
-            </div>
-          </div>
-
-          <div class="contract-block" data-testid="yisuan-contract-validation-rules">
-            <h4>validation_rules</h4>
-            <ul>
-              <li v-for="rule in validationRules" :key="`rule-${rule}`">
-                {{ rule }} => blocked / source_unknown / pending_confirmation / not_claimed
-              </li>
-            </ul>
-          </div>
-
-          <div class="contract-block" data-testid="yisuan-contract-status-rules">
-            <h4>status_rules</h4>
-            <div class="tag-row">
-              <el-tag v-for="state in statusRules" :key="`state-${state}`" type="info" effect="light">{{ state }}</el-tag>
-              <el-tag type="warning" effect="light">A006_popup_only_boundary=true</el-tag>
-              <el-tag type="danger" effect="light">A006_blocked_unknown_claimed_as_confirmed=false</el-tag>
-            </div>
-          </div>
-
-          <div class="contract-block" data-testid="yisuan-contract-readonly-readback-rules">
-            <h4>readonly/readback rules</h4>
-            <ul>
-              <li v-for="rule in readbackRules" :key="`readback-${rule}`">{{ rule }}</li>
-            </ul>
-          </div>
+    <el-card shadow="never" data-testid="realobj-production-plan-readback">
+      <template #header>
+        <div class="panel-header">
+          <span>REALOBJ-CAND-003 生产计划回读</span>
+          <el-tag type="info">local-dev/sqlite/scenario_tag/test_data only</el-tag>
         </div>
-      </el-card>
+      </template>
+
+      <el-form :inline="true" class="readback-query-form">
+        <el-form-item label="scenario_tag">
+          <el-input v-model="readbackQuery.scenarioTag" style="width: 280px" data-testid="realobj-production-plan-scenario-tag" />
+        </el-form-item>
+        <el-form-item>
+          <el-button :loading="localReadback.loading" @click="refreshReadback">刷新回读</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-alert v-if="localReadback.error" type="warning" :closable="false" :title="localReadback.error" />
+
+      <el-descriptions border :column="2" class="readback-descriptions">
+        <el-descriptions-item label="scenario_tag">{{ readbackQuery.scenarioTag || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="sales_order_readback_total">{{ localReadback.salesOrderTotal }}</el-descriptions-item>
+        <el-descriptions-item label="production_plan_readback_total">{{ localReadback.productionPlanTotal }}</el-descriptions-item>
+        <el-descriptions-item label="production_plan_readback_success">
+          {{ localReadback.productionPlanReadbackSuccess ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="latest_plan_no">{{ localReadback.latestPlanNo || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="latest_plan_object_id">{{ localReadback.latestPlanObjectId || '-' }}</el-descriptions-item>
+      </el-descriptions>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { request } from '@/api/request'
 
 interface PlanRow {
   planNo: string
@@ -141,7 +128,39 @@ interface PlanRow {
   status: string
 }
 
+interface ProductionPlanReadback {
+  draft_id: number
+  plan_no: string
+  planned_qty: number
+  plan_date: string
+  status: string
+  state: string
+  order_no: string
+  style_code: string
+}
+
+interface SalesOrderReadbackData {
+  object_id: number
+  production_plan: ProductionPlanReadback | null
+  readback_flags: {
+    production_plan_readback_success: boolean
+  }
+}
+
+interface SalesOrderListData {
+  scenario_tag: string
+  total: number
+  records: SalesOrderReadbackData[]
+}
+
+interface ProductionPlanListData {
+  scenario_tag: string
+  total: number
+  records: ProductionPlanReadback[]
+}
+
 const router = useRouter()
+const route = useRoute()
 
 const query = reactive({
   keyword: '',
@@ -188,45 +207,24 @@ const statusBoard = [
   { name: '异常待处理', value: '2', note: '涉及面料或工序冲突' },
 ]
 
-const keyFields = [
-  '订单',
-  '客户',
-  '下单日期',
-  '业务员',
-  '汇率',
-  '币种',
-  '备注',
-  '款号',
-  '款名',
-  '颜色',
-  '尺码',
-  '单价',
-  '计划数量',
-  '计划状态',
-]
+const parseScenarioTag = (value: unknown): string => {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' ? raw.trim() : ''
+}
 
-const validationRules = [
-  '主订单保存',
-  '订单详情回读动作',
-  '生产制单',
-  '加工单',
-  'BOM',
-  '工序',
-  '库存',
-  '财务',
-  '提交/审核/删除/作废',
-  '生成生产/采购/加工单',
-]
+const readbackQuery = reactive({
+  scenarioTag: parseScenarioTag(route.query.scenario_tag),
+})
 
-const statusRules = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
-
-const readbackRules = [
-  'UI 静态证据不等同业务算法 1:1',
-  'mainOrderSaveClicked=false',
-  'orderCreated=false',
-  'orderNumberGenerated=false',
-  'A006 blocked/unknown fields only for shell expression',
-]
+const localReadback = reactive({
+  loading: false,
+  error: '',
+  salesOrderTotal: 0,
+  productionPlanTotal: 0,
+  productionPlanReadbackSuccess: false,
+  latestPlanNo: '',
+  latestPlanObjectId: 0,
+})
 
 const filteredPlans = computed(() => {
   const keyword = query.keyword.trim().toLowerCase()
@@ -250,6 +248,43 @@ const resetQuery = (): void => {
   query.status = ''
   query.group = ''
 }
+
+const refreshReadback = async (): Promise<void> => {
+  const scenarioTag = readbackQuery.scenarioTag.trim()
+  if (!scenarioTag) {
+    localReadback.salesOrderTotal = 0
+    localReadback.productionPlanTotal = 0
+    localReadback.productionPlanReadbackSuccess = false
+    localReadback.latestPlanNo = ''
+    localReadback.latestPlanObjectId = 0
+    return
+  }
+
+  localReadback.loading = true
+  localReadback.error = ''
+  try {
+    const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
+    const orderResp = await request<SalesOrderListData>(`/api/local-dev/sales-orders?${queryString}`)
+    const planResp = await request<ProductionPlanListData>(`/api/local-dev/production-plans?${queryString}`)
+    localReadback.salesOrderTotal = orderResp.data.total
+    localReadback.productionPlanTotal = planResp.data.total
+    localReadback.productionPlanReadbackSuccess = orderResp.data.records.some((record) =>
+      Boolean(record.readback_flags.production_plan_readback_success),
+    )
+    const latestPlan = planResp.data.records[0]
+    localReadback.latestPlanNo = latestPlan?.plan_no || ''
+    localReadback.latestPlanObjectId = latestPlan?.draft_id || 0
+  } catch (error) {
+    localReadback.error = `回读失败：${(error as Error).message}`
+    ElMessage.warning(localReadback.error)
+  } finally {
+    localReadback.loading = false
+  }
+}
+
+onMounted(() => {
+  void refreshReadback()
+})
 
 const goSalesOrders = (): void => {
   router.push('/sales-inventory/sales-orders')
@@ -341,37 +376,18 @@ const goHome = (): void => {
   width: 100%;
 }
 
-.contract-boundary-card {
-  margin-top: 12px;
-}
-
-.contract-header {
+.panel-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.contract-grid {
-  display: grid;
-  gap: 10px;
+.readback-query-form {
+  margin-bottom: 8px;
 }
 
-.contract-block h4 {
-  margin: 0 0 8px;
-  font-size: 13px;
-}
-
-.contract-block ul {
-  margin: 0;
-  padding-left: 18px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.5;
-}
-
-.tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.readback-descriptions {
+  margin-top: 10px;
 }
 </style>
