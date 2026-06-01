@@ -1,0 +1,75 @@
+section	field	value
+meta	TASK_ID	TASK-YISUAN-REALOBJ-B042-PREP-CAND006
+meta	ROLE	B Engineer
+meta	branch	codex/sprint4-seal
+meta	HEAD	d1cf0b55b9c0f2102e7ca5a4b4c1b29d520a523c
+meta	cached_count	0
+meta	HEAD_tag_count	0
+meta	git_diff_check	PASS
+candidate	selected_candidate	REALOBJ-CAND-006
+candidate	module_scope	首页/工作台本地对象状态 readback 汇总
+candidate	covered_routes	/home|/dashboard/overview|/dashboard/workplace
+candidate	allowed_frontend_files	06_前端/lingyi-pc/src/views/HomePage.vue|06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue
+candidate	allowed_backend_support_files	07_后端/lingyi_service/app/local_dev.py
+candidate	inheritance_note	A包给出views/home/HomePage.vue但B001/B041继承路径为views/HomePage.vue，按继承路径冻结
+route	home_route_source	06_前端/lingyi-pc/src/router/index.ts:34
+route	dashboard_overview_route_source	06_前端/lingyi-pc/src/router/index.ts:192
+route	dashboard_workplace_route_source	06_前端/lingyi-pc/src/router/index.ts:217
+route	dashboard_workplace_redirect_source	06_前端/lingyi-pc/src/router/index.ts:218 redirect=/dashboard/overview
+route	dashboard_workplace_final_path	/dashboard/overview
+allowed_files	HomePage_exists	true
+allowed_files	HomePage_clean	true
+allowed_files	DashboardOverview_exists	true
+allowed_files	DashboardOverview_clean	true
+allowed_files	local_dev_py_exists	true
+allowed_files	local_dev_py_clean	true
+frozen_model	local_object_model	local_module_status_summary|local_write_loop_checkpoint|local_scenario_progress_snapshot
+frozen_model	scenario_tag_required	true
+frozen_endpoint	endpoints	GET /local-dev/dashboard/status-summary?scenario_tag=<tag>|GET /local-dev/dashboard/checkpoints?scenario_tag=<tag>|POST /local-dev/dashboard/checkpoints/rollback
+frozen_endpoint	create_or_update_endpoints_inherited	[]
+frozen_endpoint	write_boundary_mode	readback-only primary boundary
+frozen_sqlite	sqlite_storage_plan	local_dashboard_status_summary|local_write_loop_checkpoint|local_readback_snapshot
+frozen_sqlite	sqlite_is_formal_db	false
+frozen_sqlite	seed_data_used	false
+frozen_evidence	route_home_http_200	required
+frozen_evidence	route_dashboard_overview_http_200	required
+frozen_evidence	route_dashboard_workplace_http_200	required
+frozen_evidence	route_dashboard_workplace_final_path	/dashboard/overview
+frozen_evidence	screenshot_count	3
+frozen_evidence	screenshot_size	1440x1200
+frozen_evidence	homepage_readback_summary_success	true
+frozen_evidence	dashboard_overview_readback_summary_success	true
+frozen_evidence	workspace_redirect_readback_success	true
+frozen_evidence	scenario_tag_present	true
+frozen_evidence	readback_only_write_requests_observed_count	0
+frozen_evidence	if_rollback_invoked_zero_residual	true
+frozen_evidence	if_rollback_invoked_residual_records	0
+frozen_evidence	production_write_requests	0
+frozen_evidence	erpnext_production_write_requests	0
+frozen_evidence	real_production_account_used	false
+frozen_evidence	typecheck_command	npm run typecheck
+frozen_evidence	typecheck_workdir	06_前端/lingyi-pc
+frozen_evidence	typecheck_exit_code	0
+frozen_evidence	dev_server_started_stopped	true
+frozen_evidence	local_dev_server_started_stopped	true
+dirty	tracked_dirty_count	16
+dirty	frontend_dirty_count	3
+dirty	backend_or_test_dirty_count	10
+dirty	log_control_dirty_count	3
+dirty	dirty_intersections	[]
+dirty	unknown_dirty	[]
+dirty	must_block_before_continue	[]
+boundary	data_classification	local_real_object_test_data_only
+boundary	scenario_tag_required	true
+boundary	rollback_required	true
+boundary	zero_residual_required	true
+boundary	test_data_used_in_later_impl_or_regression_if_required	true
+boundary	seed_data_used	false
+boundary	sqlite_is_formal_db	false
+boundary	not_future_production_data	true
+boundary	production_readback	false
+boundary	go_live	false
+boundary	project_completion	false
+boundary	remote_lifecycle_parked	true
+result	recommended_next_task	TASK-YISUAN-REALOBJ-B043-IMPL-CAND006
+result	NEXT_ROLE	C Auditor

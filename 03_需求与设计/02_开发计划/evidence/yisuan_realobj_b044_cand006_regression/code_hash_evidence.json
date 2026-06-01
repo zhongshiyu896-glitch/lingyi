@@ -1,0 +1,13 @@
+{
+  "code_modified_in_this_task": false,
+  "before": {
+    "06_前端/lingyi-pc/src/views/HomePage.vue": "a56e443298079459ed5ece4b3e0a125816bcae6d71f413f35b5b8df54c4f2025",
+    "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue": "5bfd6a2f4ee6284666329565f71f624ed5ad70eeefa24916a1780264918f341a",
+    "07_后端/lingyi_service/app/local_dev.py": "158c145686f691ed5586b9e25708d11e12c82b008add40c16f2340c7d8fbe18d"
+  },
+  "after": {
+    "06_前端/lingyi-pc/src/views/HomePage.vue": "a56e443298079459ed5ece4b3e0a125816bcae6d71f413f35b5b8df54c4f2025",
+    "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue": "5bfd6a2f4ee6284666329565f71f624ed5ad70eeefa24916a1780264918f341a",
+    "07_后端/lingyi_service/app/local_dev.py": "158c145686f691ed5586b9e25708d11e12c82b008add40c16f2340c7d8fbe18d"
+  }
+}

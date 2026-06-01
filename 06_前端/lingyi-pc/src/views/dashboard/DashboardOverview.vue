@@ -18,6 +18,33 @@
       </div>
     </section>
 
+    <section class="readback-summary" data-testid="cand006-dashboard-readback-summary">
+      <header>
+        <h2>本地对象状态汇总（readback-only）</h2>
+        <el-tag effect="plain" type="info">scenario_tag={{ readbackScenarioTag }}</el-tag>
+      </header>
+      <el-alert
+        v-if="readbackError"
+        type="warning"
+        :closable="false"
+        :title="readbackError"
+        data-testid="cand006-dashboard-readback-error"
+      />
+      <div v-else class="summary-grid">
+        <article v-for="item in readbackSummaryModules" :key="item.module_key" class="summary-card">
+          <span class="summary-label">{{ item.module_label }}</span>
+          <strong class="summary-value">{{ item.record_count }}</strong>
+          <small class="summary-note">{{ item.source_endpoint }}</small>
+        </article>
+      </div>
+      <div class="summary-checkpoint-row">
+        <span>dashboard_overview_readback_summary_success={{ dashboardOverviewReadbackSummarySuccess ? 'true' : 'false' }}</span>
+        <span>workspace_redirect_readback_success={{ workspaceRedirectReadbackSuccess ? 'true' : 'false' }}</span>
+        <span>workspace_final_path={{ workspaceFinalPath }}</span>
+        <span>write_requests_observed_count={{ readbackWriteRequestsObservedCount }}</span>
+      </div>
+    </section>
+
     <section class="kpi-strip" data-testid="yisuan-1to1-dashboard-kpi-strip">
       <article v-for="item in kpis" :key="item.label" class="kpi-item">
         <span class="label">{{ item.label }}</span>
@@ -81,8 +108,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { request } from '@/api/request'
 
 interface KPIItem {
   label: string
@@ -107,6 +135,7 @@ interface ExceptionItem {
 }
 
 const router = useRouter()
+const route = useRoute()
 
 const query = reactive({
   material: '',
@@ -140,6 +169,83 @@ const exceptions = ref<ExceptionItem[]>([
 ])
 
 const exceptionKeyword = ref('')
+const readbackError = ref('')
+
+interface ReadbackSummaryModule {
+  module_key: string
+  module_label: string
+  source_endpoint: string
+  record_count: number
+}
+
+interface ReadbackSummaryResponse {
+  scenario_tag: string
+  readback_only: boolean
+  modules: ReadbackSummaryModule[]
+  totals: {
+    write_requests_observed_count: number
+  }
+  workspace_redirect: {
+    route: string
+    final_path: string
+  }
+}
+
+interface ReadbackCheckpointsResponse {
+  scenario_tag: string
+  readback_only: boolean
+  write_requests_observed_count: number
+  workspace_redirect: {
+    route: string
+    final_path: string
+    readback_success: boolean
+  }
+}
+
+const readbackSummary = ref<ReadbackSummaryResponse | null>(null)
+const readbackCheckpoints = ref<ReadbackCheckpointsResponse | null>(null)
+
+const readbackScenarioTag = computed(() => {
+  const raw = Array.isArray(route.query.scenario_tag) ? route.query.scenario_tag[0] : route.query.scenario_tag
+  return String(raw || '').trim() || 'REALOBJ-CAND006-READBACK-001'
+})
+
+const readbackSummaryModules = computed(() => readbackSummary.value?.modules || [])
+const readbackWriteRequestsObservedCount = computed(
+  () => Number(readbackCheckpoints.value?.write_requests_observed_count ?? readbackSummary.value?.totals?.write_requests_observed_count ?? 0),
+)
+const workspaceFinalPath = computed(() => {
+  return readbackCheckpoints.value?.workspace_redirect?.final_path || '/dashboard/overview'
+})
+const dashboardOverviewReadbackSummarySuccess = computed(() => {
+  if (!readbackSummary.value) return false
+  return readbackSummary.value.readback_only && readbackSummaryModules.value.length > 0
+})
+const workspaceRedirectReadbackSuccess = computed(() => {
+  const redirect = readbackCheckpoints.value?.workspace_redirect
+  if (!redirect) return false
+  return redirect.readback_success === true && redirect.final_path === '/dashboard/overview'
+})
+
+const loadReadbackSummary = async (): Promise<void> => {
+  const scenarioTag = readbackScenarioTag.value
+  readbackError.value = ''
+  try {
+    const [summaryResp, checkpointsResp] = await Promise.all([
+      request<ReadbackSummaryResponse>(
+        `/api/local-dev/dashboard/status-summary?scenario_tag=${encodeURIComponent(scenarioTag)}`,
+      ),
+      request<ReadbackCheckpointsResponse>(
+        `/api/local-dev/dashboard/checkpoints?scenario_tag=${encodeURIComponent(scenarioTag)}`,
+      ),
+    ])
+    readbackSummary.value = summaryResp.data
+    readbackCheckpoints.value = checkpointsResp.data
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    readbackError.value = `readback summary 获取失败：${message}`
+  }
+}
 
 const filteredFlowNodes = computed(() => {
   return flowNodes.filter((node) => {
@@ -171,6 +277,10 @@ const sourceReadback = [
 const go = (path: string): void => {
   router.push(path)
 }
+
+onMounted(() => {
+  void loadReadbackSummary()
+})
 </script>
 
 <style scoped>
@@ -208,6 +318,65 @@ const go = (path: string): void => {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.readback-summary {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.readback-summary > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.readback-summary h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.summary-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.summary-label {
+  display: block;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.summary-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+}
+
+.summary-note {
+  display: block;
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.summary-checkpoint-row {
+  margin-top: 10px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: #4b5563;
+  font-size: 12px;
 }
 
 .kpi-strip {

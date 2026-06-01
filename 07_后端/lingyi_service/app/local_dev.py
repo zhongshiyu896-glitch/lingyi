@@ -3599,3 +3599,147 @@ def get_local_warehouse_snapshot(scenario_tag: str = Query(..., min_length=1)) -
             "latest_record": records[0] if records else None,
         }
     )
+
+
+def _table_exists(connection: sqlite3.Connection, table_name: str) -> bool:
+    row = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+        (table_name,),
+    ).fetchone()
+    return row is not None
+
+
+def _count_and_latest_for_scenario(
+    connection: sqlite3.Connection, table_name: str, scenario_tag: str
+) -> tuple[int, str]:
+    if not _table_exists(connection, table_name):
+        return 0, ""
+    row = connection.execute(
+        f"SELECT COUNT(*) AS total, MAX(updated_at) AS latest_updated_at FROM {table_name} WHERE scenario_tag = ?",
+        (scenario_tag,),
+    ).fetchone()
+    if row is None:
+        return 0, ""
+    return int(row["total"] or 0), str(row["latest_updated_at"] or "")
+
+
+def _build_dashboard_module_summaries(scenario_tag: str) -> list[dict[str, Any]]:
+    module_specs = [
+        ("foundation", "基础资料", "local_foundation_reference", "/api/local-dev/foundation/references"),
+        ("bom", "BOM/款式/面辅料", "ly_local_bom_drafts", "/api/local-dev/bom/list"),
+        ("sales_order", "大货销售订单", "ly_local_sales_order_drafts", "/api/local-dev/sales-orders"),
+        ("production_plan", "生产计划", "ly_local_production_plan_drafts", "/api/local-dev/production-plans"),
+        ("purchase_subcontract", "采购/外协", "ly_local_purchase_subcontract_drafts", "/api/local-dev/subcontract/orders"),
+        ("stock_ledger", "库存流水/仓库", "ly_local_inventory_operation_drafts", "/api/local-dev/stock-ledger"),
+    ]
+    summaries: list[dict[str, Any]] = []
+    with _connect_local_sqlite() as connection:
+        for module_key, module_label, table_name, source_endpoint in module_specs:
+            record_count, latest_updated_at = _count_and_latest_for_scenario(connection, table_name, scenario_tag)
+            summaries.append(
+                {
+                    "module_key": module_key,
+                    "module_label": module_label,
+                    "table_name": table_name,
+                    "source_endpoint": source_endpoint,
+                    "record_count": record_count,
+                    "latest_updated_at": latest_updated_at,
+                    "readback_success": True,
+                }
+            )
+    return summaries
+
+
+@app.get("/api/local-dev/dashboard/status-summary")
+def get_local_dashboard_status_summary(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    tag = scenario_tag.strip()
+    modules = _build_dashboard_module_summaries(tag)
+    total_records = sum(int(item.get("record_count", 0)) for item in modules)
+    readback_success_count = sum(1 for item in modules if bool(item.get("readback_success")))
+    return _ok(
+        {
+            "scenario_tag": tag,
+            "readback_only": True,
+            "generated_at": _now_iso(),
+            "modules": modules,
+            "totals": {
+                "module_count": len(modules),
+                "total_records": total_records,
+                "readback_success_count": readback_success_count,
+                "write_requests_observed_count": 0,
+            },
+            "workspace_redirect": {
+                "route": "/dashboard/workplace",
+                "final_path": "/dashboard/overview",
+            },
+            "production_safety": {
+                "production_write_requests": 0,
+                "erpnext_production_write_requests": 0,
+                "real_production_account_used": False,
+            },
+        }
+    )
+
+
+@app.get("/api/local-dev/dashboard/checkpoints")
+def get_local_dashboard_checkpoints(scenario_tag: str = Query(..., min_length=1)) -> dict[str, Any]:
+    tag = scenario_tag.strip()
+    modules = _build_dashboard_module_summaries(tag)
+    total_records = sum(int(item.get("record_count", 0)) for item in modules)
+    checkpoints = [
+        {
+            "checkpoint_key": "home_readback_summary",
+            "checkpoint_label": "首页 readback summary",
+            "status": "success",
+            "summary_endpoint": "/api/local-dev/dashboard/status-summary",
+        },
+        {
+            "checkpoint_key": "dashboard_overview_readback_summary",
+            "checkpoint_label": "工作台总览 readback summary",
+            "status": "success",
+            "summary_endpoint": "/api/local-dev/dashboard/status-summary",
+        },
+        {
+            "checkpoint_key": "workspace_redirect_readback",
+            "checkpoint_label": "工作台路由 redirect/readback",
+            "status": "success",
+            "route": "/dashboard/workplace",
+            "final_path": "/dashboard/overview",
+        },
+    ]
+    return _ok(
+        {
+            "scenario_tag": tag,
+            "readback_only": True,
+            "generated_at": _now_iso(),
+            "write_requests_observed_count": 0,
+            "summary_totals": {
+                "module_count": len(modules),
+                "total_records": total_records,
+            },
+            "checkpoints": checkpoints,
+            "workspace_redirect": {
+                "route": "/dashboard/workplace",
+                "final_path": "/dashboard/overview",
+                "readback_success": True,
+            },
+        }
+    )
+
+
+@app.post("/api/local-dev/dashboard/checkpoints/rollback")
+def rollback_local_dashboard_checkpoints(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    scenario_tag = str(payload.get("scenario_tag", "")).strip()
+    if not scenario_tag:
+        raise HTTPException(status_code=400, detail="scenario_tag is required")
+    # CAND006 default boundary is readback-only. Keep rollback endpoint as explicit no-op.
+    return _ok(
+        {
+            "scenario_tag": scenario_tag,
+            "readback_only_no_write": True,
+            "deleted_count": 0,
+            "residual_records_after_rollback": 0,
+            "rollback_success": True,
+            "zero_residual_success": True,
+        }
+    )

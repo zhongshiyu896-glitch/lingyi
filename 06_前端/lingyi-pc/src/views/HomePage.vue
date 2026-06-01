@@ -33,6 +33,32 @@
         </div>
       </header>
 
+      <section class="readback-summary" data-testid="cand006-home-readback-summary">
+        <div class="grid-header">
+          <h3>本地状态汇总（readback-only）</h3>
+          <el-tag effect="plain" type="info">scenario_tag={{ readbackScenarioTag }}</el-tag>
+        </div>
+        <el-alert
+          v-if="readbackError"
+          type="warning"
+          :closable="false"
+          :title="readbackError"
+          data-testid="cand006-home-readback-error"
+        />
+        <div v-else class="readback-summary-grid">
+          <article v-for="item in readbackSummaryModules" :key="item.module_key" class="status-card">
+            <span class="status-label">{{ item.module_label }}</span>
+            <strong class="status-value">{{ item.record_count }}</strong>
+            <small class="status-note">{{ item.source_endpoint }}</small>
+          </article>
+        </div>
+        <div class="readback-checkpoint-row">
+          <span>homepage_readback_summary_success={{ homepageReadbackSummarySuccess ? 'true' : 'false' }}</span>
+          <span>workspace_redirect_readback_success={{ workspaceRedirectReadbackSuccess ? 'true' : 'false' }}</span>
+          <span>write_requests_observed_count={{ readbackWriteRequestsObservedCount }}</span>
+        </div>
+      </section>
+
       <section class="module-entry-grid" data-testid="yisuan-1to1-module-entry-grid">
         <div class="grid-header">
           <h3>模块入口</h3>
@@ -91,8 +117,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { request } from '@/api/request'
 
 interface NavItem {
   name: string
@@ -124,7 +151,47 @@ interface WorkbenchRow {
 }
 
 const router = useRouter()
+const route = useRoute()
 const moduleKeyword = ref('')
+
+interface ReadbackSummaryModule {
+  module_key: string
+  module_label: string
+  source_endpoint: string
+  record_count: number
+}
+
+interface ReadbackSummaryResponse {
+  scenario_tag: string
+  readback_only: boolean
+  modules: ReadbackSummaryModule[]
+  totals: {
+    module_count: number
+    total_records: number
+    readback_success_count: number
+    write_requests_observed_count: number
+  }
+  workspace_redirect: {
+    route: string
+    final_path: string
+  }
+}
+
+interface ReadbackCheckpointsResponse {
+  scenario_tag: string
+  readback_only: boolean
+  write_requests_observed_count: number
+  checkpoints: Array<{
+    checkpoint_key: string
+    status: string
+    final_path?: string
+  }>
+  workspace_redirect: {
+    route: string
+    final_path: string
+    readback_success: boolean
+  }
+}
 
 const sidebarGroups: NavGroup[] = [
   {
@@ -176,6 +243,49 @@ const uiSourceReadback = [
   'task_z007b_17_module_entry_to_list_route_parity_evidence.json',
 ]
 
+const readbackError = ref('')
+const readbackSummary = ref<ReadbackSummaryResponse | null>(null)
+const readbackCheckpoints = ref<ReadbackCheckpointsResponse | null>(null)
+
+const readbackScenarioTag = computed(() => {
+  const raw = Array.isArray(route.query.scenario_tag) ? route.query.scenario_tag[0] : route.query.scenario_tag
+  return String(raw || '').trim() || 'REALOBJ-CAND006-READBACK-001'
+})
+
+const readbackSummaryModules = computed(() => readbackSummary.value?.modules || [])
+const readbackWriteRequestsObservedCount = computed(
+  () => Number(readbackSummary.value?.totals?.write_requests_observed_count ?? 0),
+)
+const homepageReadbackSummarySuccess = computed(() => {
+  if (!readbackSummary.value) return false
+  return readbackSummary.value.readback_only && readbackSummaryModules.value.length > 0
+})
+const workspaceRedirectReadbackSuccess = computed(() => {
+  const redirect = readbackCheckpoints.value?.workspace_redirect
+  if (!redirect) return false
+  return redirect.final_path === '/dashboard/overview' && redirect.readback_success === true
+})
+
+const loadReadbackSummary = async (): Promise<void> => {
+  const scenarioTag = readbackScenarioTag.value
+  readbackError.value = ''
+  try {
+    const [summaryResp, checkpointsResp] = await Promise.all([
+      request<ReadbackSummaryResponse>(
+        `/api/local-dev/dashboard/status-summary?scenario_tag=${encodeURIComponent(scenarioTag)}`,
+      ),
+      request<ReadbackCheckpointsResponse>(
+        `/api/local-dev/dashboard/checkpoints?scenario_tag=${encodeURIComponent(scenarioTag)}`,
+      ),
+    ])
+    readbackSummary.value = summaryResp.data
+    readbackCheckpoints.value = checkpointsResp.data
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    readbackError.value = `readback summary 获取失败：${message}`
+  }
+}
+
 const filteredModuleEntries = computed(() => {
   const keyword = moduleKeyword.value.trim().toLowerCase()
   if (!keyword) {
@@ -189,6 +299,10 @@ const filteredModuleEntries = computed(() => {
 const go = (path: string): void => {
   router.push(path)
 }
+
+onMounted(() => {
+  void loadReadbackSummary()
+})
 </script>
 
 <style scoped>
@@ -279,6 +393,7 @@ const go = (path: string): void => {
   color: #6b7280;
 }
 
+.readback-summary,
 .module-entry-grid,
 .status-panel,
 .workbench-list,
@@ -339,6 +454,22 @@ const go = (path: string): void => {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
   margin-top: 10px;
+}
+
+.readback-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.readback-checkpoint-row {
+  margin-top: 10px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: #4b5563;
+  font-size: 12px;
 }
 
 .status-card {

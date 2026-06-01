@@ -1,0 +1,116 @@
+{
+  "summary_http_status": 200,
+  "checkpoints_http_status": 200,
+  "summary_data": {
+    "scenario_tag": "REALOBJ-CAND006-B043-READBACK-20260601-001",
+    "readback_only": true,
+    "generated_at": "2026-06-01T12:25:54",
+    "modules": [
+      {
+        "module_key": "foundation",
+        "module_label": "基础资料",
+        "table_name": "local_foundation_reference",
+        "source_endpoint": "/api/local-dev/foundation/references",
+        "record_count": 0,
+        "latest_updated_at": "",
+        "readback_success": true
+      },
+      {
+        "module_key": "bom",
+        "module_label": "BOM/款式/面辅料",
+        "table_name": "ly_local_bom_drafts",
+        "source_endpoint": "/api/local-dev/bom/list",
+        "record_count": 0,
+        "latest_updated_at": "",
+        "readback_success": true
+      },
+      {
+        "module_key": "sales_order",
+        "module_label": "大货销售订单",
+        "table_name": "ly_local_sales_order_drafts",
+        "source_endpoint": "/api/local-dev/sales-orders",
+        "record_count": 0,
+        "latest_updated_at": "",
+        "readback_success": true
+      },
+      {
+        "module_key": "production_plan",
+        "module_label": "生产计划",
+        "table_name": "ly_local_production_plan_drafts",
+        "source_endpoint": "/api/local-dev/production-plans",
+        "record_count": 0,
+        "latest_updated_at": "",
+        "readback_success": true
+      },
+      {
+        "module_key": "purchase_subcontract",
+        "module_label": "采购/外协",
+        "table_name": "ly_local_purchase_subcontract_drafts",
+        "source_endpoint": "/api/local-dev/subcontract/orders",
+        "record_count": 0,
+        "latest_updated_at": "",
+        "readback_success": true
+      },
+      {
+        "module_key": "stock_ledger",
+        "module_label": "库存流水/仓库",
+        "table_name": "ly_local_inventory_operation_drafts",
+        "source_endpoint": "/api/local-dev/stock-ledger",
+        "record_count": 0,
+        "latest_updated_at": "",
+        "readback_success": true
+      }
+    ],
+    "totals": {
+      "module_count": 6,
+      "total_records": 0,
+      "readback_success_count": 6,
+      "write_requests_observed_count": 0
+    },
+    "workspace_redirect": {
+      "route": "/dashboard/workplace",
+      "final_path": "/dashboard/overview"
+    },
+    "production_safety": {
+      "production_write_requests": 0,
+      "erpnext_production_write_requests": 0,
+      "real_production_account_used": false
+    }
+  },
+  "checkpoints_data": {
+    "scenario_tag": "REALOBJ-CAND006-B043-READBACK-20260601-001",
+    "readback_only": true,
+    "generated_at": "2026-06-01T12:25:54",
+    "write_requests_observed_count": 0,
+    "summary_totals": {
+      "module_count": 6,
+      "total_records": 0
+    },
+    "checkpoints": [
+      {
+        "checkpoint_key": "home_readback_summary",
+        "checkpoint_label": "首页 readback summary",
+        "status": "success",
+        "summary_endpoint": "/api/local-dev/dashboard/status-summary"
+      },
+      {
+        "checkpoint_key": "dashboard_overview_readback_summary",
+        "checkpoint_label": "工作台总览 readback summary",
+        "status": "success",
+        "summary_endpoint": "/api/local-dev/dashboard/status-summary"
+      },
+      {
+        "checkpoint_key": "workspace_redirect_readback",
+        "checkpoint_label": "工作台路由 redirect/readback",
+        "status": "success",
+        "route": "/dashboard/workplace",
+        "final_path": "/dashboard/overview"
+      }
+    ],
+    "workspace_redirect": {
+      "route": "/dashboard/workplace",
+      "final_path": "/dashboard/overview",
+      "readback_success": true
+    }
+  }
+}

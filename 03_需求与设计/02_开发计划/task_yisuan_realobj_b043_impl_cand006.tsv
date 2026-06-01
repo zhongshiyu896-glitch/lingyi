@@ -1,0 +1,66 @@
+section	field	value
+meta	TASK_ID	TASK-YISUAN-REALOBJ-B043-IMPL-CAND006
+meta	ROLE	B Engineer
+scope	lane	implementation + evidence only
+scope	branch	codex/sprint4-seal
+scope	HEAD	d1cf0b55b9c0f2102e7ca5a4b4c1b29d520a523c
+scope	cached_count	0
+scope	HEAD_tag_count	0
+scope	git_diff_check	PASS
+scope	git_diff_cached_check	PASS
+scope	allowed_files_match	true
+scope	forbidden_paths_touched	[]
+implementation	candidate_id	REALOBJ-CAND-006
+implementation	readback_only_primary_boundary	true
+implementation	sqlite_write_performed	false
+implementation	test_data_created	false
+implementation	frontend_files	06_前端/lingyi-pc/src/views/HomePage.vue|06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue
+implementation	backend_file	07_后端/lingyi_service/app/local_dev.py
+implementation	local_dev_endpoints	GET /api/local-dev/dashboard/status-summary|GET /api/local-dev/dashboard/checkpoints|POST /api/local-dev/dashboard/checkpoints/rollback(no-op)
+evidence	scenario_tag	REALOBJ-CAND006-B043-READBACK-20260601-001
+evidence	route_home_http_status	200
+evidence	route_dashboard_overview_http_status	200
+evidence	route_dashboard_workplace_http_status	200
+evidence	route_dashboard_workplace_final_path	/dashboard/overview
+evidence	screenshot_count	3
+evidence	all_png_1440x1200	true
+evidence	readback_summary_request_observed	true
+evidence	readback_checkpoints_request_observed	true
+evidence	homepage_readback_summary_success	true
+evidence	dashboard_overview_readback_summary_success	true
+evidence	workspace_redirect_readback_success	true
+evidence	scenario_tag_present	true
+evidence	write_requests_observed_count	0
+evidence	production_write_requests	0
+evidence	erpnext_production_write_requests	0
+evidence	real_production_account_used	false
+evidence	typecheck_command	npm run typecheck
+evidence	typecheck_workdir	06_前端/lingyi-pc
+evidence	typecheck_exit_code	0
+evidence	dev_server_started	true
+evidence	dev_server_stopped	true
+evidence	local_dev_server_started	true
+evidence	local_dev_server_stopped	true
+git	branch	codex/sprint4-seal
+git	HEAD	d1cf0b55b9c0f2102e7ca5a4b4c1b29d520a523c
+git	cached_count	0
+git	HEAD_tag_count	0
+git	git_diff_check	PASS
+git	git_diff_cached_check	PASS
+data_boundary	data_classification	local_real_object_readback_only
+data_boundary	test_data_created	false
+data_boundary	seed_data_used	false
+data_boundary	sqlite_write_performed	false
+data_boundary	sqlite_is_formal_db	false
+data_boundary	not_future_production_data	true
+data_boundary	real_inventory_finance_production_records_migrated	false
+data_boundary	production_readback	false
+data_boundary	go_live	false
+data_boundary	project_completion	false
+data_boundary	remote_lifecycle_parked	true
+data_boundary	production_write_requests	0
+data_boundary	erpnext_production_write_requests	0
+data_boundary	real_production_account_used	false
+residual_risk	item_1	仓库存在大量历史 dirty/untracked 噪声，后续必须以 CAND006 freeze YES 显式控边界。
+residual_risk	item_2	本轮仅为 local-dev readback-only 闭环，不代表生产可用或项目完成。
+next	NEXT_ROLE	C Auditor

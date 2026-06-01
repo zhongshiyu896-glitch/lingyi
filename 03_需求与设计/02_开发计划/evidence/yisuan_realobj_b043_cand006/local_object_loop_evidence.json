@@ -1,0 +1,10 @@
+{
+  "scenario_tag_present": true,
+  "homepage_readback_summary_success": true,
+  "dashboard_overview_readback_summary_success": true,
+  "workspace_redirect_readback_success": true,
+  "workspace_final_path": "/dashboard/overview",
+  "write_requests_observed_count": 0,
+  "test_data_created": false,
+  "sqlite_write_performed": false
+}

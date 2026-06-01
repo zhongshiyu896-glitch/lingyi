@@ -1,0 +1,22 @@
+{
+  "routes": [
+    {
+      "route": "/home?scenario_tag=REALOBJ-CAND006-B043-READBACK-20260601-001",
+      "target_url": "http://127.0.0.1:5174/home?scenario_tag=REALOBJ-CAND006-B043-READBACK-20260601-001",
+      "http_status": 200,
+      "final_path": "/home?scenario_tag=REALOBJ-CAND006-B043-READBACK-20260601-001"
+    },
+    {
+      "route": "/dashboard/overview?scenario_tag=REALOBJ-CAND006-B043-READBACK-20260601-001",
+      "target_url": "http://127.0.0.1:5174/dashboard/overview?scenario_tag=REALOBJ-CAND006-B043-READBACK-20260601-001",
+      "http_status": 200,
+      "final_path": "/dashboard/overview?scenario_tag=REALOBJ-CAND006-B043-READBACK-20260601-001"
+    },
+    {
+      "route": "/dashboard/workplace",
+      "target_url": "http://127.0.0.1:5174/dashboard/workplace",
+      "http_status": 200,
+      "final_path": "/dashboard/overview"
+    }
+  ]
+}

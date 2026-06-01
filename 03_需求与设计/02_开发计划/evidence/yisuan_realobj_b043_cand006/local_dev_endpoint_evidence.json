@@ -1,0 +1,10 @@
+{
+  "scenario_tag": "REALOBJ-CAND006-B043-READBACK-20260601-001",
+  "endpoint_prefixes": [
+    "/api/local-dev/dashboard/status-summary",
+    "/api/local-dev/dashboard/checkpoints"
+  ],
+  "readback_summary_request_observed": true,
+  "readback_checkpoints_request_observed": true,
+  "local_dev_readback_endpoint_evidence_exists": true
+}
