@@ -171,7 +171,7 @@
       </div>
 
       <el-alert
-        title="仓库看板只读收口：库存筛选、KPI、主表与预警可见；导出、写入和安全库存设置保持禁用或 guard。"
+        title="仓库看板只读收口：库存筛选、KPI、主表与预警可见；本地草稿写区已移出本批次，只保留 summary/query/parity/readback 壳层。"
         type="info"
         :closable="false"
         class="scope-alert"
@@ -226,7 +226,11 @@
         </div>
       </section>
 
-      <div class="local-write-row" data-testid="warehouse-stock-local-write-section">
+      <div
+        v-if="!warehouseReadonlySliceOnly"
+        class="local-write-row"
+        data-testid="warehouse-stock-local-write-section"
+      >
         <el-input
           v-model="localWriteForm.scenario_tag"
           :disabled="localWriteReadonlyGuarded"
@@ -397,6 +401,7 @@
       </div>
 
       <el-alert
+        v-if="!warehouseReadonlySliceOnly"
         title="DEV_AUTH_LOCAL 只读模式：草稿写入入口已受控禁用；/api/auth/me 异常可作为非阻断预期记录。"
         type="warning"
         :closable="false"
@@ -405,7 +410,7 @@
       />
 
       <el-alert
-        v-if="localWriteFeedback"
+        v-if="!warehouseReadonlySliceOnly && localWriteFeedback"
         :title="localWriteFeedback"
         type="info"
         :closable="false"
@@ -414,7 +419,7 @@
       />
 
       <el-descriptions
-        v-if="localStockEntryDraft"
+        v-if="!warehouseReadonlySliceOnly && localStockEntryDraft"
         :column="2"
         border
         class="local-write-state"
@@ -433,6 +438,7 @@
         <el-descriptions-item label="盘点差异">{{ formatAmount(localStockEntryDraft.diff_qty) }}</el-descriptions-item>
       </el-descriptions>
       <el-alert
+        v-if="!warehouseReadonlySliceOnly"
         :title="zeroResidualStatusText"
         type="success"
         :closable="false"
@@ -1696,6 +1702,7 @@ const localSeedSemiFinishedOutboundRows: WarehouseSemiFinishedOutboundItem[] = [
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
 const isFinishedGoodsParity = computed<boolean>(() => parityValue.value === 'product-stock')
 const isFoundationWarehouseParity = computed<boolean>(() => parityValue.value === 'foundation-warehouse')
+const warehouseReadonlySliceOnly = true
 const finishedGoodsParityHint = computed<string>(() => (
   isFinishedGoodsParity.value
     ? '衣算云 / 成品进销存 / 成品库存（parity=product-stock，只读交互）'
@@ -1704,7 +1711,7 @@ const finishedGoodsParityHint = computed<string>(() => (
 const foundationWarehouseParityHint = computed<string>(() => (
   '衣算云 / 基础资料 / 仓库管理（parity=foundation-warehouse，只读交互）'
 ))
-const contractCand005ReadbackOnly = false
+const contractCand005ReadbackOnly = warehouseReadonlySliceOnly
 const localWriteReadonlyGuarded = computed<boolean>(() => (
   contractCand005ReadbackOnly || isFinishedGoodsParity.value || isFoundationWarehouseParity.value
 ))
@@ -2644,15 +2651,15 @@ const rollbackLocalInventoryDrafts = async (): Promise<void> => {
 }
 
 const openStockLedgerLinkedPage = (): void => {
-  const scenarioTag = extractWarehouseScenarioTag(localWriteForm.scenario_tag.trim()) || ''
+  const itemCode = query.style_keyword.trim() || undefined
+  const warehouse = query.warehouse.trim() || undefined
   void router.push({
     path: '/sales-inventory/stock-ledger',
     query: {
       parity: 'material-stock',
-      item_code: localWriteForm.item_code.trim() || undefined,
-      warehouse: localWriteForm.warehouse.trim() || undefined,
-      keyword: scenarioTag || undefined,
-      source: 'warehouse-local-readback',
+      item_code: itemCode,
+      warehouse,
+      source: 'warehouse-dashboard-readonly',
     },
   })
 }
