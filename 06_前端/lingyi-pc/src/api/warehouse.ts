@@ -246,6 +246,103 @@ export interface WarehouseAlertsData {
   items: WarehouseAlertItem[]
 }
 
+export interface WarehouseBatchListQuery {
+  company?: string
+  warehouse?: string
+  item_code?: string
+  batch_no?: string
+  page?: number
+  page_size?: number
+}
+
+export interface WarehouseBatchItem {
+  company: string
+  batch_no: string
+  item_code: string
+  warehouse: string
+  manufacturing_date?: string | null
+  expiry_date?: string | null
+  disabled: boolean
+  qty: NumericLike
+}
+
+export interface WarehouseBatchListData {
+  company?: string | null
+  warehouse?: string | null
+  item_code?: string | null
+  batch_no?: string | null
+  total: number
+  items: WarehouseBatchItem[]
+}
+
+export interface WarehouseSerialNumberListQuery {
+  company?: string
+  warehouse?: string
+  item_code?: string
+  batch_no?: string
+  serial_no?: string
+  page?: number
+  page_size?: number
+}
+
+export interface WarehouseSerialNumberItem {
+  company: string
+  serial_no: string
+  item_code: string
+  warehouse: string
+  batch_no?: string | null
+  status?: string | null
+  delivery_document_no?: string | null
+  purchase_document_no?: string | null
+}
+
+export interface WarehouseSerialNumberListData {
+  company?: string | null
+  warehouse?: string | null
+  item_code?: string | null
+  batch_no?: string | null
+  serial_no?: string | null
+  total: number
+  items: WarehouseSerialNumberItem[]
+}
+
+export interface WarehouseTraceabilityQuery {
+  company?: string
+  warehouse?: string
+  item_code?: string
+  batch_no?: string
+  serial_no?: string
+  from_date?: string
+  to_date?: string
+  page?: number
+  page_size?: number
+}
+
+export interface WarehouseTraceabilityItem {
+  company: string
+  warehouse: string
+  item_code: string
+  posting_date: string
+  voucher_type?: string | null
+  voucher_no?: string | null
+  actual_qty: NumericLike
+  qty_after_transaction: NumericLike
+  batch_no?: string | null
+  serial_no?: string | null
+}
+
+export interface WarehouseTraceabilityData {
+  company?: string | null
+  warehouse?: string | null
+  item_code?: string | null
+  batch_no?: string | null
+  serial_no?: string | null
+  total: number
+  page: number
+  page_size: number
+  items: WarehouseTraceabilityItem[]
+}
+
 export interface WarehouseFinishedGoodsInboundCandidatesQuery {
   company: string
   item_code?: string
@@ -538,6 +635,52 @@ export const fetchWarehouseAlerts = async (
     alert_type: query.alert_type,
   })
   return request<WarehouseAlertsData>(`/api/warehouse/alerts?${queryString}`)
+}
+
+export const fetchWarehouseBatches = async (
+  query: WarehouseBatchListQuery,
+): Promise<ApiResponse<WarehouseBatchListData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    warehouse: query.warehouse,
+    item_code: query.item_code,
+    batch_no: query.batch_no,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<WarehouseBatchListData>(`/api/warehouse/batches?${queryString}`)
+}
+
+export const fetchWarehouseSerialNumbers = async (
+  query: WarehouseSerialNumberListQuery,
+): Promise<ApiResponse<WarehouseSerialNumberListData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    warehouse: query.warehouse,
+    item_code: query.item_code,
+    batch_no: query.batch_no,
+    serial_no: query.serial_no,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<WarehouseSerialNumberListData>(`/api/warehouse/serial-numbers?${queryString}`)
+}
+
+export const fetchWarehouseTraceability = async (
+  query: WarehouseTraceabilityQuery,
+): Promise<ApiResponse<WarehouseTraceabilityData>> => {
+  const queryString = toQuery({
+    company: query.company,
+    warehouse: query.warehouse,
+    item_code: query.item_code,
+    batch_no: query.batch_no,
+    serial_no: query.serial_no,
+    from_date: query.from_date,
+    to_date: query.to_date,
+    page: query.page ?? 1,
+    page_size: query.page_size ?? 20,
+  })
+  return request<WarehouseTraceabilityData>(`/api/warehouse/traceability?${queryString}`)
 }
 
 export const fetchWarehouseOtherInbound = async (

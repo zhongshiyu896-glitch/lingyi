@@ -226,6 +226,189 @@
         </div>
       </section>
 
+      <section class="warehouse-traceability-section" data-testid="warehouse-traceability-readonly-section">
+        <div class="traceability-header">
+          <div class="title-wrap">
+            <h3>仓库追溯 / 批次序列只读</h3>
+            <span class="subtitle">batch / serial / traceability readonly subset</span>
+          </div>
+          <div class="traceability-actions">
+            <el-button
+              type="primary"
+              :loading="traceabilityLoading"
+              :disabled="!canRead"
+              data-testid="warehouse-traceability-query-button"
+              @click="applyTraceabilityFilters"
+            >
+              查询追溯
+            </el-button>
+            <el-button
+              :disabled="!canRead"
+              data-testid="warehouse-traceability-reset-button"
+              @click="resetTraceabilityFilters"
+            >
+              重置追溯
+            </el-button>
+            <el-button disabled data-write-guard data-testid="warehouse-traceability-export-guarded-button">
+              导出追溯
+            </el-button>
+            <el-button disabled data-write-guard data-testid="warehouse-traceability-stock-entry-guarded-button">
+              库存草稿
+            </el-button>
+            <el-button disabled data-write-guard data-testid="warehouse-traceability-count-guarded-button">
+              库存盘点
+            </el-button>
+          </div>
+        </div>
+
+        <el-form :inline="true" :model="query" class="traceability-filter-form">
+          <el-form-item label="批次号">
+            <el-input
+              v-model="query.traceability_batch_no"
+              clearable
+              placeholder="批次号"
+              aria-label="批次号"
+              data-testid="warehouse-traceability-batch-filter"
+            />
+          </el-form-item>
+          <el-form-item label="序列号">
+            <el-input
+              v-model="query.traceability_serial_no"
+              clearable
+              placeholder="序列号"
+              aria-label="序列号"
+              data-testid="warehouse-traceability-serial-filter"
+            />
+          </el-form-item>
+          <el-form-item>
+            <span class="traceability-filter-hint">公司 / 仓库 / 款号 / 日期沿用顶部共享筛选</span>
+          </el-form-item>
+        </el-form>
+
+        <el-alert
+          title="只读追溯收口：仅展示批次、序列号与追溯流水；export、库存草稿、盘点与 worker 生命周期全部保持禁用。"
+          type="info"
+          :closable="false"
+          class="scope-alert"
+          data-testid="warehouse-traceability-readonly-state"
+        />
+
+        <el-alert
+          v-if="traceabilityErrorMessage"
+          :title="`仓库追溯只读加载失败：${traceabilityErrorMessage}`"
+          type="error"
+          :closable="false"
+          class="scope-alert"
+          data-testid="warehouse-traceability-error"
+        />
+
+        <div class="warehouse-kpi-grid" data-testid="warehouse-traceability-kpi-grid">
+          <div class="warehouse-kpi-card" data-testid="warehouse-traceability-batch-count">
+            <span class="kpi-label">批次记录</span>
+            <strong class="kpi-value">{{ traceabilityKpis.batchCount }}</strong>
+            <small class="kpi-subtext">批次只读列表条数</small>
+          </div>
+          <div class="warehouse-kpi-card" data-testid="warehouse-traceability-serial-count">
+            <span class="kpi-label">序列号记录</span>
+            <strong class="kpi-value">{{ traceabilityKpis.serialCount }}</strong>
+            <small class="kpi-subtext">序列号只读列表条数</small>
+          </div>
+          <div class="warehouse-kpi-card" data-testid="warehouse-traceability-ledger-count">
+            <span class="kpi-label">追溯流水</span>
+            <strong class="kpi-value">{{ traceabilityKpis.traceabilityCount }}</strong>
+            <small class="kpi-subtext">追溯流水条数</small>
+          </div>
+        </div>
+
+        <el-tabs v-model="traceabilityActiveTab" type="border-card" data-testid="warehouse-traceability-tabs">
+          <el-tab-pane label="批次目录" name="batches">
+            <el-empty
+              v-if="batchRows.length === 0 && !traceabilityErrorMessage"
+              description="暂无批次目录数据"
+            />
+            <el-table
+              v-else
+              :data="batchRows"
+              border
+              stripe
+              data-testid="warehouse-traceability-batch-table"
+            >
+              <el-table-column prop="batch_no" label="批次号" min-width="140" />
+              <el-table-column prop="item_code" label="款号/物料" min-width="140" />
+              <el-table-column prop="warehouse" label="仓库" min-width="120" />
+              <el-table-column prop="manufacturing_date" label="生产日期" min-width="120" />
+              <el-table-column prop="expiry_date" label="失效日期" min-width="120" />
+              <el-table-column label="批次数量" min-width="110" align="right">
+                <template #default="{ row }">{{ formatAmount(row.qty) }}</template>
+              </el-table-column>
+              <el-table-column label="状态" min-width="100">
+                <template #default="{ row }">
+                  <el-tag :type="row.disabled ? 'info' : 'success'" effect="plain">
+                    {{ row.disabled ? '停用' : '启用' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane label="序列号目录" name="serials">
+            <el-empty
+              v-if="serialRows.length === 0 && !traceabilityErrorMessage"
+              description="暂无序列号目录数据"
+            />
+            <el-table
+              v-else
+              :data="serialRows"
+              border
+              stripe
+              data-testid="warehouse-traceability-serial-table"
+            >
+              <el-table-column prop="serial_no" label="序列号" min-width="160" />
+              <el-table-column prop="item_code" label="款号/物料" min-width="140" />
+              <el-table-column prop="warehouse" label="仓库" min-width="120" />
+              <el-table-column prop="batch_no" label="批次号" min-width="120" />
+              <el-table-column prop="delivery_document_no" label="出库单号" min-width="140" />
+              <el-table-column prop="purchase_document_no" label="入库单号" min-width="140" />
+              <el-table-column label="状态" min-width="100">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === 'Active' ? 'success' : 'warning'" effect="plain">
+                    {{ row.status || '-' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+
+          <el-tab-pane label="追溯流水" name="traceability">
+            <el-empty
+              v-if="traceabilityRows.length === 0 && !traceabilityErrorMessage"
+              description="暂无追溯流水数据"
+            />
+            <el-table
+              v-else
+              :data="traceabilityRows"
+              border
+              stripe
+              data-testid="warehouse-traceability-ledger-table"
+            >
+              <el-table-column prop="posting_date" label="过账日期" min-width="120" />
+              <el-table-column prop="voucher_type" label="凭证类型" min-width="120" />
+              <el-table-column prop="voucher_no" label="凭证编号" min-width="140" />
+              <el-table-column prop="warehouse" label="仓库" min-width="120" />
+              <el-table-column prop="item_code" label="款号/物料" min-width="140" />
+              <el-table-column prop="batch_no" label="批次号" min-width="120" />
+              <el-table-column prop="serial_no" label="序列号" min-width="160" />
+              <el-table-column label="本次数量" min-width="110" align="right">
+                <template #default="{ row }">{{ formatAmount(row.actual_qty) }}</template>
+              </el-table-column>
+              <el-table-column label="结存数量" min-width="110" align="right">
+                <template #default="{ row }">{{ formatAmount(row.qty_after_transaction) }}</template>
+              </el-table-column>
+            </el-table>
+          </el-tab-pane>
+        </el-tabs>
+      </section>
+
       <div
         v-if="!warehouseReadonlySliceOnly"
         class="local-write-row"
@@ -1225,20 +1408,26 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   buildWarehouseScenarioTag,
   ensureWarehouseScenarioTag,
+  fetchWarehouseBatches,
   type WarehouseFactoryReturnMaterialReportItem,
+  type WarehouseBatchItem,
   type WarehouseMaterialInventoryItem,
   type WarehouseManagementItem,
   type WarehouseOtherInboundItem,
   type WarehousePurchaseReturnOutboundItem,
   type WarehouseSemiFinishedOutboundItem,
+  fetchWarehouseSerialNumbers,
   fetchWarehouseFactoryReturnMaterialReport,
   fetchWarehouseOtherInbound,
   fetchWarehousePurchaseReturnOutbound,
   fetchWarehouseSemiFinishedOutbound,
   fetchWarehouseStockLedger,
   fetchWarehouseStockSummary,
+  fetchWarehouseTraceability,
+  type WarehouseSerialNumberItem,
   type WarehouseStockLedgerItem,
   type WarehouseStockSummaryItem,
+  type WarehouseTraceabilityItem,
 } from '@/api/warehouse'
 import { request, type ApiResponse } from '@/api/request'
 import { usePermissionStore } from '@/stores/permission'
@@ -1312,10 +1501,13 @@ const pageSize = ref<number>(20)
 const errorMessage = ref<string>('')
 const managementErrorMessage = ref<string>('')
 const materialErrorMessage = ref<string>('')
+const traceabilityErrorMessage = ref<string>('')
 const otherInboundErrorMessage = ref<string>('')
 const purchaseReturnOutboundErrorMessage = ref<string>('')
 const factoryReturnMaterialReportErrorMessage = ref<string>('')
 const semiFinishedOutboundErrorMessage = ref<string>('')
+const traceabilityLoading = ref<boolean>(false)
+const traceabilityActiveTab = ref<'batches' | 'serials' | 'traceability'>('batches')
 const selectedRows = ref<DisplayRow[]>([])
 const ledgerDialogVisible = ref<boolean>(false)
 const localWriteLoading = ref<boolean>(false)
@@ -1328,6 +1520,9 @@ const residualAfterRollback = ref<number | null>(null)
 const summaryRows = ref<WarehouseStockSummaryItem[]>([])
 const managementRows = ref<WarehouseManagementItem[]>([])
 const materialRows = ref<WarehouseMaterialInventoryItem[]>([])
+const batchRows = ref<WarehouseBatchItem[]>([])
+const serialRows = ref<WarehouseSerialNumberItem[]>([])
+const traceabilityRows = ref<WarehouseTraceabilityItem[]>([])
 const otherInboundRows = ref<WarehouseOtherInboundItem[]>([])
 const purchaseReturnOutboundRows = ref<WarehousePurchaseReturnOutboundItem[]>([])
 const factoryReturnMaterialReportRows = ref<WarehouseFactoryReturnMaterialReportItem[]>([])
@@ -1347,6 +1542,8 @@ const query = reactive({
   material_warehouse: '',
   material_location: '',
   material_status: '',
+  traceability_batch_no: '',
+  traceability_serial_no: '',
   other_inbound_no: '',
   other_inbound_supplier: '',
   other_inbound_material: '',
@@ -1490,6 +1687,79 @@ const localSeedManagementRows: WarehouseManagementItem[] = [
     capacity_qty: 240,
     used_qty: 132,
     utilization_rate: 55,
+  },
+]
+
+const localSeedBatchRows: WarehouseBatchItem[] = [
+  {
+    company: '样衣制造',
+    batch_no: 'BATCH-001',
+    item_code: 'ZY240716',
+    warehouse: '样衣仓',
+    manufacturing_date: '2026-04-01',
+    expiry_date: '2026-08-01',
+    disabled: false,
+    qty: 8,
+  },
+  {
+    company: '样衣制造',
+    batch_no: 'BATCH-002',
+    item_code: '20240718001',
+    warehouse: '成品仓',
+    manufacturing_date: '2026-04-08',
+    expiry_date: '2026-09-15',
+    disabled: false,
+    qty: 30,
+  },
+]
+
+const localSeedSerialRows: WarehouseSerialNumberItem[] = [
+  {
+    company: '样衣制造',
+    serial_no: 'SER-001',
+    item_code: 'ZY240716',
+    warehouse: '样衣仓',
+    batch_no: 'BATCH-001',
+    status: 'Active',
+    delivery_document_no: 'DN-001',
+    purchase_document_no: 'PR-001',
+  },
+  {
+    company: '样衣制造',
+    serial_no: 'SER-002',
+    item_code: '20240718001',
+    warehouse: '成品仓',
+    batch_no: 'BATCH-002',
+    status: 'Active',
+    delivery_document_no: 'DN-002',
+    purchase_document_no: 'PR-002',
+  },
+]
+
+const localSeedTraceabilityRows: WarehouseTraceabilityItem[] = [
+  {
+    company: '样衣制造',
+    warehouse: '样衣仓',
+    item_code: 'ZY240716',
+    posting_date: '2026-05-01',
+    voucher_type: 'Stock Entry',
+    voucher_no: 'STE-001',
+    actual_qty: 2,
+    qty_after_transaction: 8,
+    batch_no: 'BATCH-001',
+    serial_no: 'SER-001,SER-002',
+  },
+  {
+    company: '样衣制造',
+    warehouse: '成品仓',
+    item_code: '20240718001',
+    posting_date: '2026-05-03',
+    voucher_type: 'Delivery Note',
+    voucher_no: 'DN-002',
+    actual_qty: -1,
+    qty_after_transaction: 29,
+    batch_no: 'BATCH-002',
+    serial_no: 'SER-003',
   },
 ]
 
@@ -2027,6 +2297,12 @@ const warehouseKpis = computed(() => {
   }
 })
 
+const traceabilityKpis = computed(() => ({
+  batchCount: batchRows.value.length,
+  serialCount: serialRows.value.length,
+  traceabilityCount: traceabilityRows.value.length,
+}))
+
 const managementStatusText = (value: WarehouseManagementItem['status']): string => {
   if (value === 'warning') return '预警'
   if (value === 'disabled') return '停用'
@@ -2139,6 +2415,8 @@ const resetQuery = (): void => {
   query.material_warehouse = ''
   query.material_location = ''
   query.material_status = ''
+  query.traceability_batch_no = ''
+  query.traceability_serial_no = ''
   query.other_inbound_no = ''
   query.other_inbound_supplier = ''
   query.other_inbound_material = ''
@@ -2171,7 +2449,149 @@ const resetQuery = (): void => {
   purchaseReturnOutboundErrorMessage.value = ''
   factoryReturnMaterialReportErrorMessage.value = ''
   semiFinishedOutboundErrorMessage.value = ''
+  traceabilityErrorMessage.value = ''
   void loadData({ forceRemote: true })
+}
+
+const resetTraceabilityRows = (): void => {
+  batchRows.value = []
+  serialRows.value = []
+  traceabilityRows.value = []
+}
+
+const applyLocalTraceabilityRows = (): void => {
+  const company = query.company.trim().toLowerCase()
+  const warehouse = query.warehouse.trim().toLowerCase()
+  const itemCode = query.style_keyword.trim().toLowerCase()
+  const batchNo = query.traceability_batch_no.trim().toLowerCase()
+  const serialNo = query.traceability_serial_no.trim().toLowerCase()
+  const fromDate = query.from_date || ''
+  const toDate = query.to_date || ''
+
+  const companyMatched = (value: string): boolean => !company || value.toLowerCase().includes(company)
+  const warehouseMatched = (value: string): boolean => !warehouse || value.toLowerCase().includes(warehouse)
+  const itemMatched = (value: string): boolean => !itemCode || value.toLowerCase().includes(itemCode)
+  const batchMatched = (value: string | null | undefined): boolean => !batchNo || String(value || '').toLowerCase().includes(batchNo)
+  const serialMatched = (value: string | null | undefined): boolean => !serialNo || String(value || '').toLowerCase().includes(serialNo)
+  const dateMatched = (value: string | null | undefined): boolean => {
+    const normalized = String(value || '')
+    if (!normalized) return !fromDate && !toDate
+    if (fromDate && normalized < fromDate) return false
+    if (toDate && normalized > toDate) return false
+    return true
+  }
+
+  batchRows.value = localSeedBatchRows.filter((row) => (
+    companyMatched(row.company)
+    && warehouseMatched(row.warehouse)
+    && itemMatched(row.item_code)
+    && batchMatched(row.batch_no)
+  ))
+
+  serialRows.value = localSeedSerialRows.filter((row) => (
+    companyMatched(row.company)
+    && warehouseMatched(row.warehouse)
+    && itemMatched(row.item_code)
+    && batchMatched(row.batch_no)
+    && serialMatched(row.serial_no)
+  ))
+
+  traceabilityRows.value = localSeedTraceabilityRows.filter((row) => (
+    companyMatched(row.company)
+    && warehouseMatched(row.warehouse)
+    && itemMatched(row.item_code)
+    && batchMatched(row.batch_no)
+    && serialMatched(row.serial_no)
+    && dateMatched(row.posting_date)
+  ))
+}
+
+const loadTraceabilityData = async (options?: { forceRemote?: boolean }): Promise<void> => {
+  if (!canRead.value) {
+    resetTraceabilityRows()
+    return
+  }
+
+  const normalized = normalizeQuery()
+  const batchNo = query.traceability_batch_no.trim() || undefined
+  const serialNo = query.traceability_serial_no.trim() || undefined
+  const useLocalSeed =
+    isFinishedGoodsParity.value
+    || isFoundationWarehouseParity.value
+    || (
+      !options?.forceRemote
+      && !normalized.company
+      && !normalized.warehouse
+      && !normalized.item_code
+      && !normalized.from_date
+      && !normalized.to_date
+      && !batchNo
+      && !serialNo
+    )
+
+  traceabilityErrorMessage.value = ''
+
+  if (useLocalSeed) {
+    applyLocalTraceabilityRows()
+    return
+  }
+
+  traceabilityLoading.value = true
+  try {
+    const [batchResult, serialResult, traceabilityResult] = await Promise.all([
+      fetchWarehouseBatches({
+        company: normalized.company,
+        warehouse: normalized.warehouse,
+        item_code: normalized.item_code,
+        batch_no: batchNo,
+        page: 1,
+        page_size: 50,
+      }),
+      fetchWarehouseSerialNumbers({
+        company: normalized.company,
+        warehouse: normalized.warehouse,
+        item_code: normalized.item_code,
+        batch_no: batchNo,
+        serial_no: serialNo,
+        page: 1,
+        page_size: 50,
+      }),
+      fetchWarehouseTraceability({
+        company: normalized.company,
+        warehouse: normalized.warehouse,
+        item_code: normalized.item_code,
+        batch_no: batchNo,
+        serial_no: serialNo,
+        from_date: normalized.from_date,
+        to_date: normalized.to_date,
+        page: 1,
+        page_size: 50,
+      }),
+    ])
+    batchRows.value = batchResult.data.items
+    serialRows.value = serialResult.data.items
+    traceabilityRows.value = traceabilityResult.data.items
+  } catch (error) {
+    traceabilityErrorMessage.value = (error as Error).message || '请求失败'
+    resetTraceabilityRows()
+  } finally {
+    traceabilityLoading.value = false
+  }
+}
+
+const applyTraceabilityFilters = (): void => {
+  if (!canRead.value) {
+    ElMessage.warning('当前账号无仓库追溯读取权限')
+    return
+  }
+  void loadTraceabilityData({ forceRemote: true })
+}
+
+const resetTraceabilityFilters = (): void => {
+  query.traceability_batch_no = ''
+  query.traceability_serial_no = ''
+  traceabilityErrorMessage.value = ''
+  void loadTraceabilityData()
 }
 
 const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
@@ -2185,6 +2605,7 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     semiFinishedOutboundRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
+    resetTraceabilityRows()
     return
   }
 
@@ -2199,6 +2620,7 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     semiFinishedOutboundRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
+    resetTraceabilityRows()
     return
   }
 
@@ -2232,6 +2654,7 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     ledgerRows.value = localSeedLedgerRows
     orderMap.value = buildOrderMap(localSeedLedgerRows)
     selectedRows.value = []
+    await loadTraceabilityData()
     return
   }
 
@@ -2310,6 +2733,7 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     ledgerRows.value = ledgerResult.data.items
     orderMap.value = buildOrderMap(ledgerResult.data.items)
     selectedRows.value = []
+    await loadTraceabilityData({ forceRemote: true })
   } catch (error) {
     const message = (error as Error).message || '请求失败'
     errorMessage.value = message
@@ -2326,6 +2750,7 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     factoryReturnMaterialReportRows.value = []
     semiFinishedOutboundRows.value = []
     selectedRows.value = []
+    resetTraceabilityRows()
     ElMessage.error(message)
   } finally {
     loading.value = false
@@ -2821,6 +3246,38 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.warehouse-traceability-section {
+  margin: 12px 0;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  padding: 12px;
+  background: #fbfdff;
+}
+
+.traceability-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.traceability-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.traceability-filter-form {
+  margin-bottom: 12px;
+}
+
+.traceability-filter-hint {
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .contract-merge-panel {
