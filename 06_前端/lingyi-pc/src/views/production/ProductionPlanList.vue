@@ -26,6 +26,7 @@
         <el-tag type="warning">A006 blocked/unknown => not_claimed</el-tag>
         <el-tag type="info">real_business_object_created=false (production)</el-tag>
         <el-tag type="info">linked_calculation_enabled=false (cross-module)</el-tag>
+        <el-tag v-if="parityTag" type="warning">parity_route={{ parityTag }}</el-tag>
       </section>
 
       <section class="status-board" data-testid="yisuan-1to1-production-plan-status-board">
@@ -43,35 +44,48 @@
         <el-form-item label="计划状态">
           <el-select v-model="query.status" clearable placeholder="全部" style="width: 160px">
             <el-option label="全部" value="" />
-            <el-option label="待锁定" value="待锁定" />
-            <el-option label="进行中" value="进行中" />
-            <el-option label="待复核" value="待复核" />
+            <el-option label="已计划" value="planned" />
+            <el-option label="已物料检查" value="material_checked" />
+            <el-option label="工单待同步" value="work_order_pending" />
+            <el-option label="已创建工单" value="work_order_created" />
           </el-select>
         </el-form-item>
         <el-form-item label="生产组">
           <el-select v-model="query.group" clearable placeholder="全部" style="width: 160px">
-            <el-option label="A 线" value="A线" />
-            <el-option label="B 线" value="B线" />
-            <el-option label="外协组" value="外协组" />
+            <el-option label="本地计划组" value="本地计划组" />
+            <el-option label="样衣计划镜像" value="样衣计划镜像" />
+            <el-option label="生产跟进镜像" value="生产跟进镜像" />
           </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button :loading="listLoading" type="primary" plain @click="refreshPlans">刷新列表</el-button>
         </el-form-item>
         <el-form-item>
           <el-button @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
 
+      <el-alert v-if="listError" type="warning" :closable="false" :title="listError" class="scope-alert" />
+
       <section data-testid="yisuan-1to1-production-plan-table">
-        <el-table :data="filteredPlans" border class="result-table">
+        <el-table :data="filteredPlans" border class="result-table" v-loading="listLoading">
           <el-table-column prop="planNo" label="计划号" min-width="160" />
           <el-table-column prop="orderNo" label="订单号" min-width="160" />
           <el-table-column prop="styleCode" label="款号" min-width="130" />
+          <el-table-column prop="customer" label="客户" min-width="140" />
           <el-table-column prop="group" label="生产组" min-width="110" />
           <el-table-column prop="plannedQty" label="计划数量" min-width="110" />
           <el-table-column prop="progress" label="进度" min-width="110" />
           <el-table-column prop="planDate" label="计划日期" min-width="120" />
           <el-table-column prop="status" label="状态" min-width="120">
             <template #default="{ row }">
-              <el-tag :type="statusType(row.status)" effect="plain">{{ row.status }}</el-tag>
+              <el-tag :type="statusType(row.statusCode)" effect="plain">{{ row.statusLabel }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="workOrderStatus" label="工单同步" min-width="120" />
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openDetail(row)">查看详情</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -112,55 +126,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { request } from '@/api/request'
+import {
+  fetchLocalReadbackProductionPlans,
+  fetchLocalReadbackSalesOrders,
+  fetchProductionPlans,
+  type ProductionPlanListItem,
+} from '@/api/production'
 
 interface PlanRow {
+  id: number | null
   planNo: string
   orderNo: string
   styleCode: string
+  customer: string
   group: string
   plannedQty: number
   progress: string
   planDate: string
-  status: string
-}
-
-interface ProductionPlanReadback {
-  draft_id: number
-  plan_no: string
-  planned_qty: number
-  plan_date: string
-  status: string
-  state: string
-  order_no: string
-  style_code: string
-}
-
-interface SalesOrderReadbackData {
-  object_id: number
-  production_plan: ProductionPlanReadback | null
-  readback_flags: {
-    production_plan_readback_success: boolean
-  }
-}
-
-interface SalesOrderListData {
-  scenario_tag: string
-  total: number
-  records: SalesOrderReadbackData[]
-}
-
-interface ProductionPlanListData {
-  scenario_tag: string
-  total: number
-  records: ProductionPlanReadback[]
+  statusCode: string
+  statusLabel: string
+  workOrderStatus: string
+  source: 'backend' | 'synthetic'
 }
 
 const router = useRouter()
 const route = useRoute()
+const listLoading = ref(false)
+const listError = ref('')
+const planRows = ref<PlanRow[]>([])
 
 const query = reactive({
   keyword: '',
@@ -168,49 +164,60 @@ const query = reactive({
   group: '',
 })
 
-const plans: PlanRow[] = [
-  {
-    planNo: 'PP-2606-A01',
-    orderNo: 'SO-YS-260601',
-    styleCode: 'JK-2410',
-    group: 'A线',
-    plannedQty: 480,
-    progress: '62%',
-    planDate: '2026-06-03',
-    status: '进行中',
-  },
-  {
-    planNo: 'PP-2606-B07',
-    orderNo: 'SO-YS-260614',
-    styleCode: 'DR-8831',
-    group: '外协组',
-    plannedQty: 300,
-    progress: '35%',
-    planDate: '2026-06-07',
-    status: '待复核',
-  },
-  {
-    planNo: 'PP-2606-C11',
-    orderNo: 'SO-YS-260626',
-    styleCode: 'TS-1077',
-    group: 'B线',
-    plannedQty: 560,
-    progress: '12%',
-    planDate: '2026-06-12',
-    status: '待锁定',
-  },
-]
-
-const statusBoard = [
-  { name: '待锁定计划', value: '3', note: '交期确认前不可下发' },
-  { name: '进行中计划', value: '8', note: '本周执行中的生产单' },
-  { name: '异常待处理', value: '2', note: '涉及面料或工序冲突' },
-]
-
 const parseScenarioTag = (value: unknown): string => {
   const raw = Array.isArray(value) ? value[0] : value
   return typeof raw === 'string' ? raw.trim() : ''
 }
+
+const parityTag = computed(() => parseScenarioTag(route.query.parity))
+
+const fallbackPlanSeeds: PlanRow[] = [
+  {
+    id: null,
+    planNo: 'PP-LOCAL-260601',
+    orderNo: 'SO-LOCAL-260601',
+    styleCode: 'ITEM-A',
+    customer: '本地样例客户',
+    group: '本地计划组',
+    plannedQty: 180,
+    progress: '0%',
+    planDate: '2026-06-03',
+    statusCode: 'planned',
+    statusLabel: '已计划',
+    workOrderStatus: '-',
+    source: 'synthetic',
+  },
+  {
+    id: null,
+    planNo: 'PP-LOCAL-260602',
+    orderNo: 'SO-LOCAL-260602',
+    styleCode: 'ITEM-B',
+    customer: '样衣镜像客户',
+    group: '样衣计划镜像',
+    plannedQty: 240,
+    progress: '35%',
+    planDate: '2026-06-05',
+    statusCode: 'material_checked',
+    statusLabel: '已物料检查',
+    workOrderStatus: 'pending',
+    source: 'synthetic',
+  },
+  {
+    id: null,
+    planNo: 'PP-LOCAL-260603',
+    orderNo: 'SO-LOCAL-260603',
+    styleCode: 'ITEM-C',
+    customer: '生产跟进镜像客户',
+    group: '生产跟进镜像',
+    plannedQty: 320,
+    progress: '68%',
+    planDate: '2026-06-08',
+    statusCode: 'work_order_pending',
+    statusLabel: '工单待同步',
+    workOrderStatus: 'pending',
+    source: 'synthetic',
+  },
+]
 
 const readbackQuery = reactive({
   scenarioTag: parseScenarioTag(route.query.scenario_tag),
@@ -226,27 +233,139 @@ const localReadback = reactive({
   latestPlanObjectId: 0,
 })
 
+const statusLabel = (status: string): string => {
+  const labels: Record<string, string> = {
+    planned: '已计划',
+    material_checked: '已物料检查',
+    work_order_pending: '工单待同步',
+    work_order_created: '已创建工单',
+    job_cards_synced: '工序卡已同步',
+    cancelled: '已取消',
+    failed: '失败',
+  }
+  return labels[status] || status
+}
+
+const progressLabel = (status: string): string => {
+  const labels: Record<string, string> = {
+    planned: '0%',
+    material_checked: '35%',
+    work_order_pending: '68%',
+    work_order_created: '85%',
+    job_cards_synced: '100%',
+    cancelled: '0%',
+    failed: '0%',
+  }
+  return labels[status] || '0%'
+}
+
+const groupLabel = (parity: string, company: string): string => {
+  if (parity === 'sample-list') return '样衣计划镜像'
+  if (parity === 'production-followup-template') return '生产跟进镜像'
+  return company === 'LY-LOCAL-TEST' ? '本地计划组' : company
+}
+
+const statusBoard = computed(() => {
+  const rows = planRows.value
+  const countByStatus = (status: string) => rows.filter((row) => row.statusCode === status).length
+  return [
+    { name: '已计划', value: String(countByStatus('planned')), note: '仅本地只读清单，不触发下发' },
+    { name: '工单待同步', value: String(countByStatus('work_order_pending')), note: '仅保留映射状态，不触发 outbox' },
+    { name: '本地只读记录', value: String(rows.length), note: 'backend 为空时回退 synthetic snapshot' },
+  ]
+})
+
 const filteredPlans = computed(() => {
   const keyword = query.keyword.trim().toLowerCase()
-  return plans.filter((row) => {
+  return planRows.value.filter((row) => {
     if (keyword && !`${row.planNo} ${row.orderNo} ${row.styleCode}`.toLowerCase().includes(keyword)) return false
-    if (query.status && row.status !== query.status) return false
+    if (query.status && row.statusCode !== query.status) return false
     if (query.group && row.group !== query.group) return false
     return true
   })
 })
 
 const statusType = (status: string): 'success' | 'warning' | 'danger' | 'info' => {
-  if (status === '进行中') return 'success'
-  if (status === '待复核') return 'danger'
-  if (status === '待锁定') return 'warning'
+  if (status === 'work_order_created' || status === 'job_cards_synced') return 'success'
+  if (status === 'failed') return 'danger'
+  if (status === 'planned' || status === 'material_checked' || status === 'work_order_pending') return 'warning'
   return 'info'
 }
+
+const mapPlanRow = (item: ProductionPlanListItem): PlanRow => ({
+  id: item.id,
+  planNo: item.plan_no,
+  orderNo: item.sales_order,
+  styleCode: item.item_code,
+  customer: item.customer || '-',
+  group: groupLabel(parityTag.value, item.company),
+  plannedQty: Number(item.planned_qty),
+  progress: progressLabel(item.status),
+  planDate: item.planned_start_date || '-',
+  statusCode: item.status,
+  statusLabel: statusLabel(item.status),
+  workOrderStatus: item.latest_work_order_outbox?.status || '-',
+  source: 'backend',
+})
 
 const resetQuery = (): void => {
   query.keyword = ''
   query.status = ''
   query.group = ''
+  void refreshPlans()
+}
+
+const buildDetailQuery = (row: PlanRow): Record<string, string> => {
+  const queryParams: Record<string, string> = {}
+  if (row.id !== null) {
+    queryParams.id = String(row.id)
+  }
+  if (row.source === 'synthetic') {
+    queryParams.synthetic = '1'
+    queryParams.plan_no = row.planNo
+    queryParams.sales_order = row.orderNo
+    queryParams.item_code = row.styleCode
+    queryParams.customer = row.customer
+    queryParams.company = 'LY-LOCAL-TEST'
+    queryParams.planned_qty = String(row.plannedQty)
+    queryParams.planned_start_date = row.planDate
+    queryParams.status = row.statusCode
+  }
+  if (readbackQuery.scenarioTag.trim()) {
+    queryParams.scenario = readbackQuery.scenarioTag.trim()
+  }
+  if (parityTag.value) {
+    queryParams.parity = parityTag.value
+  }
+  return queryParams
+}
+
+const openDetail = (row: PlanRow): void => {
+  router.push({ path: '/production/plans/detail', query: buildDetailQuery(row) })
+}
+
+const refreshPlans = async (): Promise<void> => {
+  listLoading.value = true
+  listError.value = ''
+  try {
+    const response = await fetchProductionPlans({
+      keyword: query.keyword.trim() || undefined,
+      status: query.status || undefined,
+      page: 1,
+      page_size: 20,
+    })
+    if (response.data.items.length > 0) {
+      planRows.value = response.data.items.map(mapPlanRow)
+      return
+    }
+    planRows.value = fallbackPlanSeeds.map((row) => ({ ...row }))
+    listError.value = '未读取到本地生产计划记录，已回退到 synthetic snapshot。'
+  } catch (error) {
+    planRows.value = fallbackPlanSeeds.map((row) => ({ ...row }))
+    listError.value = `读取生产计划失败，已回退到 synthetic snapshot：${(error as Error).message}`
+  } finally {
+    listLoading.value = false
+  }
 }
 
 const refreshReadback = async (): Promise<void> => {
@@ -263,9 +382,8 @@ const refreshReadback = async (): Promise<void> => {
   localReadback.loading = true
   localReadback.error = ''
   try {
-    const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
-    const orderResp = await request<SalesOrderListData>(`/api/local-dev/sales-orders?${queryString}`)
-    const planResp = await request<ProductionPlanListData>(`/api/local-dev/production-plans?${queryString}`)
+    const orderResp = await fetchLocalReadbackSalesOrders(scenarioTag)
+    const planResp = await fetchLocalReadbackProductionPlans(scenarioTag)
     localReadback.salesOrderTotal = orderResp.data.total
     localReadback.productionPlanTotal = planResp.data.total
     localReadback.productionPlanReadbackSuccess = orderResp.data.records.some((record) =>
@@ -283,6 +401,7 @@ const refreshReadback = async (): Promise<void> => {
 }
 
 onMounted(() => {
+  void refreshPlans()
   void refreshReadback()
 })
 

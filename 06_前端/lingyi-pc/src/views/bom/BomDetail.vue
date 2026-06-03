@@ -21,6 +21,8 @@
         <span>来源：A002/A005 contract sources（B010 继承，B011 local write/readback）</span>
       </div>
 
+      <el-alert v-if="detailRef.error" type="warning" :closable="false" :title="detailRef.error" class="readback-descriptions" />
+
       <el-descriptions :column="3" border class="style-summary" data-testid="yisuan-1to1-bom-style-summary">
         <el-descriptions-item label="BOM 编号">{{ bomNo }}</el-descriptions-item>
         <el-descriptions-item label="款号">{{ displayStyleCode }}</el-descriptions-item>
@@ -189,7 +191,12 @@
 import { computed, onMounted, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { request } from '@/api/request'
+import {
+  fetchBomDetail,
+  fetchLocalBomReadback,
+  type BomDetailData,
+  type LocalBomReadbackData,
+} from '@/api/bom'
 
 interface MaterialLine {
   code: string
@@ -200,49 +207,6 @@ interface MaterialLine {
   lossRate?: number
   remark?: string
   unitCost: number
-}
-
-interface LocalBomReadbackLine {
-  material_item_code: string
-  material_name: string
-  style_code: string
-  color: string
-  size: string | null
-  qty_per_piece: number
-  loss_rate: number
-  uom: string
-  remark: string
-}
-
-interface LocalBomReadbackData {
-  object_id: number
-  scenario_tag: string
-  bom_main: {
-    bom_no: string
-    item_code: string
-    version_no: string
-    status: string
-    is_default: boolean
-    state: string
-    note: string
-  }
-  style_binding: {
-    style_code: string
-    style_name: string
-    style_version: string
-    material_group: string
-    binding_note: string
-  }
-  fabric_lines: LocalBomReadbackLine[]
-  trim_lines: LocalBomReadbackLine[]
-  readback_flags: {
-    scenario_tag_present: boolean
-    bom_main_readback_success: boolean
-    style_binding_readback_success: boolean
-    fabric_line_readback_success: boolean
-    trim_line_readback_success: boolean
-    status_validation_readback_success: boolean
-  }
 }
 
 type ContractFieldRow = {
@@ -311,6 +275,18 @@ const localReadbackRef = reactive<{
   scenarioTag: '',
 })
 
+const detailRef = reactive<{
+  loading: boolean
+  data: BomDetailData | null
+  error: string
+  bomId: number | null
+}>({
+  loading: false,
+  data: null,
+  error: '',
+  bomId: null,
+})
+
 const parseObjectId = (value: unknown): number | null => {
   const raw = Array.isArray(value) ? value[0] : value
   const parsed = Number(raw)
@@ -323,12 +299,21 @@ const parseScenarioTag = (value: unknown): string => {
   return typeof raw === 'string' ? raw.trim() : ''
 }
 
+const parseTextQuery = (value: unknown): string => {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+const bomIdFromQuery = computed<number | null>(() => parseObjectId(route.query.bom_id))
 const objectIdFromQuery = computed<number | null>(() => parseObjectId(route.query.object_id))
 const scenarioTagFromQuery = computed<string>(() => parseScenarioTag(route.query.scenario_tag))
+const styleNameFromQuery = computed<string>(() => parseTextQuery(route.query.style_name))
 
 const bomNo = computed(() => {
+  if (detailRef.data?.bom.bom_no) return detailRef.data.bom.bom_no
   const queryBom = route.query.bom_no
   if (typeof queryBom === 'string' && queryBom.trim()) return queryBom.trim()
+  if (localReadbackRef.data?.bom_main.bom_no) return localReadbackRef.data.bom_main.bom_no
   return 'BOM-YS-250601-001'
 })
 
@@ -374,7 +359,14 @@ const staticTrimLines: MaterialLine[] = [
   },
 ]
 
-const toMaterialLine = (line: LocalBomReadbackLine): MaterialLine => ({
+const isFabricMaterial = (materialItemCode: string, remark?: string | null): boolean => {
+  const remarkText = (remark || '').trim()
+  if (remarkText.includes('面料')) return true
+  const token = materialItemCode.replace('_', '-').split('-', 1)[0].trim().toUpperCase()
+  return token === 'FAB' || token === 'FABRIC' || token === 'CLOTH'
+}
+
+const toMaterialLine = (line: LocalBomReadbackData['fabric_lines'][number]): MaterialLine => ({
   code: line.material_item_code,
   name: line.material_name || line.remark || '-',
   spec: [line.color, line.size || ''].filter(Boolean).join(' / ') || '-',
@@ -385,7 +377,31 @@ const toMaterialLine = (line: LocalBomReadbackLine): MaterialLine => ({
   unitCost: 0,
 })
 
+const toDetailMaterialLine = (line: BomDetailData['items'][number]): MaterialLine => ({
+  code: line.material_item_code,
+  name: line.remark || line.material_item_code,
+  spec: [line.color, line.size || ''].filter(Boolean).join(' / ') || '-',
+  uom: line.uom || 'PCS',
+  usage: Number(line.qty_per_piece || 0),
+  lossRate: Number(line.loss_rate || 0) * 100,
+  remark: line.remark || '',
+  unitCost: 0,
+})
+
+const detailFabricLines = computed<MaterialLine[]>(() => {
+  if (!detailRef.data?.items?.length) return []
+  return detailRef.data.items.filter((line) => isFabricMaterial(line.material_item_code, line.remark)).map(toDetailMaterialLine)
+})
+
+const detailTrimLines = computed<MaterialLine[]>(() => {
+  if (!detailRef.data?.items?.length) return []
+  return detailRef.data.items.filter((line) => !isFabricMaterial(line.material_item_code, line.remark)).map(toDetailMaterialLine)
+})
+
 const displayFabricLines = computed<MaterialLine[]>(() => {
+  if (detailFabricLines.value.length) {
+    return detailFabricLines.value
+  }
   if (localReadbackRef.data?.fabric_lines?.length) {
     return localReadbackRef.data.fabric_lines.map(toMaterialLine)
   }
@@ -393,16 +409,21 @@ const displayFabricLines = computed<MaterialLine[]>(() => {
 })
 
 const displayTrimLines = computed<MaterialLine[]>(() => {
+  if (detailTrimLines.value.length) {
+    return detailTrimLines.value
+  }
   if (localReadbackRef.data?.trim_lines?.length) {
     return localReadbackRef.data.trim_lines.map(toMaterialLine)
   }
   return staticTrimLines
 })
 
-const displayStyleCode = computed(() => localReadbackRef.data?.style_binding.style_code || 'LY-WS-2301')
-const displayStyleName = computed(() => localReadbackRef.data?.style_binding.style_name || '圆领短袖卫衣')
-const displayVersion = computed(() => localReadbackRef.data?.bom_main.version_no || 'V2.3')
-const displayStatus = computed(() => (localReadbackRef.data?.bom_main.status || 'published') as string)
+const displayStyleCode = computed(() => detailRef.data?.bom.item_code || localReadbackRef.data?.style_binding.style_code || 'LY-WS-2301')
+const displayStyleName = computed(
+  () => styleNameFromQuery.value || localReadbackRef.data?.style_binding.style_name || detailRef.data?.bom.item_code || '圆领短袖卫衣',
+)
+const displayVersion = computed(() => detailRef.data?.bom.version_no || localReadbackRef.data?.bom_main.version_no || 'V2.3')
+const displayStatus = computed(() => detailRef.data?.bom.status || localReadbackRef.data?.bom_main.status || 'published')
 
 const statusLabel = (status: string) => {
   if (status === 'draft') return '草稿'
@@ -425,6 +446,28 @@ const totalLossRate = computed(() =>
   displayFabricLines.value.reduce((sum, row) => sum + (row.lossRate ?? 0), 0) / (displayFabricLines.value.length || 1),
 )
 
+const refreshRemoteDetail = async () => {
+  const bomId = bomIdFromQuery.value
+  detailRef.bomId = bomId
+  if (!bomId) {
+    detailRef.data = null
+    detailRef.error = ''
+    return
+  }
+
+  detailRef.loading = true
+  detailRef.error = ''
+  try {
+    detailRef.data = (await fetchBomDetail(bomId)).data
+  } catch (error) {
+    detailRef.data = null
+    detailRef.error = `BOM 详情读取失败：${(error as Error).message}`
+    ElMessage.warning(detailRef.error)
+  } finally {
+    detailRef.loading = false
+  }
+}
+
 const refreshLocalReadback = async () => {
   const objectId = objectIdFromQuery.value
   const scenarioTag = scenarioTagFromQuery.value
@@ -439,9 +482,7 @@ const refreshLocalReadback = async () => {
   localReadbackRef.loading = true
   localReadbackRef.error = ''
   try {
-    const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
-    const response = await request<LocalBomReadbackData>(`/api/local-dev/bom/${objectId}/readback?${queryString}`)
-    localReadbackRef.data = response.data
+    localReadbackRef.data = (await fetchLocalBomReadback(objectId, scenarioTag)).data
   } catch (error) {
     localReadbackRef.data = null
     localReadbackRef.error = `本地回读失败：${(error as Error).message}`
@@ -451,11 +492,13 @@ const refreshLocalReadback = async () => {
   }
 }
 
-watch([objectIdFromQuery, scenarioTagFromQuery], () => {
+watch([bomIdFromQuery, objectIdFromQuery, scenarioTagFromQuery], () => {
+  void refreshRemoteDetail()
   void refreshLocalReadback()
 })
 
 onMounted(() => {
+  void refreshRemoteDetail()
   void refreshLocalReadback()
 })
 

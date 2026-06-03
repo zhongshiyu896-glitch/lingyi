@@ -52,6 +52,8 @@
         <el-tag type="warning">审核中</el-tag>
         <el-tag type="success">已发布</el-tag>
       </div>
+
+      <el-alert v-if="listError" type="warning" :closable="false" :title="listError" class="feedback-alert" />
     </el-card>
 
     <el-card shadow="never" class="contract-boundary-card">
@@ -108,6 +110,7 @@
 
     <el-card shadow="never">
       <el-table
+        v-loading="listLoading"
         :data="filteredRows"
         border
         height="460"
@@ -129,7 +132,7 @@
         <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="loadRowToLocalLoop(row)">写入闭环</el-button>
-            <el-button link type="primary" @click="goDetail(row.bomNo)">查看详情</el-button>
+            <el-button link type="primary" @click="goDetail(row)">查看详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -240,14 +243,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { request } from '@/api/request'
+import {
+  createLocalBom,
+  fetchBomList,
+  fetchLocalBomListSummary,
+  fetchLocalBomReadback,
+  fetchLocalBomResidualCount,
+  rollbackLocalBomScenario,
+  updateLocalBom,
+  type BomListItem,
+  type LocalBomLinePayload as BomLinePayload,
+  type LocalBomListSummaryData,
+  type LocalBomOperationPayload as BomOperationPayload,
+  type LocalBomReadbackData,
+  type LocalBomRollbackData,
+  type LocalBomUpsertPayload,
+} from '@/api/bom'
 
 type BomStatus = 'draft' | 'review' | 'published'
 
 interface BomRow {
+  bomId: number | null
   bomNo: string
   styleCode: string
   styleName: string
@@ -258,91 +277,8 @@ interface BomRow {
   updatedAt: string
 }
 
-interface BomLinePayload {
-  material_item_code: string
-  material_name: string
-  style_code: string
-  color: string
-  size: string
-  qty_per_piece: number
-  loss_rate: number
-  uom: string
-  remark: string
-  material_type: 'fabric' | 'trim'
-}
-
-interface BomOperationPayload {
-  process_name: string
-  sequence_no: number
-  is_subcontract: boolean
-  wage_rate: number
-  subcontract_cost_per_piece: number
-  remark: string
-}
-
-interface BomReadbackFlags {
-  scenario_tag_present: boolean
-  bom_main_readback_success: boolean
-  style_binding_readback_success: boolean
-  fabric_line_readback_success: boolean
-  trim_line_readback_success: boolean
-  status_validation_readback_success: boolean
-}
-
-interface BomReadbackData {
-  object_id: number
-  draft_id: number
-  scenario_tag: string
-  bom_main: {
-    bom_no: string
-    item_code: string
-    version_no: string
-    status: string
-    is_default: boolean
-    state: string
-    note: string
-  }
-  style_binding: {
-    style_code: string
-    style_name: string
-    style_version: string
-    material_group: string
-    binding_note: string
-  }
-  fabric_lines: BomLinePayload[]
-  trim_lines: BomLinePayload[]
-  operations: BomOperationPayload[]
-  readback_flags: BomReadbackFlags
-  state: string
-  created_at: string
-  updated_at: string
-}
-
-interface BomListData {
-  scenario_tag: string
-  total: number
-  records: BomReadbackData[]
-}
-
-interface BomRollbackData {
-  scenario_tag: string
-  object_id: number
-  deleted_count: number
-  residual_records_after_rollback: number
-  rollback_success: boolean
-  zero_residual_success: boolean
-}
-
-interface BomResidualData {
-  scenario_tag: string
-  total: number
-}
-
 const router = useRouter()
-
-const BOM_ENDPOINT = '/api/local-dev/bom'
-const BOM_LIST_ENDPOINT = '/api/local-dev/bom/list'
-const BOM_RESIDUAL_ENDPOINT = '/api/local-dev/bom/residual-count'
+const route = useRoute()
 
 const a005VerifiedFields = ['款号', '款名', '单位', '面料', '备注', '可打样', '创建人', '修改人']
 const a005PartialFields = ['颜色', '尺码', '吊牌价', '创建时间', '修改时间', '设计号', '纸样师']
@@ -377,6 +313,7 @@ const explicitNonClaimRules = [
 
 const sourceRows: BomRow[] = [
   {
+    bomId: null,
     bomNo: 'BOM-YS-250601-001',
     styleCode: 'LY-WS-2301',
     styleName: '圆领短袖卫衣',
@@ -387,6 +324,7 @@ const sourceRows: BomRow[] = [
     updatedAt: '2026-05-31 19:40',
   },
   {
+    bomId: null,
     bomNo: 'BOM-YS-250601-002',
     styleCode: 'LY-JK-1412',
     styleName: '轻量风衣外套',
@@ -397,6 +335,7 @@ const sourceRows: BomRow[] = [
     updatedAt: '2026-05-31 18:22',
   },
   {
+    bomId: null,
     bomNo: 'BOM-YS-250601-003',
     styleCode: 'LY-DN-0877',
     styleName: '直筒牛仔裤',
@@ -429,8 +368,12 @@ const query = reactive({
 const localWriteLoading = ref(false)
 const localWriteFeedback = ref('')
 const currentObjectId = ref<number | null>(null)
-const readbackState = ref<BomReadbackData | null>(null)
+const readbackState = ref<LocalBomReadbackData | null>(null)
 const readbackTotal = ref<number>(0)
+const listLoading = ref(false)
+const listLoadedFromApi = ref(false)
+const listError = ref('')
+const apiRows = ref<BomRow[]>([])
 
 const draftForm = reactive({
   scenarioTag: buildDefaultScenarioTag(),
@@ -524,10 +467,68 @@ const ensurePayloadState = (): void => {
 
 ensurePayloadState()
 
+const parseParity = (value: unknown): string => {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+const currentParity = computed(() => parseParity(route.query.parity))
+
+const resolveMaterialGroup = (parity: string): string => {
+  if (parity === 'material-fabric') return '面料清单'
+  if (parity === 'goodsplan-material-samples') return '样板物料'
+  if (parity === 'product-style') return '成衣款式'
+  return 'BOM'
+}
+
+const normalizeBomStatus = (status: string): BomStatus => {
+  if (status === 'draft') return 'draft'
+  if (status === 'active' || status === 'published') return 'published'
+  return 'review'
+}
+
+const mapBomListItem = (item: BomListItem): BomRow => ({
+  bomId: item.id,
+  bomNo: item.bom_no,
+  styleCode: item.item_code,
+  styleName: item.item_code,
+  materialGroup: resolveMaterialGroup(currentParity.value),
+  version: item.version_no,
+  owner: 'local-dev',
+  status: normalizeBomStatus(item.status),
+  updatedAt: item.effective_date || '-',
+})
+
+const loadBomList = async (showSuccess = false): Promise<void> => {
+  listLoading.value = true
+  listError.value = ''
+  try {
+    const response = await fetchBomList({
+      item_code: query.styleCode.trim() || undefined,
+      page: 1,
+      page_size: 100,
+    })
+    apiRows.value = response.data.items.map(mapBomListItem)
+    listLoadedFromApi.value = true
+    if (showSuccess) {
+      ElMessage.success(`BOM 列表已刷新，共 ${response.data.total} 条`)
+    }
+  } catch (error) {
+    apiRows.value = []
+    listLoadedFromApi.value = false
+    listError.value = `BOM 列表读取失败，当前回退到静态壳层：${(error as Error).message}`
+    ElMessage.warning(listError.value)
+  } finally {
+    listLoading.value = false
+  }
+}
+
+const activeRows = computed(() => (listLoadedFromApi.value ? apiRows.value : sourceRows))
+
 const filteredRows = computed(() => {
   const keyword = query.keyword.trim().toLowerCase()
   const styleCode = query.styleCode.trim().toLowerCase()
-  return sourceRows.filter((row) => {
+  return activeRows.value.filter((row) => {
     const hitKeyword = keyword
       ? [row.bomNo, row.styleCode, row.styleName, row.version].join('|').toLowerCase().includes(keyword)
       : true
@@ -541,7 +542,7 @@ const filteredRows = computed(() => {
 const saveButtonLabel = computed(() => (currentObjectId.value ? '更新本地对象' : '保存本地对象'))
 
 const runQuery = () => {
-  ElMessage.success('筛选已应用')
+  void loadBomList(true)
 }
 
 const resetQuery = () => {
@@ -549,7 +550,7 @@ const resetQuery = () => {
   query.styleCode = ''
   query.materialGroup = ''
   query.status = ''
-  ElMessage.success('筛选条件已重置')
+  void loadBomList(true)
 }
 
 const loadRowToLocalLoop = (row: BomRow) => {
@@ -565,11 +566,16 @@ const loadRowToLocalLoop = (row: BomRow) => {
   ElMessage.info(`已加载 ${row.bomNo} 到本地对象表单`)
 }
 
-const goDetail = (bomNo: string) => {
+const goDetail = (row: BomRow) => {
   void router.push({
     path: '/bom/detail',
     query: {
-      bom_no: bomNo,
+      bom_id: row.bomId ? String(row.bomId) : '',
+      bom_no: row.bomNo,
+      style_code: row.styleCode,
+      style_name: row.styleName,
+      version_no: row.version,
+      status: row.status,
       object_id: currentObjectId.value ? String(currentObjectId.value) : '',
       scenario_tag: normalizeScenarioTag(draftForm.scenarioTag),
     },
@@ -588,7 +594,7 @@ const statusType = (status: BomStatus) => {
   return 'success'
 }
 
-const buildUpsertPayload = () => {
+const buildUpsertPayload = (): LocalBomUpsertPayload => {
   const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
   draftForm.scenarioTag = scenarioTag
   ensurePayloadState()
@@ -617,49 +623,10 @@ const buildUpsertPayload = () => {
   }
 }
 
-const postLocalBom = async (payload: Record<string, unknown>): Promise<BomReadbackData> => {
-  const response = await request<BomReadbackData>(BOM_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  return response.data
-}
-
-const patchLocalBom = async (objectId: number, payload: Record<string, unknown>): Promise<BomReadbackData> => {
-  const response = await request<BomReadbackData>(`${BOM_ENDPOINT}/${objectId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  return response.data
-}
-
-const getLocalBomReadback = async (objectId: number, scenarioTag: string): Promise<BomReadbackData> => {
-  const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
-  const response = await request<BomReadbackData>(`${BOM_ENDPOINT}/${objectId}/readback?${queryString}`)
-  return response.data
-}
-
-const rollbackLocalBom = async (objectId: number, scenarioTag: string): Promise<BomRollbackData> => {
-  const response = await request<BomRollbackData>(`${BOM_ENDPOINT}/${objectId}/rollback`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scenario_tag: scenarioTag }),
-  })
-  return response.data
-}
-
-const fetchBomResidualCount = async (scenarioTag: string): Promise<number> => {
-  const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
-  const response = await request<BomResidualData>(`${BOM_RESIDUAL_ENDPOINT}?${queryString}`)
-  return response.data.total
-}
-
 const refreshLocalReadbackSummary = async (scenarioTag: string): Promise<void> => {
-  const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
-  const response = await request<BomListData>(`${BOM_LIST_ENDPOINT}?${queryString}`)
-  readbackTotal.value = response.data.total
+  const response = await fetchLocalBomListSummary(scenarioTag)
+  const summary: LocalBomListSummaryData = response.data
+  readbackTotal.value = summary.total
 }
 
 const saveObject = async (): Promise<void> => {
@@ -672,8 +639,8 @@ const saveObject = async (): Promise<void> => {
   try {
     const payload = buildUpsertPayload()
     const saved = currentObjectId.value
-      ? await patchLocalBom(currentObjectId.value, payload)
-      : await postLocalBom(payload)
+      ? (await updateLocalBom(currentObjectId.value, payload)).data
+      : (await createLocalBom(payload)).data
     currentObjectId.value = saved.object_id || saved.draft_id
     readbackState.value = saved
     await refreshLocalReadbackSummary(saved.scenario_tag)
@@ -701,7 +668,7 @@ const readbackObject = async (): Promise<void> => {
   try {
     const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
     draftForm.scenarioTag = scenarioTag
-    const readback = await getLocalBomReadback(currentObjectId.value, scenarioTag)
+    const readback = (await fetchLocalBomReadback(currentObjectId.value, scenarioTag)).data
     readbackState.value = readback
     await refreshLocalReadbackSummary(scenarioTag)
     loopState.readbackSuccess = true
@@ -725,7 +692,7 @@ const rollbackScenario = async (): Promise<void> => {
   try {
     const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
     draftForm.scenarioTag = scenarioTag
-    const rolled = await rollbackLocalBom(currentObjectId.value, scenarioTag)
+    const rolled: LocalBomRollbackData = (await rollbackLocalBomScenario(currentObjectId.value, scenarioTag)).data
     loopState.rollbackSuccess = rolled.rollback_success
     loopState.zeroResidualSuccess = rolled.zero_residual_success
     loopState.residualRecordsAfterRollback = rolled.residual_records_after_rollback
@@ -748,7 +715,7 @@ const checkZeroResidual = async (): Promise<void> => {
   draftForm.scenarioTag = scenarioTag
   localWriteLoading.value = true
   try {
-    const total = await fetchBomResidualCount(scenarioTag)
+    const total = (await fetchLocalBomResidualCount(scenarioTag)).data.total
     await refreshLocalReadbackSummary(scenarioTag)
     loopState.residualRecordsAfterRollback = total
     loopState.zeroResidualSuccess = total === 0
@@ -766,6 +733,10 @@ const checkZeroResidual = async (): Promise<void> => {
     localWriteLoading.value = false
   }
 }
+
+onMounted(() => {
+  void loadBomList()
+})
 </script>
 
 <style scoped>

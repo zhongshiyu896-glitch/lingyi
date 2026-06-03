@@ -55,6 +55,37 @@ export interface ProductionPlanListData {
   page_size: number
 }
 
+export interface LocalReadbackProductionPlanRecord {
+  draft_id: number
+  plan_no: string
+  planned_qty: number
+  plan_date: string
+  status: string
+  state: string
+  order_no: string
+  style_code: string
+}
+
+export interface LocalReadbackProductionSalesOrderRecord {
+  object_id: number
+  production_plan: LocalReadbackProductionPlanRecord | null
+  readback_flags: {
+    production_plan_readback_success: boolean
+  }
+}
+
+export interface LocalReadbackProductionSalesOrderListData {
+  scenario_tag: string
+  total: number
+  records: LocalReadbackProductionSalesOrderRecord[]
+}
+
+export interface LocalReadbackProductionPlanListData {
+  scenario_tag: string
+  total: number
+  records: LocalReadbackProductionPlanRecord[]
+}
+
 export interface ProductionMaterialCostListQuery {
   sales_order?: string
   keyword?: string
@@ -559,6 +590,20 @@ export const fetchProductionPlanDetail = async (
   planId: number,
 ): Promise<ApiResponse<ProductionPlanDetailData>> =>
   request<ProductionPlanDetailData>(`/api/production/plans/${planId}`)
+
+export const fetchLocalReadbackSalesOrders = async (
+  scenarioTag: string,
+): Promise<ApiResponse<LocalReadbackProductionSalesOrderListData>> => {
+  const query = toQuery({ scenario_tag: scenarioTag })
+  return request<LocalReadbackProductionSalesOrderListData>(`/api/local-dev/sales-orders?${query}`)
+}
+
+export const fetchLocalReadbackProductionPlans = async (
+  scenarioTag: string,
+): Promise<ApiResponse<LocalReadbackProductionPlanListData>> => {
+  const query = toQuery({ scenario_tag: scenarioTag })
+  return request<LocalReadbackProductionPlanListData>(`/api/local-dev/production-plans?${query}`)
+}
 
 export const checkProductionMaterials = async (
   planId: number,

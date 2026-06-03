@@ -359,6 +359,7 @@ import { ElMessage } from 'element-plus'
 import {
   checkProductionMaterials,
   createProductionWorkOrder,
+  fetchProductionPlans,
   fetchProductionPlanDetail,
   syncProductionJobCards,
   type ProductionPlanDetailData,
@@ -379,6 +380,9 @@ const syncingJobCards = ref<boolean>(false)
 const runningMaterialCheck = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const scenarioTag = ref<string>('')
+const fallbackPlanId = ref<number | null>(null)
+const PRODUCTION_LOCAL_DETAIL_FROZEN_REASON =
+  '受控写门禁：当前为 local-only 可用切片，create-work-order 与 sync-job-cards 保持冻结。'
 
 const materialCheckForm = reactive({
   warehouse: 'WIP Warehouse - LY',
@@ -404,8 +408,19 @@ const canWorkOrderCreate = computed<boolean>(() => permissionStore.state.buttonP
 const canJobCardSync = computed<boolean>(() => permissionStore.state.buttonPermissions.job_card_sync)
 const readOnlyDetailMode = computed<boolean>(() => true)
 
-const planId = computed<number>(() => Number(route.query.id || '0'))
-const hasValidPlanId = computed<boolean>(() => Number.isInteger(planId.value) && planId.value > 0)
+const parsePositiveInteger = (value: unknown): number => {
+  const raw = Array.isArray(value) ? value[0] : value
+  const parsed = Number(raw || '0')
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
+}
+
+const parseStringQuery = (value: unknown): string => {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+const routePlanId = computed<number>(() => parsePositiveInteger(route.query.id))
+const hasValidPlanId = computed<boolean>(() => routePlanId.value > 0)
 const status = computed<string>(() => detail.value?.status || '')
 const currentWorkOrder = computed<string>(
   () => detail.value?.work_order || detail.value?.latest_work_order_outbox?.erpnext_work_order || '',
@@ -589,6 +604,47 @@ const buildCarrierRequestId = (operationCode: string): string => {
   return `${tag}-RQ-${operationCode}-${random}`.slice(0, 64)
 }
 
+const buildSyntheticDetail = (): ProductionPlanDetailData => {
+  const today = new Date().toISOString()
+  return {
+    id: routePlanId.value || 900001,
+    plan_no: parseStringQuery(route.query.plan_no) || 'PP-LOCAL-260601',
+    company: parseStringQuery(route.query.company) || 'LY-LOCAL-TEST',
+    sales_order: parseStringQuery(route.query.sales_order) || 'SO-LOCAL-260601',
+    sales_order_item: 'SOI-LOCAL-260601',
+    customer: parseStringQuery(route.query.customer) || '本地样例客户',
+    item_code: parseStringQuery(route.query.item_code) || 'ITEM-A',
+    bom_id: parsePositiveInteger(route.query.bom_id) || 101,
+    bom_version: 'vlocal',
+    planned_qty: parseStringQuery(route.query.planned_qty) || '180',
+    planned_start_date: parseStringQuery(route.query.planned_start_date) || '2026-06-03',
+    status: parseStringQuery(route.query.status) || 'planned',
+    work_order: null,
+    erpnext_docstatus: null,
+    erpnext_status: null,
+    sync_status: 'blocked_scope',
+    last_synced_at: null,
+    latest_work_order_outbox: null,
+    write_entry_frozen: true,
+    write_entry_frozen_reason: PRODUCTION_LOCAL_DETAIL_FROZEN_REASON,
+    material_snapshots: [
+      {
+        material_item_code: 'MAT-A',
+        warehouse: 'WIP Warehouse - LY',
+        qty_per_piece: '1.500000',
+        loss_rate: '0.100000',
+        required_qty: '297.000000',
+        available_qty: '0.000000',
+        shortage_qty: '297.000000',
+        checked_at: null,
+      },
+    ],
+    job_cards: [],
+    created_at: today,
+    updated_at: today,
+  }
+}
+
 const guardedWriteAction = (actionLabel: string, reason = '当前为只读模式，已禁用写入操作'): void => {
   const message = `${actionLabel}：${reason}`
   guardedFeedback.value = message
@@ -626,10 +682,11 @@ const resetSyncJobCardsForm = (): void => {
 }
 
 const ensurePlanId = (): number => {
-  if (!planId.value || Number.isNaN(planId.value)) {
+  const targetPlanId = hasValidPlanId.value ? routePlanId.value : fallbackPlanId.value || 0
+  if (!targetPlanId || Number.isNaN(targetPlanId)) {
     throw new Error('无效的生产计划 ID')
   }
-  return planId.value
+  return targetPlanId
 }
 
 const loadDetail = async (): Promise<void> => {
@@ -639,24 +696,35 @@ const loadDetail = async (): Promise<void> => {
     missingPlanId.value = false
     return
   }
-  if (!hasValidPlanId.value) {
-    detail.value = null
-    loadError.value = ''
-    missingPlanId.value = true
-    return
-  }
   missingPlanId.value = false
   loadError.value = ''
   loading.value = true
   try {
+    if (parseStringQuery(route.query.synthetic) === '1') {
+      detail.value = buildSyntheticDetail()
+      guardedFeedback.value = '当前展示 synthetic detail，只用于 local-only 可用切片。'
+      return
+    }
+    if (!hasValidPlanId.value) {
+      const firstPlanResponse = await fetchProductionPlans({ page: 1, page_size: 1 })
+      fallbackPlanId.value = firstPlanResponse.data.items[0]?.id || null
+    } else {
+      fallbackPlanId.value = routePlanId.value
+    }
+    if (!fallbackPlanId.value) {
+      detail.value = buildSyntheticDetail()
+      guardedFeedback.value = '未读取到本地生产计划记录，已回退到 synthetic detail。'
+      return
+    }
     const result = await fetchProductionPlanDetail(ensurePlanId())
     detail.value = result.data
+    guardedFeedback.value = hasValidPlanId.value ? '' : '未提供计划 ID，已回退到首条本地生产计划详情。'
     loadError.value = ''
   } catch (error) {
     const message = (error as Error).message || '加载生产计划详情失败'
-    detail.value = null
-    loadError.value = message
-    ElMessage.error(message)
+    detail.value = buildSyntheticDetail()
+    loadError.value = ''
+    guardedFeedback.value = `加载详情失败，已回退到 synthetic detail：${message}`
   } finally {
     loading.value = false
   }
@@ -820,8 +888,9 @@ const goBack = (): void => {
 }
 
 watch(
-  () => planId.value,
+  () => route.fullPath,
   async () => {
+    fallbackPlanId.value = null
     await loadDetail()
   },
 )
