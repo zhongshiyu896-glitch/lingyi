@@ -171,6 +171,74 @@
         </div>
       </section>
 
+      <section class="business-calendar-panel" data-testid="cand050-home-business-calendar">
+        <div class="grid-header">
+          <h3>业务日历</h3>
+          <span class="summary-note">按周展示经营预测与关键排期，只读聚合不触发业务写入</span>
+        </div>
+        <div class="grid-body">
+          <article
+            v-for="item in businessCalendarItems"
+            :key="item.key"
+            class="entry-card business-calendar-card"
+          >
+            <header>
+              <strong>{{ item.period }}</strong>
+              <el-tag effect="plain" type="warning">{{ item.badge }}</el-tag>
+            </header>
+            <div class="calendar-metrics">
+              <span>销售 {{ item.sales }}</span>
+              <span>成本 {{ item.cost }}</span>
+              <span>利润 {{ item.profit }}</span>
+            </div>
+            <p class="entry-desc">{{ item.note }}</p>
+            <p class="entry-path">{{ item.hint }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="today-key-nodes-panel" data-testid="cand050-home-today-key-nodes">
+        <div class="grid-header">
+          <h3>今日关键节点</h3>
+          <span class="summary-note">聚合今日应优先核对的只读业务节点</span>
+        </div>
+        <div class="grid-body">
+          <article v-for="item in todayKeyNodeItems" :key="item.key" class="entry-card summary-card">
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" type="success">{{ item.badge }}</el-tag>
+            </header>
+            <p class="entry-desc">{{ item.value }}</p>
+            <p class="entry-path">{{ item.note }}</p>
+            <small class="status-note">{{ item.hint }}</small>
+          </article>
+        </div>
+      </section>
+
+      <section
+        class="cross-module-reminders-panel"
+        data-testid="cand050-home-cross-module-key-reminders"
+      >
+        <div class="grid-header">
+          <h3>跨模块关键提醒</h3>
+          <span class="summary-note">来源于 dashboard overview 的提醒与只读动作建议</span>
+        </div>
+        <div class="grid-body">
+          <article
+            v-for="item in crossModuleReminderItems"
+            :key="item.key"
+            class="entry-card reminder-card"
+          >
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" type="info">{{ item.badge }}</el-tag>
+            </header>
+            <p class="entry-desc">{{ item.detail }}</p>
+            <p class="entry-path">{{ item.hint }}</p>
+          </article>
+        </div>
+      </section>
+
       <section class="readonly-hints" data-testid="cand038-home-readonly-hints">
         <h3>只读导航提示</h3>
         <ul>
@@ -249,6 +317,34 @@ interface ModuleSummaryCard {
   readyCount: number
   note: string
   paths: string
+}
+
+interface BusinessCalendarItem {
+  key: string
+  period: string
+  badge: string
+  sales: string
+  cost: string
+  profit: string
+  note: string
+  hint: string
+}
+
+interface TodayKeyNodeItem {
+  key: string
+  title: string
+  badge: string
+  value: string
+  note: string
+  hint: string
+}
+
+interface CrossModuleReminderItem {
+  key: string
+  title: string
+  badge: string
+  detail: string
+  hint: string
 }
 
 const router = useRouter()
@@ -458,6 +554,101 @@ const recentAccessSummaryItems = computed<RecentAccessSummaryItem[]>(() => {
   }))
 })
 
+const businessCalendarItems = computed<BusinessCalendarItem[]>(() => {
+  const trendPoints = overviewData.value?.home_overview?.trend_points || []
+  if (trendPoints.length > 0) {
+    return trendPoints.map((item, index) => ({
+      key: `calendar-${item.period}`,
+      period: `业务周 ${item.period}`,
+      badge: index === 0 ? '本周' : '预排',
+      sales: String(item.forecast_sales),
+      cost: String(item.forecast_cost),
+      profit: String(item.forecast_profit),
+      note: `${item.period} 经营预测只读展示，便于首页快速核对业务节奏。`,
+      hint: '来源：dashboard overview / home_overview.trend_points',
+    }))
+  }
+
+  return [
+    {
+      key: 'calendar-fallback',
+      period: '业务周 W1',
+      badge: '回退',
+      sales: '0',
+      cost: '0',
+      profit: '0',
+      note: '当前未返回业务日历预测数据，保留只读占位。',
+      hint: '来源：fallback',
+    },
+  ]
+})
+
+const todayKeyNodeItems = computed<TodayKeyNodeItem[]>(() => {
+  const summaries = overviewData.value?.home_overview?.business_summary || []
+  const titles = ['质检节点', '安全库存节点', '补货线节点', '仓储预警节点']
+  const todoItems = overviewData.value?.home_overview?.todo_items || []
+
+  if (summaries.length > 0) {
+    return summaries.slice(0, 4).map((item, index) => ({
+      key: `node-${index}`,
+      title: titles[index] || `关键节点 ${index + 1}`,
+      badge: index === 0 ? '今日' : '关注',
+      value: item,
+      note: todoItems[index]
+        ? `${todoItems[index].title} ${todoItems[index].count} 项，仅做只读核对。`
+        : '来源：dashboard overview / home_overview.business_summary',
+      hint: '首页不开放创建、修改、删除，只保留关键节点摘要。',
+    }))
+  }
+
+  return [
+    {
+      key: 'node-fallback',
+      title: '关键节点回退',
+      badge: '回退',
+      value: '暂无关键节点摘要',
+      note: '等待 dashboard overview 返回业务摘要。',
+      hint: '来源：fallback',
+    },
+  ]
+})
+
+const crossModuleReminderItems = computed<CrossModuleReminderItem[]>(() => {
+  const warnings = overviewData.value?.home_overview?.warnings || []
+  const primaryActions = overviewData.value?.home_overview?.primary_actions || []
+  const reminderItems: CrossModuleReminderItem[] = warnings.map((item, index) => ({
+    key: `warning-${index}`,
+    title: `关键提醒 ${index + 1}`,
+    badge: '提醒',
+    detail: item,
+    hint: `关联源：${sourceStatuses.value[index % Math.max(sourceStatuses.value.length, 1)]?.module || 'dashboard'}`,
+  }))
+
+  primaryActions.slice(0, 2).forEach((item, index) => {
+    reminderItems.push({
+      key: `action-${index}`,
+      title: `只读动作建议 ${index + 1}`,
+      badge: '只读',
+      detail: `${item} 仅作为导航语义保留，不在首页触发真实动作。`,
+      hint: '首页按钮保持禁用，不开放 create/update/delete。',
+    })
+  })
+
+  if (reminderItems.length > 0) {
+    return reminderItems
+  }
+
+  return [
+    {
+      key: 'reminder-fallback',
+      title: '跨模块提醒回退',
+      badge: '回退',
+      detail: '暂无跨模块关键提醒，保留只读占位。',
+      hint: '来源：fallback',
+    },
+  ]
+})
+
 const uiSourceReadback = computed(() => {
   const sourceRows = sourceStatuses.value.map((item) => `source.${item.module}=${item.status}`)
   const actions = overviewData.value?.home_overview?.primary_actions || []
@@ -615,6 +806,9 @@ watch(overviewQuery, () => {
 .status-panel,
 .workbench-list,
 .recent-access-summary,
+.business-calendar-panel,
+.today-key-nodes-panel,
+.cross-module-reminders-panel,
 .readonly-hints,
 .source-readback {
   background: #fff;
@@ -736,6 +930,22 @@ watch(overviewQuery, () => {
 
 .recent-access-card {
   min-height: 132px;
+}
+
+.business-calendar-card {
+  min-height: 156px;
+}
+
+.calendar-metrics {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: #374151;
+  font-size: 13px;
+}
+
+.reminder-card {
+  min-height: 144px;
 }
 
 .source-readback ul {
