@@ -60,6 +60,43 @@
         </div>
       </section>
 
+      <section class="home-entry-overview" data-testid="cand038-home-entry-overview">
+        <div class="grid-header">
+          <h3>首页入口概览</h3>
+          <el-tag effect="plain" type="success">GET-only</el-tag>
+        </div>
+        <div class="readback-summary-grid">
+          <article v-for="item in homeEntryOverviewCards" :key="item.key" class="status-card">
+            <span class="status-label">{{ item.label }}</span>
+            <strong class="status-value">{{ item.value }}</strong>
+            <small class="status-note">{{ item.note }}</small>
+          </article>
+        </div>
+        <div class="readonly-action-row" data-testid="cand038-home-readonly-action-guard">
+          <el-button disabled type="primary" plain>新建</el-button>
+          <el-button disabled plain>修改</el-button>
+          <el-button disabled plain>删除</el-button>
+          <span class="readonly-action-note">首页只提供只读入口和导航提示，不开放写入动作。</span>
+        </div>
+      </section>
+
+      <section class="module-summary-panel" data-testid="cand038-home-module-summary">
+        <div class="grid-header">
+          <h3>模块摘要</h3>
+          <span class="summary-note">按入口分组的只读摘要</span>
+        </div>
+        <div class="grid-body">
+          <article v-for="item in moduleSummaryCards" :key="item.key" class="entry-card summary-card">
+            <header>
+              <strong>{{ item.label }}</strong>
+              <el-tag effect="plain" type="success">{{ item.readyCount }}/{{ item.count }}</el-tag>
+            </header>
+            <p class="entry-desc">{{ item.note }}</p>
+            <p class="entry-path">{{ item.paths }}</p>
+          </article>
+        </div>
+      </section>
+
       <section class="module-entry-grid" data-testid="yisuan-1to1-module-entry-grid">
         <div class="grid-header">
           <h3>模块入口</h3>
@@ -107,6 +144,13 @@
         </el-table>
       </section>
 
+      <section class="readonly-hints" data-testid="cand038-home-readonly-hints">
+        <h3>只读导航提示</h3>
+        <ul>
+          <li v-for="item in readonlyNavigationHints" :key="item">{{ item }}</li>
+        </ul>
+      </section>
+
       <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
         <h3>只读数据来源</h3>
         <ul>
@@ -137,6 +181,7 @@ interface NavGroup {
 }
 
 interface ModuleEntry extends NavItem {
+  group: string
   desc: string
   status: string
 }
@@ -160,6 +205,15 @@ interface OverviewSummaryCard {
   label: string
   value: string
   note: string
+}
+
+interface ModuleSummaryCard {
+  key: string
+  label: string
+  count: number
+  readyCount: number
+  note: string
+  paths: string
 }
 
 const router = useRouter()
@@ -201,12 +255,18 @@ const sidebarGroups: NavGroup[] = [
 ]
 
 const moduleEntries: ModuleEntry[] = [
-  { name: '基础资料', path: '/sales-inventory/references', desc: '款号、客户、供应商基础信息', status: '已就绪' },
-  { name: 'BOM 物料开发', path: '/bom/list', desc: 'BOM 列表与明细对齐', status: '已就绪' },
-  { name: '大货订单', path: '/sales-inventory/sales-orders', desc: '订单草稿与计划联动', status: '已就绪' },
-  { name: '采购外协', path: '/subcontract/list?parity=material-purchase', desc: '前置单据与明细追踪', status: '已就绪' },
-  { name: '库存管理', path: '/sales-inventory/stock-ledger', desc: '库存流水与仓库摘要', status: '已就绪' },
-  { name: '仓库看板', path: '/warehouse', desc: '仓库概况与盘点入口', status: '已就绪' },
+  { name: '基础资料', path: '/sales-inventory/references', group: '基础资料', desc: '款号、客户、供应商基础信息', status: '已就绪' },
+  { name: 'BOM 物料开发', path: '/bom/list', group: '物料开发', desc: 'BOM 列表与明细对齐', status: '已就绪' },
+  { name: '大货订单', path: '/sales-inventory/sales-orders', group: '大货管理', desc: '订单草稿与计划联动', status: '已就绪' },
+  { name: '采购外协', path: '/subcontract/list?parity=material-purchase', group: '物料采购', desc: '前置单据与明细追踪', status: '已就绪' },
+  { name: '库存管理', path: '/sales-inventory/stock-ledger', group: '物料进销存', desc: '库存流水与仓库摘要', status: '已就绪' },
+  { name: '仓库看板', path: '/warehouse', group: '物料进销存', desc: '仓库概况与盘点入口', status: '已就绪' },
+]
+
+const readonlyNavigationHints = [
+  '首页卡片只负责导航和摘要展示，所有入口保持只读。',
+  '经营看板已在 /dashboard/overview 独立交付，本页不回流到那条已完成切片。',
+  '模块入口优先跳转到已就绪的本地只读页面，不触发写入或生产链路。',
 ]
 
 const readbackScenarioTag = computed(() => {
@@ -230,6 +290,39 @@ const readbackSummaryModules = computed<OverviewSummaryCard[]>(() => {
     value: item.unit ? `${item.value}${item.unit}` : item.value,
     note: item.trend || '只读汇总',
   }))
+})
+
+const homeEntryOverviewCards = computed<OverviewSummaryCard[]>(() => {
+  const readyCount = moduleEntries.filter((item) => item.status === '已就绪').length
+  const sourceStatusNote = sourceStatusCount.value
+    ? `GET-only 聚合 ${sourceStatusOkCount.value}/${sourceStatusCount.value}`
+    : '等待 overview 返回'
+  return [
+    {
+      key: 'entry-count',
+      label: '入口总数',
+      value: String(moduleEntries.length),
+      note: '首页卡片与侧边栏共用只读导航入口',
+    },
+    {
+      key: 'ready-count',
+      label: '已就绪模块',
+      value: String(readyCount),
+      note: '仅暴露本地可试用的只读入口',
+    },
+    {
+      key: 'source-count',
+      label: '只读数据源',
+      value: String(sourceStatusCount.value),
+      note: sourceStatusNote,
+    },
+    {
+      key: 'hint-count',
+      label: '导航提示',
+      value: String(readonlyNavigationHints.length),
+      note: '新建/修改/删除动作固定禁用',
+    },
+  ]
 })
 
 const readbackWriteRequestsObservedCount = computed(() => 0)
@@ -283,6 +376,27 @@ const uiSourceReadback = computed(() => {
   const sourceRows = sourceStatuses.value.map((item) => `source.${item.module}=${item.status}`)
   const actions = overviewData.value?.home_overview?.primary_actions || []
   return [...sourceRows, ...actions.map((item) => `action.${item}`)]
+})
+
+const moduleSummaryCards = computed<ModuleSummaryCard[]>(() => {
+  const grouped = moduleEntries.reduce<Record<string, ModuleEntry[]>>((acc, entry) => {
+    if (!acc[entry.group]) {
+      acc[entry.group] = []
+    }
+    acc[entry.group].push(entry)
+    return acc
+  }, {})
+  return Object.entries(grouped).map(([group, entries]) => {
+    const readyCount = entries.filter((entry) => entry.status === '已就绪').length
+    return {
+      key: group,
+      label: group,
+      count: entries.length,
+      readyCount,
+      note: `${entries.map((entry) => entry.name).join(' / ')} 的首页只读入口摘要`,
+      paths: entries.map((entry) => entry.path).join(' | '),
+    }
+  })
 })
 
 const loadOverview = async (): Promise<void> => {
@@ -409,9 +523,12 @@ watch(overviewQuery, () => {
 }
 
 .readback-summary,
+.home-entry-overview,
+.module-summary-panel,
 .module-entry-grid,
 .status-panel,
 .workbench-list,
+.readonly-hints,
 .source-readback {
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -444,6 +561,10 @@ watch(overviewQuery, () => {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 10px;
+}
+
+.summary-card {
+  min-height: 132px;
 }
 
 .entry-card header {
@@ -487,6 +608,20 @@ watch(overviewQuery, () => {
   font-size: 12px;
 }
 
+.readonly-action-row {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.readonly-action-note,
+.summary-note {
+  color: #6b7280;
+  font-size: 12px;
+}
+
 .status-card {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -513,6 +648,13 @@ watch(overviewQuery, () => {
 }
 
 .source-readback ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.readonly-hints ul {
   margin: 10px 0 0;
   padding-left: 18px;
   color: #4b5563;
