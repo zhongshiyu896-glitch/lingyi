@@ -239,6 +239,30 @@
         </div>
       </section>
 
+      <section class="snapshot-trend-panel" data-testid="cand056-home-snapshot-trend">
+        <div class="grid-header">
+          <h3>经营快照与趋势</h3>
+          <span class="summary-note">聚合经营快照、趋势对比与只读状态提示，不回流到写链路</span>
+        </div>
+        <div class="grid-body">
+          <article
+            v-for="item in snapshotTrendCards"
+            :key="item.key"
+            class="entry-card snapshot-card"
+            :data-testid="`cand056-card-${item.key}`"
+          >
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" type="success">{{ item.badge }}</el-tag>
+            </header>
+            <p class="snapshot-primary">{{ item.primary }}</p>
+            <p class="snapshot-secondary">{{ item.secondary }}</p>
+            <p class="entry-desc">{{ item.note }}</p>
+            <p class="entry-path">{{ item.hint }}</p>
+          </article>
+        </div>
+      </section>
+
       <section class="readonly-hints" data-testid="cand038-home-readonly-hints">
         <h3>只读导航提示</h3>
         <ul>
@@ -344,6 +368,16 @@ interface CrossModuleReminderItem {
   title: string
   badge: string
   detail: string
+  hint: string
+}
+
+interface SnapshotTrendCard {
+  key: string
+  title: string
+  badge: string
+  primary: string
+  secondary: string
+  note: string
   hint: string
 }
 
@@ -649,6 +683,57 @@ const crossModuleReminderItems = computed<CrossModuleReminderItem[]>(() => {
   ]
 })
 
+const snapshotTrendCards = computed<SnapshotTrendCard[]>(() => {
+  const metricCards = readbackSummaryModules.value
+  const trendPoints = overviewData.value?.home_overview?.trend_points || []
+  const summaries = overviewData.value?.home_overview?.business_summary || []
+  const warnings = overviewData.value?.home_overview?.warnings || []
+  const firstMetric = metricCards[0]
+  const secondMetric = metricCards[1]
+  const currentTrend = trendPoints[0]
+  const compareTrend = trendPoints[1]
+
+  return [
+    {
+      key: 'snapshot',
+      title: '经营快照',
+      badge: '快照',
+      primary: firstMetric ? `${firstMetric.label} ${firstMetric.value}` : `已聚合 ${metricCards.length} 项经营指标`,
+      secondary: secondMetric
+        ? `${secondMetric.label} ${secondMetric.value}`
+        : `数据源 ${sourceStatusOkCount.value}/${sourceStatusCount.value}`,
+      note: summaries[0] || '首页经营快照只做只读核对，不进入经营写链路。',
+      hint: '保留入口概览、角色待办、业务日历等已完成首页聚合区块。',
+    },
+    {
+      key: 'trend',
+      title: '趋势对比',
+      badge: '趋势',
+      primary: currentTrend
+        ? `${currentTrend.period} 销售 ${currentTrend.forecast_sales}`
+        : '暂无趋势对比数据',
+      secondary: compareTrend
+        ? `${compareTrend.period} 利润 ${compareTrend.forecast_profit}`
+        : '等待更多趋势点返回',
+      note: currentTrend
+        ? `${currentTrend.period} 与 ${compareTrend?.period || '上一周期'} 的预测值仅供首页只读对比。`
+        : '缺少趋势点时保留只读占位，不扩展写动作。',
+      hint: '来源：dashboard overview / home_overview.trend_points',
+    },
+    {
+      key: 'readonly',
+      title: '只读状态提示',
+      badge: '只读',
+      primary: `GET-only / write=${readbackWriteRequestsObservedCount.value}`,
+      secondary: `源状态 ${sourceStatusOkCount.value}/${sourceStatusCount.value}`,
+      note: warnings[0]
+        ? `${warnings[0]} 仅做提示，不触发 create/update/delete。`
+        : '首页仅展示摘要与趋势提示，不开放创建、修改、删除。',
+      hint: '保持 CAND038/CAND044/CAND050 已交付区块可见，/dashboard/overview 不回改。',
+    },
+  ]
+})
+
 const uiSourceReadback = computed(() => {
   const sourceRows = sourceStatuses.value.map((item) => `source.${item.module}=${item.status}`)
   const actions = overviewData.value?.home_overview?.primary_actions || []
@@ -809,6 +894,7 @@ watch(overviewQuery, () => {
 .business-calendar-panel,
 .today-key-nodes-panel,
 .cross-module-reminders-panel,
+.snapshot-trend-panel,
 .readonly-hints,
 .source-readback {
   background: #fff;
@@ -946,6 +1032,23 @@ watch(overviewQuery, () => {
 
 .reminder-card {
   min-height: 144px;
+}
+
+.snapshot-card {
+  min-height: 156px;
+}
+
+.snapshot-primary {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.snapshot-secondary {
+  margin: 0 0 8px;
+  color: #4b5563;
+  font-size: 13px;
 }
 
 .source-readback ul {
