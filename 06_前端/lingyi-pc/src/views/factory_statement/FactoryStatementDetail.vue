@@ -273,7 +273,18 @@ const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
 const guardedFeedback = ref<string>('')
 
-const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_read)
+const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
+const isReadonlyParity = computed<boolean>(() => (
+  parityValue.value === 'foundation-supplier' || parityValue.value === 'foundation-factory'
+))
+const preservedReadonlyQuery = computed<Record<string, string>>(() => {
+  const query: Record<string, string> = {}
+  if (parityValue.value) {
+    query.parity = parityValue.value
+  }
+  return query
+})
+const canRead = computed<boolean>(() => isReadonlyParity.value || permissionStore.state.buttonPermissions.factory_statement_read)
 const statementId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidStatementId = computed<boolean>(() => Number.isInteger(statementId.value) && statementId.value > 0)
 
@@ -351,7 +362,7 @@ const statusTag = (status: string | null | undefined): 'warning' | 'success' | '
 }
 
 const goBack = (): void => {
-  router.push({ path: '/factory-statements/list' })
+  router.push({ path: '/factory-statements/list', query: { ...preservedReadonlyQuery.value } })
 }
 
 const guardedWriteAction = (actionName: string): void => {

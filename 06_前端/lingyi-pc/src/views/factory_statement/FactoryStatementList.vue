@@ -113,7 +113,7 @@
             data-testid="factory-statement-filter-to-date"
           />
         </el-form-item>
-        <el-form-item label="scenario_tag">
+        <el-form-item v-if="allowFactoryStatementWriteFlow" label="scenario_tag">
           <el-input
             v-model="localWriteForm.scenario_tag"
             clearable
@@ -272,13 +272,10 @@
               <el-button
                 link
                 type="info"
-                data-testid="factory-statement-print-guarded-button"
-                data-action-type="write"
-                data-write-guard="readonly:print"
-                data-guard-state="disabled"
-                @click="showGuardedAction('打印')"
+                data-testid="factory-statement-print-preview-button"
+                @click="openReadonlyPrintPage(scope.row.id)"
               >
-                打印
+                打印页
               </el-button>
               <el-button
                 link
@@ -346,7 +343,12 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="expense-reimbursement-payment-section" data-testid="finance-expense-payment-section">
+    <el-card
+      v-if="showExtendedReadonlySections"
+      shadow="never"
+      class="expense-reimbursement-payment-section"
+      data-testid="finance-expense-payment-section"
+    >
       <template #header>
         <div class="header-row">
           <span>费用(报销)支付（TASK-Y59B-P1-02）</span>
@@ -543,7 +545,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="bank-deposit-section">
+    <el-card v-if="showExtendedReadonlySections" shadow="never" class="bank-deposit-section">
       <template #header>
         <div class="header-row">
           <span>银行存款（TASK-Y59B-P1-03）</span>
@@ -741,7 +743,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="bank-withdrawal-section">
+    <el-card v-if="showExtendedReadonlySections" shadow="never" class="bank-withdrawal-section">
       <template #header>
         <div class="header-row">
           <span>银行取款（TASK-Y59B-P1-04）</span>
@@ -949,7 +951,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="customer-evaluation-section">
+    <el-card v-if="showExtendedReadonlySections" shadow="never" class="customer-evaluation-section">
       <template #header>
         <div class="header-row">
           <span>客户评估表（TASK-Y59B-P1-05）</span>
@@ -1152,7 +1154,12 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="customer-reconciliation-section" data-testid="finance-customer-reconciliation-section">
+    <el-card
+      v-if="showExtendedReadonlySections"
+      shadow="never"
+      class="customer-reconciliation-section"
+      data-testid="finance-customer-reconciliation-section"
+    >
       <template #header>
         <div class="header-row">
           <span>客户对账表（TASK-Y64B-P1-01）</span>
@@ -1368,7 +1375,7 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="customer-unpaid-report-section">
+    <el-card v-if="showExtendedReadonlySections" shadow="never" class="customer-unpaid-report-section">
       <template #header>
         <div class="header-row">
           <span>客户未收款报表（TASK-Y64B-P1-02）</span>
@@ -1596,6 +1603,7 @@
     </el-card>
 
     <el-card
+      v-if="showExtendedReadonlySections"
       shadow="never"
       class="customer-receivable-summary-section"
       data-testid="customer-receivable-summary-section"
@@ -1825,7 +1833,12 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="factory-evaluation-section" data-testid="factory-evaluation-section">
+    <el-card
+      v-if="showExtendedReadonlySections"
+      shadow="never"
+      class="factory-evaluation-section"
+      data-testid="factory-evaluation-section"
+    >
       <template #header>
         <div class="header-row">
           <span>加工厂评估表（TASK-Y64B-P1-04）</span>
@@ -2020,6 +2033,7 @@
     </el-card>
 
     <el-card
+      v-if="showExtendedReadonlySections"
       shadow="never"
       class="factory-reconciliation-section"
       data-testid="factory-reconciliation-section"
@@ -2260,6 +2274,7 @@
     </el-card>
 
     <el-card
+      v-if="showExtendedReadonlySections"
       shadow="never"
       class="factory-payable-summary-section"
       data-testid="factory-payable-summary-section"
@@ -2481,7 +2496,12 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="supplier-evaluation-section" data-testid="supplier-evaluation-section">
+    <el-card
+      v-if="showExtendedReadonlySections"
+      shadow="never"
+      class="supplier-evaluation-section"
+      data-testid="supplier-evaluation-section"
+    >
       <template #header>
         <div class="header-row">
           <span>供应商评估表（TASK-Y69B-P1-02）</span>
@@ -2680,6 +2700,7 @@
     </el-card>
 
     <el-card
+      v-if="showExtendedReadonlySections"
       shadow="never"
       class="supplier-reconciliation-section"
       data-testid="supplier-reconciliation-section"
@@ -2897,6 +2918,7 @@
     </el-card>
 
     <el-card
+      v-if="showExtendedReadonlySections"
       shadow="never"
       class="supplier-payable-summary-section"
       data-testid="supplier-payable-summary-section"
@@ -3124,7 +3146,12 @@
       </template>
     </el-card>
 
-    <el-card shadow="never" class="bank-ledger-section" data-testid="finance-bank-ledger-section">
+    <el-card
+      v-if="showExtendedReadonlySections"
+      shadow="never"
+      class="bank-ledger-section"
+      data-testid="finance-bank-ledger-section"
+    >
       <template #header>
         <div class="header-row">
           <span>银行流水（TASK-Y69B-P1-05）</span>
@@ -3339,7 +3366,7 @@
       </template>
     </el-card>
 
-    <el-dialog v-model="createVisible" title="创建加工厂对账单" width="680px">
+    <el-dialog v-if="allowFactoryStatementWriteFlow" v-model="createVisible" title="创建加工厂对账单" width="680px">
         <el-form :model="createForm" label-width="120px">
           <el-form-item label="公司">
           <el-input v-model="createForm.company" placeholder="请输入公司名称" />
@@ -3454,7 +3481,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   cancelFactoryStatement,
@@ -3502,6 +3529,7 @@ import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
 const route = useRoute()
+const router = useRouter()
 
 const loading = ref<boolean>(false)
 const creating = ref<boolean>(false)
@@ -3600,6 +3628,15 @@ const isFinanceCustomerReconciliationParity = computed<boolean>(() => (
 ))
 const isFinanceReadonlyParity = computed<boolean>(() => Boolean(financeParityNormalized.value))
 const isReadonlyParity = computed<boolean>(() => isFoundationReadonlyParity.value || isFinanceReadonlyParity.value)
+const allowFactoryStatementWriteFlow = computed<boolean>(() => false)
+const showExtendedReadonlySections = computed<boolean>(() => false)
+const preservedReadonlyQuery = computed<Record<string, string>>(() => {
+  const query: Record<string, string> = {}
+  if (parityValue.value) {
+    query.parity = parityValue.value
+  }
+  return query
+})
 const readonlyWriteGuardTag = computed<string>(() => {
   if (isFoundationReadonlyParity.value) {
     return 'guarded:readonly-foundation-data'
@@ -3651,17 +3688,17 @@ const readonlyParityHintTestId = computed<string>(() => {
 })
 const readonlyWriteHintText = computed<string>(() => (
   isFoundationReadonlyParity.value
-    ? '基础资料模式仅允许只读查询与明细预览，创建/取消/应付草稿/确认/导出/打印均已禁用。'
+    ? '基础资料模式仅允许加工厂对账单列表、详情页与打印预览的只读查询，创建/取消/应付草稿/确认/导出/真实打印均已禁用。'
     : isFinanceReadonlyParity.value
-      ? '财务管理模式仅允许只读查询、分页与详情预览，确认/取消/付款草稿/导出/打印均已禁用。'
-      : readonlyWriteHint
+      ? '财务管理模式仅允许加工厂对账单列表、详情页与打印预览的只读查询，确认/取消/付款草稿/导出/真实打印均已禁用。'
+      : '当前切片仅开放加工厂对账单列表、详情页与打印预览的本地只读查询；创建/取消/应付草稿/确认/导出/真实打印均已禁用。'
 ))
 const mainAlertDescription = computed<string>(() => (
   isFoundationReadonlyParity.value
-    ? '基础资料 parity 仅开放只读查询、分页与详情预览；create/cancel/payable-draft/confirm、导出、打印保持禁用。'
+    ? '基础资料 parity 当前映射到加工厂对账单只读列表；详情页与打印预览允许查看，所有写链路保持禁用。'
     : isFinanceReadonlyParity.value
-      ? '财务管理 parity 仅开放只读查询、分页与详情预览；create/cancel/payable-draft/confirm、导出、打印保持禁用。'
-      : '本页允许 local-dev 受控 create/cancel/payable-draft 最小前置链路；confirm、导出、打印保持只读禁用。'
+      ? '财务管理 parity 当前仅保留加工厂对账单只读列表、详情页与打印预览；写动作与导出保持禁用。'
+      : '当前切片仅开放加工厂对账单列表、详情页与打印预览的本地只读查询；create/cancel/payable-draft/confirm、导出、真实打印保持禁用。'
 ))
 
 interface SampleOrderReconciliationRow extends FactoryStatementListItem {
@@ -3679,12 +3716,18 @@ const canCreate = computed<boolean>(() => permissionStore.state.buttonPermission
 const canConfirm = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_confirm)
 const canCancel = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_cancel)
 const canPayableDraft = computed<boolean>(() => permissionStore.state.buttonPermissions.factory_statement_payable_draft_create)
-const canCreateAction = computed<boolean>(() => canCreate.value && LOCAL_WRITE_MODE && !isReadonlyParity.value)
-const canConfirmAction = computed<boolean>(() => (
-  canConfirm.value && LOCAL_WRITE_MODE && LOCAL_CONFIRM_WRITE_MODE && !isReadonlyParity.value
+const canCreateAction = computed<boolean>(() => (
+  allowFactoryStatementWriteFlow.value && canCreate.value && LOCAL_WRITE_MODE && !isReadonlyParity.value
 ))
-const canCancelAction = computed<boolean>(() => canCancel.value && LOCAL_WRITE_MODE && !isReadonlyParity.value)
-const canPayableAction = computed<boolean>(() => canPayableDraft.value && LOCAL_WRITE_MODE && !isReadonlyParity.value)
+const canConfirmAction = computed<boolean>(() => (
+  allowFactoryStatementWriteFlow.value && canConfirm.value && LOCAL_WRITE_MODE && LOCAL_CONFIRM_WRITE_MODE && !isReadonlyParity.value
+))
+const canCancelAction = computed<boolean>(() => (
+  allowFactoryStatementWriteFlow.value && canCancel.value && LOCAL_WRITE_MODE && !isReadonlyParity.value
+))
+const canPayableAction = computed<boolean>(() => (
+  allowFactoryStatementWriteFlow.value && canPayableDraft.value && LOCAL_WRITE_MODE && !isReadonlyParity.value
+))
 
 const query = reactive({
   supplier: '',
@@ -4325,7 +4368,25 @@ const buildIdempotencyKey = (prefix: string): string => {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+const openReadonlyPrintPage = (statementId: number): void => {
+  if (!canRead.value) {
+    ElMessage.error('无加工厂对账单查看权限')
+    return
+  }
+  router.push({
+    path: '/factory-statements/print',
+    query: {
+      ...preservedReadonlyQuery.value,
+      id: String(statementId),
+    },
+  })
+}
+
 const openCreateDialog = (): void => {
+  if (!allowFactoryStatementWriteFlow.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
   if (!LOCAL_WRITE_MODE) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
@@ -4351,6 +4412,10 @@ const openCreateDialog = (): void => {
 }
 
 const submitCreateStatement = async (): Promise<void> => {
+  if (!allowFactoryStatementWriteFlow.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
   if (!LOCAL_WRITE_MODE) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
@@ -4400,6 +4465,10 @@ const submitCreateStatement = async (): Promise<void> => {
 }
 
 const confirmStatement = async (row: FactoryStatementListItem): Promise<void> => {
+  if (!allowFactoryStatementWriteFlow.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
   if (!LOCAL_WRITE_MODE) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
@@ -4436,6 +4505,10 @@ const confirmStatement = async (row: FactoryStatementListItem): Promise<void> =>
 }
 
 const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => {
+  if (!allowFactoryStatementWriteFlow.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
   if (!LOCAL_WRITE_MODE) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
@@ -4472,6 +4545,10 @@ const cancelStatement = async (row: FactoryStatementListItem): Promise<void> => 
 }
 
 const createPayableDraft = async (row: FactoryStatementListItem): Promise<void> => {
+  if (!allowFactoryStatementWriteFlow.value) {
+    ElMessage.warning(readonlyWriteHintText.value)
+    return
+  }
   if (!LOCAL_WRITE_MODE) {
     ElMessage.warning(readonlyWriteHintText.value)
     return
@@ -5555,6 +5632,9 @@ onMounted(async () => {
   }
   if (canRead.value) {
     await loadRows()
+    if (!showExtendedReadonlySections.value) {
+      return
+    }
     if (isFoundationReadonlyParity.value) {
       await loadFactoryEvaluations()
       await loadFactoryReconciliations()
