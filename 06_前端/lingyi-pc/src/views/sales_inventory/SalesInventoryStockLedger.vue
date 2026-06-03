@@ -7,7 +7,7 @@
             <span class="title">{{ stockLedgerTitle }}</span>
             <span class="sub-title">{{ stockLedgerSubTitle }}</span>
           </div>
-          <el-tag type="info" effect="plain">本地首版</el-tag>
+          <el-tag type="info" effect="plain">本地只读首版</el-tag>
         </div>
       </template>
 
@@ -163,6 +163,7 @@
           </div>
         </section>
 
+        <template v-if="!stockLedgerReadbackOnly">
         <div class="toolbar-row" data-testid="stock-ledger-guarded-actions">
           <el-tag type="info" effect="plain" data-testid="stock-ledger-readonly-state">
             local-dev 测试写入入口已启用（scenario_tag + rollback + zero_residual）
@@ -303,6 +304,7 @@
           :title="localInventoryReadbackMessage"
           data-testid="mvp-cand006-stock-readback-panel"
         />
+        </template>
 
         <el-alert
           v-if="requiredItemCodeGuarded"
@@ -444,6 +446,7 @@
         </el-drawer>
       </section>
 
+        <template v-if="!stockLedgerReadbackOnly">
         <el-divider />
 
         <section class="material-transfer-section" data-testid="material-transfer-section">
@@ -3409,7 +3412,8 @@
               />
             </div>
           </template>
-        </section>
+      </section>
+        </template>
     </el-card>
   </div>
 </template>
@@ -3565,7 +3569,7 @@ const stockLedgerParity = computed<string>(() => {
 })
 
 const isMaterialStockParity = computed<boolean>(() => stockLedgerParity.value === 'material-stock')
-const stockLedgerReadbackOnly = computed<boolean>(() => false)
+const stockLedgerReadbackOnly = computed<boolean>(() => true)
 const stockLedgerWriteGuarded = computed<boolean>(() => stockLedgerReadbackOnly.value)
 const contractCoveredIds: string[] = ['A001', 'A002', 'A003']
 const contractSourceFiles: string[] = [
@@ -3592,8 +3596,8 @@ const stockLedgerTitle = computed<string>(() => {
 
 const stockLedgerSubTitle = computed<string>(() => {
   return isMaterialStockParity.value
-    ? '衣算云 / 物料进销存 / 物料库存（local-dev 本地闭环）'
-    : '库存流水 / 仓库本地真实对象闭环（local-dev/sqlite/test_data）'
+    ? '衣算云 / 物料进销存 / 物料库存（local-dev 只读查询）'
+    : '库存流水 / 仓库台账本地只读查询壳层'
 })
 
 const stockLedgerErrorTitle = computed<string>(() => {
@@ -4886,7 +4890,9 @@ const loadFinishedGoodsTransfer = async (): Promise<void> => {
 const onSearch = (): void => {
   query.page = 1
   void loadRows()
-  void refreshLocalInventoryReadback()
+  if (!stockLedgerReadbackOnly.value) {
+    void refreshLocalInventoryReadback()
+  }
 }
 
 const onReset = (): void => {
@@ -5836,8 +5842,10 @@ onMounted(async () => {
   if (canRead.value) {
     applyRoutePrefill()
     await loadRows({ silentGuard: true })
-    await loadMaterialTransfers()
-    await refreshLocalInventoryReadback()
+    if (!stockLedgerReadbackOnly.value) {
+      await loadMaterialTransfers()
+      await refreshLocalInventoryReadback()
+    }
   }
 })
 </script>
