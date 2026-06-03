@@ -5,10 +5,11 @@
         <div class="header-row">
           <div>
             <h2>生产计划</h2>
-            <p class="sub-title">衣算云 UI 1:1 + REALOBJ-CAND-003 回读壳层（local-dev only）</p>
+            <p class="sub-title">本地只读计划列表与 parity 入口</p>
           </div>
           <div class="header-actions">
-            <el-button @click="goSalesOrders">销售订单</el-button>
+            <el-button @click="goSampleParity">样衣入口</el-button>
+            <el-button @click="goProductionParity">生产跟进入口</el-button>
             <el-button type="primary" plain @click="goHome">工作台</el-button>
           </div>
         </div>
@@ -16,17 +17,16 @@
 
       <el-alert type="info" :closable="false" class="scope-alert">
         <template #title>
-          当前页面用于生产计划 readback 汇总；可筛选与观察，不触发新增、更新、下发到生产环境。
+          当前页面仅用于生产计划 list/detail 只读查询与 parity alias 入口，不触发工单下发、outbox、worker 或 ERPNext 生产写链路。
         </template>
       </el-alert>
 
-      <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
-        <el-tag type="success">contract_source_readback_present=true</el-tag>
-        <el-tag type="primary">covered_contract_ids=A002,A006</el-tag>
-        <el-tag type="warning">A006 blocked/unknown => not_claimed</el-tag>
-        <el-tag type="info">real_business_object_created=false (production)</el-tag>
-        <el-tag type="info">linked_calculation_enabled=false (cross-module)</el-tag>
-        <el-tag v-if="parityTag" type="warning">parity_route={{ parityTag }}</el-tag>
+      <section class="source-context" data-testid="yisuan-1to1-ui-source-readback">
+        <el-tag type="success">production_plan_readonly=true</el-tag>
+        <el-tag type="primary">list_detail_query_only=true</el-tag>
+        <el-tag type="warning">work_order_push=false</el-tag>
+        <el-tag type="warning">outbox_worker_release=false</el-tag>
+        <el-tag v-if="parityTag" type="info">parity_route={{ parityTag }}</el-tag>
       </section>
 
       <section class="status-board" data-testid="yisuan-1to1-production-plan-status-board">
@@ -36,6 +36,23 @@
           <div class="status-note">{{ card.note }}</div>
         </el-card>
       </section>
+
+      <el-card shadow="never" class="alias-card">
+        <template #header>
+          <div class="panel-header">
+            <span>入口对齐</span>
+            <el-tag type="info">local-dev only</el-tag>
+          </div>
+        </template>
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="主入口">/production/plans</el-descriptions-item>
+          <el-descriptions-item label="样衣入口">/sample/sampleListV2 -> /production/plans?parity=sample-list</el-descriptions-item>
+          <el-descriptions-item label="样衣跟进入口">/sample/sampleProcess -> /production/plans?parity=sample-list</el-descriptions-item>
+          <el-descriptions-item label="生产跟进入口">
+            /production/productionProcess -> /production/plans?parity=production-followup-template
+          </el-descriptions-item>
+        </el-descriptions>
+      </el-card>
 
       <el-form :model="query" inline class="query-panel">
         <el-form-item label="关键字">
@@ -51,7 +68,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="生产组">
-          <el-select v-model="query.group" clearable placeholder="全部" style="width: 160px">
+          <el-select v-model="query.group" clearable placeholder="全部" style="width: 180px">
             <el-option label="本地计划组" value="本地计划组" />
             <el-option label="样衣计划镜像" value="样衣计划镜像" />
             <el-option label="生产跟进镜像" value="生产跟进镜像" />
@@ -73,7 +90,7 @@
           <el-table-column prop="orderNo" label="订单号" min-width="160" />
           <el-table-column prop="styleCode" label="款号" min-width="130" />
           <el-table-column prop="customer" label="客户" min-width="140" />
-          <el-table-column prop="group" label="生产组" min-width="110" />
+          <el-table-column prop="group" label="生产组" min-width="140" />
           <el-table-column prop="plannedQty" label="计划数量" min-width="110" />
           <el-table-column prop="progress" label="进度" min-width="110" />
           <el-table-column prop="planDate" label="计划日期" min-width="120" />
@@ -91,50 +108,13 @@
         </el-table>
       </section>
     </el-card>
-
-    <el-card shadow="never" data-testid="realobj-production-plan-readback">
-      <template #header>
-        <div class="panel-header">
-          <span>REALOBJ-CAND-003 生产计划回读</span>
-          <el-tag type="info">local-dev/sqlite/scenario_tag/test_data only</el-tag>
-        </div>
-      </template>
-
-      <el-form :inline="true" class="readback-query-form">
-        <el-form-item label="scenario_tag">
-          <el-input v-model="readbackQuery.scenarioTag" style="width: 280px" data-testid="realobj-production-plan-scenario-tag" />
-        </el-form-item>
-        <el-form-item>
-          <el-button :loading="localReadback.loading" @click="refreshReadback">刷新回读</el-button>
-        </el-form-item>
-      </el-form>
-
-      <el-alert v-if="localReadback.error" type="warning" :closable="false" :title="localReadback.error" />
-
-      <el-descriptions border :column="2" class="readback-descriptions">
-        <el-descriptions-item label="scenario_tag">{{ readbackQuery.scenarioTag || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="sales_order_readback_total">{{ localReadback.salesOrderTotal }}</el-descriptions-item>
-        <el-descriptions-item label="production_plan_readback_total">{{ localReadback.productionPlanTotal }}</el-descriptions-item>
-        <el-descriptions-item label="production_plan_readback_success">
-          {{ localReadback.productionPlanReadbackSuccess ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="latest_plan_no">{{ localReadback.latestPlanNo || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="latest_plan_object_id">{{ localReadback.latestPlanObjectId || '-' }}</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import {
-  fetchLocalReadbackProductionPlans,
-  fetchLocalReadbackSalesOrders,
-  fetchProductionPlans,
-  type ProductionPlanListItem,
-} from '@/api/production'
+import { fetchProductionPlans, type ProductionPlanListItem } from '@/api/production'
 
 interface PlanRow {
   id: number | null
@@ -164,12 +144,12 @@ const query = reactive({
   group: '',
 })
 
-const parseScenarioTag = (value: unknown): string => {
+const parseQueryString = (value: unknown): string => {
   const raw = Array.isArray(value) ? value[0] : value
   return typeof raw === 'string' ? raw.trim() : ''
 }
 
-const parityTag = computed(() => parseScenarioTag(route.query.parity))
+const parityTag = computed(() => parseQueryString(route.query.parity))
 
 const fallbackPlanSeeds: PlanRow[] = [
   {
@@ -219,19 +199,11 @@ const fallbackPlanSeeds: PlanRow[] = [
   },
 ]
 
-const readbackQuery = reactive({
-  scenarioTag: parseScenarioTag(route.query.scenario_tag),
-})
-
-const localReadback = reactive({
-  loading: false,
-  error: '',
-  salesOrderTotal: 0,
-  productionPlanTotal: 0,
-  productionPlanReadbackSuccess: false,
-  latestPlanNo: '',
-  latestPlanObjectId: 0,
-})
+const groupLabel = (parity: string, company: string): string => {
+  if (parity === 'sample-list') return '样衣计划镜像'
+  if (parity === 'production-followup-template') return '生产跟进镜像'
+  return company === 'LY-LOCAL-TEST' ? '本地计划组' : company
+}
 
 const statusLabel = (status: string): string => {
   const labels: Record<string, string> = {
@@ -259,18 +231,12 @@ const progressLabel = (status: string): string => {
   return labels[status] || '0%'
 }
 
-const groupLabel = (parity: string, company: string): string => {
-  if (parity === 'sample-list') return '样衣计划镜像'
-  if (parity === 'production-followup-template') return '生产跟进镜像'
-  return company === 'LY-LOCAL-TEST' ? '本地计划组' : company
-}
-
 const statusBoard = computed(() => {
   const rows = planRows.value
   const countByStatus = (status: string) => rows.filter((row) => row.statusCode === status).length
   return [
-    { name: '已计划', value: String(countByStatus('planned')), note: '仅本地只读清单，不触发下发' },
-    { name: '工单待同步', value: String(countByStatus('work_order_pending')), note: '仅保留映射状态，不触发 outbox' },
+    { name: '已计划', value: String(countByStatus('planned')), note: '只读计划清单，不触发下发' },
+    { name: '工单待同步', value: String(countByStatus('work_order_pending')), note: '仅保留同步状态，不触发 outbox' },
     { name: '本地只读记录', value: String(rows.length), note: 'backend 为空时回退 synthetic snapshot' },
   ]
 })
@@ -308,13 +274,6 @@ const mapPlanRow = (item: ProductionPlanListItem): PlanRow => ({
   source: 'backend',
 })
 
-const resetQuery = (): void => {
-  query.keyword = ''
-  query.status = ''
-  query.group = ''
-  void refreshPlans()
-}
-
 const buildDetailQuery = (row: PlanRow): Record<string, string> => {
   const queryParams: Record<string, string> = {}
   if (row.id !== null) {
@@ -330,9 +289,6 @@ const buildDetailQuery = (row: PlanRow): Record<string, string> => {
     queryParams.planned_qty = String(row.plannedQty)
     queryParams.planned_start_date = row.planDate
     queryParams.status = row.statusCode
-  }
-  if (readbackQuery.scenarioTag.trim()) {
-    queryParams.scenario = readbackQuery.scenarioTag.trim()
   }
   if (parityTag.value) {
     queryParams.parity = parityTag.value
@@ -368,50 +324,28 @@ const refreshPlans = async (): Promise<void> => {
   }
 }
 
-const refreshReadback = async (): Promise<void> => {
-  const scenarioTag = readbackQuery.scenarioTag.trim()
-  if (!scenarioTag) {
-    localReadback.salesOrderTotal = 0
-    localReadback.productionPlanTotal = 0
-    localReadback.productionPlanReadbackSuccess = false
-    localReadback.latestPlanNo = ''
-    localReadback.latestPlanObjectId = 0
-    return
-  }
-
-  localReadback.loading = true
-  localReadback.error = ''
-  try {
-    const orderResp = await fetchLocalReadbackSalesOrders(scenarioTag)
-    const planResp = await fetchLocalReadbackProductionPlans(scenarioTag)
-    localReadback.salesOrderTotal = orderResp.data.total
-    localReadback.productionPlanTotal = planResp.data.total
-    localReadback.productionPlanReadbackSuccess = orderResp.data.records.some((record) =>
-      Boolean(record.readback_flags.production_plan_readback_success),
-    )
-    const latestPlan = planResp.data.records[0]
-    localReadback.latestPlanNo = latestPlan?.plan_no || ''
-    localReadback.latestPlanObjectId = latestPlan?.draft_id || 0
-  } catch (error) {
-    localReadback.error = `回读失败：${(error as Error).message}`
-    ElMessage.warning(localReadback.error)
-  } finally {
-    localReadback.loading = false
-  }
+const resetQuery = (): void => {
+  query.keyword = ''
+  query.status = ''
+  query.group = ''
+  void refreshPlans()
 }
 
-onMounted(() => {
-  void refreshPlans()
-  void refreshReadback()
-})
+const goSampleParity = (): void => {
+  router.push('/sample/sampleListV2')
+}
 
-const goSalesOrders = (): void => {
-  router.push('/sales-inventory/sales-orders')
+const goProductionParity = (): void => {
+  router.push('/production/productionProcess')
 }
 
 const goHome = (): void => {
   router.push('/home')
 }
+
+onMounted(() => {
+  void refreshPlans()
+})
 </script>
 
 <style scoped>
@@ -449,7 +383,7 @@ const goHome = (): void => {
   margin-bottom: 12px;
 }
 
-.source-readback {
+.source-context {
   margin-bottom: 12px;
   display: flex;
   flex-wrap: wrap;
@@ -487,6 +421,10 @@ const goHome = (): void => {
   font-size: 12px;
 }
 
+.alias-card {
+  margin-bottom: 12px;
+}
+
 .query-panel {
   margin-bottom: 8px;
 }
@@ -500,13 +438,5 @@ const goHome = (): void => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-}
-
-.readback-query-form {
-  margin-bottom: 8px;
-}
-
-.readback-descriptions {
-  margin-top: 10px;
 }
 </style>
