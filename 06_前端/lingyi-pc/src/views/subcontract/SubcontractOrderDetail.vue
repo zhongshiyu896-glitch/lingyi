@@ -18,6 +18,14 @@
         :closable="false"
         title="本页只展示 local-dev 详情，不触发结算 release、库存 outbox release、worker push 或 ERPNext 生命周期。"
       />
+      <el-alert
+        v-if="isMaterialPurchaseParity"
+        class="feedback"
+        type="info"
+        :closable="false"
+        data-testid="realobj-subcontract-detail-parity-alert"
+        title="materialPurchase final_path: /materialPurchase/materialPurchaseProcess -> /subcontract/detail?parity=material-purchase"
+      />
       <el-alert v-if="feedback" class="feedback" type="info" :closable="false" :title="feedback" />
     </el-card>
 
@@ -51,6 +59,24 @@
         <el-table-column prop="demandQty" label="需求数量" width="120" />
         <el-table-column prop="purchaseQty" label="采购/外协数量" width="150" />
       </el-table>
+    </el-card>
+
+    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-scope-bridge-panel">
+      <template #header>
+        <span>采购/生产桥接信息（只读）</span>
+      </template>
+      <el-descriptions border :column="2">
+        <el-descriptions-item label="final_path">{{ finalPath }}</el-descriptions-item>
+        <el-descriptions-item label="parity">{{ parityToken || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="sales_order">{{ state.salesOrder || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="sales_order_item">{{ state.salesOrderItem || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="production_plan_id">{{ state.productionPlanId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="work_order">{{ state.workOrder || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="job_card">{{ state.jobCard || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="profit_scope_status">{{ state.profitScopeStatus || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="profit_scope_error_code">{{ state.profitScopeErrorCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="resource_scope_status">{{ state.resourceScopeStatus || '-' }}</el-descriptions-item>
+      </el-descriptions>
     </el-card>
 
     <section class="issue-inspection-panel" data-testid="yisuan-1to1-subcontract-issue-return-inspection-panel">
@@ -182,6 +208,12 @@ const parityToken = computed(() => {
   return String(raw || '').trim()
 })
 
+const isMaterialPurchaseParity = computed(() => parityToken.value === 'material-purchase')
+
+const finalPath = computed(() =>
+  isMaterialPurchaseParity.value ? '/subcontract/detail?parity=material-purchase' : '/subcontract/detail',
+)
+
 const state = reactive({
   id: 0,
   subcontractNo: '',
@@ -200,6 +232,13 @@ const state = reactive({
   status: '',
   settlementStatus: '',
   resourceScopeStatus: '',
+  salesOrder: '',
+  salesOrderItem: '',
+  productionPlanId: '',
+  workOrder: '',
+  jobCard: '',
+  profitScopeStatus: '',
+  profitScopeErrorCode: '',
 })
 
 const materialLines = ref<MaterialLineView[]>([])
@@ -277,9 +316,14 @@ const buildSyntheticDetail = (base?: Partial<SubcontractOrderListItem>): Subcont
   status: String(base?.status || 'processing'),
   settlement_status: 'preview_only',
   resource_scope_status: String(base?.resource_scope_status || 'ready'),
+  profit_scope_status: String(base?.profit_scope_status || 'resolved'),
+  profit_scope_error_code: String(base?.profit_scope_error_code || ''),
+  sales_order: String(base?.sales_order || (isMaterialPurchaseParity.value ? 'SO-LOCAL-001' : '')),
+  sales_order_item: String(base?.sales_order_item || (isMaterialPurchaseParity.value ? 'SO-LOCAL-001-1' : '')),
+  production_plan_id: Number(base?.production_plan_id || (isMaterialPurchaseParity.value ? 3001 : 0)) || null,
+  work_order: String(base?.work_order || (isMaterialPurchaseParity.value ? 'WO-LOCAL-3001' : '')),
+  job_card: String(base?.job_card || (isMaterialPurchaseParity.value ? 'JC-LOCAL-3001' : '')),
   scope_error_code: null,
-  production_plan_id: null,
-  work_order: null,
   latest_issue_outbox_id: null,
   latest_issue_sync_status: null,
   latest_issue_stock_entry_name: null,
@@ -382,6 +426,13 @@ const applyDetail = (detail: SubcontractOrderDetailData): void => {
   state.status = detail.status || ''
   state.settlementStatus = detail.settlement_status || ''
   state.resourceScopeStatus = detail.resource_scope_status || ''
+  state.salesOrder = detail.sales_order || ''
+  state.salesOrderItem = detail.sales_order_item || ''
+  state.productionPlanId = detail.production_plan_id ? String(detail.production_plan_id) : ''
+  state.workOrder = detail.work_order || ''
+  state.jobCard = detail.job_card || ''
+  state.profitScopeStatus = detail.profit_scope_status || ''
+  state.profitScopeErrorCode = detail.profit_scope_error_code || ''
   materialLines.value = buildMaterialLines(detail)
   receipts.value = mapReceipts(detail.receipts || [])
   inspections.value = mapInspections(detail.inspections || [])

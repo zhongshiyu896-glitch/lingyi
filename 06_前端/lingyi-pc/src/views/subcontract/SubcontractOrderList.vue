@@ -78,6 +78,15 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="采购/生产桥接" min-width="220">
+          <template #default="{ row }">
+            <div class="bridge-summary">
+              <span>SO {{ row.sales_order || '-' }}</span>
+              <span>计划 {{ row.production_plan_id || '-' }}</span>
+              <span>工单 {{ row.work_order || '-' }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row.id)">查看详情</el-button>
@@ -162,6 +171,9 @@ const buildSyntheticRows = (): SubcontractOrderListItem[] => {
       net_amount: '6620',
       status: 'processing',
       resource_scope_status: 'ready',
+      profit_scope_status: 'resolved',
+      sales_order: isMaterialPurchaseParity.value ? 'SO-LOCAL-001' : null,
+      sales_order_item: isMaterialPurchaseParity.value ? 'SO-LOCAL-001-1' : null,
       latest_issue_outbox_id: null,
       latest_issue_sync_status: null,
       latest_issue_stock_entry_name: null,
@@ -172,8 +184,9 @@ const buildSyntheticRows = (): SubcontractOrderListItem[] => {
       latest_receipt_stock_entry_name: null,
       latest_receipt_idempotency_key: null,
       latest_receipt_error_code: null,
-      production_plan_id: null,
-      work_order: null,
+      production_plan_id: isMaterialPurchaseParity.value ? 3001 : null,
+      work_order: isMaterialPurchaseParity.value ? 'WO-LOCAL-3001' : null,
+      job_card: isMaterialPurchaseParity.value ? 'JC-LOCAL-3001' : null,
       created_at: new Date().toISOString(),
     },
   ]
@@ -276,5 +289,12 @@ onMounted(() => {
 .parity-alert,
 .feedback {
   margin-top: 12px;
+}
+
+.bridge-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.4;
 }
 </style>

@@ -146,6 +146,13 @@ class SubcontractPermissionTest(unittest.TestCase):
                     process_name="外发裁剪",
                     planned_qty=Decimal("120"),
                     status="processing",
+                    resource_scope_status="ready",
+                    profit_scope_status="resolved",
+                    sales_order="SO-001",
+                    sales_order_item="SO-001-1",
+                    production_plan_id=3001,
+                    work_order="WO-3001",
+                    job_card="JC-3001",
                 )
             )
             session.add(
@@ -229,6 +236,13 @@ class SubcontractPermissionTest(unittest.TestCase):
                     process_name="外发裁剪",
                     planned_qty=Decimal("120"),
                     status="processing",
+                    resource_scope_status="ready",
+                    profit_scope_status="resolved",
+                    sales_order="SO-001",
+                    sales_order_item="SO-001-1",
+                    production_plan_id=3001,
+                    work_order="WO-3001",
+                    job_card="JC-3001",
                 )
             )
             session.add(
@@ -358,7 +372,7 @@ class SubcontractPermissionTest(unittest.TestCase):
                 source_suffix=f"RECEIVE-{order_id}",
                 subcontract_ref=subcontract_refs[order_id],
                 supplier_ref="SUP-A",
-                work_order_ref="NO-WORK-ORDER",
+                work_order_ref="WO-3001" if order_id == 13 else "NO-WORK-ORDER",
                 item_code="ITEM-A",
                 quantity=received_qty,
                 status_action="receive",
@@ -509,6 +523,21 @@ class SubcontractPermissionTest(unittest.TestCase):
         items = payload["data"]["items"]
         self.assertTrue(items)
         self.assertTrue(all(row["item_code"] == "ITEM-B" for row in items))
+
+    def test_detail_returns_scope_bridge_fields_for_readonly_traceability(self) -> None:
+        response = self.client.get("/api/subcontract/13", headers=self._headers(role="Subcontract Manager"))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+
+        detail = payload["data"]
+        self.assertEqual(detail["sales_order"], "SO-001")
+        self.assertEqual(detail["sales_order_item"], "SO-001-1")
+        self.assertEqual(detail["production_plan_id"], 3001)
+        self.assertEqual(detail["work_order"], "WO-3001")
+        self.assertEqual(detail["job_card"], "JC-3001")
+        self.assertEqual(detail["profit_scope_status"], "resolved")
+        self.assertEqual(detail["resource_scope_status"], "ready")
 
     def test_create_subcontract_rejects_bom_item_mismatch(self) -> None:
         payload = self._create_payload(item_code="ITEM-A", supplier="SUP-A")

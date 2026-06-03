@@ -42,6 +42,10 @@ export interface SubcontractOrderListItem {
   net_amount: string
   status: string
   resource_scope_status: string
+  profit_scope_status?: string
+  profit_scope_error_code?: string | null
+  sales_order?: string | null
+  sales_order_item?: string | null
   latest_issue_outbox_id?: number | null
   latest_issue_sync_status?: string | null
   latest_issue_stock_entry_name?: string | null
@@ -54,6 +58,7 @@ export interface SubcontractOrderListItem {
   latest_receipt_error_code?: string | null
   production_plan_id?: number | null
   work_order?: string | null
+  job_card?: string | null
   created_at: string
 }
 

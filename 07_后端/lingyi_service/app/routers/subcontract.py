@@ -1271,6 +1271,37 @@ def get_subcontract_order_detail(
             settlement_status=str(order.settlement_status or ""),
             resource_scope_status=str(order.resource_scope_status),
             scope_error_code=(str(order.scope_error_code) if order.scope_error_code else None),
+            profit_scope_status=str(getattr(order, "profit_scope_status", "unresolved") or "unresolved"),
+            profit_scope_error_code=(
+                str(getattr(order, "profit_scope_error_code", "")).strip()
+                if getattr(order, "profit_scope_error_code", None)
+                else None
+            ),
+            sales_order=(
+                str(getattr(order, "sales_order", "")).strip()
+                if getattr(order, "sales_order", None)
+                else None
+            ),
+            sales_order_item=(
+                str(getattr(order, "sales_order_item", "")).strip()
+                if getattr(order, "sales_order_item", None)
+                else None
+            ),
+            production_plan_id=(
+                int(getattr(order, "production_plan_id"))
+                if getattr(order, "production_plan_id", None) is not None
+                else None
+            ),
+            work_order=(
+                str(getattr(order, "work_order", "")).strip()
+                if getattr(order, "work_order", None)
+                else None
+            ),
+            job_card=(
+                str(getattr(order, "job_card", "")).strip()
+                if getattr(order, "job_card", None)
+                else None
+            ),
             latest_issue_outbox_id=(int(latest_issue_outbox.id) if latest_issue_outbox else None),
             latest_issue_sync_status=(str(latest_issue_outbox.status) if latest_issue_outbox else None),
             latest_issue_stock_entry_name=(

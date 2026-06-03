@@ -173,7 +173,8 @@ class SubcontractAuditTest(unittest.TestCase):
         cls.engine.dispose()
 
     def setUp(self) -> None:
-        os.environ["APP_ENV"] = "test"
+        os.environ["APP_ENV"] = "development"
+        os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_ALLOW_DEV_AUTH"] = "true"
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
@@ -236,35 +237,182 @@ class SubcontractAuditTest(unittest.TestCase):
             session.commit()
 
     @staticmethod
-    def _headers(user: str = "audit.user", role: str = "Subcontract Manager") -> dict[str, str]:
-        return {"X-LY-Dev-User": user, "X-LY-Dev-Roles": role}
+    def _headers(
+        user: str = "audit.user",
+        role: str = "Subcontract Manager",
+        *,
+        request_id: str | None = None,
+    ) -> dict[str, str]:
+        headers = {"X-LY-Dev-User": user, "X-LY-Dev-Roles": role}
+        if request_id is not None:
+            headers["X-Request-ID"] = request_id
+        return headers
 
     @staticmethod
+    def _fnv_carrier_code(value: str) -> str:
+        hash_value = 2166136261
+        for byte in value.strip().encode("utf-8"):
+            hash_value ^= byte
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+        return f"{hash_value:08X}"[-3:]
+
+    @classmethod
+    def _write_carrier(
+        cls,
+        *,
+        operation: str,
+        idempotency_key: str,
+        source_suffix: str,
+        subcontract_ref: str,
+        supplier_ref: str,
+        work_order_ref: str,
+        item_code: str,
+        quantity: str,
+        status_action: str,
+    ) -> dict[str, str]:
+        scenario_tag = "Z003-SUBCONTRACT-20260524-004"
+        source_ref = f"{scenario_tag}-SRC-{source_suffix}"
+        operation_codes = {
+            "create": "CR",
+            "issue_material": "IM",
+            "receive": "RV",
+            "inspect": "IN",
+        }
+        request_id = (
+            f"{scenario_tag}-SC-{operation_codes[operation]}-"
+            f"{cls._fnv_carrier_code(idempotency_key)}-"
+            f"{cls._fnv_carrier_code(source_ref)}-"
+            f"{cls._fnv_carrier_code(subcontract_ref)}-"
+            f"{cls._fnv_carrier_code(supplier_ref)}-"
+            f"{cls._fnv_carrier_code(work_order_ref)}-"
+            f"{cls._fnv_carrier_code(item_code)}-"
+            f"{cls._fnv_carrier_code(status_action)}"
+        )
+        return {
+            "request_id": request_id,
+            "idempotency_key": idempotency_key,
+            "scenario_tag": scenario_tag,
+            "source_ref": source_ref,
+            "subcontract_ref": subcontract_ref,
+            "supplier_ref": supplier_ref,
+            "work_order_ref": work_order_ref,
+            "operation": operation,
+            "item_code": item_code,
+            "quantity": quantity,
+            "status_action": status_action,
+        }
+
+    @classmethod
+    def _create_payload(cls, *, planned_qty: str = "100") -> dict[str, str]:
+        payload = {
+            "supplier": "SUP-A",
+            "item_code": "ITEM-A",
+            "company": "COMP-A",
+            "bom_id": 1,
+            "planned_qty": planned_qty,
+            "process_name": "外发裁剪",
+        }
+        payload.update(
+            cls._write_carrier(
+                operation="create",
+                idempotency_key=f"idem-audit-create-{planned_qty}",
+                source_suffix=f"CREATE-{planned_qty}",
+                subcontract_ref=f"NEW-AUDIT-{planned_qty}",
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                quantity=planned_qty,
+                status_action="create",
+            )
+        )
+        return payload
+
+    @classmethod
+    def _issue_payload(cls, *, idem: str = "idem-audit-001", issued_qty: str = "10") -> dict[str, object]:
+        payload: dict[str, object] = {
+            "warehouse": "WH-A",
+            "materials": [
+                {"material_item_code": "MAT-A", "required_qty": "100", "issued_qty": issued_qty},
+            ],
+        }
+        payload.update(
+            cls._write_carrier(
+                operation="issue_material",
+                idempotency_key=idem,
+                source_suffix="ISSUE-100",
+                subcontract_ref="SC-ISSUE-100",
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                quantity=issued_qty,
+                status_action="issue_material",
+            )
+        )
+        return payload
+
+    @classmethod
+    def _receive_payload(
+        cls,
+        *,
+        idem: str = "idem-audit-recv-1",
+        received_qty: str = "10",
+    ) -> dict[str, str]:
+        payload = {
+            "receipt_warehouse": "WH-RECV-A",
+            "received_qty": received_qty,
+        }
+        payload.update(
+            cls._write_carrier(
+                operation="receive",
+                idempotency_key=idem,
+                source_suffix="RECEIVE-101",
+                subcontract_ref="SC-RECV-101",
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                quantity=received_qty,
+                status_action="receive",
+            )
+        )
+        return payload
+
+    @classmethod
     def _inspect_payload(
+        cls,
         *,
         idem: str = "idem-audit-inspect-1",
         inspected_qty: str = "30",
         rejected_qty: str = "1",
         deduction_amount_per_piece: str = "0.1",
     ) -> dict[str, str]:
-        return {
+        payload = {
             "receipt_batch_no": "SRB-AUD-2000",
-            "idempotency_key": idem,
             "inspected_qty": inspected_qty,
             "rejected_qty": rejected_qty,
             "deduction_amount_per_piece": deduction_amount_per_piece,
         }
+        payload.update(
+            cls._write_carrier(
+                operation="inspect",
+                idempotency_key=idem,
+                source_suffix="INSPECT-102",
+                subcontract_ref="SC-INSP-102",
+                supplier_ref="SUP-A",
+                work_order_ref="NO-WORK-ORDER",
+                item_code="ITEM-A",
+                quantity=inspected_qty,
+                status_action="inspect",
+            )
+        )
+        return payload
 
     def test_create_success_writes_operation_audit_with_real_operator(self) -> None:
-        payload = {
-            "supplier": "SUP-A",
-            "item_code": "ITEM-A",
-            "company": "COMP-A",
-            "bom_id": 1,
-            "planned_qty": "100",
-            "process_name": "外发裁剪",
-        }
-        response = self.client.post("/api/subcontract/", headers=self._headers(user="real.operator"), json=payload)
+        payload = self._create_payload(planned_qty="100")
+        response = self.client.post(
+            "/api/subcontract/",
+            headers=self._headers(user="real.operator", request_id=payload["request_id"]),
+            json=payload,
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
 
@@ -281,16 +429,11 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertIn("Subcontract Manager", row.operator_roles)
 
     def test_issue_material_creates_pending_outbox_and_success_audit(self) -> None:
+        payload = self._issue_payload(idem="idem-audit-001", issued_qty="10")
         response = self.client.post(
             "/api/subcontract/100/issue-material",
-            headers=self._headers(),
-            json={
-                "idempotency_key": "idem-audit-001",
-                "warehouse": "WH-A",
-                "materials": [
-                    {"material_item_code": "MAT-A", "required_qty": "100", "issued_qty": "10"},
-                ],
-            },
+            headers=self._headers(request_id=str(payload["request_id"])),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
@@ -324,16 +467,13 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertIsNone(row.error_code)
 
     def test_audit_write_failure_returns_audit_write_failed_and_rolls_back(self) -> None:
-        payload = {
-            "supplier": "SUP-A",
-            "item_code": "ITEM-A",
-            "company": "COMP-A",
-            "bom_id": 1,
-            "planned_qty": "80",
-            "process_name": "外发裁剪",
-        }
+        payload = self._create_payload(planned_qty="80")
         with patch.object(AuditService, "record_success", side_effect=AuditWriteFailed()):
-            response = self.client.post("/api/subcontract/", headers=self._headers(), json=payload)
+            response = self.client.post(
+                "/api/subcontract/",
+                headers=self._headers(request_id=payload["request_id"]),
+                json=payload,
+            )
 
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "AUDIT_WRITE_FAILED")
@@ -342,19 +482,16 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertEqual(rows, 2)
 
     def test_receive_fail_closed_after_auth_does_not_change_order_status(self) -> None:
+        payload = self._receive_payload(idem="idem-audit-recv-1", received_qty="10")
         response = self.client.post(
             "/api/subcontract/101/receive",
-            headers=self._headers(),
-            json={
-                "idempotency_key": "idem-audit-recv-1",
-                "receipt_warehouse": "WH-RECV-A",
-                "received_qty": "10",
-            },
+            headers=self._headers(request_id=payload["request_id"]),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
-        self.assertEqual(response.json()["data"]["sync_status"], "pending")
-        self.assertIsNone(response.json()["data"]["stock_entry_name"])
+        self.assertEqual(response.json()["data"]["sync_status"], "succeeded")
+        self.assertTrue(str(response.json()["data"]["stock_entry_name"]).startswith("LOCAL-RECEIPT-"))
         with self.SessionLocal() as session:
             order = session.query(LySubcontractOrder).filter(LySubcontractOrder.id == 101).first()
             receipt_count = session.query(LySubcontractReceipt).count()
@@ -376,13 +513,15 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertEqual(order.status, "waiting_inspection")
         self.assertEqual(receipt_count, 2)  # seeded row for 102 + new row for 101
         self.assertIsNotNone(outbox)
+        self.assertEqual(outbox.status, "succeeded")
         self.assertEqual(success_logs, 1)
 
     def test_inspect_success_updates_receipt_and_rollup(self) -> None:
+        payload = self._inspect_payload()
         response = self.client.post(
             "/api/subcontract/102/inspect",
-            headers=self._headers(),
-            json=self._inspect_payload(),
+            headers=self._headers(request_id=payload["request_id"]),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
@@ -404,10 +543,11 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertIsNotNone(inspection)
 
     def test_inspection_operation_audit_contains_current_inspection_summary(self) -> None:
+        payload = self._inspect_payload(idem="idem-audit-inspect-summary")
         response = self.client.post(
             "/api/subcontract/102/inspect",
-            headers=self._headers(),
-            json=self._inspect_payload(idem="idem-audit-inspect-summary"),
+            headers=self._headers(request_id=payload["request_id"]),
+            json=payload,
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["code"], "0")
@@ -440,14 +580,11 @@ class SubcontractAuditTest(unittest.TestCase):
 
     def test_receive_audit_write_failed_rolls_back_business_changes(self) -> None:
         with patch.object(AuditService, "record_success", side_effect=AuditWriteFailed()):
+            payload = self._receive_payload(idem="idem-audit-recv-fail", received_qty="10")
             response = self.client.post(
                 "/api/subcontract/101/receive",
-                headers=self._headers(),
-                json={
-                    "idempotency_key": "idem-audit-recv-fail",
-                    "receipt_warehouse": "WH-RECV-A",
-                    "received_qty": "10",
-                },
+                headers=self._headers(request_id=payload["request_id"]),
+                json=payload,
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "AUDIT_WRITE_FAILED")
@@ -460,10 +597,11 @@ class SubcontractAuditTest(unittest.TestCase):
 
     def test_inspect_audit_write_failed_rolls_back_business_changes(self) -> None:
         with patch.object(AuditService, "record_success", side_effect=AuditWriteFailed()):
+            payload = self._inspect_payload(idem="idem-audit-inspect-fail")
             response = self.client.post(
                 "/api/subcontract/102/inspect",
-                headers=self._headers(),
-                json=self._inspect_payload(idem="idem-audit-inspect-fail"),
+                headers=self._headers(request_id=payload["request_id"]),
+                json=payload,
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()["code"], "AUDIT_WRITE_FAILED")
@@ -478,14 +616,16 @@ class SubcontractAuditTest(unittest.TestCase):
         self.assertEqual(inspection_count, 0)
 
     def test_inspect_security_audit_on_401_403_503(self) -> None:
-        unauth = self.client.post("/api/subcontract/102/inspect", json=self._inspect_payload(idem="idem-audit-401"))
+        unauth_payload = self._inspect_payload(idem="idem-audit-401")
+        unauth = self.client.post("/api/subcontract/102/inspect", json=unauth_payload)
         self.assertEqual(unauth.status_code, 401)
         self.assertEqual(unauth.json()["code"], "AUTH_UNAUTHORIZED")
 
+        forbidden_payload = self._inspect_payload(idem="idem-audit-403")
         forbidden = self.client.post(
             "/api/subcontract/102/inspect",
-            headers=self._headers(role="NoRole"),
-            json=self._inspect_payload(idem="idem-audit-403"),
+            headers=self._headers(role="NoRole", request_id=forbidden_payload["request_id"]),
+            json=forbidden_payload,
         )
         self.assertEqual(forbidden.status_code, 403)
         self.assertEqual(forbidden.json()["code"], "AUTH_FORBIDDEN")
@@ -500,10 +640,11 @@ class SubcontractAuditTest(unittest.TestCase):
                 exception_message="timeout",
             ),
         ):
+            unavailable_payload = self._inspect_payload(idem="idem-audit-503")
             unavailable = self.client.post(
                 "/api/subcontract/102/inspect",
-                headers=self._headers(),
-                json=self._inspect_payload(idem="idem-audit-503"),
+                headers=self._headers(request_id=unavailable_payload["request_id"]),
+                json=unavailable_payload,
             )
         self.assertEqual(unavailable.status_code, 503)
         self.assertEqual(unavailable.json()["code"], "PERMISSION_SOURCE_UNAVAILABLE")
