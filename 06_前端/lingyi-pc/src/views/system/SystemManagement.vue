@@ -1600,6 +1600,13 @@
       />
 
       <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          title="共享路由边界：本切片仅实现 system dictionary catalog readonly subset，不覆盖 system config catalog 与 system health summary。"
+        />
+
         <el-form :inline="true" :model="dictionaryQuery" class="query-form" data-testid="system-dictionary-query-form">
           <el-form-item label="字典类型">
             <el-input v-model="dictionaryQuery.dict_type" clearable placeholder="dict_type（可选）" />
@@ -1617,16 +1624,65 @@
               <el-option label="policy_registry" value="policy_registry" />
             </el-select>
           </el-form-item>
+          <el-form-item>
+            <el-button
+              type="primary"
+              :loading="dictionaryLoading"
+              data-testid="system-dictionary-search"
+              @click="loadDictionaryCatalog"
+            >
+              搜索
+            </el-button>
+            <el-button data-testid="system-dictionary-reset" @click="resetDictionaryFilters">重置</el-button>
+            <el-button data-testid="system-dictionary-clear" @click="clearDictionarySelection">清空</el-button>
+          </el-form-item>
         </el-form>
 
-        <el-table :data="dictionaryItems" border empty-text="暂无字典目录数据" data-testid="system-dictionary-table">
+        <div class="meta-row" data-testid="system-dictionary-summary">
+          <span>目录总数：{{ dictionaryItems.length }}</span>
+          <span>字典类型数：{{ dictionaryTypeCount }}</span>
+          <span>状态分布：{{ dictionaryStatusSummary }}</span>
+          <span>来源分布：{{ dictionarySourceSummary }}</span>
+        </div>
+
+        <el-table
+          :data="dictionaryItems"
+          border
+          empty-text="暂无字典目录数据"
+          data-testid="system-dictionary-table"
+          @row-click="selectDictionaryItem"
+        >
           <el-table-column prop="dict_type" label="dict_type" min-width="180" />
           <el-table-column prop="dict_code" label="dict_code" min-width="180" />
           <el-table-column prop="dict_name" label="dict_name" min-width="180" />
-          <el-table-column prop="status" label="status" width="120" />
+          <el-table-column label="status" width="120">
+            <template #default="scope">
+              <el-tag :type="dictionaryStatusTagType(scope.row.status)" effect="plain">{{ scope.row.status }}</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="source" label="source" width="170" />
           <el-table-column prop="updated_at" label="updated_at" min-width="190" />
         </el-table>
+
+        <el-descriptions
+          v-if="activeDictionaryItem"
+          :column="2"
+          border
+          size="small"
+          style="margin-top: 12px"
+          data-testid="system-dictionary-active-item"
+        >
+          <el-descriptions-item label="dict_type">{{ activeDictionaryItem.dict_type }}</el-descriptions-item>
+          <el-descriptions-item label="dict_code">{{ activeDictionaryItem.dict_code }}</el-descriptions-item>
+          <el-descriptions-item label="dict_name">{{ activeDictionaryItem.dict_name }}</el-descriptions-item>
+          <el-descriptions-item label="status">
+            <el-tag :type="dictionaryStatusTagType(activeDictionaryItem.status)" effect="plain">
+              {{ activeDictionaryItem.status }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="source">{{ activeDictionaryItem.source }}</el-descriptions-item>
+          <el-descriptions-item label="updated_at">{{ activeDictionaryItem.updated_at }}</el-descriptions-item>
+        </el-descriptions>
 
         <el-empty v-if="!dictionaryItems.length" description="暂无字典目录数据" data-testid="system-dictionary-empty" />
       </template>
@@ -1814,6 +1870,7 @@ const activeMessageNotificationSettingItem = ref<SystemMessageNotificationSettin
 const messageNotificationSettingErrorMessage = ref<string>('')
 const activePreferenceSettingItem = ref<SystemPreferenceSettingItem | null>(null)
 const preferenceSettingErrorMessage = ref<string>('')
+const activeDictionaryItem = ref<SystemDictionaryCatalogItem | null>(null)
 
 const configQuery = reactive({
   module: '',
@@ -1921,6 +1978,31 @@ const canReadOperationLogs = computed<boolean>(() => canSystemRead.value && canC
 const canReadDocumentCodes = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadMessageNotificationSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadPreferenceSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const dictionaryTypeCount = computed<number>(() => new Set(dictionaryItems.value.map((item) => item.dict_type)).size)
+const dictionaryStatusSummary = computed<string>(() => {
+  if (!dictionaryItems.value.length) {
+    return '-'
+  }
+  const counts = dictionaryItems.value.reduce<Record<string, number>>((acc, item) => {
+    acc[item.status] = (acc[item.status] ?? 0) + 1
+    return acc
+  }, {})
+  return Object.entries(counts)
+    .map(([status, count]) => `${status}:${count}`)
+    .join(' / ')
+})
+const dictionarySourceSummary = computed<string>(() => {
+  if (!dictionaryItems.value.length) {
+    return '-'
+  }
+  const counts = dictionaryItems.value.reduce<Record<string, number>>((acc, item) => {
+    acc[item.source] = (acc[item.source] ?? 0) + 1
+    return acc
+  }, {})
+  return Object.entries(counts)
+    .map(([source, count]) => `${source}:${count}`)
+    .join(' / ')
+})
 
 const systemGuardKey = (actionKey: string): string => {
   const normalized = actionKey.replace(/_/g, '-')
@@ -1970,6 +2052,7 @@ const loadConfigCatalog = async (): Promise<void> => {
 const loadDictionaryCatalog = async (): Promise<void> => {
   if (!canReadDictionary.value) {
     dictionaryItems.value = []
+    activeDictionaryItem.value = null
     return
   }
 
@@ -1981,8 +2064,10 @@ const loadDictionaryCatalog = async (): Promise<void> => {
       source: dictionaryQuery.source || undefined,
     })
     dictionaryItems.value = result.data.items
+    activeDictionaryItem.value = result.data.items[0] ?? null
   } catch (error: unknown) {
     dictionaryItems.value = []
+    activeDictionaryItem.value = null
     ElMessage.error((error as Error).message)
   } finally {
     dictionaryLoading.value = false
@@ -2459,6 +2544,22 @@ const clearMessageNotificationSettingSelection = (): void => {
   messageNotificationSettingErrorMessage.value = ''
 }
 
+const resetDictionaryFilters = (): void => {
+  dictionaryQuery.dict_type = ''
+  dictionaryQuery.status = ''
+  dictionaryQuery.source = ''
+  void loadDictionaryCatalog()
+}
+
+const clearDictionarySelection = (): void => {
+  dictionaryItems.value = []
+  activeDictionaryItem.value = null
+}
+
+const selectDictionaryItem = (item: SystemDictionaryCatalogItem): void => {
+  activeDictionaryItem.value = item
+}
+
 const resetPreferenceSettingFilters = (): void => {
   preferenceSettingQuery.preference_scope = ''
   preferenceSettingQuery.status = ''
@@ -2604,6 +2705,16 @@ const statusTagType = (status: string): 'success' | 'warning' | 'danger' => {
     return 'success'
   }
   if (status === 'warn') {
+    return 'warning'
+  }
+  return 'danger'
+}
+
+const dictionaryStatusTagType = (status: string): 'success' | 'warning' | 'danger' => {
+  if (status === 'active') {
+    return 'success'
+  }
+  if (status === 'inactive') {
     return 'warning'
   }
   return 'danger'
