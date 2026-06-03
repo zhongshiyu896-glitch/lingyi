@@ -203,6 +203,90 @@
       </template>
     </el-card>
 
+    <el-card shadow="never" data-testid="permission-diagnostic-section">
+      <template #header>
+        <div class="header-row">
+          <span>治理摘要与诊断（只读）</span>
+          <el-button
+            type="primary"
+            :loading="diagnosticLoading"
+            data-testid="permission-diagnostic-refresh-button"
+            @click="loadDiagnosticData"
+          >
+            刷新
+          </el-button>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="!canDiagnostic"
+        type="warning"
+        :closable="false"
+        title="当前账号无 permission:diagnostic 权限，已使用本地只读诊断摘要"
+        data-testid="permission-diagnostic-permission-state"
+        style="margin-bottom: 12px"
+      />
+      <el-alert
+        v-if="diagnosticErrorMessage"
+        type="error"
+        :closable="false"
+        :title="diagnosticErrorMessage"
+        data-testid="permission-diagnostic-error-state"
+        style="margin-bottom: 12px"
+      />
+
+      <div class="summary-grid" data-testid="permission-governance-summary-grid">
+        <el-card shadow="never" class="summary-tile">
+          <div class="summary-label">角色矩阵</div>
+          <div class="summary-value">{{ roleRows.length }}</div>
+          <div class="summary-hint">只读角色覆盖</div>
+        </el-card>
+        <el-card shadow="never" class="summary-tile">
+          <div class="summary-label">高危动作</div>
+          <div class="summary-value">{{ diagnosticData.high_risk_actions.length }}</div>
+          <div class="summary-hint">需 guarded / hidden</div>
+        </el-card>
+        <el-card shadow="never" class="summary-tile">
+          <div class="summary-label">安全审计记录</div>
+          <div class="summary-value">{{ securityAudit.total }}</div>
+          <div class="summary-hint">当前筛选命中</div>
+        </el-card>
+        <el-card shadow="never" class="summary-tile">
+          <div class="summary-label">操作审计记录</div>
+          <div class="summary-value">{{ operationAudit.total }}</div>
+          <div class="summary-hint">当前筛选命中</div>
+        </el-card>
+      </div>
+
+      <div class="readonly-status-row" data-testid="permission-diagnostic-status-row">
+        <el-tag :type="diagnosticData.status === 'ok' ? 'success' : 'warning'" effect="plain">
+          diagnostic={{ diagnosticData.status || 'fallback' }}
+        </el-tag>
+        <el-tag type="info" effect="plain">catalog={{ diagnosticData.catalog_enabled ? 'on' : 'off' }}</el-tag>
+        <el-tag type="info" effect="plain">audit={{ diagnosticData.audit_read_enabled ? 'on' : 'off' }}</el-tag>
+        <el-tag type="warning" effect="plain">export guarded={{ canExport ? 'ui-only' : 'denied' }}</el-tag>
+      </div>
+
+      <el-table
+        :data="diagnosticData.checks"
+        border
+        empty-text="暂无诊断结果"
+        data-testid="permission-diagnostic-checks-table"
+      >
+        <el-table-column prop="name" label="诊断项" min-width="220" />
+        <el-table-column label="状态" width="120">
+          <template #default="scope">
+            <el-tag :type="scope.row.status === 'pass' ? 'success' : 'danger'" effect="plain">
+              {{ scope.row.status }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="message" label="说明" min-width="280">
+          <template #default="scope">{{ scope.row.message || 'pass' }}</template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <el-card shadow="never" data-testid="permission-audit-section">
       <template #header>
         <div class="header-row">
@@ -379,6 +463,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import permissionGovernanceApi, {
   type PermissionActionCatalogModule,
+  type PermissionGovernanceDiagnosticCheck,
+  type PermissionGovernanceDiagnosticData,
   type PermissionMenuManagementData,
   type PermissionOperationAuditData,
   type PermissionOperationAuditQuery,
@@ -402,10 +488,12 @@ const loading = ref<boolean>(false)
 const auditLoading = ref<boolean>(false)
 const securityExporting = ref<boolean>(false)
 const operationExporting = ref<boolean>(false)
+const diagnosticLoading = ref<boolean>(false)
 const menuLoading = ref<boolean>(false)
 const catalogErrorMessage = ref<string>('')
 const menuErrorMessage = ref<string>('')
 const auditErrorMessage = ref<string>('')
+const diagnosticErrorMessage = ref<string>('')
 const exportGuardMessage = ref<string>('')
 const catalogRows = ref<CatalogRow[]>([])
 const roleRows = ref<PermissionRoleMatrixEntry[]>([])
@@ -426,6 +514,23 @@ const operationAudit = ref<PermissionOperationAuditData>({
   total: 0,
   page: 1,
   page_size: 20,
+})
+
+const diagnosticData = ref<PermissionGovernanceDiagnosticData>({
+  module: 'permission',
+  status: 'fallback',
+  registered_actions: [],
+  legacy_permission_audit_actions: [],
+  high_risk_actions: [],
+  ui_hidden_actions: [],
+  roles_with_permission_actions_count: 0,
+  checks: [],
+  catalog_enabled: true,
+  roles_matrix_enabled: true,
+  audit_read_enabled: true,
+  export_enabled: false,
+  diagnostic_enabled: false,
+  generated_at: '',
 })
 
 const securityQuery = reactive<PermissionSecurityAuditQuery>({
@@ -464,6 +569,7 @@ const menuManagementQuery = reactive({
 const canRead = computed<boolean>(() => permissionStore.state.actions.includes('permission:read'))
 const canAuditRead = computed<boolean>(() => permissionStore.state.actions.includes('permission:audit_read'))
 const canExport = computed<boolean>(() => permissionStore.state.actions.includes('permission:export'))
+const canDiagnostic = computed<boolean>(() => permissionStore.state.actions.includes('permission:diagnostic'))
 const menuManagementModuleOptions = computed<string[]>(() => {
   const modules = new Set<string>()
   menuManagement.value.items.forEach((item) => modules.add(item.module))
@@ -687,6 +793,28 @@ const readonlyOperationAuditFallback: PermissionOperationAuditData = {
   ],
 }
 
+const readonlyDiagnosticFallback: PermissionGovernanceDiagnosticData = {
+  module: 'permission',
+  status: 'ok',
+  registered_actions: ['permission:read', 'permission:audit_read', 'permission:export', 'permission:diagnostic'],
+  legacy_permission_audit_actions: ['permission_audit:diagnostic'],
+  high_risk_actions: ['permission:menu:create', 'permission:menu:update', 'permission:menu:delete', 'permission:diagnostic'],
+  ui_hidden_actions: ['permission:diagnostic'],
+  roles_with_permission_actions_count: 2,
+  checks: [
+    { name: 'permission:read_registered', status: 'pass' },
+    { name: 'permission:audit_read_registered', status: 'pass' },
+    { name: 'permission:diagnostic_registered', status: 'pass' },
+    { name: 'permission_diagnostic_hidden', status: 'pass' },
+  ],
+  catalog_enabled: true,
+  roles_matrix_enabled: true,
+  audit_read_enabled: true,
+  export_enabled: true,
+  diagnostic_enabled: true,
+  generated_at: '2026-06-03T00:00:00+00:00',
+}
+
 const applyReadonlyCatalogFallback = (): void => {
   catalogRows.value = readonlyCatalogFallbackRows.map((row) => ({ ...row }))
   roleRows.value = readonlyRoleFallbackRows.map((row) => ({
@@ -720,6 +848,17 @@ const applyReadonlyAuditFallback = (): void => {
       before_keys: [...item.before_keys],
       after_keys: [...item.after_keys],
     })),
+  }
+}
+
+const applyReadonlyDiagnosticFallback = (): void => {
+  diagnosticData.value = {
+    ...readonlyDiagnosticFallback,
+    registered_actions: [...readonlyDiagnosticFallback.registered_actions],
+    legacy_permission_audit_actions: [...readonlyDiagnosticFallback.legacy_permission_audit_actions],
+    high_risk_actions: [...readonlyDiagnosticFallback.high_risk_actions],
+    ui_hidden_actions: [...readonlyDiagnosticFallback.ui_hidden_actions],
+    checks: readonlyDiagnosticFallback.checks.map((item: PermissionGovernanceDiagnosticCheck) => ({ ...item })),
   }
 }
 
@@ -854,6 +993,26 @@ const loadAuditData = async (): Promise<void> => {
   }
 }
 
+const loadDiagnosticData = async (): Promise<void> => {
+  diagnosticLoading.value = true
+  diagnosticErrorMessage.value = ''
+  try {
+    if (!canDiagnostic.value) {
+      applyReadonlyDiagnosticFallback()
+      return
+    }
+    const response = await permissionGovernanceApi.fetchPermissionGovernanceDiagnostic()
+    diagnosticData.value = response.data
+  } catch (error: unknown) {
+    applyReadonlyDiagnosticFallback()
+    const message = (error as Error).message || '诊断摘要加载失败'
+    diagnosticErrorMessage.value = message
+    ElMessage.error(message)
+  } finally {
+    diagnosticLoading.value = false
+  }
+}
+
 const resetSecurityQuery = (): void => {
   securityQuery.from_date = ''
   securityQuery.to_date = ''
@@ -929,11 +1088,13 @@ onMounted(() => {
       await loadData()
       await loadMenuManagement()
       await loadAuditData()
+      await loadDiagnosticData()
     })
     .catch((error: unknown) => {
       applyReadonlyCatalogFallback()
       applyReadonlyMenuFallback()
       applyReadonlyAuditFallback()
+      applyReadonlyDiagnosticFallback()
       ElMessage.error((error as Error).message)
     })
 })
@@ -977,6 +1138,35 @@ onMounted(() => {
 
 .query-form :deep(.el-form-item) {
   margin-bottom: 10px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.summary-tile {
+  min-height: 116px;
+}
+
+.summary-label {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.summary-value {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.summary-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .query-form :deep(.el-input),

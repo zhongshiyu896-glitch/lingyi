@@ -53,6 +53,29 @@ export interface PermissionMenuManagementData {
   total: number
 }
 
+export interface PermissionGovernanceDiagnosticCheck {
+  name: string
+  status: string
+  message?: string | null
+}
+
+export interface PermissionGovernanceDiagnosticData {
+  module: string
+  status: string
+  registered_actions: string[]
+  legacy_permission_audit_actions: string[]
+  high_risk_actions: string[]
+  ui_hidden_actions: string[]
+  roles_with_permission_actions_count: number
+  checks: PermissionGovernanceDiagnosticCheck[]
+  catalog_enabled: boolean
+  roles_matrix_enabled: boolean
+  audit_read_enabled: boolean
+  export_enabled: boolean
+  diagnostic_enabled: boolean
+  generated_at: string
+}
+
 export interface PermissionMenuManagementQuery {
   module?: string
   status?: 'enabled' | 'disabled' | 'planned'
@@ -170,6 +193,10 @@ const fetchPermissionMenuManagement = (
   return request<PermissionMenuManagementData>(url)
 }
 
+const fetchPermissionGovernanceDiagnostic = (): Promise<ApiResponse<PermissionGovernanceDiagnosticData>> => {
+  return request<PermissionGovernanceDiagnosticData>('/api/permissions/diagnostic')
+}
+
 const fetchPermissionSecurityAudit = (
   query: PermissionSecurityAuditQuery,
 ): Promise<ApiResponse<PermissionSecurityAuditData>> => {
@@ -190,6 +217,7 @@ const permissionGovernanceApi = {
   fetchPermissionActionCatalog,
   fetchPermissionRolesMatrix,
   fetchPermissionMenuManagement,
+  fetchPermissionGovernanceDiagnostic,
   fetchPermissionSecurityAudit,
   fetchPermissionOperationAudit,
 }
