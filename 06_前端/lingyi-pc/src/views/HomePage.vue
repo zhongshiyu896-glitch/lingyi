@@ -303,6 +303,29 @@
         </div>
       </section>
 
+      <section class="notice-policy-panel" data-testid="cand068-home-notice-policy-panel">
+        <div class="grid-header">
+          <h3>公告与制度提醒</h3>
+          <span class="summary-note">公告、制度变更与只读提醒只做首页展示，不触发确认或发布写入</span>
+        </div>
+        <div class="grid-body">
+          <article
+            v-for="item in noticePolicyCards"
+            :key="item.key"
+            class="entry-card notice-policy-card"
+            :data-testid="`cand068-card-${item.key}`"
+          >
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" type="info">{{ item.badge }}</el-tag>
+            </header>
+            <p class="snapshot-primary">{{ item.detail }}</p>
+            <p class="entry-desc">{{ item.note }}</p>
+            <p class="entry-path">{{ item.hint }}</p>
+          </article>
+        </div>
+      </section>
+
       <section class="readonly-hints" data-testid="cand038-home-readonly-hints">
         <h3>只读导航提示</h3>
         <ul>
@@ -431,6 +454,15 @@ interface BusinessAlertRankingItem {
   reason: string
   hint: string
   score: number
+}
+
+interface NoticePolicyCard {
+  key: string
+  title: string
+  badge: string
+  detail: string
+  note: string
+  hint: string
 }
 
 const router = useRouter()
@@ -864,6 +896,48 @@ const alertSeveritySummaryCards = computed<StatusCard[]>(() => {
   ]
 })
 
+const noticePolicyCards = computed<NoticePolicyCard[]>(() => {
+  const activities = overviewData.value?.home_overview?.recent_activities || []
+  const warnings = overviewData.value?.home_overview?.warnings || []
+  const primaryActions = overviewData.value?.home_overview?.primary_actions || []
+  const sourceModules = sourceStatuses.value.map((item) => item.module).join(' / ') || 'dashboard overview'
+
+  return [
+    {
+      key: 'notice',
+      title: '公告提醒',
+      badge: '公告',
+      detail: activities[0] || warnings[0] || '暂无公告提醒，首页保留只读占位。',
+      note: activities[1]
+        ? `补充动态：${activities[1]}`
+        : '来源：dashboard overview / home_overview.recent_activities',
+      hint: '首页仅展示公告摘要，不触发发布、置顶或确认已读写入。',
+    },
+    {
+      key: 'policy',
+      title: '制度变更提醒',
+      badge: '制度',
+      detail:
+        warnings[1] ||
+        primaryActions[0] ||
+        activities[1] ||
+        '暂无制度变更提醒，首页保留只读说明。',
+      note: primaryActions[0]
+        ? `${primaryActions[0]} 仅作为制度核对提示保留。`
+        : '来源：dashboard overview / home_overview.primary_actions',
+      hint: '制度变更提醒只做展示，不在首页触发确认、签收或回写流程。',
+    },
+    {
+      key: 'readonly',
+      title: '只读提醒',
+      badge: '只读',
+      detail: `GET-only / write=${readbackWriteRequestsObservedCount.value}`,
+      note: `来源：${sourceModules}，公告与制度信息仅作首页只读提示。`,
+      hint: 'create/update/delete 按钮继续禁用，/dashboard/overview 与既有首页切片保持不回改。',
+    },
+  ]
+})
+
 const uiSourceReadback = computed(() => {
   const sourceRows = sourceStatuses.value.map((item) => `source.${item.module}=${item.status}`)
   const actions = overviewData.value?.home_overview?.primary_actions || []
@@ -1025,6 +1099,8 @@ watch(overviewQuery, () => {
 .today-key-nodes-panel,
 .cross-module-reminders-panel,
 .snapshot-trend-panel,
+.business-alert-ranking-panel,
+.notice-policy-panel,
 .readonly-hints,
 .source-readback {
   background: #fff;
@@ -1170,6 +1246,10 @@ watch(overviewQuery, () => {
 
 .business-alert-card {
   min-height: 176px;
+}
+
+.notice-policy-card {
+  min-height: 168px;
 }
 
 .alert-severity-summary {
