@@ -1,350 +1,225 @@
 <template>
-  <div class="sales-order-detail-page" data-testid="yisuan-1to1-sales-order-detail-shell">
-    <el-card shadow="never">
+  <div class="sales-order-detail-page" data-testid="cand013-sales-order-detail-page">
+    <el-card shadow="never" data-testid="cand013-sales-order-detail-shell">
       <template #header>
         <div class="header-row">
-          <div>
-            <h2>销售订单详情</h2>
-            <p class="sub-title">衣算云 UI 1:1 + REALOBJ-CAND-003 回读壳层（local-dev only）</p>
+          <div class="title-group">
+            <span class="title">物料进销存 / 销售订单详情</span>
+            <span class="sub-title">本地只读详情首版</span>
           </div>
           <div class="header-actions">
             <el-button @click="goList">返回列表</el-button>
-            <el-button :loading="localReadback.loading" :disabled="!localReadback.objectId" @click="refreshLocalReadback">
-              刷新本地回读
-            </el-button>
-            <el-button type="primary" plain @click="goProductionPlan">查看生产计划</el-button>
+            <el-button type="primary" plain :loading="loading" @click="refreshDetail">刷新</el-button>
           </div>
         </div>
       </template>
 
-      <el-alert type="info" :closable="false" class="scope-alert">
-        <template #title>本页仅用于订单详情 + 数量矩阵 + 生产计划回读观察，不触发生产写入。</template>
-      </el-alert>
-
-      <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
-        <el-tag type="success">contract_source_readback_present=true</el-tag>
-        <el-tag type="primary">covered_contract_ids=A002,A006</el-tag>
-        <el-tag type="warning">A006 blocked/unknown = not_claimed</el-tag>
-        <el-tag type="info">real_business_object_created=false (production)</el-tag>
-        <el-tag type="info">linked_calculation_enabled=false (cross-module)</el-tag>
-      </section>
-
-      <el-descriptions :column="4" border class="header-summary" data-testid="yisuan-1to1-sales-order-header-summary">
-        <el-descriptions-item label="订单号">{{ detail.orderNo }}</el-descriptions-item>
-        <el-descriptions-item label="客户">{{ detail.customerName }}</el-descriptions-item>
-        <el-descriptions-item label="款号">{{ detail.styleCode }}</el-descriptions-item>
-        <el-descriptions-item label="业务员">{{ detail.owner }}</el-descriptions-item>
-        <el-descriptions-item label="下单日期">{{ detail.orderDate }}</el-descriptions-item>
-        <el-descriptions-item label="交期">{{ detail.deliveryDate }}</el-descriptions-item>
-        <el-descriptions-item label="订单状态">
-          <el-tag type="warning" effect="plain">{{ detail.orderStatus }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="生产状态">
-          <el-tag type="success" effect="plain">{{ detail.productionStatus }}</el-tag>
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <el-card shadow="never" data-testid="realobj-sales-order-detail-readback">
-      <template #header>
-        <div class="panel-header">
-          <span>REALOBJ-CAND-003 本地对象回读</span>
-          <el-tag type="info">local-dev/sqlite/scenario_tag/test_data only</el-tag>
-        </div>
-      </template>
-
       <el-alert
-        v-if="localReadback.error"
-        type="warning"
-        :closable="false"
-        :title="localReadback.error"
-      />
-      <el-alert
-        v-else-if="!localReadback.data"
         type="info"
         :closable="false"
-        title="未携带 object_id/scenario_tag，当前显示静态详情壳层。"
+        class="scope-alert"
+        title="当前仅开放销售订单详情只读查询，不触发 draft create/cancel、库存写回或 ERPNext 生产写入。"
       />
 
-      <el-descriptions
-        v-if="localReadback.data"
-        border
-        :column="2"
-        class="readback-descriptions"
-        data-testid="realobj-sales-order-readback-evidence"
-      >
-        <el-descriptions-item label="object_id">{{ localReadback.data.object_id }}</el-descriptions-item>
-        <el-descriptions-item label="scenario_tag">{{ localReadback.data.scenario_tag }}</el-descriptions-item>
-        <el-descriptions-item label="sales_order_readback_success">
-          {{ localReadback.data.readback_flags.sales_order_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="order_detail_readback_success">
-          {{ localReadback.data.readback_flags.order_detail_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="quantity_matrix_readback_success">
-          {{ localReadback.data.readback_flags.quantity_matrix_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="production_plan_readback_success">
-          {{ localReadback.data.readback_flags.production_plan_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
+      <el-alert
+        v-if="usedFallbackOrder"
+        type="info"
+        :closable="false"
+        class="scope-alert"
+        title="未指定订单号，当前展示首条可读销售订单。"
+      />
 
-    <el-card shadow="never" data-testid="yisuan-1to1-sales-order-quantity-matrix">
-      <template #header>
-        <div class="card-title">数量矩阵</div>
-      </template>
-      <el-table :data="displayMatrixRows" border>
-        <el-table-column prop="color" label="颜色" min-width="110" />
-        <el-table-column prop="size" label="尺码" min-width="90" />
-        <el-table-column prop="orderedQty" label="订单数量" min-width="120" />
-        <el-table-column prop="plannedQty" label="已排产" min-width="100" />
-        <el-table-column prop="deltaQty" label="差异" min-width="100" />
-      </el-table>
-      <div class="matrix-delta">
-        总订单数量：{{ matrixSummary.orderedQty }}，已排产：{{ matrixSummary.plannedQty }}，差异：{{ matrixSummary.deltaQty }}
-      </div>
-    </el-card>
+      <el-alert
+        v-if="lastError"
+        type="error"
+        :closable="false"
+        class="error-alert"
+        :title="lastError"
+        data-testid="cand013-sales-order-detail-error"
+      />
 
-    <el-card shadow="never" data-testid="yisuan-1to1-sales-order-production-plan">
-      <template #header>
-        <div class="card-title">关联生产计划</div>
+      <template v-if="detail">
+        <el-descriptions
+          border
+          :column="3"
+          class="header-summary"
+          data-testid="cand013-sales-order-detail-summary"
+        >
+          <el-descriptions-item label="订单号">{{ detail.name }}</el-descriptions-item>
+          <el-descriptions-item label="公司">{{ detail.company }}</el-descriptions-item>
+          <el-descriptions-item label="客户">{{ detail.customer || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="下单日期">{{ detail.transaction_date || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="交期">{{ detail.delivery_date || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="statusTagType(detail.status)" effect="plain">
+              {{ detail.status || '未标记' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="单据状态">{{ detail.docstatus }}</el-descriptions-item>
+          <el-descriptions-item label="金额">
+            {{ formatMoney(detail.grand_total, detail.currency) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="币种">{{ detail.currency || '-' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-table
+          v-loading="loading"
+          :data="detail.items"
+          border
+          class="detail-table"
+          :empty-text="detailEmptyText"
+          data-testid="cand013-sales-order-detail-items"
+        >
+          <el-table-column prop="item_code" label="款号" min-width="150" />
+          <el-table-column prop="item_name" label="物料名称" min-width="180" />
+          <el-table-column label="订单数量" min-width="110">
+            <template #default="{ row }">{{ formatNumber(row.qty) }}</template>
+          </el-table-column>
+          <el-table-column label="已交数量" min-width="110">
+            <template #default="{ row }">{{ formatNumber(row.delivered_qty) }}</template>
+          </el-table-column>
+          <el-table-column label="单价" min-width="110">
+            <template #default="{ row }">{{ formatNumber(row.rate) }}</template>
+          </el-table-column>
+          <el-table-column label="金额" min-width="120">
+            <template #default="{ row }">{{ formatMoney(row.amount, detail.currency) }}</template>
+          </el-table-column>
+          <el-table-column prop="warehouse" label="仓库" min-width="140" />
+          <el-table-column prop="delivery_date" label="交期" min-width="120" />
+        </el-table>
       </template>
-      <el-descriptions :column="3" border>
-        <el-descriptions-item label="计划号">{{ displayPlan.planNo }}</el-descriptions-item>
-        <el-descriptions-item label="计划数量">{{ displayPlan.plannedQty }}</el-descriptions-item>
-        <el-descriptions-item label="计划日期">{{ displayPlan.planDate }}</el-descriptions-item>
-        <el-descriptions-item label="计划状态">
-          <el-tag type="info" effect="plain">{{ displayPlan.status }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="计划对象 ID">{{ displayPlan.planObjectId }}</el-descriptions-item>
-        <el-descriptions-item label="订单对象 ID">{{ displayPlan.orderObjectId }}</el-descriptions-item>
-      </el-descriptions>
+
+      <el-empty
+        v-else-if="!loading && !lastError"
+        description="暂无可查看的销售订单"
+        data-testid="cand013-sales-order-detail-empty"
+      />
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { request } from '@/api/request'
+import {
+  fetchSalesInventorySalesOrderDetail,
+  fetchSalesInventorySalesOrders,
+  type SalesOrderDetailData,
+} from '@/api/sales_inventory'
 
-interface QuantityMatrixCell {
-  color: string
-  size: string
-  ordered_qty: number
-  planned_qty: number
-  delta_qty: number
-}
-
-interface ProductionPlanReadback {
-  draft_id: number
-  plan_no: string
-  planned_qty: number
-  plan_date: string
-  status: string
-  state: string
-  order_no: string
-  style_code: string
-}
-
-interface SalesOrderReadbackData {
-  object_id: number
-  draft_id: number
-  scenario_tag: string
-  sales_order: {
-    order_no: string
-    customer_name: string
-    style_code: string
-    delivery_date: string
-    status: string
-    state: string
-    note: string
-  }
-  order_detail: {
-    linked_plan_draft_id: number | null
-    quantity_matrix_cells: number
-    quantity_matrix_total_ordered: number
-    quantity_matrix_total_planned: number
-    state: string
-  }
-  quantity_matrix: QuantityMatrixCell[]
-  production_plan: ProductionPlanReadback | null
-  readback_flags: {
-    scenario_tag_present: boolean
-    sales_order_readback_success: boolean
-    order_detail_readback_success: boolean
-    quantity_matrix_readback_success: boolean
-    production_plan_readback_success: boolean
-    status_validation_readback_success: boolean
-  }
-}
-
-const router = useRouter()
 const route = useRoute()
+const router = useRouter()
 
-const detail = reactive({
-  orderNo: String(Array.isArray(route.query.order_no) ? route.query.order_no[0] : route.query.order_no || 'SO-YS-260601'),
-  customerName: String(
-    Array.isArray(route.query.customer_name) ? route.query.customer_name[0] : route.query.customer_name || '青禾服饰',
-  ),
-  styleCode: String(Array.isArray(route.query.style_code) ? route.query.style_code[0] : route.query.style_code || 'JK-2410'),
-  owner: '陈林',
-  orderDate: '2026-05-25',
-  deliveryDate: '2026-06-12',
-  orderStatus: '待交期确认',
-  productionStatus: '样前齐料',
-})
+const loading = ref(false)
+const lastError = ref('')
+const detail = ref<SalesOrderDetailData | null>(null)
+const usedFallbackOrder = ref(false)
 
-const localReadback = reactive<{
-  loading: boolean
-  data: SalesOrderReadbackData | null
-  error: string
-  objectId: number | null
-  scenarioTag: string
-}>({
-  loading: false,
-  data: null,
-  error: '',
-  objectId: null,
-  scenarioTag: '',
-})
-
-const parseObjectId = (value: unknown): number | null => {
-  const raw = Array.isArray(value) ? value[0] : value
-  const parsed = Number(raw)
-  if (!Number.isFinite(parsed) || parsed <= 0) return null
-  return Math.floor(parsed)
-}
-
-const parseScenarioTag = (value: unknown): string => {
-  const raw = Array.isArray(value) ? value[0] : value
+const routeOrderName = computed(() => {
+  const raw = Array.isArray(route.query.name) ? route.query.name[0] : route.query.name
   return typeof raw === 'string' ? raw.trim() : ''
+})
+
+const detailEmptyText = computed(() => {
+  if (loading.value) return '正在加载订单详情'
+  if (lastError.value) return '订单详情加载失败'
+  return '暂无订单明细'
+})
+
+const statusTagType = (status?: string | null): 'success' | 'warning' | 'info' => {
+  if (status === 'Completed' || status === 'To Deliver and Bill') return 'success'
+  if (status === 'Draft' || status === 'To Bill') return 'warning'
+  return 'info'
 }
 
-const objectIdFromQuery = computed<number | null>(() => parseObjectId(route.query.object_id))
-const scenarioTagFromQuery = computed<string>(() => parseScenarioTag(route.query.scenario_tag))
+const formatNumber = (value?: string | number | null): string => {
+  if (value === null || value === undefined || value === '') return '-'
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return String(value)
+  return numeric.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+}
 
-const staticMatrixRows = reactive([
-  { color: '米白', size: 'M', orderedQty: 300, plannedQty: 210, deltaQty: 90 },
-  { color: '烟灰', size: 'L', orderedQty: 260, plannedQty: 170, deltaQty: 90 },
-])
+const formatMoney = (amount?: string | number | null, currency?: string | null): string => {
+  if (amount === null || amount === undefined || amount === '') return '-'
+  const numeric = Number(amount)
+  if (!Number.isFinite(numeric)) return String(amount)
+  const money = numeric.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return currency ? `${money} ${currency}` : money
+}
 
-const displayMatrixRows = computed(() => {
-  if (localReadback.data?.quantity_matrix?.length) {
-    return localReadback.data.quantity_matrix.map((row) => ({
-      color: row.color,
-      size: row.size,
-      orderedQty: Number(row.ordered_qty || 0),
-      plannedQty: Number(row.planned_qty || 0),
-      deltaQty: Number(row.delta_qty || 0),
-    }))
+const resolveOrderName = async (): Promise<string> => {
+  if (routeOrderName.value) {
+    usedFallbackOrder.value = false
+    return routeOrderName.value
   }
-  return staticMatrixRows
-})
+  const response = await fetchSalesInventorySalesOrders({ page: 1, page_size: 1 })
+  const fallback = response.data.items[0]?.name || ''
+  usedFallbackOrder.value = Boolean(fallback)
+  return fallback
+}
 
-const matrixSummary = computed(() => {
-  const orderedQty = displayMatrixRows.value.reduce((sum, row) => sum + row.orderedQty, 0)
-  const plannedQty = displayMatrixRows.value.reduce((sum, row) => sum + row.plannedQty, 0)
-  return {
-    orderedQty,
-    plannedQty,
-    deltaQty: orderedQty - plannedQty,
-  }
-})
-
-const displayPlan = computed(() => {
-  const plan = localReadback.data?.production_plan
-  return {
-    planNo: plan?.plan_no || 'PLAN-PLACEHOLDER',
-    plannedQty: plan?.planned_qty ?? '-',
-    planDate: plan?.plan_date || '-',
-    status: plan?.status || 'draft',
-    planObjectId: plan?.draft_id ?? '-',
-    orderObjectId: localReadback.data?.object_id ?? '-',
-  }
-})
-
-const refreshLocalReadback = async (): Promise<void> => {
-  const objectId = objectIdFromQuery.value
-  const scenarioTag = scenarioTagFromQuery.value
-  localReadback.objectId = objectId
-  localReadback.scenarioTag = scenarioTag
-  if (!objectId || !scenarioTag) {
-    localReadback.data = null
-    localReadback.error = ''
-    return
-  }
-  localReadback.loading = true
-  localReadback.error = ''
+const loadDetail = async (): Promise<void> => {
+  loading.value = true
+  lastError.value = ''
+  detail.value = null
   try {
-    const queryString = new URLSearchParams({ scenario_tag: scenarioTag }).toString()
-    const response = await request<SalesOrderReadbackData>(`/api/local-dev/sales-orders/${objectId}/readback?${queryString}`)
-    localReadback.data = response.data
-    detail.orderNo = response.data.sales_order.order_no || detail.orderNo
-    detail.customerName = response.data.sales_order.customer_name || detail.customerName
-    detail.styleCode = response.data.sales_order.style_code || detail.styleCode
-    detail.deliveryDate = response.data.sales_order.delivery_date || detail.deliveryDate
-    detail.orderStatus = response.data.sales_order.status || detail.orderStatus
-    detail.productionStatus = response.data.production_plan?.status || detail.productionStatus
+    const orderName = await resolveOrderName()
+    if (!orderName) {
+      lastError.value = '暂无可查看的销售订单'
+      return
+    }
+    const response = await fetchSalesInventorySalesOrderDetail(orderName)
+    detail.value = response.data
   } catch (error) {
-    localReadback.data = null
-    localReadback.error = `本地回读失败：${(error as Error).message}`
-    ElMessage.warning(localReadback.error)
+    lastError.value = (error as Error).message || '订单详情加载失败'
   } finally {
-    localReadback.loading = false
+    loading.value = false
   }
 }
 
-watch([objectIdFromQuery, scenarioTagFromQuery], () => {
-  void refreshLocalReadback()
-})
-
-onMounted(() => {
-  void refreshLocalReadback()
-})
+const refreshDetail = (): void => {
+  void loadDetail()
+}
 
 const goList = (): void => {
   router.push('/sales-inventory/sales-orders')
 }
 
-const goProductionPlan = (): void => {
-  router.push({
-    path: '/production/plans',
-    query: {
-      scenario_tag: localReadback.scenarioTag || scenarioTagFromQuery.value,
-      object_id: localReadback.data?.production_plan?.draft_id
-        ? String(localReadback.data.production_plan.draft_id)
-        : '',
-      parity: 'realobj-cand003-local-loop',
-    },
-  })
-}
+watch(routeOrderName, () => {
+  void loadDetail()
+})
+
+onMounted(() => {
+  void loadDetail()
+})
 </script>
 
 <style scoped>
 .sales-order-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
-.header-row h2 {
-  margin: 0;
+.title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
   font-size: 18px;
-  line-height: 1.4;
+  font-weight: 600;
 }
 
 .sub-title {
-  margin: 2px 0 0;
   color: var(--el-text-color-secondary);
   font-size: 13px;
 }
@@ -354,41 +229,16 @@ const goProductionPlan = (): void => {
   gap: 8px;
 }
 
-.scope-alert {
-  margin-bottom: 12px;
-}
-
-.source-readback {
-  margin-bottom: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+.scope-alert,
+.error-alert {
+  margin-bottom: 16px;
 }
 
 .header-summary {
-  margin-top: 2px;
+  margin-bottom: 16px;
 }
 
-.card-title {
-  font-weight: 600;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.readback-descriptions {
-  margin-top: 10px;
-}
-
-.matrix-delta {
-  margin-top: 12px;
-  color: var(--el-text-color-regular);
+.detail-table {
+  width: 100%;
 }
 </style>
