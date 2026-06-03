@@ -122,8 +122,11 @@
         </div>
       </section>
 
-      <section class="status-panel" data-testid="yisuan-1to1-home-status-panel">
-        <h3>任务/状态/异常</h3>
+      <section class="status-panel" data-testid="cand044-home-exception-alert-summary">
+        <div class="grid-header">
+          <h3>异常提醒摘要</h3>
+          <span class="summary-note">只读聚合，不触发处置写入</span>
+        </div>
         <div class="status-grid">
           <article v-for="item in statusCards" :key="item.label" class="status-card">
             <span class="status-label">{{ item.label }}</span>
@@ -133,8 +136,11 @@
         </div>
       </section>
 
-      <section class="workbench-list" data-testid="yisuan-1to1-home-workbench-list">
-        <h3>工作台队列</h3>
+      <section class="workbench-list" data-testid="cand044-home-role-todo-overview">
+        <div class="grid-header">
+          <h3>角色待办概览</h3>
+          <span class="summary-note">按角色聚合只读待办，不开放处理动作</span>
+        </div>
         <el-table :data="workbenchRows" border empty-text="暂无任务">
           <el-table-column prop="task" label="任务" min-width="180" />
           <el-table-column prop="owner" label="负责人" width="120" />
@@ -142,6 +148,27 @@
           <el-table-column prop="priority" label="优先级" width="110" />
           <el-table-column prop="status" label="状态" width="120" />
         </el-table>
+      </section>
+
+      <section class="recent-access-summary" data-testid="cand044-home-recent-access-summary">
+        <div class="grid-header">
+          <h3>最近访问摘要</h3>
+          <span class="summary-note">无访问聚合时回退展示最近可访问的只读入口</span>
+        </div>
+        <div class="grid-body">
+          <article
+            v-for="item in recentAccessSummaryItems"
+            :key="item.key"
+            class="entry-card recent-access-card"
+          >
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" type="info">{{ item.badge }}</el-tag>
+            </header>
+            <p class="entry-desc">{{ item.detail }}</p>
+            <p class="entry-path">{{ item.hint }}</p>
+          </article>
+        </div>
       </section>
 
       <section class="readonly-hints" data-testid="cand038-home-readonly-hints">
@@ -198,6 +225,14 @@ interface WorkbenchRow {
   deadline: string
   priority: string
   status: string
+}
+
+interface RecentAccessSummaryItem {
+  key: string
+  title: string
+  detail: string
+  hint: string
+  badge: string
 }
 
 interface OverviewSummaryCard {
@@ -336,39 +371,90 @@ const statusCards = computed<StatusCard[]>(() => {
   const homeOverview = overviewData.value?.home_overview
   const warnings = homeOverview?.warnings || []
   const summaries = homeOverview?.business_summary || []
-  const activities = homeOverview?.recent_activities || []
+  const criticalAlerts = Number(overviewData.value?.warehouse.critical_alert_count ?? 0)
+  const defectCount = Number(overviewData.value?.quality.defect_count ?? 0)
   return [
     {
-      label: '数据来源',
-      value: String(sourceStatusCount.value),
-      note: sourceStatuses.value.map((item) => `${item.module}:${item.status}`).join(' / ') || '只读聚合',
-    },
-    {
-      label: '预警提示',
+      label: '异常提醒',
       value: String(warnings.length),
-      note: warnings[0] || '暂无预警',
+      note: warnings[0] || '当前没有显式异常提醒，保留只读提示位。',
     },
     {
-      label: '业务摘要',
-      value: String(summaries.length),
-      note: summaries[0] || '等待汇总返回',
+      label: '仓储高危',
+      value: String(criticalAlerts),
+      note: criticalAlerts > 0 ? '优先做只读核对，不触发仓储写入。' : '当前没有高危仓储预警。',
     },
     {
-      label: '近期动态',
-      value: String(activities.length),
-      note: activities[0] || '暂无动态',
+      label: '质检缺陷',
+      value: String(defectCount),
+      note: summaries[0] || '暂无业务异常摘要，等待 overview 汇总返回。',
+    },
+    {
+      label: '只读保护',
+      value: 'GET-only',
+      note: '首页仅展示待办、提醒和最近访问摘要，不开放创建/修改/删除。',
     },
   ]
 })
 
 const workbenchRows = computed<WorkbenchRow[]>(() => {
   const todoItems = overviewData.value?.home_overview?.todo_items || []
-  return todoItems.map((item) => ({
-    task: item.title,
-    owner: item.action_label,
-    deadline: '只读',
-    priority: item.status === 'urgent' ? '高' : item.status === 'warning' ? '中' : '低',
-    status: `${item.count} 项`,
+  if (todoItems.length > 0) {
+    return todoItems.map((item) => ({
+      task: item.title,
+      owner: item.action_label,
+      deadline: '只读',
+      priority: item.status === 'urgent' ? '高' : item.status === 'warning' ? '中' : '低',
+      status: `${item.count} 项`,
+    }))
+  }
+
+  const alertCount = Number(overviewData.value?.warehouse.alert_count ?? 0)
+  const defectCount = Number(overviewData.value?.quality.defect_count ?? 0)
+
+  return [
+    {
+      task: '只读聚合就绪检查',
+      owner: '首页',
+      deadline: '只读',
+      priority: sourceStatusCount.value > 0 && sourceStatusOkCount.value === sourceStatusCount.value ? '低' : '中',
+      status: `${sourceStatusOkCount.value}/${sourceStatusCount.value} 源`,
+    },
+    {
+      task: '仓储预警复核',
+      owner: '仓库',
+      deadline: '只读',
+      priority: alertCount > 0 ? '中' : '低',
+      status: `${alertCount} 项`,
+    },
+    {
+      task: '质检异常复核',
+      owner: '质检',
+      deadline: '只读',
+      priority: defectCount > 0 ? '中' : '低',
+      status: `${defectCount} 项`,
+    },
+  ]
+})
+
+const recentAccessSummaryItems = computed<RecentAccessSummaryItem[]>(() => {
+  const activities = overviewData.value?.home_overview?.recent_activities || []
+  if (activities.length > 0) {
+    return activities.slice(0, 4).map((item, index) => ({
+      key: `recent-${index}`,
+      title: `最近访问 ${index + 1}`,
+      detail: item,
+      hint: '来源：dashboard overview / home_overview.recent_activities',
+      badge: '聚合',
+    }))
+  }
+
+  return moduleEntries.slice(0, 4).map((entry) => ({
+    key: `fallback-${entry.path}`,
+    title: entry.name,
+    detail: entry.desc,
+    hint: `回退入口：${entry.path}`,
+    badge: 'fallback',
   }))
 })
 
@@ -528,6 +614,7 @@ watch(overviewQuery, () => {
 .module-entry-grid,
 .status-panel,
 .workbench-list,
+.recent-access-summary,
 .readonly-hints,
 .source-readback {
   background: #fff;
@@ -645,6 +732,10 @@ watch(overviewQuery, () => {
   margin-top: 4px;
   color: #6b7280;
   font-size: 12px;
+}
+
+.recent-access-card {
+  min-height: 132px;
 }
 
 .source-readback ul {
