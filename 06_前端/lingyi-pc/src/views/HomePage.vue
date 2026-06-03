@@ -263,6 +263,46 @@
         </div>
       </section>
 
+      <section
+        class="business-alert-ranking-panel"
+        data-testid="cand062-home-business-alert-ranking"
+      >
+        <div class="grid-header">
+          <h3>经营异常排行</h3>
+          <span class="summary-note">聚合异常排行、原因摘要与只读告警说明，不触发处置写入</span>
+        </div>
+        <div class="grid-body">
+          <article
+            v-for="item in businessAlertRankingItems"
+            :key="item.key"
+            class="entry-card business-alert-card"
+          >
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" :type="item.tagType">{{ item.badge }}</el-tag>
+            </header>
+            <p class="snapshot-primary">{{ item.rankLabel }}</p>
+            <p class="snapshot-secondary">{{ item.value }}</p>
+            <p class="entry-desc">{{ item.reason }}</p>
+            <p class="entry-path">{{ item.hint }}</p>
+          </article>
+        </div>
+        <div
+          class="alert-severity-summary"
+          data-testid="cand062-home-alert-severity-summary"
+        >
+          <article
+            v-for="item in alertSeveritySummaryCards"
+            :key="item.label"
+            class="status-card"
+          >
+            <span class="status-label">{{ item.label }}</span>
+            <strong class="status-value">{{ item.value }}</strong>
+            <small class="status-note">{{ item.note }}</small>
+          </article>
+        </div>
+      </section>
+
       <section class="readonly-hints" data-testid="cand038-home-readonly-hints">
         <h3>只读导航提示</h3>
         <ul>
@@ -379,6 +419,18 @@ interface SnapshotTrendCard {
   secondary: string
   note: string
   hint: string
+}
+
+interface BusinessAlertRankingItem {
+  key: string
+  title: string
+  rankLabel: string
+  badge: string
+  tagType: 'danger' | 'warning' | 'success'
+  value: string
+  reason: string
+  hint: string
+  score: number
 }
 
 const router = useRouter()
@@ -734,6 +786,84 @@ const snapshotTrendCards = computed<SnapshotTrendCard[]>(() => {
   ]
 })
 
+const businessAlertRankingItems = computed<BusinessAlertRankingItem[]>(() => {
+  const warnings = overviewData.value?.home_overview?.warnings || []
+  const warehouseCritical = Number(overviewData.value?.warehouse.critical_alert_count ?? 0)
+  const warehouseWarning = Number(overviewData.value?.warehouse.warning_alert_count ?? 0)
+  const defectCount = Number(overviewData.value?.quality.defect_count ?? 0)
+  const belowSafetyCount = Number(overviewData.value?.sales_inventory.below_safety_count ?? 0)
+  const belowReorderCount = Number(overviewData.value?.sales_inventory.below_reorder_count ?? 0)
+
+  const severityMeta = (score: number): Pick<BusinessAlertRankingItem, 'badge' | 'tagType'> => {
+    if (score >= 6) {
+      return { badge: '高', tagType: 'danger' }
+    }
+    if (score >= 2) {
+      return { badge: '中', tagType: 'warning' }
+    }
+    return { badge: '低', tagType: 'success' }
+  }
+
+  return [
+    {
+      key: 'warehouse-critical',
+      title: '仓储高危告警',
+      value: `${warehouseCritical} 高危 / ${warehouseWarning} 警告`,
+      reason: warnings[0] || '优先核对仓储高危告警与库龄异常来源，首页仅做排行展示。',
+      hint: '来源：warehouse critical_alert_count / warning_alert_count',
+      score: warehouseCritical * 3 + warehouseWarning,
+    },
+    {
+      key: 'quality-defect',
+      title: '质检缺陷复核',
+      value: `${defectCount} 项缺陷`,
+      reason: warnings[1] || '优先复核质检缺陷集中批次与异常原因，只保留只读说明。',
+      hint: '来源：quality defect_count',
+      score: defectCount * 2,
+    },
+    {
+      key: 'stock-safety',
+      title: '安全库存偏差',
+      value: `${belowSafetyCount} 低于安全 / ${belowReorderCount} 低于补货`,
+      reason: warnings[2] || '优先核对安全库存偏差与补货节奏，首页不开放处置按钮。',
+      hint: '来源：sales_inventory below_safety_count / below_reorder_count',
+      score: belowSafetyCount + belowReorderCount,
+    },
+  ]
+    .sort((left, right) => right.score - left.score)
+    .map((item, index) => ({
+      ...item,
+      rankLabel: `TOP ${index + 1}`,
+      ...severityMeta(item.score),
+    }))
+})
+
+const alertSeveritySummaryCards = computed<StatusCard[]>(() => {
+  const rankingItems = businessAlertRankingItems.value
+  const highCount = rankingItems.filter((item) => item.badge === '高').length
+  const mediumCount = rankingItems.filter((item) => item.badge === '中').length
+  const lowCount = rankingItems.filter((item) => item.badge === '低').length
+  const topItem = rankingItems[0]
+
+  return [
+    {
+      label: '严重度摘要',
+      value: `高 ${highCount} / 中 ${mediumCount} / 低 ${lowCount}`,
+      note: '按仓储高危、质检缺陷、安全库存偏差做只读排行，不触发处置写入。',
+    },
+    {
+      label: '异常原因',
+      value: topItem?.title || '暂无异常排行',
+      note: topItem?.reason || '当前缺少异常来源，保留只读占位说明。',
+    },
+    {
+      label: '只读告警说明',
+      value: 'GET-only',
+      note: '首页只展示异常排行与告警说明，create/update/delete 按钮继续禁用。',
+    },
+  ]
+})
+
 const uiSourceReadback = computed(() => {
   const sourceRows = sourceStatuses.value.map((item) => `source.${item.module}=${item.status}`)
   const actions = overviewData.value?.home_overview?.primary_actions || []
@@ -1036,6 +1166,17 @@ watch(overviewQuery, () => {
 
 .snapshot-card {
   min-height: 156px;
+}
+
+.business-alert-card {
+  min-height: 176px;
+}
+
+.alert-severity-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .snapshot-primary {
