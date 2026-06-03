@@ -1712,6 +1712,91 @@
       />
 
       <template v-else>
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 12px"
+          data-testid="system-health-scope-alert"
+          title="共享路由边界：本切片仅实现 system health summary readonly subset，不覆盖 system config catalog，也不回改已完成的 dictionary catalog 只读切片。"
+        />
+
+        <div class="readonly-strip" data-testid="system-health-readonly-strip">
+          <el-tag effect="plain" data-testid="system-health-get-only">GET-only</el-tag>
+          <el-tag
+            effect="plain"
+            type="warning"
+            data-testid="system-health-create-guard"
+            data-write-guard="readonly:system-health-create"
+            data-guard-state="guarded_readonly"
+            data-side-effect-guard="write-disabled"
+          >
+            create guarded_readonly
+          </el-tag>
+          <el-tag
+            effect="plain"
+            type="warning"
+            data-testid="system-health-update-guard"
+            data-write-guard="readonly:system-health-update"
+            data-guard-state="guarded_readonly"
+            data-side-effect-guard="write-disabled"
+          >
+            update guarded_readonly
+          </el-tag>
+          <el-tag
+            effect="plain"
+            type="warning"
+            data-testid="system-health-delete-guard"
+            data-write-guard="readonly:system-health-delete"
+            data-guard-state="guarded_readonly"
+            data-side-effect-guard="write-disabled"
+          >
+            delete guarded_readonly
+          </el-tag>
+        </div>
+
+        <el-alert
+          :type="healthSummaryAlertType"
+          :closable="false"
+          style="margin: 12px 0"
+          data-testid="system-health-summary-alert"
+          :title="healthSummaryAlertTitle"
+        />
+
+        <div class="meta-row" data-testid="system-health-summary-row">
+          <span>检查项总数：{{ healthItems.length }}</span>
+          <span>状态分布：{{ healthStatusSummary }}</span>
+          <span>只读契约：{{ healthCheckResult('readonly_contract') }}</span>
+          <span>治理摘要：{{ healthGovernanceSummary }}</span>
+        </div>
+
+        <el-descriptions
+          v-if="healthItems.length"
+          :column="2"
+          border
+          size="small"
+          style="margin-bottom: 12px"
+          data-testid="system-health-governance-summary"
+        >
+          <el-descriptions-item label="权限来源">
+            {{ healthCheckResult('permission_source') }}
+          </el-descriptions-item>
+          <el-descriptions-item label="路由映射">
+            {{ healthCheckResult('system_router_mapping') }}
+          </el-descriptions-item>
+          <el-descriptions-item label="共享路由">
+            {{ healthCheckResult('ui_route_present') }}
+          </el-descriptions-item>
+          <el-descriptions-item label="只读契约">
+            {{ healthCheckResult('readonly_contract') }}
+          </el-descriptions-item>
+          <el-descriptions-item label="字典目录切片">
+            preserved_readonly
+          </el-descriptions-item>
+          <el-descriptions-item label="system config 写保护">
+            not_triggered
+          </el-descriptions-item>
+        </el-descriptions>
+
         <el-table :data="healthItems" border empty-text="暂无系统健康摘要数据" data-testid="system-health-table">
           <el-table-column prop="module" label="模块" width="140" />
           <el-table-column label="状态" width="130">
@@ -1978,6 +2063,50 @@ const canReadOperationLogs = computed<boolean>(() => canSystemRead.value && canC
 const canReadDocumentCodes = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadMessageNotificationSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadPreferenceSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const healthCheckMap = computed<Record<string, SystemHealthSummaryItem>>(() => {
+  return healthItems.value.reduce<Record<string, SystemHealthSummaryItem>>((acc, item) => {
+    acc[item.check_name] = item
+    return acc
+  }, {})
+})
+const healthCheckResult = (checkName: string): string => healthCheckMap.value[checkName]?.check_result ?? '-'
+const healthStatusSummary = computed<string>(() => {
+  if (!healthItems.value.length) {
+    return '-'
+  }
+  const counts = healthItems.value.reduce<Record<string, number>>((acc, item) => {
+    acc[item.status] = (acc[item.status] ?? 0) + 1
+    return acc
+  }, {})
+  return Object.entries(counts)
+    .map(([status, count]) => `${status}:${count}`)
+    .join(' / ')
+})
+const healthGovernanceSummary = computed<string>(() => {
+  if (!healthItems.value.length) {
+    return '-'
+  }
+  return [
+    `permission=${healthCheckResult('permission_source')}`,
+    `router=${healthCheckResult('system_router_mapping')}`,
+    `ui=${healthCheckResult('ui_route_present')}`,
+  ].join(' / ')
+})
+const healthSummaryAlertType = computed<'success' | 'warning' | 'error'>(() => {
+  if (healthItems.value.some((item) => item.status === 'blocked')) {
+    return 'error'
+  }
+  if (healthItems.value.some((item) => item.status === 'warn')) {
+    return 'warning'
+  }
+  return 'success'
+})
+const healthSummaryAlertTitle = computed<string>(() => {
+  if (!healthItems.value.length) {
+    return '系统健康摘要只读面板已就绪，等待查询结果。'
+  }
+  return `只读告警/状态/治理摘要：${healthStatusSummary.value}｜${healthGovernanceSummary.value}`
+})
 const dictionaryTypeCount = computed<number>(() => new Set(dictionaryItems.value.map((item) => item.dict_type)).size)
 const dictionaryStatusSummary = computed<string>(() => {
   if (!dictionaryItems.value.length) {
