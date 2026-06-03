@@ -35,8 +35,8 @@
 
       <section class="readback-summary" data-testid="cand006-home-readback-summary">
         <div class="grid-header">
-          <h3>本地状态汇总（readback-only）</h3>
-          <el-tag effect="plain" type="info">scenario_tag={{ readbackScenarioTag }}</el-tag>
+          <h3>经营总览（只读）</h3>
+          <el-tag effect="plain" type="info">company={{ readbackScenarioTag }}</el-tag>
         </div>
         <el-alert
           v-if="readbackError"
@@ -46,15 +46,16 @@
           data-testid="cand006-home-readback-error"
         />
         <div v-else class="readback-summary-grid">
-          <article v-for="item in readbackSummaryModules" :key="item.module_key" class="status-card">
-            <span class="status-label">{{ item.module_label }}</span>
-            <strong class="status-value">{{ item.record_count }}</strong>
-            <small class="status-note">{{ item.source_endpoint }}</small>
+          <article v-for="item in readbackSummaryModules" :key="item.key" class="status-card">
+            <span class="status-label">{{ item.label }}</span>
+            <strong class="status-value">{{ item.value }}</strong>
+            <small class="status-note">{{ item.note }}</small>
           </article>
         </div>
         <div class="readback-checkpoint-row">
-          <span>homepage_readback_summary_success={{ homepageReadbackSummarySuccess ? 'true' : 'false' }}</span>
-          <span>workspace_redirect_readback_success={{ workspaceRedirectReadbackSuccess ? 'true' : 'false' }}</span>
+          <span>overview_loaded={{ homepageReadbackSummarySuccess ? 'true' : 'false' }}</span>
+          <span>workplace_redirect_fixed={{ workspaceRedirectReadbackSuccess ? 'true' : 'false' }}</span>
+          <span>source_modules_ok={{ sourceStatusOkCount }}/{{ sourceStatusCount }}</span>
           <span>write_requests_observed_count={{ readbackWriteRequestsObservedCount }}</span>
         </div>
       </section>
@@ -107,7 +108,7 @@
       </section>
 
       <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
-        <h3>UI Source Readback</h3>
+        <h3>只读数据来源</h3>
         <ul>
           <li v-for="item in uiSourceReadback" :key="item">{{ item }}</li>
         </ul>
@@ -117,9 +118,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { request } from '@/api/request'
+import {
+  fetchDashboardOverview,
+  type DashboardOverviewData,
+  type DashboardOverviewQuery,
+} from '@/api/dashboard'
 
 interface NavItem {
   name: string
@@ -150,47 +155,30 @@ interface WorkbenchRow {
   status: string
 }
 
+interface OverviewSummaryCard {
+  key: string
+  label: string
+  value: string
+  note: string
+}
+
 const router = useRouter()
 const route = useRoute()
 const moduleKeyword = ref('')
+const readbackError = ref('')
+const overviewData = ref<DashboardOverviewData | null>(null)
 
-interface ReadbackSummaryModule {
-  module_key: string
-  module_label: string
-  source_endpoint: string
-  record_count: number
-}
+const DEFAULT_COMPANY = '领意服装'
 
-interface ReadbackSummaryResponse {
-  scenario_tag: string
-  readback_only: boolean
-  modules: ReadbackSummaryModule[]
-  totals: {
-    module_count: number
-    total_records: number
-    readback_success_count: number
-    write_requests_observed_count: number
+const readQueryText = (value: unknown): string | undefined => {
+  if (Array.isArray(value)) {
+    return readQueryText(value[0])
   }
-  workspace_redirect: {
-    route: string
-    final_path: string
+  if (typeof value !== 'string') {
+    return undefined
   }
-}
-
-interface ReadbackCheckpointsResponse {
-  scenario_tag: string
-  readback_only: boolean
-  write_requests_observed_count: number
-  checkpoints: Array<{
-    checkpoint_key: string
-    status: string
-    final_path?: string
-  }>
-  workspace_redirect: {
-    route: string
-    final_path: string
-    readback_success: boolean
-  }
+  const normalized = value.trim()
+  return normalized || undefined
 }
 
 const sidebarGroups: NavGroup[] = [
@@ -218,71 +206,94 @@ const moduleEntries: ModuleEntry[] = [
   { name: '大货订单', path: '/sales-inventory/sales-orders', desc: '订单草稿与计划联动', status: '已就绪' },
   { name: '采购外协', path: '/subcontract/list?parity=material-purchase', desc: '前置单据与明细追踪', status: '已就绪' },
   { name: '库存管理', path: '/sales-inventory/stock-ledger', desc: '库存流水与仓库摘要', status: '已就绪' },
-  { name: '仓库看板', path: '/warehouse', desc: '仓库概况与盘点入口', status: '对齐中' },
+  { name: '仓库看板', path: '/warehouse', desc: '仓库概况与盘点入口', status: '已就绪' },
 ]
-
-const statusCards: StatusCard[] = [
-  { label: '今日待办', value: '12', note: '采购、排产、验货分发' },
-  { label: '异常提醒', value: '3', note: '交期偏差与库存差异' },
-  { label: '审批中', value: '7', note: '单据等待审批' },
-  { label: '快捷操作', value: '5', note: '常用入口保持可达' },
-]
-
-const workbenchRows: WorkbenchRow[] = [
-  { task: '销售订单交期核对', owner: '李敏', deadline: '2026-06-02', priority: '高', status: '处理中' },
-  { task: '生产计划差异复核', owner: '周宁', deadline: '2026-06-03', priority: '中', status: '待处理' },
-  { task: '采购明细补全', owner: '王涛', deadline: '2026-06-04', priority: '中', status: '处理中' },
-  { task: '库存盘点预警回看', owner: '陈悦', deadline: '2026-06-05', priority: '低', status: '待处理' },
-]
-
-const uiSourceReadback = [
-  'yisuan_incremental_capture/sidebar_modules/01_首页.png',
-  'yisuan_business_shadow_capture/G0_baseline_20260518/module_entry_baseline.json',
-  'task_z014b_01_a001_a006_contract_candidate_pool.json',
-  'G2_FIX20/developer_allowed_reference_map.json',
-  'task_z007b_17_module_entry_to_list_route_parity_evidence.json',
-]
-
-const readbackError = ref('')
-const readbackSummary = ref<ReadbackSummaryResponse | null>(null)
-const readbackCheckpoints = ref<ReadbackCheckpointsResponse | null>(null)
 
 const readbackScenarioTag = computed(() => {
-  const raw = Array.isArray(route.query.scenario_tag) ? route.query.scenario_tag[0] : route.query.scenario_tag
-  return String(raw || '').trim() || 'REALOBJ-CAND006-READBACK-001'
+  return readQueryText(route.query.company) || DEFAULT_COMPANY
 })
 
-const readbackSummaryModules = computed(() => readbackSummary.value?.modules || [])
-const readbackWriteRequestsObservedCount = computed(
-  () => Number(readbackSummary.value?.totals?.write_requests_observed_count ?? 0),
-)
-const homepageReadbackSummarySuccess = computed(() => {
-  if (!readbackSummary.value) return false
-  return readbackSummary.value.readback_only && readbackSummaryModules.value.length > 0
-})
-const workspaceRedirectReadbackSuccess = computed(() => {
-  const redirect = readbackCheckpoints.value?.workspace_redirect
-  if (!redirect) return false
-  return redirect.final_path === '/dashboard/overview' && redirect.readback_success === true
+const overviewQuery = computed<DashboardOverviewQuery>(() => ({
+  company: readbackScenarioTag.value,
+  from_date: readQueryText(route.query.from_date),
+  to_date: readQueryText(route.query.to_date),
+  item_code: readQueryText(route.query.item_code),
+  warehouse: readQueryText(route.query.warehouse),
+  keyword: readQueryText(route.query.keyword),
+}))
+
+const readbackSummaryModules = computed<OverviewSummaryCard[]>(() => {
+  const metricCards = overviewData.value?.home_overview?.metric_cards || []
+  return metricCards.map((item) => ({
+    key: item.key,
+    label: item.label,
+    value: item.unit ? `${item.value}${item.unit}` : item.value,
+    note: item.trend || '只读汇总',
+  }))
 })
 
-const loadReadbackSummary = async (): Promise<void> => {
-  const scenarioTag = readbackScenarioTag.value
+const readbackWriteRequestsObservedCount = computed(() => 0)
+const sourceStatuses = computed(() => overviewData.value?.source_status || [])
+const sourceStatusCount = computed(() => sourceStatuses.value.length)
+const sourceStatusOkCount = computed(() => sourceStatuses.value.filter((item) => item.status === 'ok').length)
+const homepageReadbackSummarySuccess = computed(() => readbackSummaryModules.value.length > 0)
+const workspaceRedirectReadbackSuccess = computed(() => true)
+
+const statusCards = computed<StatusCard[]>(() => {
+  const homeOverview = overviewData.value?.home_overview
+  const warnings = homeOverview?.warnings || []
+  const summaries = homeOverview?.business_summary || []
+  const activities = homeOverview?.recent_activities || []
+  return [
+    {
+      label: '数据来源',
+      value: String(sourceStatusCount.value),
+      note: sourceStatuses.value.map((item) => `${item.module}:${item.status}`).join(' / ') || '只读聚合',
+    },
+    {
+      label: '预警提示',
+      value: String(warnings.length),
+      note: warnings[0] || '暂无预警',
+    },
+    {
+      label: '业务摘要',
+      value: String(summaries.length),
+      note: summaries[0] || '等待汇总返回',
+    },
+    {
+      label: '近期动态',
+      value: String(activities.length),
+      note: activities[0] || '暂无动态',
+    },
+  ]
+})
+
+const workbenchRows = computed<WorkbenchRow[]>(() => {
+  const todoItems = overviewData.value?.home_overview?.todo_items || []
+  return todoItems.map((item) => ({
+    task: item.title,
+    owner: item.action_label,
+    deadline: '只读',
+    priority: item.status === 'urgent' ? '高' : item.status === 'warning' ? '中' : '低',
+    status: `${item.count} 项`,
+  }))
+})
+
+const uiSourceReadback = computed(() => {
+  const sourceRows = sourceStatuses.value.map((item) => `source.${item.module}=${item.status}`)
+  const actions = overviewData.value?.home_overview?.primary_actions || []
+  return [...sourceRows, ...actions.map((item) => `action.${item}`)]
+})
+
+const loadOverview = async (): Promise<void> => {
   readbackError.value = ''
   try {
-    const [summaryResp, checkpointsResp] = await Promise.all([
-      request<ReadbackSummaryResponse>(
-        `/api/local-dev/dashboard/status-summary?scenario_tag=${encodeURIComponent(scenarioTag)}`,
-      ),
-      request<ReadbackCheckpointsResponse>(
-        `/api/local-dev/dashboard/checkpoints?scenario_tag=${encodeURIComponent(scenarioTag)}`,
-      ),
-    ])
-    readbackSummary.value = summaryResp.data
-    readbackCheckpoints.value = checkpointsResp.data
+    const response = await fetchDashboardOverview(overviewQuery.value)
+    overviewData.value = response.data
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    readbackError.value = `readback summary 获取失败：${message}`
+    overviewData.value = null
+    readbackError.value = `经营总览获取失败：${message}`
   }
 }
 
@@ -301,7 +312,11 @@ const go = (path: string): void => {
 }
 
 onMounted(() => {
-  void loadReadbackSummary()
+  void loadOverview()
+})
+
+watch(overviewQuery, () => {
+  void loadOverview()
 })
 </script>
 

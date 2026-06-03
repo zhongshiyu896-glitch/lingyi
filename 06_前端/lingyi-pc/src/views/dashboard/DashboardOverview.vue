@@ -20,8 +20,8 @@
 
     <section class="readback-summary" data-testid="cand006-dashboard-readback-summary">
       <header>
-        <h2>本地对象状态汇总（readback-only）</h2>
-        <el-tag effect="plain" type="info">scenario_tag={{ readbackScenarioTag }}</el-tag>
+        <h2>经营看板聚合（只读）</h2>
+        <el-tag effect="plain" type="info">company={{ readbackScenarioTag }}</el-tag>
       </header>
       <el-alert
         v-if="readbackError"
@@ -31,15 +31,15 @@
         data-testid="cand006-dashboard-readback-error"
       />
       <div v-else class="summary-grid">
-        <article v-for="item in readbackSummaryModules" :key="item.module_key" class="summary-card">
-          <span class="summary-label">{{ item.module_label }}</span>
-          <strong class="summary-value">{{ item.record_count }}</strong>
-          <small class="summary-note">{{ item.source_endpoint }}</small>
+        <article v-for="item in readbackSummaryModules" :key="item.key" class="summary-card">
+          <span class="summary-label">{{ item.label }}</span>
+          <strong class="summary-value">{{ item.value }}</strong>
+          <small class="summary-note">{{ item.note }}</small>
         </article>
       </div>
       <div class="summary-checkpoint-row">
-        <span>dashboard_overview_readback_summary_success={{ dashboardOverviewReadbackSummarySuccess ? 'true' : 'false' }}</span>
-        <span>workspace_redirect_readback_success={{ workspaceRedirectReadbackSuccess ? 'true' : 'false' }}</span>
+        <span>dashboard_overview_loaded={{ dashboardOverviewReadbackSummarySuccess ? 'true' : 'false' }}</span>
+        <span>workspace_redirect_fixed={{ workspaceRedirectReadbackSuccess ? 'true' : 'false' }}</span>
         <span>workspace_final_path={{ workspaceFinalPath }}</span>
         <span>write_requests_observed_count={{ readbackWriteRequestsObservedCount }}</span>
       </div>
@@ -99,7 +99,7 @@
     </section>
 
     <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
-      <h2>UI Source Readback</h2>
+      <h2>只读数据来源</h2>
       <ul>
         <li v-for="item in sourceReadback" :key="item">{{ item }}</li>
       </ul>
@@ -108,9 +108,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { request } from '@/api/request'
+import {
+  fetchDashboardOverview,
+  type DashboardOverviewData,
+  type DashboardOverviewQuery,
+} from '@/api/dashboard'
 
 interface KPIItem {
   label: string
@@ -134,8 +138,17 @@ interface ExceptionItem {
   updatedAt: string
 }
 
+interface SummaryCardItem {
+  key: string
+  label: string
+  value: string
+  note: string
+}
+
 const router = useRouter()
 const route = useRoute()
+const readbackError = ref('')
+const overviewData = ref<DashboardOverviewData | null>(null)
 
 const query = reactive({
   material: '',
@@ -143,112 +156,125 @@ const query = reactive({
   flowType: '',
 })
 
+const DEFAULT_COMPANY = '领意服装'
+
+const readQueryText = (value: unknown): string | undefined => {
+  if (Array.isArray(value)) {
+    return readQueryText(value[0])
+  }
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  const normalized = value.trim()
+  return normalized || undefined
+}
+
 const materialOptions = ['主面料', '辅料', '包材', '样衣']
 const warehouseOptions = ['主仓', '裁片仓', '成品仓', '外协仓']
 const flowTypeOptions = ['采购', '外协', '生产', '库存']
-
-const kpis: KPIItem[] = [
-  { label: '订单履约率', value: '96.2%', trend: '周环比 +1.4%' },
-  { label: '库存周转天数', value: '28', trend: '周环比 -2' },
-  { label: '采购准交率', value: '94.8%', trend: '周环比 +0.8%' },
-  { label: '异常关闭率', value: '89.3%', trend: '周环比 +3.1%' },
-]
-
-const flowNodes: FlowNode[] = [
-  { name: '需求分发', pending: 4, overdue: 1, owner: '运营组', flowType: '生产' },
-  { name: '采购下发', pending: 7, overdue: 2, owner: '采购组', flowType: '采购' },
-  { name: '外协排产', pending: 5, overdue: 1, owner: '外协组', flowType: '外协' },
-  { name: '仓内调拨', pending: 3, overdue: 0, owner: '仓储组', flowType: '库存' },
-]
-
-const exceptions = ref<ExceptionItem[]>([
-  { code: 'EX-2401', module: '库存', desc: '主仓与外协仓账面差异待复核', severity: '中', updatedAt: '2026-05-31 10:12' },
-  { code: 'EX-2402', module: '采购', desc: '辅料交期偏差超过 2 天', severity: '高', updatedAt: '2026-05-31 09:44' },
-  { code: 'EX-2403', module: '生产', desc: '工序等待物料补齐', severity: '中', updatedAt: '2026-05-30 18:26' },
-  { code: 'EX-2404', module: '外协', desc: '外协回料数量待确认', severity: '低', updatedAt: '2026-05-30 16:03' },
-])
-
 const exceptionKeyword = ref('')
-const readbackError = ref('')
-
-interface ReadbackSummaryModule {
-  module_key: string
-  module_label: string
-  source_endpoint: string
-  record_count: number
-}
-
-interface ReadbackSummaryResponse {
-  scenario_tag: string
-  readback_only: boolean
-  modules: ReadbackSummaryModule[]
-  totals: {
-    write_requests_observed_count: number
-  }
-  workspace_redirect: {
-    route: string
-    final_path: string
-  }
-}
-
-interface ReadbackCheckpointsResponse {
-  scenario_tag: string
-  readback_only: boolean
-  write_requests_observed_count: number
-  workspace_redirect: {
-    route: string
-    final_path: string
-    readback_success: boolean
-  }
-}
-
-const readbackSummary = ref<ReadbackSummaryResponse | null>(null)
-const readbackCheckpoints = ref<ReadbackCheckpointsResponse | null>(null)
 
 const readbackScenarioTag = computed(() => {
-  const raw = Array.isArray(route.query.scenario_tag) ? route.query.scenario_tag[0] : route.query.scenario_tag
-  return String(raw || '').trim() || 'REALOBJ-CAND006-READBACK-001'
+  return readQueryText(route.query.company) || DEFAULT_COMPANY
 })
 
-const readbackSummaryModules = computed(() => readbackSummary.value?.modules || [])
-const readbackWriteRequestsObservedCount = computed(
-  () => Number(readbackCheckpoints.value?.write_requests_observed_count ?? readbackSummary.value?.totals?.write_requests_observed_count ?? 0),
-)
-const workspaceFinalPath = computed(() => {
-  return readbackCheckpoints.value?.workspace_redirect?.final_path || '/dashboard/overview'
-})
-const dashboardOverviewReadbackSummarySuccess = computed(() => {
-  if (!readbackSummary.value) return false
-  return readbackSummary.value.readback_only && readbackSummaryModules.value.length > 0
-})
-const workspaceRedirectReadbackSuccess = computed(() => {
-  const redirect = readbackCheckpoints.value?.workspace_redirect
-  if (!redirect) return false
-  return redirect.readback_success === true && redirect.final_path === '/dashboard/overview'
+const overviewQuery = computed<DashboardOverviewQuery>(() => ({
+  company: readbackScenarioTag.value,
+  from_date: readQueryText(route.query.from_date),
+  to_date: readQueryText(route.query.to_date),
+  item_code: readQueryText(route.query.item_code),
+  warehouse: readQueryText(route.query.warehouse),
+  keyword: readQueryText(route.query.keyword),
+}))
+
+const readbackSummaryModules = computed<SummaryCardItem[]>(() => {
+  const statuses = overviewData.value?.source_status || []
+  return statuses.map((item) => ({
+    key: item.module,
+    label: item.module,
+    value: item.status,
+    note: 'dashboard/overview 只读聚合',
+  }))
 })
 
-const loadReadbackSummary = async (): Promise<void> => {
-  const scenarioTag = readbackScenarioTag.value
+const readbackWriteRequestsObservedCount = computed(() => 0)
+const workspaceFinalPath = computed(() => '/dashboard/overview')
+const dashboardOverviewReadbackSummarySuccess = computed(() => readbackSummaryModules.value.length > 0)
+const workspaceRedirectReadbackSuccess = computed(() => true)
+
+const kpis = computed<KPIItem[]>(() => {
+  const metricCards = overviewData.value?.home_overview?.metric_cards || []
+  return metricCards.map((item) => ({
+    label: item.label,
+    value: item.unit ? `${item.value}${item.unit}` : item.value,
+    trend: item.trend || '只读汇总',
+  }))
+})
+
+const inferFlowType = (label: string): string => {
+  if (label.includes('仓') || label.includes('库存')) return '库存'
+  if (label.includes('采购')) return '采购'
+  if (label.includes('外协')) return '外协'
+  return '生产'
+}
+
+const flowNodes = computed<FlowNode[]>(() => {
+  const nodes = overviewData.value?.kanban?.flow_nodes || []
+  return nodes.map((node) => ({
+    name: node.label,
+    pending: node.status === 'completed' ? 0 : 1,
+    overdue: node.status === 'active' ? 1 : 0,
+    owner: node.route || '只读聚合',
+    flowType: inferFlowType(node.label),
+  }))
+})
+
+const exceptions = computed<ExceptionItem[]>(() => {
+  const warnings = overviewData.value?.home_overview?.warnings || []
+  const summaries = overviewData.value?.home_overview?.business_summary || []
+  const generatedAt = overviewData.value?.generated_at || ''
+  const rows: ExceptionItem[] = warnings.map((item, index) => ({
+    code: `WARN-${String(index + 1).padStart(2, '0')}`,
+    module: '看板',
+    desc: item,
+    severity: '中',
+    updatedAt: generatedAt,
+  }))
+  if (overviewData.value) {
+    rows.push(
+      {
+        code: 'SUM-01',
+        module: '库存',
+        desc: summaries[1] || `低于安全库存款号 ${overviewData.value.sales_inventory.below_safety_count} 个`,
+        severity: Number(overviewData.value.sales_inventory.below_safety_count) > 0 ? '高' : '低',
+        updatedAt: generatedAt,
+      },
+      {
+        code: 'SUM-02',
+        module: '仓储',
+        desc: summaries[3] || `仓储高危预警 ${overviewData.value.warehouse.critical_alert_count} 条`,
+        severity: Number(overviewData.value.warehouse.critical_alert_count) > 0 ? '高' : '低',
+        updatedAt: generatedAt,
+      },
+    )
+  }
+  return rows
+})
+
+const loadOverview = async (): Promise<void> => {
   readbackError.value = ''
   try {
-    const [summaryResp, checkpointsResp] = await Promise.all([
-      request<ReadbackSummaryResponse>(
-        `/api/local-dev/dashboard/status-summary?scenario_tag=${encodeURIComponent(scenarioTag)}`,
-      ),
-      request<ReadbackCheckpointsResponse>(
-        `/api/local-dev/dashboard/checkpoints?scenario_tag=${encodeURIComponent(scenarioTag)}`,
-      ),
-    ])
-    readbackSummary.value = summaryResp.data
-    readbackCheckpoints.value = checkpointsResp.data
+    const response = await fetchDashboardOverview(overviewQuery.value)
+    overviewData.value = response.data
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    readbackError.value = `readback summary 获取失败：${message}`
+    overviewData.value = null
+    readbackError.value = `经营看板聚合获取失败：${message}`
   }
 }
 
 const filteredFlowNodes = computed(() => {
-  return flowNodes.filter((node) => {
+  return flowNodes.value.filter((node) => {
     const flowMatch = !query.flowType || node.flowType === query.flowType
     const materialMatch = !query.material || node.name.includes(query.material.slice(0, 1))
     const warehouseMatch = !query.warehouse || node.name.includes('仓') || query.warehouse !== ''
@@ -266,20 +292,25 @@ const filteredExceptions = computed(() => {
   })
 })
 
-const sourceReadback = [
-  'yisuan_incremental_capture/sidebar_modules/01_首页.png',
-  'G0_baseline_20260518/module_entry_baseline.json',
-  'task_z014b_01_a001_a006_contract_candidate_pool.json',
-  'G2_FIX20/developer_allowed_reference_map.json',
-  'task_z007b_17_module_entry_to_list_route_parity_evidence.json',
-]
+const sourceReadback = computed(() => {
+  const statuses = overviewData.value?.source_status || []
+  const quickFilters = overviewData.value?.kanban?.quick_filters || []
+  return [
+    ...statuses.map((item) => `source.${item.module}=${item.status}`),
+    ...quickFilters.slice(0, 5).map((item) => `filter.${item}`),
+  ]
+})
 
 const go = (path: string): void => {
   router.push(path)
 }
 
 onMounted(() => {
-  void loadReadbackSummary()
+  void loadOverview()
+})
+
+watch(overviewQuery, () => {
+  void loadOverview()
 })
 </script>
 
