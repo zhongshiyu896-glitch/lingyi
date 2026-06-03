@@ -326,6 +326,30 @@
         </div>
       </section>
 
+      <section class="personal-metrics-panel" data-testid="cand074-home-personal-metrics">
+        <div class="grid-header">
+          <h3>个人效率指标</h3>
+          <span class="summary-note">聚合个人效率、完成率与时效趋势，只做首页只读展示</span>
+        </div>
+        <div class="grid-body">
+          <article
+            v-for="item in personalMetricsCards"
+            :key="item.key"
+            class="entry-card personal-metric-card"
+            :data-testid="`cand074-card-${item.key}`"
+          >
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" type="success">{{ item.badge }}</el-tag>
+            </header>
+            <p class="snapshot-primary">{{ item.primary }}</p>
+            <p class="snapshot-secondary">{{ item.secondary }}</p>
+            <p class="entry-desc">{{ item.note }}</p>
+            <p class="entry-path">{{ item.hint }}</p>
+          </article>
+        </div>
+      </section>
+
       <section class="readonly-hints" data-testid="cand038-home-readonly-hints">
         <h3>只读导航提示</h3>
         <ul>
@@ -938,6 +962,85 @@ const noticePolicyCards = computed<NoticePolicyCard[]>(() => {
   ]
 })
 
+const personalMetricsCards = computed<SnapshotTrendCard[]>(() => {
+  const todoItems = overviewData.value?.home_overview?.todo_items || []
+  const trendPoints = overviewData.value?.home_overview?.trend_points || []
+  const warnings = overviewData.value?.home_overview?.warnings || []
+  const metricCards = overviewData.value?.home_overview?.metric_cards || []
+  const recentActivities = overviewData.value?.home_overview?.recent_activities || []
+
+  const totalTodoCount = todoItems.reduce((total, item) => total + item.count, 0)
+  const urgentTodoCount = todoItems
+    .filter((item) => item.status === 'urgent')
+    .reduce((total, item) => total + item.count, 0)
+  const warningTodoCount = todoItems
+    .filter((item) => item.status === 'warning')
+    .reduce((total, item) => total + item.count, 0)
+  const completionRate = sourceStatusCount.value
+    ? Math.round((sourceStatusOkCount.value / sourceStatusCount.value) * 100)
+    : 0
+  const currentTrend = trendPoints[0]
+  const compareTrend = trendPoints[1]
+  const firstMetric = metricCards[0]
+  const secondMetric = metricCards[1]
+
+  return [
+    {
+      key: 'efficiency',
+      title: '个人效率指标',
+      badge: '效率',
+      primary: totalTodoCount > 0 ? `待核对 ${totalTodoCount} 项` : '待核对 0 项',
+      secondary:
+        urgentTodoCount > 0 || warningTodoCount > 0
+          ? `高优 ${urgentTodoCount} / 关注 ${warningTodoCount}`
+          : `源状态 ${sourceStatusOkCount.value}/${sourceStatusCount.value}`,
+      note:
+        todoItems[0]?.title ||
+        firstMetric?.trend ||
+        '当前没有角色待办聚合，保留个人效率只读占位。',
+      hint: '来源：home_overview.todo_items，只读展示个人效率，不触发处理写入。',
+    },
+    {
+      key: 'completion',
+      title: '完成率摘要',
+      badge: '完成率',
+      primary: `${completionRate}%`,
+      secondary:
+        sourceStatusCount.value > 0
+          ? `已就绪 ${sourceStatusOkCount.value}/${sourceStatusCount.value} 源`
+          : '等待 overview 返回数据源状态',
+      note:
+        secondMetric?.trend ||
+        '首页以数据源就绪率作为完成率代理，只做只读对比，不回写业务状态。',
+      hint: '来源：source_status 与经营指标卡，只保留完成率摘要展示。',
+    },
+    {
+      key: 'trend',
+      title: '效率趋势摘要',
+      badge: '趋势',
+      primary: currentTrend
+        ? `${currentTrend.period} 利润 ${currentTrend.forecast_profit}`
+        : '暂无趋势摘要',
+      secondary: compareTrend
+        ? `对比 ${compareTrend.period} 利润 ${compareTrend.forecast_profit}`
+        : recentActivities[0] || '等待更多趋势点返回',
+      note:
+        warnings[0] ||
+        `${currentTrend?.period || '本周期'} 时效趋势仅供首页只读参考，不触发催办或确认动作。`,
+      hint: '来源：home_overview.trend_points / recent_activities，保留时效趋势摘要。',
+    },
+    {
+      key: 'readonly',
+      title: '只读状态',
+      badge: '只读',
+      primary: `GET-only / write=${readbackWriteRequestsObservedCount.value}`,
+      secondary: '保留 6 个既有首页切片',
+      note: 'create/update/delete 按钮继续禁用，个人效率指标仅做首页只读补齐。',
+      hint: '保持 CAND038/CAND044/CAND050/CAND056/CAND062/CAND068 已完成切片不回改。',
+    },
+  ]
+})
+
 const uiSourceReadback = computed(() => {
   const sourceRows = sourceStatuses.value.map((item) => `source.${item.module}=${item.status}`)
   const actions = overviewData.value?.home_overview?.primary_actions || []
@@ -1101,6 +1204,7 @@ watch(overviewQuery, () => {
 .snapshot-trend-panel,
 .business-alert-ranking-panel,
 .notice-policy-panel,
+.personal-metrics-panel,
 .readonly-hints,
 .source-readback {
   background: #fff;
@@ -1249,6 +1353,10 @@ watch(overviewQuery, () => {
 }
 
 .notice-policy-card {
+  min-height: 168px;
+}
+
+.personal-metric-card {
   min-height: 168px;
 }
 
