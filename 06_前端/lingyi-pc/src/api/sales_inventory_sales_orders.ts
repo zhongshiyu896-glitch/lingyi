@@ -9,6 +9,10 @@ import {
   splitSalesOrderMatrixStyle,
   type SalesOrderMatrixProgressState,
 } from '@/views/sales_inventory/constants/salesOrderMatrixFields'
+import {
+  SALES_ORDER_REFERENCE_BRIDGE_COMPLETENESS_LABELS,
+  type SalesOrderReferenceBridgeCompletenessState,
+} from '@/views/sales_inventory/constants/salesOrderReferenceBridgeFields'
 
 export type SalesOrderReadonlyGroup = 'draft-watch' | 'delivery-followup' | 'closed'
 
@@ -65,6 +69,30 @@ export interface SalesOrderQuantityMatrixReadonlySummary {
   rows: SalesOrderQuantityMatrixRow[]
 }
 
+export interface SalesOrderReferenceBridgeNode {
+  key: string
+  label: string
+  detail: string
+}
+
+export interface SalesOrderReferenceBridgeReadonlySummary {
+  customerNodeCount: number
+  factoryNodeCount: number
+  sourceDocumentCount: number
+  mappingModeLabel: string
+  completenessState: SalesOrderReferenceBridgeCompletenessState
+  completenessLabel: string
+  customerChainLabel: string
+  factoryChainLabel: string
+  sourceDocumentLabel: string
+  sourceTypeLabel: string
+  bridgeSummaryLabel: string
+  readonlyGuardReason: string
+  customerNodes: SalesOrderReferenceBridgeNode[]
+  factoryNodes: SalesOrderReferenceBridgeNode[]
+  materialDetailTags: string[]
+}
+
 const toNumber = (value?: string | number | null): number => {
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : 0
@@ -74,6 +102,11 @@ const normalizeValue = (value: unknown): string => {
   const raw = Array.isArray(value) ? value[0] : value
   return typeof raw === 'string' ? raw.trim() : ''
 }
+
+const uniqueValues = (values: Array<string | null | undefined>): string[] =>
+  Array.from(new Set(values.map((value) => normalizeValue(value)).filter(Boolean))).sort((left, right) =>
+    left.localeCompare(right, 'zh-CN'),
+  )
 
 const formatPercent = (value: number): string => `${Math.round(value)}%`
 
@@ -112,6 +145,39 @@ export const resolveSalesOrderReadonlyGroup = (
     return 'closed'
   }
   return 'delivery-followup'
+}
+
+const resolveReferenceBridgeCompletenessState = (
+  customer: string,
+  factories: string[],
+): SalesOrderReferenceBridgeCompletenessState => {
+  if (!customer) return 'customer-missing'
+  if (factories.length === 0) return 'factory-pending'
+  return 'ready'
+}
+
+const resolveReferenceBridgeGuardReason = (
+  state: SalesOrderReferenceBridgeCompletenessState,
+): string => {
+  if (state === 'customer-missing') {
+    return '客户引用链缺失，只允许只读排查，不开放销售写动作。'
+  }
+  if (state === 'factory-pending') {
+    return '工厂映射待补齐，只开放来源链核对，不触发交付、导出或库存影响。'
+  }
+  return '当前来源链仅供核对；create / update / delete / export / inventory impact 均保持 guarded readonly。'
+}
+
+const resolveReferenceBridgeMappingModeLabel = (factories: string[]): string => {
+  if (factories.length === 0) return '待补工厂映射'
+  if (factories.length === 1) return '单工厂履约'
+  return '多工厂分发'
+}
+
+const resolveReferenceBridgeSourceTypeLabel = (factories: string[]): string => {
+  if (factories.length === 0) return '销售订单 / 待补履约映射'
+  if (factories.length === 1) return '销售订单 / 单工厂履约'
+  return '销售订单 / 多工厂分发'
 }
 
 export const pickSalesOrderServerQuery = (
@@ -339,5 +405,44 @@ export const buildSalesOrderQuantityMatrixReadonlySummary = (
     matrixCompletionRate,
     matrixCompletionRateLabel: formatPercent(matrixCompletionRate),
     rows,
+  }
+}
+
+export const buildSalesOrderReferenceBridgeReadonlySummary = (
+  detail: SalesOrderDetailData,
+): SalesOrderReferenceBridgeReadonlySummary => {
+  const rawCustomer = normalizeValue(detail.customer)
+  const customer = rawCustomer || '未绑定客户'
+  const company = normalizeValue(detail.company) || '未绑定公司'
+  const factories = uniqueValues(detail.items.map((item) => item.warehouse))
+  const materialDetailTags = uniqueValues(detail.items.map((item) => item.item_code))
+  const completenessState = resolveReferenceBridgeCompletenessState(rawCustomer, factories)
+
+  return {
+    customerNodeCount: 2,
+    factoryNodeCount: factories.length,
+    sourceDocumentCount: 1,
+    mappingModeLabel: resolveReferenceBridgeMappingModeLabel(factories),
+    completenessState,
+    completenessLabel: SALES_ORDER_REFERENCE_BRIDGE_COMPLETENESS_LABELS[completenessState],
+    customerChainLabel: `${customer} -> ${company}`,
+    factoryChainLabel: factories.length > 0 ? factories.join(' / ') : '待补工厂映射',
+    sourceDocumentLabel: normalizeValue(detail.name) || '未命名销售订单',
+    sourceTypeLabel: resolveReferenceBridgeSourceTypeLabel(factories),
+    bridgeSummaryLabel: `客户 ${customer} 通过 ${company} 分发到 ${factories.length} 个履约节点，覆盖 ${materialDetailTags.length} 个来源款号。`,
+    readonlyGuardReason: resolveReferenceBridgeGuardReason(completenessState),
+    customerNodes: [
+      { key: 'customer', label: customer, detail: '客户节点' },
+      { key: 'company', label: company, detail: '公司节点' },
+    ],
+    factoryNodes:
+      factories.length > 0
+        ? factories.map((warehouse) => ({
+            key: warehouse,
+            label: warehouse,
+            detail: '履约工厂/仓库映射',
+          }))
+        : [{ key: 'pending-factory', label: '待补工厂映射', detail: '暂无履约节点' }],
+    materialDetailTags,
   }
 }

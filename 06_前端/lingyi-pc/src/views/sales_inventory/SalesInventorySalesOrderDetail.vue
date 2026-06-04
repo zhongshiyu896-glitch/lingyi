@@ -124,6 +124,8 @@
           </el-descriptions>
         </section>
 
+        <SalesOrderReferenceBridgeReadonly :summary="referenceBridgeReadonlySummary" />
+
         <SalesOrderQuantityMatrixReadonly
           :summary="quantityMatrixReadonlySummary"
           :format-number="formatNumber"
@@ -180,6 +182,7 @@ import {
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
 import SalesOrderQuantityMatrixReadonly from '@/views/sales_inventory/components/SalesOrderQuantityMatrixReadonly.vue'
+import SalesOrderReferenceBridgeReadonly from '@/views/sales_inventory/components/SalesOrderReferenceBridgeReadonly.vue'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 const route = useRoute()
@@ -194,6 +197,7 @@ const {
   formatNumber,
   parseQueryString,
   quantityMatrixSummary,
+  referenceBridgeSummary,
   readonlyGuardActions,
   statusLabel,
   statusType,
@@ -238,6 +242,27 @@ const quantityMatrixReadonlySummary = computed(() =>
         matrixCompletionRate: 0,
         matrixCompletionRateLabel: '0%',
         rows: [],
+      },
+)
+const referenceBridgeReadonlySummary = computed(() =>
+  detail.value
+    ? referenceBridgeSummary(detail.value)
+    : {
+        customerNodeCount: 0,
+        factoryNodeCount: 0,
+        sourceDocumentCount: 0,
+        mappingModeLabel: '-',
+        completenessState: 'factory-pending' as const,
+        completenessLabel: '待补工厂映射',
+        customerChainLabel: '-',
+        factoryChainLabel: '-',
+        sourceDocumentLabel: '-',
+        sourceTypeLabel: '-',
+        bridgeSummaryLabel: '暂无引用链摘要',
+        readonlyGuardReason: '当前仅开放只读来源链核对。',
+        customerNodes: [],
+        factoryNodes: [],
+        materialDetailTags: [],
       },
 )
 
