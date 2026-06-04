@@ -1,11 +1,11 @@
 <template>
-  <div class="sales-order-detail-page" data-testid="cand013-sales-order-detail-page">
-    <el-card shadow="never" data-testid="cand013-sales-order-detail-shell">
+  <div class="sales-order-detail-page" data-testid="cand104-sales-order-detail-page">
+    <el-card shadow="never" data-testid="cand104-sales-order-detail-shell">
       <template #header>
         <div class="header-row">
           <div class="title-group">
-            <span class="title">物料进销存 / 销售订单详情</span>
-            <span class="sub-title">本地只读详情首版</span>
+            <span class="title">大货管理 / 销售订单详情回读</span>
+            <span class="sub-title">NEXT-CAND-104 / detail readonly summary</span>
           </div>
           <div class="header-actions">
             <el-button @click="goList">返回列表</el-button>
@@ -18,7 +18,7 @@
         type="info"
         :closable="false"
         class="scope-alert"
-        title="当前仅开放销售订单详情只读查询，不触发 draft create/cancel、库存写回或 ERPNext 生产写入。"
+        title="当前仅开放销售订单详情只读查询，不触发草稿写入、库存影响、导出或 ERPNext 写链路。"
       />
 
       <el-alert
@@ -35,24 +35,68 @@
         :closable="false"
         class="error-alert"
         :title="lastError"
-        data-testid="cand013-sales-order-detail-error"
+        data-testid="cand104-sales-order-detail-error"
       />
 
+      <section class="guarded-actions-panel" data-testid="cand104-sales-order-detail-guarded-actions">
+        <el-button
+          v-for="action in readonlyGuardActions"
+          :key="action.label"
+          disabled
+          data-action-type="write"
+          data-guard-state="disabled"
+        >
+          {{ action.label }}
+        </el-button>
+      </section>
+
       <template v-if="detail">
+        <section class="summary-grid" data-testid="cand104-sales-order-detail-stat-grid">
+          <div class="summary-card">
+            <span class="summary-label">明细行数</span>
+            <strong class="summary-value">{{ detailReadonlySummary.itemCount }}</strong>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">订单数量</span>
+            <strong class="summary-value">{{ formatNumber(detailReadonlySummary.totalOrderedQty) }}</strong>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">已交数量</span>
+            <strong class="summary-value">{{ formatNumber(detailReadonlySummary.deliveredQty) }}</strong>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">未交数量</span>
+            <strong class="summary-value">{{ formatNumber(detailReadonlySummary.remainingQty) }}</strong>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">主款号</span>
+            <strong class="summary-value">{{ detailReadonlySummary.primaryItemCode }}</strong>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">交付进度</span>
+            <strong class="summary-value">{{ detailReadonlySummary.deliveryCompletionRatio }}</strong>
+          </div>
+        </section>
+
         <el-descriptions
           border
           :column="3"
           class="header-summary"
-          data-testid="cand013-sales-order-detail-summary"
+          data-testid="cand104-sales-order-detail-summary"
         >
           <el-descriptions-item label="订单号">{{ detail.name }}</el-descriptions-item>
           <el-descriptions-item label="公司">{{ detail.company }}</el-descriptions-item>
-          <el-descriptions-item label="客户">{{ detail.customer || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="客户">{{ customerLabel(detail.customer) }}</el-descriptions-item>
           <el-descriptions-item label="下单日期">{{ detail.transaction_date || '-' }}</el-descriptions-item>
           <el-descriptions-item label="交期">{{ detail.delivery_date || '-' }}</el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="statusTagType(detail.status)" effect="plain">
-              {{ detail.status || '未标记' }}
+            <el-tag :type="statusType(detail.status)" effect="plain">
+              {{ statusLabel(detail.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="跟进分组">
+            <el-tag :type="followupGroupType(detailGroup)" effect="plain">
+              {{ followupGroupLabel(detailGroup) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="单据状态">{{ detail.docstatus }}</el-descriptions-item>
@@ -60,7 +104,20 @@
             {{ formatMoney(detail.grand_total, detail.currency) }}
           </el-descriptions-item>
           <el-descriptions-item label="币种">{{ detail.currency || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="主款名称">{{ detailReadonlySummary.primaryItemName }}</el-descriptions-item>
+          <el-descriptions-item label="只读动作">guarded / disabled</el-descriptions-item>
         </el-descriptions>
+
+        <section class="readonly-panel" data-testid="cand104-sales-order-detail-readback-notes">
+          <el-descriptions border :column="3">
+            <el-descriptions-item label="route_scope">/sales-inventory/sales-orders/detail</el-descriptions-item>
+            <el-descriptions-item label="最后刷新">{{ lastLoadedAt || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="write_chain">disabled</el-descriptions-item>
+            <el-descriptions-item label="当前客户">{{ customerLabel(detail.customer) }}</el-descriptions-item>
+            <el-descriptions-item label="主款号">{{ detailReadonlySummary.primaryItemCode }}</el-descriptions-item>
+            <el-descriptions-item label="交付进度">{{ detailReadonlySummary.deliveryCompletionRatio }}</el-descriptions-item>
+          </el-descriptions>
+        </section>
 
         <el-table
           v-loading="loading"
@@ -68,7 +125,7 @@
           border
           class="detail-table"
           :empty-text="detailEmptyText"
-          data-testid="cand013-sales-order-detail-items"
+          data-testid="cand104-sales-order-detail-items"
         >
           <el-table-column prop="item_code" label="款号" min-width="150" />
           <el-table-column prop="item_name" label="物料名称" min-width="180" />
@@ -77,6 +134,11 @@
           </el-table-column>
           <el-table-column label="已交数量" min-width="110">
             <template #default="{ row }">{{ formatNumber(row.delivered_qty) }}</template>
+          </el-table-column>
+          <el-table-column label="未交数量" min-width="110">
+            <template #default="{ row }">
+              {{ formatNumber(Math.max(toNumeric(row.qty) - toNumeric(row.delivered_qty), 0)) }}
+            </template>
           </el-table-column>
           <el-table-column label="单价" min-width="110">
             <template #default="{ row }">{{ formatNumber(row.rate) }}</template>
@@ -92,7 +154,7 @@
       <el-empty
         v-else-if="!loading && !lastError"
         description="暂无可查看的销售订单"
-        data-testid="cand013-sales-order-detail-empty"
+        data-testid="cand104-sales-order-detail-empty"
       />
     </el-card>
   </div>
@@ -101,43 +163,59 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import type { SalesOrderDetailData } from '@/api/sales_inventory'
 import {
-  fetchSalesInventorySalesOrderDetail,
-  fetchSalesInventorySalesOrders,
-  type SalesOrderDetailData,
-} from '@/api/sales_inventory'
+  fetchSalesInventorySalesOrderDetailReadback,
+  resolveFallbackSalesOrderName,
+  type SalesOrderReadonlyGroup,
+} from '@/api/sales_inventory_sales_orders'
+import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 const route = useRoute()
 const router = useRouter()
+
+const {
+  customerLabel,
+  detailSummary,
+  followupGroupFromRow,
+  followupGroupLabel,
+  followupGroupType,
+  formatNumber,
+  parseQueryString,
+  readonlyGuardActions,
+  statusLabel,
+  statusType,
+} = useSalesOrderReadback()
 
 const loading = ref(false)
 const lastError = ref('')
 const detail = ref<SalesOrderDetailData | null>(null)
 const usedFallbackOrder = ref(false)
+const lastLoadedAt = ref('')
 
-const routeOrderName = computed(() => {
-  const raw = Array.isArray(route.query.name) ? route.query.name[0] : route.query.name
-  return typeof raw === 'string' ? raw.trim() : ''
-})
+const routeOrderName = computed(() => parseQueryString(route.query.name))
+const detailReadonlySummary = computed(() =>
+  detail.value
+    ? detailSummary(detail.value)
+    : {
+        itemCount: 0,
+        totalOrderedQty: 0,
+        deliveredQty: 0,
+        remainingQty: 0,
+        primaryItemCode: '-',
+        primaryItemName: '-',
+        deliveryCompletionRatio: '0%',
+      },
+)
+const detailGroup = computed<SalesOrderReadonlyGroup>(() =>
+  detail.value ? followupGroupFromRow(detail.value) : 'draft-watch',
+)
 
 const detailEmptyText = computed(() => {
   if (loading.value) return '正在加载订单详情'
   if (lastError.value) return '订单详情加载失败'
   return '暂无订单明细'
 })
-
-const statusTagType = (status?: string | null): 'success' | 'warning' | 'info' => {
-  if (status === 'Completed' || status === 'To Deliver and Bill') return 'success'
-  if (status === 'Draft' || status === 'To Bill') return 'warning'
-  return 'info'
-}
-
-const formatNumber = (value?: string | number | null): string => {
-  if (value === null || value === undefined || value === '') return '-'
-  const numeric = Number(value)
-  if (!Number.isFinite(numeric)) return String(value)
-  return numeric.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
-}
 
 const formatMoney = (amount?: string | number | null, currency?: string | null): string => {
   if (amount === null || amount === undefined || amount === '') return '-'
@@ -147,13 +225,21 @@ const formatMoney = (amount?: string | number | null, currency?: string | null):
   return currency ? `${money} ${currency}` : money
 }
 
+const toNumeric = (value?: string | number | null): number => {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+const updateLoadedAt = (): void => {
+  lastLoadedAt.value = new Date().toISOString()
+}
+
 const resolveOrderName = async (): Promise<string> => {
   if (routeOrderName.value) {
     usedFallbackOrder.value = false
     return routeOrderName.value
   }
-  const response = await fetchSalesInventorySalesOrders({ page: 1, page_size: 1 })
-  const fallback = response.data.items[0]?.name || ''
+  const fallback = await resolveFallbackSalesOrderName()
   usedFallbackOrder.value = Boolean(fallback)
   return fallback
 }
@@ -168,8 +254,9 @@ const loadDetail = async (): Promise<void> => {
       lastError.value = '暂无可查看的销售订单'
       return
     }
-    const response = await fetchSalesInventorySalesOrderDetail(orderName)
+    const response = await fetchSalesInventorySalesOrderDetailReadback(orderName)
     detail.value = response.data
+    updateLoadedAt()
   } catch (error) {
     lastError.value = (error as Error).message || '订单详情加载失败'
   } finally {
@@ -224,9 +311,11 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.header-actions {
+.header-actions,
+.guarded-actions-panel {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .scope-alert,
@@ -234,7 +323,34 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.header-summary {
+.summary-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--el-fill-color-blank);
+}
+
+.summary-label {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.summary-value {
+  font-size: 18px;
+}
+
+.header-summary,
+.readonly-panel {
   margin-bottom: 16px;
 }
 
