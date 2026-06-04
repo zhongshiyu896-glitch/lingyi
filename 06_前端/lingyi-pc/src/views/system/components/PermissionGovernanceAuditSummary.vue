@@ -21,6 +21,16 @@
         <div class="summary-value">{{ operationAuditTotal }}</div>
         <div class="summary-hint">当前筛选命中</div>
       </el-card>
+      <el-card shadow="never" class="summary-tile">
+        <div class="summary-label">诊断健康摘要</div>
+        <div class="summary-value">{{ healthSummaryCount }}</div>
+        <div class="summary-hint">system health fallback / 诊断聚合</div>
+      </el-card>
+      <el-card shadow="never" class="summary-tile">
+        <div class="summary-label">菜单状态漂移</div>
+        <div class="summary-value">{{ menuDriftCount }}</div>
+        <div class="summary-hint">只读菜单 contract 漂移数</div>
+      </el-card>
     </div>
 
     <div class="readonly-status-row" data-testid="permission-diagnostic-status-row">
@@ -30,6 +40,10 @@
       <el-tag type="info" effect="plain">catalog={{ catalogEnabled ? 'on' : 'off' }}</el-tag>
       <el-tag type="info" effect="plain">audit={{ auditReadEnabled ? 'on' : 'off' }}</el-tag>
       <el-tag type="warning" effect="plain">export guarded={{ canExport ? 'ui-only' : 'denied' }}</el-tag>
+      <el-tag :type="blockedCheckCount > 0 ? 'warning' : 'success'" effect="plain">
+        checks={{ blockedCheckCount > 0 ? `${blockedCheckCount} attention` : 'all-pass' }}
+      </el-tag>
+      <el-tag type="info" effect="plain">fallback={{ fallbackSource }}</el-tag>
       <el-tag type="info" effect="plain">generated_at={{ generatedAt || '-' }}</el-tag>
     </div>
   </div>
@@ -41,10 +55,14 @@ defineProps<{
   highRiskCount: number
   securityAuditTotal: number
   operationAuditTotal: number
+  healthSummaryCount: number
+  menuDriftCount: number
+  blockedCheckCount: number
   diagnosticStatus: string
   catalogEnabled: boolean
   auditReadEnabled: boolean
   canExport: boolean
+  fallbackSource: string
   generatedAt?: string
 }>()
 </script>

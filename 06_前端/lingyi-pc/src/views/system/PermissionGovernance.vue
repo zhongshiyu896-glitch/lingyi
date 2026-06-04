@@ -15,7 +15,7 @@
       :can-diagnostic="canDiagnostic"
       :can-export="canExport"
       :guarded-buttons="menuGuardedButtons"
-      route-label="/permissions/governance"
+      :route-label="currentRouteLabel"
       mode-label="READONLY_GET_ONLY"
     />
 
@@ -245,31 +245,99 @@
         :high-risk-count="diagnosticData.high_risk_actions.length"
         :security-audit-total="securityAudit.total"
         :operation-audit-total="operationAudit.total"
+        :health-summary-count="healthSummaryRows.length"
+        :menu-drift-count="menuDriftCount"
+        :blocked-check-count="blockedCheckCount"
         :diagnostic-status="diagnosticData.status"
         :catalog-enabled="diagnosticData.catalog_enabled"
         :audit-read-enabled="diagnosticData.audit_read_enabled"
         :can-export="canExport"
+        :fallback-source="fallbackSource"
         :generated-at="diagnosticData.generated_at"
       />
 
+      <el-alert
+        type="info"
+        :closable="false"
+        :title="`system health summary fallback: ${fallbackSource}`"
+        :description="blockingHints.join('；') || '当前诊断 checks 与菜单 contract 未发现额外漂移。'"
+        data-testid="permission-diagnostic-health-fallback"
+        style="margin-bottom: 12px"
+      />
+
       <el-table
-        :data="diagnosticData.checks"
+        :data="healthSummaryRows"
         border
-        empty-text="暂无诊断结果"
-        data-testid="permission-diagnostic-checks-table"
+        empty-text="暂无健康摘要"
+        data-testid="permission-diagnostic-health-summary-table"
       >
-        <el-table-column prop="name" label="诊断项" min-width="220" />
+        <el-table-column prop="label" label="健康摘要项" min-width="220" />
         <el-table-column label="状态" width="120">
           <template #default="scope">
-            <el-tag :type="scope.row.status === 'pass' ? 'success' : 'danger'" effect="plain">
+            <el-tag
+              :type="scope.row.status === 'ok' ? 'success' : scope.row.status === 'warn' ? 'warning' : 'danger'"
+              effect="plain"
+            >
               {{ scope.row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="message" label="说明" min-width="280">
-          <template #default="scope">{{ scope.row.message || 'pass' }}</template>
-        </el-table-column>
+        <el-table-column prop="checkResult" label="结果" min-width="220" />
+        <el-table-column prop="source" label="来源" min-width="200" />
       </el-table>
+
+      <el-divider />
+
+      <el-table
+        :data="menuStatusDriftRows"
+        border
+        empty-text="暂无菜单状态漂移"
+        data-testid="permission-diagnostic-menu-drift-table"
+      >
+        <el-table-column prop="menuName" label="菜单" min-width="180" />
+        <el-table-column prop="expectedRoute" label="期望路由" min-width="220" />
+        <el-table-column prop="actualRoute" label="实际路由" min-width="220" />
+        <el-table-column label="状态" width="120">
+          <template #default="scope">
+            <el-tag
+              :type="scope.row.status === 'ok' ? 'success' : scope.row.status === 'warn' ? 'warning' : 'danger'"
+              effect="plain"
+            >
+              {{ scope.row.status }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="message" label="漂移说明" min-width="320" />
+      </el-table>
+
+      <el-divider />
+
+      <el-table
+        :data="diagnosticCheckRows"
+        border
+        empty-text="暂无诊断结果"
+        data-testid="permission-diagnostic-checks-table"
+      >
+        <el-table-column prop="label" label="诊断项" min-width="220" />
+        <el-table-column prop="group" label="分组" width="140" />
+        <el-table-column label="状态" width="120">
+          <template #default="scope">
+            <el-tag :type="scope.row.severity" effect="plain">
+              {{ scope.row.status }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="message" label="说明" min-width="280" />
+      </el-table>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        title="remaining_gap"
+        :description="remainingGap"
+        data-testid="permission-governance-remaining-gap"
+        style="margin-top: 12px"
+      />
     </el-card>
 
     <el-card shadow="never" data-testid="permission-audit-section">
@@ -445,10 +513,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import permissionGovernanceApi, {
   type PermissionActionCatalogModule,
-  type PermissionGovernanceDiagnosticCheck,
   type PermissionGovernanceDiagnosticData,
   type PermissionMenuManagementData,
   type PermissionOperationAuditData,
@@ -460,17 +528,20 @@ import permissionGovernanceApi, {
 import { usePermissionStore } from '@/stores/permission'
 import PermissionGovernanceAuditSummary from '@/views/system/components/PermissionGovernanceAuditSummary.vue'
 import PermissionGovernanceGuardPanel from '@/views/system/components/PermissionGovernanceGuardPanel.vue'
-
-interface CatalogRow {
-  module: string
-  action: string
-  category: string
-  is_high_risk: boolean
-  ui_exposed: boolean
-  description: string
-}
+import { usePermissionGovernanceDiagnosticReadonly } from '@/views/system/composables/usePermissionGovernanceDiagnosticReadonly'
+import {
+  type PermissionGovernanceCatalogRow,
+  cloneDiagnosticChecks,
+  readonlyCatalogFallbackRows,
+  readonlyDiagnosticFallback,
+  readonlyMenuManagementFallback,
+  readonlyOperationAuditFallback,
+  readonlyRoleFallbackRows,
+  readonlySecurityAuditFallback,
+} from '@/views/system/constants/permissionGovernanceDiagnosticFields'
 
 const permissionStore = usePermissionStore()
+const route = useRoute()
 const loading = ref<boolean>(false)
 const auditLoading = ref<boolean>(false)
 const securityExporting = ref<boolean>(false)
@@ -482,7 +553,7 @@ const menuErrorMessage = ref<string>('')
 const auditErrorMessage = ref<string>('')
 const diagnosticErrorMessage = ref<string>('')
 const exportGuardMessage = ref<string>('')
-const catalogRows = ref<CatalogRow[]>([])
+const catalogRows = ref<PermissionGovernanceCatalogRow[]>([])
 const roleRows = ref<PermissionRoleMatrixEntry[]>([])
 const menuManagement = ref<PermissionMenuManagementData>({
   items: [],
@@ -557,6 +628,7 @@ const canRead = computed<boolean>(() => permissionStore.state.actions.includes('
 const canAuditRead = computed<boolean>(() => permissionStore.state.actions.includes('permission:audit_read'))
 const canExport = computed<boolean>(() => permissionStore.state.actions.includes('permission:export'))
 const canDiagnostic = computed<boolean>(() => permissionStore.state.actions.includes('permission:diagnostic'))
+const currentRouteLabel = computed<string>(() => route.fullPath || '/permissions/governance')
 const menuManagementModuleOptions = computed<string[]>(() => {
   const modules = new Set<string>()
   menuManagement.value.items.forEach((item) => modules.add(item.module))
@@ -573,234 +645,24 @@ const menuGuardedButtons = computed<string[]>(() => {
   })
   return Array.from(labels)
 })
-
-const readonlyCatalogFallbackRows: CatalogRow[] = [
-  {
-    module: 'menu',
-    action: 'permission:menu:create',
-    category: '菜单管理',
-    is_high_risk: true,
-    ui_exposed: true,
-    description: '菜单新增写入口，当前只读治理页仅展示 guarded 状态。',
-  },
-  {
-    module: 'menu',
-    action: 'permission:menu:update',
-    category: '菜单管理',
-    is_high_risk: true,
-    ui_exposed: true,
-    description: '菜单编辑写入口，当前只读治理页不发起写请求。',
-  },
-  {
-    module: 'menu',
-    action: 'permission:menu:delete',
-    category: '菜单管理',
-    is_high_risk: true,
-    ui_exposed: true,
-    description: '菜单删除写入口，当前只读治理页保持 disabled/guarded。',
-  },
-  {
-    module: 'audit',
-    action: 'permission:audit:export',
-    category: '审计导出',
-    is_high_risk: true,
-    ui_exposed: true,
-    description: '安全审计与操作审计导出属于副作用动作，仅展示 guarded_readonly。',
-  },
-]
-
-const readonlyRoleFallbackRows: PermissionRoleMatrixEntry[] = [
-  {
-    role: 'permission_admin',
-    actions: ['permission:read', 'permission:audit_read'],
-    modules: ['permission', 'system'],
-    high_risk_actions: ['permission:menu:create', 'permission:menu:update', 'permission:menu:delete'],
-    ui_hidden_actions: [],
-  },
-  {
-    role: 'auditor',
-    actions: ['permission:audit_read'],
-    modules: ['permission'],
-    high_risk_actions: ['permission:audit:export'],
-    ui_hidden_actions: ['permission:menu:delete'],
-  },
-]
-
-const readonlyMenuManagementFallback: PermissionMenuManagementData = {
-  total: 3,
-  items: [
-    {
-      menu_key: 'permission_governance',
-      menu_name: '权限治理',
-      module: 'permission',
-      route: '/permissions/governance',
-      permission_action: 'permission:read',
-      status: 'enabled',
-      owner_role: 'permission_admin',
-      description: '权限治理页只读入口，菜单维护动作均被 guarded。',
-      actions: [
-        {
-          action_key: 'menu:create',
-          action_label: '菜单新增',
-          guarded: true,
-          guard_reason: '只读治理流：菜单新增已禁用',
-        },
-        {
-          action_key: 'menu:update',
-          action_label: '菜单编辑',
-          guarded: true,
-          guard_reason: '只读治理流：菜单编辑已禁用',
-        },
-        {
-          action_key: 'menu:delete',
-          action_label: '菜单删除',
-          guarded: true,
-          guard_reason: '只读治理流：菜单删除已禁用',
-        },
-      ],
-    },
-    {
-      menu_key: 'security_audit',
-      menu_name: '安全审计',
-      module: 'permission',
-      route: '/permissions/governance?tab=security',
-      permission_action: 'permission:audit_read',
-      status: 'enabled',
-      owner_role: 'auditor',
-      description: '安全审计只读查询，导出动作在前端本地拦截。',
-      actions: [
-        {
-          action_key: 'audit:export:security',
-          action_label: '安全审计导出',
-          guarded: true,
-          guard_reason: '只读治理流：安全审计导出已拦截',
-        },
-      ],
-    },
-    {
-      menu_key: 'operation_audit',
-      menu_name: '操作审计',
-      module: 'permission',
-      route: '/permissions/governance?tab=operation',
-      permission_action: 'permission:audit_read',
-      status: 'enabled',
-      owner_role: 'auditor',
-      description: '操作审计只读查询，导出动作在前端本地拦截。',
-      actions: [
-        {
-          action_key: 'audit:export:operation',
-          action_label: '操作审计导出',
-          guarded: true,
-          guard_reason: '只读治理流：操作审计导出已拦截',
-        },
-      ],
-    },
-  ],
-}
-
-const readonlySecurityAuditFallback: PermissionSecurityAuditData = {
-  total: 2,
-  page: 1,
-  page_size: 20,
-  items: [
-    {
-      id: 101,
-      event_type: 'permission_denied',
-      module: 'permission',
-      action: 'permission:menu:create',
-      resource_type: 'menu',
-      resource_id: 'permission_governance',
-      resource_no: 'MENU-PERMISSION-GOVERNANCE',
-      user_id: 'readonly',
-      permission_source: 'fallback',
-      deny_reason: 'readonly guarded: menu create blocked',
-      request_method: 'POST',
-      request_path: '/api/permissions/menu-management',
-      request_id: 'readonly-security-101',
-      created_at: '2026-05-27 10:00:00',
-    },
-    {
-      id: 102,
-      event_type: 'export_blocked',
-      module: 'permission',
-      action: 'permission:audit:export',
-      resource_type: 'audit',
-      resource_id: 'security',
-      resource_no: 'AUDIT-SECURITY',
-      user_id: 'readonly',
-      permission_source: 'fallback',
-      deny_reason: 'readonly guarded: audit export blocked',
-      request_method: 'GET',
-      request_path: '/api/permissions/audit/security/export',
-      request_id: 'readonly-security-102',
-      created_at: '2026-05-27 10:05:00',
-    },
-  ],
-}
-
-const readonlyOperationAuditFallback: PermissionOperationAuditData = {
-  total: 2,
-  page: 1,
-  page_size: 20,
-  items: [
-    {
-      id: 201,
-      module: 'permission',
-      action: 'menu:update',
-      operator: 'readonly',
-      resource_type: 'menu',
-      resource_id: 1001,
-      resource_no: 'MENU-PERMISSION-GOVERNANCE',
-      result: 'failed',
-      error_code: 'READONLY_GUARDED',
-      request_id: 'readonly-operation-201',
-      created_at: '2026-05-27 10:10:00',
-      has_before_data: false,
-      has_after_data: false,
-      before_keys: [],
-      after_keys: ['guarded_readonly'],
-    },
-    {
-      id: 202,
-      module: 'permission',
-      action: 'audit:export',
-      operator: 'readonly',
-      resource_type: 'audit',
-      resource_id: null,
-      resource_no: 'AUDIT-OPERATION',
-      result: 'failed',
-      error_code: 'READONLY_EXPORT_BLOCKED',
-      request_id: 'readonly-operation-202',
-      created_at: '2026-05-27 10:15:00',
-      has_before_data: false,
-      has_after_data: false,
-      before_keys: [],
-      after_keys: ['guarded_readonly'],
-    },
-  ],
-}
-
-const readonlyDiagnosticFallback: PermissionGovernanceDiagnosticData = {
-  module: 'permission',
-  status: 'ok',
-  registered_actions: ['permission:read', 'permission:audit_read', 'permission:export', 'permission:diagnostic'],
-  legacy_permission_audit_actions: ['permission_audit:diagnostic'],
-  high_risk_actions: ['permission:menu:create', 'permission:menu:update', 'permission:menu:delete', 'permission:diagnostic'],
-  ui_hidden_actions: ['permission:diagnostic'],
-  roles_with_permission_actions_count: 2,
-  checks: [
-    { name: 'permission:read_registered', status: 'pass' },
-    { name: 'permission:audit_read_registered', status: 'pass' },
-    { name: 'permission:diagnostic_registered', status: 'pass' },
-    { name: 'permission_diagnostic_hidden', status: 'pass' },
-  ],
-  catalog_enabled: true,
-  roles_matrix_enabled: true,
-  audit_read_enabled: true,
-  export_enabled: true,
-  diagnostic_enabled: true,
-  generated_at: '2026-06-03T00:00:00+00:00',
-}
+const readonlyDiagnostic = usePermissionGovernanceDiagnosticReadonly({
+  diagnosticData,
+  menuManagement,
+  canRead,
+  canAuditRead,
+  canDiagnostic,
+  canExport,
+})
+const {
+  diagnosticCheckRows,
+  menuStatusDriftRows,
+  blockedCheckCount,
+  menuDriftCount,
+  healthSummaryRows,
+  blockingHints,
+  remainingGap,
+  fallbackSource,
+} = readonlyDiagnostic
 
 const applyReadonlyCatalogFallback = (): void => {
   catalogRows.value = readonlyCatalogFallbackRows.map((row) => ({ ...row }))
@@ -845,7 +707,7 @@ const applyReadonlyDiagnosticFallback = (): void => {
     legacy_permission_audit_actions: [...readonlyDiagnosticFallback.legacy_permission_audit_actions],
     high_risk_actions: [...readonlyDiagnosticFallback.high_risk_actions],
     ui_hidden_actions: [...readonlyDiagnosticFallback.ui_hidden_actions],
-    checks: readonlyDiagnosticFallback.checks.map((item: PermissionGovernanceDiagnosticCheck) => ({ ...item })),
+    checks: cloneDiagnosticChecks(readonlyDiagnosticFallback.checks),
   }
 }
 
@@ -874,7 +736,7 @@ const formatErrorCode = (value?: string | null): string => {
   return raw.replace(/error/gi, 'ERR')
 }
 
-const flattenCatalog = (modules: PermissionActionCatalogModule[]): CatalogRow[] => {
+const flattenCatalog = (modules: PermissionActionCatalogModule[]): PermissionGovernanceCatalogRow[] => {
   return modules.flatMap((module) => {
     return module.actions.map((action) => ({
       module: module.module,
