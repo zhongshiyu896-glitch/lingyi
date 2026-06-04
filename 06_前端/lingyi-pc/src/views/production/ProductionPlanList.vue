@@ -27,6 +27,7 @@
         <el-tag type="warning">work_order_push=false</el-tag>
         <el-tag type="warning">outbox_worker_release=false</el-tag>
         <el-tag v-if="parityTag" type="info">parity_route={{ parityTag }}</el-tag>
+        <el-tag type="info">parity_label={{ currentParityLabel }}</el-tag>
       </section>
 
       <section class="status-board" data-testid="yisuan-1to1-production-plan-status-board">
@@ -44,14 +45,51 @@
             <el-tag type="info">local-dev only</el-tag>
           </div>
         </template>
-        <el-descriptions :column="1" border>
-          <el-descriptions-item label="主入口">/production/plans</el-descriptions-item>
-          <el-descriptions-item label="样衣入口">/sample/sampleListV2 -> /production/plans?parity=sample-list</el-descriptions-item>
-          <el-descriptions-item label="样衣跟进入口">/sample/sampleProcess -> /production/plans?parity=sample-list</el-descriptions-item>
-          <el-descriptions-item label="生产跟进入口">
-            /production/productionProcess -> /production/plans?parity=production-followup-template
-          </el-descriptions-item>
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="主入口">/production/plans</el-descriptions-item>
+            <el-descriptions-item label="样衣入口">/sample/sampleListV2 -> /production/plans?parity=sample-list</el-descriptions-item>
+            <el-descriptions-item label="样衣跟进入口">/sample/sampleProcess -> /production/plans?parity=sample-list</el-descriptions-item>
+            <el-descriptions-item label="订单入口">
+              /production/productOrder -> /production/plans?parity=production-order
+            </el-descriptions-item>
+            <el-descriptions-item label="生产跟进入口">
+              /production/productionProcess -> /production/plans?parity=production-followup-template
+            </el-descriptions-item>
+          </el-descriptions>
+      </el-card>
+
+      <el-card shadow="never" class="summary-card" data-testid="production-plan-readback-summary">
+        <template #header>
+          <div class="panel-header">
+            <span>计划摘要 / 数量矩阵</span>
+            <el-tag type="warning">readonly snapshot</el-tag>
+          </div>
+        </template>
+        <el-descriptions :column="4" border>
+          <el-descriptions-item label="当前入口">{{ currentParityLabel }}</el-descriptions-item>
+          <el-descriptions-item label="筛选后计划数">{{ filteredPlans.length }}</el-descriptions-item>
+          <el-descriptions-item label="计划总数量">{{ filteredPlannedQty }}</el-descriptions-item>
+          <el-descriptions-item label="工单待同步">{{ pendingWorkOrderCount }}</el-descriptions-item>
+          <el-descriptions-item label="数量矩阵">{{ quantityMatrixSummary }}</el-descriptions-item>
+          <el-descriptions-item label="快照来源">{{ snapshotSourceSummary }}</el-descriptions-item>
+          <el-descriptions-item label="只读动作 guard">create/update/delete disabled</el-descriptions-item>
+          <el-descriptions-item label="筛选联动">keyword + status + group</el-descriptions-item>
         </el-descriptions>
+      </el-card>
+
+      <el-card shadow="never" class="readonly-guard-card" data-testid="production-plan-readonly-guard-card">
+        <template #header>
+          <div class="panel-header">
+            <span>只读动作 guard</span>
+            <el-tag type="danger">write disabled</el-tag>
+          </div>
+        </template>
+        <div class="guard-actions">
+          <div v-for="action in readonlyGuardActions" :key="action.label" class="guard-action">
+            <el-button disabled>{{ action.label }}</el-button>
+            <span class="guard-reason">{{ action.reason }}</span>
+          </div>
+        </div>
       </el-card>
 
       <el-form :model="query" inline class="query-panel">
@@ -71,6 +109,7 @@
           <el-select v-model="query.group" clearable placeholder="全部" style="width: 180px">
             <el-option label="本地计划组" value="本地计划组" />
             <el-option label="样衣计划镜像" value="样衣计划镜像" />
+            <el-option label="订单计划镜像" value="订单计划镜像" />
             <el-option label="生产跟进镜像" value="生产跟进镜像" />
           </el-select>
         </el-form-item>
@@ -115,6 +154,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchProductionPlans, type ProductionPlanListItem } from '@/api/production'
+import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
 
 interface PlanRow {
   id: number | null
@@ -137,6 +177,8 @@ const route = useRoute()
 const listLoading = ref(false)
 const listError = ref('')
 const planRows = ref<PlanRow[]>([])
+const { groupLabel, parseQueryString, parityRouteLabel, progressLabel, readonlyGuardActions, statusLabel, statusType } =
+  useProductionPlanReadback()
 
 const query = reactive({
   keyword: '',
@@ -144,12 +186,8 @@ const query = reactive({
   group: '',
 })
 
-const parseQueryString = (value: unknown): string => {
-  const raw = Array.isArray(value) ? value[0] : value
-  return typeof raw === 'string' ? raw.trim() : ''
-}
-
 const parityTag = computed(() => parseQueryString(route.query.parity))
+const currentParityLabel = computed(() => parityRouteLabel(parityTag.value))
 
 const fallbackPlanSeeds: PlanRow[] = [
   {
@@ -199,45 +237,13 @@ const fallbackPlanSeeds: PlanRow[] = [
   },
 ]
 
-const groupLabel = (parity: string, company: string): string => {
-  if (parity === 'sample-list') return '样衣计划镜像'
-  if (parity === 'production-followup-template') return '生产跟进镜像'
-  return company === 'LY-LOCAL-TEST' ? '本地计划组' : company
-}
-
-const statusLabel = (status: string): string => {
-  const labels: Record<string, string> = {
-    planned: '已计划',
-    material_checked: '已物料检查',
-    work_order_pending: '工单待同步',
-    work_order_created: '已创建工单',
-    job_cards_synced: '工序卡已同步',
-    cancelled: '已取消',
-    failed: '失败',
-  }
-  return labels[status] || status
-}
-
-const progressLabel = (status: string): string => {
-  const labels: Record<string, string> = {
-    planned: '0%',
-    material_checked: '35%',
-    work_order_pending: '68%',
-    work_order_created: '85%',
-    job_cards_synced: '100%',
-    cancelled: '0%',
-    failed: '0%',
-  }
-  return labels[status] || '0%'
-}
-
 const statusBoard = computed(() => {
   const rows = planRows.value
   const countByStatus = (status: string) => rows.filter((row) => row.statusCode === status).length
   return [
     { name: '已计划', value: String(countByStatus('planned')), note: '只读计划清单，不触发下发' },
     { name: '工单待同步', value: String(countByStatus('work_order_pending')), note: '仅保留同步状态，不触发 outbox' },
-    { name: '本地只读记录', value: String(rows.length), note: 'backend 为空时回退 synthetic snapshot' },
+    { name: '本地只读记录', value: String(rows.length), note: `${currentParityLabel.value} / backend 为空时回退 synthetic snapshot` },
   ]
 })
 
@@ -251,12 +257,23 @@ const filteredPlans = computed(() => {
   })
 })
 
-const statusType = (status: string): 'success' | 'warning' | 'danger' | 'info' => {
-  if (status === 'work_order_created' || status === 'job_cards_synced') return 'success'
-  if (status === 'failed') return 'danger'
-  if (status === 'planned' || status === 'material_checked' || status === 'work_order_pending') return 'warning'
-  return 'info'
-}
+const filteredPlannedQty = computed(() =>
+  filteredPlans.value.reduce((sum, row) => sum + Number(row.plannedQty || 0), 0).toLocaleString('zh-CN'),
+)
+
+const pendingWorkOrderCount = computed(() => filteredPlans.value.filter((row) => row.workOrderStatus === 'pending').length)
+
+const quantityMatrixSummary = computed(() => {
+  if (!filteredPlans.value.length) return '暂无计划数量矩阵快照'
+  const items = filteredPlans.value.slice(0, 3).map((row) => `${row.styleCode}:${row.plannedQty}`)
+  return `${items.join(' / ')}${filteredPlans.value.length > 3 ? ' ...' : ''}`
+})
+
+const snapshotSourceSummary = computed(() => {
+  const syntheticCount = filteredPlans.value.filter((row) => row.source === 'synthetic').length
+  const backendCount = filteredPlans.value.length - syntheticCount
+  return `backend ${backendCount} / synthetic ${syntheticCount}`
+})
 
 const mapPlanRow = (item: ProductionPlanListItem): PlanRow => ({
   id: item.id,
@@ -425,8 +442,37 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 
+.summary-card,
+.readonly-guard-card {
+  margin-bottom: 12px;
+}
+
 .query-panel {
   margin-bottom: 8px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.guard-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.guard-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.guard-reason {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .result-table {

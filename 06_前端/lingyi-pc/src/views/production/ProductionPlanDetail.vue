@@ -79,6 +79,25 @@
       />
     </el-card>
 
+    <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-readback-summary-card">
+      <template #header>
+        <div class="header-row">
+          <span>计划摘要 / 数量矩阵</span>
+          <el-tag type="warning">readonly snapshot</el-tag>
+        </div>
+      </template>
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="当前入口">{{ parityRouteLabel(parityTag) }}</el-descriptions-item>
+        <el-descriptions-item label="计划状态">{{ statusLabel(detail.status) }}</el-descriptions-item>
+        <el-descriptions-item label="计划数量">{{ detail.planned_qty }}</el-descriptions-item>
+        <el-descriptions-item label="数量矩阵摘要">{{ quantityMatrixSummary }}</el-descriptions-item>
+        <el-descriptions-item label="工序卡应生产总数">{{ expectedQtySummary }}</el-descriptions-item>
+        <el-descriptions-item label="工序卡已完成总数">{{ completedQtySummary }}</el-descriptions-item>
+        <el-descriptions-item label="物料缺口总数">{{ materialShortageSummary }}</el-descriptions-item>
+        <el-descriptions-item label="只读 guard">create-work-order / sync-job-cards disabled</el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
     <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-work-order-mapping">
       <template #header><span>Work Order 映射</span></template>
       <el-descriptions :column="2" border>
@@ -150,10 +169,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { fetchProductionPlanDetail, fetchProductionPlans, type ProductionPlanDetailData } from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
+import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
 
 const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
+const { parseQueryString, parityRouteLabel, statusLabel } = useProductionPlanReadback()
 
 const detail = ref<ProductionPlanDetailData | null>(null)
 const loadError = ref('')
@@ -173,13 +194,11 @@ const parsePositiveInteger = (value: unknown): number => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 0
 }
 
-const parseStringQuery = (value: unknown): string => {
-  const raw = Array.isArray(value) ? value[0] : value
-  return typeof raw === 'string' ? raw.trim() : ''
-}
+const parseStringQuery = (value: unknown): string => parseQueryString(value)
 
 const routePlanId = computed<number>(() => parsePositiveInteger(route.query.id))
 const hasValidPlanId = computed<boolean>(() => routePlanId.value > 0)
+const parityTag = computed<string>(() => parseStringQuery(route.query.parity))
 const currentWorkOrder = computed<string>(
   () => detail.value?.work_order || detail.value?.latest_work_order_outbox?.erpnext_work_order || '',
 )
@@ -191,25 +210,6 @@ const writeEntryFrozenMessage = computed<string>(
     detail.value?.write_entry_frozen_reason ||
     '当前生产计划详情处于只读验收模式；任何写入口均不在本切片内。',
 )
-
-const statusLabel = (value: string): string => {
-  const labels: Record<string, string> = {
-    draft: '草稿',
-    planned: '已计划',
-    material_checked: '已物料检查',
-    work_order_pending: '工单待同步',
-    work_order_created: '已创建工单',
-    job_cards_synced: '工序卡已同步',
-    cancelled: '已取消',
-    failed: '失败',
-    pending: '待同步',
-    processing: '同步中',
-    succeeded: '已同步',
-    dead: '死信',
-    blocked_scope: '范围阻断',
-  }
-  return labels[value] || value
-}
 
 const syncStatusLabel = (value?: string | null): string => {
   if (!value) return '-'
@@ -223,6 +223,25 @@ const syncStatusLabel = (value?: string | null): string => {
   }
   return labels[value] || value
 }
+
+const numericSum = (values: Array<string | number | null | undefined>): string =>
+  values
+    .reduce<number>((sum, value) => sum + Number(value || 0), 0)
+    .toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+
+const expectedQtySummary = computed<string>(() => numericSum((detail.value?.job_cards || []).map((item) => item.expected_qty)))
+const completedQtySummary = computed<string>(() =>
+  numericSum((detail.value?.job_cards || []).map((item) => item.completed_qty)),
+)
+const materialShortageSummary = computed<string>(() =>
+  numericSum((detail.value?.material_snapshots || []).map((item) => item.shortage_qty)),
+)
+const quantityMatrixSummary = computed<string>(() => {
+  if (!detail.value) return '-'
+  if (detail.value.job_cards.length) return `${detail.value.job_cards.length} 条工序卡回读`
+  if (detail.value.material_snapshots.length) return `${detail.value.material_snapshots.length} 条物料快照回读`
+  return '暂无数量矩阵，仅展示只读占位摘要'
+})
 
 const buildSyntheticDetail = (): ProductionPlanDetailData => {
   const today = new Date().toISOString()
@@ -316,7 +335,10 @@ const loadDetail = async (): Promise<void> => {
 }
 
 const goBack = (): void => {
-  router.push('/production/plans')
+  router.push({
+    path: '/production/plans',
+    query: parityTag.value ? { parity: parityTag.value } : undefined,
+  })
 }
 
 watch(
