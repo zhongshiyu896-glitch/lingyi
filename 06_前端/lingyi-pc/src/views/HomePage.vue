@@ -350,6 +350,30 @@
         </div>
       </section>
 
+      <section class="crossteam-collab-panel" data-testid="cand080-home-crossteam-collab">
+        <div class="grid-header">
+          <h3>跨团队协同提醒</h3>
+          <span class="summary-note">聚合协同责任、截止期与阻塞提示，只做首页只读展示</span>
+        </div>
+        <div class="grid-body">
+          <article
+            v-for="item in crossTeamCollabCards"
+            :key="item.key"
+            class="entry-card crossteam-collab-card"
+            :data-testid="`cand080-card-${item.key}`"
+          >
+            <header>
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" type="warning">{{ item.badge }}</el-tag>
+            </header>
+            <p class="snapshot-primary">{{ item.primary }}</p>
+            <p class="snapshot-secondary">{{ item.secondary }}</p>
+            <p class="entry-desc">{{ item.note }}</p>
+            <p class="entry-path">{{ item.hint }}</p>
+          </article>
+        </div>
+      </section>
+
       <section class="readonly-hints" data-testid="cand038-home-readonly-hints">
         <h3>只读导航提示</h3>
         <ul>
@@ -1041,6 +1065,79 @@ const personalMetricsCards = computed<SnapshotTrendCard[]>(() => {
   ]
 })
 
+const crossTeamCollabCards = computed<SnapshotTrendCard[]>(() => {
+  const todoItems = overviewData.value?.home_overview?.todo_items || []
+  const warnings = overviewData.value?.home_overview?.warnings || []
+  const recentActivities = overviewData.value?.home_overview?.recent_activities || []
+  const primaryActions = overviewData.value?.home_overview?.primary_actions || []
+
+  const totalTodoCount = todoItems.reduce((total, item) => total + item.count, 0)
+  const urgentTodoCount = todoItems
+    .filter((item) => item.status === 'urgent')
+    .reduce((total, item) => total + item.count, 0)
+  const warningTodoCount = todoItems
+    .filter((item) => item.status === 'warning')
+    .reduce((total, item) => total + item.count, 0)
+
+  const sourceTeamMap: Record<string, string> = {
+    quality: '质检团队',
+    sales_inventory: '供应链团队',
+    warehouse: '仓库团队',
+  }
+  const collabTeams = Array.from(
+    new Set(sourceStatuses.value.map((item) => sourceTeamMap[item.module] || `${item.module} 团队`)),
+  )
+  const ownerSummary = todoItems.map((item) => item.action_label).filter(Boolean)
+  const ownerDisplay = ownerSummary.length > 0 ? ownerSummary.join(' / ') : '查看动态 / 查看跟进 / 查看仓储'
+  const teamDisplay = collabTeams.length > 0 ? collabTeams.join(' / ') : '质检团队 / 供应链团队 / 仓库团队'
+  const collabHint = warnings[0] || recentActivities[0] || '当前没有跨团队协同阻塞，保留只读占位。'
+  const deadlineHint =
+    recentActivities[1] ||
+    `${primaryActions[0] || '查看动态'} 仅作为协同截止提醒，不触发真实催办。`
+
+  return [
+    {
+      key: 'collab',
+      title: '跨团队协同提醒',
+      badge: '协同',
+      primary: totalTodoCount > 0 ? `待协同 ${totalTodoCount} 项` : '待协同 0 项',
+      secondary:
+        urgentTodoCount > 0 || warningTodoCount > 0
+          ? `阻塞 ${urgentTodoCount} / 关注 ${warningTodoCount}`
+          : `源状态 ${sourceStatusOkCount.value}/${sourceStatusCount.value}`,
+      note: collabHint,
+      hint: '来源：home_overview.todo_items / warnings，只保留跨团队协同提醒展示。',
+    },
+    {
+      key: 'owner',
+      title: '协同责任人 / 团队摘要',
+      badge: '责任',
+      primary: ownerDisplay,
+      secondary: `协同团队 ${teamDisplay}`,
+      note: ownerSummary.length > 0 ? '按首页只读待办动作聚合责任人摘要。' : '按数据源映射责任团队，只做首页只读说明。',
+      hint: '首页只读展示责任人与团队，不开放指派、转办、确认写入。',
+    },
+    {
+      key: 'deadline',
+      title: '协同截止期 / 阻塞提示',
+      badge: '截止',
+      primary: urgentTodoCount > 0 ? `阻塞 ${urgentTodoCount} 项` : warningTodoCount > 0 ? `关注 ${warningTodoCount} 项` : '暂无阻塞项',
+      secondary: recentActivities[0] || '协同截止期按最近动态只读提示',
+      note: warnings[1] || deadlineHint,
+      hint: '协同截止期与阻塞提示仅做首页展示，不触发催办或确认动作。',
+    },
+    {
+      key: 'readonly',
+      title: '只读协同状态',
+      badge: '只读',
+      primary: `GET-only / write=${readbackWriteRequestsObservedCount.value}`,
+      secondary: '保留 7 个已完成首页切片',
+      note: 'create/update/delete/write 动作继续禁用，跨团队协同仅做摘要展示。',
+      hint: '保持 CAND038/CAND044/CAND050/CAND056/CAND062/CAND068/CAND074 已完成内容不回改。',
+    },
+  ]
+})
+
 const uiSourceReadback = computed(() => {
   const sourceRows = sourceStatuses.value.map((item) => `source.${item.module}=${item.status}`)
   const actions = overviewData.value?.home_overview?.primary_actions || []
@@ -1205,6 +1302,7 @@ watch(overviewQuery, () => {
 .business-alert-ranking-panel,
 .notice-policy-panel,
 .personal-metrics-panel,
+.crossteam-collab-panel,
 .readonly-hints,
 .source-readback {
   background: #fff;
@@ -1358,6 +1456,10 @@ watch(overviewQuery, () => {
 
 .personal-metric-card {
   min-height: 168px;
+}
+
+.crossteam-collab-card {
+  min-height: 176px;
 }
 
 .alert-severity-summary {
