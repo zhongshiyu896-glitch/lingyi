@@ -102,6 +102,10 @@
       v-if="canRead && detail && followupReadonlySummary"
       :summary="followupReadonlySummary"
     />
+    <ProductionOrderParityReadonly
+      v-if="canRead && detail && productionOrderParitySummary"
+      :summary="productionOrderParitySummary"
+    />
 
     <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-work-order-mapping">
       <template #header><span>Work Order 映射</span></template>
@@ -181,13 +185,20 @@ import {
 } from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
 import ProductionFollowupReadonly from '@/views/production/components/ProductionFollowupReadonly.vue'
+import ProductionOrderParityReadonly from '@/views/production/components/ProductionOrderParityReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
 
 const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const followupTemplates = ref<ProductionFollowupTemplateListItem[]>([])
-const { buildProductionFollowupDetailSummary, parseQueryString, parityRouteLabel, statusLabel } =
+const {
+  buildProductionFollowupDetailSummary,
+  buildProductionOrderParityDetailSummary,
+  parseQueryString,
+  parityRouteLabel,
+  statusLabel,
+} =
   useProductionPlanReadback()
 
 const detail = ref<ProductionPlanDetailData | null>(null)
@@ -267,27 +278,44 @@ const followupReadonlySummary = computed(() =>
     : null,
 )
 
+const productionOrderParitySummary = computed(() =>
+  detail.value
+    ? buildProductionOrderParityDetailSummary({
+        parity: parityTag.value,
+        detail: detail.value,
+      })
+    : null,
+)
+
 const buildSyntheticDetail = (): ProductionPlanDetailData => {
   const today = new Date().toISOString()
+  const isProductionOrderParity = parityTag.value === 'production-order'
   return {
     id: routePlanId.value || 900001,
-    plan_no: parseStringQuery(route.query.plan_no) || 'PP-LOCAL-260601',
+    plan_no: parseStringQuery(route.query.plan_no) || (isProductionOrderParity ? 'PP-LOCAL-260604' : 'PP-LOCAL-260601'),
     company: parseStringQuery(route.query.company) || 'LY-LOCAL-TEST',
-    sales_order: parseStringQuery(route.query.sales_order) || 'SO-LOCAL-260601',
-    sales_order_item: 'SOI-LOCAL-260601',
-    customer: parseStringQuery(route.query.customer) || '本地样例客户',
-    item_code: parseStringQuery(route.query.item_code) || 'ITEM-A',
+    sales_order: parseStringQuery(route.query.sales_order) || (isProductionOrderParity ? 'SO-LOCAL-260604' : 'SO-LOCAL-260601'),
+    sales_order_item: isProductionOrderParity ? 'SOI-LOCAL-260604' : 'SOI-LOCAL-260601',
+    customer: parseStringQuery(route.query.customer) || (isProductionOrderParity ? '订单镜像客户' : '本地样例客户'),
+    item_code: parseStringQuery(route.query.item_code) || (isProductionOrderParity ? 'ITEM-D' : 'ITEM-A'),
     bom_id: parsePositiveInteger(route.query.bom_id) || 101,
     bom_version: 'vlocal',
-    planned_qty: parseStringQuery(route.query.planned_qty) || '180',
-    planned_start_date: parseStringQuery(route.query.planned_start_date) || '2026-06-03',
-    status: parseStringQuery(route.query.status) || 'planned',
-    work_order: null,
-    erpnext_docstatus: null,
-    erpnext_status: null,
-    sync_status: 'blocked_scope',
-    last_synced_at: null,
-    latest_work_order_outbox: null,
+    planned_qty: parseStringQuery(route.query.planned_qty) || (isProductionOrderParity ? '260' : '180'),
+    planned_start_date: parseStringQuery(route.query.planned_start_date) || (isProductionOrderParity ? '2026-06-09' : '2026-06-03'),
+    status: parseStringQuery(route.query.status) || (isProductionOrderParity ? 'work_order_pending' : 'planned'),
+    work_order: isProductionOrderParity ? 'WO-LOCAL-260604' : null,
+    erpnext_docstatus: isProductionOrderParity ? 0 : null,
+    erpnext_status: isProductionOrderParity ? 'Draft' : null,
+    sync_status: isProductionOrderParity ? 'pending' : 'blocked_scope',
+    last_synced_at: isProductionOrderParity ? today : null,
+    latest_work_order_outbox: isProductionOrderParity
+      ? {
+          outbox_id: 900001,
+          erpnext_work_order: 'WO-LOCAL-260604',
+          status: 'pending',
+          error_code: 'READONLY_GUARD',
+        }
+      : null,
     write_entry_frozen: true,
     write_entry_frozen_reason: PRODUCTION_LOCAL_DETAIL_FROZEN_REASON,
     material_snapshots: [
@@ -302,7 +330,28 @@ const buildSyntheticDetail = (): ProductionPlanDetailData => {
         checked_at: null,
       },
     ],
-    job_cards: [],
+    job_cards: isProductionOrderParity
+      ? [
+          {
+            job_card: 'JC-LOCAL-260604-10',
+            operation: '裁剪',
+            operation_sequence: 10,
+            expected_qty: '260',
+            completed_qty: '260',
+            erpnext_status: 'Submitted',
+            synced_at: today,
+          },
+          {
+            job_card: 'JC-LOCAL-260604-20',
+            operation: '车缝',
+            operation_sequence: 20,
+            expected_qty: '260',
+            completed_qty: '160',
+            erpnext_status: 'Open',
+            synced_at: today,
+          },
+        ]
+      : [],
     created_at: today,
     updated_at: today,
   }

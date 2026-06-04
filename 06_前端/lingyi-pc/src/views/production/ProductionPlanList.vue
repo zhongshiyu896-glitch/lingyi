@@ -9,6 +9,7 @@
           </div>
           <div class="header-actions">
             <el-button @click="goSampleParity">样衣入口</el-button>
+            <el-button @click="goOrderParity">订单入口</el-button>
             <el-button @click="goProductionParity">生产跟进入口</el-button>
             <el-button type="primary" plain @click="goHome">工作台</el-button>
           </div>
@@ -78,6 +79,7 @@
       </el-card>
 
       <ProductionFollowupReadonly :summary="followupReadonlySummary" />
+      <ProductionOrderParityReadonly :summary="productionOrderParitySummary" />
 
       <el-card shadow="never" class="readonly-guard-card" data-testid="production-plan-readonly-guard-card">
         <template #header>
@@ -162,6 +164,7 @@ import {
   type ProductionPlanListItem,
 } from '@/api/production'
 import ProductionFollowupReadonly from '@/views/production/components/ProductionFollowupReadonly.vue'
+import ProductionOrderParityReadonly from '@/views/production/components/ProductionOrderParityReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
 
 interface PlanRow {
@@ -187,6 +190,7 @@ const listError = ref('')
 const planRows = ref<PlanRow[]>([])
 const followupTemplates = ref<ProductionFollowupTemplateListItem[]>([])
 const {
+  buildProductionOrderParityListSummary,
   buildProductionFollowupListSummary,
   groupLabel,
   parseQueryString,
@@ -252,6 +256,21 @@ const fallbackPlanSeeds: PlanRow[] = [
     workOrderStatus: 'pending',
     source: 'synthetic',
   },
+  {
+    id: null,
+    planNo: 'PP-LOCAL-260604',
+    orderNo: 'SO-LOCAL-260604',
+    styleCode: 'ITEM-D',
+    customer: '订单镜像客户',
+    group: '订单计划镜像',
+    plannedQty: 260,
+    progress: '52%',
+    planDate: '2026-06-09',
+    statusCode: 'work_order_pending',
+    statusLabel: '工单待同步',
+    workOrderStatus: 'blocked_scope',
+    source: 'synthetic',
+  },
 ]
 
 const statusBoard = computed(() => {
@@ -297,6 +316,13 @@ const followupReadonlySummary = computed(() =>
     parity: parityTag.value,
     rows: filteredPlans.value,
     templates: followupTemplates.value,
+  }),
+)
+
+const productionOrderParitySummary = computed(() =>
+  buildProductionOrderParityListSummary({
+    parity: parityTag.value,
+    rows: filteredPlans.value,
   }),
 )
 
@@ -392,6 +418,10 @@ const resetQuery = (): void => {
 
 const goSampleParity = (): void => {
   router.push('/sample/sampleListV2')
+}
+
+const goOrderParity = (): void => {
+  router.push('/production/productOrder')
 }
 
 const goProductionParity = (): void => {

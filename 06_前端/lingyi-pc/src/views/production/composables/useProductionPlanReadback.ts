@@ -14,14 +14,40 @@ import {
   PRODUCTION_FOLLOWUP_REMAINING_GAPS,
   type ProductionFollowupTagType,
 } from '@/views/production/constants/productionFollowupFields'
+import {
+  PRODUCTION_ORDER_PARITY_REMAINING_GAPS,
+  PRODUCTION_ORDER_PARITY_SCOPE_LABELS,
+  type ProductionOrderParityTagType,
+} from '@/views/production/constants/productionOrderParityFields'
 
 export interface ProductionPlanReadbackRowLike {
   planNo: string
+  orderNo: string
   statusCode: string
+  statusLabel?: string
   progress: string
   workOrderStatus: string
   group: string
   source: 'backend' | 'synthetic'
+}
+
+export interface ProductionOrderParityReadonlySummary {
+  parityScopeLabel: string
+  sourceLabel: string
+  parityLabel: string
+  parityTone: ProductionOrderParityTagType
+  processStatusLabel: string
+  processStatusTone: ProductionOrderParityTagType
+  downstreamGuardLabel: string
+  downstreamGuardTone: ProductionOrderParityTagType
+  readonlyGuardReason: string
+  remainingGap: string
+  mirroredOrderCount: number
+  jobCardReadyCount: number
+  blockedCount: number
+  statusSnapshot: string
+  retainedCand098: boolean
+  retainedCand176: boolean
 }
 
 export interface ProductionFollowupReadonlySummary {
@@ -82,6 +108,7 @@ const READONLY_GUARD_ACTIONS: ProductionReadonlyGuardAction[] = [
 ]
 
 const ACTIVE_TEMPLATE_STATUSES = new Set(['active', 'enabled', 'submitted', 'in_use'])
+const BLOCKED_WORK_ORDER_STATUSES = new Set(['', '-', 'pending', 'processing', 'failed', 'dead', 'blocked_scope'])
 
 const normalizeProgressRatio = (completed: number, total: number): string => {
   if (total <= 0) return '暂无进度快照'
@@ -183,6 +210,19 @@ const progressStatusSummary = (
   }
 }
 
+const buildProductionOrderStatusSnapshot = (
+  labels: string[],
+  progressHints: string[],
+): string => {
+  const snapshots = labels
+    .map((label, index) => {
+      const progress = progressHints[index]
+      return progress ? `${label}:${progress}` : label
+    })
+    .filter(Boolean)
+  return snapshots.length > 0 ? snapshots.join(' / ') : '暂无工序状态镜像'
+}
+
 export const useProductionPlanReadback = () => {
   const parseQueryString = (value: unknown): string => {
     const raw = Array.isArray(value) ? value[0] : value
@@ -242,6 +282,61 @@ export const useProductionPlanReadback = () => {
     }
   }
 
+  const buildProductionOrderParityListSummary = (params: {
+    parity: string
+    rows: ProductionPlanReadbackRowLike[]
+  }): ProductionOrderParityReadonlySummary => {
+    const mirroredRows = params.rows.filter((row) => row.orderNo && row.orderNo !== '-')
+    const blockedRows = params.rows.filter((row) => {
+      if (!row.orderNo || row.orderNo === '-') return true
+      if (BLOCKED_WORK_ORDER_STATUSES.has(row.workOrderStatus)) return true
+      return ['planned', 'material_checked', 'work_order_pending'].includes(row.statusCode)
+    })
+    const jobCardReadyRows = params.rows.filter(
+      (row) =>
+        ['work_order_created', 'job_cards_synced'].includes(row.statusCode) &&
+        !BLOCKED_WORK_ORDER_STATUSES.has(row.workOrderStatus),
+    )
+    const statusSnapshot = buildProductionOrderStatusSnapshot(
+      params.rows.slice(0, 3).map((row) => row.statusLabel || statusLabel(row.statusCode)),
+      params.rows.slice(0, 3).map((row) => row.progress),
+    )
+    const parityMatched = params.parity === 'production-order'
+    const processReady = jobCardReadyRows.length > 0
+    const blockedCount = blockedRows.length
+    return {
+      parityScopeLabel: PRODUCTION_ORDER_PARITY_SCOPE_LABELS[params.parity] || parityRouteLabel(params.parity),
+      sourceLabel: `${params.rows.length} 条计划 / backend-synthetic parity`,
+      parityLabel: parityMatched
+        ? mirroredRows.length > 0
+          ? 'production-order parity 已命中'
+          : 'production-order parity 待补齐'
+        : mirroredRows.length > 0
+          ? '检测到订单镜像映射'
+          : '未命中订单镜像',
+      parityTone: parityMatched ? (mirroredRows.length > 0 ? 'success' : 'warning') : 'info',
+      processStatusLabel: processReady
+        ? `${jobCardReadyRows.length} 条工序状态已镜像`
+        : blockedCount > 0
+          ? `${blockedCount} 条工序状态待补齐`
+          : '暂无工序状态镜像',
+      processStatusTone: processReady ? 'success' : blockedCount > 0 ? 'warning' : 'info',
+      downstreamGuardLabel: blockedCount > 0 ? '下游条件未满足' : '下游条件已齐备（只读）',
+      downstreamGuardTone: blockedCount > 0 ? 'danger' : 'success',
+      readonlyGuardReason:
+        blockedCount > 0
+          ? '存在缺失订单映射、待同步工单或工序状态未齐备的阻断项；当前页面仅提供只读核对，不开放真实派工、状态变更、库存影响。'
+          : '当前页面仅提供 production-order parity 与工序状态只读镜像；真实派工、状态变更、库存影响仍保持冻结。',
+      remainingGap: PRODUCTION_ORDER_PARITY_REMAINING_GAPS.join('；'),
+      mirroredOrderCount: mirroredRows.length,
+      jobCardReadyCount: jobCardReadyRows.length,
+      blockedCount,
+      statusSnapshot,
+      retainedCand098: true,
+      retainedCand176: true,
+    }
+  }
+
   const buildProductionFollowupDetailSummary = (params: {
     parity: string
     detail: ProductionPlanDetailData
@@ -279,7 +374,67 @@ export const useProductionPlanReadback = () => {
     }
   }
 
+  const buildProductionOrderParityDetailSummary = (params: {
+    parity: string
+    detail: ProductionPlanDetailData
+  }): ProductionOrderParityReadonlySummary => {
+    const hasOrderMirror = Boolean(params.detail.sales_order && params.detail.sales_order_item)
+    const hasWorkOrder = Boolean(params.detail.work_order)
+    const laggingJobCards = params.detail.job_cards.filter(
+      (item) => Number(item.completed_qty || 0) < Number(item.expected_qty || 0),
+    )
+    const readyJobCards = params.detail.job_cards.filter(
+      (item) => Number(item.completed_qty || 0) >= Number(item.expected_qty || 0),
+    )
+    const blockedReasons = [
+      !hasOrderMirror ? '缺少销售单映射' : '',
+      !hasWorkOrder ? '缺少 Work Order 映射' : '',
+      BLOCKED_WORK_ORDER_STATUSES.has(params.detail.sync_status || '') ? '工序同步未齐备' : '',
+      laggingJobCards.length > 0 ? `${laggingJobCards.length} 条工序待完成` : '',
+    ].filter(Boolean)
+    const statusSnapshot = buildProductionOrderStatusSnapshot(
+      params.detail.job_cards.slice(0, 3).map((item) => item.operation || '工序'),
+      params.detail.job_cards.slice(0, 3).map((item) => `${item.completed_qty}/${item.expected_qty}`),
+    )
+    const processStatusLabel = params.detail.job_cards.length
+      ? laggingJobCards.length > 0
+        ? `${laggingJobCards.length} 条工序状态待补齐`
+        : `${readyJobCards.length} 条工序状态已镜像`
+      : `${statusLabel(params.detail.status)} / 暂无工序镜像`
+    const blockedCount = blockedReasons.length
+    return {
+      parityScopeLabel: PRODUCTION_ORDER_PARITY_SCOPE_LABELS[params.parity] || parityRouteLabel(params.parity),
+      sourceLabel: `${params.detail.plan_no} / ${params.detail.sales_order || '-'}`,
+      parityLabel:
+        params.parity === 'production-order'
+          ? hasOrderMirror
+            ? 'production-order parity 已命中'
+            : 'production-order parity 待补齐'
+          : hasOrderMirror
+            ? '检测到订单镜像映射'
+            : '未命中订单镜像',
+      parityTone: params.parity === 'production-order' ? (hasOrderMirror ? 'success' : 'warning') : 'info',
+      processStatusLabel,
+      processStatusTone: laggingJobCards.length > 0 ? 'warning' : readyJobCards.length > 0 ? 'success' : 'info',
+      downstreamGuardLabel: blockedCount > 0 ? '下游条件未满足' : '下游条件已齐备（只读）',
+      downstreamGuardTone: blockedCount > 0 ? 'danger' : 'success',
+      readonlyGuardReason:
+        blockedCount > 0
+          ? `阻断提示：${blockedReasons.join('；')}；当前仅开放只读核对，不开放真实派工、状态变更、库存影响。`
+          : '当前详情仅开放 production-order parity 与工序状态只读镜像；真实派工、状态变更、库存影响仍保持冻结。',
+      remainingGap: PRODUCTION_ORDER_PARITY_REMAINING_GAPS.join('；'),
+      mirroredOrderCount: hasOrderMirror ? 1 : 0,
+      jobCardReadyCount: readyJobCards.length,
+      blockedCount,
+      statusSnapshot,
+      retainedCand098: true,
+      retainedCand176: true,
+    }
+  }
+
   return {
+    buildProductionOrderParityDetailSummary,
+    buildProductionOrderParityListSummary,
     buildProductionFollowupDetailSummary,
     buildProductionFollowupListSummary,
     groupLabel,
