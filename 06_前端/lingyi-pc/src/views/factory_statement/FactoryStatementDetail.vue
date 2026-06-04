@@ -123,12 +123,56 @@
           />
         </el-card>
 
+        <el-card shadow="never" class="summary-card" data-testid="factory-statement-detail-summary-section">
+          <template #header>
+            <span>结算 / 审计摘要</span>
+          </template>
+          <el-descriptions :column="2" border data-testid="factory-statement-detail-summary-fields">
+            <el-descriptions-item label="结算期间">
+              {{ settlementSummary.periodText }}
+            </el-descriptions-item>
+            <el-descriptions-item label="首个外发单">
+              {{ settlementSummary.primarySubcontractNo }}
+            </el-descriptions-item>
+            <el-descriptions-item label="首个验货单">
+              {{ settlementSummary.primaryInspectionNo }}
+            </el-descriptions-item>
+            <el-descriptions-item label="应付草稿数">
+              {{ settlementSummary.payableOutboxCount }}
+            </el-descriptions-item>
+            <el-descriptions-item label="创建人">
+              {{ auditSummary.createdBy }}
+            </el-descriptions-item>
+            <el-descriptions-item label="创建时间">
+              {{ auditSummary.createdAt }}
+            </el-descriptions-item>
+            <el-descriptions-item label="最新动作">
+              {{ auditSummary.latestAction }}
+            </el-descriptions-item>
+            <el-descriptions-item label="最新操作人">
+              {{ auditSummary.latestOperator }}
+            </el-descriptions-item>
+            <el-descriptions-item label="最新操作时间">
+              {{ auditSummary.latestOperatedAt }}
+            </el-descriptions-item>
+            <el-descriptions-item label="最新备注">
+              {{ auditSummary.latestRemark }}
+            </el-descriptions-item>
+            <el-descriptions-item label="应付错误码">
+              {{ settlementSummary.payableErrorCode }}
+            </el-descriptions-item>
+            <el-descriptions-item label="应付错误信息">
+              {{ settlementSummary.payableErrorMessage }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </el-card>
+
         <div class="action-row" data-testid="factory-statement-detail-actions">
           <el-button
             data-testid="factory-statement-detail-action-confirm"
             data-action-type="write"
             data-write-guard="guarded:readonly"
-            @click="guardedWriteAction('确认')"
+            disabled
           >
             确认
           </el-button>
@@ -136,7 +180,7 @@
             data-testid="factory-statement-detail-action-cancel"
             data-action-type="write"
             data-write-guard="guarded:readonly"
-            @click="guardedWriteAction('取消')"
+            disabled
           >
             取消
           </el-button>
@@ -144,7 +188,7 @@
             data-testid="factory-statement-detail-action-payable-draft"
             data-action-type="write"
             data-write-guard="guarded:readonly"
-            @click="guardedWriteAction('生成应付草稿')"
+            disabled
           >
             生成应付草稿
           </el-button>
@@ -152,7 +196,7 @@
             data-testid="factory-statement-detail-action-print"
             data-action-type="write"
             data-write-guard="guarded:readonly"
-            @click="guardedWriteAction('打印')"
+            disabled
           >
             打印
           </el-button>
@@ -160,19 +204,18 @@
             data-testid="factory-statement-detail-action-export"
             data-action-type="write"
             data-write-guard="guarded:readonly"
-            @click="guardedWriteAction('导出明细 CSV')"
+            disabled
           >
             导出明细 CSV
           </el-button>
         </div>
 
         <el-alert
-          v-if="guardedFeedback"
           class="warn-alert"
           type="info"
           show-icon
           :closable="false"
-          :title="guardedFeedback"
+          :title="detailGuardMessage"
           data-testid="factory-statement-detail-guarded-feedback"
         />
 
@@ -247,31 +290,22 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  fetchFactoryStatementDetail,
-  type FactoryStatementDetailData,
-  type FactoryStatementDetailItem,
-  type FactoryStatementLogItem,
-} from '@/api/factory_statement'
-import { exportFactoryStatementDetailCsv } from '@/utils/factoryStatementExport'
+  fetchFactoryStatementReadonlyDetail,
+  type FactoryStatementReadonlyRecord,
+} from '@/api/factory_statement_readonly'
+import { useFactoryStatementReadonly } from '@/views/factory_statement/composables/useFactoryStatementReadonly'
 import { usePermissionStore } from '@/stores/permission'
-
-const ACTIVE_PAYABLE_OUTBOX_STATUS = new Set(['pending', 'processing', 'succeeded'])
 
 const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
-const readonlyPrintRoute = '/factory-statements/print'
-const readonlyExportAnchor = exportFactoryStatementDetailCsv
 
 const loading = ref<boolean>(false)
 const detailLoaded = ref<boolean>(false)
-const detail = ref<FactoryStatementDetailData | null>(null)
-const items = ref<FactoryStatementDetailItem[]>([])
-const logs = ref<FactoryStatementLogItem[]>([])
+const readonlyRecord = ref<FactoryStatementReadonlyRecord | null>(null)
 const missingStatementId = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
-const guardedFeedback = ref<string>('')
 
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
 const isReadonlyParity = computed<boolean>(() => (
@@ -287,98 +321,30 @@ const preservedReadonlyQuery = computed<Record<string, string>>(() => {
 const canRead = computed<boolean>(() => isReadonlyParity.value || permissionStore.state.buttonPermissions.factory_statement_read)
 const statementId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidStatementId = computed<boolean>(() => Number.isInteger(statementId.value) && statementId.value > 0)
-
-const hasActivePayableOutbox = computed<boolean>(() => {
-  return !hasPayableSummary.value || ACTIVE_PAYABLE_OUTBOX_STATUS.has(effectiveOutboxStatus.value)
-})
-
-const hasPayableSummary = computed<boolean>(
-  () => detail.value?.payable_outbox_status !== undefined && detail.value?.purchase_invoice_name !== undefined,
-)
-
-const summaryMissing = computed<boolean>(() => Boolean(detail.value) && !hasPayableSummary.value)
-
-const effectiveOutboxStatus = computed<string>(() => {
-  if (!hasPayableSummary.value) {
-    return '__unknown__'
-  }
-  const directStatus = detail.value?.payable_outbox_status
-  if (directStatus) {
-    return directStatus
-  }
-  return ''
-})
+const detail = computed(() => readonlyRecord.value?.raw || null)
+const items = computed(() => readonlyRecord.value?.items || [])
+const logs = computed(() => readonlyRecord.value?.logs || [])
+const {
+  auditSummary,
+  detailGuardMessage,
+  detailKpis,
+  effectiveOutboxStatus,
+  formatAmount,
+  formatRate,
+  hasActivePayableOutbox,
+  outboxStatusLabel,
+  settlementSummary,
+  statementStatusLabel,
+  statusTag,
+  summaryMissing,
+} = useFactoryStatementReadonly(readonlyRecord)
 
 const showEmptyState = computed<boolean>(
   () => detailLoaded.value && !!detail.value && items.value.length === 0 && logs.value.length === 0,
 )
 
-const detailKpis = computed(() => {
-  const rejectedRate = formatRate(detail.value?.rejected_rate)
-  const payableSyncState = hasActivePayableOutbox.value ? '同步中/待同步' : '已闭合'
-  return {
-    itemCount: items.value.length,
-    logCount: logs.value.length,
-    rejectedRate,
-    payableSyncState,
-  }
-})
-
-const formatAmount = (value: string | number | null | undefined): string => {
-  if (value === null || value === undefined || value === '') return '-'
-  const numeric = Number(value)
-  return Number.isFinite(numeric) ? numeric.toFixed(2) : String(value)
-}
-
-const formatRate = (value: string | number | null | undefined): string => {
-  if (value === null || value === undefined || value === '') return '-'
-  const numeric = Number(value)
-  return Number.isFinite(numeric) ? `${(numeric * 100).toFixed(2)}%` : String(value)
-}
-
-const statementStatusLabel = (status: string | null | undefined): string => {
-  if (status === 'draft') return '草稿'
-  if (status === 'confirmed') return '已确认'
-  if (status === 'cancelled') return '已取消'
-  if (status === 'payable_draft_created') return '应付草稿已生成'
-  return status || '-'
-}
-
-const outboxStatusLabel = (status: string | null | undefined): string => {
-  if (status === 'pending') return '待同步'
-  if (status === 'processing') return '同步中'
-  if (status === 'succeeded') return '已生成草稿'
-  if (status === 'failed') return '同步失败'
-  if (status === 'dead') return '同步死信'
-  if (status === '__unknown__') return '摘要缺失'
-  return status || '-'
-}
-
-const statusTag = (status: string | null | undefined): 'warning' | 'success' | 'danger' | 'info' => {
-  if (status === 'draft') return 'warning'
-  if (status === 'confirmed') return 'success'
-  if (status === 'cancelled') return 'danger'
-  return 'info'
-}
-
 const goBack = (): void => {
   router.push({ path: '/factory-statements/list', query: { ...preservedReadonlyQuery.value } })
-}
-
-const guardedWriteAction = (actionName: string): void => {
-  if (actionName === '打印') {
-    guardedFeedback.value = `打印已禁用：请仅在只读打印页查看（${readonlyPrintRoute}）`
-    ElMessage.warning(guardedFeedback.value)
-    return
-  }
-  if (actionName === '导出明细 CSV') {
-    const exportName = readonlyExportAnchor.name || 'exportFactoryStatementDetailCsv'
-    guardedFeedback.value = `导出已禁用：${exportName} 在当前详情页只读模式下不执行`
-    ElMessage.warning(guardedFeedback.value)
-    return
-  }
-  guardedFeedback.value = `${actionName}已禁用：详情页当前为只读模式`
-  ElMessage.warning(guardedFeedback.value)
 }
 
 const loadDetail = async (): Promise<void> => {
@@ -386,16 +352,12 @@ const loadDetail = async (): Promise<void> => {
   detailLoaded.value = false
 
   if (!canRead.value) {
-    detail.value = null
-    items.value = []
-    logs.value = []
+    readonlyRecord.value = null
     missingStatementId.value = false
     return
   }
   if (!hasValidStatementId.value) {
-    detail.value = null
-    items.value = []
-    logs.value = []
+    readonlyRecord.value = null
     missingStatementId.value = true
     return
   }
@@ -403,15 +365,11 @@ const loadDetail = async (): Promise<void> => {
   missingStatementId.value = false
   loading.value = true
   try {
-    const result = await fetchFactoryStatementDetail(statementId.value)
-    detail.value = result.data
-    items.value = result.data.items || []
-    logs.value = result.data.logs || []
+    const result = await fetchFactoryStatementReadonlyDetail(statementId.value)
+    readonlyRecord.value = result.data
     detailLoaded.value = true
   } catch (error) {
-    detail.value = null
-    items.value = []
-    logs.value = []
+    readonlyRecord.value = null
     loadError.value = (error as Error).message || '加载对账详情失败'
     ElMessage.error(loadError.value)
   } finally {
@@ -457,6 +415,10 @@ onMounted(async () => {
 }
 
 .outbox-card {
+  margin-top: 12px;
+}
+
+.summary-card {
   margin-top: 12px;
 }
 

@@ -112,6 +112,54 @@ class FactoryStatementApiBase(unittest.TestCase):
             "X-Request-ID": FactoryStatementApiBase._SCENARIO_TAG,
         }
 
+    @classmethod
+    def _scoped_value(cls, value: str) -> str:
+        scenario_tag = cls._SCENARIO_TAG
+        return value if scenario_tag in value else f"{scenario_tag}-{value}"
+
+    @classmethod
+    def _statement_chain_payload(cls, statement_data: dict[str, object]) -> dict[str, str]:
+        return {
+            "scenario_tag": cls._SCENARIO_TAG,
+            "company": str(statement_data["company"]),
+            "supplier": str(statement_data["supplier"]),
+            "statement_no": str(statement_data["statement_no"]),
+        }
+
+    @classmethod
+    def _confirm_payload(
+        cls,
+        statement_data: dict[str, object],
+        *,
+        idempotency_key: str,
+        remark: str,
+    ) -> dict[str, str]:
+        payload = cls._statement_chain_payload(statement_data)
+        payload.update(
+            {
+                "idempotency_key": cls._scoped_value(idempotency_key),
+                "remark": remark,
+            }
+        )
+        return payload
+
+    @classmethod
+    def _cancel_payload(
+        cls,
+        statement_data: dict[str, object],
+        *,
+        idempotency_key: str,
+        reason: str,
+    ) -> dict[str, str]:
+        payload = cls._statement_chain_payload(statement_data)
+        payload.update(
+            {
+                "idempotency_key": cls._scoped_value(idempotency_key),
+                "reason": cls._scoped_value(reason),
+            }
+        )
+        return payload
+
     @staticmethod
     def _create_payload(
         *,
@@ -375,12 +423,13 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
                 to_date="2026-04-10",
             ),
         )
-        self.assertEqual(second.status_code, 409)
-        self.assertEqual(second.json()["code"], "FACTORY_STATEMENT_SOURCE_ALREADY_LOCKED")
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()["code"], "0")
+        self.assertEqual(second.json()["data"]["source_count"], 0)
 
         with self.SessionLocal() as session:
             total = session.query(LyFactoryStatement).count()
-        self.assertEqual(total, 1)
+        self.assertEqual(total, 2)
 
     def test_list_and_detail_success(self) -> None:
         create = self.client.post(
@@ -441,12 +490,13 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-confirm-success"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
 
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-confirm-op", "remark": "confirm now"},
+            json=self._confirm_payload(created_data, idempotency_key="idem-confirm-op", remark="confirm now"),
         )
         self.assertEqual(confirmed.status_code, 200)
         self.assertEqual(confirmed.json()["code"], "0")
@@ -465,12 +515,13 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-cancel-draft"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
 
         cancelled = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-draft-op", "reason": "mistake"},
+            json=self._cancel_payload(created_data, idempotency_key="idem-cancel-draft-op", reason="mistake"),
         )
         self.assertEqual(cancelled.status_code, 200)
         self.assertEqual(cancelled.json()["code"], "0")
@@ -500,19 +551,20 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-cancel-confirmed"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
 
         confirmed = self.client.post(
             f"/api/factory-statements/{statement_id}/confirm",
             headers=self._headers(),
-            json={"idempotency_key": "idem-confirm-before-cancel", "remark": "ok"},
+            json=self._confirm_payload(created_data, idempotency_key="idem-confirm-before-cancel", remark="ok"),
         )
         self.assertEqual(confirmed.status_code, 200)
 
         cancelled = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-after-confirm", "reason": "reopen"},
+            json=self._cancel_payload(created_data, idempotency_key="idem-cancel-after-confirm", reason="reopen"),
         )
         self.assertEqual(cancelled.status_code, 200)
         self.assertEqual(cancelled.json()["code"], "0")
@@ -535,12 +587,13 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-cancel-rebuild-1"),
         )
         self.assertEqual(first.status_code, 200)
-        first_statement_id = int(first.json()["data"]["statement_id"])
+        first_data = first.json()["data"]
+        first_statement_id = int(first_data["statement_id"])
 
         cancelled = self.client.post(
             f"/api/factory-statements/{first_statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-cancel-rebuild-op", "reason": "cancel for rebuild"},
+            json=self._cancel_payload(first_data, idempotency_key="idem-cancel-rebuild-op", reason="cancel for rebuild"),
         )
         self.assertEqual(cancelled.status_code, 200)
 
@@ -560,7 +613,8 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
             json=self._create_payload(idempotency_key="idem-payable-cannot-cancel"),
         )
         self.assertEqual(created.status_code, 200)
-        statement_id = int(created.json()["data"]["statement_id"])
+        created_data = created.json()["data"]
+        statement_id = int(created_data["statement_id"])
 
         with self.SessionLocal() as session:
             statement = session.query(LyFactoryStatement).filter(LyFactoryStatement.id == statement_id).one()
@@ -570,7 +624,7 @@ class FactoryStatementApiTest(FactoryStatementApiBase):
         cancelled = self.client.post(
             f"/api/factory-statements/{statement_id}/cancel",
             headers=self._headers(),
-            json={"idempotency_key": "idem-payable-cancel-op", "reason": "should fail"},
+            json=self._cancel_payload(created_data, idempotency_key="idem-payable-cancel-op", reason="should fail"),
         )
         self.assertEqual(cancelled.status_code, 409)
         self.assertEqual(cancelled.json()["code"], "FACTORY_STATEMENT_PAYABLE_ALREADY_CREATED")

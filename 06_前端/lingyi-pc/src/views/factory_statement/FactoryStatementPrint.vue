@@ -6,9 +6,18 @@
         type="primary"
         data-testid="factory-statement-print-guarded-print-button"
         data-write-guard="guarded:readonly-print"
-        @click="printNow"
+        disabled
       >
         打印
+      </el-button>
+      <el-button data-write-guard="guarded:readonly-print" disabled>
+        确认
+      </el-button>
+      <el-button data-write-guard="guarded:readonly-print" disabled>
+        取消
+      </el-button>
+      <el-button data-write-guard="guarded:readonly-print" disabled>
+        导出
       </el-button>
     </div>
     <p
@@ -94,10 +103,18 @@
         </article>
       </section>
 
+      <section class="readonly-summary-grid" data-testid="factory-statement-print-readonly-summary">
+        <div><span>首个外发单：</span>{{ printSummary.primarySubcontractNo }}</div>
+        <div><span>首个验货单：</span>{{ printSummary.primaryInspectionNo }}</div>
+        <div><span>创建人：</span>{{ printSummary.createdBy }}</div>
+        <div><span>最新动作：</span>{{ printSummary.latestAction }}</div>
+        <div><span>最新操作时间：</span>{{ printSummary.latestOperatedAt }}</div>
+        <div><span>应付发票草稿：</span>{{ printSummary.payableInvoice }}</div>
+      </section>
+
       <el-alert
-        v-if="guardedFeedback"
         type="warning"
-        :title="guardedFeedback"
+        :title="printGuardMessage"
         :closable="false"
         show-icon
         class="guarded-alert"
@@ -188,11 +205,10 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  fetchFactoryStatementDetail,
-  type FactoryStatementDetailData,
-  type FactoryStatementDetailItem,
-  type FactoryStatementLogItem,
-} from '@/api/factory_statement'
+  fetchFactoryStatementReadonlyDetail,
+  type FactoryStatementReadonlyRecord,
+} from '@/api/factory_statement_readonly'
+import { useFactoryStatementReadonly } from '@/views/factory_statement/composables/useFactoryStatementReadonly'
 import { usePermissionStore } from '@/stores/permission'
 
 const route = useRoute()
@@ -200,14 +216,11 @@ const router = useRouter()
 const permissionStore = usePermissionStore()
 
 const loading = ref<boolean>(false)
-const detail = ref<FactoryStatementDetailData | null>(null)
-const items = ref<FactoryStatementDetailItem[]>([])
-const logs = ref<FactoryStatementLogItem[]>([])
+const readonlyRecord = ref<FactoryStatementReadonlyRecord | null>(null)
 const generatedAt = ref<string>('')
 const missingStatementId = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
-const guardedFeedback = ref<string>('')
 
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
 const isReadonlyParity = computed<boolean>(() => (
@@ -224,64 +237,27 @@ const canRead = computed<boolean>(() => isReadonlyParity.value || permissionStor
 const printUser = computed<string>(() => permissionStore.state.username || '-')
 const statementId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidStatementId = computed<boolean>(() => Number.isInteger(statementId.value) && statementId.value > 0)
-
-const showText = (value: string | number | null | undefined): string => {
-  if (value === null || value === undefined || value === '') {
-    return '-'
-  }
-  return String(value)
-}
-
-const statementStatusLabel = (status: string | null | undefined): string => {
-  if (status === 'draft') {
-    return '草稿'
-  }
-  if (status === 'confirmed') {
-    return '已确认'
-  }
-  if (status === 'cancelled') {
-    return '已取消'
-  }
-  if (status === 'payable_draft_created') {
-    return '应付草稿已生成'
-  }
-  return status || '-'
-}
-
-const outboxStatusLabel = (status: string | null | undefined): string => {
-  if (status === 'pending') {
-    return '待同步'
-  }
-  if (status === 'processing') {
-    return '同步中'
-  }
-  if (status === 'succeeded') {
-    return '已生成草稿'
-  }
-  if (status === 'failed') {
-    return '同步失败'
-  }
-  if (status === 'dead') {
-    return '同步死信'
-  }
-  return '-'
-}
+const detail = computed(() => readonlyRecord.value?.raw || null)
+const items = computed(() => readonlyRecord.value?.items || [])
+const logs = computed(() => readonlyRecord.value?.logs || [])
+const {
+  outboxStatusLabel,
+  printGuardMessage,
+  printSummary,
+  showText,
+  statementStatusLabel,
+} = useFactoryStatementReadonly(readonlyRecord)
 
 const loadDetail = async (): Promise<void> => {
   loadError.value = ''
-  guardedFeedback.value = ''
   if (!canRead.value) {
-    detail.value = null
-    items.value = []
-    logs.value = []
+    readonlyRecord.value = null
     generatedAt.value = ''
     missingStatementId.value = false
     return
   }
   if (!hasValidStatementId.value) {
-    detail.value = null
-    items.value = []
-    logs.value = []
+    readonlyRecord.value = null
     generatedAt.value = ''
     missingStatementId.value = true
     return
@@ -290,25 +266,19 @@ const loadDetail = async (): Promise<void> => {
 
   loading.value = true
   try {
-    const result = await fetchFactoryStatementDetail(statementId.value)
+    const result = await fetchFactoryStatementReadonlyDetail(statementId.value)
     const payload = result.data
     if (!payload) {
-      detail.value = null
-      items.value = []
-      logs.value = []
+      readonlyRecord.value = null
       generatedAt.value = ''
       return
     }
-    detail.value = payload
-    items.value = payload.items || []
-    logs.value = payload.logs || []
+    readonlyRecord.value = payload
     generatedAt.value = new Date().toLocaleString()
   } catch (error) {
     const message = (error as Error).message || '未知错误'
     loadError.value = message
-    detail.value = null
-    items.value = []
-    logs.value = []
+    readonlyRecord.value = null
     generatedAt.value = ''
     ElMessage.error(message)
   } finally {
@@ -328,19 +298,6 @@ const goBack = (): void => {
       id: String(statementId.value),
     },
   })
-}
-
-const contractPrintEntrypoint = (): void => {
-  // Keep contract-required print entry, but never execute in readonly mode.
-  if (import.meta.env.MODE === '__factory_statement_print_contract__') {
-    window.print()
-  }
-}
-
-const printNow = (): void => {
-  contractPrintEntrypoint()
-  guardedFeedback.value = '当前为只读模式，打印动作已禁用。'
-  ElMessage.warning(guardedFeedback.value)
 }
 
 onMounted(async () => {
@@ -405,6 +362,13 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+  margin-bottom: 12px;
+}
+
+.readonly-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
   margin-bottom: 12px;
 }
 
