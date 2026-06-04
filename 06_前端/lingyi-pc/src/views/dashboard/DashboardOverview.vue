@@ -3,9 +3,13 @@
     <section class="dashboard-header">
       <div>
         <h1>经营总览</h1>
-        <p>工作台 KPI、流程状态与异常面板（UI 1:1 对齐）</p>
+        <p>工作台业务卡片、待办摘要与只读守卫</p>
       </div>
       <div class="header-actions">
+        <el-tag effect="plain" type="info">company={{ readbackScenarioTag }}</el-tag>
+        <el-tag v-if="routeAliasSummary.isAlias" effect="plain" type="warning">
+          source_route={{ routeAliasSummary.sourceRoute }}
+        </el-tag>
         <el-select v-model="query.material" clearable placeholder="物料">
           <el-option v-for="item in materialOptions" :key="item" :label="item" :value="item" />
         </el-select>
@@ -18,17 +22,19 @@
       </div>
     </section>
 
-    <section class="readback-summary" data-testid="cand006-dashboard-readback-summary">
+    <section class="readback-summary" data-testid="cand122-dashboard-readonly-summary">
       <header>
-        <h2>经营看板聚合（只读）</h2>
-        <el-tag effect="plain" type="info">company={{ readbackScenarioTag }}</el-tag>
+        <h2>工作台只读聚合</h2>
+        <el-tag effect="plain" :type="routeAliasSummary.isAlias ? 'warning' : 'success'">
+          final_path={{ routeAliasSummary.finalPath }}
+        </el-tag>
       </header>
       <el-alert
         v-if="readbackError"
         type="warning"
         :closable="false"
         :title="readbackError"
-        data-testid="cand006-dashboard-readback-error"
+        data-testid="cand122-dashboard-readonly-error"
       />
       <div v-else class="summary-grid">
         <article v-for="item in readbackSummaryModules" :key="item.key" class="summary-card">
@@ -40,20 +46,87 @@
       <div class="summary-checkpoint-row">
         <span>dashboard_overview_loaded={{ dashboardOverviewReadbackSummarySuccess ? 'true' : 'false' }}</span>
         <span>workspace_redirect_fixed={{ workspaceRedirectReadbackSuccess ? 'true' : 'false' }}</span>
-        <span>workspace_final_path={{ workspaceFinalPath }}</span>
+        <span>workspace_source_route={{ routeAliasSummary.sourceRoute }}</span>
+        <span>workspace_final_path={{ routeAliasSummary.finalPath }}</span>
         <span>write_requests_observed_count={{ readbackWriteRequestsObservedCount }}</span>
       </div>
     </section>
 
-    <section class="kpi-strip" data-testid="yisuan-1to1-dashboard-kpi-strip">
-      <article v-for="item in kpis" :key="item.label" class="kpi-item">
+    <section class="workbench-board" data-testid="cand122-workbench-business-cards">
+      <header>
+        <div>
+          <h2>工作台业务卡片</h2>
+          <p>来源于 dashboard overview / workplace 只读链路，入口按守卫状态开放只读查看。</p>
+        </div>
+        <el-tag effect="plain" type="info">guard=readonly</el-tag>
+      </header>
+      <div class="workbench-grid">
+        <article v-for="item in workbenchCards" :key="item.key" class="workbench-card">
+          <div class="workbench-card-top">
+            <div>
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.sourceLabel }}</p>
+            </div>
+            <el-tag effect="plain" :type="item.guardTone">{{ item.guardLabel }}</el-tag>
+          </div>
+          <strong class="workbench-metric">{{ item.metricValue }}</strong>
+          <span class="workbench-metric-label">{{ item.metricLabel }}</span>
+          <p class="workbench-detail">{{ item.detail }}</p>
+          <small class="workbench-note">{{ item.disabledReason }}</small>
+          <div class="workbench-actions">
+            <el-button size="small" type="primary" plain :disabled="item.entryDisabled" @click="go(item.path)">
+              只读进入
+            </el-button>
+            <el-button size="small" disabled>{{ item.writeGuardLabel }}</el-button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="todo-guard-grid">
+      <article class="todo-summary" data-testid="cand122-dashboard-todo-summary">
+        <header>
+          <h2>待办摘要</h2>
+          <el-tag effect="plain" type="info">home_overview.todo_items</el-tag>
+        </header>
+        <div class="todo-items">
+          <article v-for="item in todoSummaryItems" :key="item.key" class="todo-item">
+            <div class="todo-item-top">
+              <strong>{{ item.title }}</strong>
+              <el-tag effect="plain" :type="item.tone">{{ item.statusLabel }}</el-tag>
+            </div>
+            <span class="todo-count">{{ item.count }} 项</span>
+            <small class="todo-note">{{ item.note }}</small>
+          </article>
+        </div>
+      </article>
+
+      <article class="guard-summary" data-testid="cand122-dashboard-guard-summary">
+        <header>
+          <h2>入口守卫状态</h2>
+          <el-tag effect="plain" type="warning">{{ routeAliasSummary.aliasReason }}</el-tag>
+        </header>
+        <div class="guard-items">
+          <article v-for="item in healthGuardItems" :key="item.key" class="guard-item">
+            <div class="guard-item-top">
+              <strong>{{ item.label }}</strong>
+              <el-tag effect="plain" :type="item.tone">{{ item.status }}</el-tag>
+            </div>
+            <small>{{ item.detail }}</small>
+          </article>
+        </div>
+      </article>
+    </section>
+
+    <section class="kpi-strip" data-testid="cand122-dashboard-kpi-strip">
+      <article v-for="item in kpiItems" :key="item.label" class="kpi-item">
         <span class="label">{{ item.label }}</span>
         <strong class="value">{{ item.value }}</strong>
         <small class="trend">{{ item.trend }}</small>
       </article>
     </section>
 
-    <section class="flow-panel" data-testid="yisuan-1to1-dashboard-flow-panel">
+    <section class="flow-panel" data-testid="cand122-dashboard-flow-panel">
       <header>
         <h2>流程状态</h2>
         <el-tag effect="plain">只读视图</el-tag>
@@ -69,7 +142,7 @@
     </section>
 
     <section class="dashboard-body">
-      <article class="exception-list" data-testid="yisuan-1to1-dashboard-exception-list">
+      <article class="exception-list" data-testid="cand122-dashboard-exception-list">
         <header>
           <h2>异常列表</h2>
           <el-input
@@ -84,21 +157,22 @@
           <el-table-column prop="module" label="模块" width="140" />
           <el-table-column prop="desc" label="异常描述" min-width="220" />
           <el-table-column prop="severity" label="级别" width="120" />
-          <el-table-column prop="updatedAt" label="更新时间" width="160" />
+          <el-table-column prop="updatedAt" label="更新时间" width="180" />
         </el-table>
       </article>
 
-      <article class="quick-actions" data-testid="yisuan-1to1-dashboard-quick-actions">
-        <h2>快捷操作</h2>
-        <button type="button" @click="go('/home')">返回首页</button>
-        <button type="button" @click="go('/sales-inventory/sales-orders')">查看大货订单</button>
-        <button type="button" @click="go('/subcontract/list?parity=material-purchase')">查看采购外协</button>
-        <button type="button" @click="go('/sales-inventory/stock-ledger')">查看库存流水</button>
-        <button type="button" @click="go('/warehouse')">查看仓库看板</button>
+      <article class="readonly-actions" data-testid="cand122-dashboard-readonly-actions">
+        <h2>受控动作</h2>
+        <div class="readonly-action-list">
+          <article v-for="item in readonlyActions" :key="item.key" class="readonly-action-item">
+            <el-button size="small" disabled>{{ item.label }}</el-button>
+            <small>{{ item.reason }}</small>
+          </article>
+        </div>
       </article>
     </section>
 
-    <section class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
+    <section class="source-readback" data-testid="cand122-dashboard-source-readback">
       <h2>只读数据来源</h2>
       <ul>
         <li v-for="item in sourceReadback" :key="item">{{ item }}</li>
@@ -110,45 +184,20 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import type { DashboardOverviewData, DashboardOverviewQuery } from '@/api/dashboard'
 import {
-  fetchDashboardOverview,
-  type DashboardOverviewData,
-  type DashboardOverviewQuery,
-} from '@/api/dashboard'
-
-interface KPIItem {
-  label: string
-  value: string
-  trend: string
-}
-
-interface FlowNode {
-  name: string
-  pending: number
-  overdue: number
-  owner: string
-  flowType: string
-}
-
-interface ExceptionItem {
-  code: string
-  module: string
-  desc: string
-  severity: string
-  updatedAt: string
-}
-
-interface SummaryCardItem {
-  key: string
-  label: string
-  value: string
-  note: string
-}
+  fetchDashboardWorkbenchReadonly,
+  type DashboardHealthSummaryData,
+} from '@/api/dashboard_readonly'
+import { useDashboardWorkbenchReadonly } from './composables/useDashboardWorkbenchReadonly'
 
 const router = useRouter()
 const route = useRoute()
-const readbackError = ref('')
+
 const overviewData = ref<DashboardOverviewData | null>(null)
+const healthSummary = ref<DashboardHealthSummaryData | null>(null)
+const readbackError = ref('')
+const exceptionKeyword = ref('')
 
 const query = reactive({
   material: '',
@@ -157,6 +206,9 @@ const query = reactive({
 })
 
 const DEFAULT_COMPANY = '领意服装'
+const materialOptions = ['主面料', '辅料', '包材', '样衣']
+const warehouseOptions = ['主仓', '裁片仓', '成品仓', '外协仓']
+const flowTypeOptions = ['采购', '外协', '生产', '库存']
 
 const readQueryText = (value: unknown): string | undefined => {
   if (Array.isArray(value)) {
@@ -169,14 +221,7 @@ const readQueryText = (value: unknown): string | undefined => {
   return normalized || undefined
 }
 
-const materialOptions = ['主面料', '辅料', '包材', '样衣']
-const warehouseOptions = ['主仓', '裁片仓', '成品仓', '外协仓']
-const flowTypeOptions = ['采购', '外协', '生产', '库存']
-const exceptionKeyword = ref('')
-
-const readbackScenarioTag = computed(() => {
-  return readQueryText(route.query.company) || DEFAULT_COMPANY
-})
+const readbackScenarioTag = computed(() => readQueryText(route.query.company) || DEFAULT_COMPANY)
 
 const overviewQuery = computed<DashboardOverviewQuery>(() => ({
   company: readbackScenarioTag.value,
@@ -187,91 +232,28 @@ const overviewQuery = computed<DashboardOverviewQuery>(() => ({
   keyword: readQueryText(route.query.keyword),
 }))
 
-const readbackSummaryModules = computed<SummaryCardItem[]>(() => {
-  const statuses = overviewData.value?.source_status || []
-  return statuses.map((item) => ({
-    key: item.module,
-    label: item.module,
-    value: item.status,
-    note: 'dashboard/overview 只读聚合',
-  }))
+const {
+  routeAliasSummary,
+  readbackSummaryModules,
+  kpiItems,
+  flowNodes,
+  exceptionRows,
+  workbenchCards,
+  todoSummaryItems,
+  healthGuardItems,
+  readonlyActions,
+  sourceReadback,
+} = useDashboardWorkbenchReadonly({
+  overviewData,
+  healthSummary,
+  route,
 })
 
 const readbackWriteRequestsObservedCount = computed(() => 0)
-const workspaceFinalPath = computed(() => '/dashboard/overview')
 const dashboardOverviewReadbackSummarySuccess = computed(() => readbackSummaryModules.value.length > 0)
-const workspaceRedirectReadbackSuccess = computed(() => true)
-
-const kpis = computed<KPIItem[]>(() => {
-  const metricCards = overviewData.value?.home_overview?.metric_cards || []
-  return metricCards.map((item) => ({
-    label: item.label,
-    value: item.unit ? `${item.value}${item.unit}` : item.value,
-    trend: item.trend || '只读汇总',
-  }))
-})
-
-const inferFlowType = (label: string): string => {
-  if (label.includes('仓') || label.includes('库存')) return '库存'
-  if (label.includes('采购')) return '采购'
-  if (label.includes('外协')) return '外协'
-  return '生产'
-}
-
-const flowNodes = computed<FlowNode[]>(() => {
-  const nodes = overviewData.value?.kanban?.flow_nodes || []
-  return nodes.map((node) => ({
-    name: node.label,
-    pending: node.status === 'completed' ? 0 : 1,
-    overdue: node.status === 'active' ? 1 : 0,
-    owner: node.route || '只读聚合',
-    flowType: inferFlowType(node.label),
-  }))
-})
-
-const exceptions = computed<ExceptionItem[]>(() => {
-  const warnings = overviewData.value?.home_overview?.warnings || []
-  const summaries = overviewData.value?.home_overview?.business_summary || []
-  const generatedAt = overviewData.value?.generated_at || ''
-  const rows: ExceptionItem[] = warnings.map((item, index) => ({
-    code: `WARN-${String(index + 1).padStart(2, '0')}`,
-    module: '看板',
-    desc: item,
-    severity: '中',
-    updatedAt: generatedAt,
-  }))
-  if (overviewData.value) {
-    rows.push(
-      {
-        code: 'SUM-01',
-        module: '库存',
-        desc: summaries[1] || `低于安全库存款号 ${overviewData.value.sales_inventory.below_safety_count} 个`,
-        severity: Number(overviewData.value.sales_inventory.below_safety_count) > 0 ? '高' : '低',
-        updatedAt: generatedAt,
-      },
-      {
-        code: 'SUM-02',
-        module: '仓储',
-        desc: summaries[3] || `仓储高危预警 ${overviewData.value.warehouse.critical_alert_count} 条`,
-        severity: Number(overviewData.value.warehouse.critical_alert_count) > 0 ? '高' : '低',
-        updatedAt: generatedAt,
-      },
-    )
-  }
-  return rows
-})
-
-const loadOverview = async (): Promise<void> => {
-  readbackError.value = ''
-  try {
-    const response = await fetchDashboardOverview(overviewQuery.value)
-    overviewData.value = response.data
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    overviewData.value = null
-    readbackError.value = `经营看板聚合获取失败：${message}`
-  }
-}
+const workspaceRedirectReadbackSuccess = computed(
+  () => routeAliasSummary.value.finalPath === routeAliasSummary.value.expectedFinalPath,
+)
 
 const filteredFlowNodes = computed(() => {
   return flowNodes.value.filter((node) => {
@@ -284,25 +266,28 @@ const filteredFlowNodes = computed(() => {
 
 const filteredExceptions = computed(() => {
   const keyword = exceptionKeyword.value.trim()
-  if (!keyword) {
-    return exceptions.value
-  }
-  return exceptions.value.filter((item) => {
+  if (!keyword) return exceptionRows.value
+  return exceptionRows.value.filter((item) => {
     return item.code.includes(keyword) || item.module.includes(keyword) || item.desc.includes(keyword)
   })
 })
 
-const sourceReadback = computed(() => {
-  const statuses = overviewData.value?.source_status || []
-  const quickFilters = overviewData.value?.kanban?.quick_filters || []
-  return [
-    ...statuses.map((item) => `source.${item.module}=${item.status}`),
-    ...quickFilters.slice(0, 5).map((item) => `filter.${item}`),
-  ]
-})
+const loadOverview = async (): Promise<void> => {
+  readbackError.value = ''
+  try {
+    const payload = await fetchDashboardWorkbenchReadonly(overviewQuery.value)
+    overviewData.value = payload.overview
+    healthSummary.value = payload.healthSummary
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    overviewData.value = null
+    healthSummary.value = null
+    readbackError.value = `经营工作台只读聚合获取失败：${message}`
+  }
+}
 
 const go = (path: string): void => {
-  router.push(path)
+  void router.push(path)
 }
 
 onMounted(() => {
@@ -324,11 +309,31 @@ watch(overviewQuery, () => {
   gap: 14px;
 }
 
-.dashboard-header {
+.dashboard-header,
+.readback-summary,
+.workbench-board,
+.todo-summary,
+.guard-summary,
+.flow-panel,
+.exception-list,
+.readonly-actions,
+.source-readback {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+}
+
+.dashboard-header,
+.readback-summary,
+.workbench-board,
+.flow-panel,
+.exception-list,
+.readonly-actions,
+.source-readback {
   padding: 14px;
+}
+
+.dashboard-header {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -349,56 +354,82 @@ watch(overviewQuery, () => {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
-.readback-summary {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 14px;
-}
-
-.readback-summary > header {
+.readback-summary > header,
+.workbench-board > header,
+.flow-panel > header,
+.todo-summary > header,
+.guard-summary > header,
+.exception-list > header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 10px;
 }
 
-.readback-summary h2 {
+.readback-summary h2,
+.workbench-board h2,
+.flow-panel h2,
+.todo-summary h2,
+.guard-summary h2,
+.exception-list h2,
+.readonly-actions h2,
+.source-readback h2 {
   margin: 0;
   font-size: 16px;
 }
 
-.summary-grid {
+.summary-grid,
+.workbench-grid,
+.kpi-strip,
+.flow-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
 }
 
-.summary-card {
+.summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.summary-card,
+.workbench-card,
+.todo-item,
+.guard-item,
+.kpi-item,
+.flow-card,
+.readonly-action-item {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+  background: #fff;
+}
+
+.summary-card,
+.workbench-card,
+.todo-item,
+.guard-item,
+.kpi-item,
+.flow-card {
   padding: 10px;
 }
 
-.summary-label {
-  display: block;
+.summary-label,
+.workbench-metric-label,
+.todo-note,
+.summary-note,
+.kpi-item .label {
   color: #6b7280;
   font-size: 12px;
 }
 
-.summary-value {
+.summary-value,
+.workbench-metric,
+.kpi-item .value {
   display: block;
   margin-top: 6px;
   font-size: 20px;
-}
-
-.summary-note {
-  display: block;
-  margin-top: 6px;
-  color: #6b7280;
-  font-size: 12px;
 }
 
 .summary-checkpoint-row {
@@ -410,29 +441,86 @@ watch(overviewQuery, () => {
   font-size: 12px;
 }
 
-.kpi-strip {
+.workbench-board > header p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.workbench-grid {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+.workbench-card {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.workbench-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.workbench-card-top h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.workbench-card-top p,
+.workbench-detail,
+.workbench-note,
+.guard-item small {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.workbench-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.todo-guard-grid,
+.dashboard-body {
+  display: grid;
+  gap: 12px;
+}
+
+.todo-guard-grid {
+  grid-template-columns: 1.2fr 1fr;
+}
+
+.todo-summary,
+.guard-summary {
+  padding: 14px;
+}
+
+.todo-items,
+.guard-items,
+.readonly-action-list {
+  display: grid;
   gap: 10px;
 }
 
-.kpi-item {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 12px;
+.todo-item-top,
+.guard-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
 }
 
-.kpi-item .label {
-  display: block;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.kpi-item .value {
+.todo-count {
   display: block;
   margin-top: 6px;
-  font-size: 22px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.kpi-strip {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .kpi-item .trend {
@@ -442,35 +530,8 @@ watch(overviewQuery, () => {
   font-size: 12px;
 }
 
-.flow-panel {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 14px;
-}
-
-.flow-panel > header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.flow-panel h2 {
-  margin: 0;
-  font-size: 16px;
-}
-
 .flow-grid {
-  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-}
-
-.flow-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 10px;
 }
 
 .flow-card h3 {
@@ -484,47 +545,25 @@ watch(overviewQuery, () => {
 }
 
 .dashboard-body {
+  grid-template-columns: 1fr 320px;
+}
+
+.readonly-actions {
   display: grid;
-  grid-template-columns: 1fr 280px;
-  gap: 12px;
-}
-
-.exception-list,
-.quick-actions,
-.source-readback {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 14px;
-}
-
-.exception-list > header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.exception-list h2,
-.quick-actions h2,
-.source-readback h2 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.quick-actions {
-  display: grid;
-  gap: 8px;
+  gap: 10px;
   align-content: start;
 }
 
-.quick-actions button {
-  text-align: left;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fff;
-  padding: 8px 10px;
-  cursor: pointer;
+.readonly-action-item {
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.readonly-action-item small {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .source-readback ul {
@@ -535,7 +574,8 @@ watch(overviewQuery, () => {
 }
 
 @media (max-width: 1100px) {
-  .dashboard-body {
+  .dashboard-body,
+  .todo-guard-grid {
     grid-template-columns: 1fr;
   }
 }

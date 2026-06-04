@@ -123,6 +123,10 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         self.assertEqual(payload["warehouse"]["critical_alert_count"], 1)
         self.assertEqual(payload["warehouse"]["warning_alert_count"], 2)
         self.assertEqual([row["module"] for row in payload["source_status"]], ["quality", "sales_inventory", "warehouse"])
+        self.assertIn("home_overview", payload)
+        self.assertGreaterEqual(len(payload["home_overview"]["metric_cards"]), 4)
+        self.assertGreaterEqual(len(payload["home_overview"]["todo_items"]), 3)
+        self.assertIn("查看动态", payload["home_overview"]["primary_actions"])
 
     def test_module_read_actions_cannot_replace_dashboard_read(self) -> None:
         for role in ("quality:read", "sales_inventory:read", "warehouse:read", "inventory:read"):
