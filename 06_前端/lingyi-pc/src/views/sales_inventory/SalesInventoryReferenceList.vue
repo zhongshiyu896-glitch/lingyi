@@ -119,6 +119,8 @@
         </el-descriptions>
       </section>
 
+      <SalesInventoryReferenceGuardReadonly :summary="guardSummary" />
+
       <section class="table-panel" data-testid="cand092-reference-table">
         <el-table
           :data="filteredRows"
@@ -142,8 +144,27 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="source" label="数据源" min-width="140" />
+          <el-table-column label="数据源" min-width="200">
+            <template #default="{ row }">
+              <div class="row-tags">
+                <el-tag :type="row.source === 'erpnext' ? 'success' : 'warning'" effect="plain">
+                  {{ row.source }}
+                </el-tag>
+                <el-tag
+                  :type="row.sourceValidationState === 'verified' ? 'success' : row.sourceValidationState === 'fallback' ? 'warning' : 'danger'"
+                  effect="plain"
+                >
+                  {{ row.readonlySourceTag }}
+                </el-tag>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column prop="parityScope" label="入口来源" min-width="180" />
+          <el-table-column label="缺失来源提示" min-width="220">
+            <template #default="{ row }">
+              <span>{{ row.missingSourcePrompt || '-' }}</span>
+            </template>
+          </el-table-column>
           <el-table-column label="动作" width="140" align="center">
             <template #default>
               <el-button
@@ -173,12 +194,14 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  buildSalesInventoryReferenceGuardSummary,
   filterReferenceRows,
   loadSalesInventoryReferenceRows,
   resolveReferenceTab,
   type SalesInventoryReferenceRow,
   type SalesInventoryReferenceTab,
 } from '@/api/sales_inventory_references'
+import SalesInventoryReferenceGuardReadonly from '@/views/sales_inventory/components/SalesInventoryReferenceGuardReadonly.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -210,13 +233,13 @@ const keywordPlaceholder = computed(() =>
 const emptyText = computed(() =>
   activeTab.value === 'customers' ? '当前筛选下暂无客户引用数据' : '当前筛选下暂无供应商引用数据',
 )
-const sourceTagLabel = computed(() => {
-  if (usingFallback.value) {
-    return activeTab.value === 'customers' ? 'customer fallback' : 'supplier fallback'
-  }
-  return activeTab.value === 'customers' ? 'customer readonly' : 'supplier readonly'
-})
-
+const guardSummary = computed(() => buildSalesInventoryReferenceGuardSummary(
+  rows.value,
+  activeTab.value,
+  parityValue.value,
+  usingFallback.value,
+))
+const sourceTagLabel = computed(() => guardSummary.value.sourceValidationLabel)
 const filteredRows = computed(() => filterReferenceRows(rows.value, query))
 const activeCount = computed(() => filteredRows.value.filter((row) => row.status === 'active').length)
 const inactiveCount = computed(() => filteredRows.value.filter((row) => row.status === 'inactive').length)
@@ -337,6 +360,12 @@ onMounted(() => {
 .readonly-readback,
 .table-panel {
   margin-top: 12px;
+}
+
+.row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .summary-grid {
