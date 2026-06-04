@@ -115,6 +115,68 @@
       <p class="readonly-hint" data-testid="style-profit-readonly-hint">
         当前页面为只读验证模式，写动作入口仅保留展示并已 guarded。
       </p>
+      <section class="readonly-source-panel" data-testid="style-profit-readonly-source-panel">
+        <div class="readonly-source-header">
+          <div class="readonly-source-title-group">
+            <span class="readonly-source-title">成本来源快照 / 只读回读</span>
+            <span class="readonly-source-note">{{ listReadonlySummary.readonlySourceLabel }}</span>
+          </div>
+          <div class="readonly-source-tags">
+            <el-tag
+              :type="listReadonlySummary.sourceTypeTone"
+              effect="plain"
+              data-testid="style-profit-source-type-tag"
+            >
+              {{ listReadonlySummary.sourceTypeLabel }}
+            </el-tag>
+            <el-tag
+              :type="listReadonlySummary.sourceStatusTone"
+              effect="plain"
+              data-testid="style-profit-source-status-tag"
+            >
+              {{ listReadonlySummary.sourceStatusLabel }}
+            </el-tag>
+            <el-tag
+              :type="listReadonlySummary.snapshotStatusTone"
+              effect="plain"
+              data-testid="style-profit-source-snapshot-tag"
+            >
+              {{ listReadonlySummary.snapshotStatusLabel }}
+            </el-tag>
+          </div>
+        </div>
+        <div class="readonly-source-grid">
+          <div
+            v-for="field in STYLE_PROFIT_LIST_METRIC_FIELDS"
+            :key="field.key"
+            class="readonly-source-card"
+          >
+            <span class="readonly-source-card-label">{{ field.label }}</span>
+            <strong class="readonly-source-card-value">{{ listReadonlySummary.metricValues[field.key] }}</strong>
+          </div>
+        </div>
+        <el-descriptions border :column="3" size="small" data-testid="style-profit-readonly-descriptions">
+          <el-descriptions-item label="成本来源">{{ listReadonlySummary.revenueModeLabel }}</el-descriptions-item>
+          <el-descriptions-item label="来源类型">{{ listReadonlySummary.sourceTypeLabel }}</el-descriptions-item>
+          <el-descriptions-item label="来源状态">{{ listReadonlySummary.sourceStatusLabel }}</el-descriptions-item>
+          <el-descriptions-item label="快照状态">{{ listReadonlySummary.snapshotStatusLabel }}</el-descriptions-item>
+          <el-descriptions-item label="映射状态">{{ listReadonlySummary.allocationStatusLabel }}</el-descriptions-item>
+          <el-descriptions-item label="写入边界">{{ listReadonlySummary.writeBoundary }}</el-descriptions-item>
+        </el-descriptions>
+        <el-alert
+          type="warning"
+          :closable="false"
+          :title="listReadonlySummary.readonlyGuardReason"
+          class="feedback-alert"
+          data-testid="style-profit-write-guard-alert"
+        />
+        <el-alert
+          type="info"
+          :closable="false"
+          :title="listReadonlySummary.remainingGap"
+          data-testid="style-profit-remaining-gap-alert"
+        />
+      </section>
 
       <el-empty v-if="!canRead" description="无款式利润查看权限，当前展示只读端到端锚点样例" data-testid="style-profit-no-permission" />
       <template>
@@ -265,6 +327,8 @@ import {
   type StyleProfitSnapshotListItem,
 } from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
+import { buildStyleProfitListReadonlySummary } from '@/views/style_profit/composables/useStyleProfitSnapshotReadonly'
+import { STYLE_PROFIT_LIST_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitReadonlyFields'
 
 const route = useRoute()
 const router = useRouter()
@@ -278,6 +342,7 @@ const weekColumns = ['日', '一', '二', '三', '四', '五', '六']
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const parityHint = computed<string>(() => String(route.query.parity || 'style-profit'))
+const listReadonlySummary = computed(() => buildStyleProfitListReadonlySummary(rows.value, parityHint.value))
 
 const query = reactive({
   company: '',
@@ -516,6 +581,64 @@ onMounted(async () => {
 
 .feedback-alert {
   margin-bottom: 12px;
+}
+
+.readonly-source-panel {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.readonly-source-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.readonly-source-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.readonly-source-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.readonly-source-note,
+.readonly-source-card-label {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.readonly-source-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.readonly-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.readonly-source-card {
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--el-fill-color-blank);
+}
+
+.readonly-source-card-value {
+  font-size: 18px;
 }
 
 .readonly-hint {

@@ -82,6 +82,68 @@
             <el-descriptions-item label="发送时间">{{ snapshot.created_at || '-' }}</el-descriptions-item>
             <el-descriptions-item label="发送人">{{ snapshot.created_by || '-' }}</el-descriptions-item>
           </el-descriptions>
+          <section class="readonly-source-panel" data-testid="style-profit-detail-readonly-source-panel">
+            <div class="readonly-source-header">
+              <div class="readonly-source-title-group">
+                <span class="readonly-source-title">成本来源 / 详情只读回读</span>
+                <span class="readonly-source-note">{{ detailReadonlySummary.readonlySourceLabel }}</span>
+              </div>
+              <div class="readonly-source-tags">
+                <el-tag
+                  :type="detailReadonlySummary.sourceTypeTone"
+                  effect="plain"
+                  data-testid="style-profit-detail-source-type-tag"
+                >
+                  {{ detailReadonlySummary.sourceTypeLabel }}
+                </el-tag>
+                <el-tag
+                  :type="detailReadonlySummary.sourceStatusTone"
+                  effect="plain"
+                  data-testid="style-profit-detail-source-status-tag"
+                >
+                  {{ detailReadonlySummary.sourceStatusLabel }}
+                </el-tag>
+                <el-tag
+                  :type="detailReadonlySummary.snapshotStatusTone"
+                  effect="plain"
+                  data-testid="style-profit-detail-source-snapshot-tag"
+                >
+                  {{ detailReadonlySummary.snapshotStatusLabel }}
+                </el-tag>
+              </div>
+            </div>
+            <div class="readonly-source-grid">
+              <div
+                v-for="field in STYLE_PROFIT_DETAIL_METRIC_FIELDS"
+                :key="field.key"
+                class="readonly-source-card"
+              >
+                <span class="readonly-source-card-label">{{ field.label }}</span>
+                <strong class="readonly-source-card-value">{{ detailReadonlySummary.metricValues[field.key] }}</strong>
+              </div>
+            </div>
+            <el-descriptions border :column="3" size="small" data-testid="style-profit-detail-readonly-descriptions">
+              <el-descriptions-item label="成本来源">{{ detailReadonlySummary.revenueModeLabel }}</el-descriptions-item>
+              <el-descriptions-item label="来源类型">{{ detailReadonlySummary.sourceTypeLabel }}</el-descriptions-item>
+              <el-descriptions-item label="来源状态">{{ detailReadonlySummary.sourceStatusLabel }}</el-descriptions-item>
+              <el-descriptions-item label="快照状态">{{ detailReadonlySummary.snapshotStatusLabel }}</el-descriptions-item>
+              <el-descriptions-item label="映射状态">{{ detailReadonlySummary.allocationStatusLabel }}</el-descriptions-item>
+              <el-descriptions-item label="写入边界">{{ detailReadonlySummary.writeBoundary }}</el-descriptions-item>
+            </el-descriptions>
+            <el-alert
+              type="warning"
+              :closable="false"
+              :title="detailReadonlySummary.readonlyGuardReason"
+              class="warn-alert"
+              data-testid="style-profit-detail-write-guard-alert"
+            />
+            <el-alert
+              type="info"
+              :closable="false"
+              :title="detailReadonlySummary.remainingGap"
+              data-testid="style-profit-detail-remaining-gap-alert"
+            />
+          </section>
           <el-collapse v-model="auditPanels" class="audit-collapse" data-testid="style-profit-detail-audit-collapse">
             <el-collapse-item title="审计信息（仅供审计复核）" name="audit">
               <el-descriptions :column="1" border size="small">
@@ -232,6 +294,8 @@ import {
   type StyleProfitSourceMapItem,
 } from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
+import { buildStyleProfitDetailReadonlySummary } from '@/views/style_profit/composables/useStyleProfitSnapshotReadonly'
+import { STYLE_PROFIT_DETAIL_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitReadonlyFields'
 
 const route = useRoute()
 const router = useRouter()
@@ -366,6 +430,9 @@ const parityHint = computed<string>(() => String(route.query.parity || 'style-pr
 const snapshotId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidSnapshotId = computed<boolean>(() => Number.isInteger(snapshotId.value) && snapshotId.value > 0)
 const fromArchiveEntry = computed<boolean>(() => String(route.query.from || '').trim() === 'archive')
+const detailReadonlySummary = computed(() =>
+  buildStyleProfitDetailReadonlySummary(snapshot.value, details.value, sourceMaps.value, parityHint.value),
+)
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
@@ -482,6 +549,64 @@ onMounted(async () => {
 
 .warn-alert {
   margin-bottom: 12px;
+}
+
+.readonly-source-panel {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.readonly-source-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.readonly-source-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.readonly-source-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.readonly-source-note,
+.readonly-source-card-label {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.readonly-source-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.readonly-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.readonly-source-card {
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--el-fill-color-blank);
+}
+
+.readonly-source-card-value {
+  font-size: 18px;
 }
 
 .audit-collapse {
