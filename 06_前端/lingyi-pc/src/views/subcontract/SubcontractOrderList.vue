@@ -101,6 +101,8 @@
         <el-descriptions-item label="加工中">{{ summary.processingCount }}</el-descriptions-item>
         <el-descriptions-item label="待收货">{{ summary.waitingReceiveCount }}</el-descriptions-item>
         <el-descriptions-item label="待验货">{{ summary.waitingInspectionCount }}</el-descriptions-item>
+        <el-descriptions-item label="可结算观察">{{ summary.settlementReadyCount }}</el-descriptions-item>
+        <el-descriptions-item label="异常阻断">{{ summary.blockedCount }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -164,6 +166,11 @@
               >
                 {{ profitScopeLabel(row.profit_scope_status) }}
               </el-tag>
+              <el-tooltip :content="settlementReadonlyReason(row)" placement="top">
+                <el-tag :type="settlementReadonlyType(row)" effect="plain">
+                  {{ settlementReadonlyLabel(row) }}
+                </el-tag>
+              </el-tooltip>
             </div>
           </template>
         </el-table-column>
@@ -231,6 +238,9 @@ const {
   readonlyGuardActions,
   resourceScopeLabel,
   resourceScopeType,
+  settlementReadonlyLabel,
+  settlementReadonlyReason,
+  settlementReadonlyType,
   statusLabel,
   statusType,
 } = useSubcontractReadonly()

@@ -1,5 +1,21 @@
 import type { SubcontractOrderDetailData, SubcontractOrderListItem } from '@/api/subcontract'
-import { buildSubcontractDetailReadonlySummary } from '@/api/subcontract_readback'
+import {
+  buildSubcontractDetailReadonlySummary,
+  buildSubcontractReadonlyAbnormalNodes,
+  buildSubcontractReadonlyTimelineMilestones,
+  buildSubcontractSettlementReadonlyState,
+  buildSubcontractSettlementReadonlyStateFromRow,
+  type SubcontractReadonlyAbnormalNode,
+  type SubcontractReadonlyTimelineMilestone,
+  type SubcontractSettlementReadonlyState,
+} from '@/api/subcontract_readback'
+import {
+  SUBCONTRACT_MILESTONE_LABELS,
+  SUBCONTRACT_SETTLEMENT_LABELS,
+  SUBCONTRACT_SETTLEMENT_TAGS,
+  SUBCONTRACT_TIMELINE_STATUS_LABELS,
+  SUBCONTRACT_TIMELINE_STATUS_TAGS,
+} from '../constants/subcontractMilestoneFields'
 
 export type SubcontractTagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
 
@@ -12,6 +28,24 @@ export interface SubcontractGuardState {
   label: string
   reason: string
   type: SubcontractTagType
+}
+
+export interface SubcontractTimelineMilestoneView extends SubcontractReadonlyTimelineMilestone {
+  label: string
+  statusLabel: string
+  statusType: SubcontractTagType
+}
+
+export interface SubcontractSettlementReadonlyView extends SubcontractSettlementReadonlyState {
+  label: string
+  type: SubcontractTagType
+  acceptedQtyLabel: string
+  netAmountLabel: string
+}
+
+export interface SubcontractAbnormalNodeView extends SubcontractReadonlyAbnormalNode {
+  statusLabel: string
+  statusType: SubcontractTagType
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -142,6 +176,102 @@ export const useSubcontractReadonly = () => {
   const detailSummary = (detail: SubcontractOrderDetailData) =>
     buildSubcontractDetailReadonlySummary(detail)
 
+  const settlementReadonlyLabelFromCode = (code: SubcontractSettlementReadonlyState['code']): string =>
+    SUBCONTRACT_SETTLEMENT_LABELS[code]
+
+  const settlementReadonlyTypeFromCode = (code: SubcontractSettlementReadonlyState['code']): SubcontractTagType =>
+    SUBCONTRACT_SETTLEMENT_TAGS[code]
+
+  const settlementReadonlyState = (detail: SubcontractOrderDetailData): SubcontractSettlementReadonlyView => {
+    const state = buildSubcontractSettlementReadonlyState(detail)
+    return {
+      ...state,
+      label: settlementReadonlyLabelFromCode(state.code),
+      type: settlementReadonlyTypeFromCode(state.code),
+      acceptedQtyLabel: toNumberLabel(state.acceptedQty),
+      netAmountLabel: toNumberLabel(state.netAmount, 2),
+    }
+  }
+
+  const settlementReadonlyLabel = (
+    row: Pick<
+      SubcontractOrderListItem,
+      | 'accepted_qty'
+      | 'net_amount'
+      | 'status'
+      | 'profit_scope_error_code'
+      | 'latest_receipt_error_code'
+      | 'latest_issue_error_code'
+      | 'latest_receipt_sync_status'
+      | 'latest_issue_sync_status'
+      | 'received_qty'
+    >,
+  ): string => settlementReadonlyLabelFromCode(buildSubcontractSettlementReadonlyStateFromRow(row).code)
+
+  const settlementReadonlyType = (
+    row: Pick<
+      SubcontractOrderListItem,
+      | 'accepted_qty'
+      | 'net_amount'
+      | 'status'
+      | 'profit_scope_error_code'
+      | 'latest_receipt_error_code'
+      | 'latest_issue_error_code'
+      | 'latest_receipt_sync_status'
+      | 'latest_issue_sync_status'
+      | 'received_qty'
+    >,
+  ): SubcontractTagType => settlementReadonlyTypeFromCode(buildSubcontractSettlementReadonlyStateFromRow(row).code)
+
+  const settlementReadonlyReason = (
+    row: Pick<
+      SubcontractOrderListItem,
+      | 'accepted_qty'
+      | 'net_amount'
+      | 'status'
+      | 'profit_scope_error_code'
+      | 'latest_receipt_error_code'
+      | 'latest_issue_error_code'
+      | 'latest_receipt_sync_status'
+      | 'latest_issue_sync_status'
+      | 'received_qty'
+    >,
+  ): string => buildSubcontractSettlementReadonlyStateFromRow(row).reason
+
+  const timelineMilestones = (detail: SubcontractOrderDetailData): SubcontractTimelineMilestoneView[] =>
+    buildSubcontractReadonlyTimelineMilestones(detail).map((milestone) => ({
+      ...milestone,
+      label: SUBCONTRACT_MILESTONE_LABELS[milestone.key],
+      statusLabel: SUBCONTRACT_TIMELINE_STATUS_LABELS[milestone.status],
+      statusType: SUBCONTRACT_TIMELINE_STATUS_TAGS[milestone.status],
+      occurredAt: formatDateTimeTime(milestone.occurredAt),
+    }))
+
+  const abnormalNodes = (detail: SubcontractOrderDetailData): SubcontractAbnormalNodeView[] => {
+    const nodes = buildSubcontractReadonlyAbnormalNodes(detail)
+    if (nodes.length === 0) {
+      return [
+        {
+          key: 'readonly-observer',
+          label: '异常节点观察',
+          ownerRole: '只读守卫',
+          occurredAt: formatDateTimeTime(detail.updated_at || detail.created_at),
+          status: 'success',
+          reason: '当前未识别阻断异常，链路保持只读观察。',
+          actionHint: '收货、验货、结算与导出动作继续冻结，不释放真实写链路。',
+          statusLabel: SUBCONTRACT_TIMELINE_STATUS_LABELS.success,
+          statusType: SUBCONTRACT_TIMELINE_STATUS_TAGS.success,
+        },
+      ]
+    }
+    return nodes.map((node) => ({
+      ...node,
+      occurredAt: formatDateTimeTime(node.occurredAt),
+      statusLabel: SUBCONTRACT_TIMELINE_STATUS_LABELS[node.status],
+      statusType: SUBCONTRACT_TIMELINE_STATUS_TAGS[node.status],
+    }))
+  }
+
   const buildReceiptPreconditionGuard = (detail: SubcontractOrderDetailData): SubcontractGuardState[] => {
     const plannedQty = toNumber(detail.planned_qty)
     const issuedQty = toNumber(detail.issued_qty)
@@ -196,10 +326,20 @@ export const useSubcontractReadonly = () => {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
   }
 
+  const formatDateTimeTime = (value?: string | null): string => {
+    const raw = normalizeString(value)
+    if (!raw) return '-'
+    const date = new Date(raw)
+    if (Number.isNaN(date.getTime())) return raw
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
+
   return {
+    abnormalNodes,
     buildReceiptPreconditionGuard,
     detailSummary,
     formatDateTime,
+    formatDateTimeTime,
     formatNumber: toNumberLabel,
     profitScopeLabel,
     profitScopeType,
@@ -208,7 +348,12 @@ export const useSubcontractReadonly = () => {
     readonlyGuardActions: READONLY_GUARD_ACTIONS,
     resourceScopeLabel,
     resourceScopeType,
+    settlementReadonlyLabel,
+    settlementReadonlyReason,
+    settlementReadonlyState,
+    settlementReadonlyType,
     statusLabel,
     statusType,
+    timelineMilestones,
   }
 }

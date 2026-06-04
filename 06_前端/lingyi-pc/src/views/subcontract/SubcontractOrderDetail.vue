@@ -85,6 +85,13 @@
       </div>
     </el-card>
 
+    <SubcontractReceiptTimelineReadonly
+      v-if="timelineState && timelineMilestones.length > 0"
+      :milestones="timelineMilestones"
+      :settlement-state="timelineState"
+      :abnormal-nodes="abnormalNodes"
+    />
+
     <el-card shadow="never" data-testid="yisuan-1to1-subcontract-material-lines">
       <template #header>
         <span>物料明细（只读）</span>
@@ -183,6 +190,15 @@
           {{ fallbackSnapshotUsed ? 'true' : 'false' }}
         </el-descriptions-item>
         <el-descriptions-item label="readonly_actions_guarded">true</el-descriptions-item>
+        <el-descriptions-item label="receipt_timeline_visible">
+          {{ timelineMilestones.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="settlement_readonly_state_visible">
+          {{ timelineState ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="abnormal_node_readback_visible">
+          {{ abnormalNodes.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
       </el-descriptions>
     </el-card>
   </div>
@@ -201,6 +217,7 @@ import {
   fetchSubcontractOrderDetailReadback,
   resolveFallbackSubcontractOrderRow,
 } from '@/api/subcontract_readback'
+import SubcontractReceiptTimelineReadonly from './components/SubcontractReceiptTimelineReadonly.vue'
 import { useSubcontractReadonly } from './composables/useSubcontractReadonly'
 
 interface MaterialLineView {
@@ -235,6 +252,7 @@ const fallbackSnapshotUsed = ref(false)
 const currentDetail = ref<SubcontractOrderDetailData | null>(null)
 
 const {
+  abnormalNodes: buildAbnormalNodes,
   buildReceiptPreconditionGuard,
   detailSummary,
   formatDateTime,
@@ -244,8 +262,10 @@ const {
   readonlyGuardActions,
   resourceScopeLabel,
   resourceScopeType,
+  settlementReadonlyState: buildSettlementReadonlyState,
   statusLabel,
   statusType,
+  timelineMilestones: buildTimelineMilestones,
 } = useSubcontractReadonly()
 
 const parityToken = computed(() => {
@@ -314,6 +334,18 @@ const detailReadonlySummary = computed(() =>
 
 const guardStates = computed(() =>
   currentDetail.value ? buildReceiptPreconditionGuard(currentDetail.value) : [],
+)
+
+const timelineMilestones = computed(() =>
+  currentDetail.value ? buildTimelineMilestones(currentDetail.value) : [],
+)
+
+const timelineState = computed(() =>
+  currentDetail.value ? buildSettlementReadonlyState(currentDetail.value) : null,
+)
+
+const abnormalNodes = computed(() =>
+  currentDetail.value ? buildAbnormalNodes(currentDetail.value) : [],
 )
 
 const normalizeOrderId = (): number => {
