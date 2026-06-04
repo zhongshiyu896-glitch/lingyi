@@ -231,18 +231,55 @@ class SubcontractProfitScopeBridgeServiceTest(unittest.TestCase):
         session.flush()
         return plan
 
+    @staticmethod
+    def _create_request(
+        *,
+        supplier: str = "SUP-A",
+        item_code: str = "STYLE-A",
+        company: str = "COMP-A",
+        bom_id: int = 1,
+        planned_qty: Decimal = Decimal("10"),
+        process_name: str = "OUT",
+        sales_order: str | None = None,
+        sales_order_item: str | None = None,
+        production_plan_id: int | None = None,
+        work_order: str | None = None,
+        job_card: str | None = None,
+        scenario_suffix: str = "001",
+    ) -> SubcontractCreateRequest:
+        scenario_tag = f"Z003-SUBCONTRACT-20260524-{scenario_suffix}"
+        request_id = f"{scenario_tag}-LOCAL-CREATE"
+        payload = {
+            "request_id": request_id,
+            "idempotency_key": f"idem-{scenario_suffix}",
+            "scenario_tag": scenario_tag,
+            "source_ref": f"{scenario_tag}-SRC",
+            "subcontract_ref": f"NEW-{scenario_suffix}",
+            "supplier_ref": supplier,
+            "work_order_ref": work_order or "NO-WORK-ORDER",
+            "operation": "create",
+            "item_code": item_code,
+            "quantity": planned_qty,
+            "status_action": "create",
+            "supplier": supplier,
+            "item_code": item_code,
+            "company": company,
+            "bom_id": bom_id,
+            "planned_qty": planned_qty,
+            "process_name": process_name,
+            "sales_order": sales_order,
+            "sales_order_item": sales_order_item,
+            "production_plan_id": production_plan_id,
+            "work_order": work_order,
+            "job_card": job_card,
+        }
+        return SubcontractCreateRequest(**payload)
+
     def test_create_order_without_bridge_defaults_unresolved(self) -> None:
         with self.SessionLocal() as session:
             service = SubcontractService(session=session)
             created = service.create_order(
-                payload=SubcontractCreateRequest(
-                    supplier="SUP-A",
-                    item_code="STYLE-A",
-                    company="COMP-A",
-                    bom_id=1,
-                    planned_qty=Decimal("10"),
-                    process_name="OUT",
-                ),
+                payload=self._create_request(scenario_suffix="101"),
                 operator="tester",
             )
             session.commit()
@@ -262,17 +299,12 @@ class SubcontractProfitScopeBridgeServiceTest(unittest.TestCase):
             plan = self._seed_plan_and_work_order(session)
             service = SubcontractService(session=session)
             created = service.create_order(
-                payload=SubcontractCreateRequest(
-                    supplier="SUP-A",
-                    item_code="STYLE-A",
-                    company="COMP-A",
-                    bom_id=1,
-                    planned_qty=Decimal("10"),
-                    process_name="OUT",
+                payload=self._create_request(
                     sales_order="SO-001",
                     sales_order_item="SO-001-1",
                     production_plan_id=int(plan.id),
                     work_order="WO-001",
+                    scenario_suffix="102",
                 ),
                 operator="tester",
             )
@@ -295,14 +327,9 @@ class SubcontractProfitScopeBridgeServiceTest(unittest.TestCase):
             service = SubcontractService(session=session)
             with self.assertRaises(BusinessException) as ctx:
                 service.create_order(
-                    payload=SubcontractCreateRequest(
-                        supplier="SUP-A",
-                        item_code="STYLE-A",
-                        company="COMP-A",
-                        bom_id=1,
-                        planned_qty=Decimal("10"),
-                        process_name="OUT",
+                    payload=self._create_request(
                         production_plan_id=int(plan.id),
+                        scenario_suffix="103",
                     ),
                     operator="tester",
                 )
@@ -315,17 +342,12 @@ class SubcontractProfitScopeBridgeServiceTest(unittest.TestCase):
             plan = self._seed_plan_and_work_order(session, plan_no="PLAN-I", work_order="WO-I")
             service = SubcontractService(session=session)
             created = service.create_order(
-                payload=SubcontractCreateRequest(
-                    supplier="SUP-A",
-                    item_code="STYLE-A",
-                    company="COMP-A",
-                    bom_id=1,
-                    planned_qty=Decimal("10"),
-                    process_name="OUT",
+                payload=self._create_request(
                     sales_order="SO-001",
                     sales_order_item="SO-001-1",
                     production_plan_id=int(plan.id),
                     work_order="WO-I",
+                    scenario_suffix="104",
                 ),
                 operator="tester",
             )
@@ -366,11 +388,22 @@ class SubcontractProfitScopeBridgeServiceTest(unittest.TestCase):
             )
             session.flush()
 
+            inspect_scenario_tag = "Z003-SUBCONTRACT-20260524-104-INSPECT"
             service.inspect(
                 order_id=int(order.id),
                 payload=InspectRequest(
+                    request_id=f"{inspect_scenario_tag}-LOCAL-INSPECT",
                     receipt_batch_no="RB-001",
                     idempotency_key="idem-inspect-001",
+                    scenario_tag=inspect_scenario_tag,
+                    source_ref=f"{inspect_scenario_tag}-SRC",
+                    subcontract_ref=created.name,
+                    supplier_ref="SUP-A",
+                    work_order_ref="WO-I",
+                    operation="inspect",
+                    item_code="STYLE-A",
+                    quantity=Decimal("5"),
+                    status_action="inspect",
                     inspected_qty=Decimal("5"),
                     rejected_qty=Decimal("0"),
                     deduction_amount_per_piece=Decimal("0"),

@@ -92,6 +92,14 @@
       :abnormal-nodes="abnormalNodes"
     />
 
+    <SubcontractScopeBridgeReadonly
+      v-if="scopeBridgeReadonly"
+      :summary="scopeBridgeReadonly"
+      :guard-states="scopeBridgeGuardStates"
+      :final-path="finalPath"
+      :parity-token="parityToken"
+    />
+
     <el-card shadow="never" data-testid="yisuan-1to1-subcontract-material-lines">
       <template #header>
         <span>物料明细（只读）</span>
@@ -104,24 +112,6 @@
         <el-table-column prop="demandQty" label="需求数量" width="120" />
         <el-table-column prop="purchaseQty" label="委外/回料数量" width="150" />
       </el-table>
-    </el-card>
-
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-scope-bridge-panel">
-      <template #header>
-        <span>采购/生产桥接信息（只读）</span>
-      </template>
-      <el-descriptions border :column="2">
-        <el-descriptions-item label="final_path">{{ finalPath }}</el-descriptions-item>
-        <el-descriptions-item label="parity">{{ parityToken || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="sales_order">{{ state.salesOrder || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="sales_order_item">{{ state.salesOrderItem || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="production_plan_id">{{ state.productionPlanId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="work_order">{{ state.workOrder || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="job_card">{{ state.jobCard || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="profit_scope_error_code">{{ state.profitScopeErrorCode || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="resource_scope_status">{{ state.resourceScopeStatus || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="settlement_status">{{ state.settlementStatus || '-' }}</el-descriptions-item>
-      </el-descriptions>
     </el-card>
 
     <section class="issue-inspection-panel" data-testid="yisuan-1to1-subcontract-issue-return-inspection-panel">
@@ -199,6 +189,22 @@
         <el-descriptions-item label="abnormal_node_readback_visible">
           {{ abnormalNodes.length > 0 ? 'true' : 'false' }}
         </el-descriptions-item>
+        <el-descriptions-item label="scope_bridge_visible">
+          {{ scopeBridgeReadonly ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="profit_scope_status_visible">
+          {{ scopeBridgeReadonly?.profitScopeLabel ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="material_detail_readonly_tags_visible">
+          {{ scopeBridgeReadonly && scopeBridgeReadonly.materialTags.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="readonly_guard_states_visible">
+          {{ scopeBridgeGuardStates.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="cand110_base_readback_retained">true</el-descriptions-item>
+        <el-descriptions-item label="cand134_timeline_settlement_retained">
+          {{ timelineMilestones.length > 0 && timelineState ? 'true' : 'false' }}
+        </el-descriptions-item>
       </el-descriptions>
     </el-card>
   </div>
@@ -218,6 +224,7 @@ import {
   resolveFallbackSubcontractOrderRow,
 } from '@/api/subcontract_readback'
 import SubcontractReceiptTimelineReadonly from './components/SubcontractReceiptTimelineReadonly.vue'
+import SubcontractScopeBridgeReadonly from './components/SubcontractScopeBridgeReadonly.vue'
 import { useSubcontractReadonly } from './composables/useSubcontractReadonly'
 
 interface MaterialLineView {
@@ -262,6 +269,8 @@ const {
   readonlyGuardActions,
   resourceScopeLabel,
   resourceScopeType,
+  scopeBridgeDetailSummary: buildScopeBridgeDetailSummary,
+  scopeGuardStates: buildScopeGuardStates,
   settlementReadonlyState: buildSettlementReadonlyState,
   statusLabel,
   statusType,
@@ -347,6 +356,12 @@ const timelineState = computed(() =>
 const abnormalNodes = computed(() =>
   currentDetail.value ? buildAbnormalNodes(currentDetail.value) : [],
 )
+
+const scopeBridgeReadonly = computed(() =>
+  currentDetail.value ? buildScopeBridgeDetailSummary(currentDetail.value, parityToken.value) : null,
+)
+
+const scopeBridgeGuardStates = computed(() => buildScopeGuardStates(scopeBridgeReadonly.value))
 
 const normalizeOrderId = (): number => {
   const raw = route.query.id

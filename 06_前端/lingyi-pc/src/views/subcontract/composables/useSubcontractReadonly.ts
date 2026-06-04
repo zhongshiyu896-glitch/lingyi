@@ -2,10 +2,15 @@ import type { SubcontractOrderDetailData, SubcontractOrderListItem } from '@/api
 import {
   buildSubcontractDetailReadonlySummary,
   buildSubcontractReadonlyAbnormalNodes,
+  buildSubcontractReadonlyScopeBridgeFromDetail,
+  buildSubcontractReadonlyScopeBridgeListSummary,
   buildSubcontractReadonlyTimelineMilestones,
   buildSubcontractSettlementReadonlyState,
   buildSubcontractSettlementReadonlyStateFromRow,
   type SubcontractReadonlyAbnormalNode,
+  type SubcontractReadonlyScopeBridgeField,
+  type SubcontractReadonlyScopeBridgeMaterialTag,
+  type SubcontractReadonlyScopeBridgeSummary,
   type SubcontractReadonlyTimelineMilestone,
   type SubcontractSettlementReadonlyState,
 } from '@/api/subcontract_readback'
@@ -16,6 +21,11 @@ import {
   SUBCONTRACT_TIMELINE_STATUS_LABELS,
   SUBCONTRACT_TIMELINE_STATUS_TAGS,
 } from '../constants/subcontractMilestoneFields'
+import {
+  SUBCONTRACT_SCOPE_BRIDGE_FIELD_LABELS,
+  SUBCONTRACT_SCOPE_BRIDGE_STATUS_LABELS,
+  SUBCONTRACT_SCOPE_BRIDGE_STATUS_TAGS,
+} from '../constants/subcontractScopeBridgeFields'
 
 export type SubcontractTagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
 
@@ -46,6 +56,26 @@ export interface SubcontractSettlementReadonlyView extends SubcontractSettlement
 export interface SubcontractAbnormalNodeView extends SubcontractReadonlyAbnormalNode {
   statusLabel: string
   statusType: SubcontractTagType
+}
+
+export interface SubcontractScopeBridgeFieldView extends SubcontractReadonlyScopeBridgeField {
+  label: string
+}
+
+export interface SubcontractScopeBridgeMaterialTagView extends SubcontractReadonlyScopeBridgeMaterialTag {
+  type: SubcontractTagType
+}
+
+export interface SubcontractScopeBridgeReadonlyView
+  extends Omit<SubcontractReadonlyScopeBridgeSummary, 'bridgeCode' | 'mappingFields' | 'materialTags'> {
+  bridgeStatusLabel: string
+  bridgeStatusType: SubcontractTagType
+  profitScopeLabel: string
+  profitScopeType: SubcontractTagType
+  resourceScopeLabel: string
+  resourceScopeType: SubcontractTagType
+  mappingFields: SubcontractScopeBridgeFieldView[]
+  materialTags: SubcontractScopeBridgeMaterialTagView[]
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -93,9 +123,9 @@ const PROFIT_SCOPE_TYPES: Record<string, SubcontractTagType> = {
 }
 
 const READONLY_GUARD_ACTIONS: SubcontractReadonlyGuardAction[] = [
-  { label: '收货', reason: 'readonly guard' },
-  { label: '入库', reason: 'inventory impact 冻结' },
-  { label: '取消', reason: 'write action 冻结' },
+  { label: '发料', reason: 'issue-material 冻结' },
+  { label: '收货', reason: 'receive 冻结' },
+  { label: '结算', reason: 'settlement lock/release 冻结' },
   { label: '导出', reason: 'export 冻结' },
   { label: '库存影响', reason: 'stock effect 冻结' },
 ]
@@ -272,6 +302,78 @@ export const useSubcontractReadonly = () => {
     }))
   }
 
+  const toScopeBridgeView = (
+    summary: SubcontractReadonlyScopeBridgeSummary,
+  ): SubcontractScopeBridgeReadonlyView => {
+    const bridgeStatusType = SUBCONTRACT_SCOPE_BRIDGE_STATUS_TAGS[summary.bridgeCode]
+    return {
+      ...summary,
+      bridgeStatusLabel: SUBCONTRACT_SCOPE_BRIDGE_STATUS_LABELS[summary.bridgeCode],
+      bridgeStatusType,
+      profitScopeLabel: profitScopeLabel(summary.profitScopeStatus),
+      profitScopeType: profitScopeType(summary.profitScopeStatus),
+      resourceScopeLabel: resourceScopeLabel(summary.resourceScopeStatus),
+      resourceScopeType: resourceScopeType(summary.resourceScopeStatus),
+      mappingFields: summary.mappingFields.map((field) => ({
+        ...field,
+        label: SUBCONTRACT_SCOPE_BRIDGE_FIELD_LABELS[field.key],
+      })),
+      materialTags: summary.materialTags.map((tag) => ({
+        ...tag,
+        type: bridgeStatusType,
+      })),
+    }
+  }
+
+  const scopeBridgeDetailSummary = (
+    detail: SubcontractOrderDetailData,
+    parityToken = '',
+  ): SubcontractScopeBridgeReadonlyView =>
+    toScopeBridgeView(buildSubcontractReadonlyScopeBridgeFromDetail(detail, parityToken))
+
+  const scopeBridgeListSummary = (
+    rows: SubcontractOrderListItem[],
+    parityToken = '',
+  ): SubcontractScopeBridgeReadonlyView | null =>
+    rows.length > 0 ? toScopeBridgeView(buildSubcontractReadonlyScopeBridgeListSummary(rows, parityToken)) : null
+
+  const scopeGuardStates = (summary: SubcontractScopeBridgeReadonlyView | null): SubcontractGuardState[] => {
+    if (!summary) return []
+    const blocked = summary.bridgeStatusType === 'danger'
+    const pending = summary.bridgeStatusType === 'warning'
+    return [
+      {
+        label: '发料',
+        reason: blocked
+          ? summary.deviationHint
+          : '当前切片仅回读桥接状态，不开放发料、补发或 release 链路',
+        type: blocked ? 'danger' : pending ? 'warning' : 'info',
+      },
+      {
+        label: '收货',
+        reason: summary.readonlyReason,
+        type: blocked ? 'danger' : pending ? 'warning' : 'info',
+      },
+      {
+        label: '结算',
+        reason: blocked
+          ? `${summary.deviationHint}；结算锁定与 release 保持冻结`
+          : '利润范围只保留观察，结算锁定、release 与导出动作继续冻结',
+        type: blocked ? 'danger' : pending ? 'warning' : 'info',
+      },
+      {
+        label: '导出',
+        reason: 'export 冻结',
+        type: 'info',
+      },
+      {
+        label: '库存影响',
+        reason: `来源 ${summary.dataSource}；inventory impact 冻结`,
+        type: blocked ? 'danger' : 'warning',
+      },
+    ]
+  }
+
   const buildReceiptPreconditionGuard = (detail: SubcontractOrderDetailData): SubcontractGuardState[] => {
     const plannedQty = toNumber(detail.planned_qty)
     const issuedQty = toNumber(detail.issued_qty)
@@ -348,6 +450,9 @@ export const useSubcontractReadonly = () => {
     readonlyGuardActions: READONLY_GUARD_ACTIONS,
     resourceScopeLabel,
     resourceScopeType,
+    scopeBridgeDetailSummary,
+    scopeBridgeListSummary,
+    scopeGuardStates,
     settlementReadonlyLabel,
     settlementReadonlyReason,
     settlementReadonlyState,

@@ -60,6 +60,44 @@ export interface SubcontractSettlementReadonlyState {
   netAmount: number
 }
 
+export type SubcontractScopeBridgeCode = 'ready' | 'pending' | 'blocked'
+export type SubcontractScopeBridgeFieldKey =
+  | 'sales_order'
+  | 'sales_order_item'
+  | 'production_plan_id'
+  | 'work_order'
+  | 'job_card'
+
+export interface SubcontractReadonlyScopeBridgeField {
+  key: SubcontractScopeBridgeFieldKey
+  value: string
+  hint: string
+}
+
+export interface SubcontractReadonlyScopeBridgeMaterialTag {
+  key: string
+  label: string
+  value: string
+  hint: string
+}
+
+export interface SubcontractReadonlyScopeBridgeSummary {
+  bridgeCode: SubcontractScopeBridgeCode
+  dataSource: string
+  readonlyReason: string
+  deviationHint: string
+  bridgeSummary: string
+  profitScopeStatus: string
+  resourceScopeStatus: string
+  profitScopeErrorCode: string
+  mappingFields: SubcontractReadonlyScopeBridgeField[]
+  materialTags: SubcontractReadonlyScopeBridgeMaterialTag[]
+  readyCount?: number
+  pendingCount?: number
+  blockedCount?: number
+  mappedCount?: number
+}
+
 export interface SubcontractReadonlyAbnormalNode {
   key: string
   label: string
@@ -124,6 +162,275 @@ const buildRowBlockedReason = (
   }
 
   return ''
+}
+
+type SubcontractScopeBridgeSource = Pick<
+  SubcontractOrderListItem,
+  | 'item_code'
+  | 'company'
+  | 'process_name'
+  | 'sales_order'
+  | 'sales_order_item'
+  | 'production_plan_id'
+  | 'work_order'
+  | 'job_card'
+  | 'resource_scope_status'
+  | 'profit_scope_status'
+  | 'profit_scope_error_code'
+> &
+  Partial<
+    Pick<
+      SubcontractOrderDetailData,
+      'receipts' | 'inspections' | 'accepted_qty' | 'received_qty' | 'planned_qty' | 'subcontract_no'
+    >
+  >
+
+const hasScopeBridgeMapping = (source: SubcontractScopeBridgeSource): boolean =>
+  Boolean(
+    normalizeString(source.sales_order) ||
+      normalizeString(source.sales_order_item) ||
+      normalizeString(source.work_order) ||
+      normalizeString(source.job_card) ||
+      source.production_plan_id,
+  )
+
+const resolveScopeBridgeCode = (source: SubcontractScopeBridgeSource): SubcontractScopeBridgeCode => {
+  const profitScopeErrorCode = normalizeString(source.profit_scope_error_code)
+  const resourceScopeStatus = normalizeString(source.resource_scope_status).toLowerCase()
+  const profitScopeStatus = normalizeString(source.profit_scope_status).toLowerCase()
+
+  if (profitScopeErrorCode || resourceScopeStatus === 'blocked' || profitScopeStatus === 'blocked') return 'blocked'
+  if (['ready', 'resolved'].includes(profitScopeStatus) && hasScopeBridgeMapping(source)) return 'ready'
+  return 'pending'
+}
+
+const resolveScopeBridgeDataSource = (source: SubcontractScopeBridgeSource, parityToken = ''): string => {
+  if (parityToken === 'material-purchase') return 'materialPurchase parity / subcontract readonly snapshot'
+  if (hasScopeBridgeMapping(source)) return 'subcontract readonly snapshot / sales-production bridge'
+  return 'subcontract readonly snapshot'
+}
+
+const resolveScopeBridgeReadonlyReason = (
+  source: SubcontractScopeBridgeSource,
+  parityToken = '',
+): string => {
+  const code = resolveScopeBridgeCode(source)
+  if (code === 'blocked') {
+    return '利润范围或资源范围存在阻断，当前只读模式继续冻结收货、发料、结算、导出与库存链路。'
+  }
+  if (code === 'pending') {
+    return parityToken === 'material-purchase'
+      ? 'materialPurchase parity 仅提供桥接观察；桥接字段待核对时不释放收货、发料或结算动作。'
+      : '桥接字段待核对，当前只提供来源观察与只读守卫，不释放任何真实采购或库存动作。'
+  }
+  return '桥接来源已对齐，当前页面仍只保留只读观察，不释放真实采购、库存、结算或导出链路。'
+}
+
+const resolveScopeBridgeDeviationHint = (source: SubcontractScopeBridgeSource): string => {
+  const profitScopeErrorCode = normalizeString(source.profit_scope_error_code)
+  const resourceScopeStatus = normalizeString(source.resource_scope_status).toLowerCase()
+  if (profitScopeErrorCode) return `利润范围偏离：${profitScopeErrorCode}`
+  if (!hasScopeBridgeMapping(source)) return '缺少销售订单/工单桥接，利润范围保持待核对。'
+  if (resourceScopeStatus && resourceScopeStatus !== 'ready') return '资源范围未完全就绪，当前仅回读桥接状态。'
+  return '利润范围与物料桥接已对齐，仅做只读观察。'
+}
+
+const buildScopeBridgeMappings = (
+  source: SubcontractScopeBridgeSource,
+): SubcontractReadonlyScopeBridgeField[] => [
+  {
+    key: 'sales_order',
+    value: normalizeString(source.sales_order) || '-',
+    hint: '委外单桥接的销售订单只读来源',
+  },
+  {
+    key: 'sales_order_item',
+    value: normalizeString(source.sales_order_item) || '-',
+    hint: '销售订单行回读映射',
+  },
+  {
+    key: 'production_plan_id',
+    value: source.production_plan_id ? String(source.production_plan_id) : '-',
+    hint: '生产计划桥接只读快照',
+  },
+  {
+    key: 'work_order',
+    value: normalizeString(source.work_order) || '-',
+    hint: '工单桥接只读映射',
+  },
+  {
+    key: 'job_card',
+    value: normalizeString(source.job_card) || '-',
+    hint: '工序卡桥接只读映射',
+  },
+]
+
+const buildScopeBridgeMaterialTags = (
+  source: SubcontractScopeBridgeSource,
+): SubcontractReadonlyScopeBridgeMaterialTag[] => {
+  const tags: SubcontractReadonlyScopeBridgeMaterialTag[] = [
+    {
+      key: 'item_code',
+      label: '主物料',
+      value: normalizeString(source.item_code) || '-',
+      hint: '委外主物料只读回读',
+    },
+    {
+      key: 'process_name',
+      label: '工序',
+      value: normalizeString(source.process_name) || '-',
+      hint: '委外工序桥接来源',
+    },
+    {
+      key: 'company',
+      label: '公司',
+      value: normalizeString(source.company) || '-',
+      hint: '业务主体范围',
+    },
+  ]
+
+  if (normalizeString(source.sales_order_item)) {
+    tags.push({
+      key: 'sales_order_item',
+      label: '来源行',
+      value: normalizeString(source.sales_order_item),
+      hint: '销售订单行桥接已回读',
+    })
+  }
+
+  if (Array.isArray(source.receipts)) {
+    tags.push({
+      key: 'receipt_batches',
+      label: '收货批次',
+      value: String(source.receipts.length),
+      hint: '收货时间线只读快照',
+    })
+  }
+
+  if (Array.isArray(source.inspections)) {
+    tags.push({
+      key: 'inspection_records',
+      label: '验货记录',
+      value: String(source.inspections.length),
+      hint: '验货节点只读回读',
+    })
+  }
+
+  return tags
+}
+
+const buildScopeBridgeSummaryText = (source: SubcontractScopeBridgeSource): string => {
+  const salesOrder = normalizeString(source.sales_order) || '-'
+  const workOrder = normalizeString(source.work_order) || '-'
+  const productionPlan = source.production_plan_id ? String(source.production_plan_id) : '-'
+  const processName = normalizeString(source.process_name) || '-'
+  return `销售 ${salesOrder} / 工单 ${workOrder} / 计划 ${productionPlan} / 工序 ${processName}`
+}
+
+export const buildSubcontractReadonlyScopeBridgeFromRow = (
+  row: Pick<
+    SubcontractOrderListItem,
+    | 'item_code'
+    | 'company'
+    | 'process_name'
+    | 'sales_order'
+    | 'sales_order_item'
+    | 'production_plan_id'
+    | 'work_order'
+    | 'job_card'
+    | 'resource_scope_status'
+    | 'profit_scope_status'
+    | 'profit_scope_error_code'
+  >,
+  parityToken = '',
+): SubcontractReadonlyScopeBridgeSummary => ({
+  bridgeCode: resolveScopeBridgeCode(row),
+  dataSource: resolveScopeBridgeDataSource(row, parityToken),
+  readonlyReason: resolveScopeBridgeReadonlyReason(row, parityToken),
+  deviationHint: resolveScopeBridgeDeviationHint(row),
+  bridgeSummary: buildScopeBridgeSummaryText(row),
+  profitScopeStatus: normalizeString(row.profit_scope_status) || 'pending',
+  resourceScopeStatus: normalizeString(row.resource_scope_status) || 'pending',
+  profitScopeErrorCode: normalizeString(row.profit_scope_error_code),
+  mappingFields: buildScopeBridgeMappings(row),
+  materialTags: buildScopeBridgeMaterialTags(row),
+})
+
+export const buildSubcontractReadonlyScopeBridgeFromDetail = (
+  detail: Pick<
+    SubcontractOrderDetailData,
+    | 'item_code'
+    | 'company'
+    | 'process_name'
+    | 'sales_order'
+    | 'sales_order_item'
+    | 'production_plan_id'
+    | 'work_order'
+    | 'job_card'
+    | 'resource_scope_status'
+    | 'profit_scope_status'
+    | 'profit_scope_error_code'
+    | 'receipts'
+    | 'inspections'
+    | 'accepted_qty'
+    | 'received_qty'
+    | 'planned_qty'
+    | 'subcontract_no'
+  >,
+  parityToken = '',
+): SubcontractReadonlyScopeBridgeSummary => ({
+  bridgeCode: resolveScopeBridgeCode(detail),
+  dataSource: resolveScopeBridgeDataSource(detail, parityToken),
+  readonlyReason: resolveScopeBridgeReadonlyReason(detail, parityToken),
+  deviationHint: resolveScopeBridgeDeviationHint(detail),
+  bridgeSummary: buildScopeBridgeSummaryText(detail),
+  profitScopeStatus: normalizeString(detail.profit_scope_status) || 'pending',
+  resourceScopeStatus: normalizeString(detail.resource_scope_status) || 'pending',
+  profitScopeErrorCode: normalizeString(detail.profit_scope_error_code),
+  mappingFields: buildScopeBridgeMappings(detail),
+  materialTags: buildScopeBridgeMaterialTags(detail),
+})
+
+export const buildSubcontractReadonlyScopeBridgeListSummary = (
+  rows: SubcontractOrderListItem[],
+  parityToken = '',
+): SubcontractReadonlyScopeBridgeSummary => {
+  let readyCount = 0
+  let pendingCount = 0
+  let blockedCount = 0
+  let mappedCount = 0
+
+  const rowWithPriority =
+    rows.find((row) => resolveScopeBridgeCode(row) === 'blocked') ||
+    rows.find((row) => resolveScopeBridgeCode(row) === 'pending') ||
+    rows[0]
+
+  rows.forEach((row) => {
+    const bridgeCode = resolveScopeBridgeCode(row)
+    if (bridgeCode === 'ready') readyCount += 1
+    if (bridgeCode === 'pending') pendingCount += 1
+    if (bridgeCode === 'blocked') blockedCount += 1
+    if (hasScopeBridgeMapping(row)) mappedCount += 1
+  })
+
+  const summary = buildSubcontractReadonlyScopeBridgeFromRow(rowWithPriority, parityToken)
+  return {
+    ...summary,
+    bridgeSummary: `桥接就绪 ${readyCount} / 待核对 ${pendingCount} / 阻断 ${blockedCount}`,
+    materialTags: [
+      ...summary.materialTags,
+      {
+        key: 'filtered_count',
+        label: '筛选单数',
+        value: String(rows.length),
+        hint: '当前只读结果集',
+      },
+    ],
+    readyCount,
+    pendingCount,
+    blockedCount,
+    mappedCount,
+  }
 }
 
 export const buildSubcontractSettlementReadonlyStateFromRow = (

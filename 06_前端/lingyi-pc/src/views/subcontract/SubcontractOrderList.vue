@@ -106,6 +106,14 @@
       </el-descriptions>
     </el-card>
 
+    <SubcontractScopeBridgeReadonly
+      v-if="scopeBridgeReadonly"
+      :summary="scopeBridgeReadonly"
+      :guard-states="scopeBridgeGuardStates"
+      :final-path="finalPath"
+      :parity-token="parityToken"
+    />
+
     <el-card shadow="never">
       <el-table
         :data="rows"
@@ -200,6 +208,22 @@
         <el-descriptions-item label="real_purchase_account">false</el-descriptions-item>
         <el-descriptions-item label="row_count">{{ rows.length }}</el-descriptions-item>
         <el-descriptions-item label="fallback_snapshot_used">{{ fallbackSnapshotUsed ? 'true' : 'false' }}</el-descriptions-item>
+        <el-descriptions-item label="scope_bridge_visible">
+          {{ scopeBridgeReadonly ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="profit_scope_status_visible">
+          {{ scopeBridgeReadonly?.profitScopeLabel ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="material_detail_readonly_tags_visible">
+          {{ scopeBridgeReadonly && scopeBridgeReadonly.materialTags.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="readonly_guard_states_visible">
+          {{ scopeBridgeGuardStates.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="material_purchase_parity_visible">
+          {{ isMaterialPurchaseParity ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="cand110_base_readback_retained">true</el-descriptions-item>
       </el-descriptions>
     </el-card>
   </div>
@@ -216,6 +240,7 @@ import {
   filterSubcontractRows,
   hasSubcontractReadonlyFilters,
 } from '@/api/subcontract_readback'
+import SubcontractScopeBridgeReadonly from './components/SubcontractScopeBridgeReadonly.vue'
 import { useSubcontractReadonly } from './composables/useSubcontractReadonly'
 
 const route = useRoute()
@@ -238,6 +263,8 @@ const {
   readonlyGuardActions,
   resourceScopeLabel,
   resourceScopeType,
+  scopeBridgeListSummary: buildScopeBridgeListSummary,
+  scopeGuardStates: buildScopeGuardStates,
   settlementReadonlyLabel,
   settlementReadonlyReason,
   settlementReadonlyType,
@@ -258,6 +285,10 @@ const finalPath = computed(() =>
 )
 
 const summary = computed(() => buildSubcontractReadonlySummary(rows.value))
+
+const scopeBridgeReadonly = computed(() => buildScopeBridgeListSummary(rows.value, parityToken.value))
+
+const scopeBridgeGuardStates = computed(() => buildScopeGuardStates(scopeBridgeReadonly.value))
 
 const buildSyntheticRows = (): SubcontractOrderListItem[] => {
   const supplier = isMaterialPurchaseParity.value ? '本地演示供应商' : '本地演示外协厂'
