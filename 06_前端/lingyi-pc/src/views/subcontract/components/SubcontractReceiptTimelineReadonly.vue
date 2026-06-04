@@ -2,8 +2,8 @@
   <section class="timeline-shell" data-testid="realobj-subcontract-timeline-readback">
     <div class="timeline-header">
       <div>
-        <h3>收货 / 验货时间线</h3>
-        <p>仅回读里程碑、责任角色、时间与当前状态，不释放收货、验货、结算或导出动作。</p>
+        <h3>发料 / 收货 / 验货时间线</h3>
+        <p>仅回读里程碑、异常节点、责任角色、时间与当前状态，不释放收发、验货、结算、导出或库存动作。</p>
       </div>
       <el-tag type="warning" effect="plain">readonly timeline</el-tag>
     </div>

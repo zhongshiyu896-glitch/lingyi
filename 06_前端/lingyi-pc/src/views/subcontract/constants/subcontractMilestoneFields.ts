@@ -3,12 +3,28 @@ import type { SubcontractSettlementReadonlyCode, SubcontractTimelineStatus } fro
 export type SubcontractReadonlyTagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
 
 export type SubcontractMilestoneKey = 'issue' | 'receipt' | 'inspection' | 'settlement'
+export type SubcontractTimelineExceptionKey =
+  | 'discrepancy'
+  | 'delay'
+  | 'shortage'
+  | 'under_receipt'
+  | 'over_receipt'
+  | 'material_purchase_parity'
 
 export const SUBCONTRACT_MILESTONE_LABELS: Record<SubcontractMilestoneKey, string> = {
   issue: '发料节点',
   receipt: '收货节点',
   inspection: '验货节点',
   settlement: '结算观察',
+}
+
+export const SUBCONTRACT_TIMELINE_EXCEPTION_LABELS: Record<SubcontractTimelineExceptionKey, string> = {
+  discrepancy: '收发差异',
+  delay: '延期风险',
+  shortage: '缺料预警',
+  under_receipt: '欠收异常',
+  over_receipt: '超收异常',
+  material_purchase_parity: 'material-purchase parity',
 }
 
 export const SUBCONTRACT_TIMELINE_STATUS_LABELS: Record<SubcontractTimelineStatus, string> = {

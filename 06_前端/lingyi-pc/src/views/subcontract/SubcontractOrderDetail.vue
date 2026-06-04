@@ -27,6 +27,13 @@
         title="materialPurchase final_path: /materialPurchase/materialPurchaseProcess -> /subcontract/detail?parity=material-purchase"
       />
       <el-alert v-if="feedback" class="feedback" type="info" :closable="false" :title="feedback" />
+      <el-alert
+        class="feedback"
+        type="warning"
+        :closable="false"
+        data-testid="realobj-subcontract-detail-remaining-gap"
+        :title="timelineReadonlySummary?.remainingGap || timelineRemainingGap"
+      />
     </el-card>
 
     <el-card shadow="never" data-testid="yisuan-1to1-subcontract-detail-header-summary">
@@ -82,6 +89,29 @@
           <el-tag :type="guard.type">{{ guard.label }}</el-tag>
           <span>{{ guard.reason }}</span>
         </div>
+      </div>
+    </el-card>
+
+    <el-card
+      v-if="timelineReadonlySummary"
+      shadow="never"
+      data-testid="yisuan-1to1-subcontract-detail-timeline-exception-summary"
+    >
+      <template #header>
+        <span>收发异常与 parity 摘要</span>
+      </template>
+      <el-descriptions border :column="3">
+        <el-descriptions-item label="发料节点">{{ timelineReadonlySummary.issueSummary }}</el-descriptions-item>
+        <el-descriptions-item label="收货节点">{{ timelineReadonlySummary.receiptSummary }}</el-descriptions-item>
+        <el-descriptions-item label="material-purchase parity">{{ timelineReadonlySummary.parityLabel }}</el-descriptions-item>
+        <el-descriptions-item label="收发差异">{{ timelineReadonlySummary.discrepancyLabel }}</el-descriptions-item>
+        <el-descriptions-item label="延期风险">{{ timelineReadonlySummary.delayLabel }}</el-descriptions-item>
+        <el-descriptions-item label="缺料/超欠收">{{ timelineReadonlySummary.shortageLabel }} / {{ timelineReadonlySummary.overUnderLabel }}</el-descriptions-item>
+      </el-descriptions>
+      <div v-if="timelineExceptionBadges.length > 0" class="tag-stack detail-tags">
+        <el-tag v-for="badge in timelineExceptionBadges" :key="badge.label" :type="badge.type" effect="plain">
+          {{ badge.label }}
+        </el-tag>
       </div>
     </el-card>
 
@@ -183,11 +213,25 @@
         <el-descriptions-item label="receipt_timeline_visible">
           {{ timelineMilestones.length > 0 ? 'true' : 'false' }}
         </el-descriptions-item>
+        <el-descriptions-item label="issue_timeline_visible">
+          {{ timelineReadonlySummary ? 'true' : 'false' }}
+        </el-descriptions-item>
         <el-descriptions-item label="settlement_readonly_state_visible">
           {{ timelineState ? 'true' : 'false' }}
         </el-descriptions-item>
         <el-descriptions-item label="abnormal_node_readback_visible">
           {{ abnormalNodes.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="receipt_difference_visible">
+          {{ timelineExceptionBadges.some((badge) => badge.label.includes('收发差异')) ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="delay_shortage_visible">
+          {{
+            timelineExceptionBadges.some((badge) => badge.label.includes('延期风险'))
+              || timelineExceptionBadges.some((badge) => badge.label.includes('缺料预警'))
+              ? 'true'
+              : 'false'
+          }}
         </el-descriptions-item>
         <el-descriptions-item label="scope_bridge_visible">
           {{ scopeBridgeReadonly ? 'true' : 'false' }}
@@ -201,6 +245,10 @@
         <el-descriptions-item label="readonly_guard_states_visible">
           {{ scopeBridgeGuardStates.length > 0 ? 'true' : 'false' }}
         </el-descriptions-item>
+        <el-descriptions-item label="material_purchase_parity_visible">
+          {{ isMaterialPurchaseParity ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="remaining_gap_visible">true</el-descriptions-item>
         <el-descriptions-item label="cand110_base_readback_retained">true</el-descriptions-item>
         <el-descriptions-item label="cand134_timeline_settlement_retained">
           {{ timelineMilestones.length > 0 && timelineState ? 'true' : 'false' }}
@@ -261,6 +309,8 @@ const currentDetail = ref<SubcontractOrderDetailData | null>(null)
 const {
   abnormalNodes: buildAbnormalNodes,
   buildReceiptPreconditionGuard,
+  buildTimelineExceptionBadges,
+  buildTimelineReadonlySummary,
   detailSummary,
   formatDateTime,
   formatNumber,
@@ -274,6 +324,7 @@ const {
   settlementReadonlyState: buildSettlementReadonlyState,
   statusLabel,
   statusType,
+  timelineRemainingGap,
   timelineMilestones: buildTimelineMilestones,
 } = useSubcontractReadonly()
 
@@ -357,6 +408,14 @@ const abnormalNodes = computed(() =>
   currentDetail.value ? buildAbnormalNodes(currentDetail.value) : [],
 )
 
+const timelineReadonlySummary = computed(() =>
+  currentDetail.value ? buildTimelineReadonlySummary(currentDetail.value, parityToken.value) : null,
+)
+
+const timelineExceptionBadges = computed(() =>
+  currentDetail.value ? buildTimelineExceptionBadges(currentDetail.value, parityToken.value) : [],
+)
+
 const scopeBridgeReadonly = computed(() =>
   currentDetail.value ? buildScopeBridgeDetailSummary(currentDetail.value, parityToken.value) : null,
 )
@@ -367,6 +426,12 @@ const normalizeOrderId = (): number => {
   const raw = route.query.id
   if (Array.isArray(raw)) return Number(raw[0] || 0)
   return Number(raw || 0)
+}
+
+const syntheticTimestamp = (daysAgo: number, hour = 9, minute = 0): string => {
+  const date = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000)
+  date.setHours(hour, minute, 0, 0)
+  return date.toISOString()
 }
 
 const buildSyntheticListItem = (): SubcontractOrderListItem => ({
@@ -405,9 +470,9 @@ const buildSyntheticListItem = (): SubcontractOrderListItem => ({
   sales_order_item: parityToken.value === 'material-purchase' ? 'SO-LOCAL-001-1' : 'SO-LOCAL-TRACE-1',
   production_plan_id: parityToken.value === 'material-purchase' ? 3001 : 3002,
   work_order: parityToken.value === 'material-purchase' ? 'WO-LOCAL-3001' : 'WO-LOCAL-3002',
-  job_card: parityToken.value === 'material-purchase' ? 'JC-LOCAL-3001' : 'JC-LOCAL-3002',
-  created_at: new Date().toISOString(),
-})
+      job_card: parityToken.value === 'material-purchase' ? 'JC-LOCAL-3001' : 'JC-LOCAL-3002',
+      created_at: syntheticTimestamp(14, 9, 0),
+    })
 
 const buildSyntheticDetail = (base?: Partial<SubcontractOrderListItem>): SubcontractOrderDetailData => ({
   id: Number(base?.id || 900601),
@@ -461,7 +526,7 @@ const buildSyntheticDetail = (base?: Partial<SubcontractOrderListItem>): Subcont
       inspect_status: 'waiting_inspection',
       idempotency_key: null,
       received_by: 'local-dev',
-      received_at: new Date().toISOString(),
+      received_at: syntheticTimestamp(7, 11, 20),
     },
   ],
   inspections: [
@@ -478,12 +543,12 @@ const buildSyntheticDetail = (base?: Partial<SubcontractOrderListItem>): Subcont
       deduction_amount: String(base?.deduction_amount || '180'),
       net_amount: String(base?.net_amount || '6620'),
       inspected_by: 'local-dev',
-      inspected_at: new Date().toISOString(),
+      inspected_at: syntheticTimestamp(6, 15, 10),
       remark: 'synthetic snapshot',
     },
   ],
-  created_at: String(base?.created_at || new Date().toISOString()),
-  updated_at: new Date().toISOString(),
+  created_at: String(base?.created_at || syntheticTimestamp(14, 9, 0)),
+  updated_at: syntheticTimestamp(2, 10, 30),
 })
 
 const buildMaterialLines = (detail: SubcontractOrderDetailData): MaterialLineView[] => [

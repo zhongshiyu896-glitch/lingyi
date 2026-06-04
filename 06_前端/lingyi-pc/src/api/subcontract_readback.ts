@@ -29,6 +29,11 @@ export interface SubcontractReadonlySummary {
   waitingInspectionCount: number
   settlementReadyCount: number
   blockedCount: number
+  discrepancyCount: number
+  delayCount: number
+  shortageCount: number
+  overReceiptCount: number
+  underReceiptCount: number
 }
 
 export interface SubcontractDetailReadonlySummary {
@@ -108,6 +113,19 @@ export interface SubcontractReadonlyAbnormalNode {
   actionHint: string
 }
 
+export interface SubcontractReceiptTimelineSnapshot {
+  plannedQty: number
+  issuedQty: number
+  receivedQty: number
+  acceptedQty: number
+  shortageQty: number
+  discrepancyQty: number
+  underReceiptQty: number
+  overReceiptQty: number
+  remainingAcceptanceQty: number
+  delayedDays: number
+}
+
 const normalizeString = (value: unknown): string => {
   const raw = Array.isArray(value) ? value[0] : value
   return typeof raw === 'string' ? raw.trim() : ''
@@ -162,6 +180,64 @@ const buildRowBlockedReason = (
   }
 
   return ''
+}
+
+type SubcontractReceiptTimelineSource = Pick<
+  SubcontractOrderListItem,
+  'planned_qty' | 'issued_qty' | 'received_qty' | 'accepted_qty' | 'status' | 'created_at'
+> &
+  Partial<Pick<SubcontractOrderDetailData, 'updated_at' | 'receipts' | 'inspections'>>
+
+const resolveTimelineObservedAt = (source: SubcontractReceiptTimelineSource): string => {
+  const latestReceipt = Array.isArray(source.receipts) ? source.receipts[source.receipts.length - 1] : undefined
+  const latestInspection = Array.isArray(source.inspections)
+    ? source.inspections[source.inspections.length - 1]
+    : undefined
+  return resolveTimestamp(
+    latestInspection?.inspected_at,
+    latestReceipt?.received_at,
+    source.created_at,
+    source.updated_at,
+  )
+}
+
+export const buildSubcontractReceiptTimelineSnapshot = (
+  source: SubcontractReceiptTimelineSource,
+): SubcontractReceiptTimelineSnapshot => {
+  const plannedQty = toNumber(source.planned_qty)
+  const issuedQty = toNumber(source.issued_qty)
+  const receivedQty = toNumber(source.received_qty)
+  const acceptedQty = toNumber(source.accepted_qty)
+  const shortageQty = Math.max(plannedQty - issuedQty, 0)
+  const underReceiptQty = Math.max(issuedQty - receivedQty, 0)
+  const overReceiptQty = Math.max(receivedQty - issuedQty, 0)
+  const discrepancyQty = Math.abs(issuedQty - receivedQty)
+  const remainingAcceptanceQty = Math.max(receivedQty - acceptedQty, 0)
+
+  const openGapExists =
+    shortageQty > 0 || discrepancyQty > 0 || remainingAcceptanceQty > 0
+  const rawStatus = normalizeString(source.status).toLowerCase()
+  const observedAt = resolveTimelineObservedAt(source)
+  const observedDate = observedAt ? new Date(observedAt) : null
+  const diffDays =
+    observedDate && !Number.isNaN(observedDate.getTime())
+      ? Math.floor((Date.now() - observedDate.getTime()) / (24 * 60 * 60 * 1000))
+      : 0
+  const delayedDays =
+    openGapExists && !['completed', 'cancelled'].includes(rawStatus) && diffDays >= 3 ? diffDays : 0
+
+  return {
+    plannedQty,
+    issuedQty,
+    receivedQty,
+    acceptedQty,
+    shortageQty,
+    discrepancyQty,
+    underReceiptQty,
+    overReceiptQty,
+    remainingAcceptanceQty,
+    delayedDays,
+  }
 }
 
 type SubcontractScopeBridgeSource = Pick<
@@ -591,6 +667,11 @@ export const buildSubcontractReadonlySummary = (
   let waitingInspectionCount = 0
   let settlementReadyCount = 0
   let blockedCount = 0
+  let discrepancyCount = 0
+  let delayCount = 0
+  let shortageCount = 0
+  let overReceiptCount = 0
+  let underReceiptCount = 0
 
   rows.forEach((row) => {
     suppliers.add(normalizeString(row.supplier))
@@ -603,6 +684,13 @@ export const buildSubcontractReadonlySummary = (
     if (status === 'processing') processingCount += 1
     if (status === 'waiting_receive') waitingReceiveCount += 1
     if (status === 'waiting_inspection') waitingInspectionCount += 1
+
+    const timelineSnapshot = buildSubcontractReceiptTimelineSnapshot(row)
+    if (timelineSnapshot.discrepancyQty > 0) discrepancyCount += 1
+    if (timelineSnapshot.delayedDays > 0) delayCount += 1
+    if (timelineSnapshot.shortageQty > 0) shortageCount += 1
+    if (timelineSnapshot.overReceiptQty > 0) overReceiptCount += 1
+    if (timelineSnapshot.underReceiptQty > 0) underReceiptCount += 1
 
     const settlementState = buildSubcontractSettlementReadonlyStateFromRow(row)
     if (settlementState.code === 'ready') settlementReadyCount += 1
@@ -621,6 +709,11 @@ export const buildSubcontractReadonlySummary = (
     waitingInspectionCount,
     settlementReadyCount,
     blockedCount,
+    discrepancyCount,
+    delayCount,
+    shortageCount,
+    overReceiptCount,
+    underReceiptCount,
   }
 }
 
@@ -649,8 +742,7 @@ export const buildSubcontractReadonlyAbnormalNodes = (
   const nodes: SubcontractReadonlyAbnormalNode[] = []
   const latestReceipt = detail.receipts[detail.receipts.length - 1]
   const latestInspection = detail.inspections[detail.inspections.length - 1]
-  const receivedQty = toNumber(detail.received_qty)
-  const acceptedQty = toNumber(detail.accepted_qty)
+  const timelineSnapshot = buildSubcontractReceiptTimelineSnapshot(detail)
 
   const pushNode = (node: SubcontractReadonlyAbnormalNode) => {
     if (!nodes.some((item) => item.key === node.key)) nodes.push(node)
@@ -692,14 +784,62 @@ export const buildSubcontractReadonlyAbnormalNodes = (
     })
   }
 
-  if (receivedQty > acceptedQty) {
+  if (timelineSnapshot.shortageQty > 0) {
+    pushNode({
+      key: 'issue-shortage',
+      label: '缺料待补发',
+      ownerRole: '生产备料',
+      occurredAt: resolveTimestamp(detail.created_at, detail.updated_at),
+      status: 'active',
+      reason: `计划 ${timelineSnapshot.plannedQty} / 已发 ${timelineSnapshot.issuedQty}，仍缺 ${timelineSnapshot.shortageQty}`,
+      actionHint: '当前页面仅回读缺料与补发阻断提示，不释放真实发料、出库或 outbox 动作',
+    })
+  }
+
+  if (timelineSnapshot.underReceiptQty > 0) {
+    pushNode({
+      key: 'receipt-under',
+      label: '欠收异常',
+      ownerRole: normalizeString(latestReceipt?.received_by) || '仓库收货',
+      occurredAt: resolveTimestamp(latestReceipt?.received_at, detail.updated_at, detail.created_at),
+      status: 'active',
+      reason: `发料 ${timelineSnapshot.issuedQty} / 回料 ${timelineSnapshot.receivedQty}，仍差 ${timelineSnapshot.underReceiptQty}`,
+      actionHint: '仅回读收发差异与只读 guard，不释放真实收货、入库或库存影响动作',
+    })
+  }
+
+  if (timelineSnapshot.overReceiptQty > 0) {
+    pushNode({
+      key: 'receipt-over',
+      label: '超收异常',
+      ownerRole: normalizeString(latestReceipt?.received_by) || '仓库收货',
+      occurredAt: resolveTimestamp(latestReceipt?.received_at, detail.updated_at, detail.created_at),
+      status: 'blocked',
+      reason: `回料 ${timelineSnapshot.receivedQty} 超出发料 ${timelineSnapshot.issuedQty}，差异 ${timelineSnapshot.overReceiptQty}`,
+      actionHint: '需核对超收来源；当前页面只展示异常，不释放真实收货、入库或库存动作',
+    })
+  }
+
+  if (timelineSnapshot.delayedDays > 0) {
+    pushNode({
+      key: 'timeline-delay',
+      label: '延期风险',
+      ownerRole: '采购跟单',
+      occurredAt: resolveTimestamp(latestInspection?.inspected_at, latestReceipt?.received_at, detail.created_at),
+      status: 'active',
+      reason: `收发时间线已延迟 ${timelineSnapshot.delayedDays} 天，仍存在未闭环节点`,
+      actionHint: '仅回读延期与异常提示，不释放催办、收货或库存写动作',
+    })
+  }
+
+  if (timelineSnapshot.remainingAcceptanceQty > 0) {
     pushNode({
       key: 'inspection-pending',
       label: '验货待完成',
       ownerRole: '质检验货',
       occurredAt: resolveTimestamp(latestInspection?.inspected_at, latestReceipt?.received_at, detail.created_at),
       status: 'pending',
-      reason: `仍有 ${receivedQty - acceptedQty} 待验货数量`,
+      reason: `仍有 ${timelineSnapshot.remainingAcceptanceQty} 待验货数量`,
       actionHint: '仅回读阻断节点和处理提示，不释放验货或结算动作',
     })
   }
@@ -724,6 +864,7 @@ export const buildSubcontractSettlementReadonlyState = (
   detail: SubcontractOrderDetailData,
 ): SubcontractSettlementReadonlyState => {
   const abnormalNodes = buildSubcontractReadonlyAbnormalNodes(detail)
+  const timelineSnapshot = buildSubcontractReceiptTimelineSnapshot(detail)
   const rawStatus = normalizeString(detail.settlement_status).toLowerCase()
   const acceptedQty = toNumber(detail.accepted_qty)
   const netAmount = toNumber(detail.net_amount)
@@ -743,6 +884,20 @@ export const buildSubcontractSettlementReadonlyState = (
     return {
       code: 'locked',
       reason: '结算状态已锁定，当前页面只保留结果回读，不开放 release 或导出',
+      blockedNode: '',
+      acceptedQty,
+      netAmount,
+    }
+  }
+
+  if (
+    timelineSnapshot.shortageQty > 0 ||
+    timelineSnapshot.underReceiptQty > 0 ||
+    timelineSnapshot.remainingAcceptanceQty > 0
+  ) {
+    return {
+      code: 'pending',
+      reason: '收发或验货节点尚未闭环，当前仅保留结算观察，不开放真实结算动作',
       blockedNode: '',
       acceptedQty,
       netAmount,
@@ -771,27 +926,36 @@ export const buildSubcontractSettlementReadonlyState = (
 export const buildSubcontractReadonlyTimelineMilestones = (
   detail: SubcontractOrderDetailData,
 ): SubcontractReadonlyTimelineMilestone[] => {
-  const issuedQty = toNumber(detail.issued_qty)
-  const receivedQty = toNumber(detail.received_qty)
-  const acceptedQty = toNumber(detail.accepted_qty)
+  const timelineSnapshot = buildSubcontractReceiptTimelineSnapshot(detail)
   const latestReceipt = detail.receipts[detail.receipts.length - 1]
   const latestInspection = detail.inspections[detail.inspections.length - 1]
   const settlementState = buildSubcontractSettlementReadonlyState(detail)
   const hasIssueFailure = Boolean(normalizeString(detail.latest_issue_error_code)) || hasFailureStatus(detail.latest_issue_sync_status)
   const hasReceiptFailure = Boolean(normalizeString(detail.latest_receipt_error_code)) || hasFailureStatus(detail.latest_receipt_sync_status)
-  const inspectionPendingQty = Math.max(receivedQty - acceptedQty, 0)
+  const inspectionPendingQty = timelineSnapshot.remainingAcceptanceQty
 
   return [
     {
       key: 'issue',
       ownerRole: '生产备料',
       occurredAt: resolveTimestamp(detail.created_at),
-      status: hasIssueFailure ? 'blocked' : issuedQty > 0 ? 'success' : 'pending',
-      summary: `发料 ${issuedQty} / 计划 ${toNumber(detail.planned_qty)}`,
+      status: hasIssueFailure
+        ? 'blocked'
+        : timelineSnapshot.shortageQty > 0
+          ? 'active'
+          : timelineSnapshot.issuedQty > 0
+            ? 'success'
+            : 'pending',
+      summary:
+        timelineSnapshot.shortageQty > 0
+          ? `发料 ${timelineSnapshot.issuedQty} / 计划 ${timelineSnapshot.plannedQty} / 缺口 ${timelineSnapshot.shortageQty}`
+          : `发料 ${timelineSnapshot.issuedQty} / 计划 ${timelineSnapshot.plannedQty}`,
       guardHint: hasIssueFailure
         ? '发料同步存在异常，当前页面仅回读阻断状态，不释放补发或库存链路'
-        : issuedQty > 0
-          ? '基础发料节点已回读，后续只读观察收货与验货流转'
+        : timelineSnapshot.shortageQty > 0
+          ? `仍缺 ${timelineSnapshot.shortageQty} 待发料；当前只读模式不释放补发、出库或 worker 链路`
+          : timelineSnapshot.issuedQty > 0
+            ? '基础发料节点已回读，后续只读观察收货与验货流转'
           : '待发料节点仅展示，不释放任何写动作',
     },
     {
@@ -800,16 +964,23 @@ export const buildSubcontractReadonlyTimelineMilestones = (
       occurredAt: resolveTimestamp(latestReceipt?.received_at, detail.updated_at, detail.created_at),
       status: hasReceiptFailure
         ? 'blocked'
-        : receivedQty >= issuedQty && issuedQty > 0
-          ? 'success'
-          : receivedQty > 0
+        : timelineSnapshot.overReceiptQty > 0
+          ? 'blocked'
+          : timelineSnapshot.receivedQty >= timelineSnapshot.issuedQty && timelineSnapshot.issuedQty > 0
+            ? 'success'
+            : timelineSnapshot.receivedQty > 0 || timelineSnapshot.underReceiptQty > 0
             ? 'active'
             : 'pending',
-      summary: `回料 ${receivedQty} / 发料 ${issuedQty}`,
+      summary:
+        timelineSnapshot.discrepancyQty > 0
+          ? `回料 ${timelineSnapshot.receivedQty} / 发料 ${timelineSnapshot.issuedQty} / 差异 ${timelineSnapshot.discrepancyQty}`
+          : `回料 ${timelineSnapshot.receivedQty} / 发料 ${timelineSnapshot.issuedQty}`,
       guardHint:
-        receivedQty >= issuedQty && issuedQty > 0
+        timelineSnapshot.overReceiptQty > 0
+          ? `出现超收 ${timelineSnapshot.overReceiptQty}；当前页面仅展示异常与只读 guard`
+          : timelineSnapshot.receivedQty >= timelineSnapshot.issuedQty && timelineSnapshot.issuedQty > 0
           ? '收货时间线已闭环，但收货写动作继续冻结'
-          : `仍有 ${Math.max(issuedQty - receivedQty, 0)} 待回料数量，收货动作保持只读`,
+          : `仍有 ${timelineSnapshot.underReceiptQty} 待回料数量，收货动作保持只读`,
     },
     {
       key: 'inspection',
@@ -818,13 +989,13 @@ export const buildSubcontractReadonlyTimelineMilestones = (
       status:
         inspectionPendingQty > 0
           ? 'active'
-          : acceptedQty >= receivedQty && receivedQty > 0
+          : timelineSnapshot.acceptedQty >= timelineSnapshot.receivedQty && timelineSnapshot.receivedQty > 0
             ? 'success'
-            : receivedQty > 0
+            : timelineSnapshot.receivedQty > 0
               ? 'active'
               : 'pending',
-      summary: `验收 ${acceptedQty} / 回料 ${receivedQty} / 不良 ${toNumber(detail.rejected_qty)}`,
-      guardHint: inspectionPendingQty === 0 && acceptedQty >= receivedQty && receivedQty > 0
+      summary: `验收 ${timelineSnapshot.acceptedQty} / 回料 ${timelineSnapshot.receivedQty} / 不良 ${toNumber(detail.rejected_qty)}`,
+      guardHint: inspectionPendingQty === 0 && timelineSnapshot.acceptedQty >= timelineSnapshot.receivedQty && timelineSnapshot.receivedQty > 0
         ? '验货节点已完成，但验货与后续结算动作继续冻结'
         : `仍有 ${inspectionPendingQty} 待验货数量，当前只读模式仅展示阻断提示`,
     },
@@ -840,7 +1011,7 @@ export const buildSubcontractReadonlyTimelineMilestones = (
             : settlementState.code === 'ready'
               ? 'active'
               : 'pending',
-      summary: `净额 ${netAmountLabel(detail.net_amount)} / 验收 ${acceptedQty}`,
+      summary: `净额 ${netAmountLabel(detail.net_amount)} / 验收 ${timelineSnapshot.acceptedQty}`,
       guardHint: settlementState.reason,
     },
   ]

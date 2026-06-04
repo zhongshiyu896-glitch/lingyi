@@ -25,6 +25,13 @@
         data-testid="realobj-subcontract-parity-alert"
         title="materialPurchase final_path: /materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
       />
+      <el-alert
+        class="parity-alert"
+        type="warning"
+        :closable="false"
+        data-testid="realobj-subcontract-list-remaining-gap"
+        :title="timelineRemainingGap"
+      />
     </el-card>
 
     <el-card shadow="never" data-testid="yisuan-1to1-subcontract-list-filter-panel">
@@ -103,6 +110,22 @@
         <el-descriptions-item label="待验货">{{ summary.waitingInspectionCount }}</el-descriptions-item>
         <el-descriptions-item label="可结算观察">{{ summary.settlementReadyCount }}</el-descriptions-item>
         <el-descriptions-item label="异常阻断">{{ summary.blockedCount }}</el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
+    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-list-timeline-exception-summary">
+      <template #header>
+        <span>收发时间线与异常摘要</span>
+      </template>
+      <el-descriptions border :column="3">
+        <el-descriptions-item label="收发差异">{{ summary.discrepancyCount }}</el-descriptions-item>
+        <el-descriptions-item label="延期风险">{{ summary.delayCount }}</el-descriptions-item>
+        <el-descriptions-item label="缺料预警">{{ summary.shortageCount }}</el-descriptions-item>
+        <el-descriptions-item label="超收异常">{{ summary.overReceiptCount }}</el-descriptions-item>
+        <el-descriptions-item label="欠收异常">{{ summary.underReceiptCount }}</el-descriptions-item>
+        <el-descriptions-item label="material-purchase parity">
+          {{ isMaterialPurchaseParity ? 'locked' : 'default readonly' }}
+        </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -220,9 +243,22 @@
         <el-descriptions-item label="readonly_guard_states_visible">
           {{ scopeBridgeGuardStates.length > 0 ? 'true' : 'false' }}
         </el-descriptions-item>
+        <el-descriptions-item label="issue_timeline_visible">
+          {{ rows.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="receipt_timeline_visible">
+          {{ rows.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="receipt_difference_visible">
+          {{ summary.discrepancyCount > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="delay_shortage_visible">
+          {{ summary.delayCount > 0 || summary.shortageCount > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
         <el-descriptions-item label="material_purchase_parity_visible">
           {{ isMaterialPurchaseParity ? 'true' : 'false' }}
         </el-descriptions-item>
+        <el-descriptions-item label="remaining_gap_visible">true</el-descriptions-item>
         <el-descriptions-item label="cand110_base_readback_retained">true</el-descriptions-item>
       </el-descriptions>
     </el-card>
@@ -270,6 +306,7 @@ const {
   settlementReadonlyType,
   statusLabel,
   statusType,
+  timelineRemainingGap,
 } = useSubcontractReadonly()
 
 const parityToken = computed(() => {
@@ -292,6 +329,8 @@ const scopeBridgeGuardStates = computed(() => buildScopeGuardStates(scopeBridgeR
 
 const buildSyntheticRows = (): SubcontractOrderListItem[] => {
   const supplier = isMaterialPurchaseParity.value ? '本地演示供应商' : '本地演示外协厂'
+  const createdAt = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+  createdAt.setHours(9, 0, 0, 0)
   return [
     {
       id: 900601,
@@ -330,7 +369,7 @@ const buildSyntheticRows = (): SubcontractOrderListItem[] => {
       production_plan_id: isMaterialPurchaseParity.value ? 3001 : 3002,
       work_order: isMaterialPurchaseParity.value ? 'WO-LOCAL-3001' : 'WO-LOCAL-3002',
       job_card: isMaterialPurchaseParity.value ? 'JC-LOCAL-3001' : 'JC-LOCAL-3002',
-      created_at: new Date().toISOString(),
+      created_at: createdAt.toISOString(),
     },
   ]
 }

@@ -2,6 +2,7 @@ import type { SubcontractOrderDetailData, SubcontractOrderListItem } from '@/api
 import {
   buildSubcontractDetailReadonlySummary,
   buildSubcontractReadonlyAbnormalNodes,
+  buildSubcontractReceiptTimelineSnapshot,
   buildSubcontractReadonlyScopeBridgeFromDetail,
   buildSubcontractReadonlyScopeBridgeListSummary,
   buildSubcontractReadonlyTimelineMilestones,
@@ -15,6 +16,7 @@ import {
   type SubcontractSettlementReadonlyState,
 } from '@/api/subcontract_readback'
 import {
+  SUBCONTRACT_TIMELINE_EXCEPTION_LABELS,
   SUBCONTRACT_MILESTONE_LABELS,
   SUBCONTRACT_SETTLEMENT_LABELS,
   SUBCONTRACT_SETTLEMENT_TAGS,
@@ -58,6 +60,22 @@ export interface SubcontractAbnormalNodeView extends SubcontractReadonlyAbnormal
   statusType: SubcontractTagType
 }
 
+export interface SubcontractTimelineExceptionBadgeView {
+  label: string
+  type: SubcontractTagType
+}
+
+export interface SubcontractTimelineReadonlySummaryView {
+  issueSummary: string
+  receiptSummary: string
+  discrepancyLabel: string
+  shortageLabel: string
+  overUnderLabel: string
+  delayLabel: string
+  parityLabel: string
+  remainingGap: string
+}
+
 export interface SubcontractScopeBridgeFieldView extends SubcontractReadonlyScopeBridgeField {
   label: string
 }
@@ -77,6 +95,12 @@ export interface SubcontractScopeBridgeReadonlyView
   mappingFields: SubcontractScopeBridgeFieldView[]
   materialTags: SubcontractScopeBridgeMaterialTagView[]
 }
+
+type SubcontractTimelineSource = Pick<
+  SubcontractOrderListItem,
+  'planned_qty' | 'issued_qty' | 'received_qty' | 'accepted_qty' | 'status' | 'created_at'
+> &
+  Partial<Pick<SubcontractOrderDetailData, 'updated_at' | 'receipts' | 'inspections'>>
 
 const STATUS_LABELS: Record<string, string> = {
   draft: '草稿待核对',
@@ -129,6 +153,9 @@ const READONLY_GUARD_ACTIONS: SubcontractReadonlyGuardAction[] = [
   { label: '导出', reason: 'export 冻结' },
   { label: '库存影响', reason: 'stock effect 冻结' },
 ]
+
+const SUBCONTRACT_TIMELINE_REMAINING_GAP =
+  'remaining_gap: 未开放真实收货、出库、入库、库存影响、outbox、worker、ERPNext 与异常处理写回。'
 
 const normalizeString = (value: unknown): string => {
   const raw = Array.isArray(value) ? value[0] : value
@@ -201,6 +228,88 @@ export const useSubcontractReadonly = () => {
     if (stage === '待收货' || stage === '待验货') return 'warning'
     if (stage === '加工中') return 'primary'
     return 'info'
+  }
+
+  const buildTimelineReadonlySummary = (
+    source: SubcontractTimelineSource,
+    parityToken = '',
+  ): SubcontractTimelineReadonlySummaryView => {
+    const snapshot = buildSubcontractReceiptTimelineSnapshot(source)
+    const overUnderLabel =
+      snapshot.overReceiptQty > 0
+        ? `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.over_receipt} ${toNumberLabel(snapshot.overReceiptQty)}`
+        : snapshot.underReceiptQty > 0
+          ? `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.under_receipt} ${toNumberLabel(snapshot.underReceiptQty)}`
+          : '收发对齐'
+
+    return {
+      issueSummary: `发料 ${toNumberLabel(snapshot.issuedQty)} / 计划 ${toNumberLabel(snapshot.plannedQty)}`,
+      receiptSummary: `回料 ${toNumberLabel(snapshot.receivedQty)} / 发料 ${toNumberLabel(snapshot.issuedQty)}`,
+      discrepancyLabel:
+        snapshot.discrepancyQty > 0
+          ? `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.discrepancy} ${toNumberLabel(snapshot.discrepancyQty)}`
+          : '收发差异已对齐',
+      shortageLabel:
+        snapshot.shortageQty > 0
+          ? `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.shortage} ${toNumberLabel(snapshot.shortageQty)}`
+          : '无缺料预警',
+      overUnderLabel,
+      delayLabel:
+        snapshot.delayedDays > 0
+          ? `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.delay} ${snapshot.delayedDays} 天`
+          : '未见延期风险',
+      parityLabel:
+        parityToken === 'material-purchase'
+          ? `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.material_purchase_parity} 一致性已锁定`
+          : 'subcontract readonly timeline',
+      remainingGap: SUBCONTRACT_TIMELINE_REMAINING_GAP,
+    }
+  }
+
+  const buildTimelineExceptionBadges = (
+    source: SubcontractTimelineSource,
+    parityToken = '',
+  ): SubcontractTimelineExceptionBadgeView[] => {
+    const snapshot = buildSubcontractReceiptTimelineSnapshot(source)
+    const badges: SubcontractTimelineExceptionBadgeView[] = []
+
+    if (snapshot.shortageQty > 0) {
+      badges.push({
+        label: `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.shortage} ${toNumberLabel(snapshot.shortageQty)}`,
+        type: 'warning',
+      })
+    }
+    if (snapshot.discrepancyQty > 0) {
+      badges.push({
+        label: `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.discrepancy} ${toNumberLabel(snapshot.discrepancyQty)}`,
+        type: snapshot.overReceiptQty > 0 ? 'danger' : 'warning',
+      })
+    }
+    if (snapshot.overReceiptQty > 0) {
+      badges.push({
+        label: `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.over_receipt} ${toNumberLabel(snapshot.overReceiptQty)}`,
+        type: 'danger',
+      })
+    } else if (snapshot.underReceiptQty > 0) {
+      badges.push({
+        label: `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.under_receipt} ${toNumberLabel(snapshot.underReceiptQty)}`,
+        type: 'warning',
+      })
+    }
+    if (snapshot.delayedDays > 0) {
+      badges.push({
+        label: `${SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.delay} ${snapshot.delayedDays} 天`,
+        type: 'danger',
+      })
+    }
+    if (parityToken === 'material-purchase') {
+      badges.push({
+        label: SUBCONTRACT_TIMELINE_EXCEPTION_LABELS.material_purchase_parity,
+        type: 'primary',
+      })
+    }
+
+    return badges
   }
 
   const detailSummary = (detail: SubcontractOrderDetailData) =>
@@ -438,6 +547,8 @@ export const useSubcontractReadonly = () => {
 
   return {
     abnormalNodes,
+    buildTimelineExceptionBadges,
+    buildTimelineReadonlySummary,
     buildReceiptPreconditionGuard,
     detailSummary,
     formatDateTime,
@@ -459,6 +570,7 @@ export const useSubcontractReadonly = () => {
     settlementReadonlyType,
     statusLabel,
     statusType,
+    timelineRemainingGap: SUBCONTRACT_TIMELINE_REMAINING_GAP,
     timelineMilestones,
   }
 }
