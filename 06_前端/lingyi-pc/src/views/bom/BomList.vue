@@ -142,6 +142,54 @@
       />
     </el-card>
 
+    <el-card shadow="never" class="readonly-summary-card" data-testid="cand206-bom-audit-readonly-summary">
+      <template #header>
+        <div class="contract-header">
+          <strong>BOM 审计来源 / 默认版本只读提示</strong>
+          <el-tag :type="bomAuditReadonlySummary.readonlySourceType" effect="plain">
+            {{ bomAuditReadonlySummary.readonlySourceTag }}
+          </el-tag>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="bomAuditReadonlySummary.parityReadonlyHint"
+        type="warning"
+        :closable="false"
+        :title="bomAuditReadonlySummary.parityReadonlyHint"
+        data-testid="cand206-bom-product-style-parity-readonly"
+      />
+
+      <el-descriptions border :column="2" class="readback-descriptions" data-testid="cand206-bom-audit-readonly-descriptions">
+        <el-descriptions-item label="当前入口">{{ bomAuditReadonlySummary.parityScopeLabel }}</el-descriptions-item>
+        <el-descriptions-item label="列表行数">{{ bomAuditReadonlySummary.rowCountLabel }}</el-descriptions-item>
+        <el-descriptions-item label="审计来源">{{ bomAuditReadonlySummary.auditSourceLabel }}</el-descriptions-item>
+        <el-descriptions-item label="默认版本状态">
+          {{ bomAuditReadonlySummary.defaultVersionStatusLabel }}
+        </el-descriptions-item>
+        <el-descriptions-item label="版本覆盖">
+          {{ bomAuditReadonlySummary.defaultVersionCoverageLabel }}
+        </el-descriptions-item>
+        <el-descriptions-item label="readonly_guard">{{ bomAuditReadonlySummary.readonlyGuardReason }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-alert
+        type="warning"
+        :closable="false"
+        :title="bomAuditReadonlySummary.versionSourceGapPrompt"
+        class="feedback-alert"
+        data-testid="cand206-bom-version-source-gap"
+      />
+
+      <el-alert
+        type="info"
+        :closable="false"
+        :title="bomAuditReadonlySummary.remainingGap"
+        class="feedback-alert"
+        data-testid="cand206-bom-remaining-gap"
+      />
+    </el-card>
+
     <el-card shadow="never">
       <el-table
         v-loading="listLoading"
@@ -297,6 +345,7 @@ import {
   type LocalBomUpsertPayload,
 } from '@/api/bom'
 import { useBomAlternateReadonly } from './composables/useBomAlternateReadonly'
+import { useBomAuditDefaultVersionReadonly } from './composables/useBomAuditDefaultVersionReadonly'
 
 type BomStatus = 'draft' | 'review' | 'published'
 
@@ -310,11 +359,13 @@ interface BomRow {
   owner: string
   status: BomStatus
   updatedAt: string
+  isDefault: boolean
 }
 
 const router = useRouter()
 const route = useRoute()
 const { buildBomAlternateListSummary } = useBomAlternateReadonly()
+const { buildBomAuditListSummary } = useBomAuditDefaultVersionReadonly()
 
 const a005VerifiedFields = ['款号', '款名', '单位', '面料', '备注', '可打样', '创建人', '修改人']
 const a005PartialFields = ['颜色', '尺码', '吊牌价', '创建时间', '修改时间', '设计号', '纸样师']
@@ -358,6 +409,7 @@ const sourceRows: BomRow[] = [
     owner: '张工',
     status: 'published',
     updatedAt: '2026-05-31 19:40',
+    isDefault: true,
   },
   {
     bomId: null,
@@ -369,6 +421,7 @@ const sourceRows: BomRow[] = [
     owner: '李工',
     status: 'review',
     updatedAt: '2026-05-31 18:22',
+    isDefault: false,
   },
   {
     bomId: null,
@@ -380,6 +433,7 @@ const sourceRows: BomRow[] = [
     owner: '王工',
     status: 'draft',
     updatedAt: '2026-05-31 17:58',
+    isDefault: false,
   },
 ]
 
@@ -533,6 +587,7 @@ const mapBomListItem = (item: BomListItem): BomRow => ({
   owner: 'local-dev',
   status: normalizeBomStatus(item.status),
   updatedAt: item.effective_date || '-',
+  isDefault: item.is_default,
 })
 
 const loadBomList = async (showSuccess = false): Promise<void> => {
@@ -576,6 +631,10 @@ const filteredRows = computed(() => {
 })
 
 const listReadonlySummary = computed(() => buildBomAlternateListSummary(filteredRows.value.length, currentParity.value))
+
+const bomAuditReadonlySummary = computed(() =>
+  buildBomAuditListSummary(filteredRows.value, currentParity.value, listLoadedFromApi.value),
+)
 
 const saveButtonLabel = computed(() => (currentObjectId.value ? '更新本地对象' : '保存本地对象'))
 

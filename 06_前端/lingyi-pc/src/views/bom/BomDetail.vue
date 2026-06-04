@@ -200,6 +200,59 @@
       />
     </el-card>
 
+    <el-card shadow="never" data-testid="cand206-bom-audit-default-version-panel">
+      <template #header>
+        <div class="panel-header">
+          <span>BOM 审计来源 / 默认版本只读回读</span>
+          <div class="tag-row compact">
+            <el-tag :type="bomAuditDefaultVersionView.readonlySourceType" effect="plain">
+              {{ bomAuditDefaultVersionView.readonlySourceTag }}
+            </el-tag>
+            <el-tag :type="bomAuditDefaultVersionView.defaultVersionStatusType" effect="plain">
+              {{ bomAuditDefaultVersionView.defaultVersionStatusLabel }}
+            </el-tag>
+            <el-tag type="warning" effect="plain">{{ bomAuditDefaultVersionView.parityScopeLabel }}</el-tag>
+          </div>
+        </div>
+      </template>
+
+      <el-table
+        :data="bomAuditDefaultVersionView.auditRows"
+        border
+        stripe
+        class="readback-descriptions"
+        data-testid="cand206-bom-audit-source-table"
+      >
+        <el-table-column prop="label" label="只读字段" min-width="160" />
+        <el-table-column prop="value" label="回读结果" min-width="220" />
+        <el-table-column prop="note" label="备注" min-width="220" />
+      </el-table>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        :title="bomAuditDefaultVersionView.readonlyGuardReason"
+        class="readback-descriptions"
+        data-testid="cand206-bom-readonly-guard"
+      />
+
+      <el-alert
+        type="warning"
+        :closable="false"
+        :title="bomAuditDefaultVersionView.versionSourceGapPrompt"
+        class="readback-descriptions"
+        data-testid="cand206-bom-version-source-gap"
+      />
+
+      <el-alert
+        type="warning"
+        :closable="false"
+        :title="bomAuditDefaultVersionView.remainingGap"
+        class="readback-descriptions"
+        data-testid="cand206-bom-remaining-gap"
+      />
+    </el-card>
+
     <el-card shadow="never" data-testid="yisuan-1to1-bom-cost-usage-panel">
       <template #header>
         <div class="panel-header">
@@ -287,6 +340,7 @@ import {
 } from '@/api/bom'
 import { BOM_COLOR_SIZE_SUMMARY_FIELDS } from './constants/bomAlternateMaterialFields'
 import { useBomAlternateReadonly } from './composables/useBomAlternateReadonly'
+import { useBomAuditDefaultVersionReadonly } from './composables/useBomAuditDefaultVersionReadonly'
 
 interface MaterialLine {
   code: string
@@ -309,6 +363,7 @@ type ContractFieldRow = {
 const router = useRouter()
 const route = useRoute()
 const { bomAlternateStateType, buildBomAlternateDetailView } = useBomAlternateReadonly()
+const { buildBomAuditDetailView } = useBomAuditDefaultVersionReadonly()
 
 const a002StateLabels = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
 const a005BlockedActions = [
@@ -540,6 +595,10 @@ const totalLossRate = computed(() =>
 
 const bomAlternateReadonlyView = computed(() =>
   buildBomAlternateDetailView(detailRef.data, localReadbackRef.data, parityFromQuery.value),
+)
+
+const bomAuditDefaultVersionView = computed(() =>
+  buildBomAuditDetailView(detailRef.data, localReadbackRef.data, parityFromQuery.value),
 )
 
 const bomSummaryValue = (
