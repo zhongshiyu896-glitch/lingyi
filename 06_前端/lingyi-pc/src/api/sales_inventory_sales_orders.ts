@@ -13,6 +13,11 @@ import {
   SALES_ORDER_REFERENCE_BRIDGE_COMPLETENESS_LABELS,
   type SalesOrderReferenceBridgeCompletenessState,
 } from '@/views/sales_inventory/constants/salesOrderReferenceBridgeFields'
+import {
+  SALES_ORDER_DOWNSTREAM_GUARD_STATE_LABELS,
+  type SalesOrderDownstreamGuardActionState,
+  type SalesOrderDownstreamGuardState,
+} from '@/views/sales_inventory/constants/salesOrderDownstreamGuardFields'
 
 export type SalesOrderReadonlyGroup = 'draft-watch' | 'delivery-followup' | 'closed'
 
@@ -91,6 +96,29 @@ export interface SalesOrderReferenceBridgeReadonlySummary {
   customerNodes: SalesOrderReferenceBridgeNode[]
   factoryNodes: SalesOrderReferenceBridgeNode[]
   materialDetailTags: string[]
+}
+
+export interface SalesOrderDownstreamGuardAction {
+  key: string
+  label: string
+  state: SalesOrderDownstreamGuardActionState
+  stateLabel: string
+  reason: string
+}
+
+export interface SalesOrderDownstreamGuardReadonlySummary {
+  state: SalesOrderDownstreamGuardState
+  stateLabel: string
+  blockingCount: number
+  sourceCompletenessLabel: string
+  downstreamStateLabel: string
+  productionGuardLabel: string
+  purchaseGuardLabel: string
+  blockingReasonLabel: string
+  guardReason: string
+  missingBridgeTags: string[]
+  readonlyGuardTags: string[]
+  actions: SalesOrderDownstreamGuardAction[]
 }
 
 const toNumber = (value?: string | number | null): number => {
@@ -179,6 +207,35 @@ const resolveReferenceBridgeSourceTypeLabel = (factories: string[]): string => {
   if (factories.length === 1) return '销售订单 / 单工厂履约'
   return '销售订单 / 多工厂分发'
 }
+
+const resolveDownstreamGuardState = (
+  completenessState: SalesOrderReferenceBridgeCompletenessState,
+  materialDetailTags: string[],
+): SalesOrderDownstreamGuardState => {
+  if (completenessState === 'customer-missing') return 'customer-missing'
+  if (completenessState === 'factory-pending') return 'factory-pending'
+  if (materialDetailTags.length === 0) return 'item-missing'
+  return 'ready-readonly'
+}
+
+const resolveDownstreamGuardBlockingReason = (
+  state: SalesOrderDownstreamGuardState,
+): string => {
+  if (state === 'customer-missing') {
+    return '客户引用链缺失，禁止进入生产/采购联动，需先补齐客户来源。'
+  }
+  if (state === 'factory-pending') {
+    return '履约工厂映射缺失，禁止进入生产/采购联动，需先补齐工厂桥接。'
+  }
+  if (state === 'item-missing') {
+    return '来源款号缺失，禁止进入下游联动，需先补齐来源单据与物料桥接。'
+  }
+  return '来源链已完整，但当前环境仅开放只读核对，生产/采购联动仍保持 guarded readonly。'
+}
+
+const resolveDownstreamGuardActionState = (
+  state: SalesOrderDownstreamGuardState,
+): SalesOrderDownstreamGuardActionState => (state === 'ready-readonly' ? 'guarded' : 'blocked')
 
 export const pickSalesOrderServerQuery = (
   query: SalesOrderReadbackQuery,
@@ -444,5 +501,89 @@ export const buildSalesOrderReferenceBridgeReadonlySummary = (
           }))
         : [{ key: 'pending-factory', label: '待补工厂映射', detail: '暂无履约节点' }],
     materialDetailTags,
+  }
+}
+
+export const buildSalesOrderDownstreamGuardReadonlySummary = (
+  detail: SalesOrderDetailData,
+): SalesOrderDownstreamGuardReadonlySummary => {
+  const bridgeSummary = buildSalesOrderReferenceBridgeReadonlySummary(detail)
+  const state = resolveDownstreamGuardState(
+    bridgeSummary.completenessState,
+    bridgeSummary.materialDetailTags,
+  )
+  const blockingReasonLabel = resolveDownstreamGuardBlockingReason(state)
+  const actionState = resolveDownstreamGuardActionState(state)
+  const missingBridgeTags: string[] = []
+
+  if (bridgeSummary.completenessState === 'customer-missing') {
+    missingBridgeTags.push('客户引用链缺失')
+  }
+  if (bridgeSummary.completenessState === 'factory-pending') {
+    missingBridgeTags.push('工厂履约映射缺失')
+  }
+  if (bridgeSummary.materialDetailTags.length === 0) {
+    missingBridgeTags.push('来源款号缺失')
+  }
+
+  const readonlyGuardTags = [
+    `生产联动 ${actionState === 'guarded' ? 'guarded' : 'blocked'}`,
+    `采购联动 ${actionState === 'guarded' ? 'guarded' : 'blocked'}`,
+    '销售写入 disabled',
+    '库存影响 disabled',
+    '导出 disabled',
+  ]
+
+  const actions: SalesOrderDownstreamGuardAction[] = [
+    {
+      key: 'production',
+      label: '生产联动',
+      state: actionState,
+      stateLabel: actionState === 'guarded' ? '只读守卫' : '阻断',
+      reason: blockingReasonLabel,
+    },
+    {
+      key: 'purchase',
+      label: '采购联动',
+      state: actionState,
+      stateLabel: actionState === 'guarded' ? '只读守卫' : '阻断',
+      reason: blockingReasonLabel,
+    },
+    {
+      key: 'sales-write',
+      label: '销售写入',
+      state: 'disabled',
+      stateLabel: '禁用',
+      reason: '当前切片只提供来源链核对与守卫提示，不开放真实销售写入。',
+    },
+    {
+      key: 'inventory-impact',
+      label: '库存影响',
+      state: 'disabled',
+      stateLabel: '禁用',
+      reason: '库存影响链路冻结，当前仅保留只读核对和前置守卫。',
+    },
+    {
+      key: 'export',
+      label: '导出 / ERPNext',
+      state: 'disabled',
+      stateLabel: '禁用',
+      reason: '导出、ERPNext、outbox、worker 与 production write 保持禁用。',
+    },
+  ]
+
+  return {
+    state,
+    stateLabel: SALES_ORDER_DOWNSTREAM_GUARD_STATE_LABELS[state],
+    blockingCount: missingBridgeTags.length,
+    sourceCompletenessLabel: bridgeSummary.completenessLabel,
+    downstreamStateLabel: state === 'ready-readonly' ? '下游联动守卫中' : '下游联动阻断',
+    productionGuardLabel: actionState === 'guarded' ? '生产联动 guarded readonly' : '生产联动 blocked',
+    purchaseGuardLabel: actionState === 'guarded' ? '采购联动 guarded readonly' : '采购联动 blocked',
+    blockingReasonLabel,
+    guardReason: `${blockingReasonLabel} create / update / delete / export / inventory impact 均保持 readonly。`,
+    missingBridgeTags,
+    readonlyGuardTags,
+    actions,
   }
 }

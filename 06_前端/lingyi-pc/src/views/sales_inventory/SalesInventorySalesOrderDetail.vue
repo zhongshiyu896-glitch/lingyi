@@ -126,6 +126,8 @@
 
         <SalesOrderReferenceBridgeReadonly :summary="referenceBridgeReadonlySummary" />
 
+        <SalesOrderDownstreamGuardReadonly :summary="downstreamGuardReadonlySummary" />
+
         <SalesOrderQuantityMatrixReadonly
           :summary="quantityMatrixReadonlySummary"
           :format-number="formatNumber"
@@ -181,6 +183,7 @@ import {
   resolveFallbackSalesOrderName,
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
+import SalesOrderDownstreamGuardReadonly from '@/views/sales_inventory/components/SalesOrderDownstreamGuardReadonly.vue'
 import SalesOrderQuantityMatrixReadonly from '@/views/sales_inventory/components/SalesOrderQuantityMatrixReadonly.vue'
 import SalesOrderReferenceBridgeReadonly from '@/views/sales_inventory/components/SalesOrderReferenceBridgeReadonly.vue'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
@@ -191,6 +194,7 @@ const router = useRouter()
 const {
   customerLabel,
   detailSummary,
+  downstreamGuardSummary,
   followupGroupFromRow,
   followupGroupLabel,
   followupGroupType,
@@ -263,6 +267,25 @@ const referenceBridgeReadonlySummary = computed(() =>
         customerNodes: [],
         factoryNodes: [],
         materialDetailTags: [],
+      },
+)
+const downstreamGuardReadonlySummary = computed(() =>
+  detail.value
+    ? downstreamGuardSummary(detail.value)
+    : {
+        state: 'factory-pending' as const,
+        stateLabel: '缺失工厂履约映射',
+        blockingCount: 1,
+        sourceCompletenessLabel: '待补工厂映射',
+        downstreamStateLabel: '下游联动阻断',
+        productionGuardLabel: '生产联动 blocked',
+        purchaseGuardLabel: '采购联动 blocked',
+        blockingReasonLabel: '履约工厂映射缺失，禁止进入生产/采购联动，需先补齐工厂桥接。',
+        guardReason:
+          '履约工厂映射缺失，禁止进入生产/采购联动，需先补齐工厂桥接。 create / update / delete / export / inventory impact 均保持 readonly。',
+        missingBridgeTags: ['工厂履约映射缺失'],
+        readonlyGuardTags: ['生产联动 blocked', '采购联动 blocked', '销售写入 disabled'],
+        actions: [],
       },
 )
 

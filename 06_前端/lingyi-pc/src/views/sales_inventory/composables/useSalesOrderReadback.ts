@@ -1,8 +1,10 @@
 import type { SalesOrderDetailData, SalesOrderListItem } from '@/api/sales_inventory'
 import {
   buildSalesOrderDetailReadonlySummary,
+  buildSalesOrderDownstreamGuardReadonlySummary,
   buildSalesOrderQuantityMatrixReadonlySummary,
   buildSalesOrderReferenceBridgeReadonlySummary,
+  type SalesOrderDownstreamGuardReadonlySummary,
   type SalesOrderReferenceBridgeReadonlySummary,
   resolveSalesOrderReadonlyGroup,
   type SalesOrderQuantityMatrixReadonlySummary,
@@ -105,6 +107,9 @@ export const useSalesOrderReadback = () => {
   const referenceBridgeSummary = (detail: SalesOrderDetailData): SalesOrderReferenceBridgeReadonlySummary =>
     buildSalesOrderReferenceBridgeReadonlySummary(detail)
 
+  const downstreamGuardSummary = (detail: SalesOrderDetailData): SalesOrderDownstreamGuardReadonlySummary =>
+    buildSalesOrderDownstreamGuardReadonlySummary(detail)
+
   const matrixProgressLabel = (state: SalesOrderMatrixProgressState): string =>
     SALES_ORDER_MATRIX_PROGRESS_LABELS[state]
 
@@ -114,6 +119,7 @@ export const useSalesOrderReadback = () => {
   return {
     customerLabel,
     detailSummary,
+    downstreamGuardSummary,
     followupGroupFromRow,
     followupGroupLabel,
     followupGroupType,

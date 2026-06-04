@@ -146,6 +146,14 @@
         </el-descriptions>
       </section>
 
+      <el-alert
+        type="warning"
+        :closable="false"
+        class="scope-alert"
+        title="下游生产 / 采购联动前置守卫需进入订单详情核对来源完整度、桥接缺失和 readonly guard 状态；当前列表仅提供入口，不开放真实保存、导出或库存影响。"
+        data-testid="cand154-sales-order-downstream-guard-hint"
+      />
+
       <el-table
         v-loading="loading"
         :data="filteredRows"
