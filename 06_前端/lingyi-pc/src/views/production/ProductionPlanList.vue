@@ -77,6 +77,8 @@
         </el-descriptions>
       </el-card>
 
+      <ProductionFollowupReadonly :summary="followupReadonlySummary" />
+
       <el-card shadow="never" class="readonly-guard-card" data-testid="production-plan-readonly-guard-card">
         <template #header>
           <div class="panel-header">
@@ -153,7 +155,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchProductionPlans, type ProductionPlanListItem } from '@/api/production'
+import {
+  fetchProductionFollowupTemplates,
+  fetchProductionPlans,
+  type ProductionFollowupTemplateListItem,
+  type ProductionPlanListItem,
+} from '@/api/production'
+import ProductionFollowupReadonly from '@/views/production/components/ProductionFollowupReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
 
 interface PlanRow {
@@ -177,8 +185,17 @@ const route = useRoute()
 const listLoading = ref(false)
 const listError = ref('')
 const planRows = ref<PlanRow[]>([])
-const { groupLabel, parseQueryString, parityRouteLabel, progressLabel, readonlyGuardActions, statusLabel, statusType } =
-  useProductionPlanReadback()
+const followupTemplates = ref<ProductionFollowupTemplateListItem[]>([])
+const {
+  buildProductionFollowupListSummary,
+  groupLabel,
+  parseQueryString,
+  parityRouteLabel,
+  progressLabel,
+  readonlyGuardActions,
+  statusLabel,
+  statusType,
+} = useProductionPlanReadback()
 
 const query = reactive({
   keyword: '',
@@ -275,6 +292,14 @@ const snapshotSourceSummary = computed(() => {
   return `backend ${backendCount} / synthetic ${syntheticCount}`
 })
 
+const followupReadonlySummary = computed(() =>
+  buildProductionFollowupListSummary({
+    parity: parityTag.value,
+    rows: filteredPlans.value,
+    templates: followupTemplates.value,
+  }),
+)
+
 const mapPlanRow = (item: ProductionPlanListItem): PlanRow => ({
   id: item.id,
   planNo: item.plan_no,
@@ -317,16 +342,33 @@ const openDetail = (row: PlanRow): void => {
   router.push({ path: '/production/plans/detail', query: buildDetailQuery(row) })
 }
 
+const loadFollowupTemplates = async (): Promise<void> => {
+  try {
+    const response = await fetchProductionFollowupTemplates({
+      page: 1,
+      page_size: 20,
+      keyword: query.keyword.trim() || undefined,
+      item_code: parityTag.value === 'production-followup-template' ? undefined : undefined,
+    })
+    followupTemplates.value = response.data.items
+  } catch {
+    followupTemplates.value = []
+  }
+}
+
 const refreshPlans = async (): Promise<void> => {
   listLoading.value = true
   listError.value = ''
   try {
-    const response = await fetchProductionPlans({
-      keyword: query.keyword.trim() || undefined,
-      status: query.status || undefined,
-      page: 1,
-      page_size: 20,
-    })
+    const [response] = await Promise.all([
+      fetchProductionPlans({
+        keyword: query.keyword.trim() || undefined,
+        status: query.status || undefined,
+        page: 1,
+        page_size: 20,
+      }),
+      loadFollowupTemplates(),
+    ])
     if (response.data.items.length > 0) {
       planRows.value = response.data.items.map(mapPlanRow)
       return

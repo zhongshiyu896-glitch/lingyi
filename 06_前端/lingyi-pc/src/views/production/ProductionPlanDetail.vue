@@ -95,8 +95,13 @@
         <el-descriptions-item label="工序卡已完成总数">{{ completedQtySummary }}</el-descriptions-item>
         <el-descriptions-item label="物料缺口总数">{{ materialShortageSummary }}</el-descriptions-item>
         <el-descriptions-item label="只读 guard">create-work-order / sync-job-cards disabled</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
+        </el-descriptions>
+      </el-card>
+
+    <ProductionFollowupReadonly
+      v-if="canRead && detail && followupReadonlySummary"
+      :summary="followupReadonlySummary"
+    />
 
     <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-work-order-mapping">
       <template #header><span>Work Order 映射</span></template>
@@ -167,14 +172,23 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { fetchProductionPlanDetail, fetchProductionPlans, type ProductionPlanDetailData } from '@/api/production'
+import {
+  fetchProductionFollowupTemplates,
+  fetchProductionPlanDetail,
+  fetchProductionPlans,
+  type ProductionFollowupTemplateListItem,
+  type ProductionPlanDetailData,
+} from '@/api/production'
 import { usePermissionStore } from '@/stores/permission'
+import ProductionFollowupReadonly from '@/views/production/components/ProductionFollowupReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
 
 const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
-const { parseQueryString, parityRouteLabel, statusLabel } = useProductionPlanReadback()
+const followupTemplates = ref<ProductionFollowupTemplateListItem[]>([])
+const { buildProductionFollowupDetailSummary, parseQueryString, parityRouteLabel, statusLabel } =
+  useProductionPlanReadback()
 
 const detail = ref<ProductionPlanDetailData | null>(null)
 const loadError = ref('')
@@ -243,6 +257,16 @@ const quantityMatrixSummary = computed<string>(() => {
   return '暂无数量矩阵，仅展示只读占位摘要'
 })
 
+const followupReadonlySummary = computed(() =>
+  detail.value
+    ? buildProductionFollowupDetailSummary({
+        parity: parityTag.value,
+        detail: detail.value,
+        templates: followupTemplates.value,
+      })
+    : null,
+)
+
 const buildSyntheticDetail = (): ProductionPlanDetailData => {
   const today = new Date().toISOString()
   return {
@@ -292,9 +316,23 @@ const ensurePlanId = (): number => {
   return targetPlanId
 }
 
+const loadFollowupTemplates = async (itemCode?: string): Promise<void> => {
+  try {
+    const response = await fetchProductionFollowupTemplates({
+      item_code: itemCode || undefined,
+      page: 1,
+      page_size: 20,
+    })
+    followupTemplates.value = response.data.items
+  } catch {
+    followupTemplates.value = []
+  }
+}
+
 const loadDetail = async (): Promise<void> => {
   if (!canRead.value) {
     detail.value = null
+    followupTemplates.value = []
     loadError.value = ''
     guardedFeedback.value = ''
     return
@@ -305,6 +343,7 @@ const loadDetail = async (): Promise<void> => {
   try {
     if (parseStringQuery(route.query.synthetic) === '1') {
       detail.value = buildSyntheticDetail()
+      await loadFollowupTemplates(detail.value.item_code)
       guardedFeedback.value = '当前展示 synthetic detail，只用于 local-only 可用切片。'
       return
     }
@@ -318,16 +357,19 @@ const loadDetail = async (): Promise<void> => {
 
     if (!fallbackPlanId.value) {
       detail.value = buildSyntheticDetail()
+      await loadFollowupTemplates(detail.value.item_code)
       guardedFeedback.value = '未读取到本地生产计划记录，已回退到 synthetic detail。'
       return
     }
 
     const result = await fetchProductionPlanDetail(ensurePlanId())
     detail.value = result.data
+    await loadFollowupTemplates(detail.value.item_code)
     guardedFeedback.value = hasValidPlanId.value ? '' : '未提供计划 ID，已回退到首条本地生产计划详情。'
   } catch (error) {
     const message = (error as Error).message || '加载生产计划详情失败'
     detail.value = buildSyntheticDetail()
+    await loadFollowupTemplates(detail.value.item_code)
     guardedFeedback.value = `加载详情失败，已回退到 synthetic detail：${message}`
   } finally {
     loading.value = false
