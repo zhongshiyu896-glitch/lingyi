@@ -108,6 +108,40 @@
       </div>
     </el-card>
 
+    <el-card shadow="never" class="readonly-summary-card" data-testid="cand164-bom-list-readonly-summary">
+      <template #header>
+        <div class="contract-header">
+          <strong>BOM 颜色尺码 / 替代料只读提示</strong>
+          <el-tag type="info" effect="plain">{{ listReadonlySummary.readonlySourceTag }}</el-tag>
+        </div>
+      </template>
+
+      <el-alert
+        v-if="listReadonlySummary.parityReadonlyHint"
+        type="warning"
+        :closable="false"
+        :title="listReadonlySummary.parityReadonlyHint"
+        data-testid="cand164-material-fabric-parity-readonly"
+      />
+
+      <el-descriptions border :column="2" class="readback-descriptions" data-testid="cand164-bom-list-readonly-descriptions">
+        <el-descriptions-item label="当前入口">{{ listReadonlySummary.parityScopeLabel }}</el-descriptions-item>
+        <el-descriptions-item label="列表行数">{{ listReadonlySummary.rowCountLabel }}</el-descriptions-item>
+        <el-descriptions-item label="颜色尺码用量">{{ listReadonlySummary.usageSummaryLabel }}</el-descriptions-item>
+        <el-descriptions-item label="替代料状态">{{ listReadonlySummary.alternateStatusLabel }}</el-descriptions-item>
+        <el-descriptions-item label="readonly_guard">{{ listReadonlySummary.readonlyGuardReason }}</el-descriptions-item>
+        <el-descriptions-item label="write_boundary">{{ listReadonlySummary.writeBoundary }}</el-descriptions-item>
+      </el-descriptions>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        :title="listReadonlySummary.remainingGap"
+        class="feedback-alert"
+        data-testid="cand164-bom-list-remaining-gap"
+      />
+    </el-card>
+
     <el-card shadow="never">
       <el-table
         v-loading="listLoading"
@@ -262,6 +296,7 @@ import {
   type LocalBomRollbackData,
   type LocalBomUpsertPayload,
 } from '@/api/bom'
+import { useBomAlternateReadonly } from './composables/useBomAlternateReadonly'
 
 type BomStatus = 'draft' | 'review' | 'published'
 
@@ -279,6 +314,7 @@ interface BomRow {
 
 const router = useRouter()
 const route = useRoute()
+const { buildBomAlternateListSummary } = useBomAlternateReadonly()
 
 const a005VerifiedFields = ['款号', '款名', '单位', '面料', '备注', '可打样', '创建人', '修改人']
 const a005PartialFields = ['颜色', '尺码', '吊牌价', '创建时间', '修改时间', '设计号', '纸样师']
@@ -539,6 +575,8 @@ const filteredRows = computed(() => {
   })
 })
 
+const listReadonlySummary = computed(() => buildBomAlternateListSummary(filteredRows.value.length, currentParity.value))
+
 const saveButtonLabel = computed(() => (currentObjectId.value ? '更新本地对象' : '保存本地对象'))
 
 const runQuery = () => {
@@ -578,6 +616,7 @@ const goDetail = (row: BomRow) => {
       status: row.status,
       object_id: currentObjectId.value ? String(currentObjectId.value) : '',
       scenario_tag: normalizeScenarioTag(draftForm.scenarioTag),
+      ...(currentParity.value ? { parity: currentParity.value } : {}),
     },
   })
 }

@@ -112,6 +112,94 @@
       </el-tabs>
     </el-card>
 
+    <el-card shadow="never" data-testid="cand164-bom-alternate-readonly-panel">
+      <template #header>
+        <div class="panel-header">
+          <span>BOM 颜色尺码 / 替代料只读回读</span>
+          <div class="tag-row compact">
+            <el-tag :type="bomAlternateReadonlyView.readonlySourceType" effect="plain">
+              {{ bomAlternateReadonlyView.readonlySourceTag }}
+            </el-tag>
+            <el-tag :type="bomAlternateReadonlyView.coverageType" effect="plain">
+              {{ bomAlternateReadonlyView.coverageLabel }}
+            </el-tag>
+            <el-tag type="warning" effect="plain">{{ bomAlternateReadonlyView.parityScopeLabel }}</el-tag>
+          </div>
+        </div>
+      </template>
+
+      <div class="cost-grid">
+        <div
+          v-for="field in BOM_COLOR_SIZE_SUMMARY_FIELDS"
+          :key="field.key"
+          class="metric"
+        >
+          <span class="metric-label">{{ field.label }}</span>
+          <strong class="metric-value">{{ bomSummaryValue(field.key) }}</strong>
+        </div>
+      </div>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        :title="bomAlternateReadonlyView.readonlyGuardReason"
+        class="readback-descriptions"
+        data-testid="cand164-bom-readonly-guard"
+      />
+
+      <el-alert
+        v-if="bomAlternateReadonlyView.missingAlternatePrompt"
+        type="warning"
+        :closable="false"
+        :title="bomAlternateReadonlyView.missingAlternatePrompt"
+        class="readback-descriptions"
+        data-testid="cand164-bom-missing-alternate-prompt"
+      />
+
+      <el-table
+        :data="bomAlternateReadonlyView.colorSizeUsageRows"
+        border
+        stripe
+        class="readback-descriptions"
+        data-testid="cand164-bom-color-size-usage-table"
+      >
+        <el-table-column prop="color" label="颜色" min-width="120" />
+        <el-table-column prop="size" label="尺码" min-width="120" />
+        <el-table-column prop="totalUsageLabel" label="用量汇总" min-width="120" />
+        <el-table-column prop="materialCount" label="物料行数" min-width="120" />
+        <el-table-column prop="sourceTag" label="来源标签" min-width="160" />
+      </el-table>
+
+      <el-table
+        :data="bomAlternateReadonlyView.alternateRows"
+        border
+        stripe
+        class="readback-descriptions"
+        data-testid="cand164-bom-alternate-material-table"
+      >
+        <el-table-column prop="materialLabel" label="物料" min-width="220" />
+        <el-table-column prop="colorSizeLabel" label="颜色 / 尺码" min-width="150" />
+        <el-table-column label="替代料状态" min-width="150">
+          <template #default="{ row }">
+            <el-tag :type="bomAlternateStateType(row.alternateState)" effect="plain">
+              {{ row.alternateStateLabel }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="alternateMaterialLabel" label="替代料" min-width="180" />
+        <el-table-column prop="sourceTag" label="来源标签" min-width="140" />
+        <el-table-column prop="note" label="备注" min-width="220" />
+      </el-table>
+
+      <el-alert
+        type="warning"
+        :closable="false"
+        :title="bomAlternateReadonlyView.remainingGap"
+        class="readback-descriptions"
+        data-testid="cand164-bom-remaining-gap"
+      />
+    </el-card>
+
     <el-card shadow="never" data-testid="yisuan-1to1-bom-cost-usage-panel">
       <template #header>
         <div class="panel-header">
@@ -197,6 +285,8 @@ import {
   type BomDetailData,
   type LocalBomReadbackData,
 } from '@/api/bom'
+import { BOM_COLOR_SIZE_SUMMARY_FIELDS } from './constants/bomAlternateMaterialFields'
+import { useBomAlternateReadonly } from './composables/useBomAlternateReadonly'
 
 interface MaterialLine {
   code: string
@@ -218,6 +308,7 @@ type ContractFieldRow = {
 
 const router = useRouter()
 const route = useRoute()
+const { bomAlternateStateType, buildBomAlternateDetailView } = useBomAlternateReadonly()
 
 const a002StateLabels = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
 const a005BlockedActions = [
@@ -308,6 +399,7 @@ const bomIdFromQuery = computed<number | null>(() => parseObjectId(route.query.b
 const objectIdFromQuery = computed<number | null>(() => parseObjectId(route.query.object_id))
 const scenarioTagFromQuery = computed<string>(() => parseScenarioTag(route.query.scenario_tag))
 const styleNameFromQuery = computed<string>(() => parseTextQuery(route.query.style_name))
+const parityFromQuery = computed<string>(() => parseTextQuery(route.query.parity))
 
 const bomNo = computed(() => {
   if (detailRef.data?.bom.bom_no) return detailRef.data.bom.bom_no
@@ -445,6 +537,27 @@ const totalCost = computed(() => fabricTotalCost.value + trimTotalCost.value)
 const totalLossRate = computed(() =>
   displayFabricLines.value.reduce((sum, row) => sum + (row.lossRate ?? 0), 0) / (displayFabricLines.value.length || 1),
 )
+
+const bomAlternateReadonlyView = computed(() =>
+  buildBomAlternateDetailView(detailRef.data, localReadbackRef.data, parityFromQuery.value),
+)
+
+const bomSummaryValue = (
+  key: (typeof BOM_COLOR_SIZE_SUMMARY_FIELDS)[number]['key'],
+): string => {
+  switch (key) {
+    case 'skuCount':
+      return String(bomAlternateReadonlyView.value.skuCount)
+    case 'materialCount':
+      return String(bomAlternateReadonlyView.value.materialCount)
+    case 'alternateCount':
+      return String(bomAlternateReadonlyView.value.alternateCount)
+    case 'parityScopeLabel':
+      return bomAlternateReadonlyView.value.parityScopeLabel
+    default:
+      return '-'
+  }
+}
 
 const refreshRemoteDetail = async () => {
   const bomId = bomIdFromQuery.value
