@@ -8,11 +8,16 @@
       data-testid="permission-governance-parity-hint"
       class="readonly-parity-hint"
     />
-    <div class="readonly-status-row" data-testid="permission-governance-readonly-status">
-      <el-tag type="success" effect="plain">READONLY_GET_ONLY</el-tag>
-      <el-tag type="warning" effect="plain">write endpoints disabled</el-tag>
-      <el-tag type="info" effect="plain">audit export guarded</el-tag>
-    </div>
+    <PermissionGovernanceGuardPanel
+      data-testid="permission-governance-readonly-status"
+      :can-read="canRead"
+      :can-audit-read="canAuditRead"
+      :can-diagnostic="canDiagnostic"
+      :can-export="canExport"
+      :guarded-buttons="menuGuardedButtons"
+      route-label="/permissions/governance"
+      mode-label="READONLY_GET_ONLY"
+    />
 
     <el-card shadow="never" data-testid="action-catalog-section">
       <template #header>
@@ -235,37 +240,17 @@
         style="margin-bottom: 12px"
       />
 
-      <div class="summary-grid" data-testid="permission-governance-summary-grid">
-        <el-card shadow="never" class="summary-tile">
-          <div class="summary-label">角色矩阵</div>
-          <div class="summary-value">{{ roleRows.length }}</div>
-          <div class="summary-hint">只读角色覆盖</div>
-        </el-card>
-        <el-card shadow="never" class="summary-tile">
-          <div class="summary-label">高危动作</div>
-          <div class="summary-value">{{ diagnosticData.high_risk_actions.length }}</div>
-          <div class="summary-hint">需 guarded / hidden</div>
-        </el-card>
-        <el-card shadow="never" class="summary-tile">
-          <div class="summary-label">安全审计记录</div>
-          <div class="summary-value">{{ securityAudit.total }}</div>
-          <div class="summary-hint">当前筛选命中</div>
-        </el-card>
-        <el-card shadow="never" class="summary-tile">
-          <div class="summary-label">操作审计记录</div>
-          <div class="summary-value">{{ operationAudit.total }}</div>
-          <div class="summary-hint">当前筛选命中</div>
-        </el-card>
-      </div>
-
-      <div class="readonly-status-row" data-testid="permission-diagnostic-status-row">
-        <el-tag :type="diagnosticData.status === 'ok' ? 'success' : 'warning'" effect="plain">
-          diagnostic={{ diagnosticData.status || 'fallback' }}
-        </el-tag>
-        <el-tag type="info" effect="plain">catalog={{ diagnosticData.catalog_enabled ? 'on' : 'off' }}</el-tag>
-        <el-tag type="info" effect="plain">audit={{ diagnosticData.audit_read_enabled ? 'on' : 'off' }}</el-tag>
-        <el-tag type="warning" effect="plain">export guarded={{ canExport ? 'ui-only' : 'denied' }}</el-tag>
-      </div>
+      <PermissionGovernanceAuditSummary
+        :role-count="roleRows.length"
+        :high-risk-count="diagnosticData.high_risk_actions.length"
+        :security-audit-total="securityAudit.total"
+        :operation-audit-total="operationAudit.total"
+        :diagnostic-status="diagnosticData.status"
+        :catalog-enabled="diagnosticData.catalog_enabled"
+        :audit-read-enabled="diagnosticData.audit_read_enabled"
+        :can-export="canExport"
+        :generated-at="diagnosticData.generated_at"
+      />
 
       <el-table
         :data="diagnosticData.checks"
@@ -473,6 +458,8 @@ import permissionGovernanceApi, {
   type PermissionSecurityAuditQuery,
 } from '@/api/permission_governance'
 import { usePermissionStore } from '@/stores/permission'
+import PermissionGovernanceAuditSummary from '@/views/system/components/PermissionGovernanceAuditSummary.vue'
+import PermissionGovernanceGuardPanel from '@/views/system/components/PermissionGovernanceGuardPanel.vue'
 
 interface CatalogRow {
   module: string
@@ -1138,35 +1125,6 @@ onMounted(() => {
 
 .query-form :deep(.el-form-item) {
   margin-bottom: 10px;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.summary-tile {
-  min-height: 116px;
-}
-
-.summary-label {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
-.summary-value {
-  margin-top: 8px;
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1.1;
-}
-
-.summary-hint {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
 }
 
 .query-form :deep(.el-input),

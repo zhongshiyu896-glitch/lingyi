@@ -151,6 +151,35 @@ class PermissionGovernanceReadonlyApiTest(unittest.TestCase):
         for row in flagged_rows:
             self.assertTrue(bool(row["is_high_risk"]) or (not bool(row["ui_exposed"])))
 
+    def test_menu_management_rows_keep_write_actions_guarded(self) -> None:
+        response = self.client.get(
+            "/api/permissions/menu-management",
+            headers=self._headers_with_roles("permission:read"),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+
+        rows = response.json()["data"]["items"]
+        governance_row = next((row for row in rows if row["menu_key"] == "permission-action-catalog"), None)
+        self.assertIsNotNone(governance_row)
+        guarded_actions = {action["action_key"]: action for action in governance_row["actions"]}
+        self.assertFalse(guarded_actions["view"]["guarded"])
+        self.assertTrue(guarded_actions["edit_menu"]["guarded"])
+        self.assertTrue(guarded_actions["bind_permissions"]["guarded"])
+        self.assertTrue(guarded_actions["publish_order"]["guarded"])
+
+    def test_diagnostic_summary_reports_audit_and_export_flags(self) -> None:
+        response = self.client.get(
+            "/api/permissions/diagnostic",
+            headers=self._headers_with_roles("permission:diagnostic"),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+
+        data = response.json()["data"]
+        self.assertEqual(data["module"], "permission")
+        self.assertTrue(data["audit_read_enabled"])
+        self.assertTrue(data["export_enabled"])
+        self.assertTrue(any(check["name"] == "permission:diagnostic_registered" for check in data["checks"]))
+
     def test_roles_matrix_marks_high_risk_and_hidden_actions(self) -> None:
         response = self.client.get(
             "/api/permissions/roles/matrix",
