@@ -116,8 +116,18 @@
             <el-descriptions-item label="当前客户">{{ customerLabel(detail.customer) }}</el-descriptions-item>
             <el-descriptions-item label="主款号">{{ detailReadonlySummary.primaryItemCode }}</el-descriptions-item>
             <el-descriptions-item label="交付进度">{{ detailReadonlySummary.deliveryCompletionRatio }}</el-descriptions-item>
+            <el-descriptions-item label="矩阵格数">{{ quantityMatrixReadonlySummary.matrixCellCount }}</el-descriptions-item>
+            <el-descriptions-item label="延期格数">{{ quantityMatrixReadonlySummary.delayedLineCount }}</el-descriptions-item>
+            <el-descriptions-item label="矩阵完成率">
+              {{ quantityMatrixReadonlySummary.matrixCompletionRateLabel }}
+            </el-descriptions-item>
           </el-descriptions>
         </section>
+
+        <SalesOrderQuantityMatrixReadonly
+          :summary="quantityMatrixReadonlySummary"
+          :format-number="formatNumber"
+        />
 
         <el-table
           v-loading="loading"
@@ -169,6 +179,7 @@ import {
   resolveFallbackSalesOrderName,
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
+import SalesOrderQuantityMatrixReadonly from '@/views/sales_inventory/components/SalesOrderQuantityMatrixReadonly.vue'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 const route = useRoute()
@@ -182,6 +193,7 @@ const {
   followupGroupType,
   formatNumber,
   parseQueryString,
+  quantityMatrixSummary,
   readonlyGuardActions,
   statusLabel,
   statusType,
@@ -209,6 +221,24 @@ const detailReadonlySummary = computed(() =>
 )
 const detailGroup = computed<SalesOrderReadonlyGroup>(() =>
   detail.value ? followupGroupFromRow(detail.value) : 'draft-watch',
+)
+const quantityMatrixReadonlySummary = computed(() =>
+  detail.value
+    ? quantityMatrixSummary(detail.value)
+    : {
+        matrixCellCount: 0,
+        colorCount: 0,
+        sizeCount: 0,
+        delayedLineCount: 0,
+        completedLineCount: 0,
+        inProgressLineCount: 0,
+        totalOrderedQty: 0,
+        totalDeliveredQty: 0,
+        totalRemainingQty: 0,
+        matrixCompletionRate: 0,
+        matrixCompletionRateLabel: '0%',
+        rows: [],
+      },
 )
 
 const detailEmptyText = computed(() => {

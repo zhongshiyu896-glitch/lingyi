@@ -1,12 +1,20 @@
 import type { SalesOrderDetailData, SalesOrderListItem } from '@/api/sales_inventory'
 import {
   buildSalesOrderDetailReadonlySummary,
+  buildSalesOrderQuantityMatrixReadonlySummary,
   resolveSalesOrderReadonlyGroup,
+  type SalesOrderQuantityMatrixReadonlySummary,
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
+import {
+  SALES_ORDER_MATRIX_PROGRESS_LABELS,
+  SALES_ORDER_MATRIX_PROGRESS_TAGS,
+  type SalesOrderMatrixProgressState,
+} from '@/views/sales_inventory/constants/salesOrderMatrixFields'
 
 export type SalesOrderStatusTagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
 export type SalesOrderGroupTagType = 'primary' | 'warning' | 'success'
+export type SalesOrderMatrixTagType = 'primary' | 'success' | 'warning' | 'info' | 'danger'
 
 export interface SalesOrderReadonlyGuardAction {
   label: string
@@ -89,6 +97,15 @@ export const useSalesOrderReadback = () => {
 
   const detailSummary = (detail: SalesOrderDetailData) => buildSalesOrderDetailReadonlySummary(detail)
 
+  const quantityMatrixSummary = (detail: SalesOrderDetailData): SalesOrderQuantityMatrixReadonlySummary =>
+    buildSalesOrderQuantityMatrixReadonlySummary(detail)
+
+  const matrixProgressLabel = (state: SalesOrderMatrixProgressState): string =>
+    SALES_ORDER_MATRIX_PROGRESS_LABELS[state]
+
+  const matrixProgressType = (state: SalesOrderMatrixProgressState): SalesOrderMatrixTagType =>
+    SALES_ORDER_MATRIX_PROGRESS_TAGS[state]
+
   return {
     customerLabel,
     detailSummary,
@@ -96,7 +113,10 @@ export const useSalesOrderReadback = () => {
     followupGroupLabel,
     followupGroupType,
     formatNumber: toNumberLabel,
+    matrixProgressLabel,
+    matrixProgressType,
     parseQueryString,
+    quantityMatrixSummary,
     readonlyGuardActions: READONLY_GUARD_ACTIONS,
     statusLabel,
     statusType,
