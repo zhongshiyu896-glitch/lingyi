@@ -1,23 +1,42 @@
 <template>
-  <div class="reference-page" data-testid="cand017-reference-shell">
+  <div class="reference-page" data-testid="cand092-reference-shell">
     <el-card shadow="never">
       <template #header>
-        <div class="header-row" data-testid="cand017-reference-toolbar">
+        <div class="header-row" data-testid="cand092-reference-toolbar">
           <div class="title-group">
-            <span class="title">客户引用档案查询</span>
-            <span class="sub-title">NEXT-CAND-017 / references.customer readonly</span>
+            <span class="title">{{ pageTitle }}</span>
+            <span class="sub-title">NEXT-CAND-092 / foundation.references readonly</span>
           </div>
-          <div class="header-tags">
-            <el-tag size="small" type="success" effect="plain">local-dev only</el-tag>
-            <el-tag size="small" type="info" effect="plain">{{ sourceTagLabel }}</el-tag>
-            <el-tag
-              v-if="foundationCustomerParityHint"
-              size="small"
-              type="warning"
-              effect="plain"
-            >
-              {{ foundationCustomerParityHint }}
-            </el-tag>
+          <div class="header-actions">
+            <div class="header-tags">
+              <el-tag size="small" type="success" effect="plain">local-dev only</el-tag>
+              <el-tag size="small" type="info" effect="plain">{{ sourceTagLabel }}</el-tag>
+              <el-tag
+                v-if="readonlyParityHint"
+                size="small"
+                type="warning"
+                effect="plain"
+              >
+                {{ readonlyParityHint }}
+              </el-tag>
+            </div>
+            <div class="guarded-actions" data-testid="cand092-reference-guarded-actions">
+              <el-button
+                type="primary"
+                disabled
+                data-action-type="write"
+                data-guard-state="disabled"
+              >
+                新建引用
+              </el-button>
+              <el-button
+                disabled
+                data-action-type="write"
+                data-guard-state="disabled"
+              >
+                维护引用
+              </el-button>
+            </div>
           </div>
         </div>
       </template>
@@ -25,21 +44,21 @@
       <el-alert
         type="info"
         :closable="false"
-        title="当前切片仅提供客户引用档案只读查询，不包含写入、回写、导出或草稿闭环。"
+        title="当前切片仅提供客户/供应商引用档案回读与筛选交互，不包含库存写入、出入库、导出、ERPNext 或 worker 闭环。"
         class="scope-alert"
       />
 
-      <section class="summary-grid" data-testid="cand017-reference-summary">
+      <section class="summary-grid" data-testid="cand092-reference-summary">
         <el-card shadow="never" class="summary-card">
-          <span class="summary-label">客户总数</span>
+          <span class="summary-label">当前档案数</span>
           <strong class="summary-value">{{ filteredRows.length }}</strong>
         </el-card>
         <el-card shadow="never" class="summary-card">
-          <span class="summary-label">启用客户</span>
+          <span class="summary-label">启用档案</span>
           <strong class="summary-value">{{ activeCount }}</strong>
         </el-card>
         <el-card shadow="never" class="summary-card">
-          <span class="summary-label">停用客户</span>
+          <span class="summary-label">停用档案</span>
           <strong class="summary-value">{{ inactiveCount }}</strong>
         </el-card>
         <el-card shadow="never" class="summary-card">
@@ -48,13 +67,23 @@
         </el-card>
       </section>
 
-      <section class="filter-panel" data-testid="cand017-reference-filter">
+      <el-tabs
+        v-model="activeTab"
+        class="reference-tabs"
+        data-testid="cand092-reference-tabs"
+        @tab-change="handleTabChange"
+      >
+        <el-tab-pane label="客户引用档案" name="customers" />
+        <el-tab-pane label="供应商引用档案" name="suppliers" />
+      </el-tabs>
+
+      <section class="filter-panel" data-testid="cand092-reference-filter">
         <el-form :inline="true" :model="query">
           <el-form-item label="关键字">
             <el-input
               v-model="query.keyword"
               clearable
-              placeholder="客户编码 / 客户名称"
+              :placeholder="keywordPlaceholder"
               style="width: 260px"
             />
           </el-form-item>
@@ -65,28 +94,47 @@
               <el-option label="inactive" value="inactive" />
             </el-select>
           </el-form-item>
+          <el-form-item label="来源">
+            <el-select v-model="query.source" clearable placeholder="全部" style="width: 160px">
+              <el-option label="全部" value="" />
+              <el-option label="erpnext" value="erpnext" />
+              <el-option label="local-fallback" value="local-fallback" />
+            </el-select>
+          </el-form-item>
           <el-form-item>
-            <el-button type="primary" :loading="loading" @click="refreshCustomers(true)">刷新</el-button>
+            <el-button type="primary" :loading="loading" @click="refreshReferences(true)">刷新</el-button>
             <el-button @click="resetQuery">重置</el-button>
           </el-form-item>
         </el-form>
       </section>
 
-      <section class="readonly-readback" data-testid="cand017-reference-readonly-notes">
+      <section class="readonly-readback" data-testid="cand092-reference-readonly-notes">
         <el-descriptions border :column="2">
           <el-descriptions-item label="route_scope">/sales-inventory/references</el-descriptions-item>
-          <el-descriptions-item label="parity_route">/foundation/customer</el-descriptions-item>
+          <el-descriptions-item label="parity_route">{{ parityScopeLabel }}</el-descriptions-item>
+          <el-descriptions-item label="active_tab">{{ activeTabLabel }}</el-descriptions-item>
           <el-descriptions-item label="data_source">{{ sourceTagLabel }}</el-descriptions-item>
           <el-descriptions-item label="last_loaded_at">{{ lastLoadedAt || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="readonly_scope">customer reference query</el-descriptions-item>
           <el-descriptions-item label="write_chain">disabled</el-descriptions-item>
         </el-descriptions>
       </section>
 
-      <section class="table-panel" data-testid="cand017-reference-table">
-        <el-table :data="filteredRows" border v-loading="loading" empty-text="当前筛选下暂无客户引用数据">
-          <el-table-column prop="code" label="客户编码" min-width="180" />
-          <el-table-column prop="name" label="客户名称" min-width="220" />
+      <section class="table-panel" data-testid="cand092-reference-table">
+        <el-table
+          :data="filteredRows"
+          border
+          v-loading="loading"
+          :empty-text="emptyText"
+        >
+          <el-table-column prop="code" label="引用编码" min-width="180" />
+          <el-table-column prop="name" label="引用名称" min-width="220" />
+          <el-table-column label="引用类型" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.referenceType === 'customers' ? 'primary' : 'warning'" effect="plain">
+                {{ row.referenceType === 'customers' ? '客户' : '供应商' }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="状态" width="120">
             <template #default="{ row }">
               <el-tag :type="row.status === 'active' ? 'success' : 'info'" effect="plain">
@@ -95,131 +143,101 @@
             </template>
           </el-table-column>
           <el-table-column prop="source" label="数据源" min-width="140" />
-          <el-table-column prop="parityScope" label="parity" min-width="180" />
+          <el-table-column prop="parityScope" label="入口来源" min-width="180" />
+          <el-table-column label="动作" width="140" align="center">
+            <template #default>
+              <el-button
+                text
+                disabled
+                data-action-type="write"
+                data-guard-state="disabled"
+              >
+                维护
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </section>
 
       <el-empty
         v-if="!loading && filteredRows.length === 0"
-        description="当前筛选下暂无客户引用数据"
-        data-testid="cand017-reference-empty"
+        :description="emptyText"
+        data-testid="cand092-reference-empty"
       />
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { fetchSalesInventoryCustomers, type CustomerItem } from '@/api/sales_inventory'
-
-type CustomerStatus = 'active' | 'inactive'
-
-interface CustomerReferenceRow {
-  code: string
-  name: string
-  status: CustomerStatus
-  source: string
-  parityScope: string
-}
+import {
+  filterReferenceRows,
+  loadSalesInventoryReferenceRows,
+  resolveReferenceTab,
+  type SalesInventoryReferenceRow,
+  type SalesInventoryReferenceTab,
+} from '@/api/sales_inventory_references'
 
 const route = useRoute()
+const router = useRouter()
+
 const loading = ref(false)
-const rows = ref<CustomerReferenceRow[]>([])
-const usingLocalFallback = ref(false)
+const rows = ref<SalesInventoryReferenceRow[]>([])
+const usingFallback = ref(false)
 const lastLoadedAt = ref('')
+const activeTab = ref<SalesInventoryReferenceTab>(resolveReferenceTab(route.query.tab, route.query.parity))
 
 const query = reactive({
   keyword: '',
   status: '',
+  source: '',
 })
 
-const localFallbackRows: CustomerReferenceRow[] = [
-  {
-    code: 'CUST-REF-001',
-    name: '华东直营客户',
-    status: 'active',
-    source: 'local-fallback',
-    parityScope: 'sales-inventory-references',
-  },
-  {
-    code: 'CUST-REF-002',
-    name: '华南分销客户',
-    status: 'active',
-    source: 'local-fallback',
-    parityScope: 'foundation-customer',
-  },
-  {
-    code: 'CUST-REF-003',
-    name: '停用样例客户',
-    status: 'inactive',
-    source: 'local-fallback',
-    parityScope: 'foundation-customer',
-  },
-]
-
-const foundationCustomerParityHint = computed(() => {
-  const parity = String(route.query.parity || '').trim().toLowerCase()
-  return parity === 'foundation-customer' ? 'foundation-customer parity' : ''
+const parityValue = computed(() => String(route.query.parity || '').trim().toLowerCase())
+const readonlyParityHint = computed(() => {
+  if (parityValue.value === 'foundation-customer') return 'foundation-customer parity'
+  if (parityValue.value === 'foundation-supplier') return 'foundation-supplier parity'
+  return ''
+})
+const parityScopeLabel = computed(() => readonlyParityHint.value || 'sales-inventory-references')
+const pageTitle = computed(() => (activeTab.value === 'customers' ? '客户引用档案查询' : '供应商引用档案查询'))
+const activeTabLabel = computed(() => (activeTab.value === 'customers' ? 'customers' : 'suppliers'))
+const keywordPlaceholder = computed(() =>
+  activeTab.value === 'customers' ? '客户编码 / 客户名称' : '供应商编码 / 供应商名称',
+)
+const emptyText = computed(() =>
+  activeTab.value === 'customers' ? '当前筛选下暂无客户引用数据' : '当前筛选下暂无供应商引用数据',
+)
+const sourceTagLabel = computed(() => {
+  if (usingFallback.value) {
+    return activeTab.value === 'customers' ? 'customer fallback' : 'supplier fallback'
+  }
+  return activeTab.value === 'customers' ? 'customer readonly' : 'supplier readonly'
 })
 
-const parityScopeLabel = computed(() => foundationCustomerParityHint.value || 'sales-inventory-references')
-const sourceTagLabel = computed(() => (usingLocalFallback.value ? 'customer fallback' : 'erpnext readonly'))
-
-const filteredRows = computed(() => {
-  const keyword = query.keyword.trim().toLowerCase()
-  const status = query.status.trim().toLowerCase()
-  return rows.value.filter((row) => {
-    if (status && row.status !== status) return false
-    if (!keyword) return true
-    return [row.code, row.name, row.parityScope].join('|').toLowerCase().includes(keyword)
-  })
-})
-
+const filteredRows = computed(() => filterReferenceRows(rows.value, query))
 const activeCount = computed(() => filteredRows.value.filter((row) => row.status === 'active').length)
 const inactiveCount = computed(() => filteredRows.value.filter((row) => row.status === 'inactive').length)
-
-const normalizeRow = (item: CustomerItem): CustomerReferenceRow => ({
-  code: item.name,
-  name: item.customer_name?.trim() || item.name,
-  status: item.disabled ? 'inactive' : 'active',
-  source: 'erpnext',
-  parityScope: foundationCustomerParityHint.value ? 'foundation-customer' : 'sales-inventory-references',
-})
 
 const setLoadedAt = (): void => {
   lastLoadedAt.value = new Date().toISOString()
 }
 
-const refreshCustomers = async (showToast = false): Promise<void> => {
+const refreshReferences = async (showToast = false): Promise<void> => {
   loading.value = true
   try {
-    const response = await fetchSalesInventoryCustomers({ page: 1, page_size: 100 })
-    const remoteRows = response.data.items.map(normalizeRow)
-    if (remoteRows.length > 0) {
-      rows.value = remoteRows
-      usingLocalFallback.value = false
-    } else {
-      rows.value = localFallbackRows.map((row) => ({
-        ...row,
-        parityScope: foundationCustomerParityHint.value ? 'foundation-customer' : row.parityScope,
-      }))
-      usingLocalFallback.value = true
-    }
+    const result = await loadSalesInventoryReferenceRows(activeTab.value, parityValue.value)
+    rows.value = result.rows
+    usingFallback.value = result.usingFallback
     setLoadedAt()
     if (showToast) {
-      ElMessage.success('客户引用数据已刷新')
-    }
-  } catch (error) {
-    rows.value = localFallbackRows.map((row) => ({
-      ...row,
-      parityScope: foundationCustomerParityHint.value ? 'foundation-customer' : row.parityScope,
-    }))
-    usingLocalFallback.value = true
-    setLoadedAt()
-    if (showToast) {
-      ElMessage.warning((error as Error).message || '客户引用接口不可用，已切换到本地只读回退视图')
+      if (result.usingFallback) {
+        ElMessage.warning(`${activeTab.value === 'customers' ? '客户' : '供应商'}引用数据已切换到本地只读回退视图`)
+      } else {
+        ElMessage.success(`${activeTab.value === 'customers' ? '客户' : '供应商'}引用数据已刷新`)
+      }
     }
   } finally {
     loading.value = false
@@ -229,10 +247,42 @@ const refreshCustomers = async (showToast = false): Promise<void> => {
 const resetQuery = (): void => {
   query.keyword = ''
   query.status = ''
+  query.source = ''
 }
 
+const syncTabFromRoute = (): void => {
+  activeTab.value = resolveReferenceTab(route.query.tab, route.query.parity)
+}
+
+const handleTabChange = async (tabName: string | number): Promise<void> => {
+  const nextTab: SalesInventoryReferenceTab = tabName === 'suppliers' ? 'suppliers' : 'customers'
+  const nextParity =
+    parityValue.value === 'foundation-customer' || parityValue.value === 'foundation-supplier'
+      ? nextTab === 'customers'
+        ? 'foundation-customer'
+        : 'foundation-supplier'
+      : undefined
+  await router.replace({
+    path: '/sales-inventory/references',
+    query: {
+      ...(nextParity ? { parity: nextParity } : {}),
+      tab: nextTab,
+    },
+  })
+}
+
+watch(
+  () => [route.query.tab, route.query.parity],
+  () => {
+    syncTabFromRoute()
+    resetQuery()
+    void refreshReferences(false)
+  },
+)
+
 onMounted(() => {
-  void refreshCustomers(false)
+  syncTabFromRoute()
+  void refreshReferences(false)
 })
 </script>
 
@@ -266,7 +316,15 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.header-tags {
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.header-tags,
+.guarded-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -274,6 +332,7 @@ onMounted(() => {
 }
 
 .scope-alert,
+.reference-tabs,
 .filter-panel,
 .readonly-readback,
 .table-panel {
