@@ -231,6 +231,10 @@
       </section>
 
       <section class="warehouse-traceability-section" data-testid="warehouse-traceability-readonly-section">
+        <WarehouseTraceReadonlySection
+          :summary="warehouseTraceReadonlySummary"
+        />
+
         <div class="traceability-header">
           <div class="title-wrap">
             <h3>仓库追溯 / 批次序列只读</h3>
@@ -1436,7 +1440,9 @@ import {
 import { request, type ApiResponse } from '@/api/request'
 import { usePermissionStore } from '@/stores/permission'
 import WarehouseBalanceBatchReadonly from '@/views/warehouse/components/WarehouseBalanceBatchReadonly.vue'
+import WarehouseTraceReadonlySection from '@/views/warehouse/components/WarehouseTraceReadonlySection.vue'
 import { useWarehouseBalanceBatchReadonly } from '@/views/warehouse/composables/useWarehouseBalanceBatchReadonly'
+import { useWarehouseTraceReadonly } from '@/views/warehouse/composables/useWarehouseTraceReadonly'
 
 type DisplayRow = {
   warehouse: string
@@ -2020,11 +2026,28 @@ const canRead = computed<boolean>(() => (
   || permissionStore.state.buttonPermissions.read
   || permissionStore.state.actions.includes('warehouse:read')
 ))
+const warehouseTraceReadonlyCurrentPath = computed<string>(() => {
+  const queryParts = new URLSearchParams()
+  const parity = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  const tab = typeof route.query.tab === 'string' ? route.query.tab.trim() : ''
+  if (parity) queryParts.set('parity', parity)
+  if (tab) queryParts.set('tab', tab)
+  const queryString = queryParts.toString()
+  return queryString ? `${route.path}?${queryString}` : route.path
+})
 const { warehouseBalanceBatchReadonlySummary } = useWarehouseBalanceBatchReadonly({
   summaryRows,
   batchRows,
   parity: parityValue,
   canRead,
+})
+const { warehouseTraceReadonlySummary } = useWarehouseTraceReadonly({
+  batchRows,
+  serialRows,
+  traceabilityRows,
+  canRead,
+  parity: parityValue,
+  currentPath: warehouseTraceReadonlyCurrentPath,
 })
 const canStockEntryWrite = computed<boolean>(() => !warehouseReadonlyActionGuarded.value)
 const countingDeltaQty = computed<number>(() => {

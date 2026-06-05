@@ -279,11 +279,11 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/productStock/productStockList',
-    redirect: { path: '/warehouse', query: { parity: 'product-stock' } },
+    redirect: { path: '/warehouse', query: { parity: 'product-stock', tab: 'traceability' } },
   },
   {
     path: '/productStock/productStockProcess',
-    redirect: { path: '/warehouse', query: { parity: 'product-stock' } },
+    redirect: { path: '/warehouse', query: { parity: 'product-stock', tab: 'traceability' } },
   },
   {
     path: '/financial/financialReport/customerReconciliationReport',
