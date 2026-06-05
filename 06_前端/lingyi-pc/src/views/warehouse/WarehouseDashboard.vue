@@ -146,6 +146,10 @@
         </div>
       </section>
 
+      <WarehouseBalanceBatchReadonly
+        :summary="warehouseBalanceBatchReadonlySummary"
+      />
+
       <div class="action-row">
         <el-button
           type="primary"
@@ -637,10 +641,10 @@
           </div>
           <div class="management-actions">
             <el-button :disabled="!canRead" @click="applyManagementFilters">查询管理</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('新增仓库')">新增仓库</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('编辑仓库')">编辑仓库</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('停用仓库')">停用仓库</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('导出仓库目录')">导出</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('新增仓库')">新增仓库</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('编辑仓库')">编辑仓库</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('停用仓库')">停用仓库</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('导出仓库目录')">导出</el-button>
           </div>
         </div>
 
@@ -711,7 +715,7 @@
           <el-table-column label="操作" min-width="180" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="viewWarehouse(row)">查看</el-button>
-              <el-button link type="warning" @click="guardedAction(`编辑仓库(${row.warehouse_code})`)">编辑</el-button>
+              <el-button link type="warning" :disabled="warehouseReadonlyActionGuarded" data-write-guard @click="guardedAction(`编辑仓库(${row.warehouse_code})`)">编辑</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -725,9 +729,9 @@
           </div>
           <div class="material-actions">
             <el-button :disabled="!canRead" @click="applyMaterialFilters">查询物料</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('库存调拨')">调拨</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('库存盘点')">盘点</el-button>
-            <el-button :disabled="!canRead" @click="guardedAction('导出物料库存')">导出</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('库存调拨')">调拨</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('库存盘点')">盘点</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('导出物料库存')">导出</el-button>
           </div>
         </div>
 
@@ -826,7 +830,7 @@
           <el-table-column label="操作" min-width="180" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="viewMaterial(row)">查看</el-button>
-              <el-button link type="warning" @click="guardedAction(`调拨物料(${row.material_code})`)">调拨</el-button>
+              <el-button link type="warning" :disabled="warehouseReadonlyActionGuarded" data-write-guard @click="guardedAction(`调拨物料(${row.material_code})`)">调拨</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -840,10 +844,10 @@
           </div>
           <div class="other-inbound-actions">
             <el-button :disabled="!canRead" @click="applyOtherInboundFilters">查询入仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('确认入仓')">确认入仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('撤销入仓')">撤销入仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('导出其他入仓')">导出</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('打印其他入仓')">打印</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('确认入仓')">确认入仓</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('撤销入仓')">撤销入仓</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('导出其他入仓')">导出</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('打印其他入仓')">打印</el-button>
           </div>
         </div>
 
@@ -939,7 +943,7 @@
           <el-table-column label="操作" min-width="180" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="viewOtherInbound(row)">查看</el-button>
-              <el-button link type="warning" @click="guardedAction(`确认入仓(${row.inbound_no})`)">确认</el-button>
+              <el-button link type="warning" :disabled="warehouseReadonlyActionGuarded" data-write-guard @click="guardedAction(`确认入仓(${row.inbound_no})`)">确认</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -953,10 +957,10 @@
           </div>
           <div class="purchase-return-outbound-actions">
             <el-button :disabled="!canRead" @click="applyPurchaseReturnFilters">查询出仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('确认出仓')">确认出仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('撤销出仓')">撤销出仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('导出采购退料出仓')">导出</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('打印采购退料出仓')">打印</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('确认出仓')">确认出仓</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('撤销出仓')">撤销出仓</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('导出采购退料出仓')">导出</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('打印采购退料出仓')">打印</el-button>
           </div>
         </div>
 
@@ -1052,7 +1056,7 @@
           <el-table-column label="操作" min-width="180" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="viewPurchaseReturnOutbound(row)">查看</el-button>
-              <el-button link type="warning" @click="guardedAction(`确认出仓(${row.outbound_no})`)">确认</el-button>
+              <el-button link type="warning" :disabled="warehouseReadonlyActionGuarded" data-write-guard @click="guardedAction(`确认出仓(${row.outbound_no})`)">确认</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -1066,10 +1070,10 @@
           </div>
           <div class="factory-return-material-report-actions">
             <el-button :disabled="!canRead" @click="applyFactoryReturnMaterialReportFilters">查询报表</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('确认退料')">确认退料</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('撤销退料')">撤销退料</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('导出加工厂应退料报表')">导出</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('打印加工厂应退料报表')">打印</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('确认退料')">确认退料</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('撤销退料')">撤销退料</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('导出加工厂应退料报表')">导出</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('打印加工厂应退料报表')">打印</el-button>
           </div>
         </div>
 
@@ -1168,7 +1172,7 @@
           <el-table-column label="操作" min-width="180" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="viewFactoryReturnMaterialReport(row)">查看</el-button>
-              <el-button link type="warning" @click="guardedAction(`确认退料(${row.report_no})`)">确认</el-button>
+              <el-button link type="warning" :disabled="warehouseReadonlyActionGuarded" data-write-guard @click="guardedAction(`确认退料(${row.report_no})`)">确认</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -1182,10 +1186,10 @@
           </div>
           <div class="semi-finished-outbound-actions">
             <el-button :disabled="!canRead" @click="applySemiFinishedOutboundFilters">查询出仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('确认半成品出仓')">确认出仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('撤销半成品出仓')">撤销出仓</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('导出半成品出仓')">导出</el-button>
-            <el-button :disabled="!canRead" data-write-guard @click="guardedAction('打印半成品出仓')">打印</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('确认半成品出仓')">确认出仓</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('撤销半成品出仓')">撤销出仓</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('导出半成品出仓')">导出</el-button>
+            <el-button :disabled="warehouseReadonlyActionGuarded || !canRead" data-write-guard @click="guardedAction('打印半成品出仓')">打印</el-button>
           </div>
         </div>
 
@@ -1289,7 +1293,7 @@
           <el-table-column label="操作" min-width="180" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="viewSemiFinishedOutbound(row)">查看</el-button>
-              <el-button link type="warning" @click="guardedAction(`确认半成品出仓(${row.outbound_no})`)">确认</el-button>
+              <el-button link type="warning" :disabled="warehouseReadonlyActionGuarded" data-write-guard @click="guardedAction(`确认半成品出仓(${row.outbound_no})`)">确认</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -1431,6 +1435,8 @@ import {
 } from '@/api/warehouse'
 import { request, type ApiResponse } from '@/api/request'
 import { usePermissionStore } from '@/stores/permission'
+import WarehouseBalanceBatchReadonly from '@/views/warehouse/components/WarehouseBalanceBatchReadonly.vue'
+import { useWarehouseBalanceBatchReadonly } from '@/views/warehouse/composables/useWarehouseBalanceBatchReadonly'
 
 type DisplayRow = {
   warehouse: string
@@ -2007,13 +2013,20 @@ const contractReadonlyReadbackRequirements: string[] = [
   'readonly/readback: not_claimed_as_business_action=true',
 ]
 
+const warehouseReadonlyActionGuarded = localWriteReadonlyGuarded
 const canRead = computed<boolean>(() => (
   isFinishedGoodsParity.value
   || isFoundationWarehouseParity.value
   || permissionStore.state.buttonPermissions.read
   || permissionStore.state.actions.includes('warehouse:read')
 ))
-const canStockEntryWrite = computed<boolean>(() => !localWriteReadonlyGuarded.value)
+const { warehouseBalanceBatchReadonlySummary } = useWarehouseBalanceBatchReadonly({
+  summaryRows,
+  batchRows,
+  parity: parityValue,
+  canRead,
+})
+const canStockEntryWrite = computed<boolean>(() => !warehouseReadonlyActionGuarded.value)
 const countingDeltaQty = computed<number>(() => {
   const countingQty = Number(localWriteForm.counting_qty || 0)
   const currentQty = Number(localWriteForm.current_qty || 0)
