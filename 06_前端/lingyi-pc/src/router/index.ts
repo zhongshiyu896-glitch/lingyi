@@ -193,6 +193,15 @@ const routes: RouteRecordRaw[] = [
     name: 'DashboardOverview',
     component: () => import('@/views/dashboard/DashboardOverview.vue'),
     meta: { module: 'dashboard' },
+    beforeEnter: (to) => {
+      if (to.query.entry === 'module-availability') {
+        return {
+          path: '/cross-module/view',
+          query: { tab: 'module-availability' },
+        }
+      }
+      return true
+    },
   },
   {
     path: '/quality/inspections',

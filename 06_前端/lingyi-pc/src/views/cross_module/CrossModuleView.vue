@@ -40,7 +40,11 @@
         :closable="false"
         class="readonly-guide"
         data-testid="cross-module-permission-action-hint"
-        title="导出、下载、同步、生成快照与跨模块写入均为只读 guard，本页不会触发这些副作用接口。"
+        title="导出、下载、同步、快照查看与跨模块写入均为只读 guard，本页不会触发这些副作用接口。"
+      />
+      <CrossModuleDestinationReadonlySection
+        :summary="crossModuleDestinationReadonlySummary"
+        data-testid="cand314-cross-module-destination-mounted"
       />
 
       <el-empty
@@ -78,6 +82,7 @@
                   </el-button>
                   <el-button
                     plain
+                    disabled
                     data-testid="cross-module-work-order-export-guard"
                     data-write-guard="readonly:cross-module-work-order-export"
                     data-guard-state="guarded_readonly"
@@ -87,6 +92,7 @@
                   </el-button>
                   <el-button
                     plain
+                    disabled
                     data-testid="cross-module-work-order-sync-guard"
                     data-write-guard="readonly:cross-module-work-order-sync"
                     data-guard-state="guarded_readonly"
@@ -207,6 +213,7 @@
                   </el-button>
                   <el-button
                     plain
+                    disabled
                     data-testid="cross-module-sales-order-export-guard"
                     data-write-guard="readonly:cross-module-sales-order-export"
                     data-guard-state="guarded_readonly"
@@ -216,6 +223,7 @@
                   </el-button>
                   <el-button
                     plain
+                    disabled
                     data-testid="cross-module-sales-order-sync-guard"
                     data-write-guard="readonly:cross-module-sales-order-sync"
                     data-guard-state="guarded_readonly"
@@ -307,6 +315,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import {
   fetchSalesOrderTrail,
   fetchWorkOrderTrail,
@@ -315,7 +324,10 @@ import {
 } from '@/api/cross_module'
 import { fetchModuleActions } from '@/api/auth'
 import { usePermissionStore } from '@/stores/permission'
+import CrossModuleDestinationReadonlySection from './components/CrossModuleDestinationReadonlySection.vue'
+import { useCrossModuleDestinationReadonly } from './composables/useCrossModuleDestinationReadonly'
 
+const route = useRoute()
 const permissionStore = usePermissionStore()
 const activeTab = ref<'work_order' | 'sales_order'>('work_order')
 const workOrderLoading = ref<boolean>(false)
@@ -344,12 +356,18 @@ const salesOrderQuery = reactive({
 })
 
 const canRead = computed<boolean>(() => salesInventoryReadAllowed.value && qualityReadAllowed.value)
+const routeQueryTab = computed<string>(() => String(route.query.tab ?? '').trim())
 const workOrderShowEmptyState = computed<boolean>(
   () => workOrderQueried.value && !workOrderLoading.value && !workOrderErrorMessage.value && !workOrderTrail.value,
 )
 const salesOrderShowEmptyState = computed<boolean>(
   () => salesOrderQueried.value && !salesOrderLoading.value && !salesOrderErrorMessage.value && !salesOrderTrail.value,
 )
+const { crossModuleDestinationReadonlySummary } = useCrossModuleDestinationReadonly({
+  canRead,
+  queryTab: routeQueryTab,
+  activeTab,
+})
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') {
