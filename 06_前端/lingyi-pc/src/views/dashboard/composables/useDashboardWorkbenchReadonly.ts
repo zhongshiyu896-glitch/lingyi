@@ -38,6 +38,7 @@ export interface DashboardWorkbenchCard {
   key: string
   title: string
   description: string
+  sourceModule: DashboardWorkbenchCardConfig['sourceModule']
   path: string
   sourceLabel: string
   metricLabel: string
@@ -294,6 +295,7 @@ export const useDashboardWorkbenchReadonly = ({
         key: config.key,
         title: config.title,
         description: config.description,
+        sourceModule: config.sourceModule,
         path: config.path,
         sourceLabel: `source=${config.sourceModule} / permission=${permissionStatus}`,
         metricLabel: metric.metricLabel,

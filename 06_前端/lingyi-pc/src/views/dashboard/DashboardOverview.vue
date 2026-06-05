@@ -52,36 +52,14 @@
       </div>
     </section>
 
-    <section class="workbench-board" data-testid="cand122-workbench-business-cards">
-      <header>
-        <div>
-          <h2>工作台业务卡片</h2>
-          <p>来源于 dashboard overview / workplace 只读链路，入口按守卫状态开放只读查看。</p>
-        </div>
-        <el-tag effect="plain" type="info">guard=readonly</el-tag>
-      </header>
-      <div class="workbench-grid">
-        <article v-for="item in workbenchCards" :key="item.key" class="workbench-card">
-          <div class="workbench-card-top">
-            <div>
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.sourceLabel }}</p>
-            </div>
-            <el-tag effect="plain" :type="item.guardTone">{{ item.guardLabel }}</el-tag>
-          </div>
-          <strong class="workbench-metric">{{ item.metricValue }}</strong>
-          <span class="workbench-metric-label">{{ item.metricLabel }}</span>
-          <p class="workbench-detail">{{ item.detail }}</p>
-          <small class="workbench-note">{{ item.disabledReason }}</small>
-          <div class="workbench-actions">
-            <el-button size="small" type="primary" plain :disabled="item.entryDisabled" @click="go(item.path)">
-              只读进入
-            </el-button>
-            <el-button size="small" disabled>{{ item.writeGuardLabel }}</el-button>
-          </div>
-        </article>
-      </div>
-    </section>
+    <DashboardWorkbenchReadonlySection
+      :cards="workbenchCards"
+      :cross-module-items="crossModuleReadonlyItems"
+      :source-layer="dashboardReadonlySourceLayer"
+      :final-path="routeAliasSummary.finalPath"
+      :remaining-gap="dashboardRemainingGap"
+      @navigate="go"
+    />
 
     <section class="todo-guard-grid">
       <article class="todo-summary" data-testid="cand122-dashboard-todo-summary">
@@ -189,6 +167,8 @@ import {
   fetchDashboardWorkbenchReadonly,
   type DashboardHealthSummaryData,
 } from '@/api/dashboard_readonly'
+import DashboardWorkbenchReadonlySection from './components/DashboardWorkbenchReadonlySection.vue'
+import { useDashboardCrossModuleReadonly } from './composables/useDashboardCrossModuleReadonly'
 import { useDashboardWorkbenchReadonly } from './composables/useDashboardWorkbenchReadonly'
 
 const router = useRouter()
@@ -247,6 +227,16 @@ const {
   overviewData,
   healthSummary,
   route,
+})
+
+const {
+  crossModuleReadonlyItems,
+  remainingGap: dashboardRemainingGap,
+  sourceLayer: dashboardReadonlySourceLayer,
+} = useDashboardCrossModuleReadonly({
+  workbenchCards,
+  healthSummary,
+  routeAliasSummary,
 })
 
 const readbackWriteRequestsObservedCount = computed(() => 0)
