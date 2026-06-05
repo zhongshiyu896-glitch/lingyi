@@ -5,7 +5,7 @@
         <div class="header-row" data-testid="cand092-reference-toolbar">
           <div class="title-group">
             <span class="title">{{ pageTitle }}</span>
-            <span class="sub-title">NEXT-CAND-092 / foundation.references readonly</span>
+            <span class="sub-title">NEXT-CAND-301 / sales inventory reference bridge readonly</span>
           </div>
           <div class="header-actions">
             <div class="header-tags">
@@ -22,19 +22,25 @@
             </div>
             <div class="guarded-actions" data-testid="cand092-reference-guarded-actions">
               <el-button
-                type="primary"
                 disabled
                 data-action-type="write"
                 data-guard-state="disabled"
               >
-                新建引用
+                订单写入
               </el-button>
               <el-button
                 disabled
                 data-action-type="write"
                 data-guard-state="disabled"
               >
-                维护引用
+                库存调整
+              </el-button>
+              <el-button
+                disabled
+                data-action-type="write"
+                data-guard-state="disabled"
+              >
+                导出
               </el-button>
             </div>
           </div>
@@ -44,7 +50,7 @@
       <el-alert
         type="info"
         :closable="false"
-        title="当前切片仅提供客户/供应商引用档案回读与筛选交互，不包含库存写入、出入库、导出、ERPNext 或 worker 闭环。"
+        title="当前切片仅提供销售库存客户/供应商引用桥与基础资料 parity 的只读核对，不开放订单写入、库存调整、导出、ERPNext 或后台修复。"
         class="scope-alert"
       />
 
@@ -115,7 +121,7 @@
           <el-descriptions-item label="active_tab">{{ activeTabLabel }}</el-descriptions-item>
           <el-descriptions-item label="data_source">{{ sourceTagLabel }}</el-descriptions-item>
           <el-descriptions-item label="last_loaded_at">{{ lastLoadedAt || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="write_chain">disabled</el-descriptions-item>
+          <el-descriptions-item label="write_chain">order write / inventory adjust / export disabled</el-descriptions-item>
         </el-descriptions>
       </section>
 
@@ -225,7 +231,7 @@ const readonlyParityHint = computed(() => {
   return ''
 })
 const parityScopeLabel = computed(() => readonlyParityHint.value || 'sales-inventory-references')
-const pageTitle = computed(() => (activeTab.value === 'customers' ? '客户引用档案查询' : '供应商引用档案查询'))
+const pageTitle = computed(() => (activeTab.value === 'customers' ? '客户引用桥核对' : '供应商引用桥核对'))
 const activeTabLabel = computed(() => (activeTab.value === 'customers' ? 'customers' : 'suppliers'))
 const keywordPlaceholder = computed(() =>
   activeTab.value === 'customers' ? '客户编码 / 客户名称' : '供应商编码 / 供应商名称',
@@ -288,8 +294,8 @@ const handleTabChange = async (tabName: string | number): Promise<void> => {
   await router.replace({
     path: '/sales-inventory/references',
     query: {
-      ...(nextParity ? { parity: nextParity } : {}),
       tab: nextTab,
+      ...(nextParity ? { parity: nextParity } : {}),
     },
   })
 }

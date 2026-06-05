@@ -223,7 +223,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/foundation/supplier',
-    redirect: { path: '/sales-inventory/references', query: { tab: 'suppliers', parity: 'foundation-supplier' } },
+    redirect: '/sales-inventory/references?tab=suppliers&parity=foundation-supplier',
   },
   {
     path: '/foundation/factory',

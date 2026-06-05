@@ -3,6 +3,7 @@ import { fetchSalesInventoryCustomers, type CustomerItem } from '@/api/sales_inv
 export type SalesInventoryReferenceTab = 'customers' | 'suppliers'
 export type SalesInventoryReferenceStatus = 'active' | 'inactive'
 export type SalesInventoryReferenceSourceValidationState = 'verified' | 'fallback' | 'missing'
+export type SalesInventoryReferenceBridgeStatus = 'ok' | 'warn' | 'blocked'
 export type SalesInventoryReferenceParityGuardState =
   | 'reference-default'
   | 'foundation-customer'
@@ -32,6 +33,22 @@ export interface SalesInventoryReferenceLoadResult {
   usingFallback: boolean
 }
 
+export interface SalesInventoryReferenceRouteItem {
+  key: string
+  label: string
+  route: string
+  active: boolean
+  note: string
+}
+
+export interface SalesInventoryReferenceBridgeRow {
+  key: string
+  label: string
+  status: SalesInventoryReferenceBridgeStatus
+  summary: string
+  recommendation: string
+}
+
 export interface SalesInventoryReferenceGuardSummary {
   activeTab: SalesInventoryReferenceTab
   parityScopeLabel: string
@@ -41,14 +58,27 @@ export interface SalesInventoryReferenceGuardSummary {
   sourceValidationLabel: string
   readonlySourceTag: string
   readonlyGuardReason: string
+  blockedReason: string
+  remainingGap: string
   missingSourcePrompt: string
   verifiedCount: number
   fallbackCount: number
   missingCount: number
+  blockedCount: number
+  routeItems: SalesInventoryReferenceRouteItem[]
+  bridgeRows: SalesInventoryReferenceBridgeRow[]
+  cardValues: {
+    queryScope: string
+    bridgeNodes: string
+    blockedCount: string
+    sourceState: string
+  }
 }
 
 const CUSTOMER_FALLBACK_PROMPT = '客户引用档案当前无法从 ERPNext 校验，按 fail-closed 策略切换到本地只读回退视图。'
 const SUPPLIER_MISSING_PROMPT = '供应商引用档案当前没有 ERPNext 直连来源，仅提供 foundation-supplier parity 下的本地只读回退视图。'
+const SALES_INVENTORY_REFERENCE_REMAINING_GAP =
+  '真实订单写入、库存调整、导出、ERPNext 联动与后台修复未开放；客户/供应商引用桥仍需人工核对。'
 
 const CUSTOMER_FALLBACK_ROWS: SalesInventoryReferenceRow[] = [
   {
@@ -162,6 +192,12 @@ const readonlySourceTag = (
   if (state === 'verified') return tab === 'customers' ? '客户来源已校验' : '供应商来源已校验'
   if (state === 'fallback') return tab === 'customers' ? '客户本地回退' : '供应商本地回退'
   return tab === 'customers' ? '客户缺失直连来源' : '供应商缺失直连来源'
+}
+
+const bridgeStatusLabel = (status: SalesInventoryReferenceBridgeStatus): string => {
+  if (status === 'ok') return 'ok'
+  if (status === 'warn') return 'warn'
+  return 'blocked'
 }
 
 const missingSourcePrompt = (
@@ -281,6 +317,63 @@ export const buildSalesInventoryReferenceGuardSummary = (
       : rows.length > 0
         ? 'verified'
         : 'missing'
+  const blockedCount = rows.filter((row) => row.sourceValidationState !== 'verified').length
+  const queryScopeLabel = `${tab === 'customers' ? 'customers' : 'suppliers'} / ${parityGuardLabel(parityState)}`
+  const blockedReason = sourceState === 'missing'
+    ? '供应商引用桥当前缺少 ERPNext 直连来源，只保留 foundation-supplier parity 与本地只读回退说明。'
+    : sourceState === 'fallback'
+      ? '客户引用桥当前未通过 ERPNext 实时校验，已切换到本地只读回退视图。'
+      : '当前只开放销售库存引用桥与基础资料 parity 核对，订单写入、库存调整与导出继续禁用。'
+  const bridgeRows: SalesInventoryReferenceBridgeRow[] = [
+    {
+      key: 'reference-bridge',
+      label: tab === 'customers' ? '客户引用桥摘要' : '供应商引用桥摘要',
+      status: sourceState === 'verified' ? 'ok' : sourceState === 'fallback' ? 'warn' : 'blocked',
+      summary: `${tab === 'customers' ? '客户' : '供应商'}查询态当前回读 ${rows.length} 条引用记录，来源状态 ${sourceValidationLabel(sourceState, tab)}。`,
+      recommendation: '仅保留引用桥摘要与只读核对，不开放真实订单写入或库存调整。',
+    },
+    {
+      key: 'foundation-parity',
+      label: '基础资料 parity',
+      status: parityState === 'reference-default' ? 'ok' : 'warn',
+      summary: parityState === 'foundation-supplier'
+        ? '当前入口来自 foundation-supplier，页面保持 suppliers 查询态与 parity 标签同步。'
+        : parityState === 'foundation-customer'
+          ? '当前入口来自 foundation-customer，仅保留客户侧只读核对。'
+          : '当前入口为 sales-inventory references 默认只读查询态。',
+      recommendation: 'parity 仅用于说明入口映射，不触发基础资料写入或后台修复。',
+    },
+    {
+      key: 'blocked-reason',
+      label: 'blocked 原因',
+      status: blockedCount > 0 ? 'blocked' : 'warn',
+      summary: blockedReason,
+      recommendation: 'disabled guard 按钮仅作说明，导出、ERPNext 联动与后台修复保持禁用。',
+    },
+  ]
+  const routeItems: SalesInventoryReferenceRouteItem[] = [
+    {
+      key: 'suppliers-query',
+      label: 'suppliers 查询态',
+      route: '/sales-inventory/references?tab=suppliers',
+      active: tab === 'suppliers' && parityState === 'reference-default',
+      note: '只读展示供应商引用桥摘要与来源缺口说明。',
+    },
+    {
+      key: 'customers-query',
+      label: 'customers 查询态',
+      route: '/sales-inventory/references?tab=customers',
+      active: tab === 'customers' && parityState === 'reference-default',
+      note: '只读展示客户引用桥摘要与回退状态。',
+    },
+    {
+      key: 'foundation-supplier-parity',
+      label: 'foundation-supplier parity',
+      route: '/foundation/supplier -> /sales-inventory/references?tab=suppliers&parity=foundation-supplier',
+      active: parityState === 'foundation-supplier',
+      note: '基础资料供应商入口映射到 suppliers 查询态，只读核对引用桥。',
+    },
+  ]
 
   return {
     activeTab: tab,
@@ -291,14 +384,27 @@ export const buildSalesInventoryReferenceGuardSummary = (
     sourceValidationLabel: sourceValidationLabel(sourceState, tab),
     readonlySourceTag: readonlySourceTag(sourceState, tab),
     readonlyGuardReason: [
-      `当前页面仅提供${tab === 'customers' ? '客户' : '供应商'}引用档案只读回读`,
+      `当前页面仅提供${tab === 'customers' ? '客户' : '供应商'}引用桥与 parity 只读核对`,
       `已锁定入口 ${parityGuardLabel(parityState)}`,
-      'create / update / delete / export disabled',
+      'order write / inventory adjust / export disabled',
     ].join('；'),
+    blockedReason,
+    remainingGap: SALES_INVENTORY_REFERENCE_REMAINING_GAP,
     missingSourcePrompt: missingSourcePrompt(sourceState, tab),
     verifiedCount: rows.filter((row) => row.sourceValidationState === 'verified').length,
     fallbackCount: rows.filter((row) => row.sourceValidationState === 'fallback').length,
     missingCount: rows.filter((row) => row.sourceValidationState === 'missing').length,
+    blockedCount,
+    routeItems,
+    bridgeRows,
+    cardValues: {
+      queryScope: queryScopeLabel,
+      bridgeNodes: `${rows.length} 条`,
+      blockedCount: blockedCount > 0 ? `${blockedCount} 处` : '无阻断',
+      sourceState: bridgeStatusLabel(
+        sourceState === 'verified' ? 'ok' : sourceState === 'fallback' ? 'warn' : 'blocked',
+      ),
+    },
   }
 }
 
@@ -319,6 +425,7 @@ export const filterReferenceRows = (
       row.parityScope,
       row.sourceValidationLabel,
       row.readonlySourceTag,
+      row.missingSourcePrompt,
     ].join('|').toLowerCase().includes(keyword)
   })
 }
