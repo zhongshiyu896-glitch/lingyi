@@ -177,6 +177,11 @@
           data-testid="style-profit-remaining-gap-alert"
         />
       </section>
+      <StyleProfitGapReadonlySection
+        test-id-prefix="style-profit-gap"
+        :summary="listGapReadonlySummary"
+        :metric-fields="STYLE_PROFIT_GAP_LIST_METRIC_FIELDS"
+      />
 
       <el-empty v-if="!canRead" description="无款式利润查看权限，当前展示只读端到端锚点样例" data-testid="style-profit-no-permission" />
       <template>
@@ -327,7 +332,10 @@ import {
   type StyleProfitSnapshotListItem,
 } from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
+import StyleProfitGapReadonlySection from '@/views/style_profit/components/StyleProfitGapReadonlySection.vue'
+import { buildStyleProfitListGapReadonlySummary } from '@/views/style_profit/composables/useStyleProfitGapReadonly'
 import { buildStyleProfitListReadonlySummary } from '@/views/style_profit/composables/useStyleProfitSnapshotReadonly'
+import { STYLE_PROFIT_GAP_LIST_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitGapFields'
 import { STYLE_PROFIT_LIST_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitReadonlyFields'
 
 const route = useRoute()
@@ -343,6 +351,7 @@ const weekColumns = ['日', '一', '二', '三', '四', '五', '六']
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const parityHint = computed<string>(() => String(route.query.parity || 'style-profit'))
 const listReadonlySummary = computed(() => buildStyleProfitListReadonlySummary(rows.value, parityHint.value))
+const listGapReadonlySummary = computed(() => buildStyleProfitListGapReadonlySummary(rows.value, parityHint.value))
 
 const query = reactive({
   company: '',

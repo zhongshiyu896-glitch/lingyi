@@ -144,6 +144,11 @@
               data-testid="style-profit-detail-remaining-gap-alert"
             />
           </section>
+          <StyleProfitGapReadonlySection
+            test-id-prefix="style-profit-detail-gap"
+            :summary="detailGapReadonlySummary"
+            :metric-fields="STYLE_PROFIT_GAP_DETAIL_METRIC_FIELDS"
+          />
           <el-collapse v-model="auditPanels" class="audit-collapse" data-testid="style-profit-detail-audit-collapse">
             <el-collapse-item title="审计信息（仅供审计复核）" name="audit">
               <el-descriptions :column="1" border size="small">
@@ -294,7 +299,10 @@ import {
   type StyleProfitSourceMapItem,
 } from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
+import StyleProfitGapReadonlySection from '@/views/style_profit/components/StyleProfitGapReadonlySection.vue'
+import { buildStyleProfitDetailGapReadonlySummary } from '@/views/style_profit/composables/useStyleProfitGapReadonly'
 import { buildStyleProfitDetailReadonlySummary } from '@/views/style_profit/composables/useStyleProfitSnapshotReadonly'
+import { STYLE_PROFIT_GAP_DETAIL_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitGapFields'
 import { STYLE_PROFIT_DETAIL_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitReadonlyFields'
 
 const route = useRoute()
@@ -432,6 +440,9 @@ const hasValidSnapshotId = computed<boolean>(() => Number.isInteger(snapshotId.v
 const fromArchiveEntry = computed<boolean>(() => String(route.query.from || '').trim() === 'archive')
 const detailReadonlySummary = computed(() =>
   buildStyleProfitDetailReadonlySummary(snapshot.value, details.value, sourceMaps.value, parityHint.value),
+)
+const detailGapReadonlySummary = computed(() =>
+  buildStyleProfitDetailGapReadonlySummary(snapshot.value, details.value, sourceMaps.value, parityHint.value),
 )
 
 const formatAmount = (value: string | number | null | undefined): string => {
