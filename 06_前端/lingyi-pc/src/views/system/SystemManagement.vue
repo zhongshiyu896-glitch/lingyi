@@ -1824,6 +1824,17 @@
       :can-read-health-summary="canReadHealthSummary"
     />
 
+    <SystemFoundationSubjectReadonlySection
+      :config-items="configItems"
+      :dictionary-items="dictionaryItems"
+      :health-items="healthItems"
+      :route-parity="systemCatalogDriftRouteParity"
+      :route-tab="systemCatalogDriftRouteTab"
+      :can-read-config="canReadConfig"
+      :can-read-dictionary="canReadDictionary"
+      :can-read-health-summary="canReadHealthSummary"
+    />
+
     <el-dialog v-model="approvalFlowDiagramVisible" title="审核流程示意图（只读）" width="680px">
       <template v-if="activeApprovalFlow">
         <el-descriptions :column="2" border size="small" style="margin-bottom: 12px">
@@ -1872,6 +1883,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import SystemCatalogDriftReadonlySection from './components/SystemCatalogDriftReadonlySection.vue'
+import SystemFoundationSubjectReadonlySection from './components/SystemFoundationSubjectReadonlySection.vue'
 import systemManagementApi, {
   type SystemAnnouncementAction,
   type SystemAnnouncementItem,
