@@ -1,4 +1,4 @@
-import { fetchFactoryStatementDetail } from '@/api/factory_statement'
+import { fetchFactoryStatementDetail, fetchFactoryStatements } from '@/api/factory_statement'
 import type {
   FactoryStatementDetailData,
   FactoryStatementDetailItem,
@@ -123,5 +123,16 @@ export const fetchFactoryStatementReadonlyDetail = async (
   return {
     ...result,
     data: buildFactoryStatementReadonlyRecord(result.data),
+  }
+}
+
+export const fetchFactoryStatementReadonlyFallbackId = async (): Promise<ApiResponse<number | null>> => {
+  const result = await fetchFactoryStatements({
+    page: 1,
+    page_size: 1,
+  })
+  return {
+    ...result,
+    data: result.data.items[0]?.id ?? null,
   }
 }

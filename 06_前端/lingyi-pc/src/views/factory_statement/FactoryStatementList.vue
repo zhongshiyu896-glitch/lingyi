@@ -47,6 +47,12 @@
         新建、确认、取消、同步、导出与打印入口保持 guard 或只读提示；本候选不新增真实写链路。
       </p>
 
+      <FactoryStatementSourceReadonlySection
+        v-if="showSourceReadonlySection"
+        :summary="sourceReadonlySummary"
+        data-testid="factory-statement-list-source-readonly-section"
+      />
+
       <div class="statement-kpi-grid" data-testid="factory-statement-kpi-grid">
         <div class="statement-kpi-card" data-testid="factory-statement-kpi-total">
           <span class="kpi-label">当前记录</span>
@@ -280,6 +286,7 @@
               <el-button
                 link
                 type="info"
+                disabled
                 data-action-type="write"
                 data-write-guard="readonly:export"
                 data-guard-state="disabled"
@@ -3525,6 +3532,8 @@ import {
   type FactoryStatementExpenseReimbursementPaymentItem,
   type FactoryStatementListItem,
 } from '@/api/factory_statement'
+import FactoryStatementSourceReadonlySection from '@/views/factory_statement/components/FactoryStatementSourceReadonlySection.vue'
+import { useFactoryStatementSourceReadonly } from '@/views/factory_statement/composables/useFactoryStatementSourceReadonly'
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
@@ -3608,6 +3617,7 @@ const readbackPreconditionMode =
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
 const isFoundationSupplierParity = computed<boolean>(() => parityValue.value === 'foundation-supplier')
 const isFoundationFactoryParity = computed<boolean>(() => parityValue.value === 'foundation-factory')
+const tabValue = computed<string>(() => String(route.query.tab || '').trim().toLowerCase())
 const isFoundationReadonlyParity = computed<boolean>(() => isFoundationSupplierParity.value || isFoundationFactoryParity.value)
 const financeParityNormalized = computed<string>(() => {
   if (parityValue.value === 'finance-bank-ledger' || parityValue.value === 'finance-bank-flow') {
@@ -3634,6 +3644,9 @@ const preservedReadonlyQuery = computed<Record<string, string>>(() => {
   const query: Record<string, string> = {}
   if (parityValue.value) {
     query.parity = parityValue.value
+  }
+  if (tabValue.value === 'source-parity' || isFoundationFactoryParity.value) {
+    query.tab = 'source-parity'
   }
   return query
 })
@@ -4110,6 +4123,10 @@ const sampleFilterStateText = computed<string>(() => {
   return '样品筛选待操作'
 })
 
+const showSourceReadonlySection = computed<boolean>(() => (
+  tabValue.value === 'source-parity' || isFoundationFactoryParity.value
+))
+
 const statementKpis = computed(() => {
   let payableSyncCount = 0
   let draftCount = 0
@@ -4134,6 +4151,13 @@ const statementKpis = computed(() => {
     netAmountTotal,
     sourceCountTotal,
   }
+})
+
+const { sourceReadonlySummary } = useFactoryStatementSourceReadonly({
+  context: 'list',
+  listRows: displayRows,
+  parity: parityValue,
+  tab: tabValue,
 })
 
 const formatAmount = (value: string | number | null | undefined): string => {

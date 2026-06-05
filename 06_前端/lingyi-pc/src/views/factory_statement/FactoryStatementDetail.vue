@@ -167,6 +167,12 @@
           </el-descriptions>
         </el-card>
 
+        <FactoryStatementSourceReadonlySection
+          v-if="showSourceReadonlySection"
+          :summary="sourceReadonlySummary"
+          data-testid="factory-statement-detail-source-readonly-section"
+        />
+
         <FactoryStatementPayableStatusReadonly
           :summary="payableReadonlySummary"
           data-testid="factory-statement-detail-payable-readonly-section"
@@ -295,11 +301,14 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  fetchFactoryStatementReadonlyFallbackId,
   fetchFactoryStatementReadonlyDetail,
   type FactoryStatementReadonlyRecord,
 } from '@/api/factory_statement_readonly'
+import FactoryStatementSourceReadonlySection from '@/views/factory_statement/components/FactoryStatementSourceReadonlySection.vue'
 import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/components/FactoryStatementPayableStatusReadonly.vue'
 import { useFactoryStatementPayableReadonly } from '@/views/factory_statement/composables/useFactoryStatementPayableReadonly'
+import { useFactoryStatementSourceReadonly } from '@/views/factory_statement/composables/useFactoryStatementSourceReadonly'
 import { useFactoryStatementReadonly } from '@/views/factory_statement/composables/useFactoryStatementReadonly'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -315,6 +324,7 @@ const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
 
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
+const modeValue = computed<string>(() => String(route.query.mode || '').trim().toLowerCase())
 const isReadonlyParity = computed<boolean>(() => (
   parityValue.value === 'foundation-supplier' || parityValue.value === 'foundation-factory'
 ))
@@ -322,6 +332,9 @@ const preservedReadonlyQuery = computed<Record<string, string>>(() => {
   const query: Record<string, string> = {}
   if (parityValue.value) {
     query.parity = parityValue.value
+  }
+  if (parityValue.value === 'foundation-factory' || modeValue.value === 'readonly-lineage') {
+    query.tab = 'source-parity'
   }
   return query
 })
@@ -350,10 +363,19 @@ const { payableReadonlySummary } = useFactoryStatementPayableReadonly({
   parity: parityValue,
   context: 'detail',
 })
+const { sourceReadonlySummary } = useFactoryStatementSourceReadonly({
+  context: 'detail',
+  detailRecord: readonlyRecord,
+  parity: parityValue,
+  mode: modeValue,
+})
 
 const showEmptyState = computed<boolean>(
   () => detailLoaded.value && !!detail.value && items.value.length === 0 && logs.value.length === 0,
 )
+const showSourceReadonlySection = computed<boolean>(() => (
+  modeValue.value === 'readonly-lineage' || parityValue.value === 'foundation-factory'
+))
 
 const goBack = (): void => {
   router.push({ path: '/factory-statements/list', query: { ...preservedReadonlyQuery.value } })
@@ -368,7 +390,7 @@ const loadDetail = async (): Promise<void> => {
     missingStatementId.value = false
     return
   }
-  if (!hasValidStatementId.value) {
+  if (!hasValidStatementId.value && modeValue.value !== 'readonly-lineage') {
     readonlyRecord.value = null
     missingStatementId.value = true
     return
@@ -377,7 +399,18 @@ const loadDetail = async (): Promise<void> => {
   missingStatementId.value = false
   loading.value = true
   try {
-    const result = await fetchFactoryStatementReadonlyDetail(statementId.value)
+    let targetStatementId = statementId.value
+    if (!hasValidStatementId.value) {
+      const fallbackIdResult = await fetchFactoryStatementReadonlyFallbackId()
+      if (!fallbackIdResult.data) {
+        readonlyRecord.value = null
+        missingStatementId.value = true
+        detailLoaded.value = true
+        return
+      }
+      targetStatementId = fallbackIdResult.data
+    }
+    const result = await fetchFactoryStatementReadonlyDetail(targetStatementId)
     readonlyRecord.value = result.data
     detailLoaded.value = true
   } catch (error) {

@@ -227,7 +227,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/foundation/factory',
-    redirect: { path: '/factory-statements/list', query: { parity: 'foundation-factory' } },
+    redirect: { path: '/factory-statements/list', query: { parity: 'foundation-factory', tab: 'source-parity' } },
   },
   {
     path: '/foundation/warehouse',
