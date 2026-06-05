@@ -61,6 +61,14 @@
       @navigate="go"
     />
 
+    <DashboardAlertReadonlySection
+      :alert-items="dashboardAlertItems"
+      :audit-items="dashboardAlertAuditItems"
+      :readonly-actions="dashboardAlertReadonlyActions"
+      :source-layer="dashboardAlertSourceLayer"
+      :final-path="routeAliasSummary.finalPath"
+    />
+
     <section class="todo-guard-grid">
       <article class="todo-summary" data-testid="cand122-dashboard-todo-summary">
         <header>
@@ -167,7 +175,9 @@ import {
   fetchDashboardWorkbenchReadonly,
   type DashboardHealthSummaryData,
 } from '@/api/dashboard_readonly'
+import DashboardAlertReadonlySection from './components/DashboardAlertReadonlySection.vue'
 import DashboardWorkbenchReadonlySection from './components/DashboardWorkbenchReadonlySection.vue'
+import { useDashboardAlertReadonly } from './composables/useDashboardAlertReadonly'
 import { useDashboardCrossModuleReadonly } from './composables/useDashboardCrossModuleReadonly'
 import { useDashboardWorkbenchReadonly } from './composables/useDashboardWorkbenchReadonly'
 
@@ -235,6 +245,17 @@ const {
   sourceLayer: dashboardReadonlySourceLayer,
 } = useDashboardCrossModuleReadonly({
   workbenchCards,
+  healthSummary,
+  routeAliasSummary,
+})
+
+const {
+  dashboardAlertItems,
+  dashboardAlertAuditItems,
+  dashboardAlertReadonlyActions,
+  dashboardAlertSourceLayer,
+} = useDashboardAlertReadonly({
+  overviewData,
   healthSummary,
   routeAliasSummary,
 })
