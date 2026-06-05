@@ -235,7 +235,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/material/materialFabric',
-    redirect: { path: '/bom/list', query: { parity: 'material-fabric' } },
+    redirect: '/warehouse?tab=permission-mode&parity=foundation-material',
   },
   {
     path: '/goodsPlan/materialSamples',

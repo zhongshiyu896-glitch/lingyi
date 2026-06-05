@@ -26,6 +26,15 @@
                 {{ foundationWarehouseParityHint }}
               </el-tag>
               <el-tag
+                v-else-if="isFoundationMaterialParity"
+                size="small"
+                type="warning"
+                effect="plain"
+                data-testid="foundation-material-parity-hint"
+              >
+                {{ foundationMaterialParityHint }}
+              </el-tag>
+              <el-tag
                 v-else
                 size="small"
                 type="info"
@@ -148,6 +157,10 @@
 
       <WarehouseBalanceBatchReadonly
         :summary="warehouseBalanceBatchReadonlySummary"
+      />
+
+      <WarehousePermissionModeReadonlySection
+        :summary="warehousePermissionModeReadonlySummary"
       />
 
       <div class="action-row">
@@ -1440,8 +1453,10 @@ import {
 import { request, type ApiResponse } from '@/api/request'
 import { usePermissionStore } from '@/stores/permission'
 import WarehouseBalanceBatchReadonly from '@/views/warehouse/components/WarehouseBalanceBatchReadonly.vue'
+import WarehousePermissionModeReadonlySection from '@/views/warehouse/components/WarehousePermissionModeReadonlySection.vue'
 import WarehouseTraceReadonlySection from '@/views/warehouse/components/WarehouseTraceReadonlySection.vue'
 import { useWarehouseBalanceBatchReadonly } from '@/views/warehouse/composables/useWarehouseBalanceBatchReadonly'
+import { useWarehousePermissionModeReadonly } from '@/views/warehouse/composables/useWarehousePermissionModeReadonly'
 import { useWarehouseTraceReadonly } from '@/views/warehouse/composables/useWarehouseTraceReadonly'
 
 type DisplayRow = {
@@ -1984,6 +1999,7 @@ const localSeedSemiFinishedOutboundRows: WarehouseSemiFinishedOutboundItem[] = [
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
 const isFinishedGoodsParity = computed<boolean>(() => parityValue.value === 'product-stock')
 const isFoundationWarehouseParity = computed<boolean>(() => parityValue.value === 'foundation-warehouse')
+const isFoundationMaterialParity = computed<boolean>(() => parityValue.value === 'foundation-material')
 const warehouseReadonlySliceOnly = true
 const finishedGoodsParityHint = computed<string>(() => (
   isFinishedGoodsParity.value
@@ -1993,9 +2009,15 @@ const finishedGoodsParityHint = computed<string>(() => (
 const foundationWarehouseParityHint = computed<string>(() => (
   '衣算云 / 基础资料 / 仓库管理（parity=foundation-warehouse，只读交互）'
 ))
+const foundationMaterialParityHint = computed<string>(() => (
+  '衣算云 / 基础资料 / 物料档案（parity=foundation-material，只读交互）'
+))
 const contractCand005ReadbackOnly = warehouseReadonlySliceOnly
 const localWriteReadonlyGuarded = computed<boolean>(() => (
-  contractCand005ReadbackOnly || isFinishedGoodsParity.value || isFoundationWarehouseParity.value
+  contractCand005ReadbackOnly
+  || isFinishedGoodsParity.value
+  || isFoundationWarehouseParity.value
+  || isFoundationMaterialParity.value
 ))
 const contractCoveredIds: string[] = ['A001', 'A002', 'A003']
 const contractSourceFiles: string[] = [
@@ -2023,6 +2045,7 @@ const warehouseReadonlyActionGuarded = localWriteReadonlyGuarded
 const canRead = computed<boolean>(() => (
   isFinishedGoodsParity.value
   || isFoundationWarehouseParity.value
+  || isFoundationMaterialParity.value
   || permissionStore.state.buttonPermissions.read
   || permissionStore.state.actions.includes('warehouse:read')
 ))
@@ -2040,6 +2063,14 @@ const { warehouseBalanceBatchReadonlySummary } = useWarehouseBalanceBatchReadonl
   batchRows,
   parity: parityValue,
   canRead,
+})
+const { warehousePermissionModeReadonlySummary } = useWarehousePermissionModeReadonly({
+  summaryRows,
+  managementRows,
+  materialRows,
+  canRead,
+  parity: parityValue,
+  currentPath: warehouseTraceReadonlyCurrentPath,
 })
 const { warehouseTraceReadonlySummary } = useWarehouseTraceReadonly({
   batchRows,
