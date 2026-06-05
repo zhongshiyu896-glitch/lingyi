@@ -112,6 +112,11 @@
         <div><span>应付发票草稿：</span>{{ printSummary.payableInvoice }}</div>
       </section>
 
+      <FactoryStatementPayableStatusReadonly
+        :summary="payableReadonlySummary"
+        data-testid="factory-statement-print-payable-readonly-section"
+      />
+
       <el-alert
         type="warning"
         :title="printGuardMessage"
@@ -208,6 +213,8 @@ import {
   fetchFactoryStatementReadonlyDetail,
   type FactoryStatementReadonlyRecord,
 } from '@/api/factory_statement_readonly'
+import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/components/FactoryStatementPayableStatusReadonly.vue'
+import { useFactoryStatementPayableReadonly } from '@/views/factory_statement/composables/useFactoryStatementPayableReadonly'
 import { useFactoryStatementReadonly } from '@/views/factory_statement/composables/useFactoryStatementReadonly'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -247,6 +254,11 @@ const {
   showText,
   statementStatusLabel,
 } = useFactoryStatementReadonly(readonlyRecord)
+const { payableReadonlySummary } = useFactoryStatementPayableReadonly({
+  recordSource: readonlyRecord,
+  parity: parityValue,
+  context: 'print',
+})
 
 const loadDetail = async (): Promise<void> => {
   loadError.value = ''

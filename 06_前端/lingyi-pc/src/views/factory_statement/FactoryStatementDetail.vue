@@ -167,6 +167,11 @@
           </el-descriptions>
         </el-card>
 
+        <FactoryStatementPayableStatusReadonly
+          :summary="payableReadonlySummary"
+          data-testid="factory-statement-detail-payable-readonly-section"
+        />
+
         <div class="action-row" data-testid="factory-statement-detail-actions">
           <el-button
             data-testid="factory-statement-detail-action-confirm"
@@ -293,6 +298,8 @@ import {
   fetchFactoryStatementReadonlyDetail,
   type FactoryStatementReadonlyRecord,
 } from '@/api/factory_statement_readonly'
+import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/components/FactoryStatementPayableStatusReadonly.vue'
+import { useFactoryStatementPayableReadonly } from '@/views/factory_statement/composables/useFactoryStatementPayableReadonly'
 import { useFactoryStatementReadonly } from '@/views/factory_statement/composables/useFactoryStatementReadonly'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -338,6 +345,11 @@ const {
   statusTag,
   summaryMissing,
 } = useFactoryStatementReadonly(readonlyRecord)
+const { payableReadonlySummary } = useFactoryStatementPayableReadonly({
+  recordSource: readonlyRecord,
+  parity: parityValue,
+  context: 'detail',
+})
 
 const showEmptyState = computed<boolean>(
   () => detailLoaded.value && !!detail.value && items.value.length === 0 && logs.value.length === 0,
