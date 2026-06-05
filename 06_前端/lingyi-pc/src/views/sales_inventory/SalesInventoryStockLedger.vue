@@ -356,6 +356,8 @@
             </el-tag>
           </div>
 
+          <StockLedgerImpactReadonly :summary="stockLedgerImpactReadonlySummary" />
+
           <el-table
             :data="stockLedgerFilteredRows"
             border
@@ -3422,6 +3424,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import StockLedgerImpactReadonly from '@/views/sales_inventory/components/StockLedgerImpactReadonly.vue'
+import { useStockLedgerImpactReadonly } from '@/views/sales_inventory/composables/useStockLedgerImpactReadonly'
+import {
+  fetchStockLedgerImpactReadonlySnapshot,
+  type StockLedgerImpactReadonlySnapshot,
+} from '@/api/sales_inventory_stock_impact'
 import {
   fetchSalesInventoryCustomerReturnInbound,
   fetchSalesInventoryCustomerReturnApplications,
@@ -3432,14 +3440,12 @@ import {
   fetchSalesInventoryFinishedGoodsOtherInbound,
   fetchSalesInventoryFinishedGoodsReservedInbound,
   fetchSalesInventoryFinishedGoodsShippingNotices,
-  fetchSalesInventoryAggregation,
   fetchSalesInventoryInventoryMaterialRetentionReport,
   fetchSalesInventoryMaterialCounts,
   fetchSalesInventoryMaterialInventoryReport,
   fetchSalesInventoryMaterialTransfers,
   fetchSalesInventorySemiFinishedInventory,
   fetchSalesInventoryStockLedger,
-  fetchSalesInventoryStockSummary,
   type CustomerReturnInboundItem,
   type CustomerReturnApplicationItem,
   type FinishedGoodsAdjustmentItem,
@@ -3471,6 +3477,7 @@ const requiredItemCodeGuarded = ref<boolean>(false)
 const stockSummaryRows = ref<StockSummaryItem[]>([])
 const stockSummaryDroppedCount = ref<number>(0)
 const inventoryAggregationRows = ref<SalesInventoryAggregationItem[]>([])
+const stockLedgerImpactSnapshot = ref<StockLedgerImpactReadonlySnapshot | null>(null)
 const ledgerDetailVisible = ref<boolean>(false)
 const ledgerDetailRow = ref<StockLedgerItem | null>(null)
 const materialTransferLoading = ref<boolean>(false)
@@ -3686,6 +3693,12 @@ const inventoryAggregationTotal = computed<number>(() => inventoryAggregationRow
 
 const inventoryAggregationBelowSafety = computed<number>(() => {
   return inventoryAggregationRows.value.filter((row) => row.is_below_safety).length
+})
+
+const { stockLedgerImpactReadonlySummary } = useStockLedgerImpactReadonly({
+  snapshot: stockLedgerImpactSnapshot,
+  parity: stockLedgerParity,
+  canRead,
 })
 
 const materialTransferQtyTotal = computed<string>(() => {
@@ -4247,6 +4260,7 @@ const resetRows = (): void => {
   stockSummaryRows.value = []
   stockSummaryDroppedCount.value = 0
   inventoryAggregationRows.value = []
+  stockLedgerImpactSnapshot.value = null
   ledgerDetailVisible.value = false
   ledgerDetailRow.value = null
 }
@@ -4343,8 +4357,9 @@ const loadRows = async ({ silentGuard = false }: { silentGuard?: boolean } = {})
   loading.value = true
   lastError.value = ''
   try {
-    const [summaryResult, ledgerResult, aggregationResult] = await Promise.all([
-      fetchSalesInventoryStockSummary(itemCode, {
+    const [impactSnapshot, ledgerResult] = await Promise.all([
+      fetchStockLedgerImpactReadonlySnapshot({
+        itemCode,
         company: query.company.trim() || undefined,
         warehouse: query.warehouse.trim() || undefined,
       }),
@@ -4356,17 +4371,13 @@ const loadRows = async ({ silentGuard = false }: { silentGuard?: boolean } = {})
         page: query.page,
         page_size: query.page_size,
       }),
-      fetchSalesInventoryAggregation({
-        company: query.company.trim() || undefined,
-        item_code: itemCode,
-        warehouse: query.warehouse.trim() || undefined,
-      }),
     ])
-    stockSummaryRows.value = summaryResult.data.items
-    stockSummaryDroppedCount.value = summaryResult.data.dropped_count
+    stockLedgerImpactSnapshot.value = impactSnapshot
+    stockSummaryRows.value = impactSnapshot.summaryRows
+    stockSummaryDroppedCount.value = impactSnapshot.summaryDroppedCount
     rows.value = ledgerResult.data.items
     total.value = ledgerResult.data.total
-    inventoryAggregationRows.value = aggregationResult.data.items
+    inventoryAggregationRows.value = impactSnapshot.aggregationRows
     if (ledgerDetailRow.value) {
       const latest = ledgerResult.data.items.find((item) => item.name === ledgerDetailRow.value?.name)
       if (latest) {
