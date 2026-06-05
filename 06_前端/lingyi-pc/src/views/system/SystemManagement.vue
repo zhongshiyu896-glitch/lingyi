@@ -1813,6 +1813,17 @@
       </template>
     </el-card>
 
+    <SystemCatalogDriftReadonlySection
+      :config-items="configItems"
+      :dictionary-items="dictionaryItems"
+      :health-items="healthItems"
+      :route-parity="systemCatalogDriftRouteParity"
+      :route-tab="systemCatalogDriftRouteTab"
+      :can-read-config="canReadConfig"
+      :can-read-dictionary="canReadDictionary"
+      :can-read-health-summary="canReadHealthSummary"
+    />
+
     <el-dialog v-model="approvalFlowDiagramVisible" title="审核流程示意图（只读）" width="680px">
       <template v-if="activeApprovalFlow">
         <el-descriptions :column="2" border size="small" style="margin-bottom: 12px">
@@ -1858,7 +1869,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import SystemCatalogDriftReadonlySection from './components/SystemCatalogDriftReadonlySection.vue'
 import systemManagementApi, {
   type SystemAnnouncementAction,
   type SystemAnnouncementItem,
@@ -1884,6 +1897,7 @@ import systemManagementApi, {
 } from '@/api/system_management'
 import { usePermissionStore } from '@/stores/permission'
 
+const route = useRoute()
 const permissionStore = usePermissionStore()
 const configLoading = ref<boolean>(false)
 const dictionaryLoading = ref<boolean>(false)
@@ -2063,6 +2077,10 @@ const canReadOperationLogs = computed<boolean>(() => canSystemRead.value && canC
 const canReadDocumentCodes = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadMessageNotificationSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
 const canReadPreferenceSettings = computed<boolean>(() => canSystemRead.value && canConfigRead.value)
+const systemCatalogDriftRouteParity = computed<string>(() =>
+  typeof route.query.parity === 'string' ? route.query.parity : '',
+)
+const systemCatalogDriftRouteTab = computed<string>(() => (typeof route.query.tab === 'string' ? route.query.tab : ''))
 const healthCheckMap = computed<Record<string, SystemHealthSummaryItem>>(() => {
   return healthItems.value.reduce<Record<string, SystemHealthSummaryItem>>((acc, item) => {
     acc[item.check_name] = item

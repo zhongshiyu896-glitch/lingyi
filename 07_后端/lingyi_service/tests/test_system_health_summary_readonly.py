@@ -231,6 +231,26 @@ class SystemHealthSummaryReadonlyApiTest(unittest.TestCase):
         self.assertEqual(dictionary_response.status_code, 200, dictionary_response.text)
         self.assertGreaterEqual(dictionary_response.json()["data"]["total"], 6)
 
+    def test_system_catalog_drift_frontend_contract_present(self) -> None:
+        repo_root = Path(__file__).resolve().parents[3]
+        files = {
+            "page": repo_root / "06_前端/lingyi-pc/src/views/system/SystemManagement.vue",
+            "section": repo_root / "06_前端/lingyi-pc/src/views/system/components/SystemCatalogDriftReadonlySection.vue",
+            "composable": repo_root / "06_前端/lingyi-pc/src/views/system/composables/useSystemCatalogDriftReadonly.ts",
+            "constants": repo_root / "06_前端/lingyi-pc/src/views/system/constants/systemCatalogDriftFields.ts",
+        }
+        combined = "\n".join(path.read_text(encoding="utf-8") for path in files.values())
+
+        required_snippets = [
+            "system-catalog-drift-section",
+            "/system/management?parity=foundation-dictionary",
+            "/system/management?tab=catalog-drift",
+            "真实目录维护、系统配置写入、报表生成、导出和后台修复均未开放",
+            "readonly guard",
+        ]
+        for snippet in required_snippets:
+            self.assertIn(snippet, combined)
+
 
 if __name__ == "__main__":
     unittest.main()
