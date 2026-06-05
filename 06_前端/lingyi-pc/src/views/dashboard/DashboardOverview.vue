@@ -52,6 +52,15 @@
       </div>
     </section>
 
+    <DashboardModuleEntryReadonlySection
+      :items="dashboardModuleEntryItems"
+      :readonly-actions="dashboardModuleEntryReadonlyActions"
+      :remaining-gap="dashboardModuleEntryRemainingGap"
+      :source-layer="dashboardModuleEntrySourceLayer"
+      :final-path="routeAliasSummary.finalPath"
+      @navigate="go"
+    />
+
     <DashboardWorkbenchReadonlySection
       :cards="workbenchCards"
       :cross-module-items="crossModuleReadonlyItems"
@@ -194,11 +203,13 @@ import {
   type DashboardHealthSummaryData,
 } from '@/api/dashboard_readonly'
 import DashboardAlertReadonlySection from './components/DashboardAlertReadonlySection.vue'
+import DashboardModuleEntryReadonlySection from './components/DashboardModuleEntryReadonlySection.vue'
 import DashboardTodoReadonlySection from './components/DashboardTodoReadonlySection.vue'
 import DashboardTrendReadonlySection from './components/DashboardTrendReadonlySection.vue'
 import DashboardWorkbenchReadonlySection from './components/DashboardWorkbenchReadonlySection.vue'
 import { useDashboardAlertReadonly } from './composables/useDashboardAlertReadonly'
 import { useDashboardCrossModuleReadonly } from './composables/useDashboardCrossModuleReadonly'
+import { useDashboardModuleEntryReadonly } from './composables/useDashboardModuleEntryReadonly'
 import { useDashboardTodoReadonly } from './composables/useDashboardTodoReadonly'
 import { useDashboardTrendReadonly } from './composables/useDashboardTrendReadonly'
 import { useDashboardWorkbenchReadonly } from './composables/useDashboardWorkbenchReadonly'
@@ -277,6 +288,17 @@ const {
   dashboardAlertReadonlyActions,
   dashboardAlertSourceLayer,
 } = useDashboardAlertReadonly({
+  overviewData,
+  healthSummary,
+  routeAliasSummary,
+})
+
+const {
+  dashboardModuleEntryItems,
+  dashboardModuleEntryReadonlyActions,
+  dashboardModuleEntryRemainingGap,
+  dashboardModuleEntrySourceLayer,
+} = useDashboardModuleEntryReadonly({
   overviewData,
   healthSummary,
   routeAliasSummary,

@@ -331,7 +331,7 @@ const routeBadgeText = computed(() => `${route.path || '/'} readonly boundary`)
 
 const routeContextText = computed(() => {
   const categoryText: Record<string, string> = {
-    home: '首页上下文',
+    home: '工作台入口上下文',
     'report-catalog': '报表目录上下文',
     'workshop-ticket': '车间工票上下文',
     'subcontract-readonly': '外发单上下文',
@@ -367,7 +367,7 @@ const operationTraceText = computed(() => {
 })
 
 const evidenceEntryText = computed(() => {
-  const evidenceRoute = route.path || '/home'
+  const evidenceRoute = route.path || '/dashboard/overview'
   return `证据入口：${evidenceRoute} 需包含 route、DOM anchors、guard 与 network observation`
 })
 
@@ -381,7 +381,7 @@ const nextGateDisclaimerText = computed(
 )
 
 const z044LocalGateSummaryText = computed(() => {
-  const currentRoute = route.path || '/home'
+  const currentRoute = route.path || '/dashboard/overview'
   return `Z044 本地门禁建议：${currentRoute} 仅进入 CAND001 边界与证据准备，不启动远端生命周期。`
 })
 
@@ -398,7 +398,7 @@ const z044RemoteGateDisclaimerText = computed(
 )
 
 const z044EvidenceReadinessText = computed(
-  () => '证据入口：/home 截图，三路由 route evidence，DOM anchors，guard state，network observation 与 typecheck。',
+  () => '证据入口：/dashboard/overview 截图，双路由 route evidence，DOM anchors，guard state，network observation 与 typecheck。',
 )
 
 const z044NextPrepRecommendationText = computed(
