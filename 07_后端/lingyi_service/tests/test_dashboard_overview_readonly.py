@@ -286,6 +286,32 @@ class DashboardOverviewReadonlyApiTest(unittest.TestCase):
         for snippet in blocked:
             self.assertNotIn(snippet, combined)
 
+    def test_dashboard_frontend_todo_readonly_files_guarded(self) -> None:
+        repo_root = Path(__file__).resolve().parents[3]
+        files = [
+            repo_root / "06_前端/lingyi-pc/src/views/dashboard/DashboardOverview.vue",
+            repo_root / "06_前端/lingyi-pc/src/views/dashboard/components/DashboardTodoReadonlySection.vue",
+            repo_root / "06_前端/lingyi-pc/src/views/dashboard/composables/useDashboardTodoReadonly.ts",
+            repo_root / "06_前端/lingyi-pc/src/views/dashboard/constants/dashboardTodoReadonlyFields.ts",
+        ]
+        for path in files:
+            self.assertTrue(path.exists(), str(path))
+
+        combined = "\n".join(path.read_text(encoding="utf-8") for path in files)
+        required = [
+            "cand254-dashboard-todo-readonly",
+            "entry_source=",
+            "source_route=",
+            "overdue_bucket=",
+            "blocked_reason=",
+            "审批",
+            "导出",
+            "跨模块执行",
+        ]
+
+        for snippet in required:
+            self.assertIn(snippet, combined)
+
 
 if __name__ == "__main__":
     unittest.main()

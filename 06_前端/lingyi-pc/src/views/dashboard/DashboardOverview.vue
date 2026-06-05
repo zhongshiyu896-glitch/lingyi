@@ -79,6 +79,14 @@
       :final-path="routeAliasSummary.finalPath"
     />
 
+    <DashboardTodoReadonlySection
+      :aging-items="dashboardTodoAgingItems"
+      :readonly-actions="dashboardTodoReadonlyActions"
+      :remaining-gap="dashboardTodoRemainingGap"
+      :source-layer="dashboardTodoSourceLayer"
+      :final-path="routeAliasSummary.finalPath"
+    />
+
     <section class="todo-guard-grid">
       <article class="todo-summary" data-testid="cand122-dashboard-todo-summary">
         <header>
@@ -186,10 +194,12 @@ import {
   type DashboardHealthSummaryData,
 } from '@/api/dashboard_readonly'
 import DashboardAlertReadonlySection from './components/DashboardAlertReadonlySection.vue'
+import DashboardTodoReadonlySection from './components/DashboardTodoReadonlySection.vue'
 import DashboardTrendReadonlySection from './components/DashboardTrendReadonlySection.vue'
 import DashboardWorkbenchReadonlySection from './components/DashboardWorkbenchReadonlySection.vue'
 import { useDashboardAlertReadonly } from './composables/useDashboardAlertReadonly'
 import { useDashboardCrossModuleReadonly } from './composables/useDashboardCrossModuleReadonly'
+import { useDashboardTodoReadonly } from './composables/useDashboardTodoReadonly'
 import { useDashboardTrendReadonly } from './composables/useDashboardTrendReadonly'
 import { useDashboardWorkbenchReadonly } from './composables/useDashboardWorkbenchReadonly'
 
@@ -280,6 +290,17 @@ const {
   dashboardTrendRemainingGap,
   dashboardTrendSourceLayer,
 } = useDashboardTrendReadonly({
+  overviewData,
+  healthSummary,
+  routeAliasSummary,
+})
+
+const {
+  dashboardTodoAgingItems,
+  dashboardTodoReadonlyActions,
+  dashboardTodoRemainingGap,
+  dashboardTodoSourceLayer,
+} = useDashboardTodoReadonly({
   overviewData,
   healthSummary,
   routeAliasSummary,
