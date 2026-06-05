@@ -224,7 +224,7 @@ const routes: RouteRecordRaw[] = [
   // Yisuan module-entry parity aliases (readonly navigation only).
   {
     path: '/dashboard/workplace',
-    redirect: '/dashboard/overview',
+    redirect: '/home?tab=module-shortcuts',
   },
   {
     path: '/foundation/customer',

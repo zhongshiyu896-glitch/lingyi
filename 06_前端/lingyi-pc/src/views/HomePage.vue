@@ -80,6 +80,11 @@
         </div>
       </section>
 
+      <HomeModuleShortcutReadonlySection
+        :summary="homeModuleShortcutReadonlySummary"
+        data-testid="cand326-home-module-shortcuts-mounted"
+      />
+
       <section class="module-summary-panel" data-testid="cand038-home-module-summary">
         <div class="grid-header">
           <h3>模块摘要</h3>
@@ -398,7 +403,10 @@ import {
   fetchDashboardOverview,
   type DashboardOverviewData,
   type DashboardOverviewQuery,
+  type DashboardSourceStatus,
 } from '@/api/dashboard'
+import HomeModuleShortcutReadonlySection from './home/components/HomeModuleShortcutReadonlySection.vue'
+import { useHomeModuleShortcutReadonly } from './home/composables/useHomeModuleShortcutReadonly'
 
 interface NavItem {
   name: string
@@ -623,11 +631,19 @@ const homeEntryOverviewCards = computed<OverviewSummaryCard[]>(() => {
 })
 
 const readbackWriteRequestsObservedCount = computed(() => 0)
-const sourceStatuses = computed(() => overviewData.value?.source_status || [])
+const sourceStatuses = computed<DashboardSourceStatus[]>(() => overviewData.value?.source_status || [])
 const sourceStatusCount = computed(() => sourceStatuses.value.length)
 const sourceStatusOkCount = computed(() => sourceStatuses.value.filter((item) => item.status === 'ok').length)
 const homepageReadbackSummarySuccess = computed(() => readbackSummaryModules.value.length > 0)
 const workspaceRedirectReadbackSuccess = computed(() => true)
+const homeRouteTab = computed(() => readQueryText(route.query.tab) || '')
+
+const { homeModuleShortcutReadonlySummary } = useHomeModuleShortcutReadonly({
+  moduleEntries: computed(() => moduleEntries),
+  routePath: computed(() => route.path),
+  routeTab: homeRouteTab,
+  sourceStatuses,
+})
 
 const statusCards = computed<StatusCard[]>(() => {
   const homeOverview = overviewData.value?.home_overview
