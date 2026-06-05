@@ -18,6 +18,9 @@
               data-write-guard="readonly:workshop-ticket-register"
               data-write-allowlist="workshop-ticket-register"
               data-guard-state="guarded_readonly"
+              :disabled="true"
+              :title="guardedActionMap['ticket-register'].reason"
+              aria-disabled="true"
               @click="goRegister"
             >
               工票登记
@@ -28,6 +31,9 @@
               data-write-guard="readonly:workshop-ticket-batch"
               data-write-allowlist="workshop-ticket-batch"
               data-guard-state="guarded_readonly"
+              :disabled="true"
+              :title="guardedActionMap['ticket-batch'].reason"
+              aria-disabled="true"
               @click="goBatch"
             >
               批量导入
@@ -187,6 +193,9 @@
                 type="success"
                 data-write-guard="readonly:job-card-sync-retry"
                 data-guard-state="guarded_readonly"
+                :disabled="true"
+                :title="guardedActionMap['job-card-sync-retry'].reason"
+                aria-disabled="true"
                 @click="retrySync(scope.row.job_card)"
               >
                 重试同步
@@ -247,9 +256,13 @@ import {
   type WorkshopTicketRow,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
+import { WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS } from './constants/workshopDailyWageReadonlyFields'
 
 const router = useRouter()
 const permissionStore = usePermissionStore()
+const guardedActionMap = Object.fromEntries(
+  WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS.map((action) => [action.key, action])
+)
 const loading = ref<boolean>(false)
 const rows = ref<WorkshopTicketRow[]>([])
 const total = ref<number>(0)

@@ -110,6 +110,7 @@
         data-testid="workshop-daily-wage-no-permission"
       />
       <template v-else>
+        <WorkshopDailyWageReadonlySection :summary="readonlySummary" />
         <el-alert
           v-if="errorMessage"
           style="margin-bottom: 12px"
@@ -138,6 +139,9 @@
             data-action-type="write"
             data-write-guard="readonly:workshop-daily-wage-export"
             data-guard-state="guarded_readonly"
+            :disabled="true"
+            :title="guardedActionMap['daily-wage-export'].reason"
+            aria-disabled="true"
             @click="guardedWriteAction('导出日薪')"
           >
             导出
@@ -146,6 +150,9 @@
             data-action-type="write"
             data-write-guard="readonly:workshop-daily-wage-generate"
             data-guard-state="guarded_readonly"
+            :disabled="true"
+            :title="guardedActionMap['daily-wage-generate'].reason"
+            aria-disabled="true"
             @click="guardedWriteAction('生成日薪')"
           >
             生成
@@ -154,6 +161,9 @@
             data-action-type="write"
             data-write-guard="readonly:workshop-daily-wage-sync"
             data-guard-state="guarded_readonly"
+            :disabled="true"
+            :title="guardedActionMap['daily-wage-sync'].reason"
+            aria-disabled="true"
             @click="guardedWriteAction('同步日薪')"
           >
             同步
@@ -203,9 +213,18 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { fetchWorkshopDailyWages, type WorkshopDailyWageRow } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
+import WorkshopDailyWageReadonlySection from './components/WorkshopDailyWageReadonlySection.vue'
+import {
+  useWorkshopDailyWageReadonly,
+  type WorkshopDailyWageReadonlyQueryState,
+} from './composables/useWorkshopDailyWageReadonly'
+import { WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS } from './constants/workshopDailyWageReadonlyFields'
 
 const router = useRouter()
 const permissionStore = usePermissionStore()
+const guardedActionMap = Object.fromEntries(
+  WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS.map((action) => [action.key, action])
+)
 const loading = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const rows = ref<WorkshopDailyWageRow[]>([])
@@ -224,6 +243,12 @@ const query = reactive({
 })
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_read)
+const readonlySummary = useWorkshopDailyWageReadonly({
+  rows,
+  totalAmount,
+  query: query as WorkshopDailyWageReadonlyQueryState,
+  canRead,
+})
 
 const guardedWriteAction = (label: string): void => {
   ElMessage.warning(`${label} 仅可在授权流程中执行，当前为只读模式`)
