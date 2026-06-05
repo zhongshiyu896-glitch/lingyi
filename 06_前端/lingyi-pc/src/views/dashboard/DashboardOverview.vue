@@ -69,6 +69,16 @@
       :final-path="routeAliasSummary.finalPath"
     />
 
+    <DashboardTrendReadonlySection
+      :window-items="dashboardTrendWindowItems"
+      :freshness-items="dashboardTrendFreshnessItems"
+      :refresh-explanation="dashboardTrendRefreshExplanation"
+      :readonly-actions="dashboardTrendReadonlyActions"
+      :remaining-gap="dashboardTrendRemainingGap"
+      :source-layer="dashboardTrendSourceLayer"
+      :final-path="routeAliasSummary.finalPath"
+    />
+
     <section class="todo-guard-grid">
       <article class="todo-summary" data-testid="cand122-dashboard-todo-summary">
         <header>
@@ -176,9 +186,11 @@ import {
   type DashboardHealthSummaryData,
 } from '@/api/dashboard_readonly'
 import DashboardAlertReadonlySection from './components/DashboardAlertReadonlySection.vue'
+import DashboardTrendReadonlySection from './components/DashboardTrendReadonlySection.vue'
 import DashboardWorkbenchReadonlySection from './components/DashboardWorkbenchReadonlySection.vue'
 import { useDashboardAlertReadonly } from './composables/useDashboardAlertReadonly'
 import { useDashboardCrossModuleReadonly } from './composables/useDashboardCrossModuleReadonly'
+import { useDashboardTrendReadonly } from './composables/useDashboardTrendReadonly'
 import { useDashboardWorkbenchReadonly } from './composables/useDashboardWorkbenchReadonly'
 
 const router = useRouter()
@@ -255,6 +267,19 @@ const {
   dashboardAlertReadonlyActions,
   dashboardAlertSourceLayer,
 } = useDashboardAlertReadonly({
+  overviewData,
+  healthSummary,
+  routeAliasSummary,
+})
+
+const {
+  dashboardTrendWindowItems,
+  dashboardTrendFreshnessItems,
+  dashboardTrendRefreshExplanation,
+  dashboardTrendReadonlyActions,
+  dashboardTrendRemainingGap,
+  dashboardTrendSourceLayer,
+} = useDashboardTrendReadonly({
   overviewData,
   healthSummary,
   routeAliasSummary,
