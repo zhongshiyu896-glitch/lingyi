@@ -115,44 +115,14 @@
         type="info"
         :closable="false"
         show-icon
-        title="当前页面为只读验证模式（parity=workshop-ticket-wage）"
+        title="当前页面为只读验证模式（parity=workshop-ticket-diagnostic）"
         class="parity-hint"
         data-testid="workshop-ticket-parity-hint"
       />
 
-      <section
-        class="cross-route-readonly"
-        data-testid="workshop-ticket-wage-cross-route-guard"
-        data-route-source="/workshop/tickets"
-        data-reused-source="Z036-CAND-004:b5e6ce57b28ef7d2ca4d2b58502049c2b7a5ae45"
-        data-readonly-boundary="true"
-        data-write-request-success-allowed="false"
-        data-real-write-action-added="false"
-        data-guard-state="guarded_readonly"
-      >
-        <div class="cross-route-readonly__main">
-          <strong>三路由只读一致性</strong>
-          <span>工票查询 / 日薪统计 / 工价档案共享只读边界，当前来源：/workshop/tickets。</span>
-        </div>
-        <div class="cross-route-readonly__meta">
-          <span>筛选、汇总弹层与同步重试仅做只读可见验收。</span>
-          <span>复用 Z036-CAND-004 clean product path，禁止真实写请求成功。</span>
-        </div>
-        <div class="cross-route-readonly__guards" data-testid="workshop-ticket-wage-guarded-entry-list">
-          <el-tag type="info" effect="plain">工票登记 guarded</el-tag>
-          <el-tag type="info" effect="plain">批量导入 guarded</el-tag>
-          <el-tag type="info" effect="plain">Job Card 同步重试 guarded</el-tag>
-          <el-tag data-testid="workshop-ticket-summary-dialog" type="info" effect="plain">
-            汇总弹层只读预览
-          </el-tag>
-          <el-tag type="info" effect="plain">日薪导出 guarded</el-tag>
-          <el-tag type="info" effect="plain">生成/同步日薪 guarded</el-tag>
-          <el-tag type="info" effect="plain">新增/停用工价 guarded</el-tag>
-        </div>
-      </section>
-
       <el-empty v-if="!canRead" description="无工票查看权限" data-testid="workshop-ticket-no-permission" />
       <template v-else>
+        <WorkshopTicketDiagnosticReadonlySection :summary="diagnosticReadonlySummary" />
         <el-alert
           v-if="errorMessage"
           type="error"
@@ -247,7 +217,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchWorkshopJobCardSummary,
@@ -256,12 +226,15 @@ import {
   type WorkshopTicketRow,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
-import { WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS } from './constants/workshopDailyWageReadonlyFields'
+import WorkshopTicketDiagnosticReadonlySection from './components/WorkshopTicketDiagnosticReadonlySection.vue'
+import { useWorkshopTicketDiagnosticReadonly } from './composables/useWorkshopTicketDiagnosticReadonly'
+import { WORKSHOP_TICKET_DIAGNOSTIC_READONLY_ACTIONS } from './constants/workshopTicketDiagnosticFields'
 
+const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const guardedActionMap = Object.fromEntries(
-  WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS.map((action) => [action.key, action])
+  WORKSHOP_TICKET_DIAGNOSTIC_READONLY_ACTIONS.map((action) => [action.key, action])
 )
 const loading = ref<boolean>(false)
 const rows = ref<WorkshopTicketRow[]>([])
@@ -288,6 +261,14 @@ const canBatch = computed<boolean>(() => permissionStore.state.buttonPermissions
 const canWageRead = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_read)
 const canWageRateRead = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_rate_read)
 const canSync = computed<boolean>(() => permissionStore.state.buttonPermissions.job_card_sync)
+
+const diagnosticReadonlySummary = useWorkshopTicketDiagnosticReadonly({
+  rows,
+  canRead,
+  currentPath: computed(() =>
+    route.query.tab === 'diagnostic' ? '/workshop/tickets?tab=diagnostic' : route.path || '/workshop/tickets'
+  ),
+})
 
 const operationTypeLabel = (value: string): string => {
   const labels: Record<string, string> = {
@@ -431,32 +412,6 @@ onMounted(async () => {
 
 .parity-hint {
   margin-bottom: 12px;
-}
-
-.cross-route-readonly {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 12px;
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 6px;
-  background: var(--el-fill-color-lighter);
-  color: var(--el-text-color-regular);
-}
-
-.cross-route-readonly__main,
-.cross-route-readonly__meta,
-.cross-route-readonly__guards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.cross-route-readonly__meta {
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
 }
 
 .empty-state {
