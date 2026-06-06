@@ -27,10 +27,12 @@
             <el-button
               data-testid="wage-rates-create-action"
               type="primary"
-              :disabled="!canManage"
+              :disabled="workshopWageReadonlyGuardActive || !canManage"
               data-action-type="write"
               data-write-guard="readonly:wage-rate-create"
               data-guard-state="guarded_readonly"
+              :title="readonlyCreateReason"
+              :data-readonly-reason="readonlyCreateReason"
               @click="openCreateDialog"
             >
               新增工价
@@ -38,6 +40,10 @@
           </div>
         </div>
       </template>
+
+      <WorkshopWageReadonlySection
+        :summary="workshopWageReadonlySummary"
+      />
 
       <el-form :inline="true" :model="query" data-testid="wage-rates-filter-form">
         <el-form-item label="款式">
@@ -202,7 +208,14 @@
                 data-guard-state="guarded_readonly"
                 link
                 type="danger"
-                :disabled="!canManage || scope.row.status !== 'active' || (scope.row.is_global && !canManageAll)"
+                :disabled="
+                  workshopWageReadonlyGuardActive ||
+                  !canManage ||
+                  scope.row.status !== 'active' ||
+                  (scope.row.is_global && !canManageAll)
+                "
+                :title="readonlyDeactivateReason"
+                :data-readonly-reason="readonlyDeactivateReason"
                 @click="onDeactivate(scope.row)"
               >
                 停用
@@ -311,15 +324,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   fetchWorkshopWageRates,
   type WorkshopWageRateRow,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
+import WorkshopWageReadonlySection from '@/views/workshop/components/WorkshopWageReadonlySection.vue'
+import { useWorkshopWageReadonly } from '@/views/workshop/composables/useWorkshopWageReadonly'
 
+const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const defaultPageSize = 20
@@ -353,11 +369,164 @@ const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.
 const canReadAll = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_rate_read_all)
 const canManage = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_rate_manage)
 const canManageAll = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_rate_manage_all)
+const workshopWageReadonlyGuardActive = computed<boolean>(() => true)
+const readonlyCreateReason =
+  '当前仅开放工价档案只读摘要，不开放真实工价维护创建、导入、导出或 worker 执行。'
+const readonlyDeactivateReason =
+  '当前仅开放工价状态只读核对，不开放真实停用执行。'
+const GLOBAL_READONLY_GUARD_ATTR = 'data-workshop-wage-readonly-disabled'
+const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-workshop-wage-readonly-prev-disabled'
+const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-workshop-wage-readonly-prev-aria-disabled'
+const GLOBAL_READONLY_PREV_TITLE_ATTR = 'data-workshop-wage-readonly-prev-title'
+const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-workshop-wage-readonly-prev-tabindex'
+const GLOBAL_WORKSHOP_WAGE_ACTION_GUARDS = [
+  {
+    selector: '#global-auth-refresh-guard',
+    reason: 'readonly-wage boundary keeps permission refresh non-executable on OperationWageRate.',
+    disableNative: true,
+  },
+  {
+    selector: '#z042-global-guarded-refresh',
+    reason: 'readonly-wage boundary keeps permission refresh non-executable on OperationWageRate.',
+    disableNative: false,
+  },
+  {
+    selector: 'button[data-readonly-action="fetchModuleActions"]',
+    reason: 'readonly-wage boundary keeps module action reload non-executable on OperationWageRate.',
+    disableNative: true,
+  },
+] as const
+let globalWorkshopWageGuardObserver: MutationObserver | null = null
 
 const normalizeText = (value: string): string => value.trim()
 
+const readonlyWageParity = computed<string>(() => String(route.query.parity || ''))
+const readonlyWageFocus = computed<string>(() => String(route.query.focus || ''))
+const readonlyWageRoutePath = computed<string>(() => route.fullPath || route.path)
+const readonlyWageFilterStateLabel = computed<string>(() => {
+  const rateScope = query.rate_scope || 'all'
+  const itemCode = normalizeText(query.item_code) || 'GLOBAL'
+  const company = normalizeText(query.company) || 'ALL_COMPANY'
+  const processName = normalizeText(query.process_name) || 'ALL_PROCESS'
+  const status = query.status || 'all'
+  return `scope=${rateScope}; item=${itemCode}; company=${company}; process=${processName}; status=${status}`
+})
+
+const { workshopWageReadonlySummary } = useWorkshopWageReadonly({
+  rows,
+  canRead,
+  currentPath: readonlyWageRoutePath,
+  parity: readonlyWageParity,
+  focus: readonlyWageFocus,
+  filterStateLabel: readonlyWageFilterStateLabel,
+})
+
 const guardedWriteAction = (label: string): void => {
   ElMessage.warning(`${label} 仅可在授权流程中执行，当前为只读模式`)
+}
+
+const applyGlobalReadonlyGuardToElement = (
+  element: HTMLElement,
+  reason: string,
+  disableNative: boolean,
+): void => {
+  if (!element.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) {
+    element.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_DISABLED_ATTR,
+      element instanceof HTMLButtonElement && element.disabled ? 'true' : 'false',
+    )
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
+      element.getAttribute('aria-disabled') ?? '',
+    )
+    element.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, element.getAttribute('title') ?? '')
+    element.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, element.getAttribute('tabindex') ?? '')
+  }
+
+  if (disableNative && element instanceof HTMLButtonElement) {
+    element.disabled = true
+  }
+  element.setAttribute('aria-disabled', 'true')
+  element.setAttribute('title', reason)
+  element.setAttribute('tabindex', '-1')
+  element.classList.add('is-disabled')
+}
+
+const restoreGlobalReadonlyGuardElements = (): void => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.querySelectorAll<HTMLElement>(`[${GLOBAL_READONLY_GUARD_ATTR}="1"]`).forEach((element) => {
+    const prevDisabled = element.getAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR) === 'true'
+    const prevAriaDisabled = element.getAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR) ?? ''
+    const prevTitle = element.getAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR) ?? ''
+    const prevTabIndex = element.getAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR) ?? ''
+
+    if (element instanceof HTMLButtonElement) {
+      element.disabled = prevDisabled
+    }
+
+    if (prevAriaDisabled) {
+      element.setAttribute('aria-disabled', prevAriaDisabled)
+    } else {
+      element.removeAttribute('aria-disabled')
+    }
+
+    if (prevTitle) {
+      element.setAttribute('title', prevTitle)
+    } else {
+      element.removeAttribute('title')
+    }
+
+    if (prevTabIndex) {
+      element.setAttribute('tabindex', prevTabIndex)
+    } else {
+      element.removeAttribute('tabindex')
+    }
+
+    element.classList.remove('is-disabled')
+    element.removeAttribute(GLOBAL_READONLY_GUARD_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR)
+  })
+}
+
+const applyGlobalReadonlyActionGuards = async (): Promise<void> => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  await nextTick()
+  for (const guard of GLOBAL_WORKSHOP_WAGE_ACTION_GUARDS) {
+    document.querySelectorAll<HTMLElement>(guard.selector).forEach((element) => {
+      applyGlobalReadonlyGuardToElement(element, guard.reason, guard.disableNative)
+    })
+  }
+}
+
+const stopGlobalReadonlyActionGuardObserver = (): void => {
+  globalWorkshopWageGuardObserver?.disconnect()
+  globalWorkshopWageGuardObserver = null
+}
+
+const startGlobalReadonlyActionGuardObserver = (): void => {
+  if (typeof document === 'undefined' || globalWorkshopWageGuardObserver) {
+    return
+  }
+
+  globalWorkshopWageGuardObserver = new MutationObserver(() => {
+    void applyGlobalReadonlyActionGuards()
+  })
+  globalWorkshopWageGuardObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['disabled', 'aria-disabled', 'class', 'title', 'tabindex'],
+  })
 }
 
 const buildWageRateQuery = (): {
@@ -475,6 +644,13 @@ onMounted(async () => {
     ElMessage.error((error as Error).message)
   }
   await loadRows()
+  startGlobalReadonlyActionGuardObserver()
+  await applyGlobalReadonlyActionGuards()
+})
+
+onBeforeUnmount(() => {
+  stopGlobalReadonlyActionGuardObserver()
+  restoreGlobalReadonlyGuardElements()
 })
 </script>
 
