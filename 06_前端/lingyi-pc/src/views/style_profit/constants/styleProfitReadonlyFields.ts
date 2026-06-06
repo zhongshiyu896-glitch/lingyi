@@ -1,5 +1,22 @@
 export type StyleProfitReadonlyTagType = 'success' | 'warning' | 'danger' | 'info'
 
+export interface StyleProfitSnapshotReadonlyMetricField {
+  key: 'snapshotCount' | 'sourceMapCount' | 'unresolvedCount' | 'guardedActionCount'
+  label: string
+}
+
+export interface StyleProfitSnapshotReadonlyGuardedAction {
+  key:
+    | 'recalculate'
+    | 'export'
+    | 'submit'
+    | 'erpnext-worker'
+    | 'refresh-permission'
+    | 'reload-module-actions'
+  label: string
+  reason: string
+}
+
 export type StyleProfitListMetricKey =
   | 'snapshotCount'
   | 'mappedCount'
@@ -25,6 +42,13 @@ export const STYLE_PROFIT_DETAIL_METRIC_FIELDS = [
   { key: 'unresolvedCount', label: '未解析来源' },
   { key: 'coverage', label: '纳入利润' },
 ] as const satisfies ReadonlyArray<{ key: StyleProfitDetailMetricKey; label: string }>
+
+export const STYLE_PROFIT_SNAPSHOT_READONLY_METRIC_FIELDS: StyleProfitSnapshotReadonlyMetricField[] = [
+  { key: 'snapshotCount', label: '快照条数' },
+  { key: 'sourceMapCount', label: '来源映射' },
+  { key: 'unresolvedCount', label: '待复核来源' },
+  { key: 'guardedActionCount', label: '阻断动作数' },
+]
 
 export const STYLE_PROFIT_PARITY_SCOPE_LABELS: Record<string, string> = {
   '': '款式利润主入口',
@@ -72,3 +96,74 @@ export const STYLE_PROFIT_WRITE_BOUNDARY_LABEL = 'ERPNext / 导出 / 真实利�
 
 export const STYLE_PROFIT_REMAINING_GAP_LABEL =
   '未开放导出、ERPNext、真实利润写入、outbox、worker、生产/库存联动写链路。'
+
+export const STYLE_PROFIT_SNAPSHOT_READONLY_ROUTE_LABELS = {
+  defaultRoute: '/reports/style-profit',
+  parityRoute: '/reports/style-profit?tab=snapshot-readonly&parity=style-profit',
+  focusRoute: '/reports/style-profit/detail?mode=readonly-source&parity=style-profit&focus=source-map',
+  sourceLabel: 'snapshot-readonly 来源',
+  readonlyMode: 'STYLE_PROFIT_GET_ONLY',
+} as const
+
+export const STYLE_PROFIT_READONLY_GUARD_REASON_MAP = {
+  archive: '当前仅开放 snapshot-readonly 只读核对，不开放真实留档提交。',
+  clear: '当前仅开放 snapshot-readonly 只读核对，不开放真实清空操作。',
+  confirm: '当前仅开放 snapshot-readonly 只读核对，不开放真实确认提交。',
+  export: '当前仅开放 snapshot/source-map 只读核对，不开放真实导出执行。',
+  columnSetting: '当前仅开放 snapshot-readonly 只读核对，不开放真实列设置写入。',
+  resetColumn: '当前仅开放 snapshot-readonly 只读核对，不开放真实列配置重置。',
+  markRead: '当前仅开放 snapshot-readonly 只读核对，不开放真实标记已读提交。',
+  deleteMsg: '当前仅开放 snapshot-readonly 只读核对，不开放真实消息删除。',
+  addMsg: '当前仅开放 snapshot-readonly 只读核对，不开放真实新增消息。',
+  save: '当前仅开放 snapshot/source-map 只读核对，不开放真实保存提交。',
+  cancel: '当前仅开放 snapshot-readonly 只读核对，不开放真实取消提交。',
+  print: '当前仅开放 snapshot/source-map 只读核对，不开放真实打印执行。',
+  writeAction: '当前仅开放 snapshot/source-map 只读核对，不开放真实写动作执行。',
+  recalculate: '当前仅开放 snapshot-readonly 只读核对，不开放真实利润重算。',
+  submit: '当前仅开放 snapshot/source-map 只读核对，不开放真实提交执行。',
+  erpnextWorker: '当前仅开放只读边界，不开放 ERPNext、outbox、worker 或生产写入执行。',
+  refreshPermission: '当前款式利润页面处于 snapshot-readonly 边界，权限刷新入口仅保留只读提示，不执行真实刷新动作。',
+  reloadModuleActions: '当前款式利润页面仅核对 snapshot/source-map 只读边界，模块动作重载入口保持禁用，不执行真实重载。',
+} as const
+
+export const STYLE_PROFIT_SNAPSHOT_READONLY_GUARDED_ACTIONS: StyleProfitSnapshotReadonlyGuardedAction[] = [
+  {
+    key: 'recalculate',
+    label: '利润重算',
+    reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.recalculate,
+  },
+  {
+    key: 'export',
+    label: '导出 / 打印',
+    reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.export,
+  },
+  {
+    key: 'submit',
+    label: '留档 / 提交 / 保存',
+    reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.submit,
+  },
+  {
+    key: 'erpnext-worker',
+    label: 'ERPNext / outbox / worker',
+    reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.erpnextWorker,
+  },
+  {
+    key: 'refresh-permission',
+    label: '刷新权限',
+    reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.refreshPermission,
+  },
+  {
+    key: 'reload-module-actions',
+    label: '重载模块动作',
+    reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.reloadModuleActions,
+  },
+]
+
+export const STYLE_PROFIT_SNAPSHOT_READONLY_GUARD_MESSAGE =
+  '当前仅开放 snapshot-readonly、style-profit parity 与 source-map focus 核对，不开放真实利润重算、导出、提交、ERPNext、outbox、worker 或生产写入执行。'
+
+export const STYLE_PROFIT_SNAPSHOT_READONLY_REMAINING_GAP =
+  'remaining_gap=真实利润重算、导出、提交、ERPNext、outbox、worker 与生产写链路未开放；仅保留 snapshot-readonly query state、source-map、blocked reason 与 style-profit parity 镜像。'
+
+export const STYLE_PROFIT_SNAPSHOT_READONLY_WRITE_BOUNDARY =
+  'recalculate / export / submit / ERPNext / worker / refresh-permission / reload-module-actions disabled'

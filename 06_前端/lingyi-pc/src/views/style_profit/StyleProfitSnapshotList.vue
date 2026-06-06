@@ -82,7 +82,9 @@
           <el-button :disabled="!canRead || loading" data-testid="style-profit-search-button" @click="loadRows">搜索</el-button>
           <el-button
             type="primary"
-            :disabled="!canRead || loading"
+            :disabled="true"
+            :title="styleProfitGuardedReasonMap.archive"
+            aria-disabled="true"
             data-testid="style-profit-archive-button"
             data-action-type="write"
             data-write-guard="readonly:style-profit-archive"
@@ -91,16 +93,16 @@
           >
             留档
           </el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-clear" data-action-type="write" data-write-guard="readonly:style-profit-clear" data-guard-state="guarded_readonly" @click="guardedAction('清空')">清空</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-confirm" data-action-type="write" data-write-guard="readonly:style-profit-confirm" data-guard-state="guarded_readonly" @click="guardedAction('确定')">确定</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-export" data-action-type="write" data-write-guard="readonly:style-profit-export" data-guard-state="guarded_readonly" @click="guardedAction('导出')">导出</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-column-setting" data-action-type="write" data-write-guard="readonly:style-profit-column-setting" data-guard-state="guarded_readonly" @click="guardedAction('列设置')">列设置</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-reset-column" data-action-type="write" data-write-guard="readonly:style-profit-reset-column" data-guard-state="guarded_readonly" @click="guardedAction('重置列')">重置列</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-mark-read" data-action-type="write" data-write-guard="readonly:style-profit-mark-read" data-guard-state="guarded_readonly" @click="guardedAction('标志已读')">标志已读</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-delete-msg" data-action-type="write" data-write-guard="readonly:style-profit-delete-msg" data-guard-state="guarded_readonly" @click="guardedAction('删除消息')">删除消息</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-add-msg" data-action-type="write" data-write-guard="readonly:style-profit-add-msg" data-guard-state="guarded_readonly" @click="guardedAction('新增消息')">新增消息</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-save" data-action-type="write" data-write-guard="readonly:style-profit-save" data-guard-state="guarded_readonly" @click="guardedAction('保存')">保存</el-button>
-          <el-button :disabled="!canRead || loading" data-testid="style-profit-guarded-cancel" data-action-type="write" data-write-guard="readonly:style-profit-cancel" data-guard-state="guarded_readonly" @click="guardedAction('取消')">取消</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.clear" aria-disabled="true" data-testid="style-profit-guarded-clear" data-action-type="write" data-write-guard="readonly:style-profit-clear" data-guard-state="guarded_readonly" @click="guardedAction('清空')">清空</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.confirm" aria-disabled="true" data-testid="style-profit-guarded-confirm" data-action-type="write" data-write-guard="readonly:style-profit-confirm" data-guard-state="guarded_readonly" @click="guardedAction('确定')">确定</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.export" aria-disabled="true" data-testid="style-profit-guarded-export" data-action-type="write" data-write-guard="readonly:style-profit-export" data-guard-state="guarded_readonly" @click="guardedAction('导出')">导出</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.columnSetting" aria-disabled="true" data-testid="style-profit-guarded-column-setting" data-action-type="write" data-write-guard="readonly:style-profit-column-setting" data-guard-state="guarded_readonly" @click="guardedAction('列设置')">列设置</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.resetColumn" aria-disabled="true" data-testid="style-profit-guarded-reset-column" data-action-type="write" data-write-guard="readonly:style-profit-reset-column" data-guard-state="guarded_readonly" @click="guardedAction('重置列')">重置列</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.markRead" aria-disabled="true" data-testid="style-profit-guarded-mark-read" data-action-type="write" data-write-guard="readonly:style-profit-mark-read" data-guard-state="guarded_readonly" @click="guardedAction('标志已读')">标志已读</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.deleteMsg" aria-disabled="true" data-testid="style-profit-guarded-delete-msg" data-action-type="write" data-write-guard="readonly:style-profit-delete-msg" data-guard-state="guarded_readonly" @click="guardedAction('删除消息')">删除消息</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.addMsg" aria-disabled="true" data-testid="style-profit-guarded-add-msg" data-action-type="write" data-write-guard="readonly:style-profit-add-msg" data-guard-state="guarded_readonly" @click="guardedAction('新增消息')">新增消息</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.save" aria-disabled="true" data-testid="style-profit-guarded-save" data-action-type="write" data-write-guard="readonly:style-profit-save" data-guard-state="guarded_readonly" @click="guardedAction('保存')">保存</el-button>
+          <el-button :disabled="true" :title="styleProfitGuardedReasonMap.cancel" aria-disabled="true" data-testid="style-profit-guarded-cancel" data-action-type="write" data-write-guard="readonly:style-profit-cancel" data-guard-state="guarded_readonly" @click="guardedAction('取消')">取消</el-button>
         </el-form-item>
       </el-form>
       <el-alert
@@ -115,6 +117,10 @@
       <p class="readonly-hint" data-testid="style-profit-readonly-hint">
         当前页面为只读验证模式，写动作入口仅保留展示并已 guarded。
       </p>
+      <StyleProfitSnapshotReadonlySection
+        :summary="listSnapshotReadonlySectionSummary"
+        data-testid="style-profit-snapshot-readonly-section"
+      />
       <section class="readonly-source-panel" data-testid="style-profit-readonly-source-panel">
         <div class="readonly-source-header">
           <div class="readonly-source-title-group">
@@ -324,7 +330,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -333,14 +339,46 @@ import {
 } from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
 import StyleProfitGapReadonlySection from '@/views/style_profit/components/StyleProfitGapReadonlySection.vue'
+import StyleProfitSnapshotReadonlySection from '@/views/style_profit/components/StyleProfitSnapshotReadonlySection.vue'
 import { buildStyleProfitListGapReadonlySummary } from '@/views/style_profit/composables/useStyleProfitGapReadonly'
-import { buildStyleProfitListReadonlySummary } from '@/views/style_profit/composables/useStyleProfitSnapshotReadonly'
+import {
+  buildStyleProfitListReadonlySummary,
+  useStyleProfitSnapshotReadonlySection,
+} from '@/views/style_profit/composables/useStyleProfitSnapshotReadonly'
 import { STYLE_PROFIT_GAP_LIST_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitGapFields'
-import { STYLE_PROFIT_LIST_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitReadonlyFields'
+import {
+  STYLE_PROFIT_LIST_METRIC_FIELDS,
+  STYLE_PROFIT_READONLY_GUARD_REASON_MAP,
+} from '@/views/style_profit/constants/styleProfitReadonlyFields'
 
 const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
+const styleProfitGuardedReasonMap = STYLE_PROFIT_READONLY_GUARD_REASON_MAP
+const GLOBAL_READONLY_GUARD_ATTR = 'data-style-profit-list-readonly-disabled'
+const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-style-profit-list-prev-disabled'
+const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-style-profit-list-prev-aria-disabled'
+const GLOBAL_READONLY_PREV_TITLE_ATTR = 'data-style-profit-list-prev-title'
+const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-style-profit-list-prev-tabindex'
+const GLOBAL_READONLY_PREV_POINTER_EVENTS_ATTR = 'data-style-profit-list-prev-pointer-events'
+const GLOBAL_STYLE_PROFIT_ACTION_GUARDS = [
+  {
+    selector: '#global-auth-refresh-guard',
+    reason: styleProfitGuardedReasonMap.refreshPermission,
+    disableNative: true,
+  },
+  {
+    selector: '#z042-global-guarded-refresh',
+    reason: styleProfitGuardedReasonMap.refreshPermission,
+    disableNative: true,
+  },
+  {
+    selector: 'button[data-readonly-action="fetchModuleActions"]',
+    reason: styleProfitGuardedReasonMap.reloadModuleActions,
+    disableNative: true,
+  },
+] as const
+let globalStyleProfitListGuardObserver: MutationObserver | null = null
 const loading = ref<boolean>(false)
 const rows = ref<StyleProfitSnapshotListItem[]>([])
 const total = ref<number>(0)
@@ -350,8 +388,26 @@ const weekColumns = ['日', '一', '二', '三', '四', '五', '六']
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const parityHint = computed<string>(() => String(route.query.parity || 'style-profit'))
+const readonlyFocus = computed<string>(() => String(route.query.focus || ''))
+const readonlyRoutePath = computed<string>(() => route.fullPath || route.path)
+const readonlyQueryStateLabel = computed<string>(() => {
+  const company = query.company.trim() || 'ALL_COMPANY'
+  const itemCode = query.item_code.trim() || 'ALL_ITEM'
+  const salesOrder = query.sales_order.trim() || 'ALL_ORDER'
+  const status = query.snapshot_status || 'ALL_STATUS'
+  return `company=${company}; item_code=${itemCode}; sales_order=${salesOrder}; snapshot_status=${status}; page=${query.page}`
+})
 const listReadonlySummary = computed(() => buildStyleProfitListReadonlySummary(rows.value, parityHint.value))
 const listGapReadonlySummary = computed(() => buildStyleProfitListGapReadonlySummary(rows.value, parityHint.value))
+const { styleProfitSnapshotReadonlySummary: listSnapshotReadonlySectionSummary } = useStyleProfitSnapshotReadonlySection({
+  mode: 'list',
+  rows,
+  canRead,
+  currentPath: readonlyRoutePath,
+  parity: parityHint,
+  focus: readonlyFocus,
+  queryStateLabel: readonlyQueryStateLabel,
+})
 
 const query = reactive({
   company: '',
@@ -472,6 +528,125 @@ const guardedAction = (action: string): void => {
   ElMessage.info(archiveFeedback.value)
 }
 
+const applyGlobalReadonlyGuardToElement = (
+  element: HTMLElement,
+  reason: string,
+  disableNative: boolean,
+): void => {
+  const targetElements = [
+    element,
+    ...Array.from(element.querySelectorAll<HTMLElement>('button, [role="button"], .el-button')),
+  ]
+
+  targetElements.forEach((target) => {
+    if (!target.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) {
+      target.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
+      target.setAttribute(
+        GLOBAL_READONLY_PREV_DISABLED_ATTR,
+        target instanceof HTMLButtonElement && target.disabled ? 'true' : 'false',
+      )
+      target.setAttribute(
+        GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
+        target.getAttribute('aria-disabled') ?? '',
+      )
+      target.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, target.getAttribute('title') ?? '')
+      target.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, target.getAttribute('tabindex') ?? '')
+      target.setAttribute(
+        GLOBAL_READONLY_PREV_POINTER_EVENTS_ATTR,
+        target.style.pointerEvents || '',
+      )
+    }
+
+    if (disableNative && target instanceof HTMLButtonElement) {
+      target.disabled = true
+    }
+    target.setAttribute('aria-disabled', 'true')
+    target.setAttribute('title', reason)
+    target.setAttribute('tabindex', '-1')
+    target.style.pointerEvents = 'none'
+    target.classList.add('is-disabled')
+  })
+}
+
+const restoreGlobalReadonlyGuardElements = (): void => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.querySelectorAll<HTMLElement>(`[${GLOBAL_READONLY_GUARD_ATTR}="1"]`).forEach((element) => {
+    const prevDisabled = element.getAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR) === 'true'
+    const prevAriaDisabled = element.getAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR) ?? ''
+    const prevTitle = element.getAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR) ?? ''
+    const prevTabIndex = element.getAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR) ?? ''
+    const prevPointerEvents = element.getAttribute(GLOBAL_READONLY_PREV_POINTER_EVENTS_ATTR) ?? ''
+
+    if (element instanceof HTMLButtonElement) {
+      element.disabled = prevDisabled
+    }
+
+    if (prevAriaDisabled) {
+      element.setAttribute('aria-disabled', prevAriaDisabled)
+    } else {
+      element.removeAttribute('aria-disabled')
+    }
+
+    if (prevTitle) {
+      element.setAttribute('title', prevTitle)
+    } else {
+      element.removeAttribute('title')
+    }
+
+    if (prevTabIndex) {
+      element.setAttribute('tabindex', prevTabIndex)
+    } else {
+      element.removeAttribute('tabindex')
+    }
+
+    element.style.pointerEvents = prevPointerEvents
+    element.classList.remove('is-disabled')
+    element.removeAttribute(GLOBAL_READONLY_GUARD_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_POINTER_EVENTS_ATTR)
+  })
+}
+
+const applyGlobalReadonlyActionGuards = async (): Promise<void> => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  await nextTick()
+  for (const guard of GLOBAL_STYLE_PROFIT_ACTION_GUARDS) {
+    document.querySelectorAll<HTMLElement>(guard.selector).forEach((element) => {
+      applyGlobalReadonlyGuardToElement(element, guard.reason, guard.disableNative)
+    })
+  }
+}
+
+const stopGlobalReadonlyActionGuardObserver = (): void => {
+  globalStyleProfitListGuardObserver?.disconnect()
+  globalStyleProfitListGuardObserver = null
+}
+
+const startGlobalReadonlyActionGuardObserver = (): void => {
+  if (typeof document === 'undefined' || globalStyleProfitListGuardObserver) {
+    return
+  }
+
+  globalStyleProfitListGuardObserver = new MutationObserver(() => {
+    void applyGlobalReadonlyActionGuards()
+  })
+  globalStyleProfitListGuardObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'disabled', 'aria-disabled', 'title', 'tabindex'],
+  })
+}
+
 const loadRows = async (): Promise<void> => {
   if (!canRead.value) {
     applyReadonlyFallbackRows()
@@ -538,6 +713,13 @@ onMounted(async () => {
   } else {
     applyReadonlyFallbackRows()
   }
+  await applyGlobalReadonlyActionGuards()
+  startGlobalReadonlyActionGuardObserver()
+})
+
+onBeforeUnmount(() => {
+  stopGlobalReadonlyActionGuardObserver()
+  restoreGlobalReadonlyGuardElements()
 })
 </script>
 
