@@ -80,6 +80,7 @@
 
       <ProductionFollowupReadonly :summary="followupReadonlySummary" />
       <ProductionOrderParityReadonly :summary="productionOrderParitySummary" />
+      <ProductionProcessProgressReadonly :summary="processProgressReadonlySummary" />
 
       <el-card shadow="never" class="readonly-guard-card" data-testid="production-plan-readonly-guard-card">
         <template #header>
@@ -165,7 +166,9 @@ import {
 } from '@/api/production'
 import ProductionFollowupReadonly from '@/views/production/components/ProductionFollowupReadonly.vue'
 import ProductionOrderParityReadonly from '@/views/production/components/ProductionOrderParityReadonly.vue'
+import ProductionProcessProgressReadonly from '@/views/production/components/ProductionProcessProgressReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
+import { useProductionProcessProgressReadonly } from './composables/useProductionProcessProgressReadonly'
 
 interface PlanRow {
   id: number | null
@@ -200,6 +203,7 @@ const {
   statusLabel,
   statusType,
 } = useProductionPlanReadback()
+const { buildProductionProcessProgressListSummary } = useProductionProcessProgressReadonly()
 
 const query = reactive({
   keyword: '',
@@ -208,6 +212,7 @@ const query = reactive({
 })
 
 const parityTag = computed(() => parseQueryString(route.query.parity))
+const queryTab = computed(() => parseQueryString(route.query.tab))
 const currentParityLabel = computed(() => parityRouteLabel(parityTag.value))
 
 const fallbackPlanSeeds: PlanRow[] = [
@@ -326,6 +331,14 @@ const productionOrderParitySummary = computed(() =>
   }),
 )
 
+const processProgressReadonlySummary = computed(() =>
+  buildProductionProcessProgressListSummary({
+    parity: parityTag.value,
+    tab: queryTab.value,
+    rows: filteredPlans.value,
+  }),
+)
+
 const mapPlanRow = (item: ProductionPlanListItem): PlanRow => ({
   id: item.id,
   planNo: item.plan_no,
@@ -360,6 +373,11 @@ const buildDetailQuery = (row: PlanRow): Record<string, string> => {
   }
   if (parityTag.value) {
     queryParams.parity = parityTag.value
+  }
+  if (queryTab.value === 'process-progress' || parityTag.value === 'production-process') {
+    queryParams.parity = 'production-process'
+    queryParams.tab = 'process-progress'
+    queryParams.mode = 'readonly-process'
   }
   return queryParams
 }

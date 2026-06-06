@@ -106,6 +106,10 @@
       v-if="canRead && detail && productionOrderParitySummary"
       :summary="productionOrderParitySummary"
     />
+    <ProductionProcessProgressReadonly
+      v-if="canRead && detail && processProgressReadonlySummary"
+      :summary="processProgressReadonlySummary"
+    />
 
     <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-work-order-mapping">
       <template #header><span>Work Order 映射</span></template>
@@ -186,7 +190,9 @@ import {
 import { usePermissionStore } from '@/stores/permission'
 import ProductionFollowupReadonly from '@/views/production/components/ProductionFollowupReadonly.vue'
 import ProductionOrderParityReadonly from '@/views/production/components/ProductionOrderParityReadonly.vue'
+import ProductionProcessProgressReadonly from '@/views/production/components/ProductionProcessProgressReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
+import { useProductionProcessProgressReadonly } from './composables/useProductionProcessProgressReadonly'
 
 const route = useRoute()
 const router = useRouter()
@@ -200,6 +206,7 @@ const {
   statusLabel,
 } =
   useProductionPlanReadback()
+const { buildProductionProcessProgressDetailSummary } = useProductionProcessProgressReadonly()
 
 const detail = ref<ProductionPlanDetailData | null>(null)
 const loadError = ref('')
@@ -224,6 +231,8 @@ const parseStringQuery = (value: unknown): string => parseQueryString(value)
 const routePlanId = computed<number>(() => parsePositiveInteger(route.query.id))
 const hasValidPlanId = computed<boolean>(() => routePlanId.value > 0)
 const parityTag = computed<string>(() => parseStringQuery(route.query.parity))
+const queryTab = computed<string>(() => parseStringQuery(route.query.tab))
+const readonlyMode = computed<string>(() => parseStringQuery(route.query.mode))
 const currentWorkOrder = computed<string>(
   () => detail.value?.work_order || detail.value?.latest_work_order_outbox?.erpnext_work_order || '',
 )
@@ -282,6 +291,17 @@ const productionOrderParitySummary = computed(() =>
   detail.value
     ? buildProductionOrderParityDetailSummary({
         parity: parityTag.value,
+        detail: detail.value,
+      })
+    : null,
+)
+
+const processProgressReadonlySummary = computed(() =>
+  detail.value
+    ? buildProductionProcessProgressDetailSummary({
+        parity: parityTag.value,
+        tab: queryTab.value,
+        mode: readonlyMode.value,
         detail: detail.value,
       })
     : null,
@@ -426,9 +446,17 @@ const loadDetail = async (): Promise<void> => {
 }
 
 const goBack = (): void => {
+  const queryParams: Record<string, string> = {}
+  if (parityTag.value) {
+    queryParams.parity = parityTag.value
+  }
+  if (queryTab.value === 'process-progress' || readonlyMode.value === 'readonly-process' || parityTag.value === 'production-process') {
+    queryParams.parity = 'production-process'
+    queryParams.tab = 'process-progress'
+  }
   router.push({
     path: '/production/plans',
-    query: parityTag.value ? { parity: parityTag.value } : undefined,
+    query: Object.keys(queryParams).length > 0 ? queryParams : undefined,
   })
 }
 
