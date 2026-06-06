@@ -1,5 +1,10 @@
 <template>
   <div class="factory-statement-detail-page" data-testid="factory-statement-detail-page">
+    <FactoryStatementPayableStatusReadonly
+      :summary="payableReadonlySummary"
+      data-testid="factory-statement-detail-payable-readonly-section"
+    />
+
     <el-card shadow="never" v-loading="loading" data-testid="factory-statement-detail-main-card">
       <template #header>
         <div class="header-row" data-testid="factory-statement-detail-header">
@@ -173,11 +178,6 @@
           data-testid="factory-statement-detail-source-readonly-section"
         />
 
-        <FactoryStatementPayableStatusReadonly
-          :summary="payableReadonlySummary"
-          data-testid="factory-statement-detail-payable-readonly-section"
-        />
-
         <div class="action-row" data-testid="factory-statement-detail-actions">
           <el-button
             data-testid="factory-statement-detail-action-confirm"
@@ -297,7 +297,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -310,6 +310,7 @@ import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/com
 import { useFactoryStatementPayableReadonly } from '@/views/factory_statement/composables/useFactoryStatementPayableReadonly'
 import { useFactoryStatementSourceReadonly } from '@/views/factory_statement/composables/useFactoryStatementSourceReadonly'
 import { useFactoryStatementReadonly } from '@/views/factory_statement/composables/useFactoryStatementReadonly'
+import { FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS } from '@/views/factory_statement/constants/factoryStatementPayableFields'
 import { usePermissionStore } from '@/stores/permission'
 
 const route = useRoute()
@@ -322,8 +323,36 @@ const readonlyRecord = ref<FactoryStatementReadonlyRecord | null>(null)
 const missingStatementId = ref<boolean>(false)
 const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
+const GLOBAL_READONLY_GUARD_ATTR = 'data-factory-statement-payable-readonly-disabled'
+const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-factory-statement-payable-prev-disabled'
+const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-factory-statement-payable-prev-aria-disabled'
+const GLOBAL_READONLY_PREV_TITLE_ATTR = 'data-factory-statement-payable-prev-title'
+const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-factory-statement-payable-prev-tabindex'
+const GLOBAL_FACTORY_STATEMENT_ACTION_GUARDS = [
+  {
+    selector: '#global-auth-refresh-guard',
+    reason: FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS.find((action) => action.key === 'refresh-permission')?.reason
+      || 'payable-readonly boundary keeps permission refresh non-executable on FactoryStatementDetail.',
+    disableNative: true,
+  },
+  {
+    selector: '#z042-global-guarded-refresh',
+    reason: FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS.find((action) => action.key === 'refresh-permission')?.reason
+      || 'payable-readonly boundary keeps permission refresh non-executable on FactoryStatementDetail.',
+    disableNative: false,
+  },
+  {
+    selector: 'button[data-readonly-action="fetchModuleActions"]',
+    reason: FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS.find((action) => action.key === 'reload-module-actions')?.reason
+      || 'payable-readonly boundary keeps module action reload non-executable on FactoryStatementDetail.',
+    disableNative: true,
+  },
+] as const
+let globalFactoryStatementGuardObserver: MutationObserver | null = null
 
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
+const tabValue = computed<string>(() => String(route.query.tab || '').trim().toLowerCase())
+const focusValue = computed<string>(() => String(route.query.focus || '').trim().toLowerCase())
 const modeValue = computed<string>(() => String(route.query.mode || '').trim().toLowerCase())
 const isReadonlyParity = computed<boolean>(() => (
   parityValue.value === 'foundation-supplier' || parityValue.value === 'foundation-factory'
@@ -333,14 +362,23 @@ const preservedReadonlyQuery = computed<Record<string, string>>(() => {
   if (parityValue.value) {
     query.parity = parityValue.value
   }
-  if (parityValue.value === 'foundation-factory' || modeValue.value === 'readonly-lineage') {
+  if (tabValue.value) {
+    query.tab = tabValue.value
+  } else if (modeValue.value === 'readonly-lineage') {
     query.tab = 'source-parity'
+  }
+  if (focusValue.value) {
+    query.focus = focusValue.value
+  }
+  if (modeValue.value) {
+    query.mode = modeValue.value
   }
   return query
 })
 const canRead = computed<boolean>(() => isReadonlyParity.value || permissionStore.state.buttonPermissions.factory_statement_read)
 const statementId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidStatementId = computed<boolean>(() => Number.isInteger(statementId.value) && statementId.value > 0)
+const shouldUseReadonlyFallbackId = computed<boolean>(() => !hasValidStatementId.value)
 const detail = computed(() => readonlyRecord.value?.raw || null)
 const items = computed(() => readonlyRecord.value?.items || [])
 const logs = computed(() => readonlyRecord.value?.logs || [])
@@ -362,6 +400,8 @@ const { payableReadonlySummary } = useFactoryStatementPayableReadonly({
   recordSource: readonlyRecord,
   parity: parityValue,
   context: 'detail',
+  tab: tabValue,
+  focus: focusValue,
 })
 const { sourceReadonlySummary } = useFactoryStatementSourceReadonly({
   context: 'detail',
@@ -374,8 +414,112 @@ const showEmptyState = computed<boolean>(
   () => detailLoaded.value && !!detail.value && items.value.length === 0 && logs.value.length === 0,
 )
 const showSourceReadonlySection = computed<boolean>(() => (
-  modeValue.value === 'readonly-lineage' || parityValue.value === 'foundation-factory'
+  modeValue.value === 'readonly-lineage' || tabValue.value === 'source-parity'
 ))
+
+const applyGlobalReadonlyGuardToElement = (
+  element: HTMLElement,
+  reason: string,
+  disableNative: boolean,
+): void => {
+  if (!element.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) {
+    element.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_DISABLED_ATTR,
+      element instanceof HTMLButtonElement && element.disabled ? 'true' : 'false',
+    )
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
+      element.getAttribute('aria-disabled') ?? '',
+    )
+    element.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, element.getAttribute('title') ?? '')
+    element.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, element.getAttribute('tabindex') ?? '')
+  }
+
+  if (disableNative && element instanceof HTMLButtonElement) {
+    element.disabled = true
+  }
+  element.setAttribute('aria-disabled', 'true')
+  element.setAttribute('title', reason)
+  element.setAttribute('tabindex', '-1')
+  element.classList.add('is-disabled')
+}
+
+const restoreGlobalReadonlyGuardElements = (): void => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.querySelectorAll<HTMLElement>(`[${GLOBAL_READONLY_GUARD_ATTR}="1"]`).forEach((element) => {
+    const prevDisabled = element.getAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR) === 'true'
+    const prevAriaDisabled = element.getAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR) ?? ''
+    const prevTitle = element.getAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR) ?? ''
+    const prevTabIndex = element.getAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR) ?? ''
+
+    if (element instanceof HTMLButtonElement) {
+      element.disabled = prevDisabled
+    }
+
+    if (prevAriaDisabled) {
+      element.setAttribute('aria-disabled', prevAriaDisabled)
+    } else {
+      element.removeAttribute('aria-disabled')
+    }
+
+    if (prevTitle) {
+      element.setAttribute('title', prevTitle)
+    } else {
+      element.removeAttribute('title')
+    }
+
+    if (prevTabIndex) {
+      element.setAttribute('tabindex', prevTabIndex)
+    } else {
+      element.removeAttribute('tabindex')
+    }
+
+    element.classList.remove('is-disabled')
+    element.removeAttribute(GLOBAL_READONLY_GUARD_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR)
+  })
+}
+
+const applyGlobalReadonlyActionGuards = async (): Promise<void> => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  await nextTick()
+  for (const guard of GLOBAL_FACTORY_STATEMENT_ACTION_GUARDS) {
+    document.querySelectorAll<HTMLElement>(guard.selector).forEach((element) => {
+      applyGlobalReadonlyGuardToElement(element, guard.reason, guard.disableNative)
+    })
+  }
+}
+
+const stopGlobalReadonlyActionGuardObserver = (): void => {
+  globalFactoryStatementGuardObserver?.disconnect()
+  globalFactoryStatementGuardObserver = null
+}
+
+const startGlobalReadonlyActionGuardObserver = (): void => {
+  if (typeof document === 'undefined' || globalFactoryStatementGuardObserver) {
+    return
+  }
+
+  globalFactoryStatementGuardObserver = new MutationObserver(() => {
+    void applyGlobalReadonlyActionGuards()
+  })
+  globalFactoryStatementGuardObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['disabled', 'aria-disabled', 'class', 'title', 'tabindex'],
+  })
+}
 
 const goBack = (): void => {
   router.push({ path: '/factory-statements/list', query: { ...preservedReadonlyQuery.value } })
@@ -390,7 +534,7 @@ const loadDetail = async (): Promise<void> => {
     missingStatementId.value = false
     return
   }
-  if (!hasValidStatementId.value && modeValue.value !== 'readonly-lineage') {
+  if (!shouldUseReadonlyFallbackId.value && modeValue.value !== 'readonly-lineage') {
     readonlyRecord.value = null
     missingStatementId.value = true
     return
@@ -432,6 +576,13 @@ onMounted(async () => {
     permissionReady.value = true
   }
   await loadDetail()
+  startGlobalReadonlyActionGuardObserver()
+  await applyGlobalReadonlyActionGuards()
+})
+
+onBeforeUnmount(() => {
+  stopGlobalReadonlyActionGuardObserver()
+  restoreGlobalReadonlyGuardElements()
 })
 </script>
 

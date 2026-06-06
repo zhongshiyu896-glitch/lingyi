@@ -1,12 +1,14 @@
 import { computed, unref, type ComputedRef, type MaybeRef } from 'vue'
 import type { FactoryStatementReadonlyRecord } from '@/api/factory_statement_readonly'
 import {
+  FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS,
   FACTORY_STATEMENT_PAYABLE_GUARD_LABEL,
   FACTORY_STATEMENT_PAYABLE_REMAINING_GAP,
   FACTORY_STATEMENT_PAYABLE_SCOPE_LABELS,
   FACTORY_STATEMENT_PAYABLE_STATE_LABELS,
   FACTORY_STATEMENT_PAYABLE_STATE_TAGS,
   FACTORY_STATEMENT_PAYABLE_WRITE_BOUNDARY,
+  type FactoryStatementPayableGuardAction,
   type FactoryStatementPayableReadonlyState,
   type FactoryStatementPayableReadonlyTagType,
 } from '@/views/factory_statement/constants/factoryStatementPayableFields'
@@ -19,6 +21,10 @@ export interface FactoryStatementPayableReadonlySummary {
   parityScopeLabel: string
   parityLabel: string
   parityTone: FactoryStatementPayableReadonlyTagType
+  queryStateLabel: string
+  focusLabel: string
+  sourceStatusLabel: string
+  payableItemStatusLabel: string
   payableStatusLabel: string
   payableStatusTone: FactoryStatementPayableReadonlyTagType
   payableBlockedLabel: string
@@ -32,12 +38,22 @@ export interface FactoryStatementPayableReadonlySummary {
   remainingGap: string
   retainedCand116: boolean
   writeBoundary: string
+  routeItems: Array<{
+    key: string
+    label: string
+    route: string
+    note: string
+    active: boolean
+  }>
+  guardActions: ReadonlyArray<FactoryStatementPayableGuardAction>
 }
 
 interface UseFactoryStatementPayableReadonlyOptions {
   recordSource: MaybeRef<FactoryStatementReadonlyRecord | null>
   parity: MaybeRef<string>
   context: 'detail' | 'print'
+  tab?: MaybeRef<string | null | undefined>
+  focus?: MaybeRef<string | null | undefined>
 }
 
 const showText = (value: unknown): string => {
@@ -108,13 +124,43 @@ const resolveSourceGapPrompt = (
     : '详情页仅回读 payable 状态，不开放结算写入与导出。'
 }
 
+const resolveSourceStatusLabel = (
+  record: FactoryStatementReadonlyRecord | null,
+  parity: string,
+  focus: string,
+): string => {
+  const detail = record?.raw
+  if (!detail) {
+    return '来源镜像缺失 / 等待只读回补'
+  }
+  if (focus === 'settlement-source') {
+    return `settlement-source / ${showText(record?.settlementSummary.primarySubcontractNo || detail.supplier)}`
+  }
+  if (parity === 'foundation-factory') {
+    return `foundation-factory / ${showText(detail.supplier)}`
+  }
+  return `detail-readonly / ${showText(detail.statement_no)}`
+}
+
+const resolvePayableItemStatusLabel = (
+  record: FactoryStatementReadonlyRecord | null,
+  state: FactoryStatementPayableReadonlyState,
+): string => {
+  const itemCount = record?.items?.length || 0
+  return `${itemCount} 行 / ${FACTORY_STATEMENT_PAYABLE_STATE_LABELS[state]}`
+}
+
 export const useFactoryStatementPayableReadonly = ({
   recordSource,
   parity,
   context,
+  tab,
+  focus,
 }: UseFactoryStatementPayableReadonlyOptions): { payableReadonlySummary: ComputedRef<FactoryStatementPayableReadonlySummary> } => {
   const record = computed(() => unref(recordSource))
   const parityValue = computed(() => String(unref(parity) || '').trim().toLowerCase())
+  const tabValue = computed(() => String(unref(tab) || '').trim().toLowerCase())
+  const focusValue = computed(() => String(unref(focus) || '').trim().toLowerCase())
 
   const payableReadonlySummary = computed<FactoryStatementPayableReadonlySummary>(() => {
     const currentRecord = record.value
@@ -137,6 +183,12 @@ export const useFactoryStatementPayableReadonly = ({
         FACTORY_STATEMENT_PAYABLE_SCOPE_LABELS[parityValue.value] || FACTORY_STATEMENT_PAYABLE_SCOPE_LABELS[''],
       parityLabel: parityValue.value === 'foundation-factory' ? 'foundation-factory parity' : '主入口只读',
       parityTone: parityValue.value === 'foundation-factory' ? 'warning' : 'info',
+      queryStateLabel: context === 'print'
+        ? 'print-readonly'
+        : (tabValue.value === 'payable-readonly' ? 'payable-readonly' : 'detail-readonly'),
+      focusLabel: focusValue.value === 'settlement-source' ? 'settlement-source' : 'settlement-summary',
+      sourceStatusLabel: resolveSourceStatusLabel(currentRecord, parityValue.value, focusValue.value),
+      payableItemStatusLabel: resolvePayableItemStatusLabel(currentRecord, state),
       payableStatusLabel: FACTORY_STATEMENT_PAYABLE_STATE_LABELS[state],
       payableStatusTone: FACTORY_STATEMENT_PAYABLE_STATE_TAGS[state],
       payableBlockedLabel: 'payable readonly guard',
@@ -150,6 +202,32 @@ export const useFactoryStatementPayableReadonly = ({
       remainingGap: FACTORY_STATEMENT_PAYABLE_REMAINING_GAP,
       retainedCand116: true,
       writeBoundary: FACTORY_STATEMENT_PAYABLE_WRITE_BOUNDARY,
+      routeItems: context === 'detail'
+        ? [
+            {
+              key: 'detail',
+              label: '详情入口',
+              route: '/factory-statements/detail',
+              note: '默认只读详情回补入口',
+              active: !tabValue.value && !parityValue.value && !focusValue.value,
+            },
+            {
+              key: 'payable-readonly',
+              label: 'payable 查询态',
+              route: '/factory-statements/detail?tab=payable-readonly&parity=foundation-factory',
+              note: 'foundation-factory parity',
+              active: tabValue.value === 'payable-readonly' || parityValue.value === 'foundation-factory',
+            },
+            {
+              key: 'settlement-source',
+              label: 'focus 来源态',
+              route: '/factory-statements/detail?tab=payable-readonly&parity=foundation-factory&focus=settlement-source',
+              note: 'settlement-source focus',
+              active: focusValue.value === 'settlement-source',
+            },
+          ]
+        : [],
+      guardActions: FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS,
     }
   })
 
