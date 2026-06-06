@@ -167,6 +167,10 @@
         :summary="warehouseAdapterWorkerReadonlySummary"
       />
 
+      <WarehouseFinishedGoodsInboundReadonly
+        :summary="warehouseFinishedGoodsInboundReadonlySummary"
+      />
+
       <div class="action-row">
         <el-button
           type="primary"
@@ -1434,8 +1438,10 @@ import {
   buildWarehouseScenarioTag,
   ensureWarehouseScenarioTag,
   fetchWarehouseBatches,
+  fetchWarehouseFinishedGoodsInboundCandidates,
   type WarehouseFactoryReturnMaterialReportItem,
   type WarehouseBatchItem,
+  type WarehouseFinishedGoodsInboundCandidateItem,
   type WarehouseMaterialInventoryItem,
   type WarehouseManagementItem,
   type WarehouseOtherInboundItem,
@@ -1458,10 +1464,12 @@ import { request, type ApiResponse } from '@/api/request'
 import { usePermissionStore } from '@/stores/permission'
 import WarehouseAdapterWorkerReadonlySection from '@/views/warehouse/components/WarehouseAdapterWorkerReadonlySection.vue'
 import WarehouseBalanceBatchReadonly from '@/views/warehouse/components/WarehouseBalanceBatchReadonly.vue'
+import WarehouseFinishedGoodsInboundReadonly from '@/views/warehouse/components/WarehouseFinishedGoodsInboundReadonly.vue'
 import WarehousePermissionModeReadonlySection from '@/views/warehouse/components/WarehousePermissionModeReadonlySection.vue'
 import WarehouseTraceReadonlySection from '@/views/warehouse/components/WarehouseTraceReadonlySection.vue'
 import { useWarehouseAdapterWorkerReadonly } from '@/views/warehouse/composables/useWarehouseAdapterWorkerReadonly'
 import { useWarehouseBalanceBatchReadonly } from '@/views/warehouse/composables/useWarehouseBalanceBatchReadonly'
+import { useWarehouseFinishedGoodsInboundReadonly } from '@/views/warehouse/composables/useWarehouseFinishedGoodsInboundReadonly'
 import { useWarehousePermissionModeReadonly } from '@/views/warehouse/composables/useWarehousePermissionModeReadonly'
 import { useWarehouseTraceReadonly } from '@/views/warehouse/composables/useWarehouseTraceReadonly'
 
@@ -1556,12 +1564,17 @@ const materialRows = ref<WarehouseMaterialInventoryItem[]>([])
 const batchRows = ref<WarehouseBatchItem[]>([])
 const serialRows = ref<WarehouseSerialNumberItem[]>([])
 const traceabilityRows = ref<WarehouseTraceabilityItem[]>([])
+const finishedGoodsInboundCandidateRows = ref<WarehouseFinishedGoodsInboundCandidateItem[]>([])
 const otherInboundRows = ref<WarehouseOtherInboundItem[]>([])
 const purchaseReturnOutboundRows = ref<WarehousePurchaseReturnOutboundItem[]>([])
 const factoryReturnMaterialReportRows = ref<WarehouseFactoryReturnMaterialReportItem[]>([])
 const semiFinishedOutboundRows = ref<WarehouseSemiFinishedOutboundItem[]>([])
 const ledgerRows = ref<WarehouseStockLedgerItem[]>([])
 const orderMap = ref<Map<string, string>>(new Map())
+const finishedGoodsInboundDisabledEntryLabel = ref<string>('成品预约入仓 -> 创建成品入仓')
+const finishedGoodsInboundDisabledEntryReason = ref<string>('当前仅开放 readonly inbound 核对，不开放真实入库创建。')
+const finishedGoodsInboundAllocationContract = ref<string>('strict_alloc -> zero_placeholder_fallback')
+const finishedGoodsInboundShowCompletedForced = ref<boolean>(true)
 
 const query = reactive({
   company: '',
@@ -1864,6 +1877,36 @@ const localSeedOtherInboundRows: WarehouseOtherInboundItem[] = [
   },
 ]
 
+const localSeedFinishedGoodsInboundCandidateRows: WarehouseFinishedGoodsInboundCandidateItem[] = [
+  {
+    source_id: 'MLI-0001',
+    source_label: 'MO-001 / 外协 / FG-ITEM-001',
+    item_code: 'FG-ITEM-001',
+    qty: 12,
+    uom: 'Nos',
+    disabled: false,
+    disabled_reason: null,
+  },
+  {
+    source_id: 'MLI-0002',
+    source_label: 'MO-002 / 成品预约 / FG-ITEM-002',
+    item_code: 'FG-ITEM-002',
+    qty: 0,
+    uom: 'Nos',
+    disabled: true,
+    disabled_reason: 'blocked_reason=严格分配结果为空，当前只读区不开放 fallback 入库执行。',
+  },
+  {
+    source_id: 'MLI-0003',
+    source_label: 'MO-003 / 返修补单 / FG-ITEM-003',
+    item_code: 'FG-ITEM-003',
+    qty: 6,
+    uom: 'Nos',
+    disabled: true,
+    disabled_reason: 'blocked_reason=worker / ERPNext / posting 保持关闭，当前只允许 inbound-readonly 核对。',
+  },
+]
+
 const localSeedPurchaseReturnOutboundRows: WarehousePurchaseReturnOutboundItem[] = [
   {
     outbound_no: 'PRO-202605-0001',
@@ -2075,6 +2118,17 @@ const warehouseAdapterWorkerCurrentPath = computed<string>(() => {
   const queryString = queryParts.toString()
   return queryString ? `${route.path}?${queryString}` : route.path
 })
+const warehouseFinishedGoodsInboundCurrentPath = computed<string>(() => {
+  const queryParts = new URLSearchParams()
+  const parity = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  const tab = typeof route.query.tab === 'string' ? route.query.tab.trim() : ''
+  const focus = typeof route.query.focus === 'string' ? route.query.focus.trim() : ''
+  if (parity) queryParts.set('parity', parity)
+  if (tab) queryParts.set('tab', tab)
+  if (focus) queryParts.set('focus', focus)
+  const queryString = queryParts.toString()
+  return queryString ? `${route.path}?${queryString}` : route.path
+})
 const { warehouseBalanceBatchReadonlySummary } = useWarehouseBalanceBatchReadonly({
   summaryRows,
   batchRows,
@@ -2090,6 +2144,17 @@ const { warehouseAdapterWorkerReadonlySummary } = useWarehouseAdapterWorkerReado
   canRead,
   parity: parityValue,
   currentPath: warehouseAdapterWorkerCurrentPath,
+})
+const { warehouseFinishedGoodsInboundReadonlySummary } = useWarehouseFinishedGoodsInboundReadonly({
+  summaryRows,
+  candidateRows: finishedGoodsInboundCandidateRows,
+  canRead,
+  parity: parityValue,
+  currentPath: warehouseFinishedGoodsInboundCurrentPath,
+  disabledEntryLabel: finishedGoodsInboundDisabledEntryLabel,
+  disabledEntryReason: finishedGoodsInboundDisabledEntryReason,
+  allocationContract: finishedGoodsInboundAllocationContract,
+  showCompletedForced: finishedGoodsInboundShowCompletedForced,
 })
 const { warehousePermissionModeReadonlySummary } = useWarehousePermissionModeReadonly({
   summaryRows,
@@ -2697,6 +2762,7 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     purchaseReturnOutboundRows.value = []
     factoryReturnMaterialReportRows.value = []
     semiFinishedOutboundRows.value = []
+    finishedGoodsInboundCandidateRows.value = []
     ledgerRows.value = []
     orderMap.value = new Map()
     resetTraceabilityRows()
@@ -2738,9 +2804,14 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     purchaseReturnOutboundErrorMessage.value = ''
     factoryReturnMaterialReportErrorMessage.value = ''
     semiFinishedOutboundErrorMessage.value = ''
+    finishedGoodsInboundDisabledEntryLabel.value = '成品预约入仓 -> 创建成品入仓'
+    finishedGoodsInboundDisabledEntryReason.value = '当前仅开放 readonly inbound 核对，不开放真实入库创建。'
+    finishedGoodsInboundAllocationContract.value = 'strict_alloc -> zero_placeholder_fallback'
+    finishedGoodsInboundShowCompletedForced.value = true
     summaryRows.value = localSeedSummaryRows
     managementRows.value = localSeedManagementRows
     materialRows.value = localSeedMaterialRows
+    finishedGoodsInboundCandidateRows.value = localSeedFinishedGoodsInboundCandidateRows
     otherInboundRows.value = localSeedOtherInboundRows
     purchaseReturnOutboundRows.value = localSeedPurchaseReturnOutboundRows
     factoryReturnMaterialReportRows.value = localSeedFactoryReturnMaterialReportRows
@@ -2775,9 +2846,12 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     const semiFinishedOutboundItemCode = query.semi_finished_outbound_material.trim() || normalized.item_code
     const semiFinishedOutboundWarehouse = query.semi_finished_outbound_warehouse.trim() || normalized.warehouse
     const semiFinishedOutboundStatus = query.semi_finished_outbound_status.trim().toLowerCase()
+    const finishedGoodsInboundCompany = normalized.company || query.company.trim() || ''
+    const finishedGoodsInboundItemCode = normalized.item_code
     const [
       summaryResult,
       ledgerResult,
+      finishedGoodsInboundResult,
       otherInboundResult,
       purchaseReturnOutboundResult,
       factoryReturnMaterialReportResult,
@@ -2789,6 +2863,12 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
         page: currentPage.value,
         page_size: pageSize.value,
       }),
+      finishedGoodsInboundCompany
+        ? fetchWarehouseFinishedGoodsInboundCandidates({
+          company: finishedGoodsInboundCompany,
+          item_code: finishedGoodsInboundItemCode,
+        })
+        : Promise.resolve(null),
       fetchWarehouseOtherInbound({
         company: normalized.company,
         warehouse: otherInboundWarehouse,
@@ -2820,6 +2900,18 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
       summaryResult.data.material_inventory && summaryResult.data.material_inventory.length > 0
         ? summaryResult.data.material_inventory
         : buildMaterialRowsFromSummary(summaryResult.data.items)
+    finishedGoodsInboundCandidateRows.value =
+      finishedGoodsInboundResult?.data.items?.length
+        ? finishedGoodsInboundResult.data.items
+        : localSeedFinishedGoodsInboundCandidateRows
+    finishedGoodsInboundDisabledEntryLabel.value =
+      finishedGoodsInboundResult?.data.disabled_entry_label || '成品预约入仓 -> 创建成品入仓'
+    finishedGoodsInboundDisabledEntryReason.value =
+      finishedGoodsInboundResult?.data.disabled_entry_reason || '当前仅开放 readonly inbound 核对，不开放真实入库创建。'
+    finishedGoodsInboundAllocationContract.value =
+      finishedGoodsInboundResult?.data.allocation_contract || 'strict_alloc -> zero_placeholder_fallback'
+    finishedGoodsInboundShowCompletedForced.value =
+      finishedGoodsInboundResult?.data.show_completed_forced ?? true
     otherInboundRows.value = otherInboundResult.data.items
     purchaseReturnOutboundRows.value = purchaseReturnOutboundResult.data.items
     factoryReturnMaterialReportRows.value = factoryReturnMaterialReportResult.data.items
@@ -2839,6 +2931,7 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
     semiFinishedOutboundErrorMessage.value = message
     managementRows.value = []
     materialRows.value = []
+    finishedGoodsInboundCandidateRows.value = []
     otherInboundRows.value = []
     purchaseReturnOutboundRows.value = []
     factoryReturnMaterialReportRows.value = []
