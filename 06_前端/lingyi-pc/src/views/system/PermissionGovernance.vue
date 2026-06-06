@@ -18,6 +18,17 @@
       :route-label="currentRouteLabel"
       mode-label="READONLY_GET_ONLY"
     />
+    <PermissionAuditReadonlySection
+      data-testid="permission-audit-readiness-section"
+      :is-audit-readiness-tab="isAuditReadinessTab"
+      :summary-cards="permissionAuditSummaryCards"
+      :parity-lines="permissionAuditParityLines"
+      :blocked-reasons="permissionAuditBlockedReasons"
+      :readonly-guard-text="permissionAuditReadonlyGuardText"
+      :audit-items="permissionAuditItems"
+      :disabled-actions="permissionAuditDisabledActions"
+      :remaining-gap="permissionAuditRemainingGap"
+    />
 
     <el-card shadow="never" data-testid="action-catalog-section">
       <template #header>
@@ -352,8 +363,8 @@
               type="success"
               plain
               :loading="securityExporting"
-              :disabled="auditLoading || !canExport"
-              :title="canExport ? '只读模式：导出动作将被 guarded 拦截' : '当前账号无 permission:export 权限'"
+              disabled
+              :title="permissionAuditExportReadonlyReason"
               data-testid="permission-security-audit-export-guarded-button"
               data-write-guard="guarded:readonly-security-audit-export"
               data-guard-state="guarded_readonly"
@@ -366,8 +377,8 @@
               type="success"
               plain
               :loading="operationExporting"
-              :disabled="auditLoading || !canExport"
-              :title="canExport ? '只读模式：导出动作将被 guarded 拦截' : '当前账号无 permission:export 权限'"
+              disabled
+              :title="permissionAuditExportReadonlyReason"
               data-testid="permission-operation-audit-export-guarded-button"
               data-write-guard="guarded:readonly-operation-audit-export"
               data-guard-state="guarded_readonly"
@@ -526,8 +537,10 @@ import permissionGovernanceApi, {
   type PermissionSecurityAuditQuery,
 } from '@/api/permission_governance'
 import { usePermissionStore } from '@/stores/permission'
+import PermissionAuditReadonlySection from '@/views/system/components/PermissionAuditReadonlySection.vue'
 import PermissionGovernanceAuditSummary from '@/views/system/components/PermissionGovernanceAuditSummary.vue'
 import PermissionGovernanceGuardPanel from '@/views/system/components/PermissionGovernanceGuardPanel.vue'
+import { usePermissionAuditReadonly } from '@/views/system/composables/usePermissionAuditReadonly'
 import { usePermissionGovernanceDiagnosticReadonly } from '@/views/system/composables/usePermissionGovernanceDiagnosticReadonly'
 import {
   type PermissionGovernanceCatalogRow,
@@ -628,6 +641,9 @@ const canRead = computed<boolean>(() => permissionStore.state.actions.includes('
 const canAuditRead = computed<boolean>(() => permissionStore.state.actions.includes('permission:audit_read'))
 const canExport = computed<boolean>(() => permissionStore.state.actions.includes('permission:export'))
 const canDiagnostic = computed<boolean>(() => permissionStore.state.actions.includes('permission:diagnostic'))
+const permissionAuditExportReadonlyReason = '只读模式：导出动作已禁用'
+const routeTab = computed<string>(() => String(route.query.tab ?? ''))
+const routeParity = computed<string>(() => String(route.query.parity ?? ''))
 const currentRouteLabel = computed<string>(() => route.fullPath || '/permissions/governance')
 const menuManagementModuleOptions = computed<string[]>(() => {
   const modules = new Set<string>()
@@ -663,6 +679,32 @@ const {
   remainingGap,
   fallbackSource,
 } = readonlyDiagnostic
+const {
+  isAuditReadinessTab,
+  summaryCards: permissionAuditSummaryCards,
+  parityLines: permissionAuditParityLines,
+  auditItems: permissionAuditItems,
+  blockedReasons: permissionAuditBlockedReasons,
+  readonlyGuardText: permissionAuditReadonlyGuardText,
+  disabledActions: permissionAuditDisabledActions,
+  remainingGap: permissionAuditRemainingGap,
+} = usePermissionAuditReadonly({
+  currentRouteLabel,
+  routeTab,
+  routeParity,
+  canRead,
+  canAuditRead,
+  canDiagnostic,
+  canExport,
+  healthSummaryRows,
+  diagnosticCheckRows,
+  blockingHints,
+  remainingGap,
+  fallbackSource,
+  menuManagement,
+  securityAudit,
+  operationAudit,
+})
 
 const applyReadonlyCatalogFallback = (): void => {
   catalogRows.value = readonlyCatalogFallbackRows.map((row) => ({ ...row }))

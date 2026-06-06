@@ -126,6 +126,15 @@ const routes: RouteRecordRaw[] = [
     path: '/system/management',
     name: 'SystemManagement',
     component: () => import('@/views/system/SystemManagement.vue'),
+    beforeEnter: (to) => {
+      if (to.query.parity === 'permission-audit' && to.query.tab === 'governance') {
+        return {
+          path: '/permissions/governance',
+          query: { tab: 'audit-readiness' },
+        }
+      }
+      return true
+    },
     meta: { module: 'system' },
   },
   {
