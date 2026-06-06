@@ -163,6 +163,10 @@
         :summary="warehousePermissionModeReadonlySummary"
       />
 
+      <WarehouseAdapterWorkerReadonlySection
+        :summary="warehouseAdapterWorkerReadonlySummary"
+      />
+
       <div class="action-row">
         <el-button
           type="primary"
@@ -1452,9 +1456,11 @@ import {
 } from '@/api/warehouse'
 import { request, type ApiResponse } from '@/api/request'
 import { usePermissionStore } from '@/stores/permission'
+import WarehouseAdapterWorkerReadonlySection from '@/views/warehouse/components/WarehouseAdapterWorkerReadonlySection.vue'
 import WarehouseBalanceBatchReadonly from '@/views/warehouse/components/WarehouseBalanceBatchReadonly.vue'
 import WarehousePermissionModeReadonlySection from '@/views/warehouse/components/WarehousePermissionModeReadonlySection.vue'
 import WarehouseTraceReadonlySection from '@/views/warehouse/components/WarehouseTraceReadonlySection.vue'
+import { useWarehouseAdapterWorkerReadonly } from '@/views/warehouse/composables/useWarehouseAdapterWorkerReadonly'
 import { useWarehouseBalanceBatchReadonly } from '@/views/warehouse/composables/useWarehouseBalanceBatchReadonly'
 import { useWarehousePermissionModeReadonly } from '@/views/warehouse/composables/useWarehousePermissionModeReadonly'
 import { useWarehouseTraceReadonly } from '@/views/warehouse/composables/useWarehouseTraceReadonly'
@@ -2058,11 +2064,32 @@ const warehouseTraceReadonlyCurrentPath = computed<string>(() => {
   const queryString = queryParts.toString()
   return queryString ? `${route.path}?${queryString}` : route.path
 })
+const warehouseAdapterWorkerCurrentPath = computed<string>(() => {
+  const queryParts = new URLSearchParams()
+  const parity = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+  const tab = typeof route.query.tab === 'string' ? route.query.tab.trim() : ''
+  const focus = typeof route.query.focus === 'string' ? route.query.focus.trim() : ''
+  if (parity) queryParts.set('parity', parity)
+  if (tab) queryParts.set('tab', tab)
+  if (focus) queryParts.set('focus', focus)
+  const queryString = queryParts.toString()
+  return queryString ? `${route.path}?${queryString}` : route.path
+})
 const { warehouseBalanceBatchReadonlySummary } = useWarehouseBalanceBatchReadonly({
   summaryRows,
   batchRows,
   parity: parityValue,
   canRead,
+})
+const { warehouseAdapterWorkerReadonlySummary } = useWarehouseAdapterWorkerReadonly({
+  summaryRows,
+  managementRows,
+  otherInboundRows,
+  purchaseReturnOutboundRows,
+  semiFinishedOutboundRows,
+  canRead,
+  parity: parityValue,
+  currentPath: warehouseAdapterWorkerCurrentPath,
 })
 const { warehousePermissionModeReadonlySummary } = useWarehousePermissionModeReadonly({
   summaryRows,
