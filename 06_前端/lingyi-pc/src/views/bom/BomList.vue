@@ -190,7 +190,28 @@
       />
     </el-card>
 
+    <BomExceptionBaselineReadonlySection
+      :is-exception-baseline-tab="bomExceptionIsActive"
+      :is-readonly-exception-mode="false"
+      :summary-cards="bomExceptionSummaryCards"
+      :parity-lines="bomExceptionParityLines"
+      :blocked-reasons="bomExceptionBlockedReasons"
+      :readonly-guard-text="bomExceptionReadonlyGuardText"
+      :exception-items="bomExceptionItems"
+      :disabled-actions="bomExceptionDisabledActions"
+      :remaining-gap="bomExceptionRemainingGap"
+    />
+
     <el-card shadow="never">
+      <el-alert
+        v-if="bomExceptionWriteGuardActive"
+        type="warning"
+        :closable="false"
+        :title="bomExceptionReadonlyWriteGuardReason"
+        class="feedback-alert"
+        data-testid="bom-exception-local-write-guard"
+      />
+
       <el-table
         v-loading="listLoading"
         :data="filteredRows"
@@ -213,7 +234,9 @@
         <el-table-column prop="updatedAt" label="更新时间" min-width="180" />
         <el-table-column label="操作" width="210" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="loadRowToLocalLoop(row)">写入闭环</el-button>
+            <el-button link type="primary" :disabled="bomExceptionWriteGuardActive" @click="loadRowToLocalLoop(row)">
+              写入闭环
+            </el-button>
             <el-button link type="primary" @click="goDetail(row)">查看详情</el-button>
           </template>
         </el-table-column>
@@ -261,7 +284,7 @@
       </el-form>
 
       <div class="local-write-actions">
-        <el-button type="primary" :loading="localWriteLoading" @click="saveObject">
+        <el-button type="primary" :loading="localWriteLoading" :disabled="bomExceptionWriteGuardActive" @click="saveObject">
           {{ saveButtonLabel }}
         </el-button>
         <el-button :loading="localWriteLoading" :disabled="!currentObjectId" @click="readbackObject">
@@ -346,6 +369,9 @@ import {
 } from '@/api/bom'
 import { useBomAlternateReadonly } from './composables/useBomAlternateReadonly'
 import { useBomAuditDefaultVersionReadonly } from './composables/useBomAuditDefaultVersionReadonly'
+import BomExceptionBaselineReadonlySection from './components/BomExceptionBaselineReadonlySection.vue'
+import { useBomExceptionBaselineReadonly } from './composables/useBomExceptionBaselineReadonly'
+import { bomExceptionReadonlyWriteGuardReason } from './constants/bomExceptionBaselineFields'
 
 type BomStatus = 'draft' | 'review' | 'published'
 
@@ -562,7 +588,22 @@ const parseParity = (value: unknown): string => {
   return typeof raw === 'string' ? raw.trim() : ''
 }
 
+const parseTextQuery = (value: unknown): string => {
+  const raw = Array.isArray(value) ? value[0] : value
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
 const currentParity = computed(() => parseParity(route.query.parity))
+const currentTab = computed(() => parseTextQuery(route.query.tab))
+const bomExceptionWriteGuardActive = computed(
+  () => currentTab.value === 'exception-baseline' || currentParity.value === 'goodsplan-material-samples',
+)
+const currentRouteLabel = computed(() => {
+  const queryParts: string[] = []
+  if (currentParity.value) queryParts.push(`parity=${currentParity.value}`)
+  if (currentTab.value) queryParts.push(`tab=${currentTab.value}`)
+  return queryParts.length ? `/bom/list?${queryParts.join('&')}` : '/bom/list'
+})
 
 const resolveMaterialGroup = (parity: string): string => {
   if (parity === 'material-fabric') return '面料清单'
@@ -651,6 +692,10 @@ const resetQuery = () => {
 }
 
 const loadRowToLocalLoop = (row: BomRow) => {
+  if (bomExceptionWriteGuardActive.value) {
+    ElMessage.warning(bomExceptionReadonlyWriteGuardReason)
+    return
+  }
   draftForm.bomNo = row.bomNo
   draftForm.styleCode = row.styleCode
   draftForm.styleName = row.styleName
@@ -676,6 +721,7 @@ const goDetail = (row: BomRow) => {
       object_id: currentObjectId.value ? String(currentObjectId.value) : '',
       scenario_tag: normalizeScenarioTag(draftForm.scenarioTag),
       ...(currentParity.value ? { parity: currentParity.value } : {}),
+      ...(currentTab.value === 'exception-baseline' ? { mode: 'readonly-exception' } : {}),
     },
   })
 }
@@ -691,6 +737,29 @@ const statusType = (status: BomStatus) => {
   if (status === 'review') return 'warning'
   return 'success'
 }
+
+const {
+  isExceptionBaselineTab: bomExceptionIsActive,
+  summaryCards: bomExceptionSummaryCards,
+  parityLines: bomExceptionParityLines,
+  blockedReasons: bomExceptionBlockedReasons,
+  readonlyGuardText: bomExceptionReadonlyGuardText,
+  exceptionItems: bomExceptionItems,
+  disabledActions: bomExceptionDisabledActions,
+  remainingGap: bomExceptionRemainingGap,
+} = useBomExceptionBaselineReadonly({
+  context: computed(() => 'list' as const),
+  currentRouteLabel,
+  routeTab: currentTab,
+  detailMode: computed(() => ''),
+  routeParity: currentParity,
+  listRows: computed(() => filteredRows.value),
+  detailLines: computed(() => []),
+  bomNo: computed(() => filteredRows.value[0]?.bomNo || 'BOM-LIST'),
+  styleCode: computed(() => filteredRows.value[0]?.styleCode || ''),
+  styleName: computed(() => filteredRows.value[0]?.styleName || ''),
+  versionLabel: computed(() => filteredRows.value[0]?.version || '-'),
+})
 
 const buildUpsertPayload = (): LocalBomUpsertPayload => {
   const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
@@ -728,6 +797,10 @@ const refreshLocalReadbackSummary = async (scenarioTag: string): Promise<void> =
 }
 
 const saveObject = async (): Promise<void> => {
+  if (bomExceptionWriteGuardActive.value) {
+    ElMessage.warning(bomExceptionReadonlyWriteGuardReason)
+    return
+  }
   if (!draftForm.bomNo.trim() || !draftForm.styleCode.trim()) {
     ElMessage.warning('请先填写 BOM 编号与款号')
     return

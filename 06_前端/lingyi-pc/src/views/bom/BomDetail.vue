@@ -253,6 +253,18 @@
       />
     </el-card>
 
+    <BomExceptionBaselineReadonlySection
+      :is-exception-baseline-tab="false"
+      :is-readonly-exception-mode="bomExceptionIsReadonlyMode"
+      :summary-cards="bomExceptionSummaryCards"
+      :parity-lines="bomExceptionParityLines"
+      :blocked-reasons="bomExceptionBlockedReasons"
+      :readonly-guard-text="bomExceptionReadonlyGuardText"
+      :exception-items="bomExceptionItems"
+      :disabled-actions="bomExceptionDisabledActions"
+      :remaining-gap="bomExceptionRemainingGap"
+    />
+
     <el-card shadow="never" data-testid="yisuan-1to1-bom-cost-usage-panel">
       <template #header>
         <div class="panel-header">
@@ -341,6 +353,8 @@ import {
 import { BOM_COLOR_SIZE_SUMMARY_FIELDS } from './constants/bomAlternateMaterialFields'
 import { useBomAlternateReadonly } from './composables/useBomAlternateReadonly'
 import { useBomAuditDefaultVersionReadonly } from './composables/useBomAuditDefaultVersionReadonly'
+import BomExceptionBaselineReadonlySection from './components/BomExceptionBaselineReadonlySection.vue'
+import { useBomExceptionBaselineReadonly } from './composables/useBomExceptionBaselineReadonly'
 
 interface MaterialLine {
   code: string
@@ -455,6 +469,14 @@ const objectIdFromQuery = computed<number | null>(() => parseObjectId(route.quer
 const scenarioTagFromQuery = computed<string>(() => parseScenarioTag(route.query.scenario_tag))
 const styleNameFromQuery = computed<string>(() => parseTextQuery(route.query.style_name))
 const parityFromQuery = computed<string>(() => parseTextQuery(route.query.parity))
+const detailModeFromQuery = computed<string>(() => parseTextQuery(route.query.mode))
+const currentRouteLabel = computed(() => {
+  const queryParts: string[] = []
+  if (bomIdFromQuery.value) queryParts.push(`bom_id=${bomIdFromQuery.value}`)
+  if (parityFromQuery.value) queryParts.push(`parity=${parityFromQuery.value}`)
+  if (detailModeFromQuery.value) queryParts.push(`mode=${detailModeFromQuery.value}`)
+  return queryParts.length ? `/bom/detail?${queryParts.join('&')}` : '/bom/detail'
+})
 
 const bomNo = computed(() => {
   if (detailRef.data?.bom.bom_no) return detailRef.data.bom.bom_no
@@ -601,6 +623,29 @@ const bomAuditDefaultVersionView = computed(() =>
   buildBomAuditDetailView(detailRef.data, localReadbackRef.data, parityFromQuery.value),
 )
 
+const {
+  isReadonlyExceptionMode: bomExceptionIsReadonlyMode,
+  summaryCards: bomExceptionSummaryCards,
+  parityLines: bomExceptionParityLines,
+  blockedReasons: bomExceptionBlockedReasons,
+  readonlyGuardText: bomExceptionReadonlyGuardText,
+  exceptionItems: bomExceptionItems,
+  disabledActions: bomExceptionDisabledActions,
+  remainingGap: bomExceptionRemainingGap,
+} = useBomExceptionBaselineReadonly({
+  context: computed(() => 'detail' as const),
+  currentRouteLabel,
+  routeTab: computed(() => ''),
+  detailMode: detailModeFromQuery,
+  routeParity: parityFromQuery,
+  listRows: computed(() => []),
+  detailLines: computed(() => [...displayFabricLines.value, ...displayTrimLines.value]),
+  bomNo,
+  styleCode: displayStyleCode,
+  styleName: displayStyleName,
+  versionLabel: displayVersion,
+})
+
 const bomSummaryValue = (
   key: (typeof BOM_COLOR_SIZE_SUMMARY_FIELDS)[number]['key'],
 ): string => {
@@ -675,7 +720,13 @@ onMounted(() => {
 })
 
 const goList = () => {
-  void router.push('/bom/list')
+  void router.push({
+    path: '/bom/list',
+    query: {
+      ...(parityFromQuery.value ? { parity: parityFromQuery.value } : {}),
+      ...(detailModeFromQuery.value === 'readonly-exception' ? { tab: 'exception-baseline' } : {}),
+    },
+  })
 }
 </script>
 

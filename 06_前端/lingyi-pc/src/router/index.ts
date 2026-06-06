@@ -257,7 +257,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/goodsPlan/materialSamples',
-    redirect: { path: '/bom/list', query: { parity: 'goodsplan-material-samples' } },
+    redirect: { path: '/bom/list', query: { parity: 'goodsplan-material-samples', tab: 'exception-baseline' } },
   },
   {
     path: '/goodsPlan/goodsPlanProcess',
