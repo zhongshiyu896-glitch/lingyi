@@ -31,7 +31,7 @@
             <el-button
               type="success"
               plain
-              :disabled="queryLoading || financeItems.length === 0"
+              :disabled="queryLoading || financeItems.length === 0 || reportWriteActionsDisabled"
               data-testid="report-catalog-export-guarded-button"
               data-write-guard="guarded:readonly-report-export"
               @click="handleExport"
@@ -173,6 +173,7 @@
         data-testid="report-catalog-parity-hint"
         style="margin-bottom: 12px"
       />
+      <ReportSourceGuardReadonly :summary="reportSourceGuardReadonly" />
       <el-card shadow="never" class="catalog-contract-card" data-testid="z046-report-source-group-tabs">
         <template #header>
           <div class="header-row">
@@ -385,6 +386,7 @@
               <el-button
                 type="primary"
                 plain
+                :disabled="reportWriteActionsDisabled"
                 data-testid="employee-task-guarded-confirm-button"
                 data-write-guard="guarded:readonly-report-action"
                 @click="showGuardedMessage('确认')"
@@ -394,6 +396,7 @@
               <el-button
                 type="warning"
                 plain
+                :disabled="reportWriteActionsDisabled"
                 data-testid="employee-task-guarded-review-button"
                 data-write-guard="guarded:readonly-report-action"
                 @click="showGuardedMessage('审核')"
@@ -473,8 +476,8 @@
           <el-table-column label="操作" min-width="210" fixed="right">
             <template #default="scope">
               <el-button type="primary" link @click.stop="onEmployeeTaskRowClick(scope.row)">查看</el-button>
-              <el-button type="warning" link @click.stop="showGuardedMessage('确认')">确认</el-button>
-              <el-button type="warning" link @click.stop="showGuardedMessage('审核')">审核</el-button>
+              <el-button type="warning" link :disabled="reportWriteActionsDisabled" @click.stop="showGuardedMessage('确认')">确认</el-button>
+              <el-button type="warning" link :disabled="reportWriteActionsDisabled" @click.stop="showGuardedMessage('审核')">审核</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -549,6 +552,7 @@
               <el-button
                 type="primary"
                 plain
+                :disabled="reportWriteActionsDisabled"
                 data-testid="approval-report-guarded-confirm-button"
                 data-write-guard="guarded:readonly-report-action"
                 @click="showGuardedMessage('确认')"
@@ -558,6 +562,7 @@
               <el-button
                 type="warning"
                 plain
+                :disabled="reportWriteActionsDisabled"
                 data-testid="approval-report-guarded-review-button"
                 data-write-guard="guarded:readonly-report-action"
                 @click="showGuardedMessage('审核')"
@@ -636,8 +641,8 @@
           <el-table-column label="操作" min-width="210" fixed="right">
             <template #default="scope">
               <el-button type="primary" link @click.stop="onApprovalRowClick(scope.row)">查看</el-button>
-              <el-button type="warning" link @click.stop="showGuardedMessage('确认')">确认</el-button>
-              <el-button type="warning" link @click.stop="showGuardedMessage('审核')">审核</el-button>
+              <el-button type="warning" link :disabled="reportWriteActionsDisabled" @click.stop="showGuardedMessage('确认')">确认</el-button>
+              <el-button type="warning" link :disabled="reportWriteActionsDisabled" @click.stop="showGuardedMessage('审核')">审核</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -696,11 +701,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import reportApi from '@/api/report'
 import { usePermissionStore } from '@/stores/permission'
+import ReportSourceGuardReadonly from './components/ReportSourceGuardReadonly.vue'
+import { useReportSourceGuardReadonly } from './composables/useReportSourceGuardReadonly'
 
 interface ReportCatalogItem {
   report_key: string
@@ -757,6 +764,28 @@ const READONLY_LOCAL_PARITY_SET = new Set(['customer-reconciliation', 'factory-p
 const dataReadonlyBoundary = true
 const dataWriteRequestSuccessAllowed = false
 const dataRealWriteActionAdded = false
+const GLOBAL_READONLY_GUARD_ATTR = 'data-report-source-guard-disabled'
+const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-report-source-guard-prev-disabled'
+const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-report-source-guard-prev-aria-disabled'
+const GLOBAL_READONLY_PREV_TITLE_ATTR = 'data-report-source-guard-prev-title'
+const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-report-source-guard-prev-tabindex'
+const GLOBAL_REPORT_ACTION_GUARDS = [
+  {
+    selector: '#global-auth-refresh-guard',
+    reason: 'source-guard readonly boundary keeps permission refresh non-executable on ReportCatalog.',
+    disableNative: true,
+  },
+  {
+    selector: '#z042-global-guarded-refresh',
+    reason: 'source-guard readonly boundary keeps permission refresh non-executable on ReportCatalog.',
+    disableNative: false,
+  },
+  {
+    selector: 'button[data-readonly-action="fetchModuleActions"]',
+    reason: 'source-guard readonly boundary keeps module action reload non-executable on ReportCatalog.',
+    disableNative: true,
+  },
+] as const
 
 interface SourceGroupTabItem {
   key: string
@@ -893,6 +922,7 @@ const taskY3B07EntryPreserved = ref<boolean>(true)
 const preserveCheckMessage = ref<string>('')
 const parityHint = ref<string>('')
 const parityQuery = computed<string>(() => (typeof route.query.parity === 'string' ? route.query.parity.trim() : ''))
+const routeTab = computed<string>(() => (typeof route.query.tab === 'string' ? route.query.tab.trim() : ''))
 const readonlyProbe = computed<boolean>(() => route.query.readonly_probe === '1')
 const readonlyLocalParityMode = computed<boolean>(() => READONLY_LOCAL_PARITY_SET.has(parityQuery.value))
 const sourceGroupTabs = SOURCE_GROUP_TABS
@@ -939,6 +969,21 @@ const exportLockTooltip = computed<string>(() => {
 })
 
 const finalRouteReadback = computed<string>(() => route.fullPath || '/reports/catalog')
+const { buildReportSourceGuardReadonly } = useReportSourceGuardReadonly()
+const reportSourceGuardReadonly = computed(() =>
+  buildReportSourceGuardReadonly({
+    rows: financeItems.value,
+    selectedItem: selectedFinanceItem.value,
+    tab: routeTab.value,
+    parity: parityQuery.value,
+    sourceEntry: routeSourceEntry.value,
+    finalPath: finalRouteReadback.value,
+    canRead: canRead.value,
+    canExport: canExport.value,
+    exportGuardMessage: exportGuardMessage.value,
+  }),
+)
+const reportWriteActionsDisabled = computed(() => reportSourceGuardReadonly.value.disabledActions.length > 0)
 
 const guardedMatrixRows = computed<Array<{ entry: string; state: string; reason: string }>>(() => [
   {
@@ -1052,6 +1097,88 @@ const approvalStatusTagType = (status: string): 'success' | 'warning' | 'danger'
 
 const showGuardedMessage = (action: string): void => {
   ElMessage.info(`${action}入口已guarded，仅支持只读浏览`)
+}
+
+const applyGlobalReadonlyGuardToElement = (
+  element: HTMLElement,
+  reason: string,
+  disableNative: boolean,
+): void => {
+  if (!element.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) {
+    element.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_DISABLED_ATTR,
+      element instanceof HTMLButtonElement && element.disabled ? 'true' : 'false',
+    )
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
+      element.getAttribute('aria-disabled') ?? '',
+    )
+    element.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, element.getAttribute('title') ?? '')
+    element.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, element.getAttribute('tabindex') ?? '')
+  }
+
+  if (disableNative && element instanceof HTMLButtonElement) {
+    element.disabled = true
+  }
+  element.setAttribute('aria-disabled', 'true')
+  element.setAttribute('title', reason)
+  element.setAttribute('tabindex', '-1')
+  element.classList.add('is-disabled')
+}
+
+const restoreGlobalReadonlyGuardElements = (): void => {
+  if (typeof document === 'undefined') {
+    return
+  }
+  document.querySelectorAll<HTMLElement>(`[${GLOBAL_READONLY_GUARD_ATTR}="1"]`).forEach((element) => {
+    const prevDisabled = element.getAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR) === 'true'
+    const prevAriaDisabled = element.getAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR) ?? ''
+    const prevTitle = element.getAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR) ?? ''
+    const prevTabIndex = element.getAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR) ?? ''
+
+    if (element instanceof HTMLButtonElement) {
+      element.disabled = prevDisabled
+    }
+
+    if (prevAriaDisabled) {
+      element.setAttribute('aria-disabled', prevAriaDisabled)
+    } else {
+      element.removeAttribute('aria-disabled')
+    }
+
+    if (prevTitle) {
+      element.setAttribute('title', prevTitle)
+    } else {
+      element.removeAttribute('title')
+    }
+
+    if (prevTabIndex) {
+      element.setAttribute('tabindex', prevTabIndex)
+    } else {
+      element.removeAttribute('tabindex')
+    }
+
+    element.classList.remove('is-disabled')
+    element.removeAttribute(GLOBAL_READONLY_GUARD_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR)
+  })
+}
+
+const applyGlobalReadonlyActionGuards = async (): Promise<void> => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  await nextTick()
+  for (const guard of GLOBAL_REPORT_ACTION_GUARDS) {
+    document.querySelectorAll<HTMLElement>(guard.selector).forEach((element) => {
+      applyGlobalReadonlyGuardToElement(element, guard.reason, guard.disableNative)
+    })
+  }
 }
 
 const matchKeyword = (rawValue: string, keyword: string): boolean => {
@@ -1398,6 +1525,7 @@ const resolveParityHint = (): void => {
 onMounted(() => {
   resolveParityHint()
   activeSourceGroup.value = resolveSourceGroupKey()
+  void applyGlobalReadonlyActionGuards()
   if (readonlyProbe.value || readonlyLocalParityMode.value) {
     loadCatalog().catch((error: unknown) => {
       ElMessage.error((error as Error).message || '只读样例加载失败')
@@ -1417,11 +1545,23 @@ onMounted(() => {
     })
 })
 
+onUnmounted(() => {
+  restoreGlobalReadonlyGuardElements()
+})
+
 watch(
   () => route.fullPath,
   () => {
     resolveParityHint()
     activeSourceGroup.value = resolveSourceGroupKey()
+    void applyGlobalReadonlyActionGuards()
+  },
+)
+
+watch(
+  () => permissionStore.state.loading,
+  () => {
+    void applyGlobalReadonlyActionGuards()
   },
 )
 </script>

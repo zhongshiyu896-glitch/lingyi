@@ -106,15 +106,6 @@ const routes: RouteRecordRaw[] = [
     name: 'ReportCatalog',
     component: () => import('@/views/reports/ReportCatalog.vue'),
     meta: { module: 'report' },
-    beforeEnter: (to) => {
-      if (to.query.parity || to.query.readonly_probe) {
-        return true
-      }
-      return {
-        path: '/reports/catalog',
-        query: z042ReportParityQuery,
-      }
-    },
   },
   {
     path: '/permissions/governance',
