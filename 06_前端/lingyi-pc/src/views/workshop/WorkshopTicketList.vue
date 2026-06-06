@@ -115,13 +115,14 @@
         type="info"
         :closable="false"
         show-icon
-        title="当前页面为只读验证模式（parity=workshop-ticket-diagnostic）"
+        :title="parityHintTitle"
         class="parity-hint"
         data-testid="workshop-ticket-parity-hint"
       />
 
       <el-empty v-if="!canRead" description="无工票查看权限" data-testid="workshop-ticket-no-permission" />
       <template v-else>
+        <WorkshopTicketJobCardReadonlySection :summary="workshopTicketJobCardReadonlySummary" />
         <WorkshopTicketDiagnosticReadonlySection :summary="diagnosticReadonlySummary" />
         <el-alert
           v-if="errorMessage"
@@ -216,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -226,9 +227,12 @@ import {
   type WorkshopTicketRow,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
+import WorkshopTicketJobCardReadonlySection from './components/WorkshopTicketJobCardReadonlySection.vue'
 import WorkshopTicketDiagnosticReadonlySection from './components/WorkshopTicketDiagnosticReadonlySection.vue'
+import { useWorkshopTicketJobCardReadonly } from './composables/useWorkshopTicketJobCardReadonly'
 import { useWorkshopTicketDiagnosticReadonly } from './composables/useWorkshopTicketDiagnosticReadonly'
 import { WORKSHOP_TICKET_DIAGNOSTIC_READONLY_ACTIONS } from './constants/workshopTicketDiagnosticFields'
+import { WORKSHOP_TICKET_JOB_CARD_READONLY_GUARDED_ACTIONS } from './constants/workshopTicketJobCardReadonlyFields'
 
 const route = useRoute()
 const router = useRouter()
@@ -236,6 +240,32 @@ const permissionStore = usePermissionStore()
 const guardedActionMap = Object.fromEntries(
   WORKSHOP_TICKET_DIAGNOSTIC_READONLY_ACTIONS.map((action) => [action.key, action])
 )
+const GLOBAL_READONLY_GUARD_ATTR = 'data-workshop-ticket-list-readonly-disabled'
+const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-workshop-ticket-list-prev-disabled'
+const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-workshop-ticket-list-prev-aria-disabled'
+const GLOBAL_READONLY_PREV_TITLE_ATTR = 'data-workshop-ticket-list-prev-title'
+const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-workshop-ticket-list-prev-tabindex'
+const GLOBAL_WORKSHOP_TICKET_JOB_CARD_ACTION_GUARDS = [
+  {
+    selector: '#global-auth-refresh-guard',
+    reason: WORKSHOP_TICKET_JOB_CARD_READONLY_GUARDED_ACTIONS.find((action) => action.key === 'refresh-permission')?.reason
+      || 'job-card-readonly boundary keeps permission refresh non-executable on WorkshopTicketList.',
+    disableNative: true,
+  },
+  {
+    selector: '#z042-global-guarded-refresh',
+    reason: WORKSHOP_TICKET_JOB_CARD_READONLY_GUARDED_ACTIONS.find((action) => action.key === 'refresh-permission')?.reason
+      || 'job-card-readonly boundary keeps permission refresh non-executable on WorkshopTicketList.',
+    disableNative: false,
+  },
+  {
+    selector: 'button[data-readonly-action="fetchModuleActions"]',
+    reason: WORKSHOP_TICKET_JOB_CARD_READONLY_GUARDED_ACTIONS.find((action) => action.key === 'reload-module-actions')?.reason
+      || 'job-card-readonly boundary keeps module action reload non-executable on WorkshopTicketList.',
+    disableNative: true,
+  },
+] as const
+let globalWorkshopTicketListGuardObserver: MutationObserver | null = null
 const loading = ref<boolean>(false)
 const rows = ref<WorkshopTicketRow[]>([])
 const total = ref<number>(0)
@@ -261,6 +291,17 @@ const canBatch = computed<boolean>(() => permissionStore.state.buttonPermissions
 const canWageRead = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_read)
 const canWageRateRead = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_rate_read)
 const canSync = computed<boolean>(() => permissionStore.state.buttonPermissions.job_card_sync)
+const jobCardReadonlyParity = computed<string>(() => String(route.query.parity || ''))
+const jobCardReadonlyFocus = computed<string>(() => String(route.query.focus || ''))
+const jobCardReadonlyRoutePath = computed<string>(() => route.fullPath || route.path)
+const jobCardReadonlyQueryStateLabel = computed<string>(() => {
+  const jobCard = query.job_card.trim() || 'ALL_JOB_CARD'
+  const employee = query.employee.trim() || 'ALL_EMPLOYEE'
+  const itemCode = query.item_code.trim() || 'ALL_ITEM'
+  const processName = query.process_name.trim() || 'ALL_PROCESS'
+  const operationType = query.operation_type || 'ALL_OPERATION'
+  return `job_card=${jobCard}; employee=${employee}; item=${itemCode}; process=${processName}; operation=${operationType}; page=${query.page}`
+})
 
 const diagnosticReadonlySummary = useWorkshopTicketDiagnosticReadonly({
   rows,
@@ -268,6 +309,23 @@ const diagnosticReadonlySummary = useWorkshopTicketDiagnosticReadonly({
   currentPath: computed(() =>
     route.query.tab === 'diagnostic' ? '/workshop/tickets?tab=diagnostic' : route.path || '/workshop/tickets'
   ),
+})
+const { workshopTicketJobCardReadonlySummary } = useWorkshopTicketJobCardReadonly({
+  rows,
+  canRead,
+  currentPath: jobCardReadonlyRoutePath,
+  parity: jobCardReadonlyParity,
+  focus: jobCardReadonlyFocus,
+  queryStateLabel: jobCardReadonlyQueryStateLabel,
+})
+const parityHintTitle = computed<string>(() => {
+  if (route.query.tab === 'job-card-readonly') {
+    return '当前页面为只读验证模式（parity=workshop-ticket-job-card-readonly）'
+  }
+  if (route.query.tab === 'diagnostic') {
+    return '当前页面为只读验证模式（parity=workshop-ticket-diagnostic）'
+  }
+  return '当前页面为只读验证模式（workshop-ticket readonly slices）'
 })
 
 const operationTypeLabel = (value: string): string => {
@@ -292,6 +350,110 @@ const syncStatusLabel = (value: string): string => {
 
 const guardedWriteAction = (label: string): void => {
   ElMessage.warning(`${label} 仅可在授权流程中执行，当前为只读模式`)
+}
+
+const applyGlobalReadonlyGuardToElement = (
+  element: HTMLElement,
+  reason: string,
+  disableNative: boolean,
+): void => {
+  if (!element.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) {
+    element.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_DISABLED_ATTR,
+      element instanceof HTMLButtonElement && element.disabled ? 'true' : 'false',
+    )
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
+      element.getAttribute('aria-disabled') ?? '',
+    )
+    element.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, element.getAttribute('title') ?? '')
+    element.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, element.getAttribute('tabindex') ?? '')
+  }
+
+  if (disableNative && element instanceof HTMLButtonElement) {
+    element.disabled = true
+  }
+  element.setAttribute('aria-disabled', 'true')
+  element.setAttribute('title', reason)
+  element.setAttribute('tabindex', '-1')
+  element.classList.add('is-disabled')
+}
+
+const restoreGlobalReadonlyGuardElements = (): void => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.querySelectorAll<HTMLElement>(`[${GLOBAL_READONLY_GUARD_ATTR}="1"]`).forEach((element) => {
+    const prevDisabled = element.getAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR) === 'true'
+    const prevAriaDisabled = element.getAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR) ?? ''
+    const prevTitle = element.getAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR) ?? ''
+    const prevTabIndex = element.getAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR) ?? ''
+
+    if (element instanceof HTMLButtonElement) {
+      element.disabled = prevDisabled
+    }
+
+    if (prevAriaDisabled) {
+      element.setAttribute('aria-disabled', prevAriaDisabled)
+    } else {
+      element.removeAttribute('aria-disabled')
+    }
+
+    if (prevTitle) {
+      element.setAttribute('title', prevTitle)
+    } else {
+      element.removeAttribute('title')
+    }
+
+    if (prevTabIndex) {
+      element.setAttribute('tabindex', prevTabIndex)
+    } else {
+      element.removeAttribute('tabindex')
+    }
+
+    element.classList.remove('is-disabled')
+    element.removeAttribute(GLOBAL_READONLY_GUARD_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR)
+  })
+}
+
+const applyGlobalReadonlyActionGuards = async (): Promise<void> => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  await nextTick()
+  for (const guard of GLOBAL_WORKSHOP_TICKET_JOB_CARD_ACTION_GUARDS) {
+    document.querySelectorAll<HTMLElement>(guard.selector).forEach((element) => {
+      applyGlobalReadonlyGuardToElement(element, guard.reason, guard.disableNative)
+    })
+  }
+}
+
+const stopGlobalReadonlyActionGuardObserver = (): void => {
+  globalWorkshopTicketListGuardObserver?.disconnect()
+  globalWorkshopTicketListGuardObserver = null
+}
+
+const startGlobalReadonlyActionGuardObserver = (): void => {
+  if (typeof document === 'undefined' || globalWorkshopTicketListGuardObserver) {
+    return
+  }
+
+  globalWorkshopTicketListGuardObserver = new MutationObserver(() => {
+    void applyGlobalReadonlyActionGuards()
+  })
+  globalWorkshopTicketListGuardObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'disabled', 'aria-disabled', 'title', 'tabindex'],
+  })
 }
 
 const loadTickets = async (): Promise<void> => {
@@ -380,6 +542,13 @@ onMounted(async () => {
     ElMessage.error((error as Error).message)
   }
   await loadTickets()
+  await applyGlobalReadonlyActionGuards()
+  startGlobalReadonlyActionGuardObserver()
+})
+
+onBeforeUnmount(() => {
+  stopGlobalReadonlyActionGuardObserver()
+  restoreGlobalReadonlyGuardElements()
 })
 </script>
 
