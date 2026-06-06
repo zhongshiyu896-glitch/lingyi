@@ -115,6 +115,8 @@
       </div>
     </el-card>
 
+    <SubcontractInspectionGuardReadonly :summary="inspectionGuardReadonly" />
+
     <SubcontractReceiptTimelineReadonly
       v-if="timelineState && timelineMilestones.length > 0"
       :milestones="timelineMilestones"
@@ -248,6 +250,18 @@
         <el-descriptions-item label="material_purchase_parity_visible">
           {{ isMaterialPurchaseParity ? 'true' : 'false' }}
         </el-descriptions-item>
+        <el-descriptions-item label="inspection_guard_visible">
+          {{ inspectionGuardReadonly.summaryCards.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="inspection_item_status_visible">
+          {{ inspectionGuardReadonly.inspectionItems.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="inspection_blocked_reason_visible">
+          {{ inspectionGuardReadonly.blockedReasons.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="disabled_receive_issue_settlement_export_reason_visible">
+          {{ inspectionGuardReadonly.disabledActions.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
         <el-descriptions-item label="remaining_gap_visible">true</el-descriptions-item>
         <el-descriptions-item label="cand110_base_readback_retained">true</el-descriptions-item>
         <el-descriptions-item label="cand134_timeline_settlement_retained">
@@ -271,8 +285,10 @@ import {
   fetchSubcontractOrderDetailReadback,
   resolveFallbackSubcontractOrderRow,
 } from '@/api/subcontract_readback'
+import SubcontractInspectionGuardReadonly from './components/SubcontractInspectionGuardReadonly.vue'
 import SubcontractReceiptTimelineReadonly from './components/SubcontractReceiptTimelineReadonly.vue'
 import SubcontractScopeBridgeReadonly from './components/SubcontractScopeBridgeReadonly.vue'
+import { useSubcontractInspectionGuardReadonly } from './composables/useSubcontractInspectionGuardReadonly'
 import { useSubcontractReadonly } from './composables/useSubcontractReadonly'
 
 interface MaterialLineView {
@@ -327,6 +343,7 @@ const {
   timelineRemainingGap,
   timelineMilestones: buildTimelineMilestones,
 } = useSubcontractReadonly()
+const { buildSubcontractInspectionGuardDetailModel } = useSubcontractInspectionGuardReadonly()
 
 const parityToken = computed(() => {
   const raw = route.query.parity
@@ -334,11 +351,22 @@ const parityToken = computed(() => {
   return String(raw || '').trim()
 })
 
-const isMaterialPurchaseParity = computed(() => parityToken.value === 'material-purchase')
+const routeMode = computed(() => {
+  const raw = route.query.mode
+  if (Array.isArray(raw)) return String(raw[0] || '').trim()
+  return String(raw || '').trim()
+})
 
-const finalPath = computed(() =>
-  isMaterialPurchaseParity.value ? '/subcontract/detail?parity=material-purchase' : '/subcontract/detail',
-)
+const isMaterialPurchaseParity = computed(() => parityToken.value === 'material-purchase')
+const isReadonlyInspectionMode = computed(() => routeMode.value === 'readonly-inspection')
+
+const finalPath = computed(() => {
+  if (isReadonlyInspectionMode.value && isMaterialPurchaseParity.value) {
+    return '/subcontract/detail?mode=readonly-inspection&parity=material-purchase'
+  }
+  if (isMaterialPurchaseParity.value) return '/subcontract/detail?parity=material-purchase'
+  return '/subcontract/detail'
+})
 
 const state = reactive({
   id: 0,
@@ -421,6 +449,15 @@ const scopeBridgeReadonly = computed(() =>
 )
 
 const scopeBridgeGuardStates = computed(() => buildScopeGuardStates(scopeBridgeReadonly.value))
+
+const inspectionGuardReadonly = computed(() =>
+  buildSubcontractInspectionGuardDetailModel({
+    detail: currentDetail.value || buildSyntheticDetail(buildSyntheticListItem()),
+    mode: routeMode.value,
+    parity: parityToken.value,
+    finalPath: finalPath.value,
+  }),
+)
 
 const normalizeOrderId = (): number => {
   const raw = route.query.id
@@ -677,6 +714,7 @@ const goList = (): void => {
   router.push({
     path: '/subcontract/list',
     query: {
+      tab: isReadonlyInspectionMode.value ? 'inspection-guard' : undefined,
       parity: parityToken.value || undefined,
     },
   })

@@ -129,6 +129,8 @@
       </el-descriptions>
     </el-card>
 
+    <SubcontractInspectionGuardReadonly :summary="inspectionGuardReadonly" />
+
     <SubcontractScopeBridgeReadonly
       v-if="scopeBridgeReadonly"
       :summary="scopeBridgeReadonly"
@@ -258,6 +260,18 @@
         <el-descriptions-item label="material_purchase_parity_visible">
           {{ isMaterialPurchaseParity ? 'true' : 'false' }}
         </el-descriptions-item>
+        <el-descriptions-item label="inspection_guard_visible">
+          {{ inspectionGuardReadonly.summaryCards.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="inspection_item_status_visible">
+          {{ inspectionGuardReadonly.inspectionItems.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="inspection_blocked_reason_visible">
+          {{ inspectionGuardReadonly.blockedReasons.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="disabled_receive_issue_settlement_export_reason_visible">
+          {{ inspectionGuardReadonly.disabledActions.length > 0 ? 'true' : 'false' }}
+        </el-descriptions-item>
         <el-descriptions-item label="remaining_gap_visible">true</el-descriptions-item>
         <el-descriptions-item label="cand110_base_readback_retained">true</el-descriptions-item>
       </el-descriptions>
@@ -276,7 +290,9 @@ import {
   filterSubcontractRows,
   hasSubcontractReadonlyFilters,
 } from '@/api/subcontract_readback'
+import SubcontractInspectionGuardReadonly from './components/SubcontractInspectionGuardReadonly.vue'
 import SubcontractScopeBridgeReadonly from './components/SubcontractScopeBridgeReadonly.vue'
+import { useSubcontractInspectionGuardReadonly } from './composables/useSubcontractInspectionGuardReadonly'
 import { useSubcontractReadonly } from './composables/useSubcontractReadonly'
 
 const route = useRoute()
@@ -308,6 +324,7 @@ const {
   statusType,
   timelineRemainingGap,
 } = useSubcontractReadonly()
+const { buildSubcontractInspectionGuardListModel } = useSubcontractInspectionGuardReadonly()
 
 const parityToken = computed(() => {
   const raw = route.query.parity
@@ -315,17 +332,37 @@ const parityToken = computed(() => {
   return String(raw || '').trim()
 })
 
-const isMaterialPurchaseParity = computed(() => parityToken.value === 'material-purchase')
+const routeTab = computed(() => {
+  const raw = route.query.tab
+  if (Array.isArray(raw)) return String(raw[0] || '').trim()
+  return String(raw || '').trim()
+})
 
-const finalPath = computed(() =>
-  isMaterialPurchaseParity.value ? '/subcontract/list?parity=material-purchase' : '/subcontract/list',
-)
+const isMaterialPurchaseParity = computed(() => parityToken.value === 'material-purchase')
+const isInspectionGuardTab = computed(() => routeTab.value === 'inspection-guard')
+
+const finalPath = computed(() => {
+  if (isInspectionGuardTab.value && isMaterialPurchaseParity.value) {
+    return '/subcontract/list?tab=inspection-guard&parity=material-purchase'
+  }
+  if (isMaterialPurchaseParity.value) return '/subcontract/list?parity=material-purchase'
+  return '/subcontract/list'
+})
 
 const summary = computed(() => buildSubcontractReadonlySummary(rows.value))
 
 const scopeBridgeReadonly = computed(() => buildScopeBridgeListSummary(rows.value, parityToken.value))
 
 const scopeBridgeGuardStates = computed(() => buildScopeGuardStates(scopeBridgeReadonly.value))
+
+const inspectionGuardReadonly = computed(() =>
+  buildSubcontractInspectionGuardListModel({
+    rows: rows.value,
+    tab: routeTab.value,
+    parity: parityToken.value,
+    finalPath: finalPath.value,
+  }),
+)
 
 const buildSyntheticRows = (): SubcontractOrderListItem[] => {
   const supplier = isMaterialPurchaseParity.value ? '本地演示供应商' : '本地演示外协厂'
@@ -417,6 +454,7 @@ const openDetail = (orderId: number): void => {
     path: '/subcontract/detail',
     query: {
       id: String(orderId),
+      mode: isInspectionGuardTab.value ? 'readonly-inspection' : undefined,
       parity: parityToken.value || undefined,
     },
   })
