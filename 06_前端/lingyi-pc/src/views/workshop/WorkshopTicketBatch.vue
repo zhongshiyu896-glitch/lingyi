@@ -36,7 +36,7 @@
         </el-button>
         <el-button
           type="primary"
-          :disabled="submitting"
+          :disabled="readonlyBatchActionDisabled || submitting"
           :loading="submitting"
           data-action-type="write"
           data-readonly-boundary="true"
@@ -76,6 +76,17 @@
             : '当前账号无批量导入权限，写动作已保持只读 guard。'
         }}
       </p>
+
+      <WorkshopBatchExceptionReadonlySection
+        :is-exception-guard-tab="isExceptionGuardTab"
+        :summary-cards="summaryCards"
+        :parity-lines="parityLines"
+        :blocked-reasons="blockedReasons"
+        :readonly-guard-text="readonlyGuardText"
+        :exception-items="exceptionItems"
+        :disabled-actions="disabledActions"
+        :remaining-gap="remainingGap"
+      />
 
       <div class="z042-readonly-grid" data-testid="z042-batch-readonly-boundary">
         <section
@@ -577,6 +588,7 @@
 
       <div v-if="validationRows.length > 0" class="failed-actions">
         <el-button
+          :disabled="readonlyBatchActionDisabled"
           data-action-type="write"
           data-readonly-boundary="true"
           data-testid="workshop-ticket-batch-failed-retry-guarded-button"
@@ -594,15 +606,22 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   buildWorkshopTicketRequestId,
   ensureWorkshopTicketScenarioTag,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
+import WorkshopBatchExceptionReadonlySection from './components/WorkshopBatchExceptionReadonlySection.vue'
+import {
+  useWorkshopBatchExceptionReadonly,
+  type WorkshopBatchPreviewRowInput,
+  type WorkshopBatchValidationRowInput,
+} from './composables/useWorkshopBatchExceptionReadonly'
 
 const router = useRouter()
+const route = useRoute()
 const permissionStore = usePermissionStore()
 const rawJson = ref<string>('')
 const submitting = ref<boolean>(false)
@@ -614,22 +633,14 @@ const batchReceipt = ref<{
   failed_count: number
 } | null>(null)
 const parseSummary = ref<{ total: number; valid: number; invalid: number } | null>(null)
-const previewRows = ref<Array<{
-  row_index: number
-  operation_type: string
-  ticket_key: string
-  job_card: string
-  employee: string
-  qty: number
-}>>([])
-const validationRows = ref<Array<{
-  row_index: number
-  ticket_key: string
-  code: string
-  message: string
-}>>([])
+const previewRows = ref<WorkshopBatchPreviewRowInput[]>([])
+const validationRows = ref<WorkshopBatchValidationRowInput[]>([])
 
 const canBatch = computed<boolean>(() => permissionStore.state.buttonPermissions.ticket_batch)
+const readonlyBatchActionDisabled = computed<boolean>(() => true)
+const routeTab = computed<string>(() => String(route.query.tab || '').trim())
+const routeParity = computed<string>(() => String(route.query.parity || 'workshop-batch').trim() || 'workshop-batch')
+const currentRouteLabel = computed<string>(() => route.fullPath || '/workshop/tickets/batch')
 const SCENARIO_PATTERN = /(Z003-WORKSHOP-TICKET-\d{8}-\d{3})/
 const readonlyScenarioTag = 'Z003-WORKSHOP-TICKET-20260527-042'
 const readonlyRequestId = buildWorkshopTicketRequestId({
@@ -641,6 +652,23 @@ const readonlyRequestId = buildWorkshopTicketRequestId({
   jobCard: 'Z042-BATCH-READONLY',
   employeeOrOperator: 'readonly-operator',
   batchNo: 'Z042-BATCH-GUARD',
+})
+const {
+  isExceptionGuardTab,
+  summaryCards,
+  parityLines,
+  blockedReasons,
+  readonlyGuardText,
+  exceptionItems,
+  disabledActions,
+  remainingGap,
+} = useWorkshopBatchExceptionReadonly({
+  currentRouteLabel,
+  routeTab,
+  routeParity,
+  canBatch,
+  previewRows: computed(() => previewRows.value),
+  validationRows: computed(() => validationRows.value),
 })
 
 const failureReasonGroups = computed<Array<{ code: string; count: number; sample: string }>>(() => {

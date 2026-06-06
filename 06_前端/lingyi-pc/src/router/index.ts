@@ -277,7 +277,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/production/productOrder',
-    redirect: { path: '/production/plans', query: { parity: 'production-order' } },
+    redirect: { path: '/workshop/tickets/batch', query: { parity: 'production-order', tab: 'exception-guard' } },
   },
   {
     path: '/production/productionProcess',
