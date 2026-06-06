@@ -21,6 +21,10 @@
         </el-tab-pane>
       </el-tabs>
 
+      <WorkshopTicketRegisterReadonlySection
+        :summary="workshopTicketRegisterReadonlySummary"
+      />
+
       <el-form label-width="120px" :model="form" data-testid="workshop-ticket-register-form">
         <el-form-item label="幂等键 ticket_key" data-testid="workshop-ticket-register-field-ticket-key">
           <el-input v-model="form.ticket_key" placeholder="扫码值或业务唯一键" data-testid="workshop-ticket-register-input-ticket-key" />
@@ -686,15 +690,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   buildWorkshopTicketRequestId,
   ensureWorkshopTicketScenarioTag,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
+import WorkshopTicketRegisterReadonlySection from '@/views/workshop/components/WorkshopTicketRegisterReadonlySection.vue'
+import { useWorkshopTicketRegisterReadonly } from '@/views/workshop/composables/useWorkshopTicketRegisterReadonly'
+import { WORKSHOP_TICKET_REGISTER_READONLY_GUARDED_ACTIONS } from '@/views/workshop/constants/workshopTicketRegisterReadonlyFields'
 
+const route = useRoute()
 const router = useRouter()
 const permissionStore = usePermissionStore()
 const SCENARIO_PATTERN = /(Z003-WORKSHOP-TICKET-\d{8}-\d{3})/
@@ -702,6 +710,32 @@ const mode = ref<'register' | 'reversal'>('register')
 const submitting = ref<boolean>(false)
 const guardedFeedback = ref<string>('')
 const validationHint = ref<string>('')
+const GLOBAL_READONLY_GUARD_ATTR = 'data-workshop-ticket-register-readonly-disabled'
+const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-workshop-ticket-register-prev-disabled'
+const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-workshop-ticket-register-prev-aria-disabled'
+const GLOBAL_READONLY_PREV_TITLE_ATTR = 'data-workshop-ticket-register-prev-title'
+const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-workshop-ticket-register-prev-tabindex'
+const GLOBAL_WORKSHOP_TICKET_REGISTER_ACTION_GUARDS = [
+  {
+    selector: '#global-auth-refresh-guard',
+    reason: WORKSHOP_TICKET_REGISTER_READONLY_GUARDED_ACTIONS.find((action) => action.key === 'refresh-permission')?.reason
+      || 'order-parity boundary keeps permission refresh non-executable on WorkshopTicketRegister.',
+    disableNative: true,
+  },
+  {
+    selector: '#z042-global-guarded-refresh',
+    reason: WORKSHOP_TICKET_REGISTER_READONLY_GUARDED_ACTIONS.find((action) => action.key === 'refresh-permission')?.reason
+      || 'order-parity boundary keeps permission refresh non-executable on WorkshopTicketRegister.',
+    disableNative: false,
+  },
+  {
+    selector: 'button[data-readonly-action="fetchModuleActions"]',
+    reason: WORKSHOP_TICKET_REGISTER_READONLY_GUARDED_ACTIONS.find((action) => action.key === 'reload-module-actions')?.reason
+      || 'order-parity boundary keeps module action reload non-executable on WorkshopTicketRegister.',
+    disableNative: true,
+  },
+] as const
+let globalWorkshopTicketRegisterGuardObserver: MutationObserver | null = null
 
 const form = reactive({
   ticket_key: '',
@@ -747,6 +781,16 @@ const readonlyDraft = computed(() => ({
   original_ticket_id: form.original_ticket_id,
   reason: form.reason.trim(),
 }))
+const readonlyTicketRegisterParity = computed<string>(() => String(route.query.parity || ''))
+const readonlyTicketRegisterFocus = computed<string>(() => String(route.query.focus || ''))
+const readonlyTicketRegisterRoutePath = computed<string>(() => route.fullPath || route.path)
+const readonlyTicketRegisterQueryStateLabel = computed<string>(() => {
+  const sourceRef = readonlyDraft.value.source_ref || 'pending-source-ref'
+  const jobCard = readonlyDraft.value.job_card || 'pending-job-card'
+  const employee = readonlyDraft.value.employee || 'pending-employee'
+  const missingCount = requiredFieldErrors.value.length
+  return `mode=${mode.value}; source=${readonlyDraft.value.source}; source_ref=${sourceRef}; job_card=${jobCard}; employee=${employee}; missing=${missingCount}`
+})
 const readonlyScenarioTag = computed<string>(() => resolveScenarioTag())
 const readonlyRequestId = computed<string>(() => {
   const ticketKey = withScenarioCarrier(
@@ -974,6 +1018,109 @@ const z046NetworkWriteBlocker = computed<string>(() => (
 const z046WriteSuccessBlocker = computed<string>(() => (
   '写成功阻断：提交登记、提交撤销、只读降级确认均不会产生真实写成功回执；write_request_success_observed=false。'
 ))
+const { workshopTicketRegisterReadonlySummary } = useWorkshopTicketRegisterReadonly({
+  mode,
+  draft: readonlyDraft,
+  activePermission,
+  requiredFields: requiredFieldErrors,
+  currentPath: readonlyTicketRegisterRoutePath,
+  parity: readonlyTicketRegisterParity,
+  focus: readonlyTicketRegisterFocus,
+  queryStateLabel: readonlyTicketRegisterQueryStateLabel,
+})
+
+const applyGlobalReadonlyGuardToElement = (
+  element: HTMLElement,
+  reason: string,
+  disableNative: boolean,
+): void => {
+  if (!element.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) {
+    element.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_DISABLED_ATTR,
+      element instanceof HTMLButtonElement && element.disabled ? 'true' : 'false',
+    )
+    element.setAttribute(
+      GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
+      element.getAttribute('aria-disabled') ?? '',
+    )
+    element.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, element.getAttribute('title') ?? '')
+    element.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, element.getAttribute('tabindex') ?? '')
+  }
+
+  if (disableNative && element instanceof HTMLButtonElement) {
+    element.disabled = true
+  }
+  element.setAttribute('aria-disabled', 'true')
+  element.setAttribute('title', reason)
+  element.setAttribute('tabindex', '-1')
+  element.classList.add('is-disabled')
+}
+
+const restoreGlobalReadonlyGuardElements = (): void => {
+  if (typeof document === 'undefined') return
+  document.querySelectorAll<HTMLElement>(`[${GLOBAL_READONLY_GUARD_ATTR}="1"]`).forEach((element) => {
+    const prevDisabled = element.getAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR) === 'true'
+    const prevAriaDisabled = element.getAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR) ?? ''
+    const prevTitle = element.getAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR) ?? ''
+    const prevTabIndex = element.getAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR) ?? ''
+
+    if (element instanceof HTMLButtonElement) {
+      element.disabled = prevDisabled
+    }
+    if (prevAriaDisabled) {
+      element.setAttribute('aria-disabled', prevAriaDisabled)
+    } else {
+      element.removeAttribute('aria-disabled')
+    }
+    if (prevTitle) {
+      element.setAttribute('title', prevTitle)
+    } else {
+      element.removeAttribute('title')
+    }
+    if (prevTabIndex) {
+      element.setAttribute('tabindex', prevTabIndex)
+    } else {
+      element.removeAttribute('tabindex')
+    }
+
+    element.classList.remove('is-disabled')
+    element.removeAttribute(GLOBAL_READONLY_GUARD_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR)
+  })
+}
+
+const applyGlobalReadonlyActionGuards = async (): Promise<void> => {
+  if (typeof document === 'undefined') return
+  await nextTick()
+  for (const guard of GLOBAL_WORKSHOP_TICKET_REGISTER_ACTION_GUARDS) {
+    document.querySelectorAll<HTMLElement>(guard.selector).forEach((element) => {
+      applyGlobalReadonlyGuardToElement(element, guard.reason, guard.disableNative)
+    })
+  }
+}
+
+const stopGlobalReadonlyActionGuardObserver = (): void => {
+  globalWorkshopTicketRegisterGuardObserver?.disconnect()
+  globalWorkshopTicketRegisterGuardObserver = null
+}
+
+const startGlobalReadonlyActionGuardObserver = (): void => {
+  if (typeof document === 'undefined' || globalWorkshopTicketRegisterGuardObserver) return
+
+  globalWorkshopTicketRegisterGuardObserver = new MutationObserver(() => {
+    void applyGlobalReadonlyActionGuards()
+  })
+  globalWorkshopTicketRegisterGuardObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['disabled', 'aria-disabled', 'class', 'title', 'tabindex'],
+  })
+}
 
 const extractScenarioTag = (value: string): string | null => {
   const matched = value.match(SCENARIO_PATTERN)
@@ -1050,9 +1197,16 @@ onMounted(async () => {
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions('workshop')
+    await applyGlobalReadonlyActionGuards()
+    startGlobalReadonlyActionGuardObserver()
   } catch (error) {
     ElMessage.error((error as Error).message)
   }
+})
+
+onBeforeUnmount(() => {
+  stopGlobalReadonlyActionGuardObserver()
+  restoreGlobalReadonlyGuardElements()
 })
 </script>
 
