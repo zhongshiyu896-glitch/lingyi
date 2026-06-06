@@ -52,6 +52,17 @@
       </div>
     </section>
 
+    <section ref="dashboardAlertReadonlyAnchor" data-testid="cand416-dashboard-alert-anchor">
+      <DashboardAlertReadonlySection
+        :summary="dashboardAlertReadonlySectionSummary"
+        :alert-items="dashboardAlertItems"
+        :audit-items="dashboardAlertAuditItems"
+        :readonly-actions="dashboardAlertReadonlyActions"
+        :source-layer="dashboardAlertSourceLayer"
+        :final-path="routeAliasSummary.finalPath"
+      />
+    </section>
+
     <DashboardModuleEntryReadonlySection
       :items="dashboardModuleEntryItems"
       :readonly-actions="dashboardModuleEntryReadonlyActions"
@@ -68,14 +79,6 @@
       :final-path="routeAliasSummary.finalPath"
       :remaining-gap="dashboardRemainingGap"
       @navigate="go"
-    />
-
-    <DashboardAlertReadonlySection
-      :alert-items="dashboardAlertItems"
-      :audit-items="dashboardAlertAuditItems"
-      :readonly-actions="dashboardAlertReadonlyActions"
-      :source-layer="dashboardAlertSourceLayer"
-      :final-path="routeAliasSummary.finalPath"
     />
 
     <DashboardTrendReadonlySection
@@ -195,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { DashboardOverviewData, DashboardOverviewQuery } from '@/api/dashboard'
 import {
@@ -208,6 +211,12 @@ import DashboardTodoReadonlySection from './components/DashboardTodoReadonlySect
 import DashboardTrendReadonlySection from './components/DashboardTrendReadonlySection.vue'
 import DashboardWorkbenchReadonlySection from './components/DashboardWorkbenchReadonlySection.vue'
 import { useDashboardAlertReadonly } from './composables/useDashboardAlertReadonly'
+import {
+  DASHBOARD_ALERT_GLOBAL_GUARD_REASON_MAP,
+  DASHBOARD_ALERT_READONLY_FOCUS,
+  DASHBOARD_ALERT_READONLY_PARITY,
+  DASHBOARD_ALERT_READONLY_TAB,
+} from './constants/dashboardAlertFields'
 import { useDashboardCrossModuleReadonly } from './composables/useDashboardCrossModuleReadonly'
 import { useDashboardModuleEntryReadonly } from './composables/useDashboardModuleEntryReadonly'
 import { useDashboardTodoReadonly } from './composables/useDashboardTodoReadonly'
@@ -216,6 +225,31 @@ import { useDashboardWorkbenchReadonly } from './composables/useDashboardWorkben
 
 const router = useRouter()
 const route = useRoute()
+const dashboardAlertReadonlyAnchor = ref<HTMLElement | null>(null)
+const GLOBAL_READONLY_GUARD_ATTR = 'data-dashboard-alert-readonly-disabled'
+const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-dashboard-alert-prev-disabled'
+const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-dashboard-alert-prev-aria-disabled'
+const GLOBAL_READONLY_PREV_TITLE_ATTR = 'data-dashboard-alert-prev-title'
+const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-dashboard-alert-prev-tabindex'
+const GLOBAL_READONLY_PREV_POINTER_EVENTS_ATTR = 'data-dashboard-alert-prev-pointer-events'
+const GLOBAL_DASHBOARD_ALERT_ACTION_GUARDS = [
+  {
+    selector: '#global-auth-refresh-guard',
+    reason: DASHBOARD_ALERT_GLOBAL_GUARD_REASON_MAP.refreshPermission,
+    disableNative: true,
+  },
+  {
+    selector: '#z042-global-guarded-refresh',
+    reason: DASHBOARD_ALERT_GLOBAL_GUARD_REASON_MAP.refreshPermission,
+    disableNative: true,
+  },
+  {
+    selector: 'button[data-readonly-action="fetchModuleActions"]',
+    reason: DASHBOARD_ALERT_GLOBAL_GUARD_REASON_MAP.reloadModuleActions,
+    disableNative: true,
+  },
+] as const
+let globalDashboardAlertGuardObserver: MutationObserver | null = null
 
 const overviewData = ref<DashboardOverviewData | null>(null)
 const healthSummary = ref<DashboardHealthSummaryData | null>(null)
@@ -245,6 +279,9 @@ const readQueryText = (value: unknown): string | undefined => {
 }
 
 const readbackScenarioTag = computed(() => readQueryText(route.query.company) || DEFAULT_COMPANY)
+const alertQueryTab = computed(() => readQueryText(route.query.tab) || DASHBOARD_ALERT_READONLY_TAB)
+const alertQueryParity = computed(() => readQueryText(route.query.parity) || DASHBOARD_ALERT_READONLY_PARITY)
+const alertQueryFocus = computed(() => readQueryText(route.query.focus) || DASHBOARD_ALERT_READONLY_FOCUS)
 
 const overviewQuery = computed<DashboardOverviewQuery>(() => ({
   company: readbackScenarioTag.value,
@@ -286,11 +323,15 @@ const {
   dashboardAlertItems,
   dashboardAlertAuditItems,
   dashboardAlertReadonlyActions,
+  dashboardAlertReadonlySectionSummary,
   dashboardAlertSourceLayer,
 } = useDashboardAlertReadonly({
   overviewData,
   healthSummary,
   routeAliasSummary,
+  queryTab: alertQueryTab,
+  queryParity: alertQueryParity,
+  queryFocus: alertQueryFocus,
 })
 
 const {
@@ -369,12 +410,148 @@ const go = (path: string): void => {
   void router.push(path)
 }
 
-onMounted(() => {
+const scrollDashboardAlertReadonlyAnchorIntoView = async (): Promise<void> => {
+  if (alertQueryTab.value !== DASHBOARD_ALERT_READONLY_TAB) {
+    return
+  }
+  await nextTick()
+  dashboardAlertReadonlyAnchor.value?.scrollIntoView({ block: 'start' })
+}
+
+const applyGlobalReadonlyGuardToElement = (
+  element: HTMLElement,
+  reason: string,
+  disableNative: boolean,
+): void => {
+  const targetElements = [
+    element,
+    ...Array.from(element.querySelectorAll<HTMLElement>('button, [role="button"], .el-button')),
+  ]
+
+  targetElements.forEach((target) => {
+    if (!target.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) {
+      target.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
+      target.setAttribute(
+        GLOBAL_READONLY_PREV_DISABLED_ATTR,
+        target instanceof HTMLButtonElement && target.disabled ? 'true' : 'false',
+      )
+      target.setAttribute(
+        GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
+        target.getAttribute('aria-disabled') ?? '',
+      )
+      target.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, target.getAttribute('title') ?? '')
+      target.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, target.getAttribute('tabindex') ?? '')
+      target.setAttribute(
+        GLOBAL_READONLY_PREV_POINTER_EVENTS_ATTR,
+        target.style.pointerEvents || '',
+      )
+    }
+
+    if (disableNative && target instanceof HTMLButtonElement) {
+      target.disabled = true
+    }
+    target.setAttribute('aria-disabled', 'true')
+    target.setAttribute('title', reason)
+    target.setAttribute('tabindex', '-1')
+    target.style.pointerEvents = 'none'
+    target.classList.add('is-disabled')
+  })
+}
+
+const restoreGlobalReadonlyGuardElements = (): void => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.querySelectorAll<HTMLElement>(`[${GLOBAL_READONLY_GUARD_ATTR}="1"]`).forEach((element) => {
+    const prevDisabled = element.getAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR) === 'true'
+    const prevAriaDisabled = element.getAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR) ?? ''
+    const prevTitle = element.getAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR) ?? ''
+    const prevTabIndex = element.getAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR) ?? ''
+    const prevPointerEvents = element.getAttribute(GLOBAL_READONLY_PREV_POINTER_EVENTS_ATTR) ?? ''
+
+    if (element instanceof HTMLButtonElement) {
+      element.disabled = prevDisabled
+    }
+    if (prevAriaDisabled) {
+      element.setAttribute('aria-disabled', prevAriaDisabled)
+    } else {
+      element.removeAttribute('aria-disabled')
+    }
+    if (prevTitle) {
+      element.setAttribute('title', prevTitle)
+    } else {
+      element.removeAttribute('title')
+    }
+    if (prevTabIndex) {
+      element.setAttribute('tabindex', prevTabIndex)
+    } else {
+      element.removeAttribute('tabindex')
+    }
+
+    element.style.pointerEvents = prevPointerEvents
+    element.classList.remove('is-disabled')
+    element.removeAttribute(GLOBAL_READONLY_GUARD_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR)
+    element.removeAttribute(GLOBAL_READONLY_PREV_POINTER_EVENTS_ATTR)
+  })
+}
+
+const applyGlobalReadonlyActionGuards = async (): Promise<void> => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  await nextTick()
+  for (const guard of GLOBAL_DASHBOARD_ALERT_ACTION_GUARDS) {
+    document.querySelectorAll<HTMLElement>(guard.selector).forEach((element) => {
+      applyGlobalReadonlyGuardToElement(element, guard.reason, guard.disableNative)
+    })
+  }
+}
+
+const stopGlobalReadonlyActionGuardObserver = (): void => {
+  globalDashboardAlertGuardObserver?.disconnect()
+  globalDashboardAlertGuardObserver = null
+}
+
+const startGlobalReadonlyActionGuardObserver = (): void => {
+  if (typeof document === 'undefined' || globalDashboardAlertGuardObserver) {
+    return
+  }
+
+  globalDashboardAlertGuardObserver = new MutationObserver(() => {
+    void applyGlobalReadonlyActionGuards()
+  })
+  globalDashboardAlertGuardObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'disabled', 'aria-disabled', 'title', 'tabindex'],
+  })
+}
+
+onMounted(async () => {
   void loadOverview()
+  await applyGlobalReadonlyActionGuards()
+  startGlobalReadonlyActionGuardObserver()
+  await scrollDashboardAlertReadonlyAnchorIntoView()
 })
 
 watch(overviewQuery, () => {
   void loadOverview()
+})
+
+watch([alertQueryTab, alertQueryParity, alertQueryFocus], () => {
+  void scrollDashboardAlertReadonlyAnchorIntoView()
+})
+
+onBeforeUnmount(() => {
+  stopGlobalReadonlyActionGuardObserver()
+  restoreGlobalReadonlyGuardElements()
 })
 </script>
 

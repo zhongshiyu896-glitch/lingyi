@@ -22,6 +22,19 @@ export interface DashboardAlertReadonlyActionConfig {
   reason: string
 }
 
+export interface DashboardAlertReadonlyGuardReasonMap {
+  refreshPermission: string
+  reloadModuleActions: string
+}
+
+export const DASHBOARD_ALERT_READONLY_TAB = 'alert-readonly'
+export const DASHBOARD_ALERT_READONLY_PARITY = 'six-module'
+export const DASHBOARD_ALERT_READONLY_FOCUS = 'alert-source'
+export const DASHBOARD_ALERT_BLOCKED_REASON =
+  'dashboard alert readonly 仅允许来源审计与只读复核，真实首页跳转、模块执行与导出修复链路保持阻断。'
+export const DASHBOARD_ALERT_READONLY_GUARD =
+  '当前页面为 dashboard alert readonly 守卫模式，所有写动作与跨模块执行入口仅保留禁用态说明。'
+
 export const DASHBOARD_ALERT_FIELDS: DashboardAlertFieldConfig[] = [
   {
     key: 'quality_alert',
@@ -71,5 +84,10 @@ export const DASHBOARD_ALERT_READONLY_ACTIONS: DashboardAlertReadonlyActionConfi
     reason: '跨模块执行必须在业务模块内处理，此处只保留只读守卫。',
   },
 ]
+
+export const DASHBOARD_ALERT_GLOBAL_GUARD_REASON_MAP: DashboardAlertReadonlyGuardReasonMap = {
+  refreshPermission: 'dashboard alert readonly 不开放权限刷新，避免影响共享首页守卫状态。',
+  reloadModuleActions: 'dashboard alert readonly 不开放模块动作重载，避免触发首页动作链路。',
+}
 
 export { DASHBOARD_READONLY_SOURCE_LAYER, DASHBOARD_WORKBENCH_REMAINING_GAP as DASHBOARD_ALERT_REMAINING_GAP }

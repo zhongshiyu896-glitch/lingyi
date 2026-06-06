@@ -11,6 +11,33 @@
       </div>
     </header>
 
+    <section class="alert-contract-board" data-testid="cand416-dashboard-alert-contract">
+      <article class="contract-card">
+        <strong>query state</strong>
+        <span>{{ summary.queryStateLabel }}</span>
+      </article>
+      <article class="contract-card">
+        <strong>parity</strong>
+        <span>{{ summary.parityLabel }}</span>
+      </article>
+      <article class="contract-card">
+        <strong>focus</strong>
+        <span>{{ summary.focusLabel }}</span>
+      </article>
+      <article class="contract-card">
+        <strong>blocked reason</strong>
+        <span>{{ summary.blockedReason }}</span>
+      </article>
+      <article class="contract-card">
+        <strong>readonly guard</strong>
+        <span>{{ summary.readonlyGuard }}</span>
+      </article>
+      <article class="contract-card">
+        <strong>remaining gap</strong>
+        <span>{{ summary.remainingGap }}</span>
+      </article>
+    </section>
+
     <div class="alert-grid">
       <article v-for="item in alertItems" :key="item.key" class="alert-card">
         <div class="alert-card-top">
@@ -71,9 +98,14 @@ import type {
   DashboardAlertAuditItem,
   DashboardAlertReadonlyActionItem,
   DashboardAlertReadonlyItem,
+  DashboardAlertReadonlySectionSummary,
 } from '../composables/useDashboardAlertReadonly'
 
 defineProps({
+  summary: {
+    type: Object as PropType<DashboardAlertReadonlySectionSummary>,
+    required: true,
+  },
   alertItems: {
     type: Array as PropType<DashboardAlertReadonlyItem[]>,
     required: true,
@@ -153,12 +185,14 @@ defineProps({
 }
 
 .alert-grid,
-.audit-grid {
+.audit-grid,
+.alert-contract-board {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.contract-card,
 .alert-card,
 .audit-card,
 .action-guard-item {
@@ -171,6 +205,22 @@ defineProps({
 .alert-card {
   display: grid;
   gap: 8px;
+}
+
+.contract-card {
+  display: grid;
+  gap: 6px;
+}
+
+.contract-card strong {
+  font-size: 12px;
+  color: #374151;
+}
+
+.contract-card span {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .alert-card-top,

@@ -2,7 +2,12 @@ import { computed, type ComputedRef, type Ref } from 'vue'
 import type { DashboardHomeTodoItem, DashboardOverviewData, DashboardSourceStatus } from '@/api/dashboard'
 import type { DashboardHealthSummaryData } from '@/api/dashboard_readonly'
 import {
+  DASHBOARD_ALERT_BLOCKED_REASON,
   DASHBOARD_ALERT_FIELDS,
+  DASHBOARD_ALERT_READONLY_FOCUS,
+  DASHBOARD_ALERT_READONLY_GUARD,
+  DASHBOARD_ALERT_READONLY_PARITY,
+  DASHBOARD_ALERT_READONLY_TAB,
   DASHBOARD_ALERT_READONLY_ACTIONS,
   DASHBOARD_ALERT_REMAINING_GAP,
   DASHBOARD_READONLY_SOURCE_LAYER,
@@ -44,10 +49,22 @@ export interface DashboardAlertReadonlyActionItem {
   reason: string
 }
 
+export interface DashboardAlertReadonlySectionSummary {
+  queryStateLabel: string
+  parityLabel: string
+  focusLabel: string
+  blockedReason: string
+  readonlyGuard: string
+  remainingGap: string
+}
+
 interface UseDashboardAlertReadonlyOptions {
   overviewData: Ref<DashboardOverviewData | null>
   healthSummary: Ref<DashboardHealthSummaryData | null>
   routeAliasSummary: ComputedRef<DashboardRouteAliasSummary>
+  queryTab: ComputedRef<string>
+  queryParity: ComputedRef<string>
+  queryFocus: ComputedRef<string>
 }
 
 const toTone = (status: string): GuardTone => {
@@ -119,6 +136,9 @@ export const useDashboardAlertReadonly = ({
   overviewData,
   healthSummary,
   routeAliasSummary,
+  queryTab,
+  queryParity,
+  queryFocus,
 }: UseDashboardAlertReadonlyOptions) => {
   const sourceStatusMap = computed(() => {
     const rows = overviewData.value?.source_status || []
@@ -210,10 +230,20 @@ export const useDashboardAlertReadonly = ({
     }))
   })
 
+  const dashboardAlertReadonlySectionSummary = computed<DashboardAlertReadonlySectionSummary>(() => ({
+    queryStateLabel: `tab=${queryTab.value || DASHBOARD_ALERT_READONLY_TAB}; parity=${queryParity.value || DASHBOARD_ALERT_READONLY_PARITY}; focus=${queryFocus.value || DASHBOARD_ALERT_READONLY_FOCUS}`,
+    parityLabel: queryParity.value || DASHBOARD_ALERT_READONLY_PARITY,
+    focusLabel: queryFocus.value || DASHBOARD_ALERT_READONLY_FOCUS,
+    blockedReason: DASHBOARD_ALERT_BLOCKED_REASON,
+    readonlyGuard: DASHBOARD_ALERT_READONLY_GUARD,
+    remainingGap: DASHBOARD_ALERT_REMAINING_GAP,
+  }))
+
   return {
     dashboardAlertItems,
     dashboardAlertAuditItems,
     dashboardAlertReadonlyActions,
+    dashboardAlertReadonlySectionSummary,
     dashboardAlertRemainingGap: computed(() => DASHBOARD_ALERT_REMAINING_GAP),
     dashboardAlertSourceLayer: computed(() => DASHBOARD_READONLY_SOURCE_LAYER),
   }
