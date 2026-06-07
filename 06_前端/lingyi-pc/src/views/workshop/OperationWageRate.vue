@@ -41,8 +41,8 @@
         </div>
       </template>
 
-      <WorkshopWageReadonlySection
-        :summary="workshopWageReadonlySummary"
+      <OperationWageRateReadonlySection
+        :summary="operationWageRateReadonlySummary"
       />
 
       <el-form :inline="true" :model="query" data-testid="wage-rates-filter-form">
@@ -121,7 +121,7 @@
         type="info"
         :closable="false"
         show-icon
-        title="当前页面为只读验证模式（parity=workshop-ticket-wage）"
+        :title="`当前页面为只读验证模式（tab=${readonlyWageTabLabel}; parity=${readonlyWageParityLabel}）`"
         data-testid="wage-rates-parity-hint"
       />
 
@@ -136,19 +136,19 @@
         data-guard-state="guarded_readonly"
       >
         <div class="cross-route-readonly__main">
-          <strong>三路由只读一致性</strong>
-          <span>工票查询 / 日薪统计 / 工价档案共享只读边界，当前来源：/workshop/wage-rates。</span>
+          <strong>工价来源只读一致性</strong>
+          <span>工价档案共享 source-readonly 边界，当前来源：/workshop/wage-rates。</span>
         </div>
         <div class="cross-route-readonly__meta">
-          <span>工价筛选、档案表、新增与停用入口仅做只读可见验收。</span>
-          <span>复用 Z036-CAND-004 clean product path，禁止真实写请求成功。</span>
+          <span>工价筛选、来源状态、档案表、新增与停用入口仅做只读可见验收。</span>
+          <span>当前切片只开放 wage-rate parity、rate-source focus 与 source/item status。</span>
         </div>
         <div class="cross-route-readonly__guards" data-testid="workshop-ticket-wage-guarded-entry-list">
-          <el-tag type="info" effect="plain">工票登记 guarded</el-tag>
-          <el-tag type="info" effect="plain">批量导入 guarded</el-tag>
-          <el-tag type="info" effect="plain">Job Card 同步重试 guarded</el-tag>
-          <el-tag type="info" effect="plain">日薪导出 guarded</el-tag>
-          <el-tag type="info" effect="plain">生成/同步日薪 guarded</el-tag>
+          <el-tag type="info" effect="plain">工价写入 guarded</el-tag>
+          <el-tag type="info" effect="plain">工价导入 guarded</el-tag>
+          <el-tag type="info" effect="plain">工价导出 guarded</el-tag>
+          <el-tag type="info" effect="plain">outbox / worker guarded</el-tag>
+          <el-tag type="info" effect="plain">ERPNext guarded</el-tag>
           <el-tag type="info" effect="plain">新增/停用工价 guarded</el-tag>
         </div>
       </section>
@@ -332,8 +332,8 @@ import {
   type WorkshopWageRateRow,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
-import WorkshopWageReadonlySection from '@/views/workshop/components/WorkshopWageReadonlySection.vue'
-import { useWorkshopWageReadonly } from '@/views/workshop/composables/useWorkshopWageReadonly'
+import OperationWageRateReadonlySection from '@/views/workshop/components/OperationWageRateReadonlySection.vue'
+import { useOperationWageRateReadonly } from '@/views/workshop/composables/useOperationWageRateReadonly'
 
 const route = useRoute()
 const router = useRouter()
@@ -371,9 +371,9 @@ const canManage = computed<boolean>(() => permissionStore.state.buttonPermission
 const canManageAll = computed<boolean>(() => permissionStore.state.buttonPermissions.wage_rate_manage_all)
 const workshopWageReadonlyGuardActive = computed<boolean>(() => true)
 const readonlyCreateReason =
-  '当前仅开放工价档案只读摘要，不开放真实工价维护创建、导入、导出或 worker 执行。'
+  '当前仅开放工价来源 source-guard 只读核对，不开放真实工价维护创建、导入、导出、outbox、worker 或 ERPNext 执行。'
 const readonlyDeactivateReason =
-  '当前仅开放工价状态只读核对，不开放真实停用执行。'
+  '当前仅开放工价来源 source/status 只读核对，不开放真实停用执行。'
 const GLOBAL_READONLY_GUARD_ATTR = 'data-workshop-wage-readonly-disabled'
 const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-workshop-wage-readonly-prev-disabled'
 const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-workshop-wage-readonly-prev-aria-disabled'
@@ -402,7 +402,10 @@ const normalizeText = (value: string): string => value.trim()
 
 const readonlyWageParity = computed<string>(() => String(route.query.parity || ''))
 const readonlyWageFocus = computed<string>(() => String(route.query.focus || ''))
+const readonlyWageTab = computed<string>(() => String(route.query.tab || ''))
 const readonlyWageRoutePath = computed<string>(() => route.fullPath || route.path)
+const readonlyWageTabLabel = computed<string>(() => readonlyWageTab.value || 'source-readonly')
+const readonlyWageParityLabel = computed<string>(() => readonlyWageParity.value || 'wage-rate')
 const readonlyWageFilterStateLabel = computed<string>(() => {
   const rateScope = query.rate_scope || 'all'
   const itemCode = normalizeText(query.item_code) || 'GLOBAL'
@@ -412,10 +415,11 @@ const readonlyWageFilterStateLabel = computed<string>(() => {
   return `scope=${rateScope}; item=${itemCode}; company=${company}; process=${processName}; status=${status}`
 })
 
-const { workshopWageReadonlySummary } = useWorkshopWageReadonly({
+const { operationWageRateReadonlySummary } = useOperationWageRateReadonly({
   rows,
   canRead,
   currentPath: readonlyWageRoutePath,
+  tab: readonlyWageTab,
   parity: readonlyWageParity,
   focus: readonlyWageFocus,
   filterStateLabel: readonlyWageFilterStateLabel,
@@ -445,12 +449,22 @@ const applyGlobalReadonlyGuardToElement = (
   }
 
   if (disableNative && element instanceof HTMLButtonElement) {
-    element.disabled = true
+    if (!element.disabled) {
+      element.disabled = true
+    }
   }
-  element.setAttribute('aria-disabled', 'true')
-  element.setAttribute('title', reason)
-  element.setAttribute('tabindex', '-1')
-  element.classList.add('is-disabled')
+  if (element.getAttribute('aria-disabled') !== 'true') {
+    element.setAttribute('aria-disabled', 'true')
+  }
+  if (element.getAttribute('title') !== reason) {
+    element.setAttribute('title', reason)
+  }
+  if (element.getAttribute('tabindex') !== '-1') {
+    element.setAttribute('tabindex', '-1')
+  }
+  if (!element.classList.contains('is-disabled')) {
+    element.classList.add('is-disabled')
+  }
 }
 
 const restoreGlobalReadonlyGuardElements = (): void => {
@@ -524,8 +538,6 @@ const startGlobalReadonlyActionGuardObserver = (): void => {
   globalWorkshopWageGuardObserver.observe(document.body, {
     childList: true,
     subtree: true,
-    attributes: true,
-    attributeFilter: ['disabled', 'aria-disabled', 'class', 'title', 'tabindex'],
   })
 }
 
