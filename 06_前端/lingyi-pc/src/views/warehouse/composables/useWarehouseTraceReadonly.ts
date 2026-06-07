@@ -6,11 +6,12 @@ import type {
 } from '@/api/warehouse'
 import {
   WAREHOUSE_TRACE_READONLY_ACTIONS,
-  WAREHOUSE_TRACE_READONLY_DIAGNOSTIC_FIELDS,
+  WAREHOUSE_TRACE_READONLY_BLOCKED_REASON,
   WAREHOUSE_TRACE_READONLY_GUARD_MESSAGE,
   WAREHOUSE_TRACE_READONLY_METRIC_FIELDS,
   WAREHOUSE_TRACE_READONLY_REMAINING_GAP,
   WAREHOUSE_TRACE_READONLY_ROUTE_LABELS,
+  WAREHOUSE_TRACE_READONLY_STATUS_FIELDS,
   WAREHOUSE_TRACE_READONLY_WRITE_BOUNDARY,
   type WarehouseTraceReadonlyGuardedAction,
   type WarehouseTraceReadonlyTagType,
@@ -24,16 +25,12 @@ export interface WarehouseTraceReadonlyMetric {
   value: string
 }
 
-export interface WarehouseTraceReadonlyCard {
+export interface WarehouseTraceReadonlyStatusCard {
   key: string
   title: string
-  count: number
   statusLabel: string
   statusTone: GuardTone
-  sourceRoute: string
-  sourceModule: string
-  sourceDescription: string
-  blockedReason: string
+  value: string
   note: string
 }
 
@@ -44,17 +41,16 @@ export interface WarehouseTraceReadonlySummary {
     type: GuardTone
   }>
   metrics: WarehouseTraceReadonlyMetric[]
-  cards: WarehouseTraceReadonlyCard[]
+  statusCards: WarehouseTraceReadonlyStatusCard[]
   guardedActions: Array<WarehouseTraceReadonlyGuardedAction & { disabled: true }>
-  readonlySourceLabel: string
-  readonlyModeLabel: string
-  traceabilityStatusLabel: string
-  traceabilityStatusTone: GuardTone
-  traceabilityStatusSummary: string
+  currentPathLabel: string
   parityLabel: string
-  parityTone: GuardTone
-  breakpointSummary: string
-  guardMessage: string
+  focusLabel: string
+  sourceStatusLabel: string
+  sourceStatusTone: GuardTone
+  itemStatusSummary: string
+  blockedReason: string
+  readonlyGuard: string
   remainingGap: string
   writeBoundary: string
 }
@@ -66,35 +62,35 @@ interface UseWarehouseTraceReadonlyOptions {
   canRead: MaybeRef<boolean>
   parity: MaybeRef<string>
   currentPath: MaybeRef<string>
+  focus: MaybeRef<string>
 }
 
-const normalizeRouteLabel = (currentPath: string, parity: string): string => {
-  if (currentPath.includes('tab=diagnostic')) return WAREHOUSE_TRACE_READONLY_ROUTE_LABELS.diagnostic
-  if (parity === 'product-stock') return WAREHOUSE_TRACE_READONLY_ROUTE_LABELS.productStockTraceability
-  return WAREHOUSE_TRACE_READONLY_ROUTE_LABELS.traceability
+const normalizeRouteLabel = (currentPath: string): string => {
+  const normalizedCurrentPath = currentPath.trim()
+  return normalizedCurrentPath || WAREHOUSE_TRACE_READONLY_ROUTE_LABELS.defaultRoute
 }
 
 const resolveParityLabel = (parity: string): string => {
+  if (parity === 'inventory-balance') return 'inventory-balance parity'
   if (parity === 'product-stock') return 'product-stock parity'
   if (parity === 'foundation-warehouse') return 'foundation-warehouse parity'
-  return 'warehouse traceability readonly'
+  return 'inventory-balance parity'
 }
 
 const resolveParityTone = (parity: string): GuardTone => {
+  if (parity === 'inventory-balance') return 'success'
   if (parity === 'product-stock') return 'info'
   if (parity === 'foundation-warehouse') return 'warning'
   return 'success'
 }
 
-const toNumber = (value: string | number | null | undefined): number => {
-  const numeric = Number(value ?? 0)
-  return Number.isFinite(numeric) ? numeric : 0
-}
+const resolveFocusLabel = (focus: string): string => (
+  focus === 'trace-source' ? 'trace-source focus' : 'trace-source focus (default)'
+)
 
-const toSampleNote = (values: string[], emptyNote: string): string => {
-  if (values.length === 0) return emptyNote
-  return `sample=${values.slice(0, 3).join(' ; ')}`
-}
+const toSample = (values: string[], fallback: string): string => (
+  values.length > 0 ? values.slice(0, 3).join(' ; ') : fallback
+)
 
 export const useWarehouseTraceReadonly = ({
   batchRows,
@@ -103,6 +99,7 @@ export const useWarehouseTraceReadonly = ({
   canRead,
   parity,
   currentPath,
+  focus,
 }: UseWarehouseTraceReadonlyOptions): {
   warehouseTraceReadonlySummary: ComputedRef<WarehouseTraceReadonlySummary>
 } => {
@@ -110,59 +107,33 @@ export const useWarehouseTraceReadonly = ({
     const readable = Boolean(unref(canRead))
     const normalizedParity = String(unref(parity) || '').trim().toLowerCase()
     const normalizedCurrentPath = String(unref(currentPath) || '').trim()
+    const normalizedFocus = String(unref(focus) || '').trim().toLowerCase()
     const currentBatchRows = unref(batchRows)
     const currentSerialRows = unref(serialRows)
     const currentTraceabilityRows = unref(traceabilityRows)
 
-    const batchNoSet = new Set(currentBatchRows.map((row) => String(row.batch_no || '').trim()).filter(Boolean))
-    const anomalyBatchRows = currentBatchRows.filter((row) => row.disabled || toNumber(row.qty) <= 0)
-    const anomalySerialRows = currentSerialRows.filter((row) => (row.status || 'Active') !== 'Active')
-    const anomalyTraceabilityRows = currentTraceabilityRows.filter((row) => (
-      !row.batch_no
-      || !row.serial_no
-      || !row.voucher_no
-      || toNumber(row.qty_after_transaction) < 0
-    ))
+    const routeLabel = normalizeRouteLabel(normalizedCurrentPath)
+    const focusLabel = resolveFocusLabel(normalizedFocus)
+    const sourceCount = currentTraceabilityRows.filter((row) => (
+      Boolean(row.voucher_no) || Boolean(row.batch_no) || Boolean(row.serial_no)
+    )).length
 
-    const batchBreakpointRows = currentTraceabilityRows.filter((row) => (
-      !row.batch_no || !batchNoSet.has(String(row.batch_no || '').trim())
-    ))
-    const documentBreakpointRows = [
-      ...currentSerialRows.filter((row) => !row.delivery_document_no && !row.purchase_document_no),
-      ...currentTraceabilityRows.filter((row) => !row.voucher_no),
-    ]
+    const sourceStatusLabel = !readable
+      ? 'trace-source guarded'
+      : sourceCount > 0
+        ? 'trace-source ready'
+        : 'trace-source pending'
+    const sourceStatusTone: GuardTone = !readable ? 'danger' : sourceCount > 0 ? 'success' : 'info'
 
-    const anomalyNodeCount = anomalyBatchRows.length + anomalySerialRows.length + anomalyTraceabilityRows.length
-    const routeLabel = normalizeRouteLabel(normalizedCurrentPath, normalizedParity)
-    const traceabilityStatusLabel = !readable
-      ? '追溯链路只读受限'
-      : currentBatchRows.length + currentSerialRows.length + currentTraceabilityRows.length === 0
-        ? '追溯链路待真实回读'
-        : anomalyNodeCount > 0 || batchBreakpointRows.length > 0 || documentBreakpointRows.length > 0
-          ? '追溯链路存在异常节点'
-          : '追溯链路已回读'
-    const traceabilityStatusTone: GuardTone = !readable
-      ? 'danger'
-      : currentBatchRows.length + currentSerialRows.length + currentTraceabilityRows.length === 0
-        ? 'info'
-        : anomalyNodeCount > 0 || batchBreakpointRows.length > 0 || documentBreakpointRows.length > 0
-          ? 'warning'
-          : 'success'
-
-    const traceabilityStatusSummary = !readable
-      ? '当前账号仅允许仓库追溯读侧回退，诊断区只保留 guarded readonly 提示。'
-      : `${routeLabel} 已回读批次 ${currentBatchRows.length} 条、序列 ${currentSerialRows.length} 条、追溯流水 ${currentTraceabilityRows.length} 条。`
+    const itemStatusSummary = !readable
+      ? 'trace item/status 仅保留 guarded fallback。'
+      : `trace=${currentTraceabilityRows.length} / batch=${currentBatchRows.length} / serial=${currentSerialRows.length}`
 
     const tags = [
       {
-        key: 'source',
-        label: `${WAREHOUSE_TRACE_READONLY_ROUTE_LABELS.sourceLabel}: ${routeLabel}`,
+        key: 'query',
+        label: routeLabel,
         type: 'info' as GuardTone,
-      },
-      {
-        key: 'mode',
-        label: WAREHOUSE_TRACE_READONLY_ROUTE_LABELS.readonlyMode,
-        type: 'success' as GuardTone,
       },
       {
         key: 'parity',
@@ -170,103 +141,92 @@ export const useWarehouseTraceReadonly = ({
         type: resolveParityTone(normalizedParity),
       },
       {
+        key: 'focus',
+        label: focusLabel,
+        type: 'warning' as GuardTone,
+      },
+      {
         key: 'status',
-        label: traceabilityStatusLabel,
-        type: traceabilityStatusTone,
+        label: sourceStatusLabel,
+        type: sourceStatusTone,
       },
     ]
 
     const metrics = WAREHOUSE_TRACE_READONLY_METRIC_FIELDS.map((field) => {
       switch (field.key) {
+        case 'traceCount':
+          return { key: field.key, label: field.label, value: String(currentTraceabilityRows.length) }
         case 'batchCount':
           return { key: field.key, label: field.label, value: String(currentBatchRows.length) }
         case 'serialCount':
           return { key: field.key, label: field.label, value: String(currentSerialRows.length) }
-        case 'ledgerCount':
-          return { key: field.key, label: field.label, value: String(currentTraceabilityRows.length) }
-        case 'anomalyNodeCount':
-          return { key: field.key, label: field.label, value: String(anomalyNodeCount) }
+        case 'sourceCount':
+          return { key: field.key, label: field.label, value: String(sourceCount) }
         default:
           return { key: field.key, label: field.label, value: '0' }
       }
     })
 
-    const cards = WAREHOUSE_TRACE_READONLY_DIAGNOSTIC_FIELDS.map((field) => {
-      if (field.key === 'anomaly_nodes') {
-        const sample = [
-          ...anomalyBatchRows.map((row) => `batch:${row.batch_no || '-'}`),
-          ...anomalySerialRows.map((row) => `serial:${row.serial_no || '-'}`),
-          ...anomalyTraceabilityRows.map((row) => `voucher:${row.voucher_no || '-'}`),
-        ]
+    const statusCards = WAREHOUSE_TRACE_READONLY_STATUS_FIELDS.map((field) => {
+      if (field.key === 'trace_item') {
         return {
           key: field.key,
           title: field.title,
-          count: anomalyNodeCount,
-          statusLabel: anomalyNodeCount > 0 ? '异常待核对' : '当前无异常',
-          statusTone: anomalyNodeCount > 0 ? ('warning' as GuardTone) : ('success' as GuardTone),
-          sourceRoute: field.sourceRoute,
-          sourceModule: field.sourceModule,
-          sourceDescription: field.sourceDescription,
-          blockedReason: field.blockedReason,
-          note: toSampleNote(sample, '当前查询范围未出现异常节点。'),
+          statusLabel: currentTraceabilityRows.length > 0 ? 'trace item ready' : 'trace item pending',
+          statusTone: currentTraceabilityRows.length > 0 ? ('success' as GuardTone) : ('info' as GuardTone),
+          value: String(currentTraceabilityRows.length),
+          note: `sample=${toSample(currentTraceabilityRows.map((row) => row.voucher_no || '-'), '-')}`,
         }
       }
 
-      if (field.key === 'batch_breakpoint') {
-        const sample = batchBreakpointRows.map((row) => `${row.voucher_no || '-'} / ${row.batch_no || '-'}`)
+      if (field.key === 'batch_status') {
         return {
           key: field.key,
           title: field.title,
-          count: batchBreakpointRows.length,
-          statusLabel: batchBreakpointRows.length > 0 ? '批次断链待核对' : '批次链路完整',
-          statusTone: batchBreakpointRows.length > 0 ? ('warning' as GuardTone) : ('success' as GuardTone),
-          sourceRoute: field.sourceRoute,
-          sourceModule: field.sourceModule,
-          sourceDescription: field.sourceDescription,
-          blockedReason: field.blockedReason,
-          note: toSampleNote(sample, '当前查询范围未出现批次断点。'),
+          statusLabel: currentBatchRows.length > 0 ? 'batch source ready' : 'batch source pending',
+          statusTone: currentBatchRows.length > 0 ? ('success' as GuardTone) : ('info' as GuardTone),
+          value: String(currentBatchRows.length),
+          note: `sample=${toSample(currentBatchRows.map((row) => row.batch_no || '-'), '-')}`,
         }
       }
 
-      const sample = [
-        ...currentSerialRows
-          .filter((row) => !row.delivery_document_no && !row.purchase_document_no)
-          .map((row) => `${row.serial_no || '-'} / -`),
-        ...currentTraceabilityRows
-          .filter((row) => !row.voucher_no)
-          .map((row) => `${row.voucher_type || '-'} / -`),
-      ]
+      if (field.key === 'serial_status') {
+        return {
+          key: field.key,
+          title: field.title,
+          statusLabel: currentSerialRows.length > 0 ? 'serial source ready' : 'serial source pending',
+          statusTone: currentSerialRows.length > 0 ? ('success' as GuardTone) : ('info' as GuardTone),
+          value: String(currentSerialRows.length),
+          note: `sample=${toSample(currentSerialRows.map((row) => row.serial_no || '-'), '-')}`,
+        }
+      }
+
       return {
         key: field.key,
         title: field.title,
-        count: documentBreakpointRows.length,
-        statusLabel: documentBreakpointRows.length > 0 ? '单据断链待核对' : '单据链路完整',
-        statusTone: documentBreakpointRows.length > 0 ? ('warning' as GuardTone) : ('success' as GuardTone),
-        sourceRoute: field.sourceRoute,
-        sourceModule: field.sourceModule,
-        sourceDescription: field.sourceDescription,
-        blockedReason: field.blockedReason,
-        note: toSampleNote(sample, '当前查询范围未出现单据断点。'),
+        statusLabel: sourceStatusLabel,
+        statusTone: sourceStatusTone,
+        value: String(sourceCount),
+        note: `${WAREHOUSE_TRACE_READONLY_ROUTE_LABELS.sourceLabel}=${focusLabel}`,
       }
     })
 
     return {
       tags,
       metrics,
-      cards,
+      statusCards,
       guardedActions: WAREHOUSE_TRACE_READONLY_ACTIONS.map((action) => ({
         ...action,
         disabled: true as const,
       })),
-      readonlySourceLabel: routeLabel,
-      readonlyModeLabel: WAREHOUSE_TRACE_READONLY_ROUTE_LABELS.readonlyMode,
-      traceabilityStatusLabel,
-      traceabilityStatusTone,
-      traceabilityStatusSummary,
+      currentPathLabel: routeLabel,
       parityLabel: resolveParityLabel(normalizedParity),
-      parityTone: resolveParityTone(normalizedParity),
-      breakpointSummary: `批次断点 ${batchBreakpointRows.length} 条，单据断点 ${documentBreakpointRows.length} 条。`,
-      guardMessage: WAREHOUSE_TRACE_READONLY_GUARD_MESSAGE,
+      focusLabel,
+      sourceStatusLabel,
+      sourceStatusTone,
+      itemStatusSummary,
+      blockedReason: WAREHOUSE_TRACE_READONLY_BLOCKED_REASON,
+      readonlyGuard: WAREHOUSE_TRACE_READONLY_GUARD_MESSAGE,
       remainingGap: WAREHOUSE_TRACE_READONLY_REMAINING_GAP,
       writeBoundary: WAREHOUSE_TRACE_READONLY_WRITE_BOUNDARY,
     }

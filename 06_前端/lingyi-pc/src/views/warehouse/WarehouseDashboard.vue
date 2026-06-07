@@ -8,7 +8,16 @@
             <span class="subtitle">成品库存台账（只读首版）</span>
             <span data-testid="yisuan-1to1-warehouse-parity-readback">
               <el-tag
-                v-if="isFinishedGoodsParity"
+                v-if="isInventoryBalanceParity"
+                size="small"
+                type="success"
+                effect="plain"
+                data-testid="inventory-balance-parity-hint"
+              >
+                {{ inventoryBalanceParityHint }}
+              </el-tag>
+              <el-tag
+                v-else-if="isFinishedGoodsParity"
                 size="small"
                 type="info"
                 effect="plain"
@@ -155,6 +164,10 @@
         </div>
       </section>
 
+      <WarehouseTraceReadonlySection
+        :summary="warehouseTraceReadonlySummary"
+      />
+
       <WarehouseBalanceBatchReadonly
         :summary="warehouseBalanceBatchReadonlySummary"
       />
@@ -252,10 +265,6 @@
       </section>
 
       <section class="warehouse-traceability-section" data-testid="warehouse-traceability-readonly-section">
-        <WarehouseTraceReadonlySection
-          :summary="warehouseTraceReadonlySummary"
-        />
-
         <div class="traceability-header">
           <div class="title-wrap">
             <h3>仓库追溯 / 批次序列只读</h3>
@@ -1431,7 +1440,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -1472,6 +1481,7 @@ import { useWarehouseBalanceBatchReadonly } from '@/views/warehouse/composables/
 import { useWarehouseFinishedGoodsInboundReadonly } from '@/views/warehouse/composables/useWarehouseFinishedGoodsInboundReadonly'
 import { useWarehousePermissionModeReadonly } from '@/views/warehouse/composables/useWarehousePermissionModeReadonly'
 import { useWarehouseTraceReadonly } from '@/views/warehouse/composables/useWarehouseTraceReadonly'
+import { WAREHOUSE_TRACE_READONLY_GUARD_REASON_MAP } from '@/views/warehouse/constants/warehouseTraceReadonlyFields'
 
 type DisplayRow = {
   warehouse: string
@@ -1532,6 +1542,30 @@ type LocalInventoryResidualData = {
 const permissionStore = usePermissionStore()
 const route = useRoute()
 const router = useRouter()
+const GLOBAL_TRACE_READONLY_GUARD_ATTR = 'data-warehouse-trace-readonly-disabled'
+const GLOBAL_TRACE_READONLY_PREV_DISABLED_ATTR = 'data-warehouse-trace-prev-disabled'
+const GLOBAL_TRACE_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-warehouse-trace-prev-aria-disabled'
+const GLOBAL_TRACE_READONLY_PREV_TITLE_ATTR = 'data-warehouse-trace-prev-title'
+const GLOBAL_TRACE_READONLY_PREV_TABINDEX_ATTR = 'data-warehouse-trace-prev-tabindex'
+const GLOBAL_TRACE_READONLY_PREV_POINTER_EVENTS_ATTR = 'data-warehouse-trace-prev-pointer-events'
+const GLOBAL_TRACE_READONLY_ACTION_GUARDS = [
+  {
+    selector: '#global-auth-refresh-guard',
+    reason: WAREHOUSE_TRACE_READONLY_GUARD_REASON_MAP.refreshPermission,
+    disableNative: true,
+  },
+  {
+    selector: '#z042-global-guarded-refresh',
+    reason: WAREHOUSE_TRACE_READONLY_GUARD_REASON_MAP.refreshPermission,
+    disableNative: true,
+  },
+  {
+    selector: 'button[data-readonly-action="fetchModuleActions"]',
+    reason: WAREHOUSE_TRACE_READONLY_GUARD_REASON_MAP.reloadModuleActions,
+    disableNative: true,
+  },
+] as const
+let globalWarehouseTraceGuardObserver: MutationObserver | null = null
 const permissionReady = ref<boolean>(false)
 const loading = ref<boolean>(false)
 const ledgerLoading = ref<boolean>(false)
@@ -2046,10 +2080,17 @@ const localSeedSemiFinishedOutboundRows: WarehouseSemiFinishedOutboundItem[] = [
 ]
 
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
+const traceReadonlyFocus = computed<string>(() => String(route.query.focus || '').trim().toLowerCase())
+const isInventoryBalanceParity = computed<boolean>(() => (
+  parityValue.value === 'inventory-balance' || parityValue.value === ''
+))
 const isFinishedGoodsParity = computed<boolean>(() => parityValue.value === 'product-stock')
 const isFoundationWarehouseParity = computed<boolean>(() => parityValue.value === 'foundation-warehouse')
 const isFoundationMaterialParity = computed<boolean>(() => parityValue.value === 'foundation-material')
 const warehouseReadonlySliceOnly = true
+const inventoryBalanceParityHint = computed<string>(() => (
+  '衣算云 / 成品进销存 / 仓储追溯（parity=inventory-balance，只读交互）'
+))
 const finishedGoodsParityHint = computed<string>(() => (
   isFinishedGoodsParity.value
     ? '衣算云 / 成品进销存 / 成品库存（parity=product-stock，只读交互）'
@@ -2092,7 +2133,8 @@ const contractReadonlyReadbackRequirements: string[] = [
 
 const warehouseReadonlyActionGuarded = localWriteReadonlyGuarded
 const canRead = computed<boolean>(() => (
-  isFinishedGoodsParity.value
+  isInventoryBalanceParity.value
+  || isFinishedGoodsParity.value
   || isFoundationWarehouseParity.value
   || isFoundationMaterialParity.value
   || permissionStore.state.buttonPermissions.read
@@ -2102,8 +2144,10 @@ const warehouseTraceReadonlyCurrentPath = computed<string>(() => {
   const queryParts = new URLSearchParams()
   const parity = typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
   const tab = typeof route.query.tab === 'string' ? route.query.tab.trim() : ''
+  const focus = typeof route.query.focus === 'string' ? route.query.focus.trim() : ''
   if (parity) queryParts.set('parity', parity)
   if (tab) queryParts.set('tab', tab)
+  if (focus) queryParts.set('focus', focus)
   const queryString = queryParts.toString()
   return queryString ? `${route.path}?${queryString}` : route.path
 })
@@ -2171,6 +2215,7 @@ const { warehouseTraceReadonlySummary } = useWarehouseTraceReadonly({
   canRead,
   parity: parityValue,
   currentPath: warehouseTraceReadonlyCurrentPath,
+  focus: traceReadonlyFocus,
 })
 const canStockEntryWrite = computed<boolean>(() => !warehouseReadonlyActionGuarded.value)
 const countingDeltaQty = computed<number>(() => {
@@ -2208,6 +2253,122 @@ const formatPercent = (value: string | number | null | undefined): string => {
   }
   const numeric = Number(value)
   return Number.isFinite(numeric) ? `${numeric.toFixed(2)}%` : String(value)
+}
+
+const applyGlobalTraceReadonlyGuardToElement = (
+  element: HTMLElement,
+  reason: string,
+  disableNative: boolean,
+): void => {
+  const targetElements = [
+    element,
+    ...Array.from(element.querySelectorAll<HTMLElement>('button, [role="button"], .el-button')),
+  ]
+
+  targetElements.forEach((target) => {
+    if (!target.hasAttribute(GLOBAL_TRACE_READONLY_GUARD_ATTR)) {
+      target.setAttribute(GLOBAL_TRACE_READONLY_GUARD_ATTR, '1')
+      target.setAttribute(
+        GLOBAL_TRACE_READONLY_PREV_DISABLED_ATTR,
+        target instanceof HTMLButtonElement && target.disabled ? 'true' : 'false',
+      )
+      target.setAttribute(
+        GLOBAL_TRACE_READONLY_PREV_ARIA_DISABLED_ATTR,
+        target.getAttribute('aria-disabled') ?? '',
+      )
+      target.setAttribute(GLOBAL_TRACE_READONLY_PREV_TITLE_ATTR, target.getAttribute('title') ?? '')
+      target.setAttribute(GLOBAL_TRACE_READONLY_PREV_TABINDEX_ATTR, target.getAttribute('tabindex') ?? '')
+      target.setAttribute(
+        GLOBAL_TRACE_READONLY_PREV_POINTER_EVENTS_ATTR,
+        target.style.pointerEvents || '',
+      )
+    }
+
+    if (disableNative && target instanceof HTMLButtonElement) {
+      target.disabled = true
+    }
+    target.setAttribute('aria-disabled', 'true')
+    target.setAttribute('title', reason)
+    target.setAttribute('tabindex', '-1')
+    target.style.pointerEvents = 'none'
+    target.classList.add('is-disabled')
+  })
+}
+
+const restoreGlobalTraceReadonlyGuardElements = (): void => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.querySelectorAll<HTMLElement>(`[${GLOBAL_TRACE_READONLY_GUARD_ATTR}="1"]`).forEach((element) => {
+    const prevDisabled = element.getAttribute(GLOBAL_TRACE_READONLY_PREV_DISABLED_ATTR) === 'true'
+    const prevAriaDisabled = element.getAttribute(GLOBAL_TRACE_READONLY_PREV_ARIA_DISABLED_ATTR) ?? ''
+    const prevTitle = element.getAttribute(GLOBAL_TRACE_READONLY_PREV_TITLE_ATTR) ?? ''
+    const prevTabIndex = element.getAttribute(GLOBAL_TRACE_READONLY_PREV_TABINDEX_ATTR) ?? ''
+    const prevPointerEvents = element.getAttribute(GLOBAL_TRACE_READONLY_PREV_POINTER_EVENTS_ATTR) ?? ''
+
+    if (element instanceof HTMLButtonElement) {
+      element.disabled = prevDisabled
+    }
+    if (prevAriaDisabled) {
+      element.setAttribute('aria-disabled', prevAriaDisabled)
+    } else {
+      element.removeAttribute('aria-disabled')
+    }
+    if (prevTitle) {
+      element.setAttribute('title', prevTitle)
+    } else {
+      element.removeAttribute('title')
+    }
+    if (prevTabIndex) {
+      element.setAttribute('tabindex', prevTabIndex)
+    } else {
+      element.removeAttribute('tabindex')
+    }
+
+    element.style.pointerEvents = prevPointerEvents
+    element.classList.remove('is-disabled')
+    element.removeAttribute(GLOBAL_TRACE_READONLY_GUARD_ATTR)
+    element.removeAttribute(GLOBAL_TRACE_READONLY_PREV_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_TRACE_READONLY_PREV_ARIA_DISABLED_ATTR)
+    element.removeAttribute(GLOBAL_TRACE_READONLY_PREV_TITLE_ATTR)
+    element.removeAttribute(GLOBAL_TRACE_READONLY_PREV_TABINDEX_ATTR)
+    element.removeAttribute(GLOBAL_TRACE_READONLY_PREV_POINTER_EVENTS_ATTR)
+  })
+}
+
+const applyGlobalTraceReadonlyActionGuards = async (): Promise<void> => {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  await nextTick()
+  for (const guard of GLOBAL_TRACE_READONLY_ACTION_GUARDS) {
+    document.querySelectorAll<HTMLElement>(guard.selector).forEach((element) => {
+      applyGlobalTraceReadonlyGuardToElement(element, guard.reason, guard.disableNative)
+    })
+  }
+}
+
+const stopGlobalTraceReadonlyGuardObserver = (): void => {
+  globalWarehouseTraceGuardObserver?.disconnect()
+  globalWarehouseTraceGuardObserver = null
+}
+
+const startGlobalTraceReadonlyGuardObserver = (): void => {
+  if (typeof document === 'undefined' || globalWarehouseTraceGuardObserver) {
+    return
+  }
+
+  globalWarehouseTraceGuardObserver = new MutationObserver(() => {
+    void applyGlobalTraceReadonlyActionGuards()
+  })
+  globalWarehouseTraceGuardObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'disabled', 'aria-disabled', 'title', 'tabindex'],
+  })
 }
 
 const normalizeQuery = () => ({
@@ -2675,8 +2836,10 @@ const loadTraceabilityData = async (options?: { forceRemote?: boolean }): Promis
   const batchNo = query.traceability_batch_no.trim() || undefined
   const serialNo = query.traceability_serial_no.trim() || undefined
   const useLocalSeed =
-    isFinishedGoodsParity.value
+    isInventoryBalanceParity.value
+    || isFinishedGoodsParity.value
     || isFoundationWarehouseParity.value
+    || isFoundationMaterialParity.value
     || (
       !options?.forceRemote
       && !normalized.company
@@ -2786,6 +2949,7 @@ const loadData = async (options?: { forceRemote?: boolean }): Promise<void> => {
 
   const normalized = normalizeQuery()
   const useLocalSeed =
+    isInventoryBalanceParity.value ||
     isFinishedGoodsParity.value ||
     isFoundationWarehouseParity.value || (
       !options?.forceRemote &&
@@ -3349,7 +3513,14 @@ onMounted(async () => {
   } finally {
     permissionReady.value = true
   }
+  await applyGlobalTraceReadonlyActionGuards()
+  startGlobalTraceReadonlyGuardObserver()
   await loadData()
+})
+
+onBeforeUnmount(() => {
+  stopGlobalTraceReadonlyGuardObserver()
+  restoreGlobalTraceReadonlyGuardElements()
 })
 </script>
 

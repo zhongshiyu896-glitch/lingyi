@@ -1,105 +1,87 @@
 export type WarehouseTraceReadonlyTagType = 'success' | 'warning' | 'danger' | 'info'
 
 export interface WarehouseTraceReadonlyMetricField {
-  key: 'batchCount' | 'serialCount' | 'ledgerCount' | 'anomalyNodeCount'
+  key: 'traceCount' | 'batchCount' | 'serialCount' | 'sourceCount'
   label: string
 }
 
-export interface WarehouseTraceReadonlyDiagnosticField {
-  key: 'anomaly_nodes' | 'batch_breakpoint' | 'document_breakpoint'
+export interface WarehouseTraceReadonlyStatusField {
+  key: 'trace_item' | 'batch_status' | 'serial_status' | 'source_status'
   title: string
-  sourceRoute: '/warehouse?tab=diagnostic'
-  sourceModule: 'warehouse'
-  sourceDescription: string
-  blockedReason: string
 }
 
 export interface WarehouseTraceReadonlyGuardedAction {
-  key: 'inbound' | 'outbound' | 'transfer' | 'count' | 'export' | 'sync'
+  key: 'stock_entry' | 'export' | 'erpnext' | 'outbox' | 'worker'
   label: string
   reason: string
 }
 
+export interface WarehouseTraceReadonlyGuardReasonMap {
+  refreshPermission: string
+  reloadModuleActions: string
+}
+
 export const WAREHOUSE_TRACE_READONLY_METRIC_FIELDS: WarehouseTraceReadonlyMetricField[] = [
+  { key: 'traceCount', label: '追溯流水数' },
   { key: 'batchCount', label: '批次记录数' },
   { key: 'serialCount', label: '序列号记录数' },
-  { key: 'ledgerCount', label: '追溯流水数' },
-  { key: 'anomalyNodeCount', label: '异常节点数' },
+  { key: 'sourceCount', label: '来源节点数' },
 ]
 
-export const WAREHOUSE_TRACE_READONLY_DIAGNOSTIC_FIELDS: WarehouseTraceReadonlyDiagnosticField[] = [
-  {
-    key: 'anomaly_nodes',
-    title: '异常节点摘要',
-    sourceRoute: '/warehouse?tab=diagnostic',
-    sourceModule: 'warehouse',
-    sourceDescription: '聚合批次停用、序列状态异常和追溯流水缺口，只提供只读诊断摘要。',
-    blockedReason: 'blocked_reason=异常节点修复不在本切片开放范围内，仅允许只读核对。',
-  },
-  {
-    key: 'batch_breakpoint',
-    title: '批次断点',
-    sourceRoute: '/warehouse?tab=diagnostic',
-    sourceModule: 'warehouse',
-    sourceDescription: '核对追溯流水与批次目录是否断链，保留批次断点只读提示。',
-    blockedReason: 'blocked_reason=批次补链与库存修正保持关闭，当前仅开放只读定位。',
-  },
-  {
-    key: 'document_breakpoint',
-    title: '单据断点',
-    sourceRoute: '/warehouse?tab=diagnostic',
-    sourceModule: 'warehouse',
-    sourceDescription: '核对序列号入出单据和追溯凭证是否缺失，只保留单据断点只读摘要。',
-    blockedReason: 'blocked_reason=单据补录、导出和跨模块执行未开放，仅允许只读追踪。',
-  },
+export const WAREHOUSE_TRACE_READONLY_STATUS_FIELDS: WarehouseTraceReadonlyStatusField[] = [
+  { key: 'trace_item', title: '追溯流水状态' },
+  { key: 'batch_status', title: '批次来源状态' },
+  { key: 'serial_status', title: '序列来源状态' },
+  { key: 'source_status', title: 'trace-source 状态' },
 ]
 
 export const WAREHOUSE_TRACE_READONLY_ACTIONS: WarehouseTraceReadonlyGuardedAction[] = [
   {
-    key: 'inbound',
-    label: '入库',
-    reason: '当前仅开放仓库追溯诊断只读核对，不开放真实入库动作。',
-  },
-  {
-    key: 'outbound',
-    label: '出库',
-    reason: '当前仅开放仓库链路诊断，不开放真实出库动作。',
-  },
-  {
-    key: 'transfer',
-    label: '调拨',
-    reason: '当前仅开放追溯断点只读区，不开放调拨执行。',
-  },
-  {
-    key: 'count',
-    label: '盘点',
-    reason: '当前仅开放异常节点摘要，不开放库存盘点写入。',
+    key: 'stock_entry',
+    label: '库存动作',
+    reason: '当前仅开放 trace-readonly 核对，不开放 stock-entry / inbound / outbound / count / transfer。',
   },
   {
     key: 'export',
     label: '导出',
-    reason: '当前仅开放追溯诊断视图，不开放导出执行。',
+    reason: '当前仅开放追溯只读摘要，不开放导出执行。',
   },
   {
-    key: 'sync',
-    label: '同步',
-    reason: '当前仅开放只读诊断，不开放 ERPNext 或库存同步写入。',
+    key: 'erpnext',
+    label: 'ERPNext',
+    reason: '当前仅开放 trace-source 核对，不开放 ERPNext 适配器写入。',
+  },
+  {
+    key: 'outbox',
+    label: 'Outbox',
+    reason: '当前仅开放追溯只读摘要，不开放 outbox 投递或补偿。',
+  },
+  {
+    key: 'worker',
+    label: 'Worker',
+    reason: '当前仅开放追溯只读摘要，不开放 worker 执行或后台修复。',
   },
 ]
 
+export const WAREHOUSE_TRACE_READONLY_GUARD_REASON_MAP: WarehouseTraceReadonlyGuardReasonMap = {
+  refreshPermission: 'trace-readonly 边界保持刷新权限按钮不可执行，避免触发共享全局权限刷新。',
+  reloadModuleActions: 'trace-readonly 边界保持模块动作重载按钮不可执行，避免触发共享模块动作链路。',
+}
+
 export const WAREHOUSE_TRACE_READONLY_ROUTE_LABELS = {
-  traceability: '/warehouse?tab=traceability',
-  diagnostic: '/warehouse?tab=diagnostic',
-  productStockTraceability: '/warehouse?parity=product-stock&tab=traceability',
-  sourceLabel: '追溯诊断来源',
+  defaultRoute: '/warehouse/dashboard?tab=trace-readonly',
+  sourceLabel: 'trace-source',
   readonlyMode: 'WAREHOUSE_TRACE_GET_ONLY',
 } as const
 
 export const WAREHOUSE_TRACE_READONLY_GUARD_MESSAGE =
-  '当前仅开放仓库追溯诊断、异常节点摘要和只读链路核对，不开放入库、出库、调拨、盘点、导出、同步或跨模块执行。'
+  '当前仅开放仓储追溯只读核对，不开放 stock-entry、export、ERPNext、outbox、worker 或跨模块库存执行。'
 
 export const WAREHOUSE_TRACE_READONLY_REMAINING_GAP =
-  'remaining_gap=真实入库、出库、调拨、盘点、导出、ERPNext 同步和库存写入未开放；批次/单据断点仍需人工核对。'
+  'remaining_gap=真实 stock-entry、inbound、outbound、count、transfer、export、ERPNext、outbox、worker 与库存写入未开放；当前仅保留 trace-source 和 item/status 摘要。'
 
 export const WAREHOUSE_TRACE_READONLY_WRITE_BOUNDARY =
-  'inbound / outbound / transfer / count / export / sync disabled'
+  'stock-entry / export / ERPNext / outbox / worker disabled'
+
+export const WAREHOUSE_TRACE_READONLY_BLOCKED_REASON =
+  'blocked_reason=stock-entry / export / ERPNext / outbox / worker 保持关闭，当前只允许 trace-readonly 摘要与来源核对。'

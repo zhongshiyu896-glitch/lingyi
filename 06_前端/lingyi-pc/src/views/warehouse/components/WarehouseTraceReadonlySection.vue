@@ -1,59 +1,25 @@
 <template>
-  <section class="readonly-section" data-testid="cand283-warehouse-trace-readonly-section">
+  <section class="readonly-section" data-testid="cand433-warehouse-trace-readonly-section">
+    <div class="anchor-row" data-testid="cand433-warehouse-trace-anchor" />
+
     <div class="readonly-header">
       <div>
-        <h3 data-testid="cand283-warehouse-trace-title">仓库追溯诊断只读区</h3>
-        <p data-testid="cand283-warehouse-trace-subtitle">
-          当前仅核对追溯链路状态、异常节点与批次/单据断点，不开放真实库存动作。
+        <h3 data-testid="cand433-warehouse-trace-title">仓库追溯只读区</h3>
+        <p data-testid="cand433-warehouse-trace-subtitle">
+          当前仅核对 trace-source、批次/序列来源状态与追溯流水摘要，不开放真实库存动作。
         </p>
       </div>
-      <div class="tag-list" data-testid="cand283-warehouse-trace-tags">
+      <div class="tag-list" data-testid="cand433-warehouse-trace-tags">
         <el-tag
           v-for="tag in summary.tags"
           :key="tag.key"
           :type="tag.type"
           effect="plain"
-          :data-testid="`cand283-warehouse-trace-tag-${tag.key}`"
+          :data-testid="`cand433-warehouse-trace-tag-${tag.key}`"
         >
           {{ tag.label }}
         </el-tag>
       </div>
-    </div>
-
-    <div class="metric-grid" data-testid="cand283-warehouse-trace-metrics">
-      <div
-        v-for="metric in summary.metrics"
-        :key="metric.key"
-        class="metric-card"
-        :data-testid="`cand283-warehouse-trace-metric-${metric.key}`"
-      >
-        <span class="metric-label">{{ metric.label }}</span>
-        <strong class="metric-value">{{ metric.value }}</strong>
-      </div>
-    </div>
-
-    <div class="diagnostic-card-grid" data-testid="cand283-warehouse-trace-cards">
-      <article
-        v-for="card in summary.cards"
-        :key="card.key"
-        class="diagnostic-card"
-        :data-testid="`cand283-warehouse-trace-card-${card.key}`"
-      >
-        <div class="diagnostic-card-header">
-          <div>
-            <h4>{{ card.title }}</h4>
-            <p>{{ card.sourceDescription }}</p>
-          </div>
-          <el-tag :type="card.statusTone" effect="plain">{{ card.statusLabel }}</el-tag>
-        </div>
-        <strong class="diagnostic-card-count">{{ card.count }} 条</strong>
-        <div class="diagnostic-card-meta">
-          <span>source_module={{ card.sourceModule }}</span>
-          <span>source_route={{ card.sourceRoute }}</span>
-        </div>
-        <small>{{ card.blockedReason }}</small>
-        <small>{{ card.note }}</small>
-      </article>
     </div>
 
     <el-descriptions
@@ -61,22 +27,78 @@
       border
       size="small"
       class="readonly-descriptions"
-      data-testid="cand283-warehouse-trace-source-summary"
+      data-testid="cand433-warehouse-trace-query-state"
     >
-      <el-descriptions-item label="追溯链路状态">{{ summary.traceabilityStatusSummary }}</el-descriptions-item>
-      <el-descriptions-item label="库存链路只读标签">{{ summary.parityLabel }}</el-descriptions-item>
-      <el-descriptions-item label="批次/单据断点">{{ summary.breakpointSummary }}</el-descriptions-item>
-      <el-descriptions-item label="只读来源">{{ summary.readonlySourceLabel }}</el-descriptions-item>
-      <el-descriptions-item label="模式">{{ summary.readonlyModeLabel }}</el-descriptions-item>
-      <el-descriptions-item label="写边界">{{ summary.writeBoundary }}</el-descriptions-item>
+      <el-descriptions-item label="query-state">
+        <span data-testid="cand433-warehouse-trace-query-state-value">{{ summary.currentPathLabel }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item label="parity">
+        <span data-testid="cand433-warehouse-trace-marker-parity">{{ summary.parityLabel }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item label="focus">
+        <span data-testid="cand433-warehouse-trace-marker-focus">{{ summary.focusLabel }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item label="source/status">
+        <span data-testid="cand433-warehouse-trace-marker-status">{{ summary.sourceStatusLabel }}</span>
+      </el-descriptions-item>
     </el-descriptions>
 
-    <div class="guarded-action-list" data-testid="cand283-warehouse-trace-readonly-actions">
+    <div class="metric-grid" data-testid="cand433-warehouse-trace-metrics">
+      <div
+        v-for="metric in summary.metrics"
+        :key="metric.key"
+        class="metric-card"
+        :data-testid="`cand433-warehouse-trace-metric-${metric.key}`"
+      >
+        <span class="metric-label">{{ metric.label }}</span>
+        <strong class="metric-value">{{ metric.value }}</strong>
+      </div>
+    </div>
+
+    <div class="diagnostic-card-grid" data-testid="cand433-warehouse-trace-cards">
+      <article
+        v-for="card in summary.statusCards"
+        :key="card.key"
+        class="diagnostic-card"
+        :data-testid="`cand433-warehouse-trace-card-${card.key}`"
+      >
+        <div class="diagnostic-card-header">
+          <div>
+            <h4>{{ card.title }}</h4>
+            <p>{{ card.note }}</p>
+          </div>
+          <el-tag :type="card.statusTone" effect="plain">{{ card.statusLabel }}</el-tag>
+        </div>
+        <strong
+          class="diagnostic-card-count"
+          :data-testid="card.key === 'trace_item' ? 'cand433-warehouse-trace-item-status' : card.key === 'source_status' ? 'cand433-warehouse-trace-source-status' : undefined"
+        >
+          {{ card.value }}
+        </strong>
+      </article>
+    </div>
+
+    <el-alert
+      type="info"
+      :closable="false"
+      show-icon
+      :title="summary.itemStatusSummary"
+      data-testid="cand433-warehouse-trace-item-summary"
+    />
+    <el-alert
+      type="warning"
+      :closable="false"
+      show-icon
+      :title="summary.blockedReason"
+      data-testid="cand433-warehouse-trace-blocked-reason"
+    />
+
+    <div class="guarded-action-list" data-testid="cand433-warehouse-trace-guarded-actions">
       <div
         v-for="action in summary.guardedActions"
         :key="action.key"
         class="guarded-action-card"
-        :data-testid="`cand283-warehouse-trace-guarded-action-${action.key}`"
+        :data-testid="`cand433-warehouse-trace-guarded-action-${action.key}`"
       >
         <el-button size="small" disabled>{{ action.label }}</el-button>
         <span>{{ action.reason }}</span>
@@ -87,15 +109,15 @@
       type="warning"
       :closable="false"
       show-icon
-      :title="summary.guardMessage"
-      data-testid="cand283-warehouse-trace-readonly-guard"
+      :title="summary.readonlyGuard"
+      data-testid="cand433-warehouse-trace-readonly-guard"
     />
     <el-alert
       type="info"
       :closable="false"
       show-icon
       :title="summary.remainingGap"
-      data-testid="cand283-warehouse-trace-remaining-gap"
+      data-testid="cand433-warehouse-trace-remaining-gap"
     />
   </section>
 </template>
@@ -120,6 +142,11 @@ defineProps<{
   background: var(--el-fill-color-lighter);
 }
 
+.anchor-row {
+  width: 100%;
+  height: 0;
+}
+
 .readonly-header,
 .diagnostic-card-header {
   display: flex;
@@ -142,8 +169,7 @@ defineProps<{
   line-height: 1.5;
 }
 
-.tag-list,
-.diagnostic-card-meta {
+.tag-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -187,7 +213,7 @@ defineProps<{
 
 .diagnostic-card-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 

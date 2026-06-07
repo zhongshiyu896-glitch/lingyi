@@ -51,28 +51,44 @@
       <button
         id="global-auth-refresh-guard"
         type="button"
-        class="global-readonly-shell__button"
+        class="global-readonly-shell__button global-readonly-shell__button--disabled global-readonly-shell__button--readonly-guard"
         data-testid="global-auth-refresh-guard"
         data-write-guard="guarded:global-readonly-shell"
         data-readonly-action="fetchCurrentUser"
-        :disabled="permissionStore.state.loading"
-        @click="refreshReadonlySession"
+        data-readonly-state="guarded-readonly"
+        data-global-readonly-guard="true"
+        :disabled="true"
+        aria-disabled="true"
+        tabindex="-1"
+        :title="refreshReadonlyDisabledReason"
+        @click.prevent="handleReadonlyShellActionGuard"
       >
         <span
           id="z042-global-guarded-refresh"
+          class="global-readonly-shell__button-label global-readonly-shell__button-label--readonly-guard"
           data-testid="z042-global-guarded-refresh"
           data-write-guard="guarded:z042-global-route-context-readonly"
+          data-readonly-state="guarded-readonly"
+          data-global-readonly-guard="true"
+          aria-disabled="true"
+          tabindex="-1"
+          :title="refreshReadonlyDisabledReason"
         >
           刷新权限
         </span>
       </button>
       <button
         type="button"
-        class="global-readonly-shell__button"
+        class="global-readonly-shell__button global-readonly-shell__button--disabled global-readonly-shell__button--readonly-guard"
         data-write-guard="guarded:global-module-actions-readonly"
         data-readonly-action="fetchModuleActions"
-        :disabled="permissionStore.state.loading"
-        @click="reloadReadonlyModuleActions"
+        data-readonly-state="guarded-readonly"
+        data-global-readonly-guard="true"
+        :disabled="true"
+        aria-disabled="true"
+        tabindex="-1"
+        :title="reloadReadonlyDisabledReason"
+        @click.prevent="handleReadonlyShellActionGuard"
       >
         重载模块动作
       </button>
@@ -409,6 +425,14 @@ const z044WriteSuccessBlockerText = computed(
   () => '写成功阻断：全局确认、门禁刷新、继续准备说明均 guarded/readonly，write_request_success_allowed=false。',
 )
 
+const refreshReadonlyDisabledReason = '本地只读试用模式：权限刷新已停用'
+const reloadReadonlyDisabledReason = '本地只读试用模式：模块动作重载已停用'
+
+const handleReadonlyShellActionGuard = (event: Event): void => {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
 const loadReadonlyState = async (): Promise<void> => {
   try {
     await permissionStore.loadCurrentUser()
@@ -592,6 +616,16 @@ watch(
   color: #6b778a;
   background: #eef2f7;
   cursor: not-allowed;
+}
+
+.global-readonly-shell__button--readonly-guard {
+  pointer-events: none;
+  border-color: #c8d2df;
+  box-shadow: none;
+}
+
+.global-readonly-shell__button-label--readonly-guard {
+  color: inherit;
 }
 
 @media (max-width: 920px) {
