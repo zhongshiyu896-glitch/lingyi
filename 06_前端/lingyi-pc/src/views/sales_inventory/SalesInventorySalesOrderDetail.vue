@@ -58,6 +58,10 @@
         <SalesOrderDownstreamGuardReadonly :summary="downstreamGuardReadonlySummary" />
       </div>
 
+      <div data-testid="cand502-sales-order-detail-quantity-matrix-anchor">
+        <SalesOrderQuantityMatrixReadonly :summary="salesOrderQuantityMatrixReadonlySummary" />
+      </div>
+
       <template v-if="detail">
         <section class="summary-grid" data-testid="cand104-sales-order-detail-stat-grid">
           <div class="summary-card">
@@ -134,11 +138,6 @@
 
         <SalesOrderReferenceBridgeReadonly :summary="referenceBridgeReadonlySummary" />
 
-        <SalesOrderQuantityMatrixReadonly
-          :summary="quantityMatrixReadonlySummary"
-          :format-number="formatNumber"
-        />
-
         <el-table
           v-loading="loading"
           :data="detail.items"
@@ -195,6 +194,7 @@ import SalesOrderQuantityMatrixReadonly from '@/views/sales_inventory/components
 import SalesOrderReferenceBridgeReadonly from '@/views/sales_inventory/components/SalesOrderReferenceBridgeReadonly.vue'
 import { useSalesOrderDownstreamGuardReadonly } from '@/views/sales_inventory/composables/useSalesOrderDownstreamGuardReadonly'
 import { useSalesOrderDeliveryWindowReadonly } from '@/views/sales_inventory/composables/useSalesOrderDeliveryWindowReadonly'
+import { useSalesOrderQuantityMatrixReadonly } from '@/views/sales_inventory/composables/useSalesOrderQuantityMatrixReadonly'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 const route = useRoute()
@@ -311,6 +311,16 @@ const { downstreamGuardReadonlySummary } = useSalesOrderDownstreamGuardReadonly(
   tab: computed(() => String(route.query.tab || 'downstream-guard-readonly')),
   parity: computed(() => String(route.query.parity || 'sales-order')),
   focus: computed(() => String(route.query.focus || 'downstream-source')),
+  lastLoadedAt,
+  lastError,
+})
+const { salesOrderQuantityMatrixReadonlySummary } = useSalesOrderQuantityMatrixReadonly({
+  mode: 'detail',
+  currentPath: computed(() => route.path),
+  tab: computed(() => String(route.query.tab || 'quantity-matrix-readonly')),
+  parity: computed(() => String(route.query.parity || 'sales-order')),
+  focus: computed(() => String(route.query.focus || 'quantity-source')),
+  detail,
   lastLoadedAt,
   lastError,
 })

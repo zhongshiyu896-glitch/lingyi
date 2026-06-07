@@ -154,6 +154,10 @@
         <SalesOrderDownstreamGuardReadonly :summary="downstreamGuardReadonlySummary" />
       </div>
 
+      <div data-testid="cand502-sales-order-list-quantity-matrix-anchor">
+        <SalesOrderQuantityMatrixReadonly :summary="salesOrderQuantityMatrixReadonlySummary" />
+      </div>
+
       <el-table
         v-loading="loading"
         :data="filteredRows"
@@ -236,8 +240,10 @@ import {
 } from '@/api/sales_inventory_sales_orders'
 import SalesOrderDownstreamGuardReadonly from '@/views/sales_inventory/components/SalesOrderDownstreamGuardReadonly.vue'
 import SalesOrderDeliveryWindowReadonly from '@/views/sales_inventory/components/SalesOrderDeliveryWindowReadonly.vue'
+import SalesOrderQuantityMatrixReadonly from '@/views/sales_inventory/components/SalesOrderQuantityMatrixReadonly.vue'
 import { useSalesOrderDownstreamGuardReadonly } from '@/views/sales_inventory/composables/useSalesOrderDownstreamGuardReadonly'
 import { useSalesOrderDeliveryWindowReadonly } from '@/views/sales_inventory/composables/useSalesOrderDeliveryWindowReadonly'
+import { useSalesOrderQuantityMatrixReadonly } from '@/views/sales_inventory/composables/useSalesOrderQuantityMatrixReadonly'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 interface SalesOrderListQueryState extends SalesOrderReadbackQuery {
@@ -296,6 +302,16 @@ const { downstreamGuardReadonlySummary } = useSalesOrderDownstreamGuardReadonly(
   tab: computed(() => String(route.query.tab || 'downstream-guard-readonly')),
   parity: computed(() => String(route.query.parity || 'sales-order')),
   focus: computed(() => String(route.query.focus || 'downstream-source')),
+  lastLoadedAt,
+  lastError,
+})
+const { salesOrderQuantityMatrixReadonlySummary } = useSalesOrderQuantityMatrixReadonly({
+  mode: 'list',
+  currentPath: computed(() => route.path),
+  tab: computed(() => String(route.query.tab || 'quantity-matrix-readonly')),
+  parity: computed(() => String(route.query.parity || 'sales-order')),
+  focus: computed(() => String(route.query.focus || 'quantity-source')),
+  rows: filteredRows,
   lastLoadedAt,
   lastError,
 })

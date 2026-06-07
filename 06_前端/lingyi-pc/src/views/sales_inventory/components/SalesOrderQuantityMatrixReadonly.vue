@@ -1,147 +1,167 @@
 <template>
-  <section class="matrix-shell" data-testid="cand133-sales-order-matrix-readonly">
-    <div class="matrix-header">
-      <div class="matrix-title-group">
-        <span class="matrix-title">数量矩阵 / 交付进度扩展</span>
-        <span class="matrix-note">{{ matrixCoverageNote }}</span>
+  <section class="readonly-shell" data-testid="cand502-sales-order-quantity-matrix-readonly-section">
+    <div class="readonly-header">
+      <div class="title-group">
+        <span class="title">sales-order quantity-matrix 只读核对</span>
+        <span class="note" data-testid="cand502-sales-order-quantity-matrix-query-state">
+          {{ summary.queryStateLabel }}
+        </span>
       </div>
-      <el-tag type="warning" effect="plain">readonly matrix</el-tag>
+      <div class="header-tags">
+        <el-tag :type="summary.parityTone" effect="plain" data-testid="cand502-sales-order-quantity-matrix-parity">
+          {{ summary.parityLabel }}
+        </el-tag>
+        <el-tag :type="summary.focusTone" effect="plain" data-testid="cand502-sales-order-quantity-matrix-focus">
+          {{ summary.focusLabel }}
+        </el-tag>
+        <el-tag :type="summary.stateTone" effect="plain" data-testid="cand502-sales-order-quantity-matrix-state">
+          {{ summary.stateLabel }}
+        </el-tag>
+        <el-tag
+          :type="summary.sourceStatusTone"
+          effect="plain"
+          data-testid="cand502-sales-order-quantity-matrix-source-status"
+        >
+          {{ summary.sourceStatusLabel }}
+        </el-tag>
+      </div>
     </div>
 
     <div class="summary-grid">
-      <div v-for="field in SALES_ORDER_MATRIX_SUMMARY_FIELDS" :key="field.key" class="summary-card">
-        <span class="summary-label">{{ field.label }}</span>
-        <strong class="summary-value">{{ summaryValue(field.key) }}</strong>
+      <div v-for="card in summary.cards" :key="card.key" class="summary-card">
+        <span class="summary-label">{{ card.label }}</span>
+        <strong class="summary-value">{{ card.value }}</strong>
       </div>
     </div>
 
     <el-alert
-      type="info"
+      type="warning"
       :closable="false"
-      class="matrix-guard"
-      :title="guardMessage"
-      data-testid="cand133-sales-order-matrix-guard"
+      :title="summary.blockedReason"
+      data-testid="cand502-sales-order-quantity-matrix-blocked-reason"
     />
 
+    <el-alert
+      type="info"
+      :closable="false"
+      :title="summary.readonlyGuardReason"
+      data-testid="cand502-sales-order-quantity-matrix-readonly-guard"
+    />
+
+    <el-alert
+      type="info"
+      :closable="false"
+      :title="summary.remainingGap"
+      data-testid="cand502-sales-order-quantity-matrix-remaining-gap"
+    />
+
+    <el-descriptions border :column="2" class="readonly-descriptions">
+      <el-descriptions-item label="写入边界">
+        <span data-testid="cand502-sales-order-quantity-matrix-write-boundary">
+          {{ summary.writeBoundary }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="来源状态">
+        <span data-testid="cand502-sales-order-quantity-matrix-source-status-text">
+          {{ summary.sourceStatusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="条目/状态">
+        <span data-testid="cand502-sales-order-quantity-matrix-item-status">
+          {{ summary.itemStatusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="聚焦来源">
+        <span data-testid="cand502-sales-order-quantity-matrix-focus-text">
+          {{ summary.focusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="联动状态">{{ summary.stateLabel }}</el-descriptions-item>
+      <el-descriptions-item label="只读守卫">{{ summary.readonlyGuardReason }}</el-descriptions-item>
+    </el-descriptions>
+
+    <div class="guarded-actions" data-testid="cand502-sales-order-quantity-matrix-guarded-actions">
+      <el-button
+        v-for="action in summary.disabledActions"
+        :key="action.label"
+        disabled
+        type="info"
+        plain
+        data-action-type="write"
+        data-guard-state="disabled"
+        :title="action.reason"
+      >
+        {{ action.label }}
+      </el-button>
+    </div>
+
     <el-table
-      :data="summary.rows"
+      :data="summary.items"
       border
-      class="matrix-table"
-      empty-text="暂无可展示的颜色尺码矩阵"
-      data-testid="cand133-sales-order-matrix-table"
+      size="small"
+      empty-text="暂无 sales-order quantity matrix 只读条目"
+      data-testid="cand502-sales-order-quantity-matrix-item-table"
     >
-      <el-table-column prop="styleKey" label="款式聚合" min-width="160" />
-      <el-table-column prop="color" label="颜色" min-width="100" />
-      <el-table-column prop="size" label="尺码" min-width="100" />
-      <el-table-column label="订单数量" min-width="110">
-        <template #default="{ row }">{{ formatNumber(row.orderedQty) }}</template>
-      </el-table-column>
-      <el-table-column label="已交数量" min-width="110">
-        <template #default="{ row }">{{ formatNumber(row.deliveredQty) }}</template>
-      </el-table-column>
-      <el-table-column label="未交数量" min-width="110">
-        <template #default="{ row }">{{ formatNumber(row.remainingQty) }}</template>
-      </el-table-column>
-      <el-table-column prop="completionRateLabel" label="完成率" min-width="100" />
-      <el-table-column prop="deliveryDateLabel" label="承诺交期" min-width="120" />
-      <el-table-column label="交付状态" min-width="120">
-        <template #default="{ row }">
-          <el-tag :type="progressTagType(row.progressState)" effect="plain">
-            {{ progressLabel(row.progressState) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="sourceItemsLabel" label="来源款号" min-width="220" show-overflow-tooltip />
+      <el-table-column prop="subjectLabel" label="条目" min-width="180" />
+      <el-table-column prop="statusLabel" label="状态" min-width="180" />
+      <el-table-column prop="sourceLabel" label="来源" min-width="220" />
+      <el-table-column prop="blockedReason" label="阻断原因" min-width="260" />
     </el-table>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { SalesOrderQuantityMatrixReadonlySummary } from '@/api/sales_inventory_sales_orders'
-import {
-  SALES_ORDER_MATRIX_PROGRESS_LABELS,
-  SALES_ORDER_MATRIX_PROGRESS_TAGS,
-  SALES_ORDER_MATRIX_SUMMARY_FIELDS,
-  type SalesOrderMatrixProgressState,
-} from '@/views/sales_inventory/constants/salesOrderMatrixFields'
+import type { SalesOrderQuantityMatrixReadonlyViewSummary } from '@/views/sales_inventory/composables/useSalesOrderQuantityMatrixReadonly'
 
-const props = defineProps<{
-  summary: SalesOrderQuantityMatrixReadonlySummary
-  formatNumber: (value?: string | number | null, digits?: number) => string
+defineProps<{
+  summary: SalesOrderQuantityMatrixReadonlyViewSummary
 }>()
-
-const guardMessage = computed(
-  () =>
-    '数量矩阵只开放只读核对；create / update / delete / export / inventory impact 均保持 guarded readonly，不触发真实销售写链路。',
-)
-
-const matrixCoverageNote = computed(
-  () =>
-    `已交 ${props.formatNumber(props.summary.totalDeliveredQty)} / 订单 ${props.formatNumber(props.summary.totalOrderedQty)}，待交 ${props.formatNumber(props.summary.totalRemainingQty)}。`,
-)
-
-const summaryValue = (key: (typeof SALES_ORDER_MATRIX_SUMMARY_FIELDS)[number]['key']): string => {
-  switch (key) {
-    case 'matrixCellCount':
-      return String(props.summary.matrixCellCount)
-    case 'colorCount':
-      return String(props.summary.colorCount)
-    case 'sizeCount':
-      return String(props.summary.sizeCount)
-    case 'delayedLineCount':
-      return String(props.summary.delayedLineCount)
-    case 'completedLineCount':
-      return String(props.summary.completedLineCount)
-    case 'matrixCompletionRateLabel':
-      return props.summary.matrixCompletionRateLabel
-    default:
-      return '-'
-  }
-}
-
-const progressLabel = (state: SalesOrderMatrixProgressState): string => SALES_ORDER_MATRIX_PROGRESS_LABELS[state]
-
-const progressTagType = (
-  state: SalesOrderMatrixProgressState,
-): 'info' | 'primary' | 'warning' | 'success' | 'danger' => SALES_ORDER_MATRIX_PROGRESS_TAGS[state]
 </script>
 
 <style scoped>
-.matrix-shell {
+.readonly-shell {
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.matrix-header {
+.readonly-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.matrix-title-group {
+.title-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.matrix-title {
-  font-size: 16px;
+.title {
+  font-size: 15px;
   font-weight: 600;
 }
 
-.matrix-note {
+.note,
+.summary-label {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.header-tags,
+.guarded-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .summary-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .summary-card {
@@ -154,20 +174,13 @@ const progressTagType = (
   background: var(--el-fill-color-blank);
 }
 
-.summary-label {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
-
 .summary-value {
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--el-text-color-primary);
 }
 
-.matrix-guard {
-  margin: 0;
-}
-
-.matrix-table {
-  width: 100%;
+.readonly-descriptions :deep(.el-descriptions__label) {
+  width: 120px;
 }
 </style>
