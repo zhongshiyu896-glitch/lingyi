@@ -15,14 +15,15 @@ export interface WorkshopDailyWageReadonlyMetricField {
 
 export interface WorkshopDailyWageGuardedAction {
   key:
+    | 'daily-wage-confirm'
+    | 'daily-wage-import'
     | 'daily-wage-export'
-    | 'daily-wage-generate'
-    | 'daily-wage-sync'
-    | 'ticket-register'
-    | 'ticket-batch'
-    | 'job-card-sync-retry'
+    | 'erpnext'
+    | 'outbox'
+    | 'worker'
+    | 'cross-module'
   label: string
-  route: '/workshop/daily-wages' | '/workshop/tickets'
+  route: '/workshop/daily-wages'
   reason: string
 }
 
@@ -34,53 +35,61 @@ export const WORKSHOP_DAILY_WAGE_READONLY_METRICS: WorkshopDailyWageReadonlyMetr
 ]
 
 export const WORKSHOP_DAILY_WAGE_ROUTE_LABELS = {
-  current: '/workshop/daily-wages',
-  linked: '/workshop/tickets',
-  sourceLabel: '工票回流来源',
-  readonlyMode: 'READONLY_GET_ONLY',
+  defaultRoute: '/workshop/daily-wages',
+  sourceLabel: 'daily-wage-source',
+  readonlyMode: 'WORKSHOP_DAILY_WAGE_GET_ONLY',
 } as const
 
 export const WORKSHOP_DAILY_WAGE_GUARD_MESSAGE =
-  '当前仅开放日薪统计回读、工票来源核对和异常摘要；生成、同步、回写、登记、批量导入保持只读禁用。'
+  'blocked_reason=当前仅开放日工资统计回读、来源核对和异常摘要；确认、导入、导出、ERPNext、outbox、worker 与跨模块执行保持关闭。'
+
+export const WORKSHOP_DAILY_WAGE_READONLY_GUARD =
+  'readonly_guard=当前页面处于 daily-wage-readonly，本地仅核对工资统计和来源状态，不开放真实工资确认或跨模块执行。'
 
 export const WORKSHOP_DAILY_WAGE_REMAINING_GAP =
-  '真实日薪回写、工票登记、批量导入、ERPNext/outbox/worker 未开放。'
+  'remaining_gap=真实日工资确认、批量导入、导出、ERPNext、outbox、worker、production-write 与跨模块执行未开放；当前仅保留 daily-wage-source 与 wage item/status 摘要。'
 
 export const WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS: WorkshopDailyWageGuardedAction[] = [
+  {
+    key: 'daily-wage-confirm',
+    label: '日工资确认',
+    route: '/workshop/daily-wages',
+    reason: '当前仅开放日工资只读核对，不开放真实确认或回写。',
+  },
+  {
+    key: 'daily-wage-import',
+    label: '批量导入',
+    route: '/workshop/daily-wages',
+    reason: '当前仅开放来源与统计核对，不开放导入执行。',
+  },
   {
     key: 'daily-wage-export',
     label: '导出',
     route: '/workshop/daily-wages',
-    reason: '当前仅开放日薪统计只读核对，不开放导出执行。',
+    reason: '当前仅开放日工资只读核对，不开放导出执行。',
   },
   {
-    key: 'daily-wage-generate',
-    label: '生成',
+    key: 'erpnext',
+    label: 'ERPNext',
     route: '/workshop/daily-wages',
-    reason: '当前仅开放异常摘要和来源诊断，不开放日薪生成。',
+    reason: '当前仅开放 daily-wage-source 核对，不开放 ERPNext 适配器链路。',
   },
   {
-    key: 'daily-wage-sync',
-    label: '同步',
+    key: 'outbox',
+    label: 'Outbox',
     route: '/workshop/daily-wages',
-    reason: '当前仅开放只读联动验收，不开放日薪同步。',
+    reason: '当前仅开放只读联动验收，不开放 outbox 投递或补偿。',
   },
   {
-    key: 'ticket-register',
-    label: '工票登记',
-    route: '/workshop/tickets',
-    reason: '当前仅开放工票回流只读核对，不开放工票登记。',
+    key: 'worker',
+    label: 'Worker',
+    route: '/workshop/daily-wages',
+    reason: '当前仅开放只读联动验收，不开放 worker 执行或后台修复。',
   },
   {
-    key: 'ticket-batch',
-    label: '批量导入',
-    route: '/workshop/tickets',
-    reason: '当前仅开放回流来源核对，不开放批量导入。',
-  },
-  {
-    key: 'job-card-sync-retry',
-    label: '重试同步',
-    route: '/workshop/tickets',
-    reason: '当前仅开放同步状态只读诊断，不开放同步重试。',
+    key: 'cross-module',
+    label: '跨模块执行',
+    route: '/workshop/daily-wages',
+    reason: '当前仅开放只读核对，不开放派工、production-write 或跨模块执行链路。',
   },
 ]

@@ -3,6 +3,7 @@ import type { WorkshopDailyWageRow } from '@/api/workshop'
 import {
   WORKSHOP_DAILY_WAGE_GUARD_MESSAGE,
   WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS,
+  WORKSHOP_DAILY_WAGE_READONLY_GUARD,
   WORKSHOP_DAILY_WAGE_READONLY_METRICS,
   WORKSHOP_DAILY_WAGE_REMAINING_GAP,
   WORKSHOP_DAILY_WAGE_ROUTE_LABELS,
@@ -38,9 +39,13 @@ export interface WorkshopDailyWageReadonlySummary {
   metrics: WorkshopDailyWageReadonlyMetric[]
   issues: WorkshopDailyWageReadonlyIssue[]
   guardedActions: WorkshopDailyWageGuardedAction[]
-  readonlySourceLabel: string
-  readonlyModeLabel: string
-  guardMessage: string
+  currentPathLabel: string
+  parityLabel: string
+  focusLabel: string
+  sourceStatusLabel: string
+  itemStatusSummary: string
+  blockedReason: string
+  readonlyGuard: string
   remainingGap: string
 }
 
@@ -57,25 +62,52 @@ const toMoneyLabel = (value: string | number): string => {
   return parsed.toFixed(2)
 }
 
+const resolveParityLabel = (parity: string): string => (
+  parity === 'production-order' ? 'production-order parity' : 'production-order parity (default)'
+)
+
+const resolveFocusLabel = (focus: string): string => (
+  focus === 'daily-wage-source' ? 'daily-wage-source focus' : 'daily-wage-source focus (default)'
+)
+
 export const useWorkshopDailyWageReadonly = (params: {
   rows: Ref<WorkshopDailyWageRow[]>
   totalAmount: Ref<string | number>
   query: WorkshopDailyWageReadonlyQueryState
   canRead: ComputedRef<boolean>
+  currentPath: ComputedRef<string>
+  parity: ComputedRef<string>
+  focus: ComputedRef<string>
 }): ComputedRef<WorkshopDailyWageReadonlySummary> =>
   computed<WorkshopDailyWageReadonlySummary>(() => {
     const rows = params.rows.value
+    const currentPathLabel = params.currentPath.value || WORKSHOP_DAILY_WAGE_ROUTE_LABELS.defaultRoute
+    const parityLabel = resolveParityLabel(params.parity.value)
+    const focusLabel = resolveFocusLabel(params.focus.value)
     const employeeCount = new Set(rows.map((row) => row.employee).filter(Boolean)).size
     const reversalRows = rows.filter((row) => toNumber(row.reversal_qty) > 0)
     const missingItemRows = rows.filter((row) => !String(row.item_code || '').trim())
     const zeroWageRows = rows.filter((row) => toNumber(row.net_qty) > 0 && toNumber(row.wage_amount) <= 0)
     const invalidNetRows = rows.filter((row) => toNumber(row.net_qty) <= 0)
     const netQty = rows.reduce((sum, row) => sum + toNumber(row.net_qty), 0)
+    const sourceReadyCount = rows.filter((row) => (
+      Boolean(String(row.employee || '').trim()) &&
+      Boolean(String(row.process_name || '').trim()) &&
+      Boolean(String(row.work_date || '').trim())
+    )).length
+    const sourceStatusLabel = !params.canRead.value
+      ? 'daily-wage-source guarded'
+      : sourceReadyCount > 0
+        ? 'daily-wage-source ready'
+        : 'daily-wage-source pending'
+    const itemStatusSummary = !params.canRead.value
+      ? 'wage item/status 仅保留 guarded fallback。'
+      : `rows=${rows.length} / reversal=${reversalRows.length} / source=${sourceReadyCount}`
 
     const tags: WorkshopDailyWageReadonlyTag[] = [
       {
         key: 'source',
-        label: `${WORKSHOP_DAILY_WAGE_ROUTE_LABELS.sourceLabel}: ${WORKSHOP_DAILY_WAGE_ROUTE_LABELS.linked}`,
+        label: `${WORKSHOP_DAILY_WAGE_ROUTE_LABELS.sourceLabel}: ${focusLabel}`,
         type: 'info',
       },
       {
@@ -92,6 +124,11 @@ export const useWorkshopDailyWageReadonly = (params: {
         key: 'missing',
         label: missingItemRows.length > 0 ? `缺失款式 ${missingItemRows.length} 条` : '来源信息完整',
         type: missingItemRows.length > 0 ? 'warning' : 'success',
+      },
+      {
+        key: 'parity',
+        label: parityLabel,
+        type: 'warning',
       },
     ]
 
@@ -123,7 +160,7 @@ export const useWorkshopDailyWageReadonly = (params: {
       issues.push({
         key: 'missing-item',
         title: '存在缺失款式信息',
-        message: `共有 ${missingItemRows.length} 条日薪记录缺少款式编码，需回到工票来源核对映射。`,
+        message: `共有 ${missingItemRows.length} 条日工资记录缺少款式编码，需回到日工资来源核对映射。`,
         type: 'warning',
       })
     }
@@ -139,7 +176,7 @@ export const useWorkshopDailyWageReadonly = (params: {
       issues.push({
         key: 'invalid-net',
         title: '存在净数量异常',
-        message: `共有 ${invalidNetRows.length} 条记录净数量小于等于 0，请回到工票列表核对登记/撤销来源。`,
+        message: `共有 ${invalidNetRows.length} 条记录净数量小于等于 0，请回到工票来源核对登记/撤销差异。`,
         type: 'error',
       })
     }
@@ -147,7 +184,7 @@ export const useWorkshopDailyWageReadonly = (params: {
       issues.push({
         key: 'empty-readback',
         title: '当前筛选暂无回读记录',
-        message: '工票回流和异常摘要保持只读占位，不触发真实生成或同步动作。',
+        message: '日工资来源和异常摘要保持只读占位，不触发真实确认、导入或同步动作。',
         type: 'info',
       })
     }
@@ -157,9 +194,13 @@ export const useWorkshopDailyWageReadonly = (params: {
       metrics,
       issues,
       guardedActions: WORKSHOP_DAILY_WAGE_GUARDED_ACTIONS,
-      readonlySourceLabel: WORKSHOP_DAILY_WAGE_ROUTE_LABELS.current,
-      readonlyModeLabel: WORKSHOP_DAILY_WAGE_ROUTE_LABELS.readonlyMode,
-      guardMessage: WORKSHOP_DAILY_WAGE_GUARD_MESSAGE,
+      currentPathLabel,
+      parityLabel,
+      focusLabel,
+      sourceStatusLabel,
+      itemStatusSummary,
+      blockedReason: WORKSHOP_DAILY_WAGE_GUARD_MESSAGE,
+      readonlyGuard: WORKSHOP_DAILY_WAGE_READONLY_GUARD,
       remainingGap: WORKSHOP_DAILY_WAGE_REMAINING_GAP,
     }
   })

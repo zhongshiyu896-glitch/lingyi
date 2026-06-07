@@ -1,34 +1,24 @@
 <template>
-  <section class="readonly-section" data-testid="workshop-daily-wage-readonly-section">
+  <section class="readonly-section" data-testid="cand437-workshop-daily-wage-readonly-section">
+    <div class="anchor-row" data-testid="cand437-workshop-daily-wage-anchor" />
+
     <div class="readonly-header">
       <div>
-        <h3 data-testid="workshop-daily-wage-readonly-title">日薪异常摘要与工票回流</h3>
-        <p data-testid="workshop-daily-wage-readonly-subtitle">
-          当前仅核对日薪统计、工票来源与异常原因，不开放真实写动作。
+        <h3 data-testid="cand437-workshop-daily-wage-title">日工资只读摘要</h3>
+        <p data-testid="cand437-workshop-daily-wage-subtitle">
+          当前仅核对 daily-wage-source、日工资统计与异常原因，不开放真实工资确认或跨模块执行。
         </p>
       </div>
-      <div class="tag-list" data-testid="workshop-daily-wage-readonly-tags">
+      <div class="tag-list" data-testid="cand437-workshop-daily-wage-tags">
         <el-tag
           v-for="tag in summary.tags"
           :key="tag.key"
           :type="tag.type"
           effect="plain"
-          :data-testid="`workshop-daily-wage-readonly-tag-${tag.key}`"
+          :data-testid="`cand437-workshop-daily-wage-tag-${tag.key}`"
         >
           {{ tag.label }}
         </el-tag>
-      </div>
-    </div>
-
-    <div class="metric-grid" data-testid="workshop-daily-wage-readonly-metrics">
-      <div
-        v-for="metric in summary.metrics"
-        :key="metric.key"
-        class="metric-card"
-        :data-testid="`workshop-daily-wage-readonly-metric-${metric.key}`"
-      >
-        <span class="metric-label">{{ metric.label }}</span>
-        <strong class="metric-value">{{ metric.value }}</strong>
       </div>
     </div>
 
@@ -37,25 +27,55 @@
       border
       size="small"
       class="readonly-descriptions"
-      data-testid="workshop-daily-wage-readonly-source-summary"
+      data-testid="cand437-workshop-daily-wage-query-state"
     >
-    <el-descriptions-item label="只读来源">{{ summary.readonlySourceLabel }}</el-descriptions-item>
-    <el-descriptions-item label="模式">{{ summary.readonlyModeLabel }}</el-descriptions-item>
-  </el-descriptions>
+      <el-descriptions-item label="query-state">
+        <span data-testid="cand437-workshop-daily-wage-query-state-value">{{ summary.currentPathLabel }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item label="parity">
+        <span data-testid="cand437-workshop-daily-wage-marker-parity">{{ summary.parityLabel }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item label="focus">
+        <span data-testid="cand437-workshop-daily-wage-marker-focus">{{ summary.focusLabel }}</span>
+      </el-descriptions-item>
+      <el-descriptions-item label="source/status">
+        <span data-testid="cand437-workshop-daily-wage-marker-status">{{ summary.sourceStatusLabel }}</span>
+      </el-descriptions-item>
+    </el-descriptions>
 
-    <div class="guarded-action-list" data-testid="workshop-daily-wage-readonly-guarded-actions">
+    <div class="metric-grid" data-testid="cand437-workshop-daily-wage-metrics">
+      <div
+        v-for="metric in summary.metrics"
+        :key="metric.key"
+        class="metric-card"
+        :data-testid="`cand437-workshop-daily-wage-metric-${metric.key}`"
+      >
+        <span class="metric-label">{{ metric.label }}</span>
+        <strong class="metric-value">{{ metric.value }}</strong>
+      </div>
+    </div>
+
+    <el-alert
+      type="info"
+      :closable="false"
+      show-icon
+      :title="summary.itemStatusSummary"
+      data-testid="cand437-workshop-daily-wage-item-status"
+    />
+
+    <div class="guarded-action-list" data-testid="cand437-workshop-daily-wage-guarded-actions">
       <div
         v-for="action in summary.guardedActions"
         :key="action.key"
         class="guarded-action-card"
-        :data-testid="`workshop-daily-wage-guarded-action-${action.key}`"
+        :data-testid="`cand437-workshop-daily-wage-guarded-action-${action.key}`"
       >
-        <strong>{{ action.label }}</strong>
+        <el-button size="small" disabled>{{ action.label }}</el-button>
         <span>{{ action.reason }}</span>
       </div>
     </div>
 
-    <div class="issue-list" data-testid="workshop-daily-wage-readonly-issues">
+    <div class="issue-list" data-testid="cand437-workshop-daily-wage-issues">
       <el-alert
         v-for="issue in summary.issues"
         :key="issue.key"
@@ -65,7 +85,7 @@
         :closable="false"
         show-icon
         class="issue-alert"
-        :data-testid="`workshop-daily-wage-readonly-issue-${issue.key}`"
+        :data-testid="`cand437-workshop-daily-wage-issue-${issue.key}`"
       />
     </div>
 
@@ -73,15 +93,22 @@
       type="warning"
       :closable="false"
       show-icon
-      :title="summary.guardMessage"
-      data-testid="workshop-daily-wage-readonly-guard"
+      :title="summary.blockedReason"
+      data-testid="cand437-workshop-daily-wage-blocked-reason"
+    />
+    <el-alert
+      type="warning"
+      :closable="false"
+      show-icon
+      :title="summary.readonlyGuard"
+      data-testid="cand437-workshop-daily-wage-readonly-guard"
     />
     <el-alert
       type="info"
       :closable="false"
       show-icon
       :title="summary.remainingGap"
-      data-testid="workshop-daily-wage-readonly-remaining-gap"
+      data-testid="cand437-workshop-daily-wage-remaining-gap"
     />
   </section>
 </template>
@@ -104,6 +131,11 @@ defineProps<{
   border: 1px solid var(--el-border-color-light);
   border-radius: 6px;
   background: var(--el-fill-color-lighter);
+}
+
+.anchor-row {
+  width: 100%;
+  height: 0;
 }
 
 .readonly-header {
@@ -169,8 +201,8 @@ defineProps<{
 
 .guarded-action-card {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
   padding: 10px 12px;
   border: 1px dashed var(--el-border-color);
   border-radius: 6px;
