@@ -1,204 +1,148 @@
 <template>
-  <section class="guard-shell" data-testid="cand158-reference-guard-readonly">
-    <div class="guard-header">
+  <section class="readonly-shell" data-testid="cand490-sales-inventory-reference-source-guard-readonly-section">
+    <div class="readonly-header">
       <div class="title-group">
-        <span class="title">销售库存引用桥与 parity 守卫</span>
-        <span class="note">{{ summary.readonlySourceTag }}</span>
+        <span class="title">foundation-source guard 只读回读</span>
+        <span class="note" data-testid="cand490-sales-inventory-reference-source-guard-query-state">
+          {{ summary.queryStateLabel }}
+        </span>
       </div>
       <div class="header-tags">
-        <el-tag effect="plain">GET-only</el-tag>
         <el-tag
-          :type="SALES_INVENTORY_REFERENCE_SOURCE_TAGS[summary.sourceValidationState]"
+          :type="summary.parityTone"
           effect="plain"
+          data-testid="cand490-sales-inventory-reference-source-guard-parity"
         >
-          {{ summary.sourceValidationLabel }}
+          {{ summary.parityLabel }}
         </el-tag>
         <el-tag
-          :type="SALES_INVENTORY_REFERENCE_PARITY_TAGS[summary.parityGuardState]"
+          :type="summary.focusTone"
           effect="plain"
+          data-testid="cand490-sales-inventory-reference-source-guard-focus"
         >
-          {{ summary.parityGuardLabel }}
+          {{ summary.focusLabel }}
         </el-tag>
-        <el-tag type="warning" effect="plain">readonly guard</el-tag>
+        <el-tag
+          :type="summary.stateTone"
+          effect="plain"
+          data-testid="cand490-sales-inventory-reference-source-guard-state"
+        >
+          {{ summary.stateLabel }}
+        </el-tag>
+        <el-tag
+          :type="summary.sourceStatusTone"
+          effect="plain"
+          data-testid="cand490-sales-inventory-reference-source-guard-source-status"
+        >
+          {{ summary.sourceStatusLabel }}
+        </el-tag>
       </div>
     </div>
 
     <div class="summary-grid">
-      <div
-        v-for="field in SALES_INVENTORY_REFERENCE_GUARD_SUMMARY_FIELDS"
-        :key="field.key"
-        class="summary-card"
-      >
-        <span class="summary-label">{{ field.label }}</span>
-        <strong class="summary-value">{{ summaryValue(field.key) }}</strong>
+      <div v-for="card in summary.cards" :key="card.key" class="summary-card">
+        <span class="summary-label">{{ card.label }}</span>
+        <strong class="summary-value">{{ card.value }}</strong>
       </div>
     </div>
-
-    <el-alert
-      type="info"
-      :closable="false"
-      :title="summary.bridgeRows[0]?.summary || summary.readonlyGuardReason"
-      data-testid="sales-inventory-reference-bridge-summary"
-    />
 
     <el-alert
       type="warning"
       :closable="false"
       :title="summary.blockedReason"
-      data-testid="sales-inventory-reference-blocked-reason"
+      data-testid="cand490-sales-inventory-reference-source-guard-blocked-reason"
     />
-
-    <el-alert
-      v-if="summary.missingSourcePrompt"
-      type="warning"
-      :closable="false"
-      :title="summary.missingSourcePrompt"
-      data-testid="cand158-reference-missing-source-prompt"
-    />
-
-    <el-descriptions
-      border
-      :column="1"
-      class="guard-descriptions"
-      data-testid="sales-inventory-reference-route-scope"
-    >
-      <el-descriptions-item
-        v-for="item in summary.routeItems"
-        :key="item.key"
-        :label="item.label"
-      >
-        <span>{{ item.route }}</span>
-        <el-tag
-          size="small"
-          effect="plain"
-          :type="item.active ? 'success' : 'info'"
-          style="margin-left: 8px"
-        >
-          {{ item.active ? 'active' : 'readonly' }}
-        </el-tag>
-        <span class="route-note">{{ item.note }}</span>
-      </el-descriptions-item>
-    </el-descriptions>
-
-    <el-table
-      :data="summary.bridgeRows"
-      border
-      empty-text="暂无引用桥摘要"
-      data-testid="sales-inventory-reference-bridge-rows"
-    >
-      <el-table-column prop="label" label="引用桥项" min-width="180" />
-      <el-table-column label="状态" width="120">
-        <template #default="{ row }">
-          <el-tag :type="bridgeStatusTagType(row.status)" effect="plain">
-            {{ row.status }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="summary" label="摘要" min-width="280" />
-      <el-table-column prop="recommendation" label="只读建议" min-width="280" />
-    </el-table>
-
-    <el-descriptions
-      border
-      :column="3"
-      class="guard-descriptions"
-      data-testid="cand158-reference-guard-summary"
-    >
-      <el-descriptions-item label="active_tab">
-        {{ summary.activeTab === 'customers' ? 'customers' : 'suppliers' }}
-      </el-descriptions-item>
-      <el-descriptions-item label="parity_guard">{{ summary.parityGuardLabel }}</el-descriptions-item>
-      <el-descriptions-item label="source_state">{{ summary.sourceValidationLabel }}</el-descriptions-item>
-      <el-descriptions-item label="readonly_tag">{{ summary.readonlySourceTag }}</el-descriptions-item>
-      <el-descriptions-item label="missing_prompt">
-        {{ summary.missingSourcePrompt || '-' }}
-      </el-descriptions-item>
-      <el-descriptions-item label="write_boundary">
-        order write / inventory adjust / export disabled
-      </el-descriptions-item>
-    </el-descriptions>
-
-    <div class="guard-grid" data-testid="sales-inventory-reference-guard-actions">
-      <div
-        v-for="action in SALES_INVENTORY_REFERENCE_GUARD_ACTIONS"
-        :key="action.key"
-        class="guard-item"
-      >
-        <div class="guard-label">{{ action.label }}</div>
-        <el-button size="small" disabled data-action-type="write" data-guard-state="disabled">
-          {{ action.label }}
-        </el-button>
-        <div class="guard-hint">{{ action.reason }}</div>
-      </div>
-    </div>
 
     <el-alert
       type="info"
       :closable="false"
       :title="summary.readonlyGuardReason"
-      data-testid="cand158-reference-readonly-guard"
+      data-testid="cand490-sales-inventory-reference-source-guard-readonly-guard"
     />
 
     <el-alert
-      type="warning"
+      type="info"
       :closable="false"
       :title="summary.remainingGap"
-      data-testid="sales-inventory-reference-remaining-gap"
+      data-testid="cand490-sales-inventory-reference-source-guard-remaining-gap"
     />
+
+    <el-descriptions border :column="2" class="readonly-descriptions">
+      <el-descriptions-item label="写入边界">
+        <span data-testid="cand490-sales-inventory-reference-source-guard-write-boundary">
+          {{ summary.writeBoundary }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="来源状态">
+        <span data-testid="cand490-sales-inventory-reference-source-guard-source-status-text">
+          {{ summary.sourceStatusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="条目/状态">
+        <span data-testid="cand490-sales-inventory-reference-source-guard-item-status">
+          {{ summary.itemStatusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="聚焦来源">
+        <span data-testid="cand490-sales-inventory-reference-source-guard-focus-text">
+          {{ summary.focusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="联动状态">{{ summary.stateLabel }}</el-descriptions-item>
+      <el-descriptions-item label="只读守卫">{{ summary.readonlyGuardReason }}</el-descriptions-item>
+    </el-descriptions>
+
+    <div class="guarded-actions" data-testid="cand490-sales-inventory-reference-source-guard-guarded-actions">
+      <el-button
+        v-for="action in summary.disabledActions"
+        :key="action.label"
+        disabled
+        type="info"
+        plain
+        data-action-type="write"
+        data-guard-state="disabled"
+        :title="action.reason"
+      >
+        {{ action.label }}
+      </el-button>
+    </div>
+
+    <el-table
+      :data="summary.items"
+      border
+      size="small"
+      empty-text="暂无 foundation-source 只读条目"
+      data-testid="cand490-sales-inventory-reference-source-guard-item-table"
+    >
+      <el-table-column prop="subjectLabel" label="条目" min-width="180" />
+      <el-table-column prop="statusLabel" label="状态" min-width="180" />
+      <el-table-column prop="sourceLabel" label="来源" min-width="220" />
+      <el-table-column prop="blockedReason" label="阻断原因" min-width="260" />
+    </el-table>
   </section>
 </template>
 
 <script setup lang="ts">
-import type {
-  SalesInventoryReferenceBridgeStatus,
-  SalesInventoryReferenceGuardSummary,
-} from '@/api/sales_inventory_references'
-import {
-  SALES_INVENTORY_REFERENCE_BRIDGE_TAGS,
-  SALES_INVENTORY_REFERENCE_GUARD_ACTIONS,
-  SALES_INVENTORY_REFERENCE_GUARD_SUMMARY_FIELDS,
-  SALES_INVENTORY_REFERENCE_PARITY_TAGS,
-  SALES_INVENTORY_REFERENCE_SOURCE_TAGS,
-} from '@/views/sales_inventory/constants/salesInventoryReferenceGuardFields'
+import type { SalesInventoryReferenceGuardReadonlyViewSummary } from '@/views/sales_inventory/composables/useSalesInventoryReferenceGuardReadonly'
 
-const props = defineProps<{
-  summary: SalesInventoryReferenceGuardSummary
+defineProps<{
+  summary: SalesInventoryReferenceGuardReadonlyViewSummary
 }>()
-
-const summaryValue = (
-  key: (typeof SALES_INVENTORY_REFERENCE_GUARD_SUMMARY_FIELDS)[number]['key'],
-): string => {
-  switch (key) {
-    case 'queryScope':
-      return props.summary.cardValues.queryScope
-    case 'bridgeNodes':
-      return props.summary.cardValues.bridgeNodes
-    case 'blockedCount':
-      return props.summary.cardValues.blockedCount
-    case 'sourceState':
-      return props.summary.cardValues.sourceState
-    default:
-      return '-'
-  }
-}
-
-const bridgeStatusTagType = (status: SalesInventoryReferenceBridgeStatus) =>
-  SALES_INVENTORY_REFERENCE_BRIDGE_TAGS[status]
 </script>
 
 <style scoped>
-.guard-shell {
-  margin-top: 12px;
+.readonly-shell {
+  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.guard-header {
+.readonly-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
 }
 
 .title-group {
@@ -208,34 +152,28 @@ const bridgeStatusTagType = (status: SalesInventoryReferenceBridgeStatus) =>
 }
 
 .title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .note,
 .summary-label {
-  color: var(--el-text-color-secondary);
   font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
-.header-tags {
+.header-tags,
+.guarded-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
   justify-content: flex-end;
-}
-
-.route-note,
-.guard-hint,
-.summary-label {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
+  gap: 8px;
 }
 
 .summary-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .summary-card {
@@ -249,26 +187,12 @@ const bridgeStatusTagType = (status: SalesInventoryReferenceBridgeStatus) =>
 }
 
 .summary-value {
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--el-text-color-primary);
 }
 
-.guard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.guard-item {
-  border: 1px dashed var(--el-border-color);
-  border-radius: 8px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.guard-label {
-  font-size: 13px;
-  font-weight: 600;
+.readonly-descriptions :deep(.el-descriptions__label) {
+  width: 120px;
 }
 </style>

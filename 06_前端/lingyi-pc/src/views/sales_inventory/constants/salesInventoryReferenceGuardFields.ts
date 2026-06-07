@@ -1,64 +1,73 @@
-import type {
-  SalesInventoryReferenceBridgeStatus,
-  SalesInventoryReferenceParityGuardState,
-  SalesInventoryReferenceSourceValidationState,
-} from '@/api/sales_inventory_references'
+export type SalesInventoryReferenceGuardReadonlyState =
+  | 'ready-readonly'
+  | 'query-guarded'
+  | 'source-warning'
+  | 'permission-guarded'
 
-type TagType = 'success' | 'warning' | 'danger' | 'info'
+export type SalesInventoryReferenceGuardReadonlyTagType = 'success' | 'warning' | 'danger' | 'info'
 
-export const SALES_INVENTORY_REFERENCE_SOURCE_TAGS: Record<
-  SalesInventoryReferenceSourceValidationState,
-  TagType
+export const SALES_INVENTORY_REFERENCE_GUARD_STATE_LABELS: Record<
+  SalesInventoryReferenceGuardReadonlyState,
+  string
 > = {
-  verified: 'success',
-  fallback: 'warning',
-  missing: 'danger',
+  'ready-readonly': 'foundation-source 已回读 / 只读守卫',
+  'query-guarded': '当前筛选无结果 / 保留只读壳层',
+  'source-warning': '来源存在缺口或回退',
+  'permission-guarded': 'reference-source 权限只读守卫',
 }
 
-export const SALES_INVENTORY_REFERENCE_PARITY_TAGS: Record<
-  SalesInventoryReferenceParityGuardState,
-  TagType
+export const SALES_INVENTORY_REFERENCE_GUARD_STATE_TAGS: Record<
+  SalesInventoryReferenceGuardReadonlyState,
+  SalesInventoryReferenceGuardReadonlyTagType
 > = {
-  'reference-default': 'info',
-  'foundation-customer': 'warning',
-  'foundation-supplier': 'warning',
-}
-
-export const SALES_INVENTORY_REFERENCE_BRIDGE_TAGS: Record<
-  SalesInventoryReferenceBridgeStatus,
-  TagType
-> = {
-  ok: 'success',
-  warn: 'warning',
-  blocked: 'danger',
+  'ready-readonly': 'success',
+  'query-guarded': 'warning',
+  'source-warning': 'warning',
+  'permission-guarded': 'danger',
 }
 
 export const SALES_INVENTORY_REFERENCE_GUARD_SUMMARY_FIELDS = [
-  { key: 'queryScope', label: '当前查询态' },
-  { key: 'bridgeNodes', label: '引用桥记录' },
-  { key: 'blockedCount', label: '阻断数量' },
-  { key: 'sourceState', label: '来源状态' },
+  { key: 'referenceCountLabel', label: '引用条目' },
+  { key: 'activeReferenceCountLabel', label: '启用条目' },
+  { key: 'sourceIssueCountLabel', label: '来源阻断' },
+  { key: 'guardedActionCountLabel', label: '禁用动作' },
 ] as const
 
-export const SALES_INVENTORY_REFERENCE_GUARD_ACTIONS = [
+export type SalesInventoryReferenceGuardSummaryFieldKey =
+  (typeof SALES_INVENTORY_REFERENCE_GUARD_SUMMARY_FIELDS)[number]['key']
+
+export const SALES_INVENTORY_REFERENCE_GUARD_PARITY_LABEL = 'foundation-reference parity'
+export const SALES_INVENTORY_REFERENCE_GUARD_FOCUS_LABEL = 'reference-source focus'
+export const SALES_INVENTORY_REFERENCE_GUARD_READONLY_GUARD_REASON =
+  '当前切片仅开放 foundation-source guard / source-status 只读核对；真实客户/供应商维护、导入、导出、库存写入、ERPNext、outbox、worker 与 production write 保持冻结。'
+export const SALES_INVENTORY_REFERENCE_GUARD_REMAINING_GAP =
+  '未开放客户/供应商真实维护、导入、导出、库存写入、ERPNext、outbox、worker。'
+export const SALES_INVENTORY_REFERENCE_GUARD_WRITE_BOUNDARY =
+  'GET-only | write_request_count=0 | enabled_write_action_texts=[] | forbidden_write_calls=[]'
+
+export const SALES_INVENTORY_REFERENCE_GUARD_DISABLED_ACTIONS = [
   {
-    key: 'order-write',
-    label: '订单写入',
-    reason: '当前切片只允许销售库存引用桥核对，不开放真实订单写入。',
+    label: '客户维护',
+    reason: 'customer write / customer-supplier maintenance 链路冻结',
   },
   {
-    key: 'inventory-adjust',
-    label: '库存调整',
-    reason: '库存调整属于真实写链路，本地只读切片保持禁用。',
+    label: '供应商维护',
+    reason: 'supplier write / customer-supplier maintenance 链路冻结',
   },
   {
-    key: 'export',
-    label: '导出',
-    reason: '导出仅允许保留禁用态提示，不触发真实执行。',
+    label: '导入引用',
+    reason: 'reference import / customer-supplier write 链路冻结',
   },
   {
-    key: 'erpnext-sync',
+    label: '导出引用',
+    reason: 'export / download 链路冻结',
+  },
+  {
+    label: '库存写入',
+    reason: 'inventory write / cross-module execution 链路冻结',
+  },
+  {
     label: 'ERPNext 联动',
-    reason: 'ERPNext 联动与后台修复均不在本切片开放范围内。',
+    reason: 'ERPNext / outbox / worker / production write 链路冻结',
   },
 ] as const

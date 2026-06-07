@@ -1,11 +1,11 @@
 <template>
-  <div class="reference-page" data-testid="cand092-reference-shell">
+  <div class="reference-page" data-testid="cand490-reference-shell">
     <el-card shadow="never">
       <template #header>
-        <div class="header-row" data-testid="cand092-reference-toolbar">
+        <div class="header-row" data-testid="cand490-reference-toolbar">
           <div class="title-group">
             <span class="title">{{ pageTitle }}</span>
-            <span class="sub-title">NEXT-CAND-301 / sales inventory reference bridge readonly</span>
+            <span class="sub-title">NEXT-CAND-490 / sales inventory foundation-source guard readonly</span>
           </div>
           <div class="header-actions">
             <div class="header-tags">
@@ -20,20 +20,20 @@
                 {{ readonlyParityHint }}
               </el-tag>
             </div>
-            <div class="guarded-actions" data-testid="cand092-reference-guarded-actions">
+            <div class="guarded-actions" data-testid="cand490-reference-guarded-actions">
               <el-button
                 disabled
                 data-action-type="write"
                 data-guard-state="disabled"
               >
-                订单写入
+                客户维护
               </el-button>
               <el-button
                 disabled
                 data-action-type="write"
                 data-guard-state="disabled"
               >
-                库存调整
+                导入引用
               </el-button>
               <el-button
                 disabled
@@ -50,11 +50,11 @@
       <el-alert
         type="info"
         :closable="false"
-        title="当前切片仅提供销售库存客户/供应商引用桥与基础资料 parity 的只读核对，不开放订单写入、库存调整、导出、ERPNext 或后台修复。"
+        title="当前切片仅提供 foundation-source guard / source-status 只读核对，不开放客户/供应商维护、导入、导出、库存写入、ERPNext 或后台修复。"
         class="scope-alert"
       />
 
-      <section class="summary-grid" data-testid="cand092-reference-summary">
+      <section class="summary-grid" data-testid="cand490-reference-summary">
         <el-card shadow="never" class="summary-card">
           <span class="summary-label">当前档案数</span>
           <strong class="summary-value">{{ filteredRows.length }}</strong>
@@ -76,14 +76,14 @@
       <el-tabs
         v-model="activeTab"
         class="reference-tabs"
-        data-testid="cand092-reference-tabs"
+        data-testid="cand490-reference-tabs"
         @tab-change="handleTabChange"
       >
         <el-tab-pane label="客户引用档案" name="customers" />
         <el-tab-pane label="供应商引用档案" name="suppliers" />
       </el-tabs>
 
-      <section class="filter-panel" data-testid="cand092-reference-filter">
+      <section class="filter-panel" data-testid="cand490-reference-filter">
         <el-form :inline="true" :model="query">
           <el-form-item label="关键字">
             <el-input
@@ -114,20 +114,20 @@
         </el-form>
       </section>
 
-      <section class="readonly-readback" data-testid="cand092-reference-readonly-notes">
+      <section class="readonly-readback" data-testid="cand490-reference-readonly-notes">
         <el-descriptions border :column="2">
           <el-descriptions-item label="route_scope">/sales-inventory/references</el-descriptions-item>
           <el-descriptions-item label="parity_route">{{ parityScopeLabel }}</el-descriptions-item>
           <el-descriptions-item label="active_tab">{{ activeTabLabel }}</el-descriptions-item>
           <el-descriptions-item label="data_source">{{ sourceTagLabel }}</el-descriptions-item>
           <el-descriptions-item label="last_loaded_at">{{ lastLoadedAt || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="write_chain">order write / inventory adjust / export disabled</el-descriptions-item>
+          <el-descriptions-item label="write_chain">customer-supplier write / import / export disabled</el-descriptions-item>
         </el-descriptions>
       </section>
 
-      <SalesInventoryReferenceGuardReadonly :summary="guardSummary" />
+      <SalesInventoryReferenceGuardReadonly :summary="referenceGuardReadonlySummary" />
 
-      <section class="table-panel" data-testid="cand092-reference-table">
+      <section class="table-panel" data-testid="cand490-reference-table">
         <el-table
           :data="filteredRows"
           border
@@ -189,7 +189,7 @@
       <el-empty
         v-if="!loading && filteredRows.length === 0"
         :description="emptyText"
-        data-testid="cand092-reference-empty"
+        data-testid="cand490-reference-empty"
       />
     </el-card>
   </div>
@@ -200,7 +200,6 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  buildSalesInventoryReferenceGuardSummary,
   filterReferenceRows,
   loadSalesInventoryReferenceRows,
   resolveReferenceTab,
@@ -208,6 +207,7 @@ import {
   type SalesInventoryReferenceTab,
 } from '@/api/sales_inventory_references'
 import SalesInventoryReferenceGuardReadonly from '@/views/sales_inventory/components/SalesInventoryReferenceGuardReadonly.vue'
+import { useSalesInventoryReferenceGuardReadonly } from '@/views/sales_inventory/composables/useSalesInventoryReferenceGuardReadonly'
 
 const route = useRoute()
 const router = useRouter()
@@ -224,8 +224,14 @@ const query = reactive({
   source: '',
 })
 
+const routeTabValue = computed(() => {
+  const raw = route.query.tab
+  return Array.isArray(raw) ? raw[0] : raw
+})
 const parityValue = computed(() => String(route.query.parity || '').trim().toLowerCase())
+const focusValue = computed(() => String(route.query.focus || '').trim().toLowerCase())
 const readonlyParityHint = computed(() => {
+  if (parityValue.value === 'foundation-reference') return 'foundation-reference parity'
   if (parityValue.value === 'foundation-customer') return 'foundation-customer parity'
   if (parityValue.value === 'foundation-supplier') return 'foundation-supplier parity'
   return ''
@@ -239,16 +245,26 @@ const keywordPlaceholder = computed(() =>
 const emptyText = computed(() =>
   activeTab.value === 'customers' ? '当前筛选下暂无客户引用数据' : '当前筛选下暂无供应商引用数据',
 )
-const guardSummary = computed(() => buildSalesInventoryReferenceGuardSummary(
-  rows.value,
-  activeTab.value,
-  parityValue.value,
-  usingFallback.value,
-))
-const sourceTagLabel = computed(() => guardSummary.value.sourceValidationLabel)
 const filteredRows = computed(() => filterReferenceRows(rows.value, query))
 const activeCount = computed(() => filteredRows.value.filter((row) => row.status === 'active').length)
 const inactiveCount = computed(() => filteredRows.value.filter((row) => row.status === 'inactive').length)
+const filterStateLabel = computed(
+  () =>
+    `keyword=${query.keyword.trim() || '-'}; status=${query.status || 'all'}; source=${query.source || 'all'}`,
+)
+const { salesInventoryReferenceGuardReadonlySummary: referenceGuardReadonlySummary } =
+  useSalesInventoryReferenceGuardReadonly({
+    rows: filteredRows,
+    activeTab,
+    currentPath: computed(() => route.path),
+    tab: routeTabValue,
+    parity: parityValue,
+    focus: focusValue,
+    filterStateLabel,
+    usingFallback,
+    canRead: computed(() => true),
+  })
+const sourceTagLabel = computed(() => referenceGuardReadonlySummary.value.sourceStatusLabel)
 
 const setLoadedAt = (): void => {
   lastLoadedAt.value = new Date().toISOString()
