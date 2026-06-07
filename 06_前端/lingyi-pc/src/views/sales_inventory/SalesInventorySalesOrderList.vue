@@ -5,7 +5,7 @@
         <div class="header-row">
           <div class="title-group">
             <span class="title">大货管理 / 销售订单草稿查询</span>
-            <span class="sub-title">NEXT-CAND-104 / sales order readback</span>
+            <span class="sub-title">NEXT-CAND-466 / downstream guard readonly</span>
           </div>
           <div class="header-actions">
             <div class="header-tags">
@@ -150,13 +150,9 @@
         <SalesOrderDeliveryWindowReadonly :summary="deliveryWindowReadonlySummary" />
       </div>
 
-      <el-alert
-        type="warning"
-        :closable="false"
-        class="scope-alert"
-        title="下游生产 / 采购联动前置守卫需进入订单详情核对来源完整度、桥接缺失和 readonly guard 状态；当前列表仅提供入口，不开放真实保存、导出或库存影响。"
-        data-testid="cand154-sales-order-downstream-guard-hint"
-      />
+      <div data-testid="cand466-sales-order-list-downstream-anchor">
+        <SalesOrderDownstreamGuardReadonly :summary="downstreamGuardReadonlySummary" />
+      </div>
 
       <el-table
         v-loading="loading"
@@ -238,7 +234,9 @@ import {
   type SalesOrderReadbackQuery,
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
+import SalesOrderDownstreamGuardReadonly from '@/views/sales_inventory/components/SalesOrderDownstreamGuardReadonly.vue'
 import SalesOrderDeliveryWindowReadonly from '@/views/sales_inventory/components/SalesOrderDeliveryWindowReadonly.vue'
+import { useSalesOrderDownstreamGuardReadonly } from '@/views/sales_inventory/composables/useSalesOrderDownstreamGuardReadonly'
 import { useSalesOrderDeliveryWindowReadonly } from '@/views/sales_inventory/composables/useSalesOrderDeliveryWindowReadonly'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
@@ -290,6 +288,14 @@ const { deliveryWindowReadonlySummary } = useSalesOrderDeliveryWindowReadonly({
   tab: computed(() => String(route.query.tab || 'delivery-window-readonly')),
   parity: computed(() => String(route.query.parity || 'sales-order')),
   focus: computed(() => String(route.query.focus || 'delivery-source')),
+  lastLoadedAt,
+  lastError,
+})
+const { downstreamGuardReadonlySummary } = useSalesOrderDownstreamGuardReadonly({
+  rows: filteredRows,
+  tab: computed(() => String(route.query.tab || 'downstream-guard-readonly')),
+  parity: computed(() => String(route.query.parity || 'sales-order')),
+  focus: computed(() => String(route.query.focus || 'downstream-source')),
   lastLoadedAt,
   lastError,
 })

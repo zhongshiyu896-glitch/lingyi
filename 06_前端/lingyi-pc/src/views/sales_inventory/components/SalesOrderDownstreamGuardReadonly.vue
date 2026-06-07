@@ -1,176 +1,182 @@
 <template>
-  <section class="guard-shell" data-testid="cand154-sales-order-downstream-guard">
-    <div class="guard-header">
-      <div class="guard-title-group">
-        <span class="guard-title">来源完整度 / 下游联动前置守卫</span>
-        <span class="guard-note">{{ summary.blockingReasonLabel }}</span>
+  <section class="readonly-shell" data-testid="cand466-sales-order-downstream-guard-readonly-section">
+    <div class="readonly-header">
+      <div class="title-group">
+        <span class="title">销售订单 downstream guard 只读回读</span>
+        <span class="note" data-testid="cand466-sales-order-downstream-query-state">
+          {{ summary.queryStateLabel }}
+        </span>
       </div>
-      <el-tag :type="stateTagType(summary.state)" effect="plain">
-        {{ summary.stateLabel }}
-      </el-tag>
+      <div class="header-tags">
+        <el-tag
+          :type="summary.parityTone"
+          effect="plain"
+          data-testid="cand466-sales-order-downstream-marker-parity"
+        >
+          {{ summary.parityLabel }}
+        </el-tag>
+        <el-tag
+          :type="summary.focusTone"
+          effect="plain"
+          data-testid="cand466-sales-order-downstream-marker-focus"
+        >
+          {{ summary.focusLabel }}
+        </el-tag>
+        <el-tag
+          :type="summary.stateTone"
+          effect="plain"
+          data-testid="cand466-sales-order-downstream-marker-state"
+        >
+          {{ summary.stateLabel }}
+        </el-tag>
+        <el-tag
+          :type="summary.sourceStatusTone"
+          effect="plain"
+          data-testid="cand466-sales-order-downstream-source-status"
+        >
+          {{ summary.sourceStatusLabel }}
+        </el-tag>
+      </div>
     </div>
 
     <div class="summary-grid">
-      <div
-        v-for="field in SALES_ORDER_DOWNSTREAM_GUARD_SUMMARY_FIELDS"
-        :key="field.key"
-        class="summary-card"
-      >
-        <span class="summary-label">{{ field.label }}</span>
-        <strong class="summary-value">{{ summaryValue(field.key) }}</strong>
+      <div v-for="card in summary.cards" :key="card.key" class="summary-card">
+        <span class="summary-label">{{ card.label }}</span>
+        <strong class="summary-value">{{ card.value }}</strong>
       </div>
     </div>
 
     <el-alert
       type="warning"
       :closable="false"
-      class="guard-alert"
-      :title="summary.guardReason"
-      data-testid="cand154-sales-order-downstream-guard-alert"
+      :title="summary.blockedReason"
+      data-testid="cand466-sales-order-downstream-blocked-reason"
     />
 
-    <el-descriptions
-      border
-      :column="3"
-      class="guard-summary"
-      data-testid="cand154-sales-order-downstream-guard-summary"
-    >
-      <el-descriptions-item label="来源完整度">{{ summary.sourceCompletenessLabel }}</el-descriptions-item>
-      <el-descriptions-item label="生产联动">{{ summary.productionGuardLabel }}</el-descriptions-item>
-      <el-descriptions-item label="采购联动">{{ summary.purchaseGuardLabel }}</el-descriptions-item>
-      <el-descriptions-item label="阻断原因">{{ summary.blockingReasonLabel }}</el-descriptions-item>
-      <el-descriptions-item label="只读动作">create / update / delete / export disabled</el-descriptions-item>
-      <el-descriptions-item label="remaining_gap">真实保存、库存影响、销售写入仍未开放</el-descriptions-item>
+    <el-alert
+      type="info"
+      :closable="false"
+      :title="summary.readonlyGuardReason"
+      data-testid="cand466-sales-order-downstream-readonly-guard"
+    />
+
+    <el-alert
+      type="info"
+      :closable="false"
+      :title="summary.remainingGap"
+      data-testid="cand466-sales-order-downstream-remaining-gap"
+    />
+
+    <el-descriptions border :column="2" class="readonly-descriptions">
+      <el-descriptions-item label="写入边界">
+        <span data-testid="cand466-sales-order-downstream-write-boundary">
+          {{ summary.writeBoundary }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="来源状态">
+        <span data-testid="cand466-sales-order-downstream-source-status-text">
+          {{ summary.sourceStatusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="条目/状态">
+        <span data-testid="cand466-sales-order-downstream-item-status">
+          {{ summary.itemStatusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="聚焦来源">
+        <span data-testid="cand466-sales-order-downstream-focus-text">
+          {{ summary.focusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="联动状态">{{ summary.stateLabel }}</el-descriptions-item>
+      <el-descriptions-item label="只读守卫">{{ summary.readonlyGuardReason }}</el-descriptions-item>
     </el-descriptions>
 
-    <div class="guard-columns">
-      <section class="guard-column" data-testid="cand154-sales-order-downstream-missing-tags">
-        <header class="column-title">缺失桥接 / 阻断项</header>
-        <div class="tag-group">
-          <el-tag
-            v-for="tag in summary.missingBridgeTags"
-            :key="tag"
-            type="danger"
-            effect="plain"
-          >
-            {{ tag }}
-          </el-tag>
-          <span v-if="summary.missingBridgeTags.length === 0" class="empty-note">当前无桥接缺失项</span>
-        </div>
-      </section>
-
-      <section class="guard-column" data-testid="cand154-sales-order-downstream-readonly-tags">
-        <header class="column-title">只读 guard 状态</header>
-        <div class="tag-group">
-          <el-tag
-            v-for="tag in summary.readonlyGuardTags"
-            :key="tag"
-            type="info"
-            effect="plain"
-          >
-            {{ tag }}
-          </el-tag>
-        </div>
-      </section>
+    <div
+      class="guarded-actions"
+      data-testid="cand466-sales-order-downstream-guarded-actions"
+    >
+      <el-button
+        v-for="action in summary.disabledActions"
+        :key="action.label"
+        disabled
+        type="info"
+        plain
+        data-action-type="write"
+        data-guard-state="disabled"
+        :title="action.reason"
+      >
+        {{ action.label }}
+      </el-button>
     </div>
 
     <el-table
-      :data="summary.actions"
+      :data="summary.items"
       border
-      class="guard-table"
-      data-testid="cand154-sales-order-downstream-actions"
+      size="small"
+      empty-text="暂无 downstream guard 只读条目"
+      data-testid="cand466-sales-order-downstream-item-table"
     >
-      <el-table-column prop="label" label="动作" min-width="140" />
-      <el-table-column label="状态" min-width="120">
-        <template #default="{ row }">
-          <el-tag :type="actionTagType(row.state)" effect="plain">
-            {{ row.stateLabel }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="reason" label="原因" min-width="280" />
+      <el-table-column prop="subjectLabel" label="条目" min-width="180" />
+      <el-table-column prop="statusLabel" label="状态" min-width="160" />
+      <el-table-column prop="sourceLabel" label="来源" min-width="200" />
+      <el-table-column prop="blockedReason" label="阻断原因" min-width="240" />
     </el-table>
   </section>
 </template>
 
 <script setup lang="ts">
-import type { SalesOrderDownstreamGuardReadonlySummary } from '@/api/sales_inventory_sales_orders'
-import {
-  SALES_ORDER_DOWNSTREAM_GUARD_ACTION_TAGS,
-  SALES_ORDER_DOWNSTREAM_GUARD_STATE_TAGS,
-  SALES_ORDER_DOWNSTREAM_GUARD_SUMMARY_FIELDS,
-  type SalesOrderDownstreamGuardActionState,
-  type SalesOrderDownstreamGuardState,
-} from '@/views/sales_inventory/constants/salesOrderDownstreamGuardFields'
+import type { SalesOrderDownstreamGuardReadonlyViewSummary } from '@/views/sales_inventory/composables/useSalesOrderDownstreamGuardReadonly'
 
-const props = defineProps<{
-  summary: SalesOrderDownstreamGuardReadonlySummary
+defineProps<{
+  summary: SalesOrderDownstreamGuardReadonlyViewSummary
 }>()
-
-const summaryValue = (
-  key: (typeof SALES_ORDER_DOWNSTREAM_GUARD_SUMMARY_FIELDS)[number]['key'],
-): string => {
-  switch (key) {
-    case 'sourceCompletenessLabel':
-      return props.summary.sourceCompletenessLabel
-    case 'downstreamStateLabel':
-      return props.summary.downstreamStateLabel
-    case 'productionGuardLabel':
-      return props.summary.productionGuardLabel
-    case 'purchaseGuardLabel':
-      return props.summary.purchaseGuardLabel
-    case 'blockingCount':
-      return String(props.summary.blockingCount)
-    default:
-      return '-'
-  }
-}
-
-const stateTagType = (
-  state: SalesOrderDownstreamGuardState,
-): 'success' | 'warning' | 'danger' => SALES_ORDER_DOWNSTREAM_GUARD_STATE_TAGS[state]
-
-const actionTagType = (
-  state: SalesOrderDownstreamGuardActionState,
-): 'success' | 'warning' | 'info' => SALES_ORDER_DOWNSTREAM_GUARD_ACTION_TAGS[state]
 </script>
 
 <style scoped>
-.guard-shell {
+.readonly-shell {
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.guard-header {
+.readonly-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.guard-title-group {
+.title-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.guard-title {
-  font-size: 16px;
+.title {
+  font-size: 15px;
   font-weight: 600;
 }
 
-.guard-note,
-.empty-note {
+.note,
+.summary-label {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.header-tags,
+.guarded-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .summary-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .summary-card {
@@ -183,43 +189,13 @@ const actionTagType = (
   background: var(--el-fill-color-blank);
 }
 
-.summary-label {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
-
 .summary-value {
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--el-text-color-primary);
 }
 
-.guard-columns {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.guard-column {
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 8px;
-  padding: 12px 14px;
-  background: var(--el-fill-color-blank);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.column-title {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.tag-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.guard-table {
-  width: 100%;
+.readonly-descriptions :deep(.el-descriptions__label) {
+  width: 120px;
 }
 </style>

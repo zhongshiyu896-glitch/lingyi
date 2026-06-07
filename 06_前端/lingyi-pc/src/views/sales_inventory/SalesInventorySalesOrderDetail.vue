@@ -5,7 +5,7 @@
         <div class="header-row">
           <div class="title-group">
             <span class="title">大货管理 / 销售订单详情回读</span>
-            <span class="sub-title">NEXT-CAND-104 / detail readonly summary</span>
+            <span class="sub-title">NEXT-CAND-466 / downstream guard readonly</span>
           </div>
           <div class="header-actions">
             <el-button @click="goList">返回列表</el-button>
@@ -52,6 +52,10 @@
 
       <div data-testid="cand442-sales-order-detail-delivery-anchor">
         <SalesOrderDeliveryWindowReadonly :summary="deliveryWindowReadonlySummary" />
+      </div>
+
+      <div data-testid="cand466-sales-order-detail-downstream-anchor">
+        <SalesOrderDownstreamGuardReadonly :summary="downstreamGuardReadonlySummary" />
       </div>
 
       <template v-if="detail">
@@ -130,8 +134,6 @@
 
         <SalesOrderReferenceBridgeReadonly :summary="referenceBridgeReadonlySummary" />
 
-        <SalesOrderDownstreamGuardReadonly :summary="downstreamGuardReadonlySummary" />
-
         <SalesOrderQuantityMatrixReadonly
           :summary="quantityMatrixReadonlySummary"
           :format-number="formatNumber"
@@ -191,6 +193,7 @@ import SalesOrderDeliveryWindowReadonly from '@/views/sales_inventory/components
 import SalesOrderDownstreamGuardReadonly from '@/views/sales_inventory/components/SalesOrderDownstreamGuardReadonly.vue'
 import SalesOrderQuantityMatrixReadonly from '@/views/sales_inventory/components/SalesOrderQuantityMatrixReadonly.vue'
 import SalesOrderReferenceBridgeReadonly from '@/views/sales_inventory/components/SalesOrderReferenceBridgeReadonly.vue'
+import { useSalesOrderDownstreamGuardReadonly } from '@/views/sales_inventory/composables/useSalesOrderDownstreamGuardReadonly'
 import { useSalesOrderDeliveryWindowReadonly } from '@/views/sales_inventory/composables/useSalesOrderDeliveryWindowReadonly'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
@@ -275,7 +278,7 @@ const referenceBridgeReadonlySummary = computed(() =>
         materialDetailTags: [],
       },
 )
-const downstreamGuardReadonlySummary = computed(() =>
+const downstreamGuardBaseSummary = computed(() =>
   detail.value
     ? downstreamGuardSummary(detail.value)
     : {
@@ -299,6 +302,15 @@ const { deliveryWindowReadonlySummary } = useSalesOrderDeliveryWindowReadonly({
   tab: computed(() => String(route.query.tab || 'delivery-window-readonly')),
   parity: computed(() => String(route.query.parity || 'sales-order')),
   focus: computed(() => String(route.query.focus || 'delivery-source')),
+  lastLoadedAt,
+  lastError,
+})
+const { downstreamGuardReadonlySummary } = useSalesOrderDownstreamGuardReadonly({
+  baseSummary: downstreamGuardBaseSummary,
+  detail,
+  tab: computed(() => String(route.query.tab || 'downstream-guard-readonly')),
+  parity: computed(() => String(route.query.parity || 'sales-order')),
+  focus: computed(() => String(route.query.focus || 'downstream-source')),
   lastLoadedAt,
   lastError,
 })
