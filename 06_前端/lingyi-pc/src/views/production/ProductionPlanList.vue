@@ -81,6 +81,9 @@
       <ProductionFollowupReadonly :summary="followupReadonlySummary" />
       <ProductionOrderParityReadonly :summary="productionOrderParitySummary" />
       <ProductionProcessProgressReadonly :summary="processProgressReadonlySummary" />
+      <div data-testid="cand446-production-plan-list-sample-anchor">
+        <ProductionSampleReadinessReadonly :summary="sampleReadinessReadonlySummary" />
+      </div>
 
       <el-card shadow="never" class="readonly-guard-card" data-testid="production-plan-readonly-guard-card">
         <template #header>
@@ -167,8 +170,10 @@ import {
 import ProductionFollowupReadonly from '@/views/production/components/ProductionFollowupReadonly.vue'
 import ProductionOrderParityReadonly from '@/views/production/components/ProductionOrderParityReadonly.vue'
 import ProductionProcessProgressReadonly from '@/views/production/components/ProductionProcessProgressReadonly.vue'
+import ProductionSampleReadinessReadonly from '@/views/production/components/ProductionSampleReadinessReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
 import { useProductionProcessProgressReadonly } from './composables/useProductionProcessProgressReadonly'
+import { useProductionSampleReadinessReadonly } from './composables/useProductionSampleReadinessReadonly'
 
 interface PlanRow {
   id: number | null
@@ -190,6 +195,7 @@ const router = useRouter()
 const route = useRoute()
 const listLoading = ref(false)
 const listError = ref('')
+const lastLoadedAt = ref('')
 const planRows = ref<PlanRow[]>([])
 const followupTemplates = ref<ProductionFollowupTemplateListItem[]>([])
 const {
@@ -213,6 +219,7 @@ const query = reactive({
 
 const parityTag = computed(() => parseQueryString(route.query.parity))
 const queryTab = computed(() => parseQueryString(route.query.tab))
+const focusTag = computed(() => parseQueryString(route.query.focus))
 const currentParityLabel = computed(() => parityRouteLabel(parityTag.value))
 
 const fallbackPlanSeeds: PlanRow[] = [
@@ -339,6 +346,16 @@ const processProgressReadonlySummary = computed(() =>
   }),
 )
 
+const { sampleReadinessReadonlySummary } = useProductionSampleReadinessReadonly({
+  rows: filteredPlans,
+  templates: followupTemplates,
+  tab: queryTab,
+  parity: parityTag,
+  focus: focusTag,
+  lastLoadedAt,
+  lastError: listError,
+})
+
 const mapPlanRow = (item: ProductionPlanListItem): PlanRow => ({
   id: item.id,
   planNo: item.plan_no,
@@ -378,6 +395,12 @@ const buildDetailQuery = (row: PlanRow): Record<string, string> => {
     queryParams.parity = 'production-process'
     queryParams.tab = 'process-progress'
     queryParams.mode = 'readonly-process'
+  }
+  if (queryTab.value === 'sample-readiness-readonly' || parityTag.value === 'sample-list') {
+    queryParams.parity = 'sample-list'
+    queryParams.tab = 'sample-readiness-readonly'
+    queryParams.mode = 'readonly-sample-readiness'
+    queryParams.focus = 'sample-source'
   }
   return queryParams
 }
@@ -423,6 +446,7 @@ const refreshPlans = async (): Promise<void> => {
     planRows.value = fallbackPlanSeeds.map((row) => ({ ...row }))
     listError.value = `读取生产计划失败，已回退到 synthetic snapshot：${(error as Error).message}`
   } finally {
+    lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
     listLoading.value = false
   }
 }

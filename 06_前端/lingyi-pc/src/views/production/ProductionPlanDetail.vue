@@ -59,6 +59,10 @@
       data-testid="production-plan-detail-guarded-feedback"
     />
 
+    <div v-if="canRead" data-testid="cand446-production-plan-detail-sample-anchor">
+      <ProductionSampleReadinessReadonly :summary="sampleReadinessReadonlySummary" />
+    </div>
+
     <el-card v-if="canRead && detail" shadow="never" data-testid="production-plan-detail-write-entry-status">
       <template #header><span>只读边界</span></template>
       <el-alert
@@ -191,8 +195,10 @@ import { usePermissionStore } from '@/stores/permission'
 import ProductionFollowupReadonly from '@/views/production/components/ProductionFollowupReadonly.vue'
 import ProductionOrderParityReadonly from '@/views/production/components/ProductionOrderParityReadonly.vue'
 import ProductionProcessProgressReadonly from '@/views/production/components/ProductionProcessProgressReadonly.vue'
+import ProductionSampleReadinessReadonly from '@/views/production/components/ProductionSampleReadinessReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
 import { useProductionProcessProgressReadonly } from './composables/useProductionProcessProgressReadonly'
+import { useProductionSampleReadinessReadonly } from './composables/useProductionSampleReadinessReadonly'
 
 const route = useRoute()
 const router = useRouter()
@@ -214,6 +220,7 @@ const guardedFeedback = ref('')
 const loading = ref(false)
 const permissionReady = ref(false)
 const fallbackPlanId = ref<number | null>(null)
+const lastLoadedAt = ref('')
 
 const PRODUCTION_LOCAL_DETAIL_FROZEN_REASON =
   '受控写门禁：当前切片仅开放生产计划 list/detail 只读查询，work order push、outbox、worker 与 ERPNext production 链路保持冻结。'
@@ -233,6 +240,7 @@ const hasValidPlanId = computed<boolean>(() => routePlanId.value > 0)
 const parityTag = computed<string>(() => parseStringQuery(route.query.parity))
 const queryTab = computed<string>(() => parseStringQuery(route.query.tab))
 const readonlyMode = computed<string>(() => parseStringQuery(route.query.mode))
+const focusTag = computed<string>(() => parseStringQuery(route.query.focus))
 const currentWorkOrder = computed<string>(
   () => detail.value?.work_order || detail.value?.latest_work_order_outbox?.erpnext_work_order || '',
 )
@@ -306,6 +314,16 @@ const processProgressReadonlySummary = computed(() =>
       })
     : null,
 )
+
+const { sampleReadinessReadonlySummary } = useProductionSampleReadinessReadonly({
+  detail,
+  templates: followupTemplates,
+  tab: queryTab,
+  parity: parityTag,
+  focus: focusTag,
+  lastLoadedAt,
+  lastError: computed(() => loadError.value || guardedFeedback.value),
+})
 
 const buildSyntheticDetail = (): ProductionPlanDetailData => {
   const today = new Date().toISOString()
@@ -414,6 +432,7 @@ const loadDetail = async (): Promise<void> => {
       detail.value = buildSyntheticDetail()
       await loadFollowupTemplates(detail.value.item_code)
       guardedFeedback.value = '当前展示 synthetic detail，只用于 local-only 可用切片。'
+      lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
       return
     }
 
@@ -428,6 +447,7 @@ const loadDetail = async (): Promise<void> => {
       detail.value = buildSyntheticDetail()
       await loadFollowupTemplates(detail.value.item_code)
       guardedFeedback.value = '未读取到本地生产计划记录，已回退到 synthetic detail。'
+      lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
       return
     }
 
@@ -435,11 +455,13 @@ const loadDetail = async (): Promise<void> => {
     detail.value = result.data
     await loadFollowupTemplates(detail.value.item_code)
     guardedFeedback.value = hasValidPlanId.value ? '' : '未提供计划 ID，已回退到首条本地生产计划详情。'
+    lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
   } catch (error) {
     const message = (error as Error).message || '加载生产计划详情失败'
     detail.value = buildSyntheticDetail()
     await loadFollowupTemplates(detail.value.item_code)
     guardedFeedback.value = `加载详情失败，已回退到 synthetic detail：${message}`
+    lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
   } finally {
     loading.value = false
   }
@@ -453,6 +475,15 @@ const goBack = (): void => {
   if (queryTab.value === 'process-progress' || readonlyMode.value === 'readonly-process' || parityTag.value === 'production-process') {
     queryParams.parity = 'production-process'
     queryParams.tab = 'process-progress'
+  }
+  if (
+    queryTab.value === 'sample-readiness-readonly' ||
+    readonlyMode.value === 'readonly-sample-readiness' ||
+    focusTag.value === 'sample-source' ||
+    parityTag.value === 'sample-list'
+  ) {
+    queryParams.parity = 'sample-list'
+    queryParams.tab = 'sample-readiness-readonly'
   }
   router.push({
     path: '/production/plans',
