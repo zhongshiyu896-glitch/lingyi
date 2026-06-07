@@ -42,26 +42,51 @@ export const FACTORY_STATEMENT_SOURCE_CARD_FIELDS: FactoryStatementSourceCardFie
 
 export const FACTORY_STATEMENT_SOURCE_GUARD_ACTIONS: FactoryStatementSourceGuardAction[] = [
   {
-    key: 'payable-writeback',
-    label: '支付回写',
-    reason: '当前切片只允许来源链断点核对，不开放支付状态回写。',
+    key: 'confirm',
+    label: '确认',
+    reason: 'confirm 入口在 source-readonly 切片保持禁用，避免触发真实单据确认。',
   },
   {
-    key: 'print-execute',
-    label: '打印执行',
-    reason: '打印仅保留只读预览，不开放真实执行提交。',
+    key: 'cancel',
+    label: '取消',
+    reason: 'cancel 入口在 source-readonly 切片保持禁用，避免触发真实单据取消。',
   },
   {
-    key: 'export-run',
-    label: '导出执行',
-    reason: '导出链路保持禁用，避免触发真实副作用。',
+    key: 'settlement',
+    label: '结算',
+    reason: 'settlement / payable draft 在 source-readonly 切片仅保留只读说明，不触发应付草稿链路。',
   },
   {
-    key: 'backend-remediation',
-    label: '后台修复',
-    reason: '后台修复建议仅作只读提示，不触发执行。',
+    key: 'export',
+    label: '导出',
+    reason: 'export 仅保留只读提示，不开放真实导出执行。',
+  },
+  {
+    key: 'download',
+    label: '下载',
+    reason: 'download 链路保持禁用，避免触发真实文件输出。',
+  },
+  {
+    key: 'outbox',
+    label: 'Outbox',
+    reason: 'Outbox 状态仅可观察，不触发同步队列写入。',
+  },
+  {
+    key: 'worker',
+    label: 'Worker',
+    reason: 'Worker 处理链路仅保留只读说明，不触发后台任务。',
+  },
+  {
+    key: 'erpnext',
+    label: 'ERPNext',
+    reason: 'ERPNext 适配器链路在 source-readonly 切片保持禁用。',
+  },
+  {
+    key: 'production-write',
+    label: 'production write',
+    reason: '所有真实 write 链路保持 fail-closed，不允许跨模块执行。',
   },
 ]
 
 export const FACTORY_STATEMENT_SOURCE_REMAINING_GAP =
-  '真实支付状态回写、打印执行、导出、ERPNext 联动、后台修复与 outbox/worker 未开放；来源链断点仍需人工核对。'
+  '真实 confirm/cancel/settlement/export/download、ERPNext、outbox/worker 与 production write 均未开放；statement-source 断点仍需人工核对。'

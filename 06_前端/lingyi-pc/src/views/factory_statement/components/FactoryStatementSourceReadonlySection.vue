@@ -8,11 +8,25 @@
       <div class="header-tags">
         <el-tag effect="plain" data-testid="factory-statement-source-get-only">GET-only</el-tag>
         <el-tag
+          type="info"
+          effect="plain"
+          data-testid="factory-statement-source-query-state"
+        >
+          {{ summary.queryStateLabel }}
+        </el-tag>
+        <el-tag
           :type="summary.parityTone"
           effect="plain"
           data-testid="factory-statement-source-parity-tag"
         >
           {{ summary.parityLabel }}
+        </el-tag>
+        <el-tag
+          type="success"
+          effect="plain"
+          data-testid="factory-statement-source-focus-tag"
+        >
+          {{ summary.focusLabel }}
         </el-tag>
         <el-tag
           type="warning"

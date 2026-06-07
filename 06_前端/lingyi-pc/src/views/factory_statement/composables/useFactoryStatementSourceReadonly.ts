@@ -30,10 +30,13 @@ interface UseFactoryStatementSourceReadonlyOptions {
   parity: ReadableRef<string>
   tab?: ReadableRef<string>
   mode?: ReadableRef<string>
+  focus?: ReadableRef<string>
 }
 
 export interface FactoryStatementSourceReadonlySummary {
   sourceScopeLabel: string
+  queryStateLabel: string
+  focusLabel: string
   parityLabel: string
   parityTone: 'warning' | 'info'
   sourceBreakpointSummary: string
@@ -90,6 +93,7 @@ export const useFactoryStatementSourceReadonly = ({
   parity,
   tab,
   mode,
+  focus,
 }: UseFactoryStatementSourceReadonlyOptions): {
   sourceReadonlySummary: ComputedRef<FactoryStatementSourceReadonlySummary>
   cardFields: typeof FACTORY_STATEMENT_SOURCE_CARD_FIELDS
@@ -99,6 +103,7 @@ export const useFactoryStatementSourceReadonly = ({
   const parityValue = computed(() => String(unref(parity) || '').trim().toLowerCase())
   const tabValue = computed(() => String(unref(tab) || '').trim().toLowerCase())
   const modeValue = computed(() => String(unref(mode) || '').trim().toLowerCase())
+  const focusValue = computed(() => String(unref(focus) || '').trim().toLowerCase())
   const currentListRows = computed(() => unref(listRows) || [])
   const currentDetailRecord = computed(() => unref(detailRecord) || null)
 
@@ -160,39 +165,53 @@ export const useFactoryStatementSourceReadonly = ({
       failedOutboxCount > 0 || payableErrorCount > 0 ? 'blocked' : 'ok',
     )
 
+    const listSourceReadonlyActive = tabValue.value === 'source-readonly' || tabValue.value === 'source-parity'
+    const detailSourceReadonlyActive = modeValue.value === 'readonly-source' || modeValue.value === 'readonly-lineage'
+    const statementSourceFocusActive = focusValue.value === 'statement-source'
+
     const sourceScopeLabel = context === 'list'
-      ? tabValue.value === 'source-parity'
-        ? 'list / source-parity'
+      ? listSourceReadonlyActive
+        ? 'list / source-readonly'
         : 'list / readonly baseline'
-      : modeValue.value === 'readonly-lineage'
-        ? 'detail / readonly-lineage'
+      : detailSourceReadonlyActive
+        ? 'detail / readonly-source'
         : 'detail / readonly baseline'
 
-    const parityLabel = parityValue.value === 'foundation-factory'
+    const queryStateLabel = context === 'list'
+      ? `tab=${listSourceReadonlyActive ? 'source-readonly' : tabValue.value || '-'}`
+      : `mode=${detailSourceReadonlyActive ? 'readonly-source' : modeValue.value || '-'}`
+
+    const focusLabel = statementSourceFocusActive
+      ? 'statement-source focus'
+      : 'statement-source pending'
+
+    const parityLabel = parityValue.value === 'factory-statement'
+      ? 'factory-statement parity'
+      : parityValue.value === 'foundation-factory'
       ? 'foundation-factory parity'
       : 'factory-statement readonly'
 
     const routeItems: FactoryStatementSourceRouteItem[] = [
       {
-        key: 'list-source-parity',
-        label: '列表 source-parity',
-        route: '/factory-statements/list?tab=source-parity',
-        active: context === 'list' && tabValue.value === 'source-parity',
+        key: 'list-source-readonly',
+        label: '列表 source-readonly',
+        route: '/factory-statements/list?tab=source-readonly&parity=factory-statement',
+        active: context === 'list' && listSourceReadonlyActive,
         note: '聚焦来源链断点和账单漂移，只读筛选态。',
       },
       {
-        key: 'detail-readonly-lineage',
-        label: '详情 readonly-lineage',
-        route: '/factory-statements/detail?mode=readonly-lineage',
-        active: context === 'detail' && modeValue.value === 'readonly-lineage',
+        key: 'detail-readonly-source',
+        label: '详情 readonly-source',
+        route: '/factory-statements/detail?mode=readonly-source&parity=factory-statement&focus=statement-source',
+        active: context === 'detail' && detailSourceReadonlyActive,
         note: '聚焦单据来源链和 payable 镜像状态，只读详情态。',
       },
       {
-        key: 'foundation-factory-parity',
-        label: '基础资料 parity',
-        route: '/foundation/factory -> /factory-statements/list?parity=foundation-factory&tab=source-parity',
-        active: parityValue.value === 'foundation-factory',
-        note: '说明基础资料加工厂入口如何映射到工厂对账只读核对。',
+        key: 'statement-source-focus',
+        label: 'statement-source focus',
+        route: '/factory-statements/detail?mode=readonly-source&parity=factory-statement&focus=statement-source',
+        active: statementSourceFocusActive,
+        note: '锁定 statement-source 只读焦点，聚焦来源链断点和状态行。',
       },
     ]
 
@@ -243,12 +262,14 @@ export const useFactoryStatementSourceReadonly = ({
 
     return {
       sourceScopeLabel,
+      queryStateLabel,
+      focusLabel,
       parityLabel,
       parityTone: parityValue.value === 'foundation-factory' ? 'warning' : 'info',
       sourceBreakpointSummary,
       billDriftSummary,
       remainingGap: FACTORY_STATEMENT_SOURCE_REMAINING_GAP,
-      readonlyGuardReason: '当前仅允许来源链断点核对；支付回写、打印执行、导出、ERPNext 联动和后台修复均禁用。',
+      readonlyGuardReason: '当前仅允许 statement-source 来源链核对；confirm/cancel/settlement/export/download、ERPNext、outbox/worker 与 production write 均禁用。',
       retainedCand217: true,
       retainedCand116: true,
       retainedCand008: true,

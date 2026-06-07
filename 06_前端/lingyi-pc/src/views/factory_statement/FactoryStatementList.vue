@@ -3618,6 +3618,12 @@ const parityValue = computed<string>(() => String(route.query.parity || '').trim
 const isFoundationSupplierParity = computed<boolean>(() => parityValue.value === 'foundation-supplier')
 const isFoundationFactoryParity = computed<boolean>(() => parityValue.value === 'foundation-factory')
 const tabValue = computed<string>(() => String(route.query.tab || '').trim().toLowerCase())
+const isSourceReadonlyTab = computed<boolean>(() => (
+  tabValue.value === 'source-readonly' || tabValue.value === 'source-parity'
+))
+const isSourceReadonlyParity = computed<boolean>(() => (
+  parityValue.value === 'factory-statement' && isSourceReadonlyTab.value
+))
 const isFoundationReadonlyParity = computed<boolean>(() => isFoundationSupplierParity.value || isFoundationFactoryParity.value)
 const financeParityNormalized = computed<string>(() => {
   if (parityValue.value === 'finance-bank-ledger' || parityValue.value === 'finance-bank-flow') {
@@ -3637,20 +3643,30 @@ const isFinanceCustomerReconciliationParity = computed<boolean>(() => (
   financeParityNormalized.value === 'finance-customer-reconciliation'
 ))
 const isFinanceReadonlyParity = computed<boolean>(() => Boolean(financeParityNormalized.value))
-const isReadonlyParity = computed<boolean>(() => isFoundationReadonlyParity.value || isFinanceReadonlyParity.value)
+const isReadonlyParity = computed<boolean>(() => (
+  isFoundationReadonlyParity.value || isFinanceReadonlyParity.value || isSourceReadonlyParity.value
+))
 const allowFactoryStatementWriteFlow = computed<boolean>(() => false)
 const showExtendedReadonlySections = computed<boolean>(() => false)
 const preservedReadonlyQuery = computed<Record<string, string>>(() => {
   const query: Record<string, string> = {}
+  if (isSourceReadonlyParity.value) {
+    query.parity = 'factory-statement'
+    query.tab = 'source-readonly'
+    return query
+  }
   if (parityValue.value) {
     query.parity = parityValue.value
   }
-  if (tabValue.value === 'source-parity' || isFoundationFactoryParity.value) {
+  if (isSourceReadonlyTab.value || isFoundationFactoryParity.value) {
     query.tab = 'source-parity'
   }
   return query
 })
 const readonlyWriteGuardTag = computed<string>(() => {
+  if (isSourceReadonlyParity.value) {
+    return 'guarded:readonly-factory-statement-source'
+  }
   if (isFoundationReadonlyParity.value) {
     return 'guarded:readonly-foundation-data'
   }
@@ -3700,14 +3716,18 @@ const readonlyParityHintTestId = computed<string>(() => {
   return 'factory-statement-parity-hint'
 })
 const readonlyWriteHintText = computed<string>(() => (
-  isFoundationReadonlyParity.value
+  isSourceReadonlyParity.value
+    ? '当前切片仅开放加工厂对账单 source-readonly 列表与 readonly-source 详情查询；confirm、cancel、settlement、export、download、ERPNext、outbox/worker 与真实写链路均已禁用。'
+    : isFoundationReadonlyParity.value
     ? '基础资料模式仅允许加工厂对账单列表、详情页与打印预览的只读查询，创建/取消/应付草稿/确认/导出/真实打印均已禁用。'
     : isFinanceReadonlyParity.value
       ? '财务管理模式仅允许加工厂对账单列表、详情页与打印预览的只读查询，确认/取消/付款草稿/导出/真实打印均已禁用。'
       : '当前切片仅开放加工厂对账单列表、详情页与打印预览的本地只读查询；创建/取消/应付草稿/确认/导出/真实打印均已禁用。'
 ))
 const mainAlertDescription = computed<string>(() => (
-  isFoundationReadonlyParity.value
+  isSourceReadonlyParity.value
+    ? '当前切片仅开放工厂对账 source-readonly 列表与 readonly-source 详情；来源链核对可见，confirm/cancel/settlement/export/download 与 ERPNext/outbox/worker 保持禁用。'
+    : isFoundationReadonlyParity.value
     ? '基础资料 parity 当前映射到加工厂对账单只读列表；详情页与打印预览允许查看，所有写链路保持禁用。'
     : isFinanceReadonlyParity.value
       ? '财务管理 parity 当前仅保留加工厂对账单只读列表、详情页与打印预览；写动作与导出保持禁用。'
@@ -4124,7 +4144,7 @@ const sampleFilterStateText = computed<string>(() => {
 })
 
 const showSourceReadonlySection = computed<boolean>(() => (
-  tabValue.value === 'source-parity' || isFoundationFactoryParity.value
+  isSourceReadonlyParity.value || tabValue.value === 'source-parity' || isFoundationFactoryParity.value
 ))
 
 const statementKpis = computed(() => {
@@ -5259,6 +5279,18 @@ const loadSupplierPayableSummaries = async (): Promise<void> => {
 const openReadonlyDetail = async (statementId: number): Promise<void> => {
   if (!canRead.value) {
     ElMessage.error('无加工厂对账单查看权限')
+    return
+  }
+  if (isSourceReadonlyParity.value) {
+    router.push({
+      path: '/factory-statements/detail',
+      query: {
+        id: String(statementId),
+        parity: 'factory-statement',
+        mode: 'readonly-source',
+        focus: 'statement-source',
+      },
+    })
     return
   }
   detailVisible.value = true

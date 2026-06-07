@@ -1,5 +1,11 @@
 <template>
   <div class="factory-statement-detail-page" data-testid="factory-statement-detail-page">
+    <FactoryStatementSourceReadonlySection
+      v-if="showSourceReadonlySection"
+      :summary="sourceReadonlySummary"
+      data-testid="factory-statement-detail-source-readonly-section"
+    />
+
     <FactoryStatementPayableStatusReadonly
       :summary="payableReadonlySummary"
       data-testid="factory-statement-detail-payable-readonly-section"
@@ -171,13 +177,6 @@
             </el-descriptions-item>
           </el-descriptions>
         </el-card>
-
-        <FactoryStatementSourceReadonlySection
-          v-if="showSourceReadonlySection"
-          :summary="sourceReadonlySummary"
-          data-testid="factory-statement-detail-source-readonly-section"
-        />
-
         <div class="action-row" data-testid="factory-statement-detail-actions">
           <el-button
             data-testid="factory-statement-detail-action-confirm"
@@ -354,11 +353,31 @@ const parityValue = computed<string>(() => String(route.query.parity || '').trim
 const tabValue = computed<string>(() => String(route.query.tab || '').trim().toLowerCase())
 const focusValue = computed<string>(() => String(route.query.focus || '').trim().toLowerCase())
 const modeValue = computed<string>(() => String(route.query.mode || '').trim().toLowerCase())
+const isSourceReadonlyTab = computed<boolean>(() => (
+  tabValue.value === 'source-readonly' || tabValue.value === 'source-parity'
+))
+const isSourceReadonlyMode = computed<boolean>(() => (
+  parityValue.value === 'factory-statement'
+  && (
+    modeValue.value === 'readonly-source'
+    || modeValue.value === 'readonly-lineage'
+    || focusValue.value === 'statement-source'
+  )
+))
 const isReadonlyParity = computed<boolean>(() => (
-  parityValue.value === 'foundation-supplier' || parityValue.value === 'foundation-factory'
+  parityValue.value === 'foundation-supplier'
+  || parityValue.value === 'foundation-factory'
+  || isSourceReadonlyMode.value
 ))
 const preservedReadonlyQuery = computed<Record<string, string>>(() => {
   const query: Record<string, string> = {}
+  if (isSourceReadonlyMode.value || isSourceReadonlyTab.value) {
+    query.parity = 'factory-statement'
+    query.tab = 'source-readonly'
+    query.mode = 'readonly-source'
+    query.focus = 'statement-source'
+    return query
+  }
   if (parityValue.value) {
     query.parity = parityValue.value
   }
@@ -408,14 +427,21 @@ const { sourceReadonlySummary } = useFactoryStatementSourceReadonly({
   detailRecord: readonlyRecord,
   parity: parityValue,
   mode: modeValue,
+  focus: focusValue,
 })
 
 const showEmptyState = computed<boolean>(
   () => detailLoaded.value && !!detail.value && items.value.length === 0 && logs.value.length === 0,
 )
 const showSourceReadonlySection = computed<boolean>(() => (
-  modeValue.value === 'readonly-lineage' || tabValue.value === 'source-parity'
+  isSourceReadonlyMode.value || modeValue.value === 'readonly-lineage' || tabValue.value === 'source-parity'
 ))
+
+const syncReadonlyGuardAttribute = (element: HTMLElement, attribute: string, value: string): void => {
+  if (element.getAttribute(attribute) !== value) {
+    element.setAttribute(attribute, value)
+  }
+}
 
 const applyGlobalReadonlyGuardToElement = (
   element: HTMLElement,
@@ -436,13 +462,15 @@ const applyGlobalReadonlyGuardToElement = (
     element.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, element.getAttribute('tabindex') ?? '')
   }
 
-  if (disableNative && element instanceof HTMLButtonElement) {
+  if (disableNative && element instanceof HTMLButtonElement && !element.disabled) {
     element.disabled = true
   }
-  element.setAttribute('aria-disabled', 'true')
-  element.setAttribute('title', reason)
-  element.setAttribute('tabindex', '-1')
-  element.classList.add('is-disabled')
+  syncReadonlyGuardAttribute(element, 'aria-disabled', 'true')
+  syncReadonlyGuardAttribute(element, 'title', reason)
+  syncReadonlyGuardAttribute(element, 'tabindex', '-1')
+  if (!element.classList.contains('is-disabled')) {
+    element.classList.add('is-disabled')
+  }
 }
 
 const restoreGlobalReadonlyGuardElements = (): void => {
@@ -516,12 +544,20 @@ const startGlobalReadonlyActionGuardObserver = (): void => {
   globalFactoryStatementGuardObserver.observe(document.body, {
     childList: true,
     subtree: true,
-    attributes: true,
-    attributeFilter: ['disabled', 'aria-disabled', 'class', 'title', 'tabindex'],
   })
 }
 
 const goBack = (): void => {
+  if (isSourceReadonlyMode.value || isSourceReadonlyTab.value) {
+    router.push({
+      path: '/factory-statements/list',
+      query: {
+        parity: 'factory-statement',
+        tab: 'source-readonly',
+      },
+    })
+    return
+  }
   router.push({ path: '/factory-statements/list', query: { ...preservedReadonlyQuery.value } })
 }
 
@@ -534,7 +570,7 @@ const loadDetail = async (): Promise<void> => {
     missingStatementId.value = false
     return
   }
-  if (!shouldUseReadonlyFallbackId.value && modeValue.value !== 'readonly-lineage') {
+  if (!shouldUseReadonlyFallbackId.value && !isSourceReadonlyMode.value && modeValue.value !== 'readonly-lineage') {
     readonlyRecord.value = null
     missingStatementId.value = true
     return
