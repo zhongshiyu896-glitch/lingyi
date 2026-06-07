@@ -146,6 +146,10 @@
         </el-descriptions>
       </section>
 
+      <div data-testid="cand442-sales-order-list-delivery-anchor">
+        <SalesOrderDeliveryWindowReadonly :summary="deliveryWindowReadonlySummary" />
+      </div>
+
       <el-alert
         type="warning"
         :closable="false"
@@ -225,7 +229,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { SalesOrderListItem } from '@/api/sales_inventory'
 import {
   buildSalesOrderReadonlySummary,
@@ -234,6 +238,8 @@ import {
   type SalesOrderReadbackQuery,
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
+import SalesOrderDeliveryWindowReadonly from '@/views/sales_inventory/components/SalesOrderDeliveryWindowReadonly.vue'
+import { useSalesOrderDeliveryWindowReadonly } from '@/views/sales_inventory/composables/useSalesOrderDeliveryWindowReadonly'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 interface SalesOrderListQueryState extends SalesOrderReadbackQuery {
@@ -241,6 +247,7 @@ interface SalesOrderListQueryState extends SalesOrderReadbackQuery {
   followup_group: string
 }
 
+const route = useRoute()
 const router = useRouter()
 
 const {
@@ -278,6 +285,14 @@ const query = reactive<SalesOrderListQueryState>(createDefaultQuery())
 const filteredRows = computed(() => filterSalesOrderRows(rows.value, query))
 const readonlySummary = computed(() => buildSalesOrderReadonlySummary(filteredRows.value))
 const activeCurrency = computed(() => filteredRows.value[0]?.currency || rows.value[0]?.currency || '')
+const { deliveryWindowReadonlySummary } = useSalesOrderDeliveryWindowReadonly({
+  rows,
+  tab: computed(() => String(route.query.tab || 'delivery-window-readonly')),
+  parity: computed(() => String(route.query.parity || 'sales-order')),
+  focus: computed(() => String(route.query.focus || 'delivery-source')),
+  lastLoadedAt,
+  lastError,
+})
 const statusOptions = computed(() => {
   const options = Array.from(
     new Set(rows.value.map((row) => row.status?.trim()).filter((value): value is string => Boolean(value))),
@@ -349,7 +364,12 @@ const onSizeChange = (size: number): void => {
 const openDetail = (row: SalesOrderListItem): void => {
   router.push({
     path: '/sales-inventory/sales-orders/detail',
-    query: { name: row.name },
+    query: {
+      name: row.name,
+      tab: String(route.query.tab || 'delivery-window-readonly'),
+      parity: String(route.query.parity || 'sales-order'),
+      focus: String(route.query.focus || 'delivery-source'),
+    },
   })
 }
 

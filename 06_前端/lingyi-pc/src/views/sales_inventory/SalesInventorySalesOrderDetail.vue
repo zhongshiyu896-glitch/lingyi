@@ -50,6 +50,10 @@
         </el-button>
       </section>
 
+      <div data-testid="cand442-sales-order-detail-delivery-anchor">
+        <SalesOrderDeliveryWindowReadonly :summary="deliveryWindowReadonlySummary" />
+      </div>
+
       <template v-if="detail">
         <section class="summary-grid" data-testid="cand104-sales-order-detail-stat-grid">
           <div class="summary-card">
@@ -183,9 +187,11 @@ import {
   resolveFallbackSalesOrderName,
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
+import SalesOrderDeliveryWindowReadonly from '@/views/sales_inventory/components/SalesOrderDeliveryWindowReadonly.vue'
 import SalesOrderDownstreamGuardReadonly from '@/views/sales_inventory/components/SalesOrderDownstreamGuardReadonly.vue'
 import SalesOrderQuantityMatrixReadonly from '@/views/sales_inventory/components/SalesOrderQuantityMatrixReadonly.vue'
 import SalesOrderReferenceBridgeReadonly from '@/views/sales_inventory/components/SalesOrderReferenceBridgeReadonly.vue'
+import { useSalesOrderDeliveryWindowReadonly } from '@/views/sales_inventory/composables/useSalesOrderDeliveryWindowReadonly'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 const route = useRoute()
@@ -288,6 +294,14 @@ const downstreamGuardReadonlySummary = computed(() =>
         actions: [],
       },
 )
+const { deliveryWindowReadonlySummary } = useSalesOrderDeliveryWindowReadonly({
+  detail,
+  tab: computed(() => String(route.query.tab || 'delivery-window-readonly')),
+  parity: computed(() => String(route.query.parity || 'sales-order')),
+  focus: computed(() => String(route.query.focus || 'delivery-source')),
+  lastLoadedAt,
+  lastError,
+})
 
 const detailEmptyText = computed(() => {
   if (loading.value) return '正在加载订单详情'
@@ -347,7 +361,14 @@ const refreshDetail = (): void => {
 }
 
 const goList = (): void => {
-  router.push('/sales-inventory/sales-orders')
+  router.push({
+    path: '/sales-inventory/sales-orders',
+    query: {
+      tab: String(route.query.tab || 'delivery-window-readonly'),
+      parity: String(route.query.parity || 'sales-order'),
+      focus: String(route.query.focus || 'delivery-source'),
+    },
+  })
 }
 
 watch(routeOrderName, () => {
