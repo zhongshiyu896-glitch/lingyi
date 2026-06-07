@@ -59,6 +59,11 @@
       data-testid="production-plan-detail-guarded-feedback"
     />
 
+    <ProductionFollowupReadonly
+      v-if="canRead"
+      :summary="followupReadonlySummary"
+    />
+
     <div v-if="canRead" data-testid="cand446-production-plan-detail-sample-anchor">
       <ProductionSampleReadinessReadonly :summary="sampleReadinessReadonlySummary" />
     </div>
@@ -102,10 +107,6 @@
         </el-descriptions>
       </el-card>
 
-    <ProductionFollowupReadonly
-      v-if="canRead && detail && followupReadonlySummary"
-      :summary="followupReadonlySummary"
-    />
     <ProductionOrderParityReadonly
       v-if="canRead && detail && productionOrderParitySummary"
       :summary="productionOrderParitySummary"
@@ -197,6 +198,7 @@ import ProductionOrderParityReadonly from '@/views/production/components/Product
 import ProductionProcessProgressReadonly from '@/views/production/components/ProductionProcessProgressReadonly.vue'
 import ProductionSampleReadinessReadonly from '@/views/production/components/ProductionSampleReadinessReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
+import { useProductionFollowupReadonly } from './composables/useProductionFollowupReadonly'
 import { useProductionProcessProgressReadonly } from './composables/useProductionProcessProgressReadonly'
 import { useProductionSampleReadinessReadonly } from './composables/useProductionSampleReadinessReadonly'
 
@@ -285,7 +287,7 @@ const quantityMatrixSummary = computed<string>(() => {
   return '暂无数量矩阵，仅展示只读占位摘要'
 })
 
-const followupReadonlySummary = computed(() =>
+const followupReadonlyBaseSummary = computed(() =>
   detail.value
     ? buildProductionFollowupDetailSummary({
         parity: parityTag.value,
@@ -294,6 +296,17 @@ const followupReadonlySummary = computed(() =>
       })
     : null,
 )
+
+const { followupReadonlySummary } = useProductionFollowupReadonly({
+  baseSummary: followupReadonlyBaseSummary,
+  detail,
+  templates: followupTemplates,
+  tab: queryTab,
+  parity: parityTag,
+  focus: focusTag,
+  lastLoadedAt,
+  lastError: computed(() => loadError.value || guardedFeedback.value),
+})
 
 const productionOrderParitySummary = computed(() =>
   detail.value
@@ -484,6 +497,15 @@ const goBack = (): void => {
   ) {
     queryParams.parity = 'sample-list'
     queryParams.tab = 'sample-readiness-readonly'
+  }
+  if (
+    queryTab.value === 'followup-readonly' ||
+    readonlyMode.value === 'readonly-followup' ||
+    focusTag.value === 'followup-source' ||
+    parityTag.value === 'production-followup-template'
+  ) {
+    queryParams.parity = 'production-followup-template'
+    queryParams.tab = 'followup-readonly'
   }
   router.push({
     path: '/production/plans',

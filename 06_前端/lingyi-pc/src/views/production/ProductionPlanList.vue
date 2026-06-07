@@ -54,7 +54,7 @@
               /production/productOrder -> /production/plans?parity=production-order
             </el-descriptions-item>
             <el-descriptions-item label="生产跟进入口">
-              /production/productionProcess -> /production/plans?parity=production-followup-template
+              /production/productionProcess -> /production/plans?tab=followup-readonly&parity=production-followup-template
             </el-descriptions-item>
           </el-descriptions>
       </el-card>
@@ -172,6 +172,7 @@ import ProductionOrderParityReadonly from '@/views/production/components/Product
 import ProductionProcessProgressReadonly from '@/views/production/components/ProductionProcessProgressReadonly.vue'
 import ProductionSampleReadinessReadonly from '@/views/production/components/ProductionSampleReadinessReadonly.vue'
 import { useProductionPlanReadback } from './composables/useProductionPlanReadback'
+import { useProductionFollowupReadonly } from './composables/useProductionFollowupReadonly'
 import { useProductionProcessProgressReadonly } from './composables/useProductionProcessProgressReadonly'
 import { useProductionSampleReadinessReadonly } from './composables/useProductionSampleReadinessReadonly'
 
@@ -323,13 +324,24 @@ const snapshotSourceSummary = computed(() => {
   return `backend ${backendCount} / synthetic ${syntheticCount}`
 })
 
-const followupReadonlySummary = computed(() =>
+const followupReadonlyBaseSummary = computed(() =>
   buildProductionFollowupListSummary({
     parity: parityTag.value,
     rows: filteredPlans.value,
     templates: followupTemplates.value,
   }),
 )
+
+const { followupReadonlySummary } = useProductionFollowupReadonly({
+  baseSummary: followupReadonlyBaseSummary,
+  rows: filteredPlans,
+  templates: followupTemplates,
+  tab: queryTab,
+  parity: parityTag,
+  focus: focusTag,
+  lastLoadedAt,
+  lastError: listError,
+})
 
 const productionOrderParitySummary = computed(() =>
   buildProductionOrderParityListSummary({
@@ -401,6 +413,12 @@ const buildDetailQuery = (row: PlanRow): Record<string, string> => {
     queryParams.tab = 'sample-readiness-readonly'
     queryParams.mode = 'readonly-sample-readiness'
     queryParams.focus = 'sample-source'
+  }
+  if (queryTab.value === 'followup-readonly' || focusTag.value === 'followup-source' || parityTag.value === 'production-followup-template') {
+    queryParams.parity = 'production-followup-template'
+    queryParams.tab = 'followup-readonly'
+    queryParams.mode = 'readonly-followup'
+    queryParams.focus = 'followup-source'
   }
   return queryParams
 }

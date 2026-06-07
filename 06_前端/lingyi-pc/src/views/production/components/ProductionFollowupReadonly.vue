@@ -1,103 +1,138 @@
 <template>
-  <section class="followup-shell" data-testid="production-followup-readonly">
+  <section class="followup-shell" data-testid="cand458-production-followup-readonly-section">
     <div class="followup-header">
       <div class="title-group">
-        <span class="title">生产跟进模板 / 样衣流程回读</span>
-        <span class="note">{{ summary.sourceLabel }}</span>
+        <span class="title">生产跟进模板 source readonly 回读</span>
+        <span class="note" data-testid="cand458-production-followup-query-state">
+          {{ summary.queryStateLabel }}
+        </span>
       </div>
       <div class="header-tags">
         <el-tag
+          :type="summary.parityTone"
+          effect="plain"
+          data-testid="cand458-production-followup-marker-parity"
+        >
+          {{ summary.parityLabel }}
+        </el-tag>
+        <el-tag
+          :type="summary.focusTone"
+          effect="plain"
+          data-testid="cand458-production-followup-marker-focus"
+        >
+          {{ summary.focusLabel }}
+        </el-tag>
+        <el-tag
           :type="summary.templateStatusTone"
           effect="plain"
-          data-testid="production-followup-template-status"
+          data-testid="cand458-production-followup-template-status"
         >
           {{ summary.templateStatusLabel }}
         </el-tag>
         <el-tag
-          :type="summary.sampleParityTone"
+          :type="summary.sourceStatusTone"
           effect="plain"
-          data-testid="production-followup-sample-parity"
+          data-testid="cand458-production-followup-source-status"
         >
-          {{ summary.sampleParityLabel }}
-        </el-tag>
-        <el-tag
-          :type="summary.progressExceptionTone"
-          effect="plain"
-          data-testid="production-followup-progress-status"
-        >
-          {{ summary.progressExceptionLabel }}
+          {{ summary.sourceStatusLabel }}
         </el-tag>
       </div>
     </div>
 
     <div class="summary-grid">
-      <div
-        v-for="field in PRODUCTION_FOLLOWUP_METRIC_FIELDS"
-        :key="field.key"
-        class="summary-card"
-      >
-        <span class="summary-label">{{ field.label }}</span>
-        <strong class="summary-value">{{ summaryValue(field.key) }}</strong>
+      <div v-for="card in summary.cards" :key="card.key" class="summary-card">
+        <span class="summary-label">{{ card.label }}</span>
+        <strong class="summary-value">{{ card.value }}</strong>
       </div>
     </div>
 
     <el-alert
       type="warning"
       :closable="false"
+      :title="summary.blockedReason"
+      data-testid="cand458-production-followup-blocked-reason"
+    />
+
+    <el-alert
+      type="info"
+      :closable="false"
       :title="summary.readonlyGuardReason"
-      data-testid="production-followup-readonly-guard"
+      data-testid="cand458-production-followup-readonly-guard"
     />
 
     <el-alert
       type="info"
       :closable="false"
       :title="summary.remainingGap"
-      data-testid="production-followup-remaining-gap"
+      data-testid="cand458-production-followup-remaining-gap"
     />
 
-    <el-descriptions border :column="3" class="followup-descriptions">
-      <el-descriptions-item label="当前入口">{{ summary.parityScopeLabel }}</el-descriptions-item>
-      <el-descriptions-item label="模板来源">{{ summary.sourceLabel }}</el-descriptions-item>
+    <el-descriptions border :column="2" class="followup-descriptions">
       <el-descriptions-item label="写入边界">
-        create-work-order / sync-job-cards disabled
+        <span data-testid="cand458-production-followup-write-boundary">
+          {{ summary.writeBoundary }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="来源状态">
+        <span data-testid="cand458-production-followup-source-status-text">
+          {{ summary.sourceStatusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="条目/状态">
+        <span data-testid="cand458-production-followup-item-status">
+          {{ summary.itemStatusLabel }}
+        </span>
+      </el-descriptions-item>
+      <el-descriptions-item label="聚焦来源">
+        <span data-testid="cand458-production-followup-focus-text">
+          {{ summary.focusLabel }}
+        </span>
       </el-descriptions-item>
       <el-descriptions-item label="模板状态">{{ summary.templateStatusLabel }}</el-descriptions-item>
-      <el-descriptions-item label="样衣 parity">{{ summary.sampleParityLabel }}</el-descriptions-item>
-      <el-descriptions-item label="进度异常">{{ summary.progressExceptionLabel }}</el-descriptions-item>
+      <el-descriptions-item label="异常快照">{{ summary.progressStatusLabel }}</el-descriptions-item>
     </el-descriptions>
+
+    <div class="guarded-actions" data-testid="cand458-production-followup-guarded-actions">
+      <el-button
+        v-for="action in summary.disabledActions"
+        :key="action.label"
+        disabled
+        type="info"
+        plain
+        data-action-type="write"
+        data-guard-state="disabled"
+        :title="action.reason"
+      >
+        {{ action.label }}
+      </el-button>
+    </div>
+
+    <el-table
+      :data="summary.items"
+      border
+      size="small"
+      empty-text="暂无生产跟进只读条目"
+      data-testid="cand458-production-followup-item-table"
+    >
+      <el-table-column prop="subjectLabel" label="条目" min-width="180" />
+      <el-table-column prop="statusLabel" label="状态" min-width="160" />
+      <el-table-column prop="sourceLabel" label="来源" min-width="200" />
+      <el-table-column prop="blockedReason" label="阻断原因" min-width="240" />
+    </el-table>
   </section>
 </template>
 
 <script setup lang="ts">
-import type { ProductionFollowupReadonlySummary } from '@/views/production/composables/useProductionPlanReadback'
-import {
-  PRODUCTION_FOLLOWUP_METRIC_FIELDS,
-  type ProductionFollowupMetricKey,
-} from '@/views/production/constants/productionFollowupFields'
+import type { ProductionFollowupReadonlySummary } from '@/views/production/composables/useProductionFollowupReadonly'
 
-const props = defineProps<{
+defineProps<{
   summary: ProductionFollowupReadonlySummary
 }>()
-
-const summaryValue = (key: ProductionFollowupMetricKey): string => {
-  switch (key) {
-    case 'templateCount':
-      return String(props.summary.templateCount)
-    case 'sampleProcessCount':
-      return String(props.summary.sampleProcessCount)
-    case 'exceptionCount':
-      return String(props.summary.exceptionCount)
-    case 'progressSnapshot':
-      return props.summary.progressSnapshot
-    default:
-      return '-'
-  }
-}
 </script>
 
 <style scoped>
 .followup-shell {
-  margin-bottom: 12px;
+  margin: 12px 0 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -117,7 +152,7 @@ const summaryValue = (key: ProductionFollowupMetricKey): string => {
 }
 
 .title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -127,7 +162,8 @@ const summaryValue = (key: ProductionFollowupMetricKey): string => {
   font-size: 12px;
 }
 
-.header-tags {
+.header-tags,
+.guarded-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -136,7 +172,7 @@ const summaryValue = (key: ProductionFollowupMetricKey): string => {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
 }
 
@@ -151,6 +187,12 @@ const summaryValue = (key: ProductionFollowupMetricKey): string => {
 }
 
 .summary-value {
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--el-text-color-primary);
+}
+
+.followup-descriptions :deep(.el-descriptions__label) {
+  width: 120px;
 }
 </style>
