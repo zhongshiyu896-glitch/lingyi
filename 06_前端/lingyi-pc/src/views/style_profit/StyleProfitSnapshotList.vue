@@ -121,68 +121,10 @@
         :summary="listSnapshotReadonlySectionSummary"
         data-testid="style-profit-snapshot-readonly-section"
       />
-      <section class="readonly-source-panel" data-testid="style-profit-readonly-source-panel">
-        <div class="readonly-source-header">
-          <div class="readonly-source-title-group">
-            <span class="readonly-source-title">成本来源快照 / 只读回读</span>
-            <span class="readonly-source-note">{{ listReadonlySummary.readonlySourceLabel }}</span>
-          </div>
-          <div class="readonly-source-tags">
-            <el-tag
-              :type="listReadonlySummary.sourceTypeTone"
-              effect="plain"
-              data-testid="style-profit-source-type-tag"
-            >
-              {{ listReadonlySummary.sourceTypeLabel }}
-            </el-tag>
-            <el-tag
-              :type="listReadonlySummary.sourceStatusTone"
-              effect="plain"
-              data-testid="style-profit-source-status-tag"
-            >
-              {{ listReadonlySummary.sourceStatusLabel }}
-            </el-tag>
-            <el-tag
-              :type="listReadonlySummary.snapshotStatusTone"
-              effect="plain"
-              data-testid="style-profit-source-snapshot-tag"
-            >
-              {{ listReadonlySummary.snapshotStatusLabel }}
-            </el-tag>
-          </div>
-        </div>
-        <div class="readonly-source-grid">
-          <div
-            v-for="field in STYLE_PROFIT_LIST_METRIC_FIELDS"
-            :key="field.key"
-            class="readonly-source-card"
-          >
-            <span class="readonly-source-card-label">{{ field.label }}</span>
-            <strong class="readonly-source-card-value">{{ listReadonlySummary.metricValues[field.key] }}</strong>
-          </div>
-        </div>
-        <el-descriptions border :column="3" size="small" data-testid="style-profit-readonly-descriptions">
-          <el-descriptions-item label="成本来源">{{ listReadonlySummary.revenueModeLabel }}</el-descriptions-item>
-          <el-descriptions-item label="来源类型">{{ listReadonlySummary.sourceTypeLabel }}</el-descriptions-item>
-          <el-descriptions-item label="来源状态">{{ listReadonlySummary.sourceStatusLabel }}</el-descriptions-item>
-          <el-descriptions-item label="快照状态">{{ listReadonlySummary.snapshotStatusLabel }}</el-descriptions-item>
-          <el-descriptions-item label="映射状态">{{ listReadonlySummary.allocationStatusLabel }}</el-descriptions-item>
-          <el-descriptions-item label="写入边界">{{ listReadonlySummary.writeBoundary }}</el-descriptions-item>
-        </el-descriptions>
-        <el-alert
-          type="warning"
-          :closable="false"
-          :title="listReadonlySummary.readonlyGuardReason"
-          class="feedback-alert"
-          data-testid="style-profit-write-guard-alert"
-        />
-        <el-alert
-          type="info"
-          :closable="false"
-          :title="listReadonlySummary.remainingGap"
-          data-testid="style-profit-remaining-gap-alert"
-        />
-      </section>
+      <StyleProfitSourceAuditReadonly
+        :summary="listSourceAuditReadonlySummary"
+        test-id-prefix="cand494-style-profit-source-audit"
+      />
       <StyleProfitGapReadonlySection
         test-id-prefix="style-profit-gap"
         :summary="listGapReadonlySummary"
@@ -339,15 +281,15 @@ import {
 } from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
 import StyleProfitGapReadonlySection from '@/views/style_profit/components/StyleProfitGapReadonlySection.vue'
+import StyleProfitSourceAuditReadonly from '@/views/style_profit/components/StyleProfitSourceAuditReadonly.vue'
 import StyleProfitSnapshotReadonlySection from '@/views/style_profit/components/StyleProfitSnapshotReadonlySection.vue'
 import { buildStyleProfitListGapReadonlySummary } from '@/views/style_profit/composables/useStyleProfitGapReadonly'
+import { useStyleProfitSourceAuditReadonlySection } from '@/views/style_profit/composables/useStyleProfitSourceAuditReadonly'
 import {
-  buildStyleProfitListReadonlySummary,
   useStyleProfitSnapshotReadonlySection,
 } from '@/views/style_profit/composables/useStyleProfitSnapshotReadonly'
 import { STYLE_PROFIT_GAP_LIST_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitGapFields'
 import {
-  STYLE_PROFIT_LIST_METRIC_FIELDS,
   STYLE_PROFIT_READONLY_GUARD_REASON_MAP,
 } from '@/views/style_profit/constants/styleProfitReadonlyFields'
 
@@ -397,13 +339,20 @@ const readonlyQueryStateLabel = computed<string>(() => {
   const status = query.snapshot_status || 'ALL_STATUS'
   return `company=${company}; item_code=${itemCode}; sales_order=${salesOrder}; snapshot_status=${status}; page=${query.page}`
 })
-const listReadonlySummary = computed(() => buildStyleProfitListReadonlySummary(rows.value, parityHint.value))
 const listGapReadonlySummary = computed(() => buildStyleProfitListGapReadonlySummary(rows.value, parityHint.value))
 const { styleProfitSnapshotReadonlySummary: listSnapshotReadonlySectionSummary } = useStyleProfitSnapshotReadonlySection({
   mode: 'list',
   rows,
   canRead,
   currentPath: readonlyRoutePath,
+  parity: parityHint,
+  focus: readonlyFocus,
+  queryStateLabel: readonlyQueryStateLabel,
+})
+const { styleProfitSourceAuditReadonlySummary: listSourceAuditReadonlySummary } = useStyleProfitSourceAuditReadonlySection({
+  mode: 'list',
+  rows,
+  canRead,
   parity: parityHint,
   focus: readonlyFocus,
   queryStateLabel: readonlyQueryStateLabel,
@@ -558,13 +507,25 @@ const applyGlobalReadonlyGuardToElement = (
     }
 
     if (disableNative && target instanceof HTMLButtonElement) {
-      target.disabled = true
+      if (!target.disabled) {
+        target.disabled = true
+      }
     }
-    target.setAttribute('aria-disabled', 'true')
-    target.setAttribute('title', reason)
-    target.setAttribute('tabindex', '-1')
-    target.style.pointerEvents = 'none'
-    target.classList.add('is-disabled')
+    if (target.getAttribute('aria-disabled') !== 'true') {
+      target.setAttribute('aria-disabled', 'true')
+    }
+    if (target.getAttribute('title') !== reason) {
+      target.setAttribute('title', reason)
+    }
+    if (target.getAttribute('tabindex') !== '-1') {
+      target.setAttribute('tabindex', '-1')
+    }
+    if (target.style.pointerEvents !== 'none') {
+      target.style.pointerEvents = 'none'
+    }
+    if (!target.classList.contains('is-disabled')) {
+      target.classList.add('is-disabled')
+    }
   })
 }
 
@@ -642,8 +603,6 @@ const startGlobalReadonlyActionGuardObserver = (): void => {
   globalStyleProfitListGuardObserver.observe(document.body, {
     childList: true,
     subtree: true,
-    attributes: true,
-    attributeFilter: ['class', 'disabled', 'aria-disabled', 'title', 'tabindex'],
   })
 }
 

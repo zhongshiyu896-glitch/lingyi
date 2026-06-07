@@ -4,6 +4,10 @@
       :summary="detailSnapshotReadonlySectionSummary"
       data-testid="style-profit-detail-snapshot-readonly-section"
     />
+    <StyleProfitSourceAuditReadonly
+      :summary="detailSourceAuditReadonlySummary"
+      test-id-prefix="cand494-style-profit-source-audit"
+    />
     <el-card shadow="never" v-loading="loading" data-testid="style-profit-detail-main-card">
       <template #header>
         <div class="header-row" data-testid="style-profit-detail-header">
@@ -86,68 +90,6 @@
             <el-descriptions-item label="发送时间">{{ snapshot.created_at || '-' }}</el-descriptions-item>
             <el-descriptions-item label="发送人">{{ snapshot.created_by || '-' }}</el-descriptions-item>
           </el-descriptions>
-          <section class="readonly-source-panel" data-testid="style-profit-detail-readonly-source-panel">
-            <div class="readonly-source-header">
-              <div class="readonly-source-title-group">
-                <span class="readonly-source-title">成本来源 / 详情只读回读</span>
-                <span class="readonly-source-note">{{ detailReadonlySummary.readonlySourceLabel }}</span>
-              </div>
-              <div class="readonly-source-tags">
-                <el-tag
-                  :type="detailReadonlySummary.sourceTypeTone"
-                  effect="plain"
-                  data-testid="style-profit-detail-source-type-tag"
-                >
-                  {{ detailReadonlySummary.sourceTypeLabel }}
-                </el-tag>
-                <el-tag
-                  :type="detailReadonlySummary.sourceStatusTone"
-                  effect="plain"
-                  data-testid="style-profit-detail-source-status-tag"
-                >
-                  {{ detailReadonlySummary.sourceStatusLabel }}
-                </el-tag>
-                <el-tag
-                  :type="detailReadonlySummary.snapshotStatusTone"
-                  effect="plain"
-                  data-testid="style-profit-detail-source-snapshot-tag"
-                >
-                  {{ detailReadonlySummary.snapshotStatusLabel }}
-                </el-tag>
-              </div>
-            </div>
-            <div class="readonly-source-grid">
-              <div
-                v-for="field in STYLE_PROFIT_DETAIL_METRIC_FIELDS"
-                :key="field.key"
-                class="readonly-source-card"
-              >
-                <span class="readonly-source-card-label">{{ field.label }}</span>
-                <strong class="readonly-source-card-value">{{ detailReadonlySummary.metricValues[field.key] }}</strong>
-              </div>
-            </div>
-            <el-descriptions border :column="3" size="small" data-testid="style-profit-detail-readonly-descriptions">
-              <el-descriptions-item label="成本来源">{{ detailReadonlySummary.revenueModeLabel }}</el-descriptions-item>
-              <el-descriptions-item label="来源类型">{{ detailReadonlySummary.sourceTypeLabel }}</el-descriptions-item>
-              <el-descriptions-item label="来源状态">{{ detailReadonlySummary.sourceStatusLabel }}</el-descriptions-item>
-              <el-descriptions-item label="快照状态">{{ detailReadonlySummary.snapshotStatusLabel }}</el-descriptions-item>
-              <el-descriptions-item label="映射状态">{{ detailReadonlySummary.allocationStatusLabel }}</el-descriptions-item>
-              <el-descriptions-item label="写入边界">{{ detailReadonlySummary.writeBoundary }}</el-descriptions-item>
-            </el-descriptions>
-            <el-alert
-              type="warning"
-              :closable="false"
-              :title="detailReadonlySummary.readonlyGuardReason"
-              class="warn-alert"
-              data-testid="style-profit-detail-write-guard-alert"
-            />
-            <el-alert
-              type="info"
-              :closable="false"
-              :title="detailReadonlySummary.remainingGap"
-              data-testid="style-profit-detail-remaining-gap-alert"
-            />
-          </section>
           <StyleProfitGapReadonlySection
             test-id-prefix="style-profit-detail-gap"
             :summary="detailGapReadonlySummary"
@@ -319,15 +261,15 @@ import {
 } from '@/api/style_profit'
 import { usePermissionStore } from '@/stores/permission'
 import StyleProfitGapReadonlySection from '@/views/style_profit/components/StyleProfitGapReadonlySection.vue'
+import StyleProfitSourceAuditReadonly from '@/views/style_profit/components/StyleProfitSourceAuditReadonly.vue'
 import StyleProfitSnapshotReadonlySection from '@/views/style_profit/components/StyleProfitSnapshotReadonlySection.vue'
 import { buildStyleProfitDetailGapReadonlySummary } from '@/views/style_profit/composables/useStyleProfitGapReadonly'
+import { useStyleProfitSourceAuditReadonlySection } from '@/views/style_profit/composables/useStyleProfitSourceAuditReadonly'
 import {
-  buildStyleProfitDetailReadonlySummary,
   useStyleProfitSnapshotReadonlySection,
 } from '@/views/style_profit/composables/useStyleProfitSnapshotReadonly'
 import { STYLE_PROFIT_GAP_DETAIL_METRIC_FIELDS } from '@/views/style_profit/constants/styleProfitGapFields'
 import {
-  STYLE_PROFIT_DETAIL_METRIC_FIELDS,
   STYLE_PROFIT_READONLY_GUARD_REASON_MAP,
 } from '@/views/style_profit/constants/styleProfitReadonlyFields'
 
@@ -498,9 +440,6 @@ const readonlyQueryStateLabel = computed<string>(() => {
   const id = hasValidSnapshotId.value ? String(snapshotId.value) : 'MISSING_SNAPSHOT_ID'
   return `snapshot_id=${id}; mode=${mode}; parity=${parityHint.value}; focus=${readonlyFocus.value || 'summary'}`
 })
-const detailReadonlySummary = computed(() =>
-  buildStyleProfitDetailReadonlySummary(snapshot.value, details.value, sourceMaps.value, parityHint.value),
-)
 const detailGapReadonlySummary = computed(() =>
   buildStyleProfitDetailGapReadonlySummary(snapshot.value, details.value, sourceMaps.value, parityHint.value),
 )
@@ -511,6 +450,16 @@ const { styleProfitSnapshotReadonlySummary: detailSnapshotReadonlySectionSummary
   sourceMaps,
   canRead,
   currentPath: readonlyRoutePath,
+  parity: parityHint,
+  focus: readonlyFocus,
+  queryStateLabel: readonlyQueryStateLabel,
+})
+const { styleProfitSourceAuditReadonlySummary: detailSourceAuditReadonlySummary } = useStyleProfitSourceAuditReadonlySection({
+  mode: 'detail',
+  snapshot,
+  details,
+  sourceMaps,
+  canRead,
   parity: parityHint,
   focus: readonlyFocus,
   queryStateLabel: readonlyQueryStateLabel,
@@ -618,13 +567,25 @@ const applyGlobalReadonlyGuardToElement = (
     }
 
     if (disableNative && target instanceof HTMLButtonElement) {
-      target.disabled = true
+      if (!target.disabled) {
+        target.disabled = true
+      }
     }
-    target.setAttribute('aria-disabled', 'true')
-    target.setAttribute('title', reason)
-    target.setAttribute('tabindex', '-1')
-    target.style.pointerEvents = 'none'
-    target.classList.add('is-disabled')
+    if (target.getAttribute('aria-disabled') !== 'true') {
+      target.setAttribute('aria-disabled', 'true')
+    }
+    if (target.getAttribute('title') !== reason) {
+      target.setAttribute('title', reason)
+    }
+    if (target.getAttribute('tabindex') !== '-1') {
+      target.setAttribute('tabindex', '-1')
+    }
+    if (target.style.pointerEvents !== 'none') {
+      target.style.pointerEvents = 'none'
+    }
+    if (!target.classList.contains('is-disabled')) {
+      target.classList.add('is-disabled')
+    }
   })
 }
 
@@ -702,8 +663,6 @@ const startGlobalReadonlyActionGuardObserver = (): void => {
   globalStyleProfitDetailGuardObserver.observe(document.body, {
     childList: true,
     subtree: true,
-    attributes: true,
-    attributeFilter: ['class', 'disabled', 'aria-disabled', 'title', 'tabindex'],
   })
 }
 
