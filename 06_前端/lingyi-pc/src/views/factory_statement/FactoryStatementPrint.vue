@@ -30,6 +30,13 @@
       打印、导出、确认、取消与应付草稿入口保持只读 guard。
     </p>
 
+    <div
+      v-if="showPrintAuditReadonlySection"
+      data-testid="factory-statement-print-audit-readonly-section"
+    >
+      <FactoryStatementPrintAuditReadonlySection :summary="printAuditReadonlySummary" />
+    </div>
+
     <el-skeleton v-if="!permissionReady" :rows="4" animated />
     <el-empty
       v-else-if="!canRead"
@@ -210,10 +217,13 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  fetchFactoryStatementReadonlyFallbackId,
   fetchFactoryStatementReadonlyDetail,
   type FactoryStatementReadonlyRecord,
 } from '@/api/factory_statement_readonly'
+import FactoryStatementPrintAuditReadonlySection from '@/views/factory_statement/components/FactoryStatementPrintAuditReadonlySection.vue'
 import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/components/FactoryStatementPayableStatusReadonly.vue'
+import { useFactoryStatementPrintAuditReadonly } from '@/views/factory_statement/composables/useFactoryStatementPrintAuditReadonly'
 import { useFactoryStatementPayableReadonly } from '@/views/factory_statement/composables/useFactoryStatementPayableReadonly'
 import { useFactoryStatementReadonly } from '@/views/factory_statement/composables/useFactoryStatementReadonly'
 import { usePermissionStore } from '@/stores/permission'
@@ -230,11 +240,28 @@ const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
 
 const parityValue = computed<string>(() => String(route.query.parity || '').trim().toLowerCase())
+const tabValue = computed<string>(() => String(route.query.tab || '').trim().toLowerCase())
+const focusValue = computed<string>(() => String(route.query.focus || '').trim().toLowerCase())
+const isPrintAuditReadonly = computed<boolean>(() => (
+  parityValue.value === 'factory-statement'
+  && (
+    tabValue.value === 'print-audit-readonly'
+    || focusValue.value === 'print-source'
+  )
+))
 const isReadonlyParity = computed<boolean>(() => (
-  parityValue.value === 'foundation-supplier' || parityValue.value === 'foundation-factory'
+  parityValue.value === 'foundation-supplier'
+  || parityValue.value === 'foundation-factory'
+  || isPrintAuditReadonly.value
 ))
 const preservedReadonlyQuery = computed<Record<string, string>>(() => {
   const query: Record<string, string> = {}
+  if (isPrintAuditReadonly.value) {
+    query.parity = 'factory-statement'
+    query.tab = 'print-audit-readonly'
+    query.focus = 'print-source'
+    return query
+  }
   if (parityValue.value) {
     query.parity = parityValue.value
   }
@@ -244,6 +271,7 @@ const canRead = computed<boolean>(() => isReadonlyParity.value || permissionStor
 const printUser = computed<string>(() => permissionStore.state.username || '-')
 const statementId = computed<number>(() => Number(route.query.id || '0'))
 const hasValidStatementId = computed<boolean>(() => Number.isInteger(statementId.value) && statementId.value > 0)
+const resolvedStatementId = ref<number | null>(null)
 const detail = computed(() => readonlyRecord.value?.raw || null)
 const items = computed(() => readonlyRecord.value?.items || [])
 const logs = computed(() => readonlyRecord.value?.logs || [])
@@ -258,30 +286,51 @@ const { payableReadonlySummary } = useFactoryStatementPayableReadonly({
   recordSource: readonlyRecord,
   parity: parityValue,
   context: 'print',
+  tab: tabValue,
+  focus: focusValue,
 })
+const { printAuditReadonlySummary } = useFactoryStatementPrintAuditReadonly({
+  detailRecord: readonlyRecord,
+  parity: parityValue,
+  tab: tabValue,
+  focus: focusValue,
+  loading,
+  hasRouteStatementId: hasValidStatementId,
+  resolvedStatementId,
+})
+const showPrintAuditReadonlySection = computed<boolean>(() => canRead.value)
 
 const loadDetail = async (): Promise<void> => {
   loadError.value = ''
   if (!canRead.value) {
     readonlyRecord.value = null
+    resolvedStatementId.value = null
     generatedAt.value = ''
     missingStatementId.value = false
-    return
-  }
-  if (!hasValidStatementId.value) {
-    readonlyRecord.value = null
-    generatedAt.value = ''
-    missingStatementId.value = true
     return
   }
   missingStatementId.value = false
 
   loading.value = true
   try {
-    const result = await fetchFactoryStatementReadonlyDetail(statementId.value)
+    let targetStatementId = statementId.value
+    if (!hasValidStatementId.value) {
+      const fallbackIdResult = await fetchFactoryStatementReadonlyFallbackId()
+      if (!fallbackIdResult.data) {
+        readonlyRecord.value = null
+        resolvedStatementId.value = null
+        generatedAt.value = ''
+        missingStatementId.value = true
+        return
+      }
+      targetStatementId = fallbackIdResult.data
+    }
+    resolvedStatementId.value = targetStatementId
+    const result = await fetchFactoryStatementReadonlyDetail(targetStatementId)
     const payload = result.data
     if (!payload) {
       readonlyRecord.value = null
+      resolvedStatementId.value = null
       generatedAt.value = ''
       return
     }
@@ -291,6 +340,7 @@ const loadDetail = async (): Promise<void> => {
     const message = (error as Error).message || '未知错误'
     loadError.value = message
     readonlyRecord.value = null
+    resolvedStatementId.value = null
     generatedAt.value = ''
     ElMessage.error(message)
   } finally {
