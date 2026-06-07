@@ -356,6 +356,8 @@
             </el-tag>
           </div>
 
+          <SalesInventoryStockSourceGuardReadonly :summary="stockSourceGuardReadonlySummary" />
+
           <StockLedgerImpactReadonly :summary="stockLedgerImpactReadonlySummary" />
 
           <el-table
@@ -3424,7 +3426,9 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import SalesInventoryStockSourceGuardReadonly from '@/views/sales_inventory/components/SalesInventoryStockSourceGuardReadonly.vue'
 import StockLedgerImpactReadonly from '@/views/sales_inventory/components/StockLedgerImpactReadonly.vue'
+import { useSalesInventoryStockSourceGuardReadonly } from '@/views/sales_inventory/composables/useSalesInventoryStockSourceGuardReadonly'
 import { useStockLedgerImpactReadonly } from '@/views/sales_inventory/composables/useStockLedgerImpactReadonly'
 import {
   fetchStockLedgerImpactReadonlySnapshot,
@@ -3573,6 +3577,14 @@ const canExport = computed<boolean>(() => {
 
 const stockLedgerParity = computed<string>(() => {
   return typeof route.query.parity === 'string' ? route.query.parity.trim() : ''
+})
+
+const stockLedgerReadonlyTab = computed<string>(() => {
+  return typeof route.query.tab === 'string' ? route.query.tab.trim() : 'source-guard-readonly'
+})
+
+const stockLedgerReadonlyFocus = computed<string>(() => {
+  return typeof route.query.focus === 'string' ? route.query.focus.trim() : 'stock-source'
 })
 
 const isMaterialStockParity = computed<boolean>(() => stockLedgerParity.value === 'material-stock')
@@ -4062,6 +4074,20 @@ const stockLedgerFilteredRows = computed<StockLedgerItem[]>(() => {
       .join(' ')
     return searchable.includes(keyword)
   })
+})
+
+const { stockSourceGuardReadonlySummary } = useSalesInventoryStockSourceGuardReadonly({
+  rows: stockLedgerFilteredRows,
+  summaryRows: stockSummaryRows,
+  aggregationRows: inventoryAggregationRows,
+  tab: stockLedgerReadonlyTab,
+  parity: stockLedgerParity,
+  focus: stockLedgerReadonlyFocus,
+  itemCode: computed(() => query.item_code.trim()),
+  canRead,
+  requiredItemCode: requiredItemCodeGuarded,
+  lastError,
+  droppedCount: stockSummaryDroppedCount,
 })
 
 const materialTransferQuery = reactive({
