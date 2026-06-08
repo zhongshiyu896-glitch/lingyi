@@ -356,6 +356,10 @@
             </el-tag>
           </div>
 
+          <div data-testid="cand514-sales-inventory-stock-ledger-warehouse-balance-anchor">
+            <SalesInventoryWarehouseBalanceReadonly :summary="salesInventoryWarehouseBalanceReadonlySummary" />
+          </div>
+
           <SalesInventoryStockSourceGuardReadonly :summary="stockSourceGuardReadonlySummary" />
 
           <StockLedgerImpactReadonly :summary="stockLedgerImpactReadonlySummary" />
@@ -3426,8 +3430,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import SalesInventoryWarehouseBalanceReadonly from '@/views/sales_inventory/components/SalesInventoryWarehouseBalanceReadonly.vue'
 import SalesInventoryStockSourceGuardReadonly from '@/views/sales_inventory/components/SalesInventoryStockSourceGuardReadonly.vue'
 import StockLedgerImpactReadonly from '@/views/sales_inventory/components/StockLedgerImpactReadonly.vue'
+import { useSalesInventoryWarehouseBalanceReadonly } from '@/views/sales_inventory/composables/useSalesInventoryWarehouseBalanceReadonly'
 import { useSalesInventoryStockSourceGuardReadonly } from '@/views/sales_inventory/composables/useSalesInventoryStockSourceGuardReadonly'
 import { useStockLedgerImpactReadonly } from '@/views/sales_inventory/composables/useStockLedgerImpactReadonly'
 import {
@@ -3585,6 +3591,14 @@ const stockLedgerReadonlyTab = computed<string>(() => {
 
 const stockLedgerReadonlyFocus = computed<string>(() => {
   return typeof route.query.focus === 'string' ? route.query.focus.trim() : 'stock-source'
+})
+
+const stockLedgerWarehouseBalanceTab = computed<string>(() => {
+  return typeof route.query.tab === 'string' ? route.query.tab.trim() : 'warehouse-balance-readonly'
+})
+
+const stockLedgerWarehouseBalanceFocus = computed<string>(() => {
+  return typeof route.query.focus === 'string' ? route.query.focus.trim() : 'warehouse-source'
 })
 
 const isMaterialStockParity = computed<boolean>(() => stockLedgerParity.value === 'material-stock')
@@ -4074,6 +4088,20 @@ const stockLedgerFilteredRows = computed<StockLedgerItem[]>(() => {
       .join(' ')
     return searchable.includes(keyword)
   })
+})
+
+const { salesInventoryWarehouseBalanceReadonlySummary } = useSalesInventoryWarehouseBalanceReadonly({
+  rows: stockLedgerFilteredRows,
+  summaryRows: stockSummaryRows,
+  aggregationRows: inventoryAggregationRows,
+  tab: stockLedgerWarehouseBalanceTab,
+  parity: stockLedgerParity,
+  focus: stockLedgerWarehouseBalanceFocus,
+  itemCode: computed(() => query.item_code.trim()),
+  warehouse: computed(() => query.warehouse.trim()),
+  canRead,
+  requiredItemCode: requiredItemCodeGuarded,
+  lastError,
 })
 
 const { stockSourceGuardReadonlySummary } = useSalesInventoryStockSourceGuardReadonly({
