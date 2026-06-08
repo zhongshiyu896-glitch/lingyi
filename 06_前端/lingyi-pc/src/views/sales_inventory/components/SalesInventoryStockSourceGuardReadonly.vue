@@ -1,9 +1,9 @@
 <template>
-  <section class="readonly-shell" data-testid="cand472-stock-ledger-source-guard-readonly-section">
+  <section class="readonly-shell" :data-testid="`${summary.testIdPrefix}-readonly-section`">
     <div class="readonly-header">
       <div class="title-group">
-        <span class="title">库存流水 stock-source guard 只读回读</span>
-        <span class="note" data-testid="cand472-stock-ledger-source-guard-query-state">
+        <span class="title">{{ summary.titleLabel }}</span>
+        <span class="note" :data-testid="`${summary.testIdPrefix}-query-state`">
           {{ summary.queryStateLabel }}
         </span>
       </div>
@@ -11,28 +11,28 @@
         <el-tag
           :type="summary.parityTone"
           effect="plain"
-          data-testid="cand472-stock-ledger-source-guard-parity"
+          :data-testid="`${summary.testIdPrefix}-parity`"
         >
           {{ summary.parityLabel }}
         </el-tag>
         <el-tag
           :type="summary.focusTone"
           effect="plain"
-          data-testid="cand472-stock-ledger-source-guard-focus"
+          :data-testid="`${summary.testIdPrefix}-focus`"
         >
           {{ summary.focusLabel }}
         </el-tag>
         <el-tag
           :type="summary.stateTone"
           effect="plain"
-          data-testid="cand472-stock-ledger-source-guard-state"
+          :data-testid="`${summary.testIdPrefix}-state`"
         >
           {{ summary.stateLabel }}
         </el-tag>
         <el-tag
           :type="summary.sourceStatusTone"
           effect="plain"
-          data-testid="cand472-stock-ledger-source-guard-source-status"
+          :data-testid="`${summary.testIdPrefix}-source-status`"
         >
           {{ summary.sourceStatusLabel }}
         </el-tag>
@@ -50,41 +50,41 @@
       type="warning"
       :closable="false"
       :title="summary.blockedReason"
-      data-testid="cand472-stock-ledger-source-guard-blocked-reason"
+      :data-testid="`${summary.testIdPrefix}-blocked-reason`"
     />
 
     <el-alert
       type="info"
       :closable="false"
       :title="summary.readonlyGuardReason"
-      data-testid="cand472-stock-ledger-source-guard-readonly-guard"
+      :data-testid="`${summary.testIdPrefix}-readonly-guard`"
     />
 
     <el-alert
       type="info"
       :closable="false"
       :title="summary.remainingGap"
-      data-testid="cand472-stock-ledger-source-guard-remaining-gap"
+      :data-testid="`${summary.testIdPrefix}-remaining-gap`"
     />
 
     <el-descriptions border :column="2" class="readonly-descriptions">
       <el-descriptions-item label="写入边界">
-        <span data-testid="cand472-stock-ledger-source-guard-write-boundary">
+        <span :data-testid="`${summary.testIdPrefix}-write-boundary`">
           {{ summary.writeBoundary }}
         </span>
       </el-descriptions-item>
       <el-descriptions-item label="来源状态">
-        <span data-testid="cand472-stock-ledger-source-guard-source-status-text">
+        <span :data-testid="`${summary.testIdPrefix}-source-status-text`">
           {{ summary.sourceStatusLabel }}
         </span>
       </el-descriptions-item>
       <el-descriptions-item label="条目/状态">
-        <span data-testid="cand472-stock-ledger-source-guard-item-status">
+        <span :data-testid="`${summary.testIdPrefix}-item-status`">
           {{ summary.itemStatusLabel }}
         </span>
       </el-descriptions-item>
       <el-descriptions-item label="聚焦来源">
-        <span data-testid="cand472-stock-ledger-source-guard-focus-text">
+        <span :data-testid="`${summary.testIdPrefix}-focus-text`">
           {{ summary.focusLabel }}
         </span>
       </el-descriptions-item>
@@ -92,7 +92,7 @@
       <el-descriptions-item label="只读守卫">{{ summary.readonlyGuardReason }}</el-descriptions-item>
     </el-descriptions>
 
-    <div class="guarded-actions" data-testid="cand472-stock-ledger-source-guard-guarded-actions">
+    <div class="guarded-actions" :data-testid="`${summary.testIdPrefix}-guarded-actions`">
       <el-button
         v-for="action in summary.disabledActions"
         :key="action.label"
@@ -111,8 +111,8 @@
       :data="summary.items"
       border
       size="small"
-      empty-text="暂无 stock-source 只读条目"
-      data-testid="cand472-stock-ledger-source-guard-item-table"
+      :empty-text="summary.emptyText"
+      :data-testid="`${summary.testIdPrefix}-item-table`"
     >
       <el-table-column prop="subjectLabel" label="条目" min-width="180" />
       <el-table-column prop="statusLabel" label="状态" min-width="180" />
