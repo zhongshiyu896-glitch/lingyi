@@ -360,6 +360,10 @@
             <SalesInventoryWarehouseBalanceReadonly :summary="salesInventoryWarehouseBalanceReadonlySummary" />
           </div>
 
+          <div data-testid="cand526-sales-inventory-stock-ledger-movement-baseline-anchor">
+            <SalesInventoryMovementBaselineReadonly :summary="salesInventoryMovementBaselineReadonlySummary" />
+          </div>
+
           <SalesInventoryStockSourceGuardReadonly :summary="stockSourceGuardReadonlySummary" />
 
           <StockLedgerImpactReadonly :summary="stockLedgerImpactReadonlySummary" />
@@ -3430,9 +3434,11 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import SalesInventoryMovementBaselineReadonly from '@/views/sales_inventory/components/SalesInventoryMovementBaselineReadonly.vue'
 import SalesInventoryWarehouseBalanceReadonly from '@/views/sales_inventory/components/SalesInventoryWarehouseBalanceReadonly.vue'
 import SalesInventoryStockSourceGuardReadonly from '@/views/sales_inventory/components/SalesInventoryStockSourceGuardReadonly.vue'
 import StockLedgerImpactReadonly from '@/views/sales_inventory/components/StockLedgerImpactReadonly.vue'
+import { useSalesInventoryMovementBaselineReadonly } from '@/views/sales_inventory/composables/useSalesInventoryMovementBaselineReadonly'
 import { useSalesInventoryWarehouseBalanceReadonly } from '@/views/sales_inventory/composables/useSalesInventoryWarehouseBalanceReadonly'
 import { useSalesInventoryStockSourceGuardReadonly } from '@/views/sales_inventory/composables/useSalesInventoryStockSourceGuardReadonly'
 import { useStockLedgerImpactReadonly } from '@/views/sales_inventory/composables/useStockLedgerImpactReadonly'
@@ -3599,6 +3605,14 @@ const stockLedgerWarehouseBalanceTab = computed<string>(() => {
 
 const stockLedgerWarehouseBalanceFocus = computed<string>(() => {
   return typeof route.query.focus === 'string' ? route.query.focus.trim() : 'warehouse-source'
+})
+
+const stockLedgerMovementBaselineTab = computed<string>(() => {
+  return typeof route.query.tab === 'string' ? route.query.tab.trim() : 'movement-baseline-readonly'
+})
+
+const stockLedgerMovementBaselineFocus = computed<string>(() => {
+  return typeof route.query.focus === 'string' ? route.query.focus.trim() : 'movement-source'
 })
 
 const isMaterialStockParity = computed<boolean>(() => stockLedgerParity.value === 'material-stock')
@@ -4097,6 +4111,20 @@ const { salesInventoryWarehouseBalanceReadonlySummary } = useSalesInventoryWareh
   tab: stockLedgerWarehouseBalanceTab,
   parity: stockLedgerParity,
   focus: stockLedgerWarehouseBalanceFocus,
+  itemCode: computed(() => query.item_code.trim()),
+  warehouse: computed(() => query.warehouse.trim()),
+  canRead,
+  requiredItemCode: requiredItemCodeGuarded,
+  lastError,
+})
+
+const { salesInventoryMovementBaselineReadonlySummary } = useSalesInventoryMovementBaselineReadonly({
+  rows: stockLedgerFilteredRows,
+  summaryRows: stockSummaryRows,
+  aggregationRows: inventoryAggregationRows,
+  tab: stockLedgerMovementBaselineTab,
+  parity: stockLedgerParity,
+  focus: stockLedgerMovementBaselineFocus,
   itemCode: computed(() => query.item_code.trim()),
   warehouse: computed(() => query.warehouse.trim()),
   canRead,
