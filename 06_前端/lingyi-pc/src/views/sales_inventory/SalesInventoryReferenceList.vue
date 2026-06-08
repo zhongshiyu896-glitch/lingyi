@@ -126,6 +126,7 @@
       </section>
 
       <SalesInventoryReferenceGuardReadonly :summary="referenceGuardReadonlySummary" />
+      <SalesInventoryReferencePartnerScopeReadonly :summary="referencePartnerScopeReadonlySummary" />
 
       <section class="table-panel" data-testid="cand490-reference-table">
         <el-table
@@ -207,7 +208,9 @@ import {
   type SalesInventoryReferenceTab,
 } from '@/api/sales_inventory_references'
 import SalesInventoryReferenceGuardReadonly from '@/views/sales_inventory/components/SalesInventoryReferenceGuardReadonly.vue'
+import SalesInventoryReferencePartnerScopeReadonly from '@/views/sales_inventory/components/SalesInventoryReferencePartnerScopeReadonly.vue'
 import { useSalesInventoryReferenceGuardReadonly } from '@/views/sales_inventory/composables/useSalesInventoryReferenceGuardReadonly'
+import { useSalesInventoryReferencePartnerScopeReadonly } from '@/views/sales_inventory/composables/useSalesInventoryReferencePartnerScopeReadonly'
 
 const route = useRoute()
 const router = useRouter()
@@ -254,6 +257,18 @@ const filterStateLabel = computed(
 )
 const { salesInventoryReferenceGuardReadonlySummary: referenceGuardReadonlySummary } =
   useSalesInventoryReferenceGuardReadonly({
+    rows: filteredRows,
+    activeTab,
+    currentPath: computed(() => route.path),
+    tab: routeTabValue,
+    parity: parityValue,
+    focus: focusValue,
+    filterStateLabel,
+    usingFallback,
+    canRead: computed(() => true),
+  })
+const { salesInventoryReferencePartnerScopeReadonlySummary: referencePartnerScopeReadonlySummary } =
+  useSalesInventoryReferencePartnerScopeReadonly({
     rows: filteredRows,
     activeTab,
     currentPath: computed(() => route.path),
