@@ -53,6 +53,12 @@
         data-testid="factory-statement-list-source-readonly-section"
       />
 
+      <FactoryStatementPayableStatusReadonly
+        v-if="showPayableReadonlySection"
+        :summary="payableReadonlySummary"
+        data-testid="factory-statement-list-payable-readonly-section"
+      />
+
       <div class="statement-kpi-grid" data-testid="factory-statement-kpi-grid">
         <div class="statement-kpi-card" data-testid="factory-statement-kpi-total">
           <span class="kpi-label">当前记录</span>
@@ -3533,6 +3539,8 @@ import {
   type FactoryStatementListItem,
 } from '@/api/factory_statement'
 import FactoryStatementSourceReadonlySection from '@/views/factory_statement/components/FactoryStatementSourceReadonlySection.vue'
+import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/components/FactoryStatementPayableStatusReadonly.vue'
+import { useFactoryStatementPayableReadonly } from '@/views/factory_statement/composables/useFactoryStatementPayableReadonly'
 import { useFactoryStatementSourceReadonly } from '@/views/factory_statement/composables/useFactoryStatementSourceReadonly'
 import { usePermissionStore } from '@/stores/permission'
 
@@ -3624,6 +3632,10 @@ const isSourceReadonlyTab = computed<boolean>(() => (
 const isSourceReadonlyParity = computed<boolean>(() => (
   parityValue.value === 'factory-statement' && isSourceReadonlyTab.value
 ))
+const isPayableReadonlyTab = computed<boolean>(() => tabValue.value === 'payable-status-readonly')
+const isPayableReadonlyParity = computed<boolean>(() => (
+  parityValue.value === 'factory-statement' && isPayableReadonlyTab.value
+))
 const isFoundationReadonlyParity = computed<boolean>(() => isFoundationSupplierParity.value || isFoundationFactoryParity.value)
 const financeParityNormalized = computed<string>(() => {
   if (parityValue.value === 'finance-bank-ledger' || parityValue.value === 'finance-bank-flow') {
@@ -3644,7 +3656,7 @@ const isFinanceCustomerReconciliationParity = computed<boolean>(() => (
 ))
 const isFinanceReadonlyParity = computed<boolean>(() => Boolean(financeParityNormalized.value))
 const isReadonlyParity = computed<boolean>(() => (
-  isFoundationReadonlyParity.value || isFinanceReadonlyParity.value || isSourceReadonlyParity.value
+  isFoundationReadonlyParity.value || isFinanceReadonlyParity.value || isSourceReadonlyParity.value || isPayableReadonlyParity.value
 ))
 const allowFactoryStatementWriteFlow = computed<boolean>(() => false)
 const showExtendedReadonlySections = computed<boolean>(() => false)
@@ -3653,6 +3665,11 @@ const preservedReadonlyQuery = computed<Record<string, string>>(() => {
   if (isSourceReadonlyParity.value) {
     query.parity = 'factory-statement'
     query.tab = 'source-readonly'
+    return query
+  }
+  if (isPayableReadonlyParity.value) {
+    query.parity = 'factory-statement'
+    query.tab = 'payable-status-readonly'
     return query
   }
   if (parityValue.value) {
@@ -3666,6 +3683,9 @@ const preservedReadonlyQuery = computed<Record<string, string>>(() => {
 const readonlyWriteGuardTag = computed<string>(() => {
   if (isSourceReadonlyParity.value) {
     return 'guarded:readonly-factory-statement-source'
+  }
+  if (isPayableReadonlyParity.value) {
+    return 'guarded:readonly-factory-statement-payable'
   }
   if (isFoundationReadonlyParity.value) {
     return 'guarded:readonly-foundation-data'
@@ -3696,7 +3716,12 @@ const financeParityHint = computed<string>(() => {
   }
   return ''
 })
-const readonlyParityHint = computed<string>(() => foundationParityHint.value || financeParityHint.value)
+const payableParityHint = computed<string>(() => (
+  isPayableReadonlyParity.value
+    ? '衣算云 / 物料采购 / 加工厂对账单应付状态（parity=factory-statement，只读交互）'
+    : ''
+))
+const readonlyParityHint = computed<string>(() => foundationParityHint.value || financeParityHint.value || payableParityHint.value)
 const readonlyParityHintTestId = computed<string>(() => {
   if (isFoundationSupplierParity.value) {
     return 'foundation-supplier-parity-hint'
@@ -3713,11 +3738,16 @@ const readonlyParityHintTestId = computed<string>(() => {
   if (isFinanceCustomerReconciliationParity.value) {
     return 'finance-customer-reconciliation-parity-hint'
   }
+  if (isPayableReadonlyParity.value) {
+    return 'factory-statement-payable-parity-hint'
+  }
   return 'factory-statement-parity-hint'
 })
 const readonlyWriteHintText = computed<string>(() => (
   isSourceReadonlyParity.value
     ? '当前切片仅开放加工厂对账单 source-readonly 列表与 readonly-source 详情查询；confirm、cancel、settlement、export、download、ERPNext、outbox/worker 与真实写链路均已禁用。'
+    : isPayableReadonlyParity.value
+      ? '当前切片仅开放加工厂对账单 payable-status readonly 列表与详情查询；confirm、cancel、payable draft、export、download、ERPNext、outbox/worker 与真实写链路均已禁用。'
     : isFoundationReadonlyParity.value
     ? '基础资料模式仅允许加工厂对账单列表、详情页与打印预览的只读查询，创建/取消/应付草稿/确认/导出/真实打印均已禁用。'
     : isFinanceReadonlyParity.value
@@ -3727,6 +3757,8 @@ const readonlyWriteHintText = computed<string>(() => (
 const mainAlertDescription = computed<string>(() => (
   isSourceReadonlyParity.value
     ? '当前切片仅开放工厂对账 source-readonly 列表与 readonly-source 详情；来源链核对可见，confirm/cancel/settlement/export/download 与 ERPNext/outbox/worker 保持禁用。'
+    : isPayableReadonlyParity.value
+    ? '当前切片仅开放工厂对账 payable-status readonly 列表与详情；应付状态、blocked reason 与 disabled reasons 可见，confirm/cancel/payable draft/export/download 与 outbox/worker 保持禁用。'
     : isFoundationReadonlyParity.value
     ? '基础资料 parity 当前映射到加工厂对账单只读列表；详情页与打印预览允许查看，所有写链路保持禁用。'
     : isFinanceReadonlyParity.value
@@ -4146,6 +4178,7 @@ const sampleFilterStateText = computed<string>(() => {
 const showSourceReadonlySection = computed<boolean>(() => (
   isSourceReadonlyParity.value || tabValue.value === 'source-parity' || isFoundationFactoryParity.value
 ))
+const showPayableReadonlySection = computed<boolean>(() => isPayableReadonlyParity.value)
 
 const statementKpis = computed(() => {
   let payableSyncCount = 0
@@ -4177,6 +4210,13 @@ const { sourceReadonlySummary } = useFactoryStatementSourceReadonly({
   context: 'list',
   listRows: displayRows,
   parity: parityValue,
+  tab: tabValue,
+})
+const { payableReadonlySummary } = useFactoryStatementPayableReadonly({
+  listRows: displayRows,
+  recordSource: null,
+  parity: parityValue,
+  context: 'list',
   tab: tabValue,
 })
 
@@ -5279,6 +5319,18 @@ const loadSupplierPayableSummaries = async (): Promise<void> => {
 const openReadonlyDetail = async (statementId: number): Promise<void> => {
   if (!canRead.value) {
     ElMessage.error('无加工厂对账单查看权限')
+    return
+  }
+  if (isPayableReadonlyParity.value) {
+    router.push({
+      path: '/factory-statements/detail',
+      query: {
+        id: String(statementId),
+        parity: 'factory-statement',
+        mode: 'readonly-payable-status',
+        focus: 'payable-source',
+      },
+    })
     return
   }
   if (isSourceReadonlyParity.value) {

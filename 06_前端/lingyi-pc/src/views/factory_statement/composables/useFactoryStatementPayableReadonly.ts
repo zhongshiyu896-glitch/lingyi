@@ -1,4 +1,5 @@
 import { computed, unref, type ComputedRef, type MaybeRef } from 'vue'
+import type { FactoryStatementListItem } from '@/api/factory_statement'
 import type { FactoryStatementReadonlyRecord } from '@/api/factory_statement_readonly'
 import {
   FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS,
@@ -15,6 +16,17 @@ import {
 
 const ACTIVE_PAYABLE_OUTBOX_STATUS = new Set(['pending', 'processing', 'succeeded'])
 const FALLBACK_TEXT = '-'
+
+type ListLikeRow = Pick<
+  FactoryStatementListItem,
+  | 'statement_no'
+  | 'supplier'
+  | 'statement_status'
+  | 'payable_outbox_status'
+  | 'purchase_invoice_name'
+  | 'payable_error_code'
+  | 'payable_error_message'
+>
 
 export interface FactoryStatementPayableReadonlySummary {
   sourceLabel: string
@@ -49,10 +61,12 @@ export interface FactoryStatementPayableReadonlySummary {
 }
 
 interface UseFactoryStatementPayableReadonlyOptions {
+  listRows?: MaybeRef<ReadonlyArray<ListLikeRow>>
   recordSource: MaybeRef<FactoryStatementReadonlyRecord | null>
   parity: MaybeRef<string>
-  context: 'detail' | 'print'
+  context: 'list' | 'detail' | 'print'
   tab?: MaybeRef<string | null | undefined>
+  mode?: MaybeRef<string | null | undefined>
   focus?: MaybeRef<string | null | undefined>
 }
 
@@ -99,10 +113,26 @@ const resolvePayableState = (
   return 'no-payable'
 }
 
+const resolveListPayableState = (
+  rows: ReadonlyArray<ListLikeRow>,
+): FactoryStatementPayableReadonlyState => {
+  if (rows.length === 0) return 'no-payable'
+  if (rows.some((row) => row.payable_error_code || row.payable_error_message || row.payable_outbox_status === 'failed' || row.payable_outbox_status === 'dead')) {
+    return 'failed-sync'
+  }
+  if (rows.some((row) => row.payable_outbox_status === 'pending' || row.payable_outbox_status === 'processing')) {
+    return 'active-sync'
+  }
+  if (rows.some((row) => row.purchase_invoice_name || row.payable_outbox_status === 'succeeded' || row.statement_status === 'payable_draft_created')) {
+    return 'invoice-created'
+  }
+  return 'no-payable'
+}
+
 const resolveSourceGapPrompt = (
   state: FactoryStatementPayableReadonlyState,
   parity: string,
-  context: 'detail' | 'print',
+  context: 'list' | 'detail' | 'print',
 ): string => {
   if (state === 'summary-missing') {
     return '应付摘要缺失，当前仅保留详情/打印基础回读，payable 状态按 fail-closed 策略只读回退。'
@@ -121,6 +151,8 @@ const resolveSourceGapPrompt = (
   }
   return context === 'print'
     ? '打印镜像仅回读 payable 状态，不开放真实打印提交与导出。'
+    : context === 'list'
+      ? '列表页仅回读 payable 状态，不开放真实 confirm/cancel/payable draft 与导出下载。'
     : '详情页仅回读 payable 状态，不开放结算写入与导出。'
 }
 
@@ -133,13 +165,31 @@ const resolveSourceStatusLabel = (
   if (!detail) {
     return '来源镜像缺失 / 等待只读回补'
   }
-  if (focus === 'settlement-source') {
-    return `settlement-source / ${showText(record?.settlementSummary.primarySubcontractNo || detail.supplier)}`
+  if (focus === 'payable-source') {
+    return `payable-source / ${showText(record?.settlementSummary.primarySubcontractNo || detail.statement_no)}`
   }
   if (parity === 'foundation-factory') {
     return `foundation-factory / ${showText(detail.supplier)}`
   }
   return `detail-readonly / ${showText(detail.statement_no)}`
+}
+
+const resolveListSourceStatusLabel = (
+  rows: ReadonlyArray<Pick<FactoryStatementListItem, 'statement_no' | 'supplier'>>,
+  parity: string,
+  focus: string,
+): string => {
+  const head = rows[0]
+  if (!head) {
+    return '来源镜像缺失 / 等待只读回补'
+  }
+  if (focus === 'payable-source') {
+    return `payable-source / ${showText(head.statement_no)}`
+  }
+  if (parity === 'factory-statement') {
+    return `factory-statement / ${showText(head.supplier)}`
+  }
+  return `list-readonly / ${showText(head.statement_no)}`
 }
 
 const resolvePayableItemStatusLabel = (
@@ -150,83 +200,150 @@ const resolvePayableItemStatusLabel = (
   return `${itemCount} 行 / ${FACTORY_STATEMENT_PAYABLE_STATE_LABELS[state]}`
 }
 
+const resolveListPayableItemStatusLabel = (
+  rows: ReadonlyArray<Pick<FactoryStatementListItem, 'statement_status'>>,
+  state: FactoryStatementPayableReadonlyState,
+): string => `${rows.length} 行 / ${FACTORY_STATEMENT_PAYABLE_STATE_LABELS[state]}`
+
 export const useFactoryStatementPayableReadonly = ({
+  listRows,
   recordSource,
   parity,
   context,
   tab,
+  mode,
   focus,
 }: UseFactoryStatementPayableReadonlyOptions): { payableReadonlySummary: ComputedRef<FactoryStatementPayableReadonlySummary> } => {
+  const currentListRows = computed(() => unref(listRows) || [])
   const record = computed(() => unref(recordSource))
   const parityValue = computed(() => String(unref(parity) || '').trim().toLowerCase())
   const tabValue = computed(() => String(unref(tab) || '').trim().toLowerCase())
+  const modeValue = computed(() => String(unref(mode) || '').trim().toLowerCase())
   const focusValue = computed(() => String(unref(focus) || '').trim().toLowerCase())
 
   const payableReadonlySummary = computed<FactoryStatementPayableReadonlySummary>(() => {
+    const listRowValues = currentListRows.value
     const currentRecord = record.value
     const currentDetail = currentRecord?.raw || null
-    const hasSummary = currentDetail?.payable_outbox_status !== undefined && currentDetail?.purchase_invoice_name !== undefined
+    const hasSummary = context === 'list'
+      ? true
+      : currentDetail?.payable_outbox_status !== undefined && currentDetail?.purchase_invoice_name !== undefined
     const latestOutbox = pickLatestOutbox(currentRecord)
-    const state = resolvePayableState(currentRecord, hasSummary)
+    const state = context === 'list'
+      ? resolveListPayableState(listRowValues)
+      : resolvePayableState(currentRecord, hasSummary)
     const latestOutboxStatus = showText(
-      currentDetail?.payable_outbox_status || latestOutbox?.status || (hasSummary ? '' : '__unknown__'),
+      context === 'list'
+        ? listRowValues.find((row) => row.payable_outbox_status)?.payable_outbox_status || (hasSummary ? '' : '__unknown__')
+        : currentDetail?.payable_outbox_status || latestOutbox?.status || (hasSummary ? '' : '__unknown__'),
     )
     const payableErrorLabel = showText(
-      currentDetail?.payable_error_code ||
-        currentDetail?.payable_error_message ||
-        latestOutbox?.last_error_code ||
-        latestOutbox?.last_error_message,
+      context === 'list'
+        ? listRowValues.find((row) => row.payable_error_code || row.payable_error_message)?.payable_error_code
+          || listRowValues.find((row) => row.payable_error_code || row.payable_error_message)?.payable_error_message
+        : currentDetail?.payable_error_code ||
+          currentDetail?.payable_error_message ||
+          latestOutbox?.last_error_code ||
+          latestOutbox?.last_error_message,
     )
+    const listInvoiceLabel = showText(listRowValues.find((row) => row.purchase_invoice_name)?.purchase_invoice_name)
+    const listOutboxCount = String(listRowValues.filter((row) => Boolean(row.payable_outbox_status)).length)
+    const payableReadonlyModeActive = modeValue.value === 'readonly-payable-status'
+    const payableReadonlyTabActive = tabValue.value === 'payable-status-readonly'
+    const payableSourceFocusActive = focusValue.value === 'payable-source'
     return {
-      sourceLabel: context === 'print' ? '打印镜像只读扩展' : '详情只读扩展',
+      sourceLabel:
+        context === 'list'
+          ? '列表只读扩展'
+          : context === 'print'
+            ? '打印镜像只读扩展'
+            : '详情只读扩展',
       parityScopeLabel:
         FACTORY_STATEMENT_PAYABLE_SCOPE_LABELS[parityValue.value] || FACTORY_STATEMENT_PAYABLE_SCOPE_LABELS[''],
-      parityLabel: parityValue.value === 'foundation-factory' ? 'foundation-factory parity' : '主入口只读',
+      parityLabel:
+        parityValue.value === 'foundation-factory'
+          ? 'foundation-factory parity'
+          : parityValue.value === 'factory-statement'
+            ? 'factory-statement parity'
+            : '主入口只读',
       parityTone: parityValue.value === 'foundation-factory' ? 'warning' : 'info',
-      queryStateLabel: context === 'print'
-        ? 'print-readonly'
-        : (tabValue.value === 'payable-readonly' ? 'payable-readonly' : 'detail-readonly'),
-      focusLabel: focusValue.value === 'settlement-source' ? 'settlement-source' : 'settlement-summary',
-      sourceStatusLabel: resolveSourceStatusLabel(currentRecord, parityValue.value, focusValue.value),
-      payableItemStatusLabel: resolvePayableItemStatusLabel(currentRecord, state),
+      queryStateLabel:
+        context === 'list'
+          ? `tab=${payableReadonlyTabActive ? 'payable-status-readonly' : tabValue.value || '-'}`
+          : context === 'print'
+            ? 'print-readonly'
+            : `mode=${payableReadonlyModeActive ? 'readonly-payable-status' : modeValue.value || '-'}`,
+      focusLabel: payableSourceFocusActive ? 'payable-source focus' : 'payable-source pending',
+      sourceStatusLabel:
+        context === 'list'
+          ? resolveListSourceStatusLabel(listRowValues, parityValue.value, focusValue.value)
+          : resolveSourceStatusLabel(currentRecord, parityValue.value, focusValue.value),
+      payableItemStatusLabel:
+        context === 'list'
+          ? resolveListPayableItemStatusLabel(listRowValues, state)
+          : resolvePayableItemStatusLabel(currentRecord, state),
       payableStatusLabel: FACTORY_STATEMENT_PAYABLE_STATE_LABELS[state],
       payableStatusTone: FACTORY_STATEMENT_PAYABLE_STATE_TAGS[state],
       payableBlockedLabel: 'payable readonly guard',
       payableBlockedTone: state === 'summary-missing' || state === 'failed-sync' ? 'danger' : 'warning',
-      payableInvoiceLabel: showText(currentDetail?.purchase_invoice_name),
+      payableInvoiceLabel: context === 'list' ? listInvoiceLabel : showText(currentDetail?.purchase_invoice_name),
       latestOutboxStatusLabel: resolveOutboxStatusLabel(latestOutboxStatus),
-      payableOutboxCountLabel: String(currentDetail?.payable_outboxes?.length || 0),
+      payableOutboxCountLabel: context === 'list' ? listOutboxCount : String(currentDetail?.payable_outboxes?.length || 0),
       payableErrorLabel,
       sourceGapPrompt: resolveSourceGapPrompt(state, parityValue.value, context),
       readonlyGuardReason: FACTORY_STATEMENT_PAYABLE_GUARD_LABEL,
       remainingGap: FACTORY_STATEMENT_PAYABLE_REMAINING_GAP,
       retainedCand116: true,
       writeBoundary: FACTORY_STATEMENT_PAYABLE_WRITE_BOUNDARY,
-      routeItems: context === 'detail'
+      routeItems: context === 'list'
         ? [
             {
-              key: 'detail',
-              label: '详情入口',
-              route: '/factory-statements/detail',
-              note: '默认只读详情回补入口',
-              active: !tabValue.value && !parityValue.value && !focusValue.value,
+              key: 'list',
+              label: '列表入口',
+              route: '/factory-statements/list',
+              note: '默认只读列表回补入口',
+              active: !payableReadonlyTabActive && !parityValue.value,
             },
             {
-              key: 'payable-readonly',
+              key: 'payable-status-readonly',
               label: 'payable 查询态',
-              route: '/factory-statements/detail?tab=payable-readonly&parity=foundation-factory',
-              note: 'foundation-factory parity',
-              active: tabValue.value === 'payable-readonly' || parityValue.value === 'foundation-factory',
+              route: '/factory-statements/list?tab=payable-status-readonly&parity=factory-statement',
+              note: 'factory-statement parity',
+              active: payableReadonlyTabActive && parityValue.value === 'factory-statement',
             },
             {
-              key: 'settlement-source',
-              label: 'focus 来源态',
-              route: '/factory-statements/detail?tab=payable-readonly&parity=foundation-factory&focus=settlement-source',
-              note: 'settlement-source focus',
-              active: focusValue.value === 'settlement-source',
+              key: 'payable-source',
+              label: 'payable-source focus',
+              route: '/factory-statements/detail?mode=readonly-payable-status&parity=factory-statement&focus=payable-source',
+              note: 'payable-source focus',
+              active: payableSourceFocusActive,
             },
           ]
-        : [],
+        : context === 'detail'
+          ? [
+              {
+                key: 'list-payable-status-readonly',
+                label: '列表 payable 查询态',
+                route: '/factory-statements/list?tab=payable-status-readonly&parity=factory-statement',
+                note: 'factory-statement parity',
+                active: false,
+              },
+              {
+                key: 'detail-payable-status-readonly',
+                label: '详情 payable 只读态',
+                route: '/factory-statements/detail?mode=readonly-payable-status&parity=factory-statement',
+                note: 'readonly-payable-status',
+                active: payableReadonlyModeActive && parityValue.value === 'factory-statement',
+              },
+              {
+                key: 'payable-source',
+                label: 'payable-source focus',
+                route: '/factory-statements/detail?mode=readonly-payable-status&parity=factory-statement&focus=payable-source',
+                note: 'payable-source focus',
+                active: payableSourceFocusActive,
+              },
+            ]
+          : [],
       guardActions: FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS,
     }
   })

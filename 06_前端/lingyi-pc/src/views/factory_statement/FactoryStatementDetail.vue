@@ -309,7 +309,6 @@ import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/com
 import { useFactoryStatementPayableReadonly } from '@/views/factory_statement/composables/useFactoryStatementPayableReadonly'
 import { useFactoryStatementSourceReadonly } from '@/views/factory_statement/composables/useFactoryStatementSourceReadonly'
 import { useFactoryStatementReadonly } from '@/views/factory_statement/composables/useFactoryStatementReadonly'
-import { FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS } from '@/views/factory_statement/constants/factoryStatementPayableFields'
 import { usePermissionStore } from '@/stores/permission'
 
 const route = useRoute()
@@ -330,20 +329,17 @@ const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-factory-statement-payable-prev-
 const GLOBAL_FACTORY_STATEMENT_ACTION_GUARDS = [
   {
     selector: '#global-auth-refresh-guard',
-    reason: FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS.find((action) => action.key === 'refresh-permission')?.reason
-      || 'payable-readonly boundary keeps permission refresh non-executable on FactoryStatementDetail.',
+    reason: 'payable-readonly boundary keeps permission refresh non-executable on FactoryStatementDetail.',
     disableNative: true,
   },
   {
     selector: '#z042-global-guarded-refresh',
-    reason: FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS.find((action) => action.key === 'refresh-permission')?.reason
-      || 'payable-readonly boundary keeps permission refresh non-executable on FactoryStatementDetail.',
+    reason: 'payable-readonly boundary keeps permission refresh non-executable on FactoryStatementDetail.',
     disableNative: false,
   },
   {
     selector: 'button[data-readonly-action="fetchModuleActions"]',
-    reason: FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS.find((action) => action.key === 'reload-module-actions')?.reason
-      || 'payable-readonly boundary keeps module action reload non-executable on FactoryStatementDetail.',
+    reason: 'payable-readonly boundary keeps module action reload non-executable on FactoryStatementDetail.',
     disableNative: true,
   },
 ] as const
@@ -364,10 +360,19 @@ const isSourceReadonlyMode = computed<boolean>(() => (
     || focusValue.value === 'statement-source'
   )
 ))
+const isPayableReadonlyMode = computed<boolean>(() => (
+  parityValue.value === 'factory-statement'
+  && (
+    modeValue.value === 'readonly-payable-status'
+    || tabValue.value === 'payable-status-readonly'
+    || focusValue.value === 'payable-source'
+  )
+))
 const isReadonlyParity = computed<boolean>(() => (
   parityValue.value === 'foundation-supplier'
   || parityValue.value === 'foundation-factory'
   || isSourceReadonlyMode.value
+  || isPayableReadonlyMode.value
 ))
 const preservedReadonlyQuery = computed<Record<string, string>>(() => {
   const query: Record<string, string> = {}
@@ -376,6 +381,13 @@ const preservedReadonlyQuery = computed<Record<string, string>>(() => {
     query.tab = 'source-readonly'
     query.mode = 'readonly-source'
     query.focus = 'statement-source'
+    return query
+  }
+  if (isPayableReadonlyMode.value) {
+    query.parity = 'factory-statement'
+    query.tab = 'payable-status-readonly'
+    query.mode = 'readonly-payable-status'
+    query.focus = 'payable-source'
     return query
   }
   if (parityValue.value) {
@@ -420,6 +432,7 @@ const { payableReadonlySummary } = useFactoryStatementPayableReadonly({
   parity: parityValue,
   context: 'detail',
   tab: tabValue,
+  mode: modeValue,
   focus: focusValue,
 })
 const { sourceReadonlySummary } = useFactoryStatementSourceReadonly({

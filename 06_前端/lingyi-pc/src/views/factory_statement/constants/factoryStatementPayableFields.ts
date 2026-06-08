@@ -52,14 +52,19 @@ export const FACTORY_STATEMENT_PAYABLE_FIELDS = [
 
 export const FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS: ReadonlyArray<FactoryStatementPayableGuardAction> = [
   {
-    key: 'settlement-confirm',
-    label: '结算确认',
-    reason: 'payable-readonly 只回读结算镜像，不开放真实确认。',
+    key: 'confirm',
+    label: '确认',
+    reason: 'payable-status readonly 仅回读单据状态与应付镜像，不开放真实确认。',
   },
   {
-    key: 'settlement-cancel',
-    label: '结算取消',
-    reason: 'settlement-source 仅显示来源链与状态，不开放取消回写。',
+    key: 'cancel',
+    label: '取消',
+    reason: 'payable-source 仅显示来源链与状态，不开放取消回写。',
+  },
+  {
+    key: 'payable-draft',
+    label: '应付草稿',
+    reason: '只读切片仅核对应付状态，不开放真实应付草稿生成。',
   },
   {
     key: 'export-download',
@@ -68,25 +73,16 @@ export const FACTORY_STATEMENT_PAYABLE_GUARD_ACTIONS: ReadonlyArray<FactoryState
   },
   {
     key: 'worker-outbox',
-    label: 'worker / outbox',
-    reason: 'payable worker、outbox、ERPNext 与跨模块执行保持禁用。',
-  },
-  {
-    key: 'refresh-permission',
-    label: '刷新权限',
-    reason: '当前加工厂对账详情处于 payable-readonly 边界，权限刷新入口仅保留只读提示，不执行真实刷新动作。',
-  },
-  {
-    key: 'reload-module-actions',
-    label: '重载模块动作',
-    reason: '当前仅核对应付状态只读摘要，模块动作重载入口保持禁用，不执行真实重载。',
+    label: 'outbox / worker / ERPNext',
+    reason: 'payable outbox、worker、ERPNext 与跨模块执行保持禁用。',
   },
 ] as const
 
 export const FACTORY_STATEMENT_PAYABLE_GUARD_LABEL =
-  '结算写入、应付出账、导出、真实打印提交与 worker/outbox 动作保持只读阻断。'
+  'confirm/cancel/payable draft、导出下载、真实打印提交与 outbox/worker/ERPNext 动作保持只读阻断。'
 
-export const FACTORY_STATEMENT_PAYABLE_WRITE_BOUNDARY = 'settlement / payable / export / print-submit disabled'
+export const FACTORY_STATEMENT_PAYABLE_WRITE_BOUNDARY =
+  'confirm / cancel / payable-draft / export / download / print-submit disabled'
 
 export const FACTORY_STATEMENT_PAYABLE_REMAINING_GAP =
-  '未开放真实结算写入、应付出账、导出、ERPNext、outbox、worker。'
+  '未开放真实 confirm/cancel/payable draft、导出下载、ERPNext、outbox、worker。'
