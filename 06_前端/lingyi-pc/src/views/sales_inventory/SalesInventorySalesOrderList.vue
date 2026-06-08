@@ -1,18 +1,18 @@
 <template>
-  <div class="sales-order-list-page" data-testid="cand104-sales-order-list-page">
-    <el-card shadow="never" data-testid="cand104-sales-order-shell">
+  <div class="sales-order-list-page" data-testid="cand538-sales-order-list-page">
+    <el-card shadow="never" data-testid="cand538-sales-order-shell">
       <template #header>
         <div class="header-row">
           <div class="title-group">
             <span class="title">大货管理 / 销售订单草稿查询</span>
-            <span class="sub-title">NEXT-CAND-466 / downstream guard readonly</span>
+            <span class="sub-title">NEXT-CAND-538 / downstream guard readonly</span>
           </div>
           <div class="header-actions">
             <div class="header-tags">
               <el-tag size="small" type="success" effect="plain">GET-only readback</el-tag>
               <el-tag size="small" type="warning" effect="plain">write chain disabled</el-tag>
             </div>
-            <div class="guarded-actions" data-testid="cand104-sales-order-guarded-actions">
+            <div class="guarded-actions" data-testid="cand538-sales-order-guarded-actions">
               <el-button
                 v-for="action in readonlyGuardActions"
                 :key="action.label"
@@ -31,10 +31,10 @@
         type="info"
         :closable="false"
         class="scope-alert"
-        title="当前切片仅提供销售订单草稿列表/详情回读，不触发新建、取消、导出、库存影响或 ERPNext 写链路。"
+        title="当前切片仅提供销售订单草稿列表/详情回读，不触发新建、取消、导出、客商回写、库存影响或 ERPNext 写链路。"
       />
 
-      <section class="summary-grid" data-testid="cand104-sales-order-summary">
+      <section class="summary-grid" data-testid="cand538-sales-order-summary">
         <div class="summary-card">
           <span class="summary-label">服务端总数</span>
           <strong class="summary-value">{{ serverTotal }}</strong>
@@ -61,7 +61,7 @@
         </div>
       </section>
 
-      <section class="query-panel" data-testid="cand104-sales-order-query-panel">
+      <section class="query-panel" data-testid="cand538-sales-order-query-panel">
         <el-form :model="query" inline class="query-form">
           <el-form-item label="订单号">
             <el-input v-model="query.order_no" clearable placeholder="订单号" @keyup.enter="onSearch" />
@@ -128,12 +128,14 @@
         :closable="false"
         :title="lastError"
         class="error-alert"
-        data-testid="cand104-sales-order-error"
+        data-testid="cand538-sales-order-error"
       />
 
-      <section class="readonly-panel" data-testid="cand104-sales-order-readback-notes">
+      <section class="readonly-panel" data-testid="cand538-sales-order-readback-notes">
         <el-descriptions border :column="3">
-          <el-descriptions-item label="route_scope">/sales-inventory/sales-orders</el-descriptions-item>
+          <el-descriptions-item label="route_scope">
+            /sales-inventory/sales-orders?tab=downstream-guard-readonly&amp;parity=sales-order
+          </el-descriptions-item>
           <el-descriptions-item label="write_chain">disabled</el-descriptions-item>
           <el-descriptions-item label="当前页条数">{{ filteredRows.length }}</el-descriptions-item>
           <el-descriptions-item label="最后刷新">{{ lastLoadedAt || '-' }}</el-descriptions-item>
@@ -146,16 +148,8 @@
         </el-descriptions>
       </section>
 
-      <div data-testid="cand442-sales-order-list-delivery-anchor">
-        <SalesOrderDeliveryWindowReadonly :summary="deliveryWindowReadonlySummary" />
-      </div>
-
-      <div data-testid="cand466-sales-order-list-downstream-anchor">
+      <div data-testid="cand538-sales-order-list-downstream-anchor">
         <SalesOrderDownstreamGuardReadonly :summary="downstreamGuardReadonlySummary" />
-      </div>
-
-      <div data-testid="cand502-sales-order-list-quantity-matrix-anchor">
-        <SalesOrderQuantityMatrixReadonly :summary="salesOrderQuantityMatrixReadonlySummary" />
       </div>
 
       <el-table
@@ -164,7 +158,7 @@
         border
         class="result-table"
         :empty-text="emptyText"
-        data-testid="cand104-sales-order-table"
+        data-testid="cand538-sales-order-table"
       >
         <el-table-column prop="name" label="订单号" min-width="170" />
         <el-table-column prop="company" label="公司" min-width="140" />
@@ -211,7 +205,7 @@
         </el-table-column>
       </el-table>
 
-      <div class="pager" data-testid="cand104-sales-order-pagination">
+      <div class="pager" data-testid="cand538-sales-order-pagination">
         <el-pagination
           background
           layout="prev, pager, next, total, sizes"
@@ -239,11 +233,7 @@ import {
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
 import SalesOrderDownstreamGuardReadonly from '@/views/sales_inventory/components/SalesOrderDownstreamGuardReadonly.vue'
-import SalesOrderDeliveryWindowReadonly from '@/views/sales_inventory/components/SalesOrderDeliveryWindowReadonly.vue'
-import SalesOrderQuantityMatrixReadonly from '@/views/sales_inventory/components/SalesOrderQuantityMatrixReadonly.vue'
 import { useSalesOrderDownstreamGuardReadonly } from '@/views/sales_inventory/composables/useSalesOrderDownstreamGuardReadonly'
-import { useSalesOrderDeliveryWindowReadonly } from '@/views/sales_inventory/composables/useSalesOrderDeliveryWindowReadonly'
-import { useSalesOrderQuantityMatrixReadonly } from '@/views/sales_inventory/composables/useSalesOrderQuantityMatrixReadonly'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 interface SalesOrderListQueryState extends SalesOrderReadbackQuery {
@@ -289,29 +279,11 @@ const query = reactive<SalesOrderListQueryState>(createDefaultQuery())
 const filteredRows = computed(() => filterSalesOrderRows(rows.value, query))
 const readonlySummary = computed(() => buildSalesOrderReadonlySummary(filteredRows.value))
 const activeCurrency = computed(() => filteredRows.value[0]?.currency || rows.value[0]?.currency || '')
-const { deliveryWindowReadonlySummary } = useSalesOrderDeliveryWindowReadonly({
-  rows,
-  tab: computed(() => String(route.query.tab || 'delivery-window-readonly')),
-  parity: computed(() => String(route.query.parity || 'sales-order')),
-  focus: computed(() => String(route.query.focus || 'delivery-source')),
-  lastLoadedAt,
-  lastError,
-})
 const { downstreamGuardReadonlySummary } = useSalesOrderDownstreamGuardReadonly({
   rows: filteredRows,
   tab: computed(() => String(route.query.tab || 'downstream-guard-readonly')),
   parity: computed(() => String(route.query.parity || 'sales-order')),
   focus: computed(() => String(route.query.focus || 'downstream-source')),
-  lastLoadedAt,
-  lastError,
-})
-const { salesOrderQuantityMatrixReadonlySummary } = useSalesOrderQuantityMatrixReadonly({
-  mode: 'list',
-  currentPath: computed(() => route.path),
-  tab: computed(() => String(route.query.tab || 'quantity-matrix-readonly')),
-  parity: computed(() => String(route.query.parity || 'sales-order')),
-  focus: computed(() => String(route.query.focus || 'quantity-source')),
-  rows: filteredRows,
   lastLoadedAt,
   lastError,
 })
@@ -388,9 +360,9 @@ const openDetail = (row: SalesOrderListItem): void => {
     path: '/sales-inventory/sales-orders/detail',
     query: {
       name: row.name,
-      tab: String(route.query.tab || 'delivery-window-readonly'),
+      tab: String(route.query.tab || 'downstream-guard-readonly'),
       parity: String(route.query.parity || 'sales-order'),
-      focus: String(route.query.focus || 'delivery-source'),
+      focus: String(route.query.focus || 'downstream-source'),
     },
   })
 }

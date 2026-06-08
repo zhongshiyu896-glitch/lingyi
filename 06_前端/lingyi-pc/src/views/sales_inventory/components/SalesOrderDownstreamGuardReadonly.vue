@@ -1,9 +1,9 @@
 <template>
-  <section class="readonly-shell" data-testid="cand466-sales-order-downstream-guard-readonly-section">
+  <section class="readonly-shell" data-testid="cand538-sales-order-downstream-guard-readonly-section">
     <div class="readonly-header">
       <div class="title-group">
-        <span class="title">销售订单 downstream guard 只读回读</span>
-        <span class="note" data-testid="cand466-sales-order-downstream-query-state">
+        <span class="title">销售订单 downstream guard 只读守卫</span>
+        <span class="note" data-testid="cand538-sales-order-downstream-query-state">
           {{ summary.queryStateLabel }}
         </span>
       </div>
@@ -11,28 +11,28 @@
         <el-tag
           :type="summary.parityTone"
           effect="plain"
-          data-testid="cand466-sales-order-downstream-marker-parity"
+          data-testid="cand538-sales-order-downstream-marker-parity"
         >
           {{ summary.parityLabel }}
         </el-tag>
         <el-tag
           :type="summary.focusTone"
           effect="plain"
-          data-testid="cand466-sales-order-downstream-marker-focus"
+          data-testid="cand538-sales-order-downstream-marker-focus"
         >
           {{ summary.focusLabel }}
         </el-tag>
         <el-tag
           :type="summary.stateTone"
           effect="plain"
-          data-testid="cand466-sales-order-downstream-marker-state"
+          data-testid="cand538-sales-order-downstream-marker-state"
         >
           {{ summary.stateLabel }}
         </el-tag>
         <el-tag
           :type="summary.sourceStatusTone"
           effect="plain"
-          data-testid="cand466-sales-order-downstream-source-status"
+          data-testid="cand538-sales-order-downstream-source-status"
         >
           {{ summary.sourceStatusLabel }}
         </el-tag>
@@ -50,41 +50,41 @@
       type="warning"
       :closable="false"
       :title="summary.blockedReason"
-      data-testid="cand466-sales-order-downstream-blocked-reason"
+      data-testid="cand538-sales-order-downstream-blocked-reason"
     />
 
     <el-alert
       type="info"
       :closable="false"
       :title="summary.readonlyGuardReason"
-      data-testid="cand466-sales-order-downstream-readonly-guard"
+      data-testid="cand538-sales-order-downstream-readonly-guard"
     />
 
     <el-alert
       type="info"
       :closable="false"
       :title="summary.remainingGap"
-      data-testid="cand466-sales-order-downstream-remaining-gap"
+      data-testid="cand538-sales-order-downstream-remaining-gap"
     />
 
     <el-descriptions border :column="2" class="readonly-descriptions">
       <el-descriptions-item label="写入边界">
-        <span data-testid="cand466-sales-order-downstream-write-boundary">
+        <span data-testid="cand538-sales-order-downstream-write-boundary">
           {{ summary.writeBoundary }}
         </span>
       </el-descriptions-item>
       <el-descriptions-item label="来源状态">
-        <span data-testid="cand466-sales-order-downstream-source-status-text">
+        <span data-testid="cand538-sales-order-downstream-source-status-text">
           {{ summary.sourceStatusLabel }}
         </span>
       </el-descriptions-item>
-      <el-descriptions-item label="条目/状态">
-        <span data-testid="cand466-sales-order-downstream-item-status">
+      <el-descriptions-item label="伙伴/条目状态">
+        <span data-testid="cand538-sales-order-downstream-item-status">
           {{ summary.itemStatusLabel }}
         </span>
       </el-descriptions-item>
       <el-descriptions-item label="聚焦来源">
-        <span data-testid="cand466-sales-order-downstream-focus-text">
+        <span data-testid="cand538-sales-order-downstream-focus-text">
           {{ summary.focusLabel }}
         </span>
       </el-descriptions-item>
@@ -94,7 +94,7 @@
 
     <div
       class="guarded-actions"
-      data-testid="cand466-sales-order-downstream-guarded-actions"
+      data-testid="cand538-sales-order-downstream-guarded-actions"
     >
       <el-button
         v-for="action in summary.disabledActions"
@@ -115,11 +115,11 @@
       border
       size="small"
       empty-text="暂无 downstream guard 只读条目"
-      data-testid="cand466-sales-order-downstream-item-table"
+      data-testid="cand538-sales-order-downstream-item-table"
     >
-      <el-table-column prop="subjectLabel" label="条目" min-width="180" />
+      <el-table-column prop="subjectLabel" label="伙伴 / 条目" min-width="200" />
       <el-table-column prop="statusLabel" label="状态" min-width="160" />
-      <el-table-column prop="sourceLabel" label="来源" min-width="200" />
+      <el-table-column prop="sourceLabel" label="来源 / focus" min-width="220" />
       <el-table-column prop="blockedReason" label="阻断原因" min-width="240" />
     </el-table>
   </section>

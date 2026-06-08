@@ -87,9 +87,9 @@ const fallbackBaseSummary = (): SalesOrderDownstreamGuardBaseSummary => ({
   purchaseGuardLabel: '采购联动 blocked',
   blockingReasonLabel: '履约工厂映射缺失，禁止进入生产/采购联动，需先补齐工厂桥接。',
   guardReason:
-    '履约工厂映射缺失，禁止进入生产/采购联动，需先补齐工厂桥接。 create / update / delete / export / inventory impact 均保持 readonly。',
+    '履约工厂映射缺失，禁止进入生产/采购联动，需先补齐工厂桥接。 delivery / export / customer-supplier write / stock-write / ERPNext 均保持 readonly。',
   missingBridgeTags: ['工厂履约映射缺失'],
-  readonlyGuardTags: ['生产联动 blocked', '采购联动 blocked', '销售写入 disabled'],
+  readonlyGuardTags: ['生产联动 blocked', '采购联动 blocked', 'customer-supplier write disabled'],
   actions: [],
 })
 
@@ -98,9 +98,9 @@ const buildListItems = (
   summary: SalesOrderDownstreamGuardBaseSummary,
 ): SalesOrderDownstreamGuardReadonlyItem[] =>
   rows.slice(0, 6).map((row) => ({
-    subjectLabel: `${row.name} / ${row.customer || FALLBACK_TEXT}`,
+    subjectLabel: `${row.customer || FALLBACK_TEXT} / ${row.name}`,
     statusLabel: row.status || FALLBACK_TEXT,
-    sourceLabel: `${row.company || FALLBACK_TEXT} / ${row.customer || FALLBACK_TEXT}`,
+    sourceLabel: `${row.company || FALLBACK_TEXT} / downstream-source`,
     blockedReason: summary.blockingReasonLabel,
   }))
 
@@ -113,12 +113,12 @@ const buildDetailItems = (
     const deliveredQty = Math.min(toNumber(item.delivered_qty), orderedQty)
     const remainingQty = Math.max(orderedQty - deliveredQty, 0)
     return {
-      subjectLabel: `${item.item_code || FALLBACK_TEXT} / ${item.item_name || FALLBACK_TEXT}`,
+      subjectLabel: `${detail.customer || FALLBACK_TEXT} / ${item.item_code || FALLBACK_TEXT}`,
       statusLabel:
         remainingQty > 0
           ? `${deliveredQty}/${orderedQty} delivered`
           : `${orderedQty}/${orderedQty} delivered`,
-      sourceLabel: `${item.warehouse || FALLBACK_TEXT} / ${item.delivery_date || detail.delivery_date || FALLBACK_TEXT}`,
+      sourceLabel: `${item.warehouse || FALLBACK_TEXT} / downstream-source`,
       blockedReason: remainingQty > 0 ? summary.blockingReasonLabel : '仅开放只读核对',
     }
   })
@@ -147,11 +147,11 @@ export const useSalesOrderDownstreamGuardReadonly = ({
 
     const items = detailData ? buildDetailItems(detailData, summary) : buildListItems(rowList, summary)
     const sourceScopeLabel = detailData
-      ? `${detailData.name || FALLBACK_TEXT} / ${detailData.items[0]?.item_code || FALLBACK_TEXT}`
+      ? `${detailData.customer || FALLBACK_TEXT} / ${detailData.items[0]?.item_code || FALLBACK_TEXT}`
       : rowList.length === 1
-        ? rowList[0]?.name || FALLBACK_TEXT
+        ? `${rowList[0]?.customer || FALLBACK_TEXT} / ${rowList[0]?.name || FALLBACK_TEXT}`
         : rowList.length > 1
-          ? `${rowList.length} orders`
+          ? `${rowList.length} partners/orders`
           : FALLBACK_TEXT
     const coverageLabel =
       detailData && detailData.items.length > 0
@@ -189,7 +189,7 @@ export const useSalesOrderDownstreamGuardReadonly = ({
         ? `downstream-source readback ready / ${coverageLabel}`
         : 'downstream-source pending',
       sourceStatusTone: hasReadableSource ? 'success' : 'info',
-      itemStatusLabel: `${items.length} 条条目 / 阻断 ${summary.blockingCount} / 来源 ${sourceScopeLabel}`,
+      itemStatusLabel: `${items.length} 条伙伴/条目 / 阻断 ${summary.blockingCount} / 来源 ${sourceScopeLabel}`,
       blockedReason: errorMessage || summary.blockingReasonLabel,
       readonlyGuardReason: summary.guardReason || SALES_ORDER_DOWNSTREAM_GUARD_READONLY_GUARD_REASON,
       remainingGap: SALES_ORDER_DOWNSTREAM_GUARD_REMAINING_GAP,

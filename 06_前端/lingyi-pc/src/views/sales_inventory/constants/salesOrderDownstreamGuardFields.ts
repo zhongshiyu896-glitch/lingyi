@@ -47,15 +47,19 @@ export const SALES_ORDER_DOWNSTREAM_GUARD_SUMMARY_FIELDS = [
 export const SALES_ORDER_DOWNSTREAM_GUARD_PARITY_LABEL = 'sales-order parity'
 export const SALES_ORDER_DOWNSTREAM_GUARD_FOCUS_LABEL = 'downstream-source focus'
 export const SALES_ORDER_DOWNSTREAM_GUARD_READONLY_GUARD_REASON =
-  '当前切片仅开放下游联动前置守卫只读核对；真实发运确认、库存出库、生产/采购下推与跨模块执行保持冻结。'
+  '当前切片仅开放下游联动前置守卫只读核对；真实发运确认、客户/供应商回写、库存出库、生产/采购下推与 ERPNext 同步保持冻结。'
 export const SALES_ORDER_DOWNSTREAM_GUARD_REMAINING_GAP =
-  '真实发运确认、库存出库、导出、生产/采购下推、ERPNext 同步与跨模块执行仍未开放。'
+  '真实发运确认、客户/供应商回写、库存出库、导出、生产/采购下推、ERPNext 同步与跨模块执行仍未开放。'
 export const SALES_ORDER_DOWNSTREAM_GUARD_WRITE_BOUNDARY =
   'GET-only | write_request_count=0 | enabled_write_action_texts=[] | forbidden_write_calls=[]'
 export const SALES_ORDER_DOWNSTREAM_GUARD_DISABLED_ACTIONS = [
   {
     label: '发运确认',
     reason: 'delivery confirm write 链路冻结',
+  },
+  {
+    label: '客商回写',
+    reason: 'customer-supplier write 链路冻结',
   },
   {
     label: '库存出库',
