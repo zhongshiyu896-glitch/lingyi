@@ -1,11 +1,11 @@
 <template>
-  <div class="sales-order-detail-page" data-testid="cand538-sales-order-detail-page">
-    <el-card shadow="never" data-testid="cand538-sales-order-detail-shell">
+  <div class="sales-order-detail-page" data-testid="cand544-sales-order-detail-page">
+    <el-card shadow="never" data-testid="cand544-sales-order-detail-shell">
       <template #header>
         <div class="header-row">
           <div class="title-group">
-            <span class="title">大货管理 / 销售订单详情回读</span>
-            <span class="sub-title">NEXT-CAND-538 / downstream guard readonly</span>
+            <span class="title">大货管理 / 销售订单履约闸口详情</span>
+            <span class="sub-title">NEXT-CAND-544 / fulfillment gate readonly</span>
           </div>
           <div class="header-actions">
             <el-button @click="goList">返回列表</el-button>
@@ -18,7 +18,7 @@
         type="info"
         :closable="false"
         class="scope-alert"
-        title="当前仅开放销售订单详情只读查询，不触发草稿写入、客商回写、库存影响、导出或 ERPNext 写链路。"
+        title="当前仅开放销售订单 fulfillment gate 详情只读查询，不触发 delivery、export、customer-supplier write、stock-write、outbox/worker 或 ERPNext 写链路。"
       />
 
       <el-alert
@@ -35,10 +35,10 @@
         :closable="false"
         class="error-alert"
         :title="lastError"
-        data-testid="cand538-sales-order-detail-error"
+        data-testid="cand544-sales-order-detail-error"
       />
 
-      <section class="guarded-actions-panel" data-testid="cand538-sales-order-detail-guarded-actions">
+      <section class="guarded-actions-panel" data-testid="cand544-sales-order-detail-guarded-actions">
         <el-button
           v-for="action in readonlyGuardActions"
           :key="action.label"
@@ -50,12 +50,12 @@
         </el-button>
       </section>
 
-      <div data-testid="cand538-sales-order-detail-downstream-anchor">
-        <SalesOrderDownstreamGuardReadonly :summary="downstreamGuardReadonlySummary" />
+      <div data-testid="cand544-sales-order-detail-fulfillment-anchor">
+        <SalesOrderFulfillmentGateReadonly :summary="fulfillmentGateReadonlySummary" />
       </div>
 
       <template v-if="detail">
-        <section class="summary-grid" data-testid="cand538-sales-order-detail-stat-grid">
+        <section class="summary-grid" data-testid="cand544-sales-order-detail-stat-grid">
           <div class="summary-card">
             <span class="summary-label">明细行数</span>
             <strong class="summary-value">{{ detailReadonlySummary.itemCount }}</strong>
@@ -86,7 +86,7 @@
           border
           :column="3"
           class="header-summary"
-          data-testid="cand538-sales-order-detail-summary"
+          data-testid="cand544-sales-order-detail-summary"
         >
           <el-descriptions-item label="订单号">{{ detail.name }}</el-descriptions-item>
           <el-descriptions-item label="公司">{{ detail.company }}</el-descriptions-item>
@@ -112,10 +112,10 @@
           <el-descriptions-item label="只读动作">guarded / disabled</el-descriptions-item>
         </el-descriptions>
 
-        <section class="readonly-panel" data-testid="cand538-sales-order-detail-readback-notes">
+        <section class="readonly-panel" data-testid="cand544-sales-order-detail-readback-notes">
           <el-descriptions border :column="3">
             <el-descriptions-item label="route_scope">
-              /sales-inventory/sales-orders/detail?mode=readonly-downstream-guard&amp;parity=sales-order
+              /sales-inventory/sales-orders/detail?mode=readonly-fulfillment-gate&amp;parity=sales-order
             </el-descriptions-item>
             <el-descriptions-item label="最后刷新">{{ lastLoadedAt || '-' }}</el-descriptions-item>
             <el-descriptions-item label="write_chain">disabled</el-descriptions-item>
@@ -123,9 +123,9 @@
             <el-descriptions-item label="主款号">{{ detailReadonlySummary.primaryItemCode }}</el-descriptions-item>
             <el-descriptions-item label="交付进度">{{ detailReadonlySummary.deliveryCompletionRatio }}</el-descriptions-item>
             <el-descriptions-item label="只读 parity">sales-order</el-descriptions-item>
-            <el-descriptions-item label="focus">downstream-source</el-descriptions-item>
+            <el-descriptions-item label="focus">fulfillment-source</el-descriptions-item>
             <el-descriptions-item label="阻断项数">
-              {{ downstreamGuardBaseSummary.blockingCount }}
+              {{ fulfillmentGateReadonlySummary.blockingCount }}
             </el-descriptions-item>
           </el-descriptions>
         </section>
@@ -136,7 +136,7 @@
           border
           class="detail-table"
           :empty-text="detailEmptyText"
-          data-testid="cand538-sales-order-detail-items"
+          data-testid="cand544-sales-order-detail-items"
         >
           <el-table-column prop="item_code" label="款号" min-width="150" />
           <el-table-column prop="item_name" label="物料名称" min-width="180" />
@@ -165,7 +165,7 @@
       <el-empty
         v-else-if="!loading && !lastError"
         description="暂无可查看的销售订单"
-        data-testid="cand538-sales-order-detail-empty"
+        data-testid="cand544-sales-order-detail-empty"
       />
     </el-card>
   </div>
@@ -180,8 +180,8 @@ import {
   resolveFallbackSalesOrderName,
   type SalesOrderReadonlyGroup,
 } from '@/api/sales_inventory_sales_orders'
-import SalesOrderDownstreamGuardReadonly from '@/views/sales_inventory/components/SalesOrderDownstreamGuardReadonly.vue'
-import { useSalesOrderDownstreamGuardReadonly } from '@/views/sales_inventory/composables/useSalesOrderDownstreamGuardReadonly'
+import SalesOrderFulfillmentGateReadonly from '@/views/sales_inventory/components/SalesOrderFulfillmentGateReadonly.vue'
+import { useSalesOrderFulfillmentGateReadonly } from '@/views/sales_inventory/composables/useSalesOrderFulfillmentGateReadonly'
 import { useSalesOrderReadback } from '@/views/sales_inventory/composables/useSalesOrderReadback'
 
 const route = useRoute()
@@ -190,7 +190,6 @@ const router = useRouter()
 const {
   customerLabel,
   detailSummary,
-  downstreamGuardSummary,
   followupGroupFromRow,
   followupGroupLabel,
   followupGroupType,
@@ -224,31 +223,11 @@ const detailReadonlySummary = computed(() =>
 const detailGroup = computed<SalesOrderReadonlyGroup>(() =>
   detail.value ? followupGroupFromRow(detail.value) : 'draft-watch',
 )
-const downstreamGuardBaseSummary = computed(() =>
-  detail.value
-    ? downstreamGuardSummary(detail.value)
-    : {
-        state: 'factory-pending' as const,
-        stateLabel: '缺失工厂履约映射',
-        blockingCount: 1,
-        sourceCompletenessLabel: '待补工厂映射',
-        downstreamStateLabel: '下游联动阻断',
-        productionGuardLabel: '生产联动 blocked',
-        purchaseGuardLabel: '采购联动 blocked',
-        blockingReasonLabel: '履约工厂映射缺失，禁止进入生产/采购联动，需先补齐工厂桥接。',
-        guardReason:
-          '履约工厂映射缺失，禁止进入生产/采购联动，需先补齐工厂桥接。 delivery / export / customer-supplier write / stock-write / ERPNext 均保持 readonly。',
-        missingBridgeTags: ['工厂履约映射缺失'],
-        readonlyGuardTags: ['生产联动 blocked', '采购联动 blocked', 'customer-supplier write disabled'],
-        actions: [],
-      },
-)
-const { downstreamGuardReadonlySummary } = useSalesOrderDownstreamGuardReadonly({
-  baseSummary: downstreamGuardBaseSummary,
+const { fulfillmentGateReadonlySummary } = useSalesOrderFulfillmentGateReadonly({
   detail,
-  tab: computed(() => String(route.query.tab || 'downstream-guard-readonly')),
+  tab: computed(() => String(route.query.tab || 'fulfillment-gate-readonly')),
   parity: computed(() => String(route.query.parity || 'sales-order')),
-  focus: computed(() => String(route.query.focus || 'downstream-source')),
+  focus: computed(() => String(route.query.focus || 'fulfillment-source')),
   lastLoadedAt,
   lastError,
 })
@@ -314,9 +293,9 @@ const goList = (): void => {
   router.push({
     path: '/sales-inventory/sales-orders',
     query: {
-      tab: String(route.query.tab || 'downstream-guard-readonly'),
+      tab: String(route.query.tab || 'fulfillment-gate-readonly'),
       parity: String(route.query.parity || 'sales-order'),
-      focus: String(route.query.focus || 'downstream-source'),
+      focus: String(route.query.focus || 'fulfillment-source'),
     },
   })
 }
