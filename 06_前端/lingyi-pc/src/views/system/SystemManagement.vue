@@ -1819,6 +1819,7 @@
       :health-items="healthItems"
       :route-parity="systemCatalogDriftRouteParity"
       :route-tab="systemCatalogDriftRouteTab"
+      :route-focus="systemCatalogDriftRouteFocus"
       :can-read-config="canReadConfig"
       :can-read-dictionary="canReadDictionary"
       :can-read-health-summary="canReadHealthSummary"
@@ -2093,6 +2094,9 @@ const systemCatalogDriftRouteParity = computed<string>(() =>
   typeof route.query.parity === 'string' ? route.query.parity : '',
 )
 const systemCatalogDriftRouteTab = computed<string>(() => (typeof route.query.tab === 'string' ? route.query.tab : ''))
+const systemCatalogDriftRouteFocus = computed<string>(() =>
+  typeof route.query.focus === 'string' ? route.query.focus : '',
+)
 const healthCheckMap = computed<Record<string, SystemHealthSummaryItem>>(() => {
   return healthItems.value.reduce<Record<string, SystemHealthSummaryItem>>((acc, item) => {
     acc[item.check_name] = item

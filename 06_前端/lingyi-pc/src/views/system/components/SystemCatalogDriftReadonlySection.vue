@@ -34,13 +34,32 @@
         :closable="false"
         style="margin-bottom: 12px"
         data-testid="system-catalog-drift-parity-alert"
-        :title="`基础资料 parity：${routeParity || '/system/management'}｜当前 tab：${routeTab || 'default'}｜目录维护/系统配置写入/报表生成/导出均保持只读 guard。`"
+        :title="`基础资料 parity：${effectiveParity}｜当前 tab：${effectiveTab}｜当前 focus：${effectiveFocus}｜目录维护/系统配置写入/报表生成/导出均保持只读 guard。`"
       />
 
       <div class="meta-row" data-testid="system-catalog-drift-summary">
         <span>漂移摘要：{{ driftStatusSummary }}</span>
         <span>当前状态：{{ overallStatus }}</span>
-        <span>基础资料 parity：{{ routeParity || '/system/management' }}</span>
+        <span data-testid="system-catalog-drift-parity">基础资料 parity：{{ effectiveParity }}</span>
+        <span data-testid="system-catalog-drift-focus">focus：{{ effectiveFocus }}</span>
+      </div>
+
+      <div class="meta-row" data-testid="system-catalog-drift-query-state">
+        <span>route：{{ effectiveRoute }}</span>
+        <span>tab：{{ effectiveTab }}</span>
+        <span>focus：{{ effectiveFocus }}</span>
+      </div>
+
+      <el-alert
+        type="warning"
+        :closable="false"
+        style="margin-bottom: 12px"
+        data-testid="system-catalog-drift-blocked-reason"
+        :title="blockedReason"
+      />
+
+      <div class="meta-row" data-testid="system-catalog-drift-legacy-aliases">
+        <span>legacy aliases：{{ legacyRouteAliases.join(' ｜ ') }}</span>
       </div>
 
       <el-descriptions
@@ -135,6 +154,7 @@ const props = defineProps<{
   healthItems: SystemHealthSummaryItem[]
   routeParity: string
   routeTab: string
+  routeFocus: string
   canReadConfig: boolean
   canReadDictionary: boolean
   canReadHealthSummary: boolean
@@ -146,6 +166,7 @@ const {
   healthItems,
   routeParity,
   routeTab,
+  routeFocus,
   canReadConfig,
   canReadDictionary,
   canReadHealthSummary,
@@ -155,6 +176,12 @@ const {
   driftRows,
   driftStatusSummary,
   overallStatus,
+  effectiveFocus,
+  effectiveParity,
+  effectiveRoute,
+  effectiveTab,
+  blockedReason,
+  legacyRouteAliases,
   parityRoutes,
   readonlyRecommendations,
   readonlyGuardActions,
@@ -165,6 +192,7 @@ const {
   healthItems,
   routeParity,
   routeTab,
+  routeFocus,
   canReadConfig,
   canReadDictionary,
   canReadHealthSummary,

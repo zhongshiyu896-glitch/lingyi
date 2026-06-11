@@ -22,6 +22,16 @@ export interface SystemCatalogReadonlyGuardAction {
   reason: string
 }
 
+export const systemCatalogBaselineRoute = '/system/management'
+export const systemCatalogReadonlyConfigCatalogRoute =
+  '/system/management?tab=catalog-drift-readonly&parity=system-catalog'
+export const systemCatalogReadonlyFocusRoute =
+  '/system/management?tab=catalog-drift-readonly&parity=system-catalog&focus=config-catalog'
+export const systemCatalogLegacyRouteAliases = [
+  '/system/management?parity=foundation-dictionary',
+  '/system/management?tab=catalog-drift',
+] as const
+
 export const systemCatalogExpectedConfigGroups = ['ui', 'security', 'audit', 'integration'] as const
 export const systemCatalogExpectedDictionarySources = ['static_registry', 'policy_registry'] as const
 export const systemCatalogExpectedHealthChecks = [
@@ -57,7 +67,17 @@ export const systemCatalogReadonlyGuardActions: SystemCatalogReadonlyGuardAction
     label: '后台修复',
     reason: '后台修复建议仅作只读提示，不触发修复执行。',
   },
+  {
+    key: 'outbox-worker',
+    label: 'outbox / worker',
+    reason: 'outbox / worker 属于副作用链路，当前只保留禁写说明。',
+  },
+  {
+    key: 'production-write',
+    label: 'production write',
+    reason: 'production write 严格禁用，当前只允许 GET-only readonly 核对。',
+  },
 ]
 
 export const systemCatalogRemainingGap =
-  '真实目录维护、系统配置写入、报表生成、导出和后台修复均未开放；目录漂移与健康差异仍需人工核对。'
+  '真实目录维护、系统配置写入、报表生成、导出和后台修复均未开放；outbox / worker 与 production write 也保持关闭；目录漂移与健康差异仍需人工核对。'

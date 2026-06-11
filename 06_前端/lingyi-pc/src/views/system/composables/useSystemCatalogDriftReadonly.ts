@@ -5,9 +5,13 @@ import type {
   SystemHealthSummaryItem,
 } from '@/api/system_management'
 import {
+  systemCatalogBaselineRoute,
   systemCatalogExpectedConfigGroups,
   systemCatalogExpectedDictionarySources,
   systemCatalogExpectedHealthChecks,
+  systemCatalogLegacyRouteAliases,
+  systemCatalogReadonlyConfigCatalogRoute,
+  systemCatalogReadonlyFocusRoute,
   systemCatalogReadonlyGuardActions,
   systemCatalogRemainingGap,
   type SystemCatalogDriftRow,
@@ -20,6 +24,7 @@ interface UseSystemCatalogDriftReadonlyOptions {
   healthItems: Ref<SystemHealthSummaryItem[]>
   routeParity: Ref<string>
   routeTab: Ref<string>
+  routeFocus: Ref<string>
   canReadConfig: Ref<boolean>
   canReadDictionary: Ref<boolean>
   canReadHealthSummary: Ref<boolean>
@@ -42,12 +47,49 @@ export const useSystemCatalogDriftReadonly = ({
   healthItems,
   routeParity,
   routeTab,
+  routeFocus,
   canReadConfig,
   canReadDictionary,
   canReadHealthSummary,
 }: UseSystemCatalogDriftReadonlyOptions) => {
-  const activeParity = computed(() => (routeParity.value === 'foundation-dictionary' ? routeParity.value : 'default'))
-  const activeTab = computed(() => (routeTab.value === 'catalog-drift' ? routeTab.value : 'default'))
+  const activeParity = computed(() =>
+    routeParity.value === 'system-catalog'
+      ? routeParity.value
+      : routeParity.value === 'foundation-dictionary'
+        ? routeParity.value
+        : 'default',
+  )
+  const activeTab = computed(() =>
+    routeTab.value === 'catalog-drift-readonly'
+      ? routeTab.value
+      : routeTab.value === 'catalog-drift'
+        ? routeTab.value
+        : 'default',
+  )
+  const activeFocus = computed(() => (routeFocus.value === 'config-catalog' ? routeFocus.value : 'default'))
+  const isReadonlyRoute = computed(() => activeTab.value === 'catalog-drift-readonly')
+  const effectiveRoute = computed(() =>
+    isReadonlyRoute.value && activeFocus.value === 'config-catalog'
+      ? systemCatalogReadonlyFocusRoute
+      : isReadonlyRoute.value
+        ? systemCatalogReadonlyConfigCatalogRoute
+        : systemCatalogBaselineRoute,
+  )
+  const effectiveParity = computed(() =>
+    activeParity.value === 'system-catalog'
+      ? 'system-catalog'
+      : activeParity.value === 'foundation-dictionary'
+        ? 'foundation-dictionary (legacy alias)'
+        : '/system/management',
+  )
+  const effectiveTab = computed(() =>
+    activeTab.value === 'catalog-drift-readonly'
+      ? 'catalog-drift-readonly'
+      : activeTab.value === 'catalog-drift'
+        ? 'catalog-drift (legacy alias)'
+        : 'default',
+  )
+  const effectiveFocus = computed(() => (activeFocus.value === 'config-catalog' ? activeFocus.value : 'none'))
 
   const configGroupsPresent = computed(() => new Set(configItems.value.map((item) => item.config_group)))
   const dictionarySourcesPresent = computed(() => new Set(dictionaryItems.value.map((item) => item.source)))
@@ -146,16 +188,41 @@ export const useSystemCatalogDriftReadonly = ({
       key: 'foundation-parity-scope',
       label: '基础资料 parity 路由上下文',
       status:
-        activeParity.value === 'foundation-dictionary' || activeTab.value === 'catalog-drift' || (!routeParity.value && !routeTab.value)
+        activeParity.value === 'system-catalog' ||
+        activeParity.value === 'foundation-dictionary' ||
+        activeTab.value === 'catalog-drift-readonly' ||
+        activeTab.value === 'catalog-drift' ||
+        (!routeParity.value && !routeTab.value)
           ? 'ok'
           : 'warn',
       summary:
-        activeParity.value === 'foundation-dictionary'
-          ? '当前处于 foundation-dictionary parity 上下文。'
-          : activeTab.value === 'catalog-drift'
-            ? '当前处于 catalog-drift 只读核对上下文。'
-            : '当前处于 /system/management 基线路由，只读展示基础资料目录漂移摘要。',
+        activeParity.value === 'system-catalog'
+          ? '当前处于 system-catalog parity 上下文。'
+          : activeParity.value === 'foundation-dictionary'
+            ? '当前处于 foundation-dictionary legacy parity 上下文。'
+          : activeTab.value === 'catalog-drift-readonly'
+            ? '当前处于 catalog-drift-readonly 只读核对上下文。'
+            : activeTab.value === 'catalog-drift'
+              ? '当前处于 catalog-drift legacy 只读核对上下文。'
+              : '当前处于 /system/management 基线路由，只读展示基础资料目录漂移摘要。',
       recommendation: '仅允许路由可达性说明与只读核对，不开放真实目录写入或报表动作。',
+    })
+
+    rows.push({
+      key: 'config-catalog-focus',
+      label: 'config-catalog focus',
+      status:
+        activeFocus.value === 'config-catalog' ||
+        (!routeFocus.value && !isReadonlyRoute.value)
+          ? 'ok'
+          : 'warn',
+      summary:
+        activeFocus.value === 'config-catalog'
+          ? '当前 focus 已锁定 config-catalog。'
+          : !routeFocus.value && !isReadonlyRoute.value
+            ? '基线路由未要求 config-catalog focus。'
+            : '当前处于 /system/management 基线路由，只读展示基础资料目录漂移摘要。',
+      recommendation: 'focus 仅用于只读定位，不触发目录维护、报表生成或后台修复。',
     })
 
     return rows
@@ -180,23 +247,26 @@ export const useSystemCatalogDriftReadonly = ({
     {
       key: 'baseline-route',
       label: '系统管理基线路由',
-      route: '/system/management',
+      route: systemCatalogBaselineRoute,
       active: !routeParity.value && !routeTab.value,
       note: '默认只读目录与健康摘要入口。',
     },
     {
-      key: 'foundation-dictionary',
-      label: '基础资料 parity',
-      route: '/system/management?parity=foundation-dictionary',
-      active: activeParity.value === 'foundation-dictionary',
-      note: '聚焦基础资料目录来源差异，不释放真实字典维护。',
+      key: 'system-catalog',
+      label: 'system-catalog parity',
+      route: systemCatalogReadonlyConfigCatalogRoute,
+      active: activeParity.value === 'system-catalog' && activeTab.value === 'catalog-drift-readonly',
+      note: `聚焦基础资料目录来源差异，不释放真实字典维护。兼容旧路由：${systemCatalogLegacyRouteAliases[0]}`,
     },
     {
-      key: 'catalog-drift',
-      label: 'catalog-drift 核对视图',
-      route: '/system/management?tab=catalog-drift',
-      active: activeTab.value === 'catalog-drift',
-      note: '聚焦目录漂移与健康差异，只读修复建议不可执行。',
+      key: 'config-catalog-focus',
+      label: 'config-catalog focus',
+      route: systemCatalogReadonlyFocusRoute,
+      active:
+        activeParity.value === 'system-catalog' &&
+        activeTab.value === 'catalog-drift-readonly' &&
+        activeFocus.value === 'config-catalog',
+      note: `聚焦目录漂移与健康差异，只读修复建议不可执行。兼容旧路由：${systemCatalogLegacyRouteAliases[1]}`,
     },
   ])
 
@@ -213,10 +283,29 @@ export const useSystemCatalogDriftReadonly = ({
         ]
   })
 
+  const blockedReason = computed(() => {
+    if (!canReadConfig.value || !canReadDictionary.value || !canReadHealthSummary.value) {
+      return '缺少系统目录只读核对权限，当前仅保留 readonly guard、query state 与 parity/focus 说明。'
+    }
+    if (blockedHealthChecks.value.length) {
+      return `存在 blocked 健康检查：${blockedHealthChecks.value.join(' / ')}；目录维护、配置写入、报表生成、导出、remediation、outbox/worker 与 production write 保持禁用。`
+    }
+    if (missingConfigGroups.value.length || missingDictionarySources.value.length || missingHealthChecks.value.length) {
+      return '检测到目录覆盖或健康检查缺项；当前只读切片仅输出差异说明，不触发真实 catalog write/export/remediation。'
+    }
+    return '未发现新的 blocked 差异，但 catalog write/export/remediation/outbox/worker/production write 仍保持 readonly guard。'
+  })
+
   return {
     driftRows,
     driftStatusSummary,
     overallStatus,
+    effectiveFocus,
+    effectiveParity,
+    effectiveRoute,
+    effectiveTab,
+    blockedReason,
+    legacyRouteAliases: systemCatalogLegacyRouteAliases,
     parityRoutes,
     readonlyRecommendations,
     readonlyGuardActions: systemCatalogReadonlyGuardActions,
