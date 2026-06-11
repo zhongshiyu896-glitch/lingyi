@@ -639,6 +639,54 @@ class CustomerItem(BaseModel):
     disabled: bool | None = None
 
 
+class SupplierItem(BaseModel):
+    """Read-only Supplier row."""
+
+    name: str
+    supplier_name: str | None = None
+    disabled: bool | None = None
+
+
+class ReferenceDraftCreateRequest(BaseModel):
+    """Create local reference draft payload."""
+
+    operation: Literal["create_draft"]
+    scenario_tag: str
+    company: str
+    reference_no: str
+    reference_name: str
+    idempotency_key: str
+
+
+class ReferenceDraftDeactivateRequest(BaseModel):
+    """Deactivate local reference draft payload."""
+
+    operation: Literal["deactivate_draft"]
+    scenario_tag: str
+    company: str
+    idempotency_key: str
+    reason: str
+
+
+class ReferenceDraftData(BaseModel):
+    """Local reference draft response."""
+
+    id: int
+    reference_type: Literal["customer", "supplier"]
+    reference_no: str
+    reference_name: str
+    company: str
+    status: Literal["active", "inactive"]
+    source: Literal["local_draft"] = "local_draft"
+    scenario_tag: str
+    idempotency_key: str
+    created_by: str
+    created_at: datetime
+    deactivated_by: str | None = None
+    deactivated_at: datetime | None = None
+    deactivate_reason: str | None = None
+
+
 class DiagnosticData(BaseModel):
     """Read-only diagnostic payload."""
 

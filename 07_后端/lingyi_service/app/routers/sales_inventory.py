@@ -34,6 +34,9 @@ from app.core.request_id import get_request_id_from_request
 from app.core.request_id import is_request_id_valid
 from app.schemas.sales_inventory import DiagnosticData
 from app.schemas.sales_inventory import InventoryAggregationData
+from app.schemas.sales_inventory import ReferenceDraftCreateRequest
+from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
+from app.schemas.sales_inventory import SupplierItem
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
 from app.schemas.sales_inventory import StockLedgerData
@@ -51,6 +54,7 @@ from app.services.sales_inventory_service import SalesInventoryService
 from app.services.sales_inventory_service import SalesInventoryServiceError
 
 router = APIRouter(prefix="/api/sales-inventory", tags=["sales_inventory"])
+reference_local_router = APIRouter(tags=["sales_inventory"])
 SALES_ORDER_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 SALES_ORDER_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-ORDER-\d{8}-\d{3}$")
 SALES_ORDER_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-ORDER-\d{8}-\d{3})(?:$|[-_.].*)$")
@@ -58,6 +62,11 @@ SALES_ORDER_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-ORDER-\d{8}-\d
 SALES_ORDER_SOURCE_REF_PATTERN = re.compile(r"^SRC-(Z003-SALES-ORDER-\d{8}-\d{3})$")
 SALES_ORDER_NO_PATTERN = re.compile(r"^SO-(Z003-SALES-ORDER-\d{8}-\d{3})$")
 SALES_ORDER_CANCEL_REASON_PATTERN = re.compile(r"^VOID-(Z003-SALES-ORDER-\d{8}-\d{3})$")
+REFERENCE_LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
+REFERENCE_SCENARIO_FULL_PATTERN = re.compile(r"^Z003-SALES-INV-REF-\d{8}-\d{3}$")
+REFERENCE_REQUEST_TAG_PATTERN = re.compile(r"^(Z003-SALES-INV-REF-\d{8}-\d{3})(?:$|[-_.].*)$")
+REFERENCE_IDEMPOTENCY_PATTERN = re.compile(r"^IDEMP-(Z003-SALES-INV-REF-\d{8}-\d{3})(?:[-_.].*)?$")
+REFERENCE_ALLOWED_TYPES = {"customer", "supplier"}
 
 
 def get_db_session() -> Generator[Session, None, None]:
@@ -80,8 +89,25 @@ def _is_local_sales_order_write_enabled() -> bool:
     return app_env == "development" and db_url == SALES_ORDER_LOCAL_ALLOWED_DB_URL
 
 
+def _is_local_reference_write_enabled() -> bool:
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    db_url = os.getenv("LINGYI_DB_URL", "").strip()
+    return app_env in {"development", "dev", "local"} and db_url == REFERENCE_LOCAL_ALLOWED_DB_URL
+
+
+def _is_local_reference_route_enabled() -> bool:
+    return _is_local_reference_write_enabled()
+
+
 def _extract_sales_order_request_tag(value: str) -> str | None:
     matched = SALES_ORDER_REQUEST_TAG_PATTERN.fullmatch(value)
+    if matched is None:
+        return None
+    return matched.group(1)
+
+
+def _extract_reference_request_tag(value: str) -> str | None:
+    matched = REFERENCE_REQUEST_TAG_PATTERN.fullmatch(value)
     if matched is None:
         return None
     return matched.group(1)
@@ -102,6 +128,17 @@ def _raise_sales_order_idempotency_conflict(message: str) -> None:
         status_code=409,
         detail={
             "code": "SALES_ORDER_IDEMPOTENCY_CONFLICT",
+            "message": message,
+            "data": {},
+        },
+    )
+
+
+def _raise_reference_idempotency_conflict(message: str) -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "SALES_INVENTORY_REFERENCE_CONFLICT",
             "message": message,
             "data": {},
         },
@@ -192,6 +229,63 @@ def _validate_local_sales_order_write_gate(
             _raise_sales_order_idempotency_conflict("operation 载体与路由动作不一致")
         if cancel_reason_tag != normalized_scenario_tag:
             _raise_sales_order_idempotency_conflict("operation 载体与 scenario_tag 不一致")
+
+    return normalized_scenario_tag
+
+
+def _validate_local_reference_write_gate(
+    *,
+    request_obj: Request,
+    scenario_tag: str | None,
+    idempotency_key: str | None,
+    company: str | None,
+    reference_type: str,
+    operation: str | None,
+    expected_operation: str,
+    draft_id: int | None = None,
+) -> str:
+    if not _is_local_reference_write_enabled():
+        _raise_reference_idempotency_conflict("仅允许本地开发测试库执行基础资料本地草稿写入")
+
+    request_id_header = (request_obj.headers.get("X-Request-ID") or "").strip()
+    if not request_id_header:
+        _raise_reference_idempotency_conflict("request_id 不能为空")
+    if not is_request_id_valid(request_id_header):
+        _raise_reference_idempotency_conflict("request_id_pattern_invalid")
+    header_tag = _extract_reference_request_tag(request_id_header)
+    if header_tag is None or REFERENCE_SCENARIO_FULL_PATTERN.fullmatch(header_tag) is None:
+        _raise_reference_idempotency_conflict("request_id 未包含合法 scenario_tag")
+
+    request_id = get_request_id_from_request(request_obj).strip()
+    if not request_id or request_id != request_id_header:
+        _raise_reference_idempotency_conflict("request_id 与 Header 不一致")
+
+    normalized_scenario_tag = _scope_text(scenario_tag)
+    if normalized_scenario_tag is None or REFERENCE_SCENARIO_FULL_PATTERN.fullmatch(normalized_scenario_tag) is None:
+        _raise_reference_idempotency_conflict("scenario_tag 载体缺失或格式非法")
+    if normalized_scenario_tag != header_tag:
+        _raise_reference_idempotency_conflict("scenario_tag 载体与 request_id 不一致")
+
+    idempotency_tag = _match_sales_order_prefixed_carrier(idempotency_key, REFERENCE_IDEMPOTENCY_PATTERN)
+    if idempotency_tag is None:
+        _raise_reference_idempotency_conflict("idempotency_key 载体缺失或格式非法")
+    if idempotency_tag != normalized_scenario_tag:
+        _raise_reference_idempotency_conflict("idempotency_key 载体与 scenario_tag 不一致")
+
+    normalized_company = _scope_text(company)
+    if normalized_company is None:
+        _raise_reference_idempotency_conflict("company 载体缺失")
+
+    normalized_reference_type = _scope_text(reference_type)
+    if normalized_reference_type not in REFERENCE_ALLOWED_TYPES:
+        _raise_reference_idempotency_conflict("reference_type 非法")
+
+    normalized_operation = _scope_text(operation)
+    if normalized_operation != expected_operation:
+        _raise_reference_idempotency_conflict("operation 载体与路由动作不一致")
+
+    if expected_operation == "deactivate_draft" and (draft_id is None or draft_id <= 0):
+        _raise_reference_idempotency_conflict("draft_id 载体缺失或格式非法")
 
     return normalized_scenario_tag
 
@@ -714,6 +808,266 @@ def cancel_sales_order_draft(
         session.rollback()
         raise
     return _ok(data)
+
+
+@reference_local_router.get("/suppliers")
+def list_suppliers(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="supplier",
+    )
+    data = _write_service(session).list_local_suppliers(page=page, page_size=page_size)
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="supplier",
+    )
+    filtered = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.items = filtered
+    data.total = len(filtered)
+    return _ok(data)
+
+
+@reference_local_router.get("/reference-drafts/customers")
+def list_customer_reference_drafts(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="customer",
+    )
+    data = _write_service(session).list_reference_drafts(reference_type="customer", page=page, page_size=page_size)
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="customer",
+    )
+    filtered = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.items = filtered
+    data.total = len(filtered)
+    return _ok(data)
+
+
+@reference_local_router.get("/reference-drafts/suppliers")
+def list_supplier_reference_drafts(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="supplier",
+    )
+    data = _write_service(session).list_reference_drafts(reference_type="supplier", page=page, page_size=page_size)
+    permissions = _get_read_permissions(
+        permission_service=permission_service,
+        current_user=current_user,
+        request=request,
+        resource_type="supplier",
+    )
+    filtered = [item for item in data.items if _scope_allowed(item, permissions)]
+    data.items = filtered
+    data.total = len(filtered)
+    return _ok(data)
+
+
+@reference_local_router.post("/reference-drafts/customers")
+def create_customer_reference_draft(
+    request: Request,
+    payload: ReferenceDraftCreateRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="customer",
+    )
+    _validate_local_reference_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        reference_type="customer",
+        operation=payload.operation,
+        expected_operation="create_draft",
+    )
+    try:
+        data = _write_service(session).create_reference_draft(
+            reference_type="customer",
+            payload=payload,
+            created_by=current_user.username,
+        )
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _created(data)
+
+
+@reference_local_router.post("/reference-drafts/suppliers")
+def create_supplier_reference_draft(
+    request: Request,
+    payload: ReferenceDraftCreateRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="supplier",
+    )
+    _validate_local_reference_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        reference_type="supplier",
+        operation=payload.operation,
+        expected_operation="create_draft",
+    )
+    try:
+        data = _write_service(session).create_reference_draft(
+            reference_type="supplier",
+            payload=payload,
+            created_by=current_user.username,
+        )
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _created(data)
+
+
+@reference_local_router.post("/reference-drafts/customers/{draft_id}/deactivate")
+def deactivate_customer_reference_draft(
+    draft_id: int,
+    request: Request,
+    payload: ReferenceDraftDeactivateRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _validate_local_reference_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        reference_type="customer",
+        operation=payload.operation,
+        expected_operation="deactivate_draft",
+        draft_id=draft_id,
+    )
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="customer",
+    )
+    try:
+        data = _write_service(session).deactivate_reference_draft(
+            reference_type="customer",
+            draft_id=draft_id,
+            payload=payload,
+            deactivated_by=current_user.username,
+        )
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _ok(data)
+
+
+@reference_local_router.post("/reference-drafts/suppliers/{draft_id}/deactivate")
+def deactivate_supplier_reference_draft(
+    draft_id: int,
+    request: Request,
+    payload: ReferenceDraftDeactivateRequest = Body(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+):
+    _validate_local_reference_write_gate(
+        request_obj=request,
+        scenario_tag=payload.scenario_tag,
+        idempotency_key=payload.idempotency_key,
+        company=payload.company,
+        reference_type="supplier",
+        operation=payload.operation,
+        expected_operation="deactivate_draft",
+        draft_id=draft_id,
+    )
+    action = SALES_INVENTORY_READ
+    permission_service = PermissionService(session=session)
+    permission_service.require_action(
+        current_user=current_user,
+        request_obj=request,
+        action=action,
+        module="sales_inventory",
+        resource_type="supplier",
+    )
+    try:
+        data = _write_service(session).deactivate_reference_draft(
+            reference_type="supplier",
+            draft_id=draft_id,
+            payload=payload,
+            deactivated_by=current_user.username,
+        )
+    except SalesInventoryServiceError as exc:
+        session.rollback()
+        _raise_sales_inventory_service_error(exc)
+    except Exception:
+        session.rollback()
+        raise
+    return _ok(data)
+
+
+if _is_local_reference_route_enabled():
+    router.include_router(reference_local_router)
 
 
 @router.get("/material-transfers")
@@ -1933,7 +2287,11 @@ def list_customers(
         data = _service(request).list_customers(page=page, page_size=page_size)
     except ERPNextAdapterException as exc:
         if _local_read_fallback_enabled(exc):
-            return _ok(_build_local_list_fallback(page=page, page_size=page_size))
+            data = _write_service(session).list_local_customers(page=page, page_size=page_size)
+            filtered = [item for item in data.items if _scope_allowed(item, permissions)]
+            data.items = filtered
+            data.total = len(filtered)
+            return _ok(data)
         _handle_erpnext_error(
             exc=exc,
             permission_service=permission_service,

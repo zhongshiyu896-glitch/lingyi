@@ -9,6 +9,7 @@ from decimal import Decimal
 import hashlib
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.models.warehouse import LyWarehouseStockEntryDraft
@@ -46,6 +47,10 @@ from app.schemas.sales_inventory import MaterialInventoryReportItem
 from app.schemas.sales_inventory import MaterialTransferData
 from app.schemas.sales_inventory import MaterialTransferItem
 from app.schemas.sales_inventory import SalesInventoryListData
+from app.schemas.sales_inventory import SupplierItem
+from app.schemas.sales_inventory import ReferenceDraftCreateRequest
+from app.schemas.sales_inventory import ReferenceDraftData
+from app.schemas.sales_inventory import ReferenceDraftDeactivateRequest
 from app.schemas.sales_inventory import SalesOrderDetailData
 from app.schemas.sales_inventory import SalesOrderDraftCancelRequest
 from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
@@ -2802,6 +2807,263 @@ class SalesInventoryService:
             page_size=page_size,
         )
 
+    def list_local_customers(self, *, page: int, page_size: int) -> SalesInventoryListData[CustomerItem]:
+        drafts = self.list_reference_drafts(reference_type="customer", page=page, page_size=page_size)
+        return SalesInventoryListData[CustomerItem](
+            items=[
+                CustomerItem(
+                    name=item.reference_no,
+                    customer_name=item.reference_name,
+                    disabled=item.status != "active",
+                )
+                for item in drafts.items
+            ],
+            total=drafts.total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_local_suppliers(self, *, page: int, page_size: int) -> SalesInventoryListData[SupplierItem]:
+        drafts = self.list_reference_drafts(reference_type="supplier", page=page, page_size=page_size)
+        return SalesInventoryListData[SupplierItem](
+            items=[
+                SupplierItem(
+                    name=item.reference_no,
+                    supplier_name=item.reference_name,
+                    disabled=item.status != "active",
+                )
+                for item in drafts.items
+            ],
+            total=drafts.total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def list_reference_drafts(
+        self,
+        *,
+        reference_type: str,
+        page: int,
+        page_size: int,
+    ) -> SalesInventoryListData[ReferenceDraftData]:
+        session = self._require_session()
+        normalized_reference_type = self._normalize_reference_type(reference_type)
+        self._ensure_reference_draft_table()
+        offset = max(page - 1, 0) * page_size
+        rows = session.execute(
+            text(
+                f"""
+                SELECT
+                    id,
+                    reference_type,
+                    reference_no,
+                    reference_name,
+                    company,
+                    status,
+                    scenario_tag,
+                    idempotency_key,
+                    created_by,
+                    created_at,
+                    deactivated_by,
+                    deactivated_at,
+                    deactivate_reason
+                FROM {self._LOCAL_REFERENCE_DRAFT_TABLE}
+                WHERE reference_type = :reference_type
+                ORDER BY id DESC
+                LIMIT :limit OFFSET :offset
+                """,
+            ),
+            {"reference_type": normalized_reference_type, "limit": page_size, "offset": offset},
+        ).mappings().all()
+        total = int(
+            session.execute(
+                text(
+                    f"SELECT COUNT(*) FROM {self._LOCAL_REFERENCE_DRAFT_TABLE} WHERE reference_type = :reference_type",
+                ),
+                {"reference_type": normalized_reference_type},
+            ).scalar_one()
+        )
+        return SalesInventoryListData[ReferenceDraftData](
+            items=[self._reference_draft_row_to_data(dict(row)) for row in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def create_reference_draft(
+        self,
+        *,
+        reference_type: str,
+        payload: ReferenceDraftCreateRequest,
+        created_by: str,
+    ) -> ReferenceDraftData:
+        session = self._require_session()
+        normalized_reference_type = self._normalize_reference_type(reference_type)
+        company = self._require_text(payload.company, "company")
+        reference_no = self._require_text(payload.reference_no, "reference_no")
+        reference_name = self._require_text(payload.reference_name, "reference_name")
+        scenario_tag = self._require_text(payload.scenario_tag, "scenario_tag")
+        idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
+        created_by_name = self._require_text(created_by, "created_by")
+        self._ensure_reference_draft_table()
+
+        existing_by_idempotency = session.execute(
+            text(
+                f"""
+                SELECT * FROM {self._LOCAL_REFERENCE_DRAFT_TABLE}
+                WHERE reference_type = :reference_type
+                  AND company = :company
+                  AND idempotency_key = :idempotency_key
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+            ),
+            {
+                "reference_type": normalized_reference_type,
+                "company": company,
+                "idempotency_key": idempotency_key,
+            },
+        ).mappings().first()
+        if existing_by_idempotency is not None:
+            return self._reference_draft_row_to_data(dict(existing_by_idempotency))
+
+        existing_active = session.execute(
+            text(
+                f"""
+                SELECT * FROM {self._LOCAL_REFERENCE_DRAFT_TABLE}
+                WHERE reference_type = :reference_type
+                  AND company = :company
+                  AND reference_no = :reference_no
+                  AND status = 'active'
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+            ),
+            {
+                "reference_type": normalized_reference_type,
+                "company": company,
+                "reference_no": reference_no,
+            },
+        ).mappings().first()
+        if existing_active is not None:
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_INVENTORY_REFERENCE_CONFLICT",
+                f"{reference_no} 已存在启用中的本地草稿",
+            )
+
+        created_at = datetime.now(timezone.utc).isoformat()
+        result = session.execute(
+            text(
+                f"""
+                INSERT INTO {self._LOCAL_REFERENCE_DRAFT_TABLE} (
+                    reference_type,
+                    reference_no,
+                    reference_name,
+                    company,
+                    status,
+                    scenario_tag,
+                    idempotency_key,
+                    created_by,
+                    created_at
+                ) VALUES (
+                    :reference_type,
+                    :reference_no,
+                    :reference_name,
+                    :company,
+                    'active',
+                    :scenario_tag,
+                    :idempotency_key,
+                    :created_by,
+                    :created_at
+                )
+                """,
+            ),
+            {
+                "reference_type": normalized_reference_type,
+                "reference_no": reference_no,
+                "reference_name": reference_name,
+                "company": company,
+                "scenario_tag": scenario_tag,
+                "idempotency_key": idempotency_key,
+                "created_by": created_by_name,
+                "created_at": created_at,
+            },
+        )
+        session.commit()
+        row = session.execute(
+            text(f"SELECT * FROM {self._LOCAL_REFERENCE_DRAFT_TABLE} WHERE id = :draft_id"),
+            {"draft_id": int(result.lastrowid)},
+        ).mappings().one()
+        return self._reference_draft_row_to_data(dict(row))
+
+    def deactivate_reference_draft(
+        self,
+        *,
+        reference_type: str,
+        draft_id: int,
+        payload: ReferenceDraftDeactivateRequest,
+        deactivated_by: str,
+    ) -> ReferenceDraftData:
+        session = self._require_session()
+        normalized_reference_type = self._normalize_reference_type(reference_type)
+        company = self._require_text(payload.company, "company")
+        reason = self._require_text(payload.reason, "reason")
+        actor = self._require_text(deactivated_by, "deactivated_by")
+        self._require_text(payload.scenario_tag, "scenario_tag")
+        self._require_text(payload.idempotency_key, "idempotency_key")
+        self._ensure_reference_draft_table()
+
+        current = session.execute(
+            text(
+                f"""
+                SELECT * FROM {self._LOCAL_REFERENCE_DRAFT_TABLE}
+                WHERE id = :draft_id
+                  AND reference_type = :reference_type
+                  AND company = :company
+                LIMIT 1
+                """,
+            ),
+            {
+                "draft_id": draft_id,
+                "reference_type": normalized_reference_type,
+                "company": company,
+            },
+        ).mappings().first()
+        if current is None:
+            raise SalesInventoryServiceError(
+                409,
+                "SALES_INVENTORY_REFERENCE_NOT_FOUND",
+                "本地草稿不存在或 company 不匹配",
+            )
+        if str(current.get("status") or "") == "inactive":
+            return self._reference_draft_row_to_data(dict(current))
+
+        session.execute(
+            text(
+                f"""
+                UPDATE {self._LOCAL_REFERENCE_DRAFT_TABLE}
+                SET status = 'inactive',
+                    deactivated_by = :deactivated_by,
+                    deactivated_at = :deactivated_at,
+                    deactivate_reason = :deactivate_reason
+                WHERE id = :draft_id
+                """,
+            ),
+            {
+                "draft_id": draft_id,
+                "deactivated_by": actor,
+                "deactivated_at": datetime.now(timezone.utc).isoformat(),
+                "deactivate_reason": reason,
+            },
+        )
+        session.commit()
+        updated = session.execute(
+            text(f"SELECT * FROM {self._LOCAL_REFERENCE_DRAFT_TABLE} WHERE id = :draft_id"),
+            {"draft_id": draft_id},
+        ).mappings().one()
+        return self._reference_draft_row_to_data(dict(updated))
+
     def get_inventory_aggregation(
         self,
         *,
@@ -2922,6 +3184,7 @@ class SalesInventoryService:
         )
 
     _LOCAL_SALES_ORDER_SOURCE_TYPE = "sales_order_local"
+    _LOCAL_REFERENCE_DRAFT_TABLE = "ly_sales_inventory_reference_draft"
 
     def _require_session(self) -> Session:
         if self.session is None:
@@ -3051,6 +3314,78 @@ class SalesInventoryService:
             cancel_reason=self._text(draft.cancel_reason),
             items=self._sales_order_draft_items(draft_id=int(draft.id)),
         )
+
+    @classmethod
+    def _normalize_reference_type(cls, value: str) -> str:
+        normalized = cls._require_text(value, "reference_type").lower()
+        if normalized not in {"customer", "supplier"}:
+            raise SalesInventoryServiceError(409, "SALES_INVENTORY_REFERENCE_CONFLICT", "reference_type 非法")
+        return normalized
+
+    @classmethod
+    def _parse_optional_iso_datetime(cls, value: Any) -> datetime | None:
+        normalized = cls._text(value)
+        if normalized is None:
+            return None
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+
+    @classmethod
+    def _reference_draft_row_to_data(cls, row: dict[str, Any]) -> ReferenceDraftData:
+        reference_type = cls._normalize_reference_type(str(row.get("reference_type") or ""))
+        status = str(row.get("status") or "inactive")
+        if status not in {"active", "inactive"}:
+            status = "inactive"
+        return ReferenceDraftData(
+            id=int(row.get("id") or 0),
+            reference_type=reference_type,  # type: ignore[arg-type]
+            reference_no=str(row.get("reference_no") or ""),
+            reference_name=str(row.get("reference_name") or ""),
+            company=str(row.get("company") or ""),
+            status=status,  # type: ignore[arg-type]
+            scenario_tag=str(row.get("scenario_tag") or ""),
+            idempotency_key=str(row.get("idempotency_key") or ""),
+            created_by=str(row.get("created_by") or ""),
+            created_at=cls._parse_optional_iso_datetime(row.get("created_at")) or datetime.now(timezone.utc),
+            deactivated_by=cls._text(row.get("deactivated_by")),
+            deactivated_at=cls._parse_optional_iso_datetime(row.get("deactivated_at")),
+            deactivate_reason=cls._text(row.get("deactivate_reason")),
+        )
+
+    def _ensure_reference_draft_table(self) -> None:
+        session = self._require_session()
+        session.execute(
+            text(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self._LOCAL_REFERENCE_DRAFT_TABLE} (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reference_type TEXT NOT NULL,
+                    reference_no TEXT NOT NULL,
+                    reference_name TEXT NOT NULL,
+                    company TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    scenario_tag TEXT NOT NULL,
+                    idempotency_key TEXT NOT NULL,
+                    created_by TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    deactivated_by TEXT,
+                    deactivated_at TEXT,
+                    deactivate_reason TEXT
+                )
+                """,
+            )
+        )
+        session.execute(
+            text(
+                f"""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_{self._LOCAL_REFERENCE_DRAFT_TABLE}_idem
+                ON {self._LOCAL_REFERENCE_DRAFT_TABLE} (reference_type, company, idempotency_key)
+                """,
+            )
+        )
+        session.commit()
 
     def _allowed_warehouses(self, *, company: str | None) -> set[str] | None:
         if not company:

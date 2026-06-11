@@ -746,6 +746,66 @@ export interface CustomerItem {
   disabled?: boolean | null
 }
 
+export interface SupplierItem {
+  name: string
+  supplier_name?: string | null
+  disabled?: boolean | null
+}
+
+export type SalesInventoryReferenceDraftType = 'customer' | 'supplier'
+
+export interface SalesInventoryReferenceDraftQuery {
+  page?: number
+  page_size?: number
+}
+
+export interface SalesInventoryReferenceDraftCreatePayload {
+  operation: 'create_draft'
+  scenario_tag: string
+  company: string
+  reference_no: string
+  reference_name: string
+  idempotency_key: string
+}
+
+export interface SalesInventoryReferenceDraftDeactivatePayload {
+  operation: 'deactivate_draft'
+  scenario_tag: string
+  company: string
+  idempotency_key: string
+  reason: string
+}
+
+export interface SalesInventoryReferenceDraftData {
+  id: number
+  reference_type: SalesInventoryReferenceDraftType
+  reference_no: string
+  reference_name: string
+  company: string
+  status: 'active' | 'inactive'
+  source: 'local_draft'
+  scenario_tag: string
+  idempotency_key: string
+  created_by: string
+  created_at: string
+  deactivated_by?: string | null
+  deactivated_at?: string | null
+  deactivate_reason?: string | null
+}
+
+export interface SalesInventoryReferenceWriteMeta {
+  requestId?: string
+}
+
+export interface SalesInventoryReferenceRequestIdInput {
+  scenarioTag: string
+  operation: 'create_draft' | 'deactivate_draft'
+  referenceType: SalesInventoryReferenceDraftType
+  idempotencyKey: string
+  referenceNo: string
+  company: string
+}
+
 export interface SalesInventoryAggregationQuery {
   company?: string
   item_code?: string
@@ -806,6 +866,44 @@ const toQuery = (params: Record<string, unknown>): string => {
     }
   })
   return query.toString()
+}
+
+const REQUEST_ID_SAFE_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/
+const REFERENCE_SCENARIO_PATTERN = /^Z003-SALES-INV-REF-\d{8}-\d{3}$/
+
+const fnvCarrierCode = (value: string, length = 3): string => {
+  let hashValue = 2166136261
+  for (const byte of new TextEncoder().encode(String(value))) {
+    hashValue ^= byte
+    hashValue = Math.imul(hashValue, 16777619) >>> 0
+  }
+  return hashValue.toString(16).toUpperCase().padStart(8, '0').slice(-length)
+}
+
+export const buildSalesInventoryReferenceScenarioTag = (): string => {
+  const now = new Date()
+  const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  const seq = `${Math.floor(Math.random() * 1000)}`.padStart(3, '0')
+  return `Z003-SALES-INV-REF-${day}-${seq}`
+}
+
+export const ensureSalesInventoryReferenceScenarioTag = (value: string): string => {
+  const normalized = value.trim()
+  if (REFERENCE_SCENARIO_PATTERN.test(normalized)) return normalized
+  return buildSalesInventoryReferenceScenarioTag()
+}
+
+export const buildSalesInventoryReferenceRequestId = (
+  input: SalesInventoryReferenceRequestIdInput,
+): string => {
+  const scenarioTag = ensureSalesInventoryReferenceScenarioTag(input.scenarioTag)
+  const operationCode = input.operation === 'create_draft' ? 'C' : 'X'
+  const typeCode = input.referenceType === 'customer' ? 'CUS' : 'SUP'
+  const requestId = `${scenarioTag}-RW-${operationCode}-${typeCode}-${fnvCarrierCode(input.idempotencyKey)}-${fnvCarrierCode(input.referenceNo)}-${fnvCarrierCode(input.company)}`
+  if (!REQUEST_ID_SAFE_PATTERN.test(requestId)) {
+    throw new Error('request_id 编码非法')
+  }
+  return requestId
 }
 
 export const fetchSalesInventorySalesOrders = async (
@@ -1188,6 +1286,60 @@ export const fetchSalesInventoryCustomers = async (
 ): Promise<ApiResponse<SalesInventoryListData<CustomerItem>>> => {
   const queryString = toQuery({ page: query.page ?? 1, page_size: query.page_size ?? 20 })
   return request<SalesInventoryListData<CustomerItem>>(`/api/sales-inventory/customers?${queryString}`)
+}
+
+export const fetchSalesInventorySuppliers = async (
+  query: CustomerListQuery,
+): Promise<ApiResponse<SalesInventoryListData<SupplierItem>>> => {
+  const queryString = toQuery({ page: query.page ?? 1, page_size: query.page_size ?? 20 })
+  return request<SalesInventoryListData<SupplierItem>>(`/api/sales-inventory/suppliers?${queryString}`)
+}
+
+export const fetchSalesInventoryReferenceDrafts = async (
+  referenceType: SalesInventoryReferenceDraftType,
+  query: SalesInventoryReferenceDraftQuery = {},
+): Promise<ApiResponse<SalesInventoryListData<SalesInventoryReferenceDraftData>>> => {
+  const routeType = referenceType === 'customer' ? 'customers' : 'suppliers'
+  const queryString = toQuery({ page: query.page ?? 1, page_size: query.page_size ?? 100 })
+  return request<SalesInventoryListData<SalesInventoryReferenceDraftData>>(
+    `/api/sales-inventory/reference-drafts/${routeType}?${queryString}`,
+  )
+}
+
+export const createSalesInventoryReferenceDraft = async (
+  referenceType: SalesInventoryReferenceDraftType,
+  payload: SalesInventoryReferenceDraftCreatePayload,
+  meta?: SalesInventoryReferenceWriteMeta,
+): Promise<ApiResponse<SalesInventoryReferenceDraftData>> => {
+  const routeType = referenceType === 'customer' ? 'customers' : 'suppliers'
+  return request<SalesInventoryReferenceDraftData>(`/api/sales-inventory/reference-drafts/${routeType}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export const deactivateSalesInventoryReferenceDraft = async (
+  referenceType: SalesInventoryReferenceDraftType,
+  draftId: number,
+  payload: SalesInventoryReferenceDraftDeactivatePayload,
+  meta?: SalesInventoryReferenceWriteMeta,
+): Promise<ApiResponse<SalesInventoryReferenceDraftData>> => {
+  const routeType = referenceType === 'customer' ? 'customers' : 'suppliers'
+  return request<SalesInventoryReferenceDraftData>(
+    `/api/sales-inventory/reference-drafts/${routeType}/${draftId}/deactivate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(meta?.requestId ? { 'X-Request-ID': meta.requestId } : {}),
+      },
+      body: JSON.stringify(payload),
+    },
+  )
 }
 
 export const fetchSalesInventoryAggregation = async (
