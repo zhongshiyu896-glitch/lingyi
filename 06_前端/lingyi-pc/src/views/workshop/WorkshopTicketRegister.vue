@@ -99,21 +99,21 @@
         </template>
 
         <el-form-item label="操作" data-testid="workshop-ticket-register-actions">
-          <el-button
+        <el-button
             type="primary"
             :disabled="submitting"
             :loading="submitting"
             data-action-type="write"
             data-testid="workshop-ticket-register-submit-button"
-            :data-write-guard="mode === 'register' ? 'guarded:workshop-ticket-register-readonly' : 'guarded:workshop-ticket-reversal-readonly'"
+            :data-write-guard="mode === 'register' ? 'local-dev:workshop-ticket-register' : 'local-dev:workshop-ticket-reversal'"
             :data-write-allowlist="mode === 'register' ? 'workshop-ticket-register' : 'workshop-ticket-reversal'"
-            data-guard-state="guarded-readonly"
-            data-readonly-boundary="true"
-            data-write-request-success-allowed="false"
-            data-real-write-action-added="false"
+            :data-guard-state="activePermission ? 'local-dev-write-enabled' : 'permission-blocked'"
+            data-readonly-boundary="false"
+            data-write-request-success-allowed="true"
+            data-real-write-action-added="true"
             @click="submit"
           >
-            {{ mode === 'register' ? '提交登记（只读预览）' : '提交撤销（只读预览）' }}
+            {{ mode === 'register' ? '提交登记' : '提交撤销' }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -133,11 +133,19 @@
         show-icon
         :title="guardedFeedback"
       />
+      <el-alert
+        v-if="writeResultHint"
+        type="success"
+        data-testid="workshop-ticket-register-readback-hint"
+        :closable="false"
+        show-icon
+        :title="writeResultHint"
+      />
       <p class="permission-tip" data-testid="workshop-ticket-register-permission-or-disabled-state">
         {{
           activePermission
-            ? '当前页面处于只读治理模式：登记/撤销仅生成本地 request_id 与 scenario_tag 预览，不提交写请求。'
-            : '当前账号无提交权限；页面仍保持只读预览，登记/撤销写动作已被 guard 拦截。'
+            ? '当前页面允许在 local-dev 环境执行登记/撤销，并保留 request_id 与 scenario_tag 回读。'
+            : '当前账号无提交权限；登记/撤销写动作不会放行。'
         }}
       </p>
 
@@ -696,6 +704,11 @@ import { ElMessage } from 'element-plus'
 import {
   buildWorkshopTicketRequestId,
   ensureWorkshopTicketScenarioTag,
+  fetchWorkshopJobCardSummary,
+  registerWorkshopTicket,
+  reverseWorkshopTicket,
+  type WorkshopTicketRegisterPayload,
+  type WorkshopTicketReversalPayload,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
 import WorkshopTicketRegisterReadonlySection from '@/views/workshop/components/WorkshopTicketRegisterReadonlySection.vue'
@@ -710,6 +723,7 @@ const mode = ref<'register' | 'reversal'>('register')
 const submitting = ref<boolean>(false)
 const guardedFeedback = ref<string>('')
 const validationHint = ref<string>('')
+const writeResultHint = ref<string>('')
 const GLOBAL_READONLY_GUARD_ATTR = 'data-workshop-ticket-register-readonly-disabled'
 const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-workshop-ticket-register-prev-disabled'
 const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-workshop-ticket-register-prev-aria-disabled'
@@ -1034,19 +1048,19 @@ const applyGlobalReadonlyGuardToElement = (
   reason: string,
   disableNative: boolean,
 ): void => {
-  if (!element.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) {
-    element.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
-    element.setAttribute(
-      GLOBAL_READONLY_PREV_DISABLED_ATTR,
-      element instanceof HTMLButtonElement && element.disabled ? 'true' : 'false',
-    )
-    element.setAttribute(
-      GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
-      element.getAttribute('aria-disabled') ?? '',
-    )
-    element.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, element.getAttribute('title') ?? '')
-    element.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, element.getAttribute('tabindex') ?? '')
-  }
+  if (element.hasAttribute(GLOBAL_READONLY_GUARD_ATTR)) return
+
+  element.setAttribute(GLOBAL_READONLY_GUARD_ATTR, '1')
+  element.setAttribute(
+    GLOBAL_READONLY_PREV_DISABLED_ATTR,
+    element instanceof HTMLButtonElement && element.disabled ? 'true' : 'false',
+  )
+  element.setAttribute(
+    GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR,
+    element.getAttribute('aria-disabled') ?? '',
+  )
+  element.setAttribute(GLOBAL_READONLY_PREV_TITLE_ATTR, element.getAttribute('title') ?? '')
+  element.setAttribute(GLOBAL_READONLY_PREV_TABINDEX_ATTR, element.getAttribute('tabindex') ?? '')
 
   if (disableNative && element instanceof HTMLButtonElement) {
     element.disabled = true
@@ -1117,8 +1131,6 @@ const startGlobalReadonlyActionGuardObserver = (): void => {
   globalWorkshopTicketRegisterGuardObserver.observe(document.body, {
     childList: true,
     subtree: true,
-    attributes: true,
-    attributeFilter: ['disabled', 'aria-disabled', 'class', 'title', 'tabindex'],
   })
 }
 
@@ -1145,16 +1157,26 @@ const withScenarioCarrier = (value: string, tag: string, fallbackSuffix: string)
 const submit = async (): Promise<void> => {
   guardedFeedback.value = ''
   validationHint.value = ''
+  writeResultHint.value = ''
   if (requiredFieldErrors.value.length > 0) {
     validationHint.value = `请完整填写关键字段：${requiredFieldErrors.value.join(', ')}`
     ElMessage.warning(validationHint.value)
+    return
+  }
+  if (!activePermission.value) {
+    guardedFeedback.value = mode.value === 'register' ? '当前账号无登记权限。' : '当前账号无撤销权限。'
+    ElMessage.warning(guardedFeedback.value)
     return
   }
   const scenarioTag = resolveScenarioTag()
   const operatorId = form.employee.trim() || 'operator-local'
   const batchNo = `${scenarioTag}-BATCH-001`
   const ticketKey = withScenarioCarrier(form.ticket_key, scenarioTag, mode.value === 'register' ? 'TK-REG' : 'TK-REV')
-  const sourceRef = withScenarioCarrier(form.source_ref, scenarioTag, mode.value === 'register' ? 'SRC-REG' : 'SRC-REV')
+  const sourceRef = withScenarioCarrier(
+    mode.value === 'register' ? form.source_ref : form.source_ref || form.ticket_key || form.job_card,
+    scenarioTag,
+    mode.value === 'register' ? 'SRC-REG' : 'SRC-REV',
+  )
   const idempotencyKey = ticketKey
   const requestId = buildWorkshopTicketRequestId({
     scenarioTag,
@@ -1168,16 +1190,61 @@ const submit = async (): Promise<void> => {
   })
   form.ticket_key = ticketKey
   form.source_ref = sourceRef
-  if (mode.value === 'register') {
-    form.source_ref = sourceRef
+  const commonPayload = {
+    scenario_tag: scenarioTag,
+    idempotency_key: idempotencyKey,
+    ticket_key: ticketKey,
+    job_card: form.job_card.trim(),
+    employee: form.employee.trim(),
+    operator_id: operatorId,
+    process_name: form.process_name.trim(),
+    color: form.color.trim() || undefined,
+    size: form.size.trim() || undefined,
+    qty: Number(form.qty),
+    work_date: form.work_date,
+    batch_no: batchNo,
+    source_ref: sourceRef,
   }
 
   submitting.value = true
   try {
-    guardedFeedback.value = `只读治理已拦截${mode.value === 'register' ? '登记' : '撤销'}写请求；已生成本地 request_id=${requestId}，未调用登记/撤销 API。`
-    ElMessage.warning('只读治理模式：写请求未发送')
+    if (mode.value === 'register') {
+      const payload: WorkshopTicketRegisterPayload = {
+        ...commonPayload,
+        source: form.source.trim() || 'manual',
+        operation: 'register',
+      }
+      const response = await registerWorkshopTicket(payload, { requestId })
+      form.original_ticket_id = response.data.ticket_id
+      const summary = await fetchWorkshopJobCardSummary(payload.job_card).catch(() => null)
+      writeResultHint.value = [
+        `登记成功：ticket_no=${response.data.ticket_no}`,
+        `ticket_id=${response.data.ticket_id}`,
+        `sync_status=${response.data.sync_status}`,
+        summary ? `job_card_net_qty=${summary.data.net_qty}` : null,
+      ].filter(Boolean).join('；')
+      ElMessage.success('登记已提交')
+      return
+    }
+
+    const payload: WorkshopTicketReversalPayload = {
+      ...commonPayload,
+      original_ticket_id: form.original_ticket_id,
+      reason: form.reason.trim(),
+      operation: 'reversal',
+    }
+    const response = await reverseWorkshopTicket(payload, { requestId })
+    const summary = await fetchWorkshopJobCardSummary(payload.job_card).catch(() => null)
+    writeResultHint.value = [
+      `撤销成功：ticket_no=${response.data.ticket_no}`,
+      `ticket_id=${response.data.ticket_id}`,
+      `net_qty=${response.data.net_qty}`,
+      `sync_status=${response.data.sync_status}`,
+      summary ? `job_card_net_qty=${summary.data.net_qty}` : null,
+    ].filter(Boolean).join('；')
+    ElMessage.success('撤销已提交')
   } catch (error) {
-    guardedFeedback.value = `只读 guard 生成失败（fail-closed）：${(error as Error).message}`
+    guardedFeedback.value = `${mode.value === 'register' ? '登记' : '撤销'}失败：${(error as Error).message}`
     ElMessage.error(guardedFeedback.value)
   } finally {
     submitting.value = false

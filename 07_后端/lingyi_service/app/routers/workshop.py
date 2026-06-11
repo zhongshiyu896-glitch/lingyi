@@ -289,7 +289,7 @@ def _batch_row_fail(
 def _is_local_workshop_write_enabled() -> bool:
     app_env = os.getenv("APP_ENV", "").strip().lower()
     db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env == "development" and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+    return app_env in {"development", "test"} and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
 
 
 def _match_scenario_tag(value: str) -> str | None:

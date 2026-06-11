@@ -36,19 +36,19 @@
         </el-button>
         <el-button
           type="primary"
-          :disabled="readonlyBatchActionDisabled || submitting"
+          :disabled="!canSubmitBatch"
           :loading="submitting"
           data-action-type="write"
-          data-readonly-boundary="true"
+          data-readonly-boundary="false"
           data-testid="workshop-ticket-batch-submit-button"
-          data-write-guard="guarded:workshop-ticket-batch-readonly"
-          data-write-request-success-allowed="false"
-          data-real-write-action-added="false"
-          data-write-allowlist="readonly-preview-only"
-          data-guard-state="guarded-readonly"
+          data-write-guard="local-dev:workshop-ticket-batch"
+          data-write-request-success-allowed="true"
+          data-real-write-action-added="true"
+          data-write-allowlist="workshop-ticket-batch"
+          :data-guard-state="canBatch ? 'local-dev-write-enabled' : 'permission-blocked'"
           @click="submitBatch"
         >
-          批量导入只读预览
+          执行批量导入
         </el-button>
       </div>
 
@@ -72,8 +72,8 @@
       <p class="permission-tip" data-testid="workshop-ticket-batch-permission-or-disabled-state">
         {{
           canBatch
-            ? '当前账号具备页面可见权限，但 Z038 只读边界已拦截批量写入。'
-            : '当前账号无批量导入权限，写动作已保持只读 guard。'
+            ? '当前账号具备批量导入权限，可在 local-dev 环境执行批量写入。'
+            : '当前账号无批量导入权限，写动作不会放行。'
         }}
       </p>
 
@@ -588,7 +588,7 @@
 
       <div v-if="validationRows.length > 0" class="failed-actions">
         <el-button
-          :disabled="readonlyBatchActionDisabled"
+          :disabled="!canBatch"
           data-action-type="write"
           data-readonly-boundary="true"
           data-testid="workshop-ticket-batch-failed-retry-guarded-button"
@@ -609,8 +609,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  batchWorkshopTickets,
   buildWorkshopTicketRequestId,
   ensureWorkshopTicketScenarioTag,
+  type WorkshopTicketBatchItemPayload,
+  type WorkshopTicketBatchPayload,
 } from '@/api/workshop'
 import { usePermissionStore } from '@/stores/permission'
 import WorkshopBatchExceptionReadonlySection from './components/WorkshopBatchExceptionReadonlySection.vue'
@@ -637,7 +640,9 @@ const previewRows = ref<WorkshopBatchPreviewRowInput[]>([])
 const validationRows = ref<WorkshopBatchValidationRowInput[]>([])
 
 const canBatch = computed<boolean>(() => permissionStore.state.buttonPermissions.ticket_batch)
-const readonlyBatchActionDisabled = computed<boolean>(() => true)
+const canSubmitBatch = computed<boolean>(() => {
+  return canBatch.value && !submitting.value && previewRows.value.length > 0 && validationRows.value.length === 0
+})
 const routeTab = computed<string>(() => String(route.query.tab || '').trim())
 const routeParity = computed<string>(() => String(route.query.parity || 'workshop-batch').trim() || 'workshop-batch')
 const currentRouteLabel = computed<string>(() => route.fullPath || '/workshop/tickets/batch')
@@ -994,9 +999,14 @@ const showRetryGuard = (): void => {
   ElMessage.warning(guardedFeedback.value)
 }
 
-const submitBatch = (): void => {
+const submitBatch = async (): Promise<void> => {
   const ok = parsePayload(true)
   if (!ok) return
+  if (!canBatch.value) {
+    guardedFeedback.value = '当前账号无批量导入权限。'
+    ElMessage.warning(guardedFeedback.value)
+    return
+  }
 
   let payloadRows: Array<Record<string, unknown>> = []
   try {
@@ -1033,31 +1043,88 @@ const submitBatch = (): void => {
   try {
     const batchNo = `${scenarioTag}-BATCH-001`
     const firstRow = payloadRows[0]
-    const topTicketKey = withScenarioCarrier(String(firstRow.ticket_key || '').trim(), scenarioTag, 'TK-BATCH')
-    const topSourceRef = withScenarioCarrier(String(firstRow.source_ref || '').trim(), scenarioTag, 'SRC-BATCH')
-    const jobCard = String(firstRow.job_card || '').trim()
-    const employee = String(firstRow.employee || '').trim()
+    const topTicketKey = withScenarioCarrier(String(firstRow.ticket_key || '').trim(), scenarioTag, 'BATCH-TOP')
+    const topSourceRef = withScenarioCarrier(String(firstRow.source_ref || '').trim(), scenarioTag, 'REF-BATCH')
+    const topIdempotencyKey = withScenarioCarrier(
+      String(firstRow.idempotency_key || firstRow.ticket_key || '').trim(),
+      scenarioTag,
+      'BATCH-IDEMP',
+    )
+    const jobCard = String(firstRow.job_card || '').trim() || 'JC-001'
+    const employee = String(firstRow.employee || '').trim() || 'operator-local'
     const requestId = buildWorkshopTicketRequestId({
       scenarioTag,
       operation: 'batch',
-      idempotencyKey: topTicketKey,
+      idempotencyKey: topIdempotencyKey,
       sourceRef: topSourceRef,
       ticketKey: topTicketKey,
       jobCard,
-      employeeOrOperator: employee || 'operator-readonly',
+      employeeOrOperator: employee,
       batchNo,
     })
-    batchReceipt.value = {
-      success_count: previewRows.value.length,
-      failed_count: validationRows.value.length,
+    const tickets: WorkshopTicketBatchItemPayload[] = payloadRows.map((row, index) => {
+      const rowOperation = String(row.operation_type || row.operation || 'register').trim().toLowerCase() === 'reversal'
+        ? 'reversal'
+        : 'register'
+      const rowTicketKey = withScenarioCarrier(String(row.ticket_key || '').trim(), scenarioTag, `BATCH-${index + 1}`)
+      return {
+        scenario_tag: scenarioTag,
+        idempotency_key: withScenarioCarrier(
+          String(row.idempotency_key || rowTicketKey).trim(),
+          scenarioTag,
+          `IDEMP-${index + 1}`,
+        ),
+        source_ref: withScenarioCarrier(String(row.source_ref || '').trim(), scenarioTag, `REF-${index + 1}`),
+        operation: rowOperation,
+        operation_type: rowOperation,
+        operator_id: String(row.operator_id || row.employee || employee).trim() || employee,
+        batch_no: batchNo,
+        ticket_key: rowTicketKey,
+        job_card: String(row.job_card || '').trim(),
+        item_code: String(row.item_code || '').trim() || undefined,
+        employee: String(row.employee || '').trim(),
+        process_name: String(row.process_name || '').trim(),
+        color: String(row.color || '').trim() || undefined,
+        size: String(row.size || '').trim() || undefined,
+        qty: Number(row.qty ?? 0),
+        work_date: String(row.work_date || '').trim(),
+        source: String(row.source || 'import').trim() || 'import',
+        original_ticket_id: row.original_ticket_id ? Number(row.original_ticket_id) : undefined,
+        reason: String(row.reason || '').trim() || undefined,
+      }
+    })
+    const payload: WorkshopTicketBatchPayload = {
+      scenario_tag: scenarioTag,
+      idempotency_key: topIdempotencyKey,
+      source_ref: topSourceRef,
+      operation: 'batch',
+      operator_id: employee,
+      batch_no: batchNo,
+      ticket_key: topTicketKey,
+      job_card: jobCard,
+      employee,
+      tickets,
     }
-    readbackHint.value = `只读边界已拦截批量导入，request_id=${requestId}，scenario_tag=${scenarioTag}，未发起 /api/workshop/tickets/batch 写请求。`
-    guardedFeedback.value = canBatch.value
-      ? 'Z038 只读边界生效：批量导入入口仅展示预览，不提交写请求。'
-      : '当前账号无批量导入权限，且 Z038 只读边界已拦截写请求。'
-    ElMessage.warning(guardedFeedback.value)
+    const response = await batchWorkshopTickets(payload, { requestId })
+    batchReceipt.value = {
+      success_count: response.data.success_count,
+      failed_count: response.data.failed_count,
+    }
+    validationRows.value = response.data.failed_items.map((item) => ({
+      row_index: item.row_index,
+      ticket_key: item.ticket_key,
+      code: item.code,
+      message: item.message,
+    }))
+    readbackHint.value = [
+      `批量导入已提交：success=${response.data.success_count}`,
+      `failed=${response.data.failed_count}`,
+      `request_id=${requestId}`,
+      response.data.failed_items.length > 0 ? `首条失败=${response.data.failed_items[0].code}` : '全部行已写入 local-dev',
+    ].join('；')
+    ElMessage.success(response.data.failed_count > 0 ? '批量导入已执行，存在部分失败' : '批量导入已执行')
   } catch (error) {
-    guardedFeedback.value = (error as Error).message || '只读预览失败'
+    guardedFeedback.value = (error as Error).message || '批量导入失败'
     ElMessage.error(guardedFeedback.value)
   } finally {
     submitting.value = false
