@@ -5,6 +5,8 @@ import {
   homeModuleShortcutReadonlyGuardActions,
   homeModuleShortcutRemainingGap,
   homeModuleShortcutSourceByGroup,
+  homeModuleShortcutWorkflowFlags,
+  homeModuleShortcutWorkflowRows,
   type HomeModuleShortcutRouteItem,
   type HomeModuleShortcutStatus,
 } from '../constants/homeModuleShortcutFields'
@@ -42,6 +44,11 @@ export interface HomeModuleShortcutReadonlyItem {
 export interface HomeModuleShortcutReadonlySummary {
   routeItems: HomeModuleShortcutRouteItem[]
   shortcutItems: HomeModuleShortcutReadonlyItem[]
+  workflowRows: typeof homeModuleShortcutWorkflowRows
+  workflowFlags: typeof homeModuleShortcutWorkflowFlags
+  workflowState: string
+  hostBoundary: string
+  nextAction: string
   readinessSummary: string
   sourceBadgeSummary: string
   ownerSourceReadonlyLine: string
@@ -60,21 +67,21 @@ const resolveRouteItems = (
     key: 'home-baseline',
     label: '首页基线路由',
     route: '/home',
-    note: '保留既有首页只读摘要区，module shortcuts 在同页补齐。',
+    note: '保留既有首页只读摘要区，W001A 状态面板在同页补齐。',
     active: routePath === '/home' && routeTab !== 'module-shortcuts',
   },
   {
     key: 'module-shortcuts',
     label: 'module-shortcuts 查询态',
     route: '/home?tab=module-shortcuts',
-    note: '聚焦六模块快捷 strip、source badges 与 readonly guard。',
+    note: '聚焦 W001A 状态收口、六模块快捷 strip 与 readonly guard。',
     active: routePath === '/home' && routeTab === 'module-shortcuts',
   },
   {
-    key: 'dashboard-workplace-alias',
-    label: 'dashboard/workplace alias',
-    route: '/dashboard/workplace -> /home?tab=module-shortcuts',
-    note: '只承接首页可用入口语义，不复用 dashboard guard 或 cross-module matrix。',
+    key: 'dashboard-excluded',
+    label: 'dashboard residual 排除',
+    route: 'excluded: /dashboard/**',
+    note: '明确排除 DashboardOverview.vue 与 module-entry residual，不回流 dashboard 壳。',
     active: false,
   },
 ]
@@ -142,10 +149,12 @@ export const useHomeModuleShortcutReadonly = ({
     const warnedReasons = shortcutItems.value
       .filter((item) => item.status === 'warn')
       .map((item) => `${item.label}:${item.blockedReason}`)
+    const workflowReason =
+      'W001A 停在 PARKED_BEFORE_SEAL；DashboardOverview.vue dirty 且与 dashboard module-entry residual 同壳，当前仅允许 /home clean host 收口。'
     if (warnedReasons.length > 0) {
-      return warnedReasons.join('；')
+      return `${workflowReason}；${warnedReasons.join('；')}`
     }
-    return '首页 module shortcuts 仅作六模块只读快捷说明，不开放真实打开 / 执行动作。'
+    return `${workflowReason} 首页 module shortcuts 仅作六模块只读快捷说明，不开放真实打开 / 执行动作。`
   })
 
   const activeTabLabel = computed(() =>
@@ -154,12 +163,17 @@ export const useHomeModuleShortcutReadonly = ({
 
   const guardMessage = computed(
     () =>
-      `readonly guard：当前 tab=${activeTabLabel.value}，只允许查看模块快捷条、source badges 与 owner/source 说明。`,
+      `readonly guard：当前 tab=${activeTabLabel.value}，只允许查看 W001A 状态、模块快捷条、source badges 与 owner/source 说明。`,
   )
 
   const summary = computed<HomeModuleShortcutReadonlySummary>(() => ({
     routeItems: routeItems.value,
     shortcutItems: shortcutItems.value,
+    workflowRows: homeModuleShortcutWorkflowRows,
+    workflowFlags: homeModuleShortcutWorkflowFlags,
+    workflowState: 'PARKED_BEFORE_SEAL',
+    hostBoundary: 'route=/home ｜ host=HomePage.vue ｜ dashboard residual=excluded',
+    nextAction: '等待用户裁决 dashboard residual 吸收/还原或另给干净首页宿主边界；W002A 不自动启动。',
     readinessSummary: readinessSummary.value,
     sourceBadgeSummary: sourceBadgeSummary.value,
     ownerSourceReadonlyLine: ownerSourceReadonlyLine.value,

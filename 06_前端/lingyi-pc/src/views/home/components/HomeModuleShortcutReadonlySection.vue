@@ -3,11 +3,14 @@
     <template #header>
       <div class="header-row">
         <div>
-          <span class="title">首页模块快捷只读区</span>
-          <p class="subtitle">直接服务六模块本地可用性，不复用 dashboard guard 或 cross-module matrix。</p>
+          <span class="title">首页模块快捷与状态收口只读区</span>
+          <p class="subtitle">使用 /home clean host 承接 W001A 收口，不复用 dashboard guard、dashboard residual 或 cross-module matrix。</p>
         </div>
         <div class="tag-row">
           <el-tag effect="plain" data-testid="cand326-home-module-shortcuts-get-only">GET-only</el-tag>
+          <el-tag effect="plain" type="warning" data-testid="w001a-home-status-current-state">
+            {{ summary.workflowState }}
+          </el-tag>
           <el-tag effect="plain" type="warning" data-testid="cand326-home-module-shortcuts-tab">
             tab={{ summary.activeTabLabel }}
           </el-tag>
@@ -19,11 +22,20 @@
       type="info"
       :closable="false"
       data-testid="cand326-home-module-shortcuts-route-alias"
-      :title="`/home?tab=module-shortcuts 与 /dashboard/workplace alias 仅承接首页只读快捷语义。`"
+      :title="`/home clean host 承接首页状态面板；DashboardOverview.vue 与 dashboard module-entry residual 明确排除。`"
+      style="margin-bottom: 12px"
+    />
+
+    <el-alert
+      type="warning"
+      :closable="false"
+      data-testid="w001a-home-status-next-action"
+      :title="summary.nextAction"
       style="margin-bottom: 12px"
     />
 
     <div class="meta-row" data-testid="cand326-home-module-shortcuts-meta">
+      <span data-testid="w001a-home-status-host-boundary">host boundary：{{ summary.hostBoundary }}</span>
       <span data-testid="cand326-home-module-shortcuts-readiness">readiness：{{ summary.readinessSummary }}</span>
       <span data-testid="cand326-home-module-shortcuts-source-badges">source badges：{{ summary.sourceBadgeSummary }}</span>
       <span data-testid="cand326-home-module-shortcuts-owner-source">owner/source：{{ summary.ownerSourceReadonlyLine }}</span>
@@ -54,6 +66,35 @@
         <span class="route-note">{{ item.note }}</span>
       </el-descriptions-item>
     </el-descriptions>
+
+    <div class="workflow-grid" data-testid="w001a-home-status-workflow-grid">
+      <article
+        v-for="item in summary.workflowRows"
+        :key="item.key"
+        class="workflow-card"
+        :data-testid="`w001a-home-status-row-${item.key}`"
+      >
+        <header class="workflow-header">
+          <strong>{{ item.label }}</strong>
+          <el-tag effect="plain" :type="item.tone">{{ item.status }}</el-tag>
+        </header>
+        <p class="route-line">{{ item.note }}</p>
+        <p class="reason-line">{{ item.detail }}</p>
+      </article>
+    </div>
+
+    <div class="policy-grid" data-testid="w001a-home-status-policy-grid">
+      <article
+        v-for="item in summary.workflowFlags"
+        :key="item.key"
+        class="policy-card"
+        :data-testid="`w001a-home-status-flag-${item.key}`"
+      >
+        <div class="guard-label">{{ item.label }}</div>
+        <div class="policy-value">{{ item.value }}</div>
+        <div class="guard-hint">{{ item.reason }}</div>
+      </article>
+    </div>
 
     <div class="shortcut-grid" data-testid="cand326-home-module-shortcuts-strip">
       <article
@@ -159,23 +200,36 @@ defineProps<{
   margin-bottom: 12px;
 }
 
-.shortcut-grid {
+.shortcut-grid,
+.workflow-grid,
+.policy-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .shortcut-card,
-.guard-item {
+.guard-item,
+.workflow-card,
+.policy-card {
   border: 1px solid var(--el-border-color-light);
   border-radius: 8px;
   padding: 12px;
   background: var(--el-fill-color-blank);
 }
 
-.shortcut-card {
+.shortcut-card,
+.workflow-card,
+.policy-card {
   display: grid;
   gap: 10px;
+}
+
+.workflow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .action-row {
@@ -199,14 +253,22 @@ defineProps<{
   font-weight: 600;
 }
 
+.policy-value {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
 @media (max-width: 960px) {
   .header-row,
-  .shortcut-header {
+  .shortcut-header,
+  .workflow-header {
     flex-direction: column;
   }
 
   .shortcut-grid,
-  .guard-grid {
+  .guard-grid,
+  .workflow-grid,
+  .policy-grid {
     grid-template-columns: 1fr;
   }
 }
