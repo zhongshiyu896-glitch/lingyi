@@ -225,7 +225,7 @@ export const buildStyleProfitListReadonlySummary = (
           ? '-'
           : `${formatAmount(minProfit)} ~ ${formatAmount(maxProfit)}`,
     },
-    readonlyGuardReason: 'ERPNext、导出和真实利润写入入口仅保留 guarded 状态，当前页面只做只读回读。',
+    readonlyGuardReason: 'ERPNext、结果传递和真实利润写入入口仅保留 guarded 状态，当前页面只做只读回读。',
     writeBoundary: STYLE_PROFIT_WRITE_BOUNDARY_LABEL,
     remainingGap: STYLE_PROFIT_REMAINING_GAP_LABEL,
   }
@@ -278,7 +278,7 @@ export const buildStyleProfitDetailReadonlySummary = (
       unresolvedCount: String(unresolvedCount),
       coverage: sourceMapCount > 0 ? `${includedCount}/${sourceMapCount} 纳入利润` : '-',
     },
-    readonlyGuardReason: '详情页只开放来源追溯与利润明细读回，ERPNext、导出和真实利润写入动作均禁用。',
+    readonlyGuardReason: '详情页只开放来源追溯与利润明细读回，ERPNext、结果传递和真实利润写入动作均禁用。',
     writeBoundary: STYLE_PROFIT_WRITE_BOUNDARY_LABEL,
     remainingGap: STYLE_PROFIT_REMAINING_GAP_LABEL,
   }
@@ -397,7 +397,7 @@ export const useStyleProfitSnapshotReadonlySection = ({
             statusLabel: status.label,
             statusTone: status.tone,
             sourceStatusLabel,
-            blockedReason: 'blocked_reason=当前仅开放 snapshot-readonly 与 source-map 核对，不允许真实利润重算、提交、导出或 ERPNext 执行。',
+            blockedReason: 'blocked_reason=当前仅开放 snapshot-readonly 与 source-map 核对，不允许真实利润改写、结果落库、结果传递或 ERPNext 执行。',
             note: `request_hash=${currentSnapshot?.request_hash || 'pending-hash'}; detail_count=${currentDetails.length}; query_state=${normalizedQueryState}`,
           },
           {
@@ -407,7 +407,7 @@ export const useStyleProfitSnapshotReadonlySection = ({
             statusLabel: unresolvedCount > 0 ? 'source-map 待复核' : 'source-map 已就绪',
             statusTone: unresolvedCount > 0 ? ('warning' as GuardTone) : ('success' as GuardTone),
             sourceStatusLabel,
-            blockedReason: 'blocked_reason=当前仅开放 source-map 只读核对，不允许真实利润重算、导出、ERPNext、outbox、worker 或生产写入。',
+            blockedReason: 'blocked_reason=当前仅开放 source-map 只读核对，不允许真实利润改写、结果传递、ERPNext、outbox、worker 或生产写入。',
             note: `source_ref=${detailPrimaryMap?.source_name || 'pending-source-map'}; include_in_profit=${detailPrimaryMap?.include_in_profit ? 'yes' : 'no'}; query_state=${normalizedQueryState}`,
           },
         ]
@@ -419,7 +419,7 @@ export const useStyleProfitSnapshotReadonlySection = ({
             statusLabel: status.label,
             statusTone: status.tone,
             sourceStatusLabel,
-            blockedReason: 'blocked_reason=当前仅开放 snapshot-readonly 与 style-profit parity 核对，不允许真实利润重算、提交、导出或 ERPNext 执行。',
+            blockedReason: 'blocked_reason=当前仅开放 snapshot-readonly 与 style-profit parity 核对，不允许真实利润改写、结果落库、结果传递或 ERPNext 执行。',
             note: `sales_order=${listPrimaryRow?.sales_order || 'pending-order'}; revenue_status=${listPrimaryRow?.revenue_status || 'pending-mode'}; query_state=${normalizedQueryState}`,
           },
           {
@@ -429,7 +429,7 @@ export const useStyleProfitSnapshotReadonlySection = ({
             statusLabel: unresolvedCount > 0 ? 'source-map 待复核' : 'source-map 已映射',
             statusTone: unresolvedCount > 0 ? ('warning' as GuardTone) : ('success' as GuardTone),
             sourceStatusLabel,
-            blockedReason: 'blocked_reason=当前仅开放 source-map 只读核对，不允许真实利润重算、导出、ERPNext、outbox、worker 或生产写入。',
+            blockedReason: 'blocked_reason=当前仅开放 source-map 只读核对，不允许真实利润改写、结果传递、ERPNext、outbox、worker 或生产写入。',
             note: `unresolved_count=${unresolvedCount}; page_scope=${routeLabel}; query_state=${normalizedQueryState}`,
           },
         ]
@@ -459,7 +459,7 @@ export const useStyleProfitSnapshotReadonlySection = ({
 
     const blockedReasonSummary = !canReadValue
       ? '当前账号无款式利润查看权限；页面仅保留 snapshot-readonly 只读核对摘要。'
-      : '当前仅开放 style-profit parity 与 source-map 只读核对；真实利润重算、导出、提交、ERPNext、outbox、worker 与生产写入保持关闭。'
+      : '当前仅开放 style-profit parity 与 source-map 只读核对；真实利润改写、结果传递、结果落库、ERPNext、outbox、worker 与生产写入保持关闭。'
 
     return {
       tags,

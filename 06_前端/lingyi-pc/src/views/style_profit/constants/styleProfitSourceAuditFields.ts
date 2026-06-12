@@ -32,18 +32,18 @@ export const STYLE_PROFIT_SOURCE_AUDIT_METRIC_FIELDS: ReadonlyArray<StyleProfitS
 export const STYLE_PROFIT_SOURCE_AUDIT_GUARDED_ACTIONS: ReadonlyArray<StyleProfitSourceAuditGuardedAction> = [
   {
     key: 'recalculate',
-    label: '利润重算',
-    reason: '当前仅开放 source-audit 只读核对，不开放真实利润重算。',
+    label: '利润核对',
+    reason: '当前仅开放 source-audit 只读核对，不开放真实利润改写。',
   },
   {
     key: 'export',
-    label: '导出 / 打印',
-    reason: '当前仅开放 source-audit 只读核对，不开放真实导出或打印执行。',
+    label: '结果视图',
+    reason: '当前仅开放 source-audit 只读核对，不开放真实结果传递或结果输出。',
   },
   {
     key: 'submit',
-    label: '提交 / 留档 / 保存',
-    reason: '当前仅开放 source-audit 只读核对，不开放真实提交、留档或保存。',
+    label: '只读说明',
+    reason: '当前仅开放 source-audit 只读核对，不开放真实结果落库、归档或状态改写。',
   },
   {
     key: 'source-collector-write',
@@ -58,13 +58,13 @@ export const STYLE_PROFIT_SOURCE_AUDIT_GUARDED_ACTIONS: ReadonlyArray<StyleProfi
 ]
 
 export const STYLE_PROFIT_SOURCE_AUDIT_BLOCKED_REASON =
-  'blocked_reason=当前仅开放 source-audit / provenance 只读核对，不允许真实利润重算、导出、提交、source collector 写入、ERPNext、outbox、worker 或生产写入。'
+  'blocked_reason=当前仅开放 source-audit / provenance 只读核对，不允许真实利润改写、结果传递、结果落库、source collector 写入、ERPNext、outbox、worker 或生产写入。'
 
 export const STYLE_PROFIT_SOURCE_AUDIT_READONLY_GUARD_MESSAGE =
-  '当前仅开放 source-audit、style-profit parity 与只读来源核对，不开放真实利润重算、导出、提交、source collector 写入、ERPNext、outbox、worker 或生产写入执行。'
+  '当前仅开放 source-audit、style-profit parity 与只读来源核对，不开放真实利润改写、结果传递、结果落库、source collector 写入、ERPNext、outbox、worker 或生产写入执行。'
 
 export const STYLE_PROFIT_SOURCE_AUDIT_REMAINING_GAP =
-  'remaining_gap=真实利润重算、导出、提交、source collector 写入、ERPNext、outbox、worker 与生产写链路未开放；仅保留 source-audit query state、blocked reason、style-profit parity 与 source/item status 镜像。'
+  'remaining_gap=真实利润改写、结果传递、结果落库、source collector 写入、ERPNext、outbox、worker 与生产写链路未开放；仅保留 source-audit query state、blocked reason、style-profit parity 与 source/item status 镜像。'
 
 export const STYLE_PROFIT_SOURCE_AUDIT_WRITE_BOUNDARY =
   'recalculate / export / submit / source-collector-write / ERPNext / outbox / worker disabled'

@@ -245,7 +245,7 @@ export const useStyleProfitSourceAuditReadonlySection = ({
       sourceTypeLabel,
       sourceStatusLabel,
       blockedReasonSummary: canReadValue
-        ? '当前仅开放 source-audit 与 provenance 只读核对；真实利润重算、导出、提交、source collector 写入、ERPNext、outbox、worker 与生产写入保持关闭。'
+        ? '当前仅开放 source-audit 与 provenance 只读核对；真实利润改写、结果传递、结果落库、source collector 写入、ERPNext、outbox、worker 与生产写入保持关闭。'
         : '当前账号无款式利润查看权限；页面仅保留 source-audit 只读核对摘要。',
       readonlyGuardReason: STYLE_PROFIT_SOURCE_AUDIT_READONLY_GUARD_MESSAGE,
       remainingGap: STYLE_PROFIT_SOURCE_AUDIT_REMAINING_GAP,

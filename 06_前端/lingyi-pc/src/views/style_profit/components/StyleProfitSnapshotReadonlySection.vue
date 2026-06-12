@@ -4,7 +4,7 @@
       <div>
         <h3 data-testid="cand412-style-profit-readonly-title">Style Profit snapshot 只读区</h3>
         <p data-testid="cand412-style-profit-readonly-subtitle">
-          当前仅核对 snapshot-readonly 查询态、style-profit parity 与 source-map focus，不开放真实利润重算、导出、提交、ERPNext 或 worker 执行。
+          当前仅核对 snapshot-readonly 查询态、style-profit parity 与 source-map focus，不开放真实利润改写、结果传递、结果落库、ERPNext 或 worker 执行。
         </p>
       </div>
       <div class="tag-list" data-testid="cand412-style-profit-readonly-tags">

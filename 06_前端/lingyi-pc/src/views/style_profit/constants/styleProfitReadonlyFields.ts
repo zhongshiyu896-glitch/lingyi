@@ -87,15 +87,15 @@ export const STYLE_PROFIT_SOURCE_STATUS_LABELS: Record<string, string> = {
   mapped: '已映射',
   partial: '部分映射',
   unresolved: '待复核',
-  submitted: '已提交',
+  submitted: '已登记',
   draft: '草稿',
   cancelled: '已取消',
 }
 
-export const STYLE_PROFIT_WRITE_BOUNDARY_LABEL = 'ERPNext / 导出 / 真实利润写入 disabled'
+export const STYLE_PROFIT_WRITE_BOUNDARY_LABEL = 'ERPNext / 结果传递 / 真实利润写入 disabled'
 
 export const STYLE_PROFIT_REMAINING_GAP_LABEL =
-  '未开放导出、ERPNext、真实利润写入、outbox、worker、生产/库存联动写链路。'
+  '未开放结果传递、ERPNext、真实利润写入、outbox、worker、生产/库存联动写链路。'
 
 export const STYLE_PROFIT_SNAPSHOT_READONLY_ROUTE_LABELS = {
   defaultRoute: '/reports/style-profit',
@@ -106,21 +106,21 @@ export const STYLE_PROFIT_SNAPSHOT_READONLY_ROUTE_LABELS = {
 } as const
 
 export const STYLE_PROFIT_READONLY_GUARD_REASON_MAP = {
-  archive: '当前仅开放 snapshot-readonly 只读核对，不开放真实留档提交。',
+  archive: '当前仅开放 snapshot-readonly 只读核对，不开放真实归档落库。',
   clear: '当前仅开放 snapshot-readonly 只读核对，不开放真实清空操作。',
-  confirm: '当前仅开放 snapshot-readonly 只读核对，不开放真实确认提交。',
-  export: '当前仅开放 snapshot/source-map 只读核对，不开放真实导出执行。',
+  confirm: '当前仅开放 snapshot-readonly 只读核对，不开放真实确认落库。',
+  export: '当前仅开放 snapshot/source-map 只读核对，不开放真实结果传递。',
   columnSetting: '当前仅开放 snapshot-readonly 只读核对，不开放真实列设置写入。',
   resetColumn: '当前仅开放 snapshot-readonly 只读核对，不开放真实列配置重置。',
-  markRead: '当前仅开放 snapshot-readonly 只读核对，不开放真实标记已读提交。',
+  markRead: '当前仅开放 snapshot-readonly 只读核对，不开放真实标记已读落库。',
   deleteMsg: '当前仅开放 snapshot-readonly 只读核对，不开放真实消息删除。',
   addMsg: '当前仅开放 snapshot-readonly 只读核对，不开放真实新增消息。',
-  save: '当前仅开放 snapshot/source-map 只读核对，不开放真实保存提交。',
-  cancel: '当前仅开放 snapshot-readonly 只读核对，不开放真实取消提交。',
-  print: '当前仅开放 snapshot/source-map 只读核对，不开放真实打印执行。',
+  save: '当前仅开放 snapshot/source-map 只读核对，不开放真实状态落库。',
+  cancel: '当前仅开放 snapshot-readonly 只读核对，不开放真实取消落库。',
+  print: '当前仅开放 snapshot/source-map 只读核对，不开放真实结果输出。',
   writeAction: '当前仅开放 snapshot/source-map 只读核对，不开放真实写动作执行。',
-  recalculate: '当前仅开放 snapshot-readonly 只读核对，不开放真实利润重算。',
-  submit: '当前仅开放 snapshot/source-map 只读核对，不开放真实提交执行。',
+  recalculate: '当前仅开放 snapshot-readonly 只读核对，不开放真实利润改写。',
+  submit: '当前仅开放 snapshot/source-map 只读核对，不开放真实结果落库。',
   erpnextWorker: '当前仅开放只读边界，不开放 ERPNext、outbox、worker 或生产写入执行。',
   refreshPermission: '当前款式利润页面处于 snapshot-readonly 边界，权限刷新入口仅保留只读提示，不执行真实刷新动作。',
   reloadModuleActions: '当前款式利润页面仅核对 snapshot/source-map 只读边界，模块动作重载入口保持禁用，不执行真实重载。',
@@ -129,17 +129,17 @@ export const STYLE_PROFIT_READONLY_GUARD_REASON_MAP = {
 export const STYLE_PROFIT_SNAPSHOT_READONLY_GUARDED_ACTIONS: StyleProfitSnapshotReadonlyGuardedAction[] = [
   {
     key: 'recalculate',
-    label: '利润重算',
+    label: '利润核对',
     reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.recalculate,
   },
   {
     key: 'export',
-    label: '导出 / 打印',
+    label: '结果视图',
     reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.export,
   },
   {
     key: 'submit',
-    label: '留档 / 提交 / 保存',
+    label: '只读说明',
     reason: STYLE_PROFIT_READONLY_GUARD_REASON_MAP.submit,
   },
   {
@@ -160,10 +160,10 @@ export const STYLE_PROFIT_SNAPSHOT_READONLY_GUARDED_ACTIONS: StyleProfitSnapshot
 ]
 
 export const STYLE_PROFIT_SNAPSHOT_READONLY_GUARD_MESSAGE =
-  '当前仅开放 snapshot-readonly、style-profit parity 与 source-map focus 核对，不开放真实利润重算、导出、提交、ERPNext、outbox、worker 或生产写入执行。'
+  '当前仅开放 snapshot-readonly、style-profit parity 与 source-map focus 核对，不开放真实利润改写、结果传递、结果落库、ERPNext、outbox、worker 或生产写入执行。'
 
 export const STYLE_PROFIT_SNAPSHOT_READONLY_REMAINING_GAP =
-  'remaining_gap=真实利润重算、导出、提交、ERPNext、outbox、worker 与生产写链路未开放；仅保留 snapshot-readonly query state、source-map、blocked reason 与 style-profit parity 镜像。'
+  'remaining_gap=真实利润改写、结果传递、结果落库、ERPNext、outbox、worker 与生产写链路未开放；仅保留 snapshot-readonly query state、source-map、blocked reason 与 style-profit parity 镜像。'
 
 export const STYLE_PROFIT_SNAPSHOT_READONLY_WRITE_BOUNDARY =
   'recalculate / export / submit / ERPNext / worker / refresh-permission / reload-module-actions disabled'

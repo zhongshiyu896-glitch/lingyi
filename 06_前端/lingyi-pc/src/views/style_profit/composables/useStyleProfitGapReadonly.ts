@@ -88,7 +88,7 @@ export const buildStyleProfitListGapReadonlySummary = (
         ? `${missingRows.length} 条快照存在利润快照缺项或来源待补齐。`
         : '当前筛选范围内未发现利润快照缺项。',
     reasonSummary: buildReasonSummary(reasons, '当前筛选范围内仅保留只读核对，无新增阻断原因。'),
-    readonlyGuardReason: '当前只开放利润缺口、来源差异与缺项原因的只读核对，利润生成、导出、ERPNext 同步和结算写入均已 guarded。',
+    readonlyGuardReason: '当前只开放利润缺口、来源差异与缺项原因的只读核对，利润结果镜像、结果传递、ERPNext 同步和结算写入均已 guarded。',
     writeBoundary: STYLE_PROFIT_WRITE_BOUNDARY_LABEL,
     remainingGap: '真实写链路未开放；成本来源差异与利润快照缺项仍需人工核对。',
   }
@@ -138,8 +138,8 @@ export const buildStyleProfitDetailGapReadonlySummary = (
         ? `${missingCount} 条利润明细或来源映射仍待补齐。`
         : '当前详情未发现利润快照缺项。',
     reasonSummary: buildReasonSummary(reasonTokens, '当前详情仅保留只读核对，无新增缺项原因。'),
-    readonlyGuardReason: '详情页只开放缺口核对与来源差异读回，利润生成、导出、ERPNext 同步和结算写入均禁用。',
+    readonlyGuardReason: '详情页只开放缺口核对与来源差异读回，利润结果镜像、结果传递、ERPNext 同步和结算写入均禁用。',
     writeBoundary: STYLE_PROFIT_WRITE_BOUNDARY_LABEL,
-    remainingGap: '诊断结果仅供只读核对；真实写链路、导出和 ERPNext 同步仍未开放。',
+    remainingGap: '诊断结果仅供只读核对；真实写链路、结果传递和 ERPNext 同步仍未开放。',
   }
 }
