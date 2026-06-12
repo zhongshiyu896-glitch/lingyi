@@ -6,7 +6,7 @@
         type="primary"
         data-testid="factory-statement-print-guarded-print-button"
         data-write-guard="guarded:readonly-print"
-        disabled
+        @click="handlePrint"
       >
         打印
       </el-button>
@@ -217,10 +217,11 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  buildFactoryStatementReadonlyRecord,
   fetchFactoryStatementReadonlyFallbackId,
-  fetchFactoryStatementReadonlyDetail,
   type FactoryStatementReadonlyRecord,
 } from '@/api/factory_statement_readonly'
+import { fetchFactoryStatementDetail } from '@/api/factory_statement'
 import FactoryStatementPrintAuditReadonlySection from '@/views/factory_statement/components/FactoryStatementPrintAuditReadonlySection.vue'
 import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/components/FactoryStatementPayableStatusReadonly.vue'
 import { useFactoryStatementPrintAuditReadonly } from '@/views/factory_statement/composables/useFactoryStatementPrintAuditReadonly'
@@ -326,8 +327,8 @@ const loadDetail = async (): Promise<void> => {
       targetStatementId = fallbackIdResult.data
     }
     resolvedStatementId.value = targetStatementId
-    const result = await fetchFactoryStatementReadonlyDetail(targetStatementId)
-    const payload = result.data
+    const result = await fetchFactoryStatementDetail(targetStatementId)
+    const payload = result.data ? buildFactoryStatementReadonlyRecord(result.data) : null
     if (!payload) {
       readonlyRecord.value = null
       resolvedStatementId.value = null
@@ -346,6 +347,14 @@ const loadDetail = async (): Promise<void> => {
   } finally {
     loading.value = false
   }
+}
+
+const handlePrint = (): void => {
+  if (!detail.value) {
+    ElMessage.warning('打印预览数据尚未就绪')
+    return
+  }
+  window.print()
 }
 
 const goBack = (): void => {

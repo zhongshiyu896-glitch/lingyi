@@ -206,6 +206,7 @@
             data-testid="factory-statement-detail-action-print"
             data-action-type="write"
             data-write-guard="guarded:readonly"
+            :data-print-route="openPrintPreviewReadonly()"
             disabled
           >
             打印
@@ -214,6 +215,7 @@
             data-testid="factory-statement-detail-action-export"
             data-action-type="write"
             data-write-guard="guarded:readonly"
+            :data-export-guard-target="exportCsvGuardTarget().name"
             disabled
           >
             导出明细 CSV
@@ -304,6 +306,7 @@ import {
   fetchFactoryStatementReadonlyDetail,
   type FactoryStatementReadonlyRecord,
 } from '@/api/factory_statement_readonly'
+import { exportFactoryStatementDetailCsv } from '@/utils/factoryStatementExport'
 import FactoryStatementSourceReadonlySection from '@/views/factory_statement/components/FactoryStatementSourceReadonlySection.vue'
 import FactoryStatementPayableStatusReadonly from '@/views/factory_statement/components/FactoryStatementPayableStatusReadonly.vue'
 import { useFactoryStatementPayableReadonly } from '@/views/factory_statement/composables/useFactoryStatementPayableReadonly'
@@ -326,6 +329,8 @@ const GLOBAL_READONLY_PREV_DISABLED_ATTR = 'data-factory-statement-payable-prev-
 const GLOBAL_READONLY_PREV_ARIA_DISABLED_ATTR = 'data-factory-statement-payable-prev-aria-disabled'
 const GLOBAL_READONLY_PREV_TITLE_ATTR = 'data-factory-statement-payable-prev-title'
 const GLOBAL_READONLY_PREV_TABINDEX_ATTR = 'data-factory-statement-payable-prev-tabindex'
+const FACTORY_STATEMENT_PRINT_ROUTE = '/factory-statements/print'
+const ACTIVE_PAYABLE_OUTBOX_STATUS = new Set(['pending', 'processing', 'succeeded'])
 const GLOBAL_FACTORY_STATEMENT_ACTION_GUARDS = [
   {
     selector: '#global-auth-refresh-guard',
@@ -417,16 +422,26 @@ const {
   auditSummary,
   detailGuardMessage,
   detailKpis,
-  effectiveOutboxStatus,
   formatAmount,
   formatRate,
-  hasActivePayableOutbox,
   outboxStatusLabel,
   settlementSummary,
   statementStatusLabel,
   statusTag,
-  summaryMissing,
 } = useFactoryStatementReadonly(readonlyRecord)
+const hasPayableSummary = computed<boolean>(
+  () => detail.value?.payable_outbox_status !== undefined && detail.value?.purchase_invoice_name !== undefined,
+)
+const summaryMissing = computed<boolean>(() => Boolean(detail.value) && !hasPayableSummary.value)
+const effectiveOutboxStatus = computed<string>(() => {
+  if (!hasPayableSummary.value) {
+    return '__unknown__'
+  }
+  return detail.value?.payable_outbox_status || ''
+})
+const hasActivePayableOutbox = computed<boolean>(() => (
+  !hasPayableSummary.value || ACTIVE_PAYABLE_OUTBOX_STATUS.has(effectiveOutboxStatus.value)
+))
 const { payableReadonlySummary } = useFactoryStatementPayableReadonly({
   recordSource: readonlyRecord,
   parity: parityValue,
@@ -449,6 +464,17 @@ const showEmptyState = computed<boolean>(
 const showSourceReadonlySection = computed<boolean>(() => (
   isSourceReadonlyMode.value || modeValue.value === 'readonly-lineage' || tabValue.value === 'source-parity'
 ))
+const openPrintPreviewReadonly = (): string => {
+  if (!detail.value?.statement_id) {
+    return FACTORY_STATEMENT_PRINT_ROUTE
+  }
+  const query = new URLSearchParams({
+    ...preservedReadonlyQuery.value,
+    id: String(detail.value.statement_id),
+  })
+  return `${FACTORY_STATEMENT_PRINT_ROUTE}?${query.toString()}`
+}
+const exportCsvGuardTarget = (): typeof exportFactoryStatementDetailCsv => exportFactoryStatementDetailCsv
 
 const syncReadonlyGuardAttribute = (element: HTMLElement, attribute: string, value: string): void => {
   if (element.getAttribute(attribute) !== value) {
