@@ -494,6 +494,38 @@ class ServiceAccountPolicyTest(unittest.TestCase):
             self.assertEqual(allowed_row.status, "succeeded")
             self.assertEqual(denied_row.status, "pending")
 
+    def test_internal_worker_disabled_in_staging_like_env_even_with_flag(self) -> None:
+        old_env = {
+            "APP_ENV": os.environ.get("APP_ENV"),
+            "ENABLE_INTERNAL_WORKER_API": os.environ.get("ENABLE_INTERNAL_WORKER_API"),
+        }
+        os.environ["APP_ENV"] = "staging"
+        os.environ["ENABLE_INTERNAL_WORKER_API"] = "true"
+
+        app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+            username="svc.worker",
+            roles=["LY Integration Service"],
+            is_service_account=True,
+            source="test_override",
+        )
+        try:
+            response = self.client.post("/api/workshop/internal/job-card-sync/run-once")
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+            if old_env["APP_ENV"] is None:
+                os.environ.pop("APP_ENV", None)
+            else:
+                os.environ["APP_ENV"] = old_env["APP_ENV"]
+            if old_env["ENABLE_INTERNAL_WORKER_API"] is None:
+                os.environ.pop("ENABLE_INTERNAL_WORKER_API", None)
+            else:
+                os.environ["ENABLE_INTERNAL_WORKER_API"] = old_env["ENABLE_INTERNAL_WORKER_API"]
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "INTERNAL_API_DISABLED")
+        row = self._latest_security_audit()
+        self.assertEqual(row.event_type, "INTERNAL_API_DISABLED")
+
     def test_worker_limit_applies_after_service_account_scope_filter(self) -> None:
         forbidden_id = self._seed_pending_outbox(job_card="JC-SVC-LIMIT-FORBIDDEN-001", item_code="ITEM-A", company="COMP-A")
         allowed_id = self._seed_pending_outbox(job_card="JC-SVC-LIMIT-ALLOWED-001", item_code="ITEM-B", company="COMP-A")

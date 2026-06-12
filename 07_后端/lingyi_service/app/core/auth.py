@@ -15,6 +15,8 @@ from fastapi import Request
 
 from app.core.permissions import AUTH_UNAUTHORIZED_CODE
 
+DEV_AUTH_ALLOWED_ENVS = frozenset({"development", "test", "local"})
+
 
 @dataclass(frozen=True)
 class CurrentUser:
@@ -38,6 +40,10 @@ def _env_flag(name: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _normalized_app_env(default: str = "development") -> str:
+    return os.getenv("APP_ENV", default).strip().lower() or default
 
 
 def _load_json(url: str, headers: dict[str, str]) -> dict[str, Any] | None:
@@ -127,7 +133,7 @@ def _resolve_erpnext_user(
 
 
 def _resolve_dev_user(request_obj: Request) -> CurrentUser | None:
-    if os.getenv("APP_ENV", "development").strip().lower() == "production":
+    if _normalized_app_env() not in DEV_AUTH_ALLOWED_ENVS:
         return None
     if not _env_flag("LINGYI_ALLOW_DEV_AUTH", default=False):
         return None
@@ -166,9 +172,11 @@ def is_internal_worker_api_enabled() -> bool:
 
     In production it is disabled by default and must be explicitly enabled.
     """
-    app_env = os.getenv("APP_ENV", "development").strip().lower()
-    if app_env != "production":
+    app_env = _normalized_app_env()
+    if app_env in DEV_AUTH_ALLOWED_ENVS:
         return True
+    if app_env != "production":
+        return False
     return _env_flag("ENABLE_INTERNAL_WORKER_API", default=False)
 
 

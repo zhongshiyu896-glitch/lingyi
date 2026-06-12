@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -75,6 +76,28 @@ class AuthActionsTest(unittest.TestCase):
         actions = set(payload["data"]["actions"])
         self.assertIn("subcontract:create", actions)
         self.assertNotIn("subcontract:stock_sync_worker", actions)
+
+    def test_auth_actions_dev_header_denied_in_production_even_when_flag_enabled(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "production", "LINGYI_ALLOW_DEV_AUTH": "true", "LINGYI_ERPNEXT_BASE_URL": ""},
+            clear=False,
+        ):
+            response = self.client.get("/api/auth/actions?module=workshop", headers=self._headers(role="Workshop Manager"))
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
+
+    def test_auth_actions_dev_header_denied_in_staging_like_env(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "staging", "LINGYI_ALLOW_DEV_AUTH": "true", "LINGYI_ERPNEXT_BASE_URL": ""},
+            clear=False,
+        ):
+            response = self.client.get("/api/auth/actions?module=workshop", headers=self._headers(role="Workshop Manager"))
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
 
     def test_frontend_has_no_internal_worker_business_entry(self) -> None:
         project_root = Path(__file__).resolve().parents[3]
