@@ -252,11 +252,11 @@ class BomMaterialUnitQuery(BaseModel):
 class BomExplodeRequest(BaseModel):
     """BOM explode request payload."""
 
-    scenario_tag: str = Field(..., min_length=1, max_length=64)
-    idempotency_key: str = Field(..., min_length=1, max_length=140)
-    source_ref: str = Field(..., min_length=1, max_length=140)
-    bom_no: str = Field(..., min_length=1, max_length=180)
-    item_code: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: Optional[str] = Field(default=None, min_length=1, max_length=64)
+    idempotency_key: Optional[str] = Field(default=None, min_length=1, max_length=140)
+    source_ref: Optional[str] = Field(default=None, min_length=1, max_length=140)
+    bom_no: Optional[str] = Field(default=None, min_length=1, max_length=180)
+    item_code: Optional[str] = Field(default=None, min_length=1, max_length=140)
     order_qty: Decimal = Field(..., gt=0)
     size_ratio: Dict[str, Decimal] = Field(default_factory=dict)
 

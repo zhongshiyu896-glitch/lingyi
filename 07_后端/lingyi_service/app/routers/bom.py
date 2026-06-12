@@ -433,6 +433,24 @@ def _require_any_action(
     )
 
 
+def _require_bom_explode_permission(
+    bom_id: int,
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+) -> None:
+    permission_service = PermissionService(session=session)
+    _require_any_action(
+        permission_service=permission_service,
+        current_user=current_user,
+        request_obj=request,
+        actions=(BOM_EXPLODE_ACTION, BOM_READ),
+        module="bom",
+        resource_type="bom",
+        resource_id=bom_id,
+    )
+
+
 @router.post("/")
 def create_bom(
     payload: BomCreateRequest,
@@ -1592,42 +1610,34 @@ def explode_bom(
     bom_id: int,
     payload: BomExplodeRequest,
     request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
+    _permission: None = Depends(_require_bom_explode_permission),
     session: Session = Depends(get_db_session),
 ):
     """展开 BOM。"""
-    permission_service = PermissionService(session=session)
-    _require_any_action(
-        permission_service=permission_service,
-        current_user=current_user,
-        request_obj=request,
-        actions=(BOM_EXPLODE_ACTION, BOM_READ),
-        module="bom",
-        resource_type="bom",
-        resource_id=bom_id,
-    )
     service = BomService(session=session)
     request_id = get_request_id_from_request(request)
     try:
         detail = service.get_bom_detail(bom_id=bom_id)
-        snapshot_item_code = _scope_text(detail.bom.item_code)
-        snapshot_bom_no = _scope_text(detail.bom.bom_no)
-        if snapshot_item_code is None or snapshot_bom_no is None:
-            _raise_bom_idempotency_conflict("业务载体缺失")
-        if payload.item_code != snapshot_item_code:
-            _raise_bom_idempotency_conflict("item_code 载体与业务载体不一致")
-        if payload.bom_no != snapshot_bom_no:
-            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
-        if payload.source_ref != snapshot_bom_no:
-            _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
-        _validate_local_bom_request_gate(
-            request_obj=request,
-            request_id=request_id,
-            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.bom_no],
-            expected_item_code=snapshot_item_code,
-            expected_bom_ref=snapshot_bom_no,
-            expected_reason=None,
-        )
+        request_has_local_gate = _match_bom_scenario_tag(request_id) is not None
+        if _is_local_bom_write_enabled() and request_has_local_gate:
+            snapshot_item_code = _scope_text(detail.bom.item_code)
+            snapshot_bom_no = _scope_text(detail.bom.bom_no)
+            if snapshot_item_code is None or snapshot_bom_no is None:
+                _raise_bom_idempotency_conflict("业务载体缺失")
+            if payload.item_code != snapshot_item_code:
+                _raise_bom_idempotency_conflict("item_code 载体与业务载体不一致")
+            if payload.bom_no != snapshot_bom_no:
+                _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+            if payload.source_ref != snapshot_bom_no:
+                _raise_bom_idempotency_conflict("bom_no_or_source_ref 载体与业务载体不一致")
+            _validate_local_bom_request_gate(
+                request_obj=request,
+                request_id=request_id,
+                carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.bom_no],
+                expected_item_code=snapshot_item_code,
+                expected_bom_ref=snapshot_bom_no,
+                expected_reason=None,
+            )
         data: BomExplodeData = service.explode(bom_id=bom_id, payload=payload)
         return _ok(data.model_dump())
     except AppException as exc:
