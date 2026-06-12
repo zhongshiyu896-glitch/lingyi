@@ -374,14 +374,14 @@ const archiveParams = reactive({
   formula_version: 'STYLE_PROFIT_V1',
 })
 
-const readonlyFallbackRows: StyleProfitSnapshotListItem[] = [
+const readonlyBaselineRows: StyleProfitSnapshotListItem[] = [
   {
     id: 101,
-    snapshot_no: 'SP-READONLY-2026-001',
+    snapshot_no: 'SP-BASELINE-2026-001',
     company: 'LINGYI',
     company_full_name: '领意服装',
-    item_code: 'STYLE-RO-001',
-    sales_order: 'SO-RO-001',
+    item_code: 'STYLE-BASE-001',
+    sales_order: 'SO-BASE-001',
     from_date: '2026-05-01',
     to_date: '2026-05-31',
     revenue_status: 'actual_first',
@@ -395,14 +395,14 @@ const readonlyFallbackRows: StyleProfitSnapshotListItem[] = [
     include_provisional_subcontract: false,
     formula_version: 'STYLE_PROFIT_V1',
     unresolved_count: 0,
-    created_by: 'readonly',
+    created_by: 'baseline',
     created_at: '2026-05-26 09:00:00',
   },
 ]
 
-const applyReadonlyFallbackRows = (): void => {
-  rows.value = readonlyFallbackRows
-  total.value = readonlyFallbackRows.length
+const applyReadonlyBaselineRows = (): void => {
+  rows.value = readonlyBaselineRows
+  total.value = readonlyBaselineRows.length
 }
 
 const formatAmount = (value: string | number | null | undefined): string => {
@@ -469,7 +469,7 @@ const resetQuery = (): void => {
   query.page_size = 20
   errorMessage.value = ''
   archiveFeedback.value = ''
-  applyReadonlyFallbackRows()
+  applyReadonlyBaselineRows()
 }
 
 const guardedAction = (action: string): void => {
@@ -608,13 +608,13 @@ const startGlobalReadonlyActionGuardObserver = (): void => {
 
 const loadRows = async (): Promise<void> => {
   if (!canRead.value) {
-    applyReadonlyFallbackRows()
+    applyReadonlyBaselineRows()
     errorMessage.value = ''
     return
   }
   if (!hasRequiredScope()) {
     ElMessage.warning('请先输入加工厂与款号/款名后再查询')
-    applyReadonlyFallbackRows()
+    applyReadonlyBaselineRows()
     errorMessage.value = ''
     return
   }
@@ -638,7 +638,7 @@ const loadRows = async (): Promise<void> => {
     const message = (error as Error).message || '未知错误'
     errorMessage.value = message
     ElMessage.error(message)
-    applyReadonlyFallbackRows()
+    applyReadonlyBaselineRows()
   } finally {
     loading.value = false
   }
@@ -670,7 +670,7 @@ onMounted(async () => {
   if (canRead.value && hasRequiredScope()) {
     await loadRows()
   } else {
-    applyReadonlyFallbackRows()
+    applyReadonlyBaselineRows()
   }
   await applyGlobalReadonlyActionGuards()
   startGlobalReadonlyActionGuardObserver()

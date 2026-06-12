@@ -312,12 +312,12 @@ const permissionReady = ref<boolean>(false)
 const loadError = ref<string>('')
 const guardedFeedback = ref<string>('')
 
-const readonlyFallbackSnapshot: StyleProfitSnapshotResult = {
+const readonlyBaselineSnapshot: StyleProfitSnapshotResult = {
   snapshot_id: 101,
-  snapshot_no: 'SP-READONLY-2026-001',
+  snapshot_no: 'SP-BASELINE-2026-001',
   company: 'LINGYI',
-  item_code: 'STYLE-RO-001',
-  sales_order: 'SO-RO-001',
+  item_code: 'STYLE-BASE-001',
+  sales_order: 'SO-BASE-001',
   revenue_status: 'actual_first',
   revenue_amount: '128000',
   actual_total_cost: '86000',
@@ -328,20 +328,20 @@ const readonlyFallbackSnapshot: StyleProfitSnapshotResult = {
   allocation_status: 'mapped',
   include_provisional_subcontract: false,
   unresolved_count: 0,
-  created_by: 'readonly',
+  created_by: 'baseline',
   created_at: '2026-05-26 09:00:00',
-  request_hash: 'readonly-style-profit-source-map',
+  request_hash: 'style-profit-baseline-source-map',
   idempotent_replay: true,
 }
 
-const readonlyFallbackDetails: StyleProfitDetailItem[] = [
+const readonlyBaselineDetails: StyleProfitDetailItem[] = [
   {
     id: 1,
     line_no: 1,
     cost_type: 'material',
     source_type: 'BOM',
-    source_name: 'BOM-RO-001',
-    item_code: 'FABRIC-RO-001',
+    source_name: 'BOM-BASE-001',
+    item_code: 'FABRIC-BASE-001',
     qty: '120',
     unit_rate: '38.50',
     amount: '4620',
@@ -356,8 +356,8 @@ const readonlyFallbackDetails: StyleProfitDetailItem[] = [
     line_no: 2,
     cost_type: 'subcontract',
     source_type: 'WORK_ORDER',
-    source_name: 'WO-RO-001',
-    item_code: 'STYLE-RO-001',
+    source_name: 'WO-BASE-001',
+    item_code: 'STYLE-BASE-001',
     qty: '120',
     unit_rate: '215',
     amount: '25800',
@@ -369,24 +369,24 @@ const readonlyFallbackDetails: StyleProfitDetailItem[] = [
   },
 ]
 
-const readonlyFallbackSourceMaps: StyleProfitSourceMapItem[] = [
+const readonlyBaselineSourceMaps: StyleProfitSourceMapItem[] = [
   {
     id: 1,
     detail_id: 1,
     company: 'LINGYI',
-    sales_order: 'SO-RO-001',
-    style_item_code: 'STYLE-RO-001',
-    source_item_code: 'FABRIC-RO-001',
+    sales_order: 'SO-BASE-001',
+    style_item_code: 'STYLE-BASE-001',
+    source_item_code: 'FABRIC-BASE-001',
     source_system: 'BOM',
     source_doctype: 'MaterialSnapshot',
     source_status: 'mapped',
-    source_name: 'BOM-RO-001',
+    source_name: 'BOM-BASE-001',
     source_line_no: '1',
     qty: '120',
     unit_rate: '38.50',
     amount: '4620',
     currency: 'CNY',
-    warehouse: 'WH-RO',
+    warehouse: 'WH-BASE',
     posting_date: '2026-05-26',
     include_in_profit: true,
     mapping_status: 'mapped',
@@ -398,13 +398,13 @@ const readonlyFallbackSourceMaps: StyleProfitSourceMapItem[] = [
     id: 2,
     detail_id: 2,
     company: 'LINGYI',
-    sales_order: 'SO-RO-001',
-    style_item_code: 'STYLE-RO-001',
-    source_item_code: 'STYLE-RO-001',
+    sales_order: 'SO-BASE-001',
+    style_item_code: 'STYLE-BASE-001',
+    source_item_code: 'STYLE-BASE-001',
     source_system: 'WORK_ORDER',
     source_doctype: 'JobCard',
     source_status: 'mapped',
-    source_name: 'WO-RO-001',
+    source_name: 'WO-BASE-001',
     source_line_no: '2',
     qty: '120',
     unit_rate: '215',
@@ -420,13 +420,13 @@ const readonlyFallbackSourceMaps: StyleProfitSourceMapItem[] = [
   },
 ]
 
-const applyReadonlyFallbackDetail = (): void => {
-  snapshot.value = readonlyFallbackSnapshot
-  details.value = readonlyFallbackDetails
-  sourceMaps.value = readonlyFallbackSourceMaps
+const applyReadonlyBaselineDetail = (): void => {
+  snapshot.value = readonlyBaselineSnapshot
+  details.value = readonlyBaselineDetails
+  sourceMaps.value = readonlyBaselineSourceMaps
 }
 
-applyReadonlyFallbackDetail()
+applyReadonlyBaselineDetail()
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.read)
 const parityHint = computed<string>(() => String(route.query.parity || 'style-profit'))
@@ -505,13 +505,13 @@ const loadDetail = async (): Promise<void> => {
   guardedFeedback.value = ''
   loadError.value = ''
   if (!canRead.value) {
-    applyReadonlyFallbackDetail()
+    applyReadonlyBaselineDetail()
     missingSnapshotId.value = false
     return
   }
   if (!hasValidSnapshotId.value) {
     missingSnapshotId.value = true
-    applyReadonlyFallbackDetail()
+    applyReadonlyBaselineDetail()
     return
   }
   missingSnapshotId.value = false
@@ -525,7 +525,7 @@ const loadDetail = async (): Promise<void> => {
   } catch (error) {
     const message = (error as Error).message || '未知错误'
     loadError.value = message
-    applyReadonlyFallbackDetail()
+    applyReadonlyBaselineDetail()
     ElMessage.error(message)
   } finally {
     loading.value = false
