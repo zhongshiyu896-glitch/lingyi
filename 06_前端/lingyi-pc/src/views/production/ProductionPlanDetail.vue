@@ -126,7 +126,7 @@
         <el-descriptions-item label="ERP Docstatus">{{ detail.erpnext_docstatus ?? '-' }}</el-descriptions-item>
         <el-descriptions-item label="ERP 状态">{{ detail.erpnext_status || '-' }}</el-descriptions-item>
         <el-descriptions-item label="最新错误码">{{ detail.latest_work_order_outbox?.error_code || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="最近同步时间">{{ detail.last_synced_at || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="最近同步时间">{{ detail?.last_synced_at || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
