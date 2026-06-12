@@ -28,7 +28,7 @@ export const SALES_ORDER_DELIVERY_WINDOW_DISABLED_ACTIONS = [
   { label: '发运确认', reason: '本地只读试用模式：发运确认已停用' },
   { label: '导入发运', reason: '本地只读试用模式：发运导入已停用' },
   { label: '导出窗口', reason: '本地只读试用模式：交付窗口导出已停用' },
-  { label: 'ERPNext 同步', reason: '本地只读试用模式：ERPNext 同步已停用' },
+  { label: 'ERPNext 映射', reason: '本地只读试用模式：ERPNext 映射已停用' },
   { label: 'Outbox 推送', reason: '本地只读试用模式：Outbox 推送已停用' },
   { label: 'Worker 执行', reason: '本地只读试用模式：Worker 执行已停用' },
   { label: '跨模块执行', reason: '本地只读试用模式：跨模块执行已停用' },

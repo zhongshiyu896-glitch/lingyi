@@ -260,7 +260,7 @@ const rows = ref<SalesOrderListItem[]>([])
 const serverTotal = ref(0)
 const lastLoadedAt = ref('')
 
-const createDefaultQuery = (): SalesOrderListQueryState => ({
+const buildDefaultQueryState = (): SalesOrderListQueryState => ({
   order_no: '',
   keyword: '',
   company: '',
@@ -274,7 +274,7 @@ const createDefaultQuery = (): SalesOrderListQueryState => ({
   page_size: 20,
 })
 
-const query = reactive<SalesOrderListQueryState>(createDefaultQuery())
+const query = reactive<SalesOrderListQueryState>(buildDefaultQueryState())
 
 const filteredRows = computed(() => filterSalesOrderRows(rows.value, query))
 const readonlySummary = computed(() => buildSalesOrderReadonlySummary(filteredRows.value))
@@ -311,7 +311,7 @@ const formatMoney = (amount?: string | number | null, currency?: string | null):
   return currency ? `${money} ${currency}` : money
 }
 
-const updateLoadedAt = (): void => {
+const markLoadedAt = (): void => {
   lastLoadedAt.value = new Date().toISOString()
 }
 
@@ -324,7 +324,7 @@ const loadOrders = async (): Promise<void> => {
     serverTotal.value = response.data.total
     query.page = response.data.page
     query.page_size = response.data.page_size
-    updateLoadedAt()
+    markLoadedAt()
   } catch (error) {
     rows.value = []
     serverTotal.value = 0
@@ -340,7 +340,7 @@ const onSearch = (): void => {
 }
 
 const onReset = (): void => {
-  Object.assign(query, createDefaultQuery())
+  Object.assign(query, buildDefaultQueryState())
   void loadOrders()
 }
 

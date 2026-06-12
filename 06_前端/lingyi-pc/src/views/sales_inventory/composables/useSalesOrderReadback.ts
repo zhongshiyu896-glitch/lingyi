@@ -31,7 +31,7 @@ const STATUS_LABELS: Record<string, string> = {
   'To Deliver': '待交付',
   'To Deliver and Bill': '待交付并开票',
   Completed: '已完成',
-  Cancelled: '已取消',
+  Cancelled: '已关闭',
 }
 
 const STATUS_TYPES: Record<string, SalesOrderStatusTagType> = {
@@ -57,7 +57,7 @@ const GROUP_TYPES: Record<SalesOrderReadonlyGroup, SalesOrderGroupTagType> = {
 
 const READONLY_GUARD_ACTIONS: SalesOrderReadonlyGuardAction[] = [
   { label: '新建草稿', reason: 'sales write 冻结' },
-  { label: '取消草稿', reason: 'readonly guard' },
+  { label: '草稿停留态', reason: 'readonly guard' },
   { label: '导出单据', reason: 'export 冻结' },
   { label: '库存影响', reason: 'inventory impact 冻结' },
 ]

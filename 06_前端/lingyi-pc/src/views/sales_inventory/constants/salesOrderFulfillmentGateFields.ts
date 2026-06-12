@@ -39,7 +39,7 @@ export const SALES_ORDER_FULFILLMENT_GATE_FOCUS_LABEL = 'fulfillment-source focu
 export const SALES_ORDER_FULFILLMENT_GATE_READONLY_GUARD_REASON =
   '当前切片仅开放 fulfillment gate 只读核对；delivery write、customer-supplier write、stock-write、outbox/worker、ERPNext 与 production write 保持冻结。'
 export const SALES_ORDER_FULFILLMENT_GATE_REMAINING_GAP =
-  '真实 delivery/export/customer-supplier write、stock-write、出库联动、outbox/worker、ERPNext 同步与跨模块执行仍未开放。'
+  '真实 delivery/export/customer-supplier write、stock-write、出库联动、outbox/worker、ERPNext 映射与跨模块执行仍未开放。'
 export const SALES_ORDER_FULFILLMENT_GATE_WRITE_BOUNDARY =
   'GET-only | write_request_count=0 | enabled_write_action_texts=[] | forbidden_write_calls=[]'
 
@@ -65,7 +65,7 @@ export const SALES_ORDER_FULFILLMENT_GATE_DISABLED_ACTIONS = [
     reason: 'outbox / worker 链路冻结',
   },
   {
-    label: 'ERPNext 同步',
+    label: 'ERPNext 映射',
     reason: 'ERPNext adapter / production write 保持 disabled',
   },
 ] as const

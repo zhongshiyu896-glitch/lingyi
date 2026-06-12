@@ -67,8 +67,8 @@ export const SALES_INVENTORY_WAREHOUSE_BALANCE_DISABLED_ACTIONS = [
     reason: 'outbox / worker / production write disabled',
   },
   {
-    key: 'erpnext-sync',
-    label: 'ERPNext 同步',
-    reason: 'ERPNext disabled',
+    key: 'erpnext-bridge',
+    label: 'ERPNext 映射',
+    reason: 'ERPNext adapter disabled',
   },
 ] as const

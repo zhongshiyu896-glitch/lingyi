@@ -251,7 +251,7 @@ const toNumeric = (value?: string | number | null): number => {
   return Number.isFinite(numeric) ? numeric : 0
 }
 
-const updateLoadedAt = (): void => {
+const markLoadedAt = (): void => {
   lastLoadedAt.value = new Date().toISOString()
 }
 
@@ -277,7 +277,7 @@ const loadDetail = async (): Promise<void> => {
     }
     const response = await fetchSalesInventorySalesOrderDetailReadback(orderName)
     detail.value = response.data
-    updateLoadedAt()
+    markLoadedAt()
   } catch (error) {
     lastError.value = (error as Error).message || '订单详情加载失败'
   } finally {

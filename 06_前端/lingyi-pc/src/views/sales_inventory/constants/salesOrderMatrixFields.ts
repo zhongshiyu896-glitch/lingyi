@@ -98,7 +98,7 @@ export const SALES_ORDER_QUANTITY_MATRIX_DISABLED_ACTIONS = [
   { key: 'export', label: '导出', reason: 'export disabled' },
   { key: 'stock-write', label: '库存写入', reason: 'stock-write disabled' },
   { key: 'outbox-worker', label: 'Outbox / Worker', reason: 'outbox / worker disabled' },
-  { key: 'erpnext', label: 'ERPNext', reason: 'ERPNext sync disabled' },
+  { key: 'erpnext', label: 'ERPNext', reason: 'ERPNext bridge disabled' },
   { key: 'production-write', label: 'Production Write', reason: 'production write disabled' },
 ] as const
 

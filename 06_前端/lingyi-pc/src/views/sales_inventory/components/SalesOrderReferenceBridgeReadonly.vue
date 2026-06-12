@@ -40,7 +40,7 @@
       <el-descriptions-item label="桥接摘要">{{ summary.mappingModeLabel }}</el-descriptions-item>
       <el-descriptions-item label="客户引用链">{{ summary.customerChainLabel }}</el-descriptions-item>
       <el-descriptions-item label="工厂引用链">{{ summary.factoryChainLabel }}</el-descriptions-item>
-      <el-descriptions-item label="只读 guard">create / update / delete / export disabled</el-descriptions-item>
+      <el-descriptions-item label="只读 guard">桥接链路保持只读展示，相关动作入口未开放</el-descriptions-item>
     </el-descriptions>
 
     <div class="bridge-columns">

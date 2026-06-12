@@ -67,7 +67,7 @@ export const SALES_INVENTORY_STOCK_SOURCE_GUARD_DISABLED_ACTIONS = [
     reason: 'stock-write 链路冻结',
   },
   {
-    label: 'ERPNext 同步',
+    label: 'ERPNext 映射',
     reason: 'ERPNext / outbox / worker / production write 链路冻结',
   },
 ] as const
@@ -131,7 +131,7 @@ export const SALES_INVENTORY_STOCK_LEDGER_SOURCE_GUARD_DISABLED_ACTIONS = [
     reason: 'export / download 链路冻结',
   },
   {
-    label: 'ERPNext 同步',
+    label: 'ERPNext 映射',
     reason: 'ERPNext / outbox / worker / production write 链路冻结',
   },
 ] as const
