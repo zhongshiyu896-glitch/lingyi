@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -26,6 +27,22 @@ def _write_junit(path: Path, *, tests: int, skipped: int, failures: int = 0, err
             f'<testsuite name="pytest" tests="{tests}" skipped="{skipped}" failures="{failures}" errors="{errors}"/>\n'
         ),
         encoding="utf-8",
+    )
+
+
+def _cleanup_gate_reports() -> None:
+    for report in (ROOT / SETTLEMENT_JUNIT, ROOT / STYLE_PROFIT_JUNIT):
+        report.unlink(missing_ok=True)
+
+
+def _read_junit_metrics(report_path: Path) -> tuple[int, int, int, int]:
+    root = ET.parse(report_path).getroot()
+    assert root.tag == "testsuite"
+    return (
+        int(root.get("tests") or "0"),
+        int(root.get("skipped") or "0"),
+        int(root.get("failures") or "0"),
+        int(root.get("errors") or "0"),
     )
 
 
@@ -63,6 +80,13 @@ def _validate_gate_script_content(content: str) -> list[str]:
     expected_assert = "--expected-tests 4 --expected-skipped 0"
     if content.count(expected_assert) < 2:
         errors.append("expected per-suite junit assertions are missing")
+    for token in (
+        'emit_status "skipped"',
+        'emit_status "blocked"',
+        'emit_status "ready"',
+    ):
+        if token not in content:
+            errors.append(f"missing gate status token: {token}")
     return errors
 
 
@@ -154,20 +178,56 @@ def test_assert_junit_fails_when_report_missing(tmp_path: Path) -> None:
     assert "not found" in result.stderr.lower()
 
 
-def test_run_postgresql_ci_gate_requires_envs() -> None:
+def test_run_postgresql_ci_gate_skips_locally_when_dsn_is_missing() -> None:
     env = os.environ.copy()
     env.pop("POSTGRES_TEST_DSN", None)
     env.pop("POSTGRES_TEST_ALLOW_DESTRUCTIVE", None)
-    result = subprocess.run(
-        ["bash", str(RUN_GATE_SCRIPT)],
-        cwd=str(ROOT),
-        text=True,
-        capture_output=True,
-        env=env,
-        check=False,
-    )
-    assert result.returncode != 0
-    assert "POSTGRES_TEST_DSN is required" in result.stderr
+    _cleanup_gate_reports()
+    try:
+        result = subprocess.run(
+            ["bash", str(RUN_GATE_SCRIPT)],
+            cwd=str(ROOT),
+            text=True,
+            capture_output=True,
+            env=env,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "POSTGRESQL_CI_GATE_STATUS=skipped" in result.stdout
+        assert "POSTGRES_TEST_DSN is not set" in result.stdout
+
+        settlement_metrics = _read_junit_metrics(ROOT / SETTLEMENT_JUNIT)
+        style_profit_metrics = _read_junit_metrics(ROOT / STYLE_PROFIT_JUNIT)
+        assert settlement_metrics == (1, 1, 0, 0)
+        assert style_profit_metrics == (1, 1, 0, 0)
+    finally:
+        _cleanup_gate_reports()
+
+
+def test_run_postgresql_ci_gate_blocks_when_destructive_flag_is_missing() -> None:
+    env = os.environ.copy()
+    env["POSTGRES_TEST_DSN"] = "postgresql+psycopg://user:pass@127.0.0.1:5432/lingyi_test_ci"
+    env.pop("POSTGRES_TEST_ALLOW_DESTRUCTIVE", None)
+    _cleanup_gate_reports()
+    try:
+        result = subprocess.run(
+            ["bash", str(RUN_GATE_SCRIPT)],
+            cwd=str(ROOT),
+            text=True,
+            capture_output=True,
+            env=env,
+            check=False,
+        )
+        assert result.returncode != 0
+        assert "POSTGRESQL_CI_GATE_STATUS=blocked" in result.stdout
+        assert "POSTGRES_TEST_ALLOW_DESTRUCTIVE must be true" in result.stdout
+
+        settlement_metrics = _read_junit_metrics(ROOT / SETTLEMENT_JUNIT)
+        style_profit_metrics = _read_junit_metrics(ROOT / STYLE_PROFIT_JUNIT)
+        assert settlement_metrics == (1, 0, 0, 1)
+        assert style_profit_metrics == (1, 0, 0, 1)
+    finally:
+        _cleanup_gate_reports()
 
 
 def test_run_postgresql_ci_gate_includes_both_postgresql_targets_and_junit_files() -> None:
