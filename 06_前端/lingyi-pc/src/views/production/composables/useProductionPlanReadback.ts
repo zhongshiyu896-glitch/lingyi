@@ -28,7 +28,7 @@ export interface ProductionPlanReadbackRowLike {
   progress: string
   workOrderStatus: string
   group: string
-  source: 'backend' | 'synthetic'
+  source: 'backend' | 'local_sample'
 }
 
 export interface ProductionOrderParityReadonlySummary {
@@ -116,9 +116,9 @@ const normalizeProgressRatio = (completed: number, total: number): string => {
 }
 
 const parseTemplateSourceLabel = (rows: ProductionPlanReadbackRowLike[]): string => {
-  const syntheticCount = rows.filter((row) => row.source === 'synthetic').length
-  const backendCount = rows.length - syntheticCount
-  return `backend ${backendCount} / synthetic ${syntheticCount}`
+  const localSampleCount = rows.filter((row) => row.source === 'local_sample').length
+  const backendCount = rows.length - localSampleCount
+  return `backend ${backendCount} / local sample ${localSampleCount}`
 }
 
 const isSampleTemplate = (template: ProductionFollowupTemplateListItem): boolean =>
@@ -306,7 +306,7 @@ export const useProductionPlanReadback = () => {
     const blockedCount = blockedRows.length
     return {
       parityScopeLabel: PRODUCTION_ORDER_PARITY_SCOPE_LABELS[params.parity] || parityRouteLabel(params.parity),
-      sourceLabel: `${params.rows.length} 条计划 / backend-synthetic parity`,
+      sourceLabel: `${params.rows.length} 条计划 / backend-local sample parity`,
       parityLabel: parityMatched
         ? mirroredRows.length > 0
           ? 'production-order parity 已命中'

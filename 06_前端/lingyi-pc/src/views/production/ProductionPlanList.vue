@@ -189,7 +189,7 @@ interface PlanRow {
   statusCode: string
   statusLabel: string
   workOrderStatus: string
-  source: 'backend' | 'synthetic'
+  source: 'backend' | 'local_sample'
 }
 
 const router = useRouter()
@@ -223,7 +223,7 @@ const queryTab = computed(() => parseQueryString(route.query.tab))
 const focusTag = computed(() => parseQueryString(route.query.focus))
 const currentParityLabel = computed(() => parityRouteLabel(parityTag.value))
 
-const fallbackPlanSeeds: PlanRow[] = [
+const readonlyBaselinePlans: PlanRow[] = [
   {
     id: null,
     planNo: 'PP-LOCAL-260601',
@@ -237,7 +237,7 @@ const fallbackPlanSeeds: PlanRow[] = [
     statusCode: 'planned',
     statusLabel: '已计划',
     workOrderStatus: '-',
-    source: 'synthetic',
+    source: 'local_sample',
   },
   {
     id: null,
@@ -252,7 +252,7 @@ const fallbackPlanSeeds: PlanRow[] = [
     statusCode: 'material_checked',
     statusLabel: '已物料检查',
     workOrderStatus: 'pending',
-    source: 'synthetic',
+    source: 'local_sample',
   },
   {
     id: null,
@@ -267,7 +267,7 @@ const fallbackPlanSeeds: PlanRow[] = [
     statusCode: 'work_order_pending',
     statusLabel: '工单待同步',
     workOrderStatus: 'pending',
-    source: 'synthetic',
+    source: 'local_sample',
   },
   {
     id: null,
@@ -282,7 +282,7 @@ const fallbackPlanSeeds: PlanRow[] = [
     statusCode: 'work_order_pending',
     statusLabel: '工单待同步',
     workOrderStatus: 'blocked_scope',
-    source: 'synthetic',
+    source: 'local_sample',
   },
 ]
 
@@ -292,7 +292,7 @@ const statusBoard = computed(() => {
   return [
     { name: '已计划', value: String(countByStatus('planned')), note: '只读计划清单，不触发下发' },
     { name: '工单待同步', value: String(countByStatus('work_order_pending')), note: '仅保留同步状态，不触发 outbox' },
-    { name: '本地只读记录', value: String(rows.length), note: `${currentParityLabel.value} / backend 为空时回退 synthetic snapshot` },
+    { name: '本地只读记录', value: String(rows.length), note: `${currentParityLabel.value} / backend 为空时展示本地只读样例` },
   ]
 })
 
@@ -319,9 +319,9 @@ const quantityMatrixSummary = computed(() => {
 })
 
 const snapshotSourceSummary = computed(() => {
-  const syntheticCount = filteredPlans.value.filter((row) => row.source === 'synthetic').length
-  const backendCount = filteredPlans.value.length - syntheticCount
-  return `backend ${backendCount} / synthetic ${syntheticCount}`
+  const localSampleCount = filteredPlans.value.filter((row) => row.source === 'local_sample').length
+  const backendCount = filteredPlans.value.length - localSampleCount
+  return `backend ${backendCount} / local sample ${localSampleCount}`
 })
 
 const followupReadonlyBaseSummary = computed(() =>
@@ -389,8 +389,8 @@ const buildDetailQuery = (row: PlanRow): Record<string, string> => {
   if (row.id !== null) {
     queryParams.id = String(row.id)
   }
-  if (row.source === 'synthetic') {
-    queryParams.synthetic = '1'
+  if (row.source === 'local_sample') {
+    queryParams.local_sample = '1'
     queryParams.plan_no = row.planNo
     queryParams.sales_order = row.orderNo
     queryParams.item_code = row.styleCode
@@ -458,11 +458,11 @@ const refreshPlans = async (): Promise<void> => {
       planRows.value = response.data.items.map(mapPlanRow)
       return
     }
-    planRows.value = fallbackPlanSeeds.map((row) => ({ ...row }))
-    listError.value = '未读取到本地生产计划记录，已回退到 synthetic snapshot。'
+    planRows.value = readonlyBaselinePlans.map((row) => ({ ...row }))
+    listError.value = '未读取到本地生产计划记录，已切换到本地只读样例。'
   } catch (error) {
-    planRows.value = fallbackPlanSeeds.map((row) => ({ ...row }))
-    listError.value = `读取生产计划失败，已回退到 synthetic snapshot：${(error as Error).message}`
+    planRows.value = readonlyBaselinePlans.map((row) => ({ ...row }))
+    listError.value = `读取生产计划失败，已切换到本地只读样例：${(error as Error).message}`
   } finally {
     lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
     listLoading.value = false

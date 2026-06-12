@@ -338,7 +338,7 @@ const { sampleReadinessReadonlySummary } = useProductionSampleReadinessReadonly(
   lastError: computed(() => loadError.value || guardedFeedback.value),
 })
 
-const buildSyntheticDetail = (): ProductionPlanDetailData => {
+const buildReadonlyBaselineDetail = (): ProductionPlanDetailData => {
   const today = new Date().toISOString()
   const isProductionOrderParity = parityTag.value === 'production-order'
   return {
@@ -441,10 +441,10 @@ const loadDetail = async (): Promise<void> => {
   loadError.value = ''
   loading.value = true
   try {
-    if (parseStringQuery(route.query.synthetic) === '1') {
-      detail.value = buildSyntheticDetail()
+    if (parseStringQuery(route.query.local_sample) === '1') {
+      detail.value = buildReadonlyBaselineDetail()
       await loadFollowupTemplates(detail.value.item_code)
-      guardedFeedback.value = '当前展示 synthetic detail，只用于 local-only 可用切片。'
+      guardedFeedback.value = '当前展示本地只读样例详情，只用于 local-only 可用切片。'
       lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
       return
     }
@@ -457,9 +457,9 @@ const loadDetail = async (): Promise<void> => {
     }
 
     if (!fallbackPlanId.value) {
-      detail.value = buildSyntheticDetail()
+      detail.value = buildReadonlyBaselineDetail()
       await loadFollowupTemplates(detail.value.item_code)
-      guardedFeedback.value = '未读取到本地生产计划记录，已回退到 synthetic detail。'
+      guardedFeedback.value = '未读取到本地生产计划记录，已切换到本地只读样例详情。'
       lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
       return
     }
@@ -471,9 +471,9 @@ const loadDetail = async (): Promise<void> => {
     lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
   } catch (error) {
     const message = (error as Error).message || '加载生产计划详情失败'
-    detail.value = buildSyntheticDetail()
+    detail.value = buildReadonlyBaselineDetail()
     await loadFollowupTemplates(detail.value.item_code)
-    guardedFeedback.value = `加载详情失败，已回退到 synthetic detail：${message}`
+    guardedFeedback.value = `加载详情失败，已切换到本地只读样例详情：${message}`
     lastLoadedAt.value = new Date().toLocaleString('zh-CN', { hour12: false })
   } finally {
     loading.value = false

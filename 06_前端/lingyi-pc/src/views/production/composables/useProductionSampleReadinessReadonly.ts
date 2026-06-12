@@ -23,7 +23,7 @@ export interface ProductionSampleReadinessRowLike {
   styleCode: string
   statusCode: string
   workOrderStatus: string
-  source: 'backend' | 'synthetic'
+  source: 'backend' | 'local_sample'
 }
 
 export interface ProductionSampleReadinessReadonlyCard {
@@ -154,7 +154,7 @@ export const useProductionSampleReadinessReadonly = ({
       items = rowList.slice(0, 6).map((row) => ({
         subjectLabel: `${row.planNo} / ${row.styleCode}`,
         statusLabel: row.statusCode || FALLBACK_TEXT,
-        sourceLabel: row.source === 'backend' ? 'list readback' : 'synthetic snapshot',
+        sourceLabel: row.source === 'backend' ? 'list readback' : 'local sample snapshot',
         blockedReason: BLOCKED_WORK_ORDER_STATUSES.has(normalizeText(row.workOrderStatus))
           ? `工单同步 ${row.workOrderStatus || 'pending'}`
           : '仅开放只读核对',

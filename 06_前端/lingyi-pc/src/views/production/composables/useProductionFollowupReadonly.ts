@@ -164,7 +164,7 @@ export const useProductionFollowupReadonly = ({
       items = rowList.slice(0, 6).map((row) => ({
         subjectLabel: `${row.planNo} / ${row.orderNo || FALLBACK_TEXT}`,
         statusLabel: row.statusLabel || row.statusCode || FALLBACK_TEXT,
-        sourceLabel: row.source === 'backend' ? 'list readback' : 'synthetic snapshot',
+        sourceLabel: row.source === 'backend' ? 'list readback' : 'local sample snapshot',
         blockedReason: BLOCKED_SYNC_STATUSES.has(normalizeText(row.workOrderStatus))
           ? `工序同步 ${row.workOrderStatus || 'pending'}`
           : '仅开放只读核对',
