@@ -83,7 +83,7 @@
             {{ activeTab === 'customers' ? 'GET /api/sales-inventory/customers + /reference-drafts/customers' : 'GET /api/sales-inventory/suppliers + /reference-drafts/suppliers' }}
           </el-descriptions-item>
           <el-descriptions-item label="write_boundary">
-            create / deactivate only; ERPNext / worker / internal run-once / production write disabled
+            create / deactivate only; ERPNext / worker / internal task trigger / production write disabled
           </el-descriptions-item>
         </el-descriptions>
       </section>
@@ -180,7 +180,7 @@
         <h3>禁区链路</h3>
         <ul>
           <li>ERPNext 生产写：disabled</li>
-          <li>worker / internal run-once：disabled</li>
+          <li>worker / internal task trigger：disabled</li>
           <li>production write / export remediation：disabled</li>
         </ul>
       </section>

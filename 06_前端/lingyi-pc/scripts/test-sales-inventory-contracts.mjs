@@ -127,6 +127,75 @@ const runSuccessCase = () => {
   }
 }
 
+const runReferenceDraftLocalDevSuccessCase = () => {
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'sales-inventory-contract-fixture-'))
+  try {
+    createBaseFixture(fixtureRoot)
+    const apiContent = read(fixtureRoot, 'src/api/sales_inventory.ts')
+    write(
+      fixtureRoot,
+      'src/api/sales_inventory.ts',
+      `${apiContent}
+export const createSalesInventoryReferenceDraft = async () =>
+  request('/api/sales-inventory/reference-drafts/customers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scenario_tag: 'W001A-05-REF-001',
+      company: 'COMP-A',
+      reference_no: 'CUST-LOCAL-001',
+      reference_name: '客户草稿样例',
+      idempotency_key: 'IDEMP-W001A05-REF-001',
+    }),
+  })
+
+export const deactivateSalesInventoryReferenceDraft = async () =>
+  request('/api/sales-inventory/reference-drafts/customers/1/deactivate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      scenario_tag: 'W001A-05-REF-001',
+      company: 'COMP-A',
+      idempotency_key: 'IDEMP-W001A05-REF-002',
+      reason: 'local-dev guarded closure',
+    }),
+  })
+`,
+    )
+    write(
+      fixtureRoot,
+      'src/views/sales_inventory/SalesInventoryReferenceList.vue',
+      `<template>
+  <div>
+    <el-button>查询客户</el-button>
+    <el-button>新增客户草稿</el-button>
+    <el-button>停用草稿</el-button>
+    <span>local-dev guarded draft closure</span>
+  </div>
+</template>
+<script setup lang="ts">
+import {
+  fetchSalesInventoryCustomers,
+  fetchSalesInventoryWarehouses,
+  createSalesInventoryReferenceDraft,
+  deactivateSalesInventoryReferenceDraft,
+} from '@/api/sales_inventory'
+const loadRefs = () => Promise.all([fetchSalesInventoryCustomers(), fetchSalesInventoryWarehouses()])
+const draftAction = 'create_draft'
+const draftCloseAction = 'deactivate_draft'
+const openDraftClosure = () => createSalesInventoryReferenceDraft()
+const closeDraftClosure = () => deactivateSalesInventoryReferenceDraft()
+</script>
+`,
+    )
+    const result = checkSalesInventoryContracts(fixtureRoot)
+    assertTrue(result.ok, `reference draft local-dev guarded closure 预期通过，实际失败:\n${result.failures.join('\n')}`)
+    console.log('PASS: local-dev reference draft guarded closure')
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true })
+  }
+}
+
 const runFailureCase = (caseName, mutateFixture, expectedKeyword) => {
   const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'sales-inventory-contract-fixture-'))
   try {
@@ -176,6 +245,20 @@ const failureCases = [
     mutate: (root) => {
       const content = read(root, 'src/router/index.ts')
       write(root, 'src/router/index.ts', `${content}\n// run-once\n`)
+    },
+  },
+  {
+    name: 'stock-ledger local draft POST should fail closed',
+    expectedKeyword: 'SalesInventoryStockLedger.vue -> POST',
+    mutate: (root) => {
+      const content = read(root, 'src/views/sales_inventory/SalesInventoryStockLedger.vue')
+      write(
+        root,
+        'src/views/sales_inventory/SalesInventoryStockLedger.vue',
+        `${content}
+const saveLocalDraft = () => ({ method: 'POST' })
+`,
+      )
     },
   },
   {
@@ -245,6 +328,7 @@ const failureCases = [
 ]
 
 runSuccessCase()
+runReferenceDraftLocalDevSuccessCase()
 for (const item of failureCases) {
   runFailureCase(item.name, item.mutate, item.expectedKeyword)
 }
