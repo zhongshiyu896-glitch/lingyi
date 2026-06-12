@@ -1693,15 +1693,15 @@ class ProductionService:
         try:
             sales_order = self.erp_adapter.get_sales_order(sales_order=sales_order_name)
         except ERPNextServiceUnavailableError:
-            synthetic_context = self._build_local_synthetic_sales_order_context(payload=payload, request_id=request_id)
-            if synthetic_context is not None:
-                return synthetic_context
+            local_scenario_context = self._build_local_scenario_sales_order_context(payload=payload, request_id=request_id)
+            if local_scenario_context is not None:
+                return local_scenario_context
             raise
 
         if sales_order is None:
-            synthetic_context = self._build_local_synthetic_sales_order_context(payload=payload, request_id=request_id)
-            if synthetic_context is not None:
-                return synthetic_context
+            local_scenario_context = self._build_local_scenario_sales_order_context(payload=payload, request_id=request_id)
+            if local_scenario_context is not None:
+                return local_scenario_context
             raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order 不存在")
 
         if int(sales_order.docstatus) != 1:
@@ -1719,16 +1719,16 @@ class ProductionService:
             raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="Sales Order company 缺失")
         return sales_order, target_item, company
 
-    def _build_local_synthetic_sales_order_context(
+    def _build_local_scenario_sales_order_context(
         self,
         *,
         payload: ProductionPlanCreateRequest,
         request_id: str | None = None,
     ) -> tuple[ERPNextSalesOrder, ERPNextSalesOrderItem, str] | None:
-        if not self._is_local_synthetic_context_enabled():
+        if not self._is_local_scenario_context_enabled():
             return None
 
-        scenario_tag = self._extract_local_synthetic_scenario_tag(payload=payload, request_id=request_id)
+        scenario_tag = self._extract_local_scenario_tag(payload=payload, request_id=request_id)
         if scenario_tag is None:
             return None
 
@@ -1737,34 +1737,34 @@ class ProductionService:
         sales_order_item_name = (payload.sales_order_item or "").strip()
         company = (payload.company or os.getenv("LINGYI_LOCAL_DEV_COMPANY", PRODUCTION_LOCAL_DEFAULT_COMPANY)).strip()
         if not company:
-            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="local synthetic context 缺少 company")
+            raise BusinessException(code=PRODUCTION_SO_NOT_FOUND, message="local scenario context 缺少 company")
         if not sales_order_item_name:
-            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="local synthetic context 缺少 sales_order_item")
+            raise BusinessException(code=PRODUCTION_SO_ITEM_NOT_FOUND, message="local scenario context 缺少 sales_order_item")
 
         planned_qty = Decimal(str(payload.planned_qty))
-        synthetic_item = ERPNextSalesOrderItem(
+        local_scenario_item = ERPNextSalesOrderItem(
             name=sales_order_item_name,
             item_code=item_code,
             qty=planned_qty,
         )
-        synthetic_order = ERPNextSalesOrder(
+        local_scenario_order = ERPNextSalesOrder(
             name=sales_order_name,
             docstatus=1,
             status="To Deliver and Bill",
             company=company,
-            customer=f"LOCAL_SYNTHETIC_{scenario_tag}",
-            items=(synthetic_item,),
+            customer=f"LOCAL_SCENARIO_{scenario_tag}",
+            items=(local_scenario_item,),
         )
-        return synthetic_order, synthetic_item, company
+        return local_scenario_order, local_scenario_item, company
 
     @staticmethod
-    def _is_local_synthetic_context_enabled() -> bool:
+    def _is_local_scenario_context_enabled() -> bool:
         app_env = os.getenv("APP_ENV", "").strip().lower()
         db_url = os.getenv("LINGYI_DB_URL", "").strip()
         return app_env == "development" and db_url == PRODUCTION_LOCAL_ALLOWED_DB_URL
 
     @staticmethod
-    def _extract_local_synthetic_scenario_tag(
+    def _extract_local_scenario_tag(
         payload: ProductionPlanCreateRequest,
         request_id: str | None = None,
     ) -> str | None:
