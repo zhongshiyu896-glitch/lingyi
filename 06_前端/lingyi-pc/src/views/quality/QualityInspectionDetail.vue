@@ -91,7 +91,7 @@
             <el-button
               v-if="canUpdate"
               type="primary"
-              :disabled="readonlyWriteDisabled || !canUpdate"
+              :disabled="!canUpdate"
               :loading="actionSubmitting && activeAction === 'update'"
               data-testid="quality-inspection-detail-action-edit"
               data-action-type="write"
@@ -104,7 +104,7 @@
             <el-button
               v-if="canUpdate"
               type="warning"
-              :disabled="readonlyWriteDisabled || !canUpdate"
+              :disabled="!canUpdate"
               :loading="actionSubmitting && activeAction === 'defects'"
               data-testid="quality-inspection-detail-action-defect"
               data-action-type="write"
@@ -117,7 +117,7 @@
             <el-button
               v-if="canConfirm"
               type="success"
-              :disabled="readonlyWriteDisabled || !canConfirm"
+              :disabled="!canConfirm"
               :loading="actionSubmitting && activeAction === 'confirm'"
               data-testid="quality-inspection-detail-action-confirm"
               data-action-type="write"
@@ -130,7 +130,7 @@
             <el-button
               v-if="canCancel"
               type="danger"
-              :disabled="readonlyWriteDisabled || !canCancel"
+              :disabled="!canCancel"
               :loading="actionSubmitting && activeAction === 'cancel'"
               data-testid="quality-inspection-detail-action-cancel"
               data-action-type="write"
@@ -260,7 +260,7 @@
         <el-button @click="updateDialogVisible = false">取消</el-button>
         <el-button
           type="primary"
-          :disabled="readonlyWriteDisabled"
+          :disabled="!canUpdate"
           :loading="actionSubmitting && activeAction === 'update'"
           data-write-guard="readonly:quality-detail-update-submit"
           data-guard-state="guarded_readonly"
@@ -306,7 +306,7 @@
         <el-button @click="defectDialogVisible = false">取消</el-button>
         <el-button
           type="primary"
-          :disabled="readonlyWriteDisabled"
+          :disabled="!canUpdate"
           :loading="actionSubmitting && activeAction === 'defects'"
           data-write-guard="readonly:quality-detail-defects-submit"
           data-guard-state="guarded_readonly"
@@ -336,7 +336,7 @@
         <el-button @click="confirmDialogVisible = false">取消</el-button>
         <el-button
           type="success"
-          :disabled="readonlyWriteDisabled"
+          :disabled="!canConfirm"
           :loading="actionSubmitting && activeAction === 'confirm'"
           data-write-guard="readonly:quality-detail-confirm-submit"
           data-guard-state="guarded_readonly"
@@ -366,7 +366,7 @@
         <el-button @click="cancelDialogVisible = false">返回</el-button>
         <el-button
           type="danger"
-          :disabled="readonlyWriteDisabled"
+          :disabled="!canCancel"
           :loading="actionSubmitting && activeAction === 'cancel'"
           data-write-guard="readonly:quality-detail-cancel-submit"
           data-guard-state="guarded_readonly"
@@ -504,11 +504,11 @@ const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.
 const canUpdatePermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_update)
 const canConfirmPermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_confirm)
 const canCancelPermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_cancel)
-
-const canUpdate = computed<boolean>(() => canUpdatePermission.value && detail.value?.status === 'draft')
-const canConfirm = computed<boolean>(() => canConfirmPermission.value && detail.value?.status === 'draft')
-const canCancel = computed<boolean>(() => canCancelPermission.value && detail.value?.status === 'confirmed')
 const readonlyWriteDisabled = computed<boolean>(() => true)
+
+const canUpdate = computed<boolean>(() => canUpdatePermission.value && detail.value?.status === 'draft' && !readonlyWriteDisabled.value)
+const canConfirm = computed<boolean>(() => canConfirmPermission.value && detail.value?.status === 'draft' && !readonlyWriteDisabled.value)
+const canCancel = computed<boolean>(() => canCancelPermission.value && detail.value?.status === 'confirmed' && !readonlyWriteDisabled.value)
 const qualityDetailParity = computed<string>(() => {
   const parity = String(route.query.parity || 'quality-inspections-detail').trim()
   return parity || 'quality-inspections-detail'

@@ -5664,12 +5664,24 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
     }
   }
 
+  const resolveBlobUrlSourceFromSpreadArguments = (argumentNodes) => {
+    for (const rawArg of argumentNodes) {
+      const arg = unwrapExpression(rawArg)
+      if (!arg || !ts.isSpreadElement(arg)) continue
+      const spreadResolved = resolveRuntimeSpreadArgumentElements(arg.expression, runtimeContext)
+      if (spreadResolved.unresolved) continue
+      const sourceArg = spreadResolved.args[0] || null
+      if (sourceArg && isBlobUrlSourceExpression(sourceArg)) return sourceArg
+    }
+    return null
+  }
+
   const collectBlobUrlIdentifiers = (node) => {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
       const initializer = unwrapExpression(node.initializer)
       if (ts.isCallExpression(initializer)) {
         const blobCall = resolveBlobUrlCallDescriptor(initializer)
-        if (blobCall?.createsBlobUrl && !blobCall.unresolved) {
+        if (blobCall?.createsBlobUrl) {
           blobUrlIdentifierSet.add(node.name.text)
         }
       }
@@ -5683,7 +5695,7 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
       const leftIdentifier = unwrapExpression(node.left)
       if (ts.isIdentifier(leftIdentifier) && ts.isCallExpression(target)) {
         const blobCall = resolveBlobUrlCallDescriptor(target)
-        if (blobCall?.createsBlobUrl && !blobCall.unresolved) {
+        if (blobCall?.createsBlobUrl) {
           blobUrlIdentifierSet.add(leftIdentifier.text)
         }
       }
@@ -5739,6 +5751,12 @@ const collectRuntimeDynamicModuleLoadingFindings = (sourceFile, runtimeContext) 
 
     if (ts.isNewExpression(node)) {
       const descriptor = resolveConstructorInvocationDescriptorFromNewExpression(node)
+      if (descriptor.ctor_kind !== 'safe_known_constructor') {
+        const spreadBlobSource = resolveBlobUrlSourceFromSpreadArguments(Array.from(node.arguments || []))
+        if (spreadBlobSource) {
+          pushFinding('RuntimeWorkerConstructorUnknownTarget', spreadBlobSource.getText(sourceFile))
+        }
+      }
       applyConstructorInvocationDescriptor(descriptor)
     }
 

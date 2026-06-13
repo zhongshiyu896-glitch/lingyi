@@ -47,7 +47,7 @@
             <el-button
               v-if="canCreate"
               type="success"
-              :disabled="readonlyWriteDisabled || !canCreate"
+              :disabled="!canCreate"
               data-testid="quality-create-button"
               data-action-type="write"
               data-write-guard="readonly:quality-create-inspection"
@@ -431,7 +431,7 @@
         <el-button
           type="primary"
           :loading="createSubmitting"
-          :disabled="readonlyWriteDisabled || !canCreate"
+          :disabled="!canCreate"
           data-testid="quality-create-submit"
           data-action-type="write"
           data-write-guard="readonly:quality-create-submit"
@@ -548,9 +548,9 @@ const buildCreateFormState = (): QualityCreateFormState => {
 const createForm = reactive<QualityCreateFormState>(buildCreateFormState())
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_read)
-const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_create)
 const canExport = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_export)
 const readonlyWriteDisabled = computed<boolean>(() => true)
+const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_create && !readonlyWriteDisabled.value)
 const qualityParity = computed<string>(() => {
   const parity = String(route.query.parity || 'quality-inspections').trim()
   return parity || 'quality-inspections'
