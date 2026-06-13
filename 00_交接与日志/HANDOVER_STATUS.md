@@ -1,38 +1,37 @@
 # 交接状态
 
-任务：TASK-W001A-QUEUE-AUTONOMY
-状态：GATE_BLOCKED / VERIFY_FAIL
-当前角色：A Technical Architect
+任务：TASK-W003A-M1-00-DOCS-ALIGN-AND-AUTH-ENTRY
+状态：W003A_MAINLINE_REANCHORED / READY_FOR_M1_AUTH_ENTRY
+当前角色：B Engineer
 下一角色：A Technical Architect
-更新时间：2026-06-12 17:35 CST+8
-当前主链：TASK-W001A-SIX-MODULE-WRITE-MAINLINE
+更新时间：2026-06-13 14:20 CST+8
+当前主链：TASK-W003A-LAUNCH / M1 登录认证入口
 
 ## 当前锚点
 
-- W001A `SEALED` 已按用户裁决作废，主线重开。
-- W002A 自创批次冻结，不再追加 W002A-xx 提交。
-- 最新产品 HEAD：`3a4c325c24d148c124c31c4bcb4d46fcb5f30435`
-- `origin/codex/sprint4-seal...HEAD = 0/0`
-- tracked dirty：`0`
+- W003A 当前状态：`MAINLINE_ACTIVE`
+- W001A：`ABSORBED_BY_W003A`
+- M1：`登录认证入口 + dev-auth 默认关闭`
+- M2：`PostgreSQL / BOM / 生产计划`
+- M3：`大货订单 / 工票 / 质检 / 工资`
+- M4：`外发 / 对账 / ERPNext flag`
+- M5：`仓库草稿入口 / 进销存 / local-dev 收紧`
+- M6：`首页工作台 / 部署基线 / 全链试运行`
+- 最新产品 HEAD：`83642cae08448d7ef6e32b471cbee2e4e594a0d0`
+- `HEAD...origin/codex/sprint4-seal = 0/0`
 - staged area：`empty`
 
 ## 已完成
 
-- tracked dirty 已归档到 `04_测试与验收/dirty_archive_20260612.patch` 并全部 restore。
-- `FIX-W001A-BOM-01` 已按裁决修复 `/api/bom/{id}/explode` 权限 fail-closed 顺序。
-- 提交并推送：`3a4c325 fix: restore bom explode permission fail closed`
-- BOM 直接验收：`5 passed`
-- 封板基线验收：`107 passed`
+- W003A 裁决文件已成为当前权威主线。
+- W001A CAND-01：质检写闭环 `PASS / committed / pushed`
+- W001A CAND-02：外发写闭环 `PASS / committed / pushed`
+- W001A CAND-03：仓库草稿入口停止独立推进，范围并入 `W003A M5`
 
-## 当前阻断
+## 冻结与禁止
 
-- CAND-01 尚未派发。
-- 阻断点：`npm run verify` 当前失败于 style-profit contract fixture keyword mismatch。
-- 按队列规则，必须先恢复 clean HEAD 整树 verify PASS，才可进入 CAND-01。
-
-## 禁止
-
-- 不启动 W002A。
-- 不新增候选或自创主线。
-- 不删除或 add 产品区 untracked。
-- 不 PR/merge/tag/release/ERPNext 生产写。
+- excluded dirty：`06_前端/lingyi-pc/src/views/bom/composables/useBomAlternateReadonly.ts`
+- carryover freeze：`06_前端/lingyi-pc/src/views/warehouse/WarehouseDashboard.vue`
+- W002A：`继续冻结，不启动`
+- parked blockers：`不释放`
+- 不 PR / merge / tag / release / ERPNext 生产写 / 生产账号
