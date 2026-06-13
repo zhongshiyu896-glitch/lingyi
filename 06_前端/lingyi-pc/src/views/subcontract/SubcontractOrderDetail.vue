@@ -1,723 +1,817 @@
 <template>
-  <div class="subcontract-detail-page" data-testid="yisuan-1to1-subcontract-detail-shell">
-    <el-card shadow="never">
+  <div class="subcontract-detail-page" data-testid="subcontract-order-detail-page">
+    <el-card shadow="never" v-loading="loading">
       <template #header>
         <div class="header-row">
           <div>
-            <h2>委外订单详情（本地可试用）</h2>
-            <p class="sub-title">local-dev only / read-only usable slice / no receipt or inventory release</p>
+            <h2>委外订单详情</h2>
+            <p class="sub-title">LOCAL_DEV_WRITE_CLOSURE，仅允许 create 之后的 issue / receive / inspect / settlement preview 本地闭环。</p>
           </div>
           <div class="header-actions">
-            <el-button @click="goList">返回列表</el-button>
-            <el-button type="primary" plain :loading="loading" @click="refreshDetail">刷新详情</el-button>
+            <el-button data-testid="subcontract-detail-back" @click="goList">返回列表</el-button>
+            <el-button type="primary" plain :loading="loading" data-testid="subcontract-detail-refresh" @click="refreshDetail">
+              刷新详情
+            </el-button>
           </div>
         </div>
       </template>
+
       <el-alert
-        type="warning"
-        :closable="false"
-        title="本页只展示 local-dev 详情，不触发收货、入库、结算 release、库存 outbox、worker push 或 ERPNext 生命周期。"
-      />
-      <el-alert
-        v-if="isMaterialPurchaseParity"
-        class="feedback"
         type="info"
         :closable="false"
-        data-testid="realobj-subcontract-detail-parity-alert"
-        title="materialPurchase final_path: /materialPurchase/materialPurchaseProcess -> /subcontract/detail?parity=material-purchase"
+        title="允许写端点仅限 create / issue-material / receive / inspect / settlement-preview。"
       />
-      <el-alert v-if="feedback" class="feedback" type="info" :closable="false" :title="feedback" />
       <el-alert
-        class="feedback"
+        class="top-alert"
         type="warning"
         :closable="false"
-        data-testid="realobj-subcontract-detail-remaining-gap"
-        :title="timelineReadonlySummary?.remainingGap || timelineRemainingGap"
+        title="禁止 settlement-locks、release、stock-sync/retry、internal run-once、ERPNext、worker 与 production write。"
       />
-    </el-card>
+      <el-alert
+        v-if="actionFeedback"
+        class="top-alert"
+        :title="actionFeedback"
+        type="success"
+        :closable="false"
+        data-testid="subcontract-action-feedback"
+      />
+      <el-alert
+        v-if="loadError"
+        class="top-alert"
+        :title="loadError"
+        type="error"
+        :closable="false"
+        data-testid="subcontract-detail-error"
+      />
 
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-detail-header-summary">
-      <template #header>
-        <span>订单基础信息</span>
-      </template>
-      <el-descriptions border :column="2">
-        <el-descriptions-item label="单据号">{{ state.subcontractNo || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="供应商/加工厂">{{ state.supplier || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="公司">{{ state.company || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="物料编码">{{ state.itemCode || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="工序">{{ state.processName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="BOM ID">{{ state.bomId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="交期参考">{{ formatDateTime(state.createdAt) }}</el-descriptions-item>
-        <el-descriptions-item label="最近更新时间">{{ formatDateTime(state.updatedAt) }}</el-descriptions-item>
-        <el-descriptions-item label="计划数量">{{ formatNumber(state.plannedQty) }}</el-descriptions-item>
-        <el-descriptions-item label="主款/工单">{{ state.salesOrder || '-' }} / {{ state.workOrder || '-' }}</el-descriptions-item>
-      </el-descriptions>
-      <div class="tag-stack detail-tags">
-        <el-tag :type="statusType(state.status)">{{ statusLabel(state.status) }}</el-tag>
-        <el-tag :type="resourceScopeType(state.resourceScopeStatus)" effect="plain">
-          {{ resourceScopeLabel(state.resourceScopeStatus) }}
-        </el-tag>
-        <el-tag :type="profitScopeType(state.profitScopeStatus)" effect="plain">
-          {{ profitScopeLabel(state.profitScopeStatus) }}
-        </el-tag>
-      </div>
-    </el-card>
+      <el-empty v-if="!orderId" description="缺少委外单 ID" data-testid="subcontract-detail-missing-id" />
+      <el-empty v-else-if="!detail && !loading && !loadError" description="未找到委外单" data-testid="subcontract-detail-empty" />
+      <template v-else-if="detail">
+        <el-descriptions border :column="3" data-testid="subcontract-detail-main-fields">
+          <el-descriptions-item label="单据号">{{ detail.subcontract_no }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="statusTag(detail.status)">{{ detail.status }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="资源范围">
+            <el-tag :type="detail.resource_scope_status === 'ready' ? 'success' : 'warning'" effect="plain">
+              {{ detail.resource_scope_status }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="公司">{{ detail.company || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="供应商">{{ detail.supplier }}</el-descriptions-item>
+          <el-descriptions-item label="物料">{{ detail.item_code }}</el-descriptions-item>
+          <el-descriptions-item label="工序">{{ detail.process_name }}</el-descriptions-item>
+          <el-descriptions-item label="BOM ID">{{ detail.bom_id }}</el-descriptions-item>
+          <el-descriptions-item label="工单 / 计划">{{ detail.work_order || '-' }} / {{ detail.production_plan_id || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="计划数量">{{ formatNumber(detail.planned_qty) }}</el-descriptions-item>
+          <el-descriptions-item label="已发料">{{ formatNumber(detail.issued_qty) }}</el-descriptions-item>
+          <el-descriptions-item label="已回料">{{ formatNumber(detail.received_qty) }}</el-descriptions-item>
+          <el-descriptions-item label="已验货">{{ formatNumber(detail.inspected_qty) }}</el-descriptions-item>
+          <el-descriptions-item label="已验收">{{ formatNumber(detail.accepted_qty) }}</el-descriptions-item>
+          <el-descriptions-item label="不良数量">{{ formatNumber(detail.rejected_qty) }}</el-descriptions-item>
+          <el-descriptions-item label="总额">{{ formatNumber(detail.gross_amount, 2) }}</el-descriptions-item>
+          <el-descriptions-item label="净额">{{ formatNumber(detail.net_amount, 2) }}</el-descriptions-item>
+          <el-descriptions-item label="结算状态">{{ detail.settlement_status || '-' }}</el-descriptions-item>
+        </el-descriptions>
 
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-detail-guard-summary">
-      <template #header>
-        <div class="summary-header">
-          <span>详情摘要与入库前置守卫</span>
-          <div class="readonly-actions">
-            <el-tooltip v-for="action in readonlyGuardActions" :key="action.label" :content="action.reason" placement="top">
-              <span>
-                <el-button disabled>{{ action.label }}</el-button>
-              </span>
-            </el-tooltip>
-          </div>
+        <div class="action-row" data-testid="subcontract-detail-actions">
+          <el-button
+            type="warning"
+            :disabled="!canIssue"
+            :loading="actionSubmitting && activeAction === 'issue'"
+            data-testid="subcontract-issue-button"
+            data-action-type="write"
+            @click="openIssueDialog"
+          >
+            发料
+          </el-button>
+          <el-button
+            type="primary"
+            :disabled="!canReceive"
+            :loading="actionSubmitting && activeAction === 'receive'"
+            data-testid="subcontract-receive-button"
+            data-action-type="write"
+            @click="openReceiveDialog"
+          >
+            回料
+          </el-button>
+          <el-button
+            type="success"
+            :disabled="!canInspect"
+            :loading="actionSubmitting && activeAction === 'inspect'"
+            data-testid="subcontract-inspect-button"
+            data-action-type="write"
+            @click="openInspectDialog"
+          >
+            验货
+          </el-button>
+          <el-button
+            type="info"
+            :disabled="!canPreviewSettlement"
+            :loading="actionSubmitting && activeAction === 'preview'"
+            data-testid="subcontract-settlement-preview-button"
+            data-action-type="write"
+            @click="openPreviewDialog"
+          >
+            结算预览
+          </el-button>
         </div>
+        <p class="permission-tip" data-testid="subcontract-action-state">{{ actionStateText }}</p>
       </template>
-      <el-descriptions border :column="3">
-        <el-descriptions-item label="收料批次">{{ detailReadonlySummary.receiptBatchCount }}</el-descriptions-item>
-        <el-descriptions-item label="验货记录">{{ detailReadonlySummary.inspectionCount }}</el-descriptions-item>
-        <el-descriptions-item label="回料进度">{{ detailReadonlySummary.receiptProgressRatio }}</el-descriptions-item>
-        <el-descriptions-item label="验收进度">{{ detailReadonlySummary.acceptanceProgressRatio }}</el-descriptions-item>
-        <el-descriptions-item label="待收货">{{ formatNumber(detailReadonlySummary.remainingReceiptQty) }}</el-descriptions-item>
-        <el-descriptions-item label="待验货">{{ formatNumber(detailReadonlySummary.remainingAcceptanceQty) }}</el-descriptions-item>
-      </el-descriptions>
-      <div class="guard-list">
-        <div v-for="guard in guardStates" :key="guard.label" class="guard-item">
-          <el-tag :type="guard.type">{{ guard.label }}</el-tag>
-          <span>{{ guard.reason }}</span>
-        </div>
-      </div>
     </el-card>
 
-    <el-card
-      v-if="timelineReadonlySummary"
-      shadow="never"
-      data-testid="yisuan-1to1-subcontract-detail-timeline-exception-summary"
-    >
+    <el-card v-if="detail" shadow="never">
       <template #header>
-        <span>收发异常与 parity 摘要</span>
+        <span>收料批次</span>
       </template>
-      <el-descriptions border :column="3">
-        <el-descriptions-item label="发料节点">{{ timelineReadonlySummary.issueSummary }}</el-descriptions-item>
-        <el-descriptions-item label="收货节点">{{ timelineReadonlySummary.receiptSummary }}</el-descriptions-item>
-        <el-descriptions-item label="material-purchase parity">{{ timelineReadonlySummary.parityLabel }}</el-descriptions-item>
-        <el-descriptions-item label="收发差异">{{ timelineReadonlySummary.discrepancyLabel }}</el-descriptions-item>
-        <el-descriptions-item label="延期风险">{{ timelineReadonlySummary.delayLabel }}</el-descriptions-item>
-        <el-descriptions-item label="缺料/超欠收">{{ timelineReadonlySummary.shortageLabel }} / {{ timelineReadonlySummary.overUnderLabel }}</el-descriptions-item>
-      </el-descriptions>
-      <div v-if="timelineExceptionBadges.length > 0" class="tag-stack detail-tags">
-        <el-tag v-for="badge in timelineExceptionBadges" :key="badge.label" :type="badge.type" effect="plain">
-          {{ badge.label }}
-        </el-tag>
-      </div>
-    </el-card>
-
-    <SubcontractInspectionGuardReadonly :summary="inspectionGuardReadonly" />
-
-    <SubcontractReceiptTimelineReadonly
-      v-if="timelineState && timelineMilestones.length > 0"
-      :milestones="timelineMilestones"
-      :settlement-state="timelineState"
-      :abnormal-nodes="abnormalNodes"
-    />
-
-    <SubcontractScopeBridgeReadonly
-      v-if="scopeBridgeReadonly"
-      :summary="scopeBridgeReadonly"
-      :guard-states="scopeBridgeGuardStates"
-      :final-path="finalPath"
-      :parity-token="parityToken"
-    />
-
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-material-lines">
-      <template #header>
-        <span>物料明细（只读）</span>
-      </template>
-      <el-table :data="materialLines" border empty-text="暂无物料明细">
-        <el-table-column prop="materialCode" label="物料编码" min-width="160" />
-        <el-table-column prop="materialName" label="物料名称" min-width="180" />
-        <el-table-column prop="colorSpec" label="颜色/规格" min-width="180" />
-        <el-table-column prop="uom" label="单位" width="90" />
-        <el-table-column prop="demandQty" label="需求数量" width="120" />
-        <el-table-column prop="purchaseQty" label="委外/回料数量" width="150" />
+      <el-table :data="detail.receipts || []" border empty-text="暂无收料批次" data-testid="subcontract-receipts-table">
+        <el-table-column prop="receipt_batch_no" label="批次号" min-width="150" />
+        <el-table-column prop="receipt_warehouse" label="回料仓" min-width="140" />
+        <el-table-column label="回料数量" width="120">
+          <template #default="{ row }">{{ formatNumber(row.received_qty) }}</template>
+        </el-table-column>
+        <el-table-column prop="sync_status" label="同步状态" width="140" />
+        <el-table-column prop="stock_entry_name" label="本地 stock entry" min-width="180" />
       </el-table>
     </el-card>
 
-    <section class="issue-inspection-panel" data-testid="yisuan-1to1-subcontract-issue-return-inspection-panel">
-      <el-card shadow="never">
-        <template #header>
-          <span>收料/验货/金额概览</span>
-        </template>
-        <el-descriptions border :column="2">
-          <el-descriptions-item label="发料">{{ formatNumber(state.issuedQty) }}</el-descriptions-item>
-          <el-descriptions-item label="回料">{{ formatNumber(state.receivedQty) }}</el-descriptions-item>
-          <el-descriptions-item label="验收">{{ formatNumber(state.acceptedQty) }}</el-descriptions-item>
-          <el-descriptions-item label="不良">{{ formatNumber(state.rejectedQty) }}</el-descriptions-item>
-          <el-descriptions-item label="总额">{{ formatNumber(state.grossAmount, 2) }}</el-descriptions-item>
-          <el-descriptions-item label="净额">{{ formatNumber(state.netAmount, 2) }}</el-descriptions-item>
-        </el-descriptions>
-      </el-card>
-
-      <el-card shadow="never">
-        <template #header>
-          <span>收料批次</span>
-        </template>
-        <el-table :data="receipts" border empty-text="暂无收料记录">
-          <el-table-column prop="receiptBatchNo" label="批次号" min-width="150" />
-          <el-table-column prop="warehouse" label="回料仓" min-width="130" />
-          <el-table-column prop="receivedQty" label="回料数量" width="120" />
-          <el-table-column prop="syncStatus" label="同步状态" width="150" />
-        </el-table>
-      </el-card>
-
-      <el-card shadow="never">
-        <template #header>
-          <span>验货结果</span>
-        </template>
-        <el-table :data="inspections" border empty-text="暂无验货记录">
-          <el-table-column prop="inspectionNo" label="验货单号" min-width="160" />
-          <el-table-column prop="inspectedQty" label="验货数量" width="120" />
-          <el-table-column prop="acceptedQty" label="合格数量" width="120" />
-          <el-table-column prop="rejectedQty" label="不良数量" width="120" />
-          <el-table-column prop="netAmount" label="净额" width="120" />
-        </el-table>
-      </el-card>
-    </section>
-
-    <el-card shadow="never" data-testid="realobj-subcontract-readback-evidence">
+    <el-card v-if="detail" shadow="never">
       <template #header>
-        <span>本地可试用证据字段</span>
+        <span>验货结果</span>
       </template>
-      <el-descriptions border :column="2">
-        <el-descriptions-item label="subcontract_or_purchase_readback_success">
-          {{ flags.subcontractOrPurchaseReadbackSuccess ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="material_line_readback_success">
-          {{ flags.materialLineReadbackSuccess ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="issue_return_or_inspection_readback_success">
-          {{ flags.issueReturnOrInspectionReadbackSuccess ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="receipt_guard_visible">
-          {{ guardStates.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="inventory_write_release">false</el-descriptions-item>
-        <el-descriptions-item label="receipt_real_effect">false</el-descriptions-item>
-        <el-descriptions-item label="worker_push">false</el-descriptions-item>
-        <el-descriptions-item label="erpnext_production">false</el-descriptions-item>
-        <el-descriptions-item label="fallback_snapshot_used">
-          {{ fallbackSnapshotUsed ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="readonly_actions_guarded">true</el-descriptions-item>
-        <el-descriptions-item label="receipt_timeline_visible">
-          {{ timelineMilestones.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="issue_timeline_visible">
-          {{ timelineReadonlySummary ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="settlement_readonly_state_visible">
-          {{ timelineState ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="abnormal_node_readback_visible">
-          {{ abnormalNodes.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="receipt_difference_visible">
-          {{ timelineExceptionBadges.some((badge) => badge.label.includes('收发差异')) ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="delay_shortage_visible">
-          {{
-            timelineExceptionBadges.some((badge) => badge.label.includes('延期风险'))
-              || timelineExceptionBadges.some((badge) => badge.label.includes('缺料预警'))
-              ? 'true'
-              : 'false'
-          }}
-        </el-descriptions-item>
-        <el-descriptions-item label="scope_bridge_visible">
-          {{ scopeBridgeReadonly ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="profit_scope_status_visible">
-          {{ scopeBridgeReadonly?.profitScopeLabel ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="material_detail_readonly_tags_visible">
-          {{ scopeBridgeReadonly && scopeBridgeReadonly.materialTags.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="readonly_guard_states_visible">
-          {{ scopeBridgeGuardStates.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="material_purchase_parity_visible">
-          {{ isMaterialPurchaseParity ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="inspection_guard_visible">
-          {{ inspectionGuardReadonly.summaryCards.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="inspection_item_status_visible">
-          {{ inspectionGuardReadonly.inspectionItems.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="inspection_blocked_reason_visible">
-          {{ inspectionGuardReadonly.blockedReasons.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="disabled_receive_issue_settlement_export_reason_visible">
-          {{ inspectionGuardReadonly.disabledActions.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="remaining_gap_visible">true</el-descriptions-item>
-        <el-descriptions-item label="cand110_base_readback_retained">true</el-descriptions-item>
-        <el-descriptions-item label="cand134_timeline_settlement_retained">
-          {{ timelineMilestones.length > 0 && timelineState ? 'true' : 'false' }}
-        </el-descriptions-item>
+      <el-table :data="detail.inspections || []" border empty-text="暂无验货记录" data-testid="subcontract-inspections-table">
+        <el-table-column prop="inspection_no" label="验货单号" min-width="160" />
+        <el-table-column prop="receipt_batch_no" label="批次号" min-width="150" />
+        <el-table-column label="验货数量" width="120">
+          <template #default="{ row }">{{ formatNumber(row.inspected_qty) }}</template>
+        </el-table-column>
+        <el-table-column label="不良数量" width="120">
+          <template #default="{ row }">{{ formatNumber(row.rejected_qty) }}</template>
+        </el-table-column>
+        <el-table-column label="净额" width="120">
+          <template #default="{ row }">{{ formatNumber(row.net_amount, 2) }}</template>
+        </el-table-column>
+        <el-table-column prop="remark" label="备注" min-width="160" />
+      </el-table>
+    </el-card>
+
+    <el-card v-if="detail" shadow="never">
+      <template #header>
+        <span>结算候选与预览</span>
+      </template>
+      <el-alert
+        v-if="settlementError"
+        class="top-alert"
+        type="error"
+        :closable="false"
+        :title="settlementError"
+      />
+      <el-table
+        :data="settlementCandidates"
+        border
+        empty-text="暂无 settlement candidate，请先完成验货。"
+        data-testid="subcontract-settlement-candidates-table"
+      >
+        <el-table-column prop="inspection_id" label="inspection_id" width="120" />
+        <el-table-column prop="receipt_batch_no" label="批次号" min-width="140" />
+        <el-table-column label="验货数量" width="120">
+          <template #default="{ row }">{{ formatNumber(row.inspected_qty) }}</template>
+        </el-table-column>
+        <el-table-column label="净额" width="120">
+          <template #default="{ row }">{{ formatNumber(row.net_amount, 2) }}</template>
+        </el-table-column>
+        <el-table-column prop="settlement_status" label="结算状态" min-width="140" />
+      </el-table>
+
+      <el-descriptions
+        v-if="settlementPreview"
+        class="preview-summary"
+        border
+        :column="2"
+        data-testid="subcontract-settlement-preview-result"
+      >
+        <el-descriptions-item label="line_count">{{ settlementPreview.line_count }}</el-descriptions-item>
+        <el-descriptions-item label="total_qty">{{ formatNumber(settlementPreview.total_qty) }}</el-descriptions-item>
+        <el-descriptions-item label="gross_amount">{{ formatNumber(settlementPreview.gross_amount, 2) }}</el-descriptions-item>
+        <el-descriptions-item label="deduction_amount">{{ formatNumber(settlementPreview.deduction_amount, 2) }}</el-descriptions-item>
+        <el-descriptions-item label="net_amount">{{ formatNumber(settlementPreview.net_amount, 2) }}</el-descriptions-item>
+        <el-descriptions-item label="supplier">{{ settlementPreview.supplier || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
+
+    <el-dialog v-model="issueDialogVisible" title="发料" width="560px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="仓库">
+          <el-input v-model="issueForm.warehouse" data-testid="subcontract-issue-warehouse" />
+        </el-form-item>
+        <el-form-item label="carrier quantity">
+          <el-input v-model="issueForm.quantity" data-testid="subcontract-issue-quantity" />
+        </el-form-item>
+        <el-form-item label="scenario_tag">
+          <el-input v-model="issueForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input :model-value="issueRequestId" readonly />
+        </el-form-item>
+        <el-form-item>
+          <el-text type="info">materials 留空时，后端会按 BOM 自动展开剩余可发料物料。</el-text>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="issueDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="actionSubmitting && activeAction === 'issue'"
+          data-testid="subcontract-issue-submit"
+          @click="submitIssue"
+        >
+          确认发料
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="receiveDialogVisible" title="回料" width="560px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="回料仓">
+          <el-input v-model="receiveForm.receipt_warehouse" data-testid="subcontract-receive-warehouse" />
+        </el-form-item>
+        <el-form-item label="回料数量">
+          <el-input v-model="receiveForm.received_qty" data-testid="subcontract-receive-qty" />
+        </el-form-item>
+        <el-form-item label="颜色">
+          <el-input v-model="receiveForm.color" />
+        </el-form-item>
+        <el-form-item label="尺码">
+          <el-input v-model="receiveForm.size" />
+        </el-form-item>
+        <el-form-item label="批号">
+          <el-input v-model="receiveForm.batch_no" />
+        </el-form-item>
+        <el-form-item label="单位">
+          <el-input v-model="receiveForm.uom" />
+        </el-form-item>
+        <el-form-item label="scenario_tag">
+          <el-input v-model="receiveForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input :model-value="receiveRequestId" readonly />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="receiveDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="actionSubmitting && activeAction === 'receive'"
+          data-testid="subcontract-receive-submit"
+          @click="submitReceive"
+        >
+          确认回料
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="inspectDialogVisible" title="验货" width="560px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="回料批次">
+          <el-select v-model="inspectForm.receipt_batch_no" style="width: 100%" data-testid="subcontract-inspect-batch">
+            <el-option
+              v-for="receipt in detail?.receipts || []"
+              :key="receipt.receipt_batch_no"
+              :label="receipt.receipt_batch_no"
+              :value="receipt.receipt_batch_no"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="验货数量">
+          <el-input v-model="inspectForm.inspected_qty" data-testid="subcontract-inspect-qty" />
+        </el-form-item>
+        <el-form-item label="不良数量">
+          <el-input v-model="inspectForm.rejected_qty" data-testid="subcontract-inspect-rejected" />
+        </el-form-item>
+        <el-form-item label="单件扣款">
+          <el-input v-model="inspectForm.deduction_amount_per_piece" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="inspectForm.remark" type="textarea" :rows="2" />
+        </el-form-item>
+        <el-form-item label="scenario_tag">
+          <el-input v-model="inspectForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input :model-value="inspectRequestId" readonly />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="inspectDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="actionSubmitting && activeAction === 'inspect'"
+          data-testid="subcontract-inspect-submit"
+          @click="submitInspect"
+        >
+          确认验货
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="previewDialogVisible" title="结算预览" width="560px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="inspection_ids">
+          <el-input :model-value="previewInspectionIdsText" readonly />
+        </el-form-item>
+        <el-form-item label="carrier quantity">
+          <el-input v-model="previewForm.quantity" data-testid="subcontract-preview-qty" />
+        </el-form-item>
+        <el-form-item label="scenario_tag">
+          <el-input v-model="previewForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input :model-value="previewRequestId" readonly />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="previewDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="actionSubmitting && activeAction === 'preview'"
+          data-testid="subcontract-preview-submit"
+          @click="submitPreview"
+        >
+          生成预览
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import type {
-  SubcontractInspectionDetailItem,
+  NumericLike,
+  SubcontractInspectRequestPayload,
   SubcontractOrderDetailData,
-  SubcontractOrderListItem,
-  SubcontractReceiptDetailItem,
+  SubcontractReceiveRequestPayload,
+  SubcontractSettlementCandidateListItem,
+  SubcontractSettlementPreviewData,
+  SubcontractSettlementPreviewRequestPayload,
+  SubcontractIssueMaterialRequestPayload,
 } from '@/api/subcontract'
 import {
-  fetchSubcontractOrderDetailReadback,
-  resolveFallbackSubcontractOrderRow,
-} from '@/api/subcontract_readback'
-import SubcontractInspectionGuardReadonly from './components/SubcontractInspectionGuardReadonly.vue'
-import SubcontractReceiptTimelineReadonly from './components/SubcontractReceiptTimelineReadonly.vue'
-import SubcontractScopeBridgeReadonly from './components/SubcontractScopeBridgeReadonly.vue'
-import { useSubcontractInspectionGuardReadonly } from './composables/useSubcontractInspectionGuardReadonly'
-import { useSubcontractReadonly } from './composables/useSubcontractReadonly'
+  buildSubcontractRequestId,
+  buildSubcontractScenarioTag,
+  fetchSubcontractOrderDetail,
+  fetchSubcontractSettlementCandidates,
+  inspectSubcontractOrder,
+  issueSubcontractMaterial,
+  previewSubcontractSettlement,
+  receiveSubcontractOrder,
+} from '@/api/subcontract'
 
-interface MaterialLineView {
-  materialCode: string
-  materialName: string
-  colorSpec: string
-  uom: string
-  demandQty: string
-  purchaseQty: string
-}
-
-interface ReceiptView {
-  receiptBatchNo: string
+interface IssueFormState {
   warehouse: string
-  receivedQty: string
-  syncStatus: string
+  quantity: string
+  scenario_tag: string
+  idempotency_key: string
 }
 
-interface InspectionView {
-  inspectionNo: string
-  inspectedQty: string
-  acceptedQty: string
-  rejectedQty: string
-  netAmount: string
+interface ReceiveFormState {
+  receipt_warehouse: string
+  received_qty: string
+  color: string
+  size: string
+  batch_no: string
+  uom: string
+  scenario_tag: string
+  idempotency_key: string
+}
+
+interface InspectFormState {
+  receipt_batch_no: string
+  inspected_qty: string
+  rejected_qty: string
+  deduction_amount_per_piece: string
+  remark: string
+  scenario_tag: string
+  idempotency_key: string
+}
+
+interface PreviewFormState {
+  quantity: string
+  scenario_tag: string
+  idempotency_key: string
 }
 
 const route = useRoute()
 const router = useRouter()
+
 const loading = ref(false)
-const feedback = ref('')
-const fallbackSnapshotUsed = ref(false)
-const currentDetail = ref<SubcontractOrderDetailData | null>(null)
+const loadError = ref('')
+const settlementError = ref('')
+const actionFeedback = ref('')
+const actionSubmitting = ref(false)
+const activeAction = ref<'issue' | 'receive' | 'inspect' | 'preview' | ''>('')
 
-const {
-  abnormalNodes: buildAbnormalNodes,
-  buildReceiptPreconditionGuard,
-  buildTimelineExceptionBadges,
-  buildTimelineReadonlySummary,
-  detailSummary,
-  formatDateTime,
-  formatNumber,
-  profitScopeLabel,
-  profitScopeType,
-  readonlyGuardActions,
-  resourceScopeLabel,
-  resourceScopeType,
-  scopeBridgeDetailSummary: buildScopeBridgeDetailSummary,
-  scopeGuardStates: buildScopeGuardStates,
-  settlementReadonlyState: buildSettlementReadonlyState,
-  statusLabel,
-  statusType,
-  timelineRemainingGap,
-  timelineMilestones: buildTimelineMilestones,
-} = useSubcontractReadonly()
-const { buildSubcontractInspectionGuardDetailModel } = useSubcontractInspectionGuardReadonly()
+const detail = ref<SubcontractOrderDetailData | null>(null)
+const settlementCandidates = ref<SubcontractSettlementCandidateListItem[]>([])
+const settlementPreview = ref<SubcontractSettlementPreviewData | null>(null)
 
-const parityToken = computed(() => {
-  const raw = route.query.parity
-  if (Array.isArray(raw)) return String(raw[0] || '').trim()
-  return String(raw || '').trim()
-})
+const issueDialogVisible = ref(false)
+const receiveDialogVisible = ref(false)
+const inspectDialogVisible = ref(false)
+const previewDialogVisible = ref(false)
 
-const routeMode = computed(() => {
-  const raw = route.query.mode
-  if (Array.isArray(raw)) return String(raw[0] || '').trim()
-  return String(raw || '').trim()
-})
+const buildNonce = (prefix: string): string => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-const isMaterialPurchaseParity = computed(() => parityToken.value === 'material-purchase')
-const isReadonlyInspectionMode = computed(() => routeMode.value === 'readonly-inspection')
+const parseNumber = (value: NumericLike | undefined | null): number => {
+  const parsed = Number(value || 0)
+  return Number.isFinite(parsed) ? parsed : 0
+}
 
-const finalPath = computed(() => {
-  if (isReadonlyInspectionMode.value && isMaterialPurchaseParity.value) {
-    return '/subcontract/detail?mode=readonly-inspection&parity=material-purchase'
-  }
-  if (isMaterialPurchaseParity.value) return '/subcontract/detail?parity=material-purchase'
-  return '/subcontract/detail'
-})
+const formatNumber = (value: NumericLike | undefined | null, digits = 0): string =>
+  parseNumber(value).toLocaleString('zh-CN', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })
 
-const state = reactive({
-  id: 0,
-  subcontractNo: '',
-  supplier: '',
-  company: '',
-  itemCode: '',
-  bomId: 0,
-  processName: '',
-  plannedQty: '0',
-  issuedQty: '0',
-  receivedQty: '0',
-  acceptedQty: '0',
-  rejectedQty: '0',
-  grossAmount: '0',
-  netAmount: '0',
-  status: '',
-  settlementStatus: '',
-  resourceScopeStatus: '',
-  salesOrder: '',
-  salesOrderItem: '',
-  productionPlanId: '',
-  workOrder: '',
-  jobCard: '',
-  profitScopeStatus: '',
-  profitScopeErrorCode: '',
-  createdAt: '',
-  updatedAt: '',
-})
+const statusTag = (status: string): 'info' | 'success' | 'warning' | 'danger' => {
+  if (status === 'completed') return 'success'
+  if (status === 'draft') return 'info'
+  if (status === 'issued' || status === 'waiting_receive' || status === 'waiting_inspection') return 'warning'
+  return 'danger'
+}
 
-const materialLines = ref<MaterialLineView[]>([])
-const receipts = ref<ReceiptView[]>([])
-const inspections = ref<InspectionView[]>([])
+const normalizeWorkOrderRef = (): string => {
+  if (detail.value?.work_order) return detail.value.work_order
+  if (detail.value?.production_plan_id) return String(detail.value.production_plan_id)
+  return 'NO-WORK-ORDER'
+}
 
-const flags = reactive({
-  subcontractOrPurchaseReadbackSuccess: false,
-  materialLineReadbackSuccess: false,
-  issueReturnOrInspectionReadbackSuccess: false,
-})
-
-const detailReadonlySummary = computed(() =>
-  currentDetail.value
-    ? detailSummary(currentDetail.value)
-    : {
-        receiptBatchCount: 0,
-        inspectionCount: 0,
-        remainingReceiptQty: 0,
-        remainingAcceptanceQty: 0,
-        receiptProgressRatio: '0%',
-        acceptanceProgressRatio: '0%',
-      },
-)
-
-const guardStates = computed(() =>
-  currentDetail.value ? buildReceiptPreconditionGuard(currentDetail.value) : [],
-)
-
-const timelineMilestones = computed(() =>
-  currentDetail.value ? buildTimelineMilestones(currentDetail.value) : [],
-)
-
-const timelineState = computed(() =>
-  currentDetail.value ? buildSettlementReadonlyState(currentDetail.value) : null,
-)
-
-const abnormalNodes = computed(() =>
-  currentDetail.value ? buildAbnormalNodes(currentDetail.value) : [],
-)
-
-const timelineReadonlySummary = computed(() =>
-  currentDetail.value ? buildTimelineReadonlySummary(currentDetail.value, parityToken.value) : null,
-)
-
-const timelineExceptionBadges = computed(() =>
-  currentDetail.value ? buildTimelineExceptionBadges(currentDetail.value, parityToken.value) : [],
-)
-
-const scopeBridgeReadonly = computed(() =>
-  currentDetail.value ? buildScopeBridgeDetailSummary(currentDetail.value, parityToken.value) : null,
-)
-
-const scopeBridgeGuardStates = computed(() => buildScopeGuardStates(scopeBridgeReadonly.value))
-
-const inspectionGuardReadonly = computed(() =>
-  buildSubcontractInspectionGuardDetailModel({
-    detail: currentDetail.value || buildSyntheticDetail(buildSyntheticListItem()),
-    mode: routeMode.value,
-    parity: parityToken.value,
-    finalPath: finalPath.value,
-  }),
-)
-
-const normalizeOrderId = (): number => {
+const orderId = computed(() => {
   const raw = route.query.id
-  if (Array.isArray(raw)) return Number(raw[0] || 0)
-  return Number(raw || 0)
-}
-
-const syntheticTimestamp = (daysAgo: number, hour = 9, minute = 0): string => {
-  const date = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000)
-  date.setHours(hour, minute, 0, 0)
-  return date.toISOString()
-}
-
-const buildSyntheticListItem = (): SubcontractOrderListItem => ({
-  id: 900601,
-  subcontract_no: 'SC-LOCAL-USABLE-001',
-  supplier: parityToken.value === 'material-purchase' ? '本地演示供应商' : '本地演示外协厂',
-  item_code: 'ITEM-A',
-  company: 'COMP-A',
-  bom_id: 1,
-  process_name: '外发裁剪',
-  planned_qty: '120',
-  subcontract_rate: '0.65',
-  issued_qty: '90',
-  received_qty: '56',
-  inspected_qty: '56',
-  rejected_qty: '3',
-  accepted_qty: '53',
-  gross_amount: '6800',
-  deduction_amount: '180',
-  net_amount: '6620',
-  status: 'processing',
-  resource_scope_status: 'ready',
-  profit_scope_status: 'resolved',
-  profit_scope_error_code: '',
-  latest_issue_outbox_id: null,
-  latest_issue_sync_status: null,
-  latest_issue_stock_entry_name: null,
-  latest_issue_idempotency_key: null,
-  latest_issue_error_code: null,
-  latest_receipt_outbox_id: null,
-  latest_receipt_sync_status: null,
-  latest_receipt_stock_entry_name: null,
-  latest_receipt_idempotency_key: null,
-  latest_receipt_error_code: null,
-  sales_order: parityToken.value === 'material-purchase' ? 'SO-LOCAL-001' : 'SO-LOCAL-TRACE',
-  sales_order_item: parityToken.value === 'material-purchase' ? 'SO-LOCAL-001-1' : 'SO-LOCAL-TRACE-1',
-  production_plan_id: parityToken.value === 'material-purchase' ? 3001 : 3002,
-  work_order: parityToken.value === 'material-purchase' ? 'WO-LOCAL-3001' : 'WO-LOCAL-3002',
-      job_card: parityToken.value === 'material-purchase' ? 'JC-LOCAL-3001' : 'JC-LOCAL-3002',
-      created_at: syntheticTimestamp(14, 9, 0),
-    })
-
-const buildSyntheticDetail = (base?: Partial<SubcontractOrderListItem>): SubcontractOrderDetailData => ({
-  id: Number(base?.id || 900601),
-  subcontract_no: String(base?.subcontract_no || 'SC-LOCAL-USABLE-001'),
-  supplier: String(base?.supplier || '本地演示外协厂'),
-  item_code: String(base?.item_code || 'ITEM-A'),
-  company: String(base?.company || 'COMP-A'),
-  bom_id: Number(base?.bom_id || 1),
-  process_name: String(base?.process_name || '外发裁剪'),
-  planned_qty: String(base?.planned_qty || '120'),
-  subcontract_rate: String(base?.subcontract_rate || '0.65'),
-  issued_qty: String(base?.issued_qty || '90'),
-  received_qty: String(base?.received_qty || '56'),
-  inspected_qty: String(base?.inspected_qty || '56'),
-  rejected_qty: String(base?.rejected_qty || '3'),
-  accepted_qty: String(base?.accepted_qty || '53'),
-  gross_amount: String(base?.gross_amount || '6800'),
-  deduction_amount: String(base?.deduction_amount || '180'),
-  net_amount: String(base?.net_amount || '6620'),
-  status: String(base?.status || 'processing'),
-  settlement_status: 'preview_only',
-  resource_scope_status: String(base?.resource_scope_status || 'ready'),
-  profit_scope_status: String(base?.profit_scope_status || 'resolved'),
-  profit_scope_error_code: String(base?.profit_scope_error_code || ''),
-  sales_order: String(base?.sales_order || 'SO-LOCAL-TRACE'),
-  sales_order_item: String(base?.sales_order_item || 'SO-LOCAL-TRACE-1'),
-  production_plan_id: Number(base?.production_plan_id || 3002) || null,
-  work_order: String(base?.work_order || 'WO-LOCAL-3002'),
-  job_card: String(base?.job_card || 'JC-LOCAL-3002'),
-  scope_error_code: null,
-  latest_issue_outbox_id: null,
-  latest_issue_sync_status: null,
-  latest_issue_stock_entry_name: null,
-  latest_issue_idempotency_key: null,
-  latest_receipt_outbox_id: null,
-  latest_receipt_sync_status: null,
-  latest_receipt_stock_entry_name: null,
-  latest_receipt_idempotency_key: null,
-  receipts: [
-    {
-      receipt_batch_no: 'RB-LOCAL-001',
-      receipt_warehouse: 'WH-LOCAL-A',
-      item_code: String(base?.item_code || 'ITEM-A'),
-      color: '黑色',
-      size: 'M',
-      batch_no: 'BATCH-LOCAL-001',
-      uom: 'PCS',
-      received_qty: '56',
-      sync_status: 'not_released',
-      stock_entry_name: null,
-      inspect_status: 'waiting_inspection',
-      idempotency_key: null,
-      received_by: 'local-dev',
-      received_at: syntheticTimestamp(7, 11, 20),
-    },
-  ],
-  inspections: [
-    {
-      inspection_no: 'INSP-LOCAL-001',
-      receipt_batch_no: 'RB-LOCAL-001',
-      inspected_qty: '56',
-      accepted_qty: '53',
-      rejected_qty: '3',
-      rejected_rate: '0.0536',
-      subcontract_rate: String(base?.subcontract_rate || '0.65'),
-      gross_amount: String(base?.gross_amount || '6800'),
-      deduction_amount_per_piece: '60',
-      deduction_amount: String(base?.deduction_amount || '180'),
-      net_amount: String(base?.net_amount || '6620'),
-      inspected_by: 'local-dev',
-      inspected_at: syntheticTimestamp(6, 15, 10),
-      remark: 'synthetic snapshot',
-    },
-  ],
-  created_at: String(base?.created_at || syntheticTimestamp(14, 9, 0)),
-  updated_at: syntheticTimestamp(2, 10, 30),
+  const resolved = Array.isArray(raw) ? raw[0] : raw
+  const parsed = Number(resolved || 0)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 })
 
-const buildMaterialLines = (detail: SubcontractOrderDetailData): MaterialLineView[] => [
-  {
-    materialCode: detail.item_code,
-    materialName: '主物料',
-    colorSpec: '默认规格',
-    uom: 'PCS',
-    demandQty: String(detail.planned_qty || '0'),
-    purchaseQty: String(detail.received_qty || detail.planned_qty || '0'),
-  },
-  {
-    materialCode: `${detail.item_code}-AUX`,
-    materialName: '辅料占位',
-    colorSpec: parityToken.value === 'material-purchase' ? 'material-purchase parity' : 'local-dev synthetic',
-    uom: 'PCS',
-    demandQty: String(detail.planned_qty || '0'),
-    purchaseQty: String(detail.accepted_qty || detail.received_qty || '0'),
-  },
-]
+const issueForm = reactive<IssueFormState>({
+  warehouse: 'WH-SUB-LOCAL',
+  quantity: '1',
+  scenario_tag: buildSubcontractScenarioTag(),
+  idempotency_key: '',
+})
 
-const mapReceipts = (items: SubcontractReceiptDetailItem[]): ReceiptView[] =>
-  items.map((item) => ({
-    receiptBatchNo: item.receipt_batch_no,
-    warehouse: item.receipt_warehouse || '-',
-    receivedQty: String(item.received_qty || '0'),
-    syncStatus: item.sync_status || '-',
-  }))
+const receiveForm = reactive<ReceiveFormState>({
+  receipt_warehouse: 'WH-SUB-LOCAL',
+  received_qty: '1',
+  color: '白色',
+  size: 'M',
+  batch_no: '',
+  uom: 'PCS',
+  scenario_tag: buildSubcontractScenarioTag(),
+  idempotency_key: '',
+})
 
-const mapInspections = (items: SubcontractInspectionDetailItem[]): InspectionView[] =>
-  items.map((item) => ({
-    inspectionNo: item.inspection_no,
-    inspectedQty: String(item.inspected_qty || '0'),
-    acceptedQty: String(item.accepted_qty || '0'),
-    rejectedQty: String(item.rejected_qty || '0'),
-    netAmount: String(item.net_amount || '0'),
-  }))
+const inspectForm = reactive<InspectFormState>({
+  receipt_batch_no: '',
+  inspected_qty: '1',
+  rejected_qty: '0',
+  deduction_amount_per_piece: '0',
+  remark: '',
+  scenario_tag: buildSubcontractScenarioTag(),
+  idempotency_key: '',
+})
 
-const applyDetail = (detail: SubcontractOrderDetailData): void => {
-  currentDetail.value = detail
-  state.id = Number(detail.id || 0)
-  state.subcontractNo = detail.subcontract_no || ''
-  state.supplier = detail.supplier || ''
-  state.company = detail.company || ''
-  state.itemCode = detail.item_code || ''
-  state.bomId = Number(detail.bom_id || 0)
-  state.processName = detail.process_name || ''
-  state.plannedQty = String(detail.planned_qty || '0')
-  state.issuedQty = String(detail.issued_qty || '0')
-  state.receivedQty = String(detail.received_qty || '0')
-  state.acceptedQty = String(detail.accepted_qty || '0')
-  state.rejectedQty = String(detail.rejected_qty || '0')
-  state.grossAmount = String(detail.gross_amount || '0')
-  state.netAmount = String(detail.net_amount || '0')
-  state.status = detail.status || ''
-  state.settlementStatus = detail.settlement_status || ''
-  state.resourceScopeStatus = detail.resource_scope_status || ''
-  state.salesOrder = detail.sales_order || ''
-  state.salesOrderItem = detail.sales_order_item || ''
-  state.productionPlanId = detail.production_plan_id ? String(detail.production_plan_id) : ''
-  state.workOrder = detail.work_order || ''
-  state.jobCard = detail.job_card || ''
-  state.profitScopeStatus = detail.profit_scope_status || ''
-  state.profitScopeErrorCode = detail.profit_scope_error_code || ''
-  state.createdAt = detail.created_at || ''
-  state.updatedAt = detail.updated_at || detail.created_at || ''
-  materialLines.value = buildMaterialLines(detail)
-  receipts.value = mapReceipts(detail.receipts || [])
-  inspections.value = mapInspections(detail.inspections || [])
+const previewForm = reactive<PreviewFormState>({
+  quantity: '1',
+  scenario_tag: buildSubcontractScenarioTag(),
+  idempotency_key: '',
+})
 
-  flags.subcontractOrPurchaseReadbackSuccess = Boolean(detail.subcontract_no && detail.supplier)
-  flags.materialLineReadbackSuccess = materialLines.value.length > 0
-  flags.issueReturnOrInspectionReadbackSuccess =
-    Number(detail.received_qty || 0) > 0 || Number(detail.inspected_qty || 0) > 0 || inspections.value.length > 0
+const canIssue = computed(() => {
+  const status = detail.value?.status || ''
+  return ['draft', 'issued', 'processing', 'waiting_receive'].includes(status)
+})
+
+const canReceive = computed(() => {
+  const status = detail.value?.status || ''
+  return ['issued', 'processing', 'waiting_receive', 'waiting_inspection'].includes(status)
+})
+
+const canInspect = computed(() => {
+  const status = detail.value?.status || ''
+  return ['waiting_receive', 'waiting_inspection'].includes(status) && (detail.value?.receipts?.length || 0) > 0
+})
+
+const canPreviewSettlement = computed(() => settlementCandidates.value.length > 0)
+
+const actionStateText = computed(() => {
+  if (!detail.value) return '缺少委外单详情'
+  const reasons: string[] = []
+  if (!canIssue.value) reasons.push('发料状态不满足')
+  if (!canReceive.value) reasons.push('回料状态不满足')
+  if (!canInspect.value) reasons.push('验货需要至少一个已回料批次')
+  if (!canPreviewSettlement.value) reasons.push('结算预览需要 settlement candidates')
+  return reasons.length > 0 ? `当前受限：${reasons.join('；')}` : '当前单据已满足本地写闭环前置条件。'
+})
+
+const issueRequestId = computed(() => {
+  const scenarioTag = issueForm.scenario_tag.trim() || buildSubcontractScenarioTag()
+  const idempotencyKey = issueForm.idempotency_key.trim() || 'pending-idempotency-key'
+  const quantity = issueForm.quantity.trim() || '1'
+  return buildSubcontractRequestId({
+    scenarioTag,
+    operation: 'issue_material',
+    idempotencyKey,
+    sourceRef: `${scenarioTag}:issue:${orderId.value}:${quantity}`,
+    subcontractRef: String(orderId.value || detail.value?.subcontract_no || '0'),
+    supplierRef: detail.value?.supplier || 'SUP-A',
+    workOrderRef: normalizeWorkOrderRef(),
+    itemCode: detail.value?.item_code || 'DEMO-TEE',
+    statusAction: 'issue_material',
+  })
+})
+
+const receiveRequestId = computed(() => {
+  const scenarioTag = receiveForm.scenario_tag.trim() || buildSubcontractScenarioTag()
+  const idempotencyKey = receiveForm.idempotency_key.trim() || 'pending-idempotency-key'
+  const quantity = receiveForm.received_qty.trim() || '1'
+  return buildSubcontractRequestId({
+    scenarioTag,
+    operation: 'receive',
+    idempotencyKey,
+    sourceRef: `${scenarioTag}:receive:${orderId.value}:${quantity}`,
+    subcontractRef: String(orderId.value || detail.value?.subcontract_no || '0'),
+    supplierRef: detail.value?.supplier || 'SUP-A',
+    workOrderRef: normalizeWorkOrderRef(),
+    itemCode: detail.value?.item_code || 'DEMO-TEE',
+    statusAction: 'receive',
+  })
+})
+
+const inspectRequestId = computed(() => {
+  const scenarioTag = inspectForm.scenario_tag.trim() || buildSubcontractScenarioTag()
+  const idempotencyKey = inspectForm.idempotency_key.trim() || 'pending-idempotency-key'
+  const quantity = inspectForm.inspected_qty.trim() || '1'
+  return buildSubcontractRequestId({
+    scenarioTag,
+    operation: 'inspect',
+    idempotencyKey,
+    sourceRef: `${scenarioTag}:inspect:${orderId.value}:${inspectForm.receipt_batch_no || 'batch'}`,
+    subcontractRef: String(orderId.value || detail.value?.subcontract_no || '0'),
+    supplierRef: detail.value?.supplier || 'SUP-A',
+    workOrderRef: normalizeWorkOrderRef(),
+    itemCode: detail.value?.item_code || 'DEMO-TEE',
+    statusAction: 'inspect',
+  })
+})
+
+const previewInspectionIds = computed(() => settlementCandidates.value.map((row) => row.inspection_id))
+const previewInspectionIdsText = computed(() => previewInspectionIds.value.join(', '))
+
+const previewRequestId = computed(() => {
+  const scenarioTag = previewForm.scenario_tag.trim() || buildSubcontractScenarioTag()
+  const idempotencyKey = previewForm.idempotency_key.trim() || 'pending-idempotency-key'
+  const quantity = previewForm.quantity.trim() || '1'
+  return buildSubcontractRequestId({
+    scenarioTag,
+    operation: 'settlement_preview',
+    idempotencyKey,
+    sourceRef: `${scenarioTag}:settlement-preview:${orderId.value}:${previewInspectionIdsText.value || 'none'}`,
+    subcontractRef: String(orderId.value || detail.value?.subcontract_no || '0'),
+    supplierRef: detail.value?.supplier || 'SUP-A',
+    workOrderRef: normalizeWorkOrderRef(),
+    itemCode: detail.value?.item_code || 'DEMO-TEE',
+    statusAction: 'settlement_preview',
+  })
+})
+
+const loadSettlementCandidates = async (): Promise<void> => {
+  if (!detail.value) {
+    settlementCandidates.value = []
+    settlementPreview.value = null
+    return
+  }
+  try {
+    const response = await fetchSubcontractSettlementCandidates({
+      company: detail.value.company || undefined,
+      supplier: detail.value.supplier || undefined,
+      item_code: detail.value.item_code || undefined,
+      process_name: detail.value.process_name || undefined,
+      page: 1,
+      page_size: 100,
+    })
+    settlementCandidates.value = (response.data.items || []).filter((row) => row.subcontract_id === detail.value?.id)
+    settlementError.value = ''
+  } catch (error) {
+    settlementCandidates.value = []
+    settlementPreview.value = null
+    settlementError.value = (error as Error).message || '结算候选加载失败'
+  }
 }
 
 const refreshDetail = async (): Promise<void> => {
+  if (!orderId.value) return
   loading.value = true
-  feedback.value = ''
-  fallbackSnapshotUsed.value = false
+  loadError.value = ''
   try {
-    const requestedId = normalizeOrderId()
-    let detail: SubcontractOrderDetailData | null = null
-
-    if (requestedId > 0) {
-      try {
-        detail = (await fetchSubcontractOrderDetailReadback(requestedId)).data
-      } catch {
-        detail = null
-      }
-    }
-
-    if (!detail) {
-      const firstRow = await resolveFallbackSubcontractOrderRow()
-      if (firstRow) {
-        try {
-          detail = (await fetchSubcontractOrderDetailReadback(firstRow.id)).data
-        } catch {
-          detail = buildSyntheticDetail(firstRow)
-        }
-      }
-    }
-
-    if (!detail) {
-      detail = buildSyntheticDetail(buildSyntheticListItem())
-      fallbackSnapshotUsed.value = true
-      feedback.value = '未读取到本地委外详情，已回退 synthetic snapshot 保持详情入口可试用。'
-    }
-
-    if (!feedback.value && detail.id >= 900000) {
-      fallbackSnapshotUsed.value = true
-      feedback.value = '当前展示 synthetic snapshot；未触发任何收货、入库、库存 outbox 或 worker 生命周期。'
-    }
-
-    applyDetail(detail)
+    const response = await fetchSubcontractOrderDetail(orderId.value)
+    detail.value = response.data
+    await loadSettlementCandidates()
   } catch (error) {
-    applyDetail(buildSyntheticDetail(buildSyntheticListItem()))
-    fallbackSnapshotUsed.value = true
-    feedback.value = (error as Error).message || '委外订单详情加载失败，已回退 synthetic snapshot。'
+    detail.value = null
+    settlementCandidates.value = []
+    settlementPreview.value = null
+    loadError.value = (error as Error).message || '委外订单详情加载失败'
   } finally {
     loading.value = false
   }
 }
 
-const goList = (): void => {
-  router.push({
-    path: '/subcontract/list',
-    query: {
-      tab: isReadonlyInspectionMode.value ? 'inspection-guard' : undefined,
-      parity: parityToken.value || undefined,
-    },
+const withAction = async (action: 'issue' | 'receive' | 'inspect' | 'preview', runner: () => Promise<void>) => {
+  activeAction.value = action
+  actionSubmitting.value = true
+  try {
+    await runner()
+  } finally {
+    actionSubmitting.value = false
+    activeAction.value = ''
+  }
+}
+
+const openIssueDialog = (): void => {
+  const remaining = Math.max(parseNumber(detail.value?.planned_qty) - parseNumber(detail.value?.issued_qty), 1)
+  issueForm.warehouse = 'WH-SUB-LOCAL'
+  issueForm.quantity = String(remaining)
+  issueForm.scenario_tag = buildSubcontractScenarioTag()
+  issueForm.idempotency_key = buildNonce('subcontract-issue')
+  issueDialogVisible.value = true
+}
+
+const openReceiveDialog = (): void => {
+  const remaining = Math.max(parseNumber(detail.value?.planned_qty) - parseNumber(detail.value?.received_qty), 1)
+  receiveForm.receipt_warehouse = 'WH-SUB-LOCAL'
+  receiveForm.received_qty = String(remaining)
+  receiveForm.color = '白色'
+  receiveForm.size = 'M'
+  receiveForm.batch_no = ''
+  receiveForm.uom = 'PCS'
+  receiveForm.scenario_tag = buildSubcontractScenarioTag()
+  receiveForm.idempotency_key = buildNonce('subcontract-receive')
+  receiveDialogVisible.value = true
+}
+
+const openInspectDialog = (): void => {
+  const latestReceipt = detail.value?.receipts?.[detail.value.receipts.length - 1]
+  const remaining = Math.max(parseNumber(detail.value?.received_qty) - parseNumber(detail.value?.inspected_qty), 1)
+  inspectForm.receipt_batch_no = latestReceipt?.receipt_batch_no || ''
+  inspectForm.inspected_qty = String(remaining)
+  inspectForm.rejected_qty = '0'
+  inspectForm.deduction_amount_per_piece = '0'
+  inspectForm.remark = ''
+  inspectForm.scenario_tag = buildSubcontractScenarioTag()
+  inspectForm.idempotency_key = buildNonce('subcontract-inspect')
+  inspectDialogVisible.value = true
+}
+
+const openPreviewDialog = (): void => {
+  const quantity = Math.max(parseNumber(detail.value?.accepted_qty) || parseNumber(detail.value?.inspected_qty), 1)
+  previewForm.quantity = String(quantity)
+  previewForm.scenario_tag = buildSubcontractScenarioTag()
+  previewForm.idempotency_key = buildNonce('subcontract-preview')
+  previewDialogVisible.value = true
+}
+
+const submitIssue = async (): Promise<void> => {
+  if (!detail.value) return
+  const currentDetail = detail.value
+  await withAction('issue', async () => {
+    const payload: SubcontractIssueMaterialRequestPayload = {
+      request_id: issueRequestId.value,
+      idempotency_key: issueForm.idempotency_key,
+      scenario_tag: issueForm.scenario_tag,
+      source_ref: `${issueForm.scenario_tag}:issue:${orderId.value}:${issueForm.quantity}`,
+      subcontract_ref: String(orderId.value),
+      supplier_ref: currentDetail.supplier,
+      work_order_ref: normalizeWorkOrderRef(),
+      operation: 'issue_material',
+      item_code: currentDetail.item_code,
+      quantity: issueForm.quantity,
+      status_action: 'issue_material',
+      warehouse: issueForm.warehouse.trim(),
+      materials: [],
+    }
+    const response = await issueSubcontractMaterial(orderId.value, payload)
+    issueDialogVisible.value = false
+    actionFeedback.value = `发料成功：batch=${response.data.issue_batch_no}，outbox=${response.data.outbox_id}，status=${response.data.sync_status}`
+    ElMessage.success('发料成功')
+    await refreshDetail()
+  }).catch((error) => {
+    ElMessage.error((error as Error).message || '发料失败')
   })
+}
+
+const submitReceive = async (): Promise<void> => {
+  if (!detail.value) return
+  const currentDetail = detail.value
+  await withAction('receive', async () => {
+    const payload: SubcontractReceiveRequestPayload = {
+      request_id: receiveRequestId.value,
+      idempotency_key: receiveForm.idempotency_key,
+      scenario_tag: receiveForm.scenario_tag,
+      source_ref: `${receiveForm.scenario_tag}:receive:${orderId.value}:${receiveForm.received_qty}`,
+      subcontract_ref: String(orderId.value),
+      supplier_ref: currentDetail.supplier,
+      work_order_ref: normalizeWorkOrderRef(),
+      operation: 'receive',
+      item_code: currentDetail.item_code,
+      quantity: receiveForm.received_qty,
+      status_action: 'receive',
+      receipt_warehouse: receiveForm.receipt_warehouse.trim(),
+      received_qty: receiveForm.received_qty,
+      color: receiveForm.color.trim() || null,
+      size: receiveForm.size.trim() || null,
+      batch_no: receiveForm.batch_no.trim() || null,
+      uom: receiveForm.uom.trim() || null,
+    }
+    const response = await receiveSubcontractOrder(orderId.value, payload)
+    receiveDialogVisible.value = false
+    actionFeedback.value = `回料成功：batch=${response.data.receipt_batch_no}，outbox=${response.data.outbox_id}，status=${response.data.sync_status}`
+    ElMessage.success('回料成功')
+    await refreshDetail()
+  }).catch((error) => {
+    ElMessage.error((error as Error).message || '回料失败')
+  })
+}
+
+const submitInspect = async (): Promise<void> => {
+  if (!detail.value) return
+  const currentDetail = detail.value
+  await withAction('inspect', async () => {
+    const payload: SubcontractInspectRequestPayload = {
+      request_id: inspectRequestId.value,
+      idempotency_key: inspectForm.idempotency_key,
+      scenario_tag: inspectForm.scenario_tag,
+      source_ref: `${inspectForm.scenario_tag}:inspect:${orderId.value}:${inspectForm.receipt_batch_no}`,
+      subcontract_ref: String(orderId.value),
+      supplier_ref: currentDetail.supplier,
+      work_order_ref: normalizeWorkOrderRef(),
+      operation: 'inspect',
+      item_code: currentDetail.item_code,
+      quantity: inspectForm.inspected_qty,
+      status_action: 'inspect',
+      receipt_batch_no: inspectForm.receipt_batch_no,
+      inspected_qty: inspectForm.inspected_qty,
+      rejected_qty: inspectForm.rejected_qty,
+      deduction_amount_per_piece: inspectForm.deduction_amount_per_piece,
+      remark: inspectForm.remark.trim() || null,
+    }
+    const response = await inspectSubcontractOrder(orderId.value, payload)
+    inspectDialogVisible.value = false
+    actionFeedback.value = `验货成功：inspection=${response.data.inspection_no}，net=${formatNumber(response.data.net_amount, 2)}`
+    ElMessage.success('验货成功')
+    await refreshDetail()
+  }).catch((error) => {
+    ElMessage.error((error as Error).message || '验货失败')
+  })
+}
+
+const submitPreview = async (): Promise<void> => {
+  if (!detail.value) return
+  const currentDetail = detail.value
+  await withAction('preview', async () => {
+    const payload: SubcontractSettlementPreviewRequestPayload = {
+      request_id: previewRequestId.value,
+      idempotency_key: previewForm.idempotency_key,
+      scenario_tag: previewForm.scenario_tag,
+      source_ref: `${previewForm.scenario_tag}:settlement-preview:${orderId.value}:${previewInspectionIdsText.value || 'none'}`,
+      subcontract_ref: String(orderId.value),
+      supplier_ref: currentDetail.supplier,
+      work_order_ref: normalizeWorkOrderRef(),
+      operation: 'settlement_preview',
+      item_code: currentDetail.item_code,
+      quantity: previewForm.quantity,
+      status_action: 'settlement_preview',
+      inspection_ids: previewInspectionIds.value,
+      company: currentDetail.company || null,
+      supplier: currentDetail.supplier || null,
+      filter_item_code: currentDetail.item_code || null,
+      process_name: currentDetail.process_name || null,
+    }
+    const response = await previewSubcontractSettlement(payload)
+    settlementPreview.value = response.data
+    previewDialogVisible.value = false
+    actionFeedback.value = `结算预览成功：line_count=${response.data.line_count}，net=${formatNumber(response.data.net_amount, 2)}`
+    ElMessage.success('结算预览成功')
+    await loadSettlementCandidates()
+  }).catch((error) => {
+    ElMessage.error((error as Error).message || '结算预览失败')
+  })
+}
+
+const goList = (): void => {
+  router.push('/subcontract/list')
 }
 
 onMounted(() => {
@@ -732,8 +826,7 @@ onMounted(() => {
   gap: 12px;
 }
 
-.header-row,
-.summary-header {
+.header-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -746,43 +839,33 @@ onMounted(() => {
 }
 
 .sub-title {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
 .header-actions,
-.readonly-actions {
+.action-row {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.issue-inspection-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.feedback {
+.top-alert {
   margin-top: 12px;
 }
 
-.tag-stack,
-.guard-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.action-row {
+  margin-top: 16px;
 }
 
-.detail-tags {
-  margin-top: 12px;
+.permission-tip {
+  margin: 12px 0 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
 }
 
-.guard-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--el-text-color-regular);
+.preview-summary {
+  margin-top: 16px;
 }
 </style>

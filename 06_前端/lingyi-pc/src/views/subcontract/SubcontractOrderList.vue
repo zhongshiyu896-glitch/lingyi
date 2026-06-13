@@ -1,161 +1,101 @@
 <template>
-  <div class="subcontract-list-page" data-testid="yisuan-1to1-subcontract-list-shell">
+  <div class="subcontract-list-page" data-testid="subcontract-order-list-page">
     <el-card shadow="never">
       <template #header>
         <div class="header-row">
           <div>
-            <h2>委外订单列表（本地可试用）</h2>
-            <p class="sub-title">local-dev only / read-only usable slice / no inventory or purchase release</p>
+            <h2>委外订单列表</h2>
+            <p class="sub-title">LOCAL_DEV_WRITE_CLOSURE，仅 development + sqlite 允许 create / issue / receive / inspect / settlement preview。</p>
           </div>
           <div class="header-actions">
-            <el-button type="primary" plain :loading="loading" @click="loadRows">刷新列表</el-button>
+            <el-button type="primary" plain :loading="loading" data-testid="subcontract-refresh-button" @click="loadRows">
+              刷新列表
+            </el-button>
+            <el-button type="success" data-testid="subcontract-create-button" data-action-type="write" @click="openCreateDialog()">
+              创建委外单
+            </el-button>
           </div>
         </div>
       </template>
       <el-alert
-        type="warning"
-        :closable="false"
-        title="仅允许 local-dev/test_data 展示；禁止触发真实收货、入库、库存影响、worker 推送或 ERPNext 生命周期。"
-      />
-      <el-alert
-        v-if="isMaterialPurchaseParity"
-        class="parity-alert"
         type="info"
         :closable="false"
-        data-testid="realobj-subcontract-parity-alert"
-        title="materialPurchase final_path: /materialPurchase/materialPurchaseProcess -> /subcontract/list?parity=material-purchase"
+        title="前端仅接入本地外发写闭环：create / issue-material / receive / inspect / settlement-preview。"
       />
       <el-alert
-        class="parity-alert"
+        class="top-alert"
         type="warning"
         :closable="false"
-        data-testid="realobj-subcontract-list-remaining-gap"
-        :title="timelineRemainingGap"
+        title="禁止 settlement-locks、release、stock-sync/retry、internal run-once、ERPNext、worker 与 production write。"
       />
     </el-card>
 
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-list-filter-panel">
-      <el-form :inline="true" @submit.prevent>
+    <el-card shadow="never">
+      <el-form :inline="true" :model="query" @submit.prevent>
         <el-form-item label="关键字">
           <el-input v-model="query.keyword" clearable placeholder="单据号 / 供应商 / 物料 / 销售订单" style="width: 240px" />
         </el-form-item>
         <el-form-item label="供应商">
-          <el-input v-model="query.supplier" clearable placeholder="供应商 / 加工厂" style="width: 180px" />
+          <el-input v-model="query.supplier" clearable placeholder="supplier" style="width: 160px" />
         </el-form-item>
         <el-form-item label="公司">
-          <el-input v-model="query.company" clearable placeholder="公司" style="width: 150px" />
+          <el-input v-model="query.company" clearable placeholder="company" style="width: 140px" />
         </el-form-item>
         <el-form-item label="工序">
-          <el-input v-model="query.process_name" clearable placeholder="工序" style="width: 150px" />
+          <el-input v-model="query.process_name" clearable placeholder="process_name" style="width: 140px" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="query.status" clearable placeholder="全部" style="width: 150px">
             <el-option label="draft" value="draft" />
             <el-option label="issued" value="issued" />
-            <el-option label="processing" value="processing" />
             <el-option label="waiting_receive" value="waiting_receive" />
             <el-option label="waiting_inspection" value="waiting_inspection" />
             <el-option label="completed" value="completed" />
           </el-select>
         </el-form-item>
-        <el-form-item label="单据日期">
-          <el-date-picker
-            v-model="query.from_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="开始日期"
-            style="width: 150px"
-          />
+        <el-form-item label="开始日期">
+          <el-date-picker v-model="query.from_date" type="date" value-format="YYYY-MM-DD" clearable />
         </el-form-item>
-        <el-form-item label="-">
-          <el-date-picker
-            v-model="query.to_date"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="结束日期"
-            style="width: 150px"
-          />
+        <el-form-item label="结束日期">
+          <el-date-picker v-model="query.to_date" type="date" value-format="YYYY-MM-DD" clearable />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="loading" @click="applyQuery">查询</el-button>
-          <el-button :loading="loading" @click="resetQuery">重置</el-button>
+          <el-button type="primary" :loading="loading" data-testid="subcontract-query-button" @click="applyQuery">查询</el-button>
+          <el-button :loading="loading" data-testid="subcontract-reset-button" @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
 
-      <el-alert v-if="feedback" :title="feedback" type="info" :closable="false" class="feedback" />
+      <el-alert v-if="feedback" class="top-alert" :title="feedback" type="info" :closable="false" data-testid="subcontract-feedback" />
+      <el-alert v-if="loadError" class="top-alert" :title="loadError" type="error" :closable="false" data-testid="subcontract-load-error" />
     </el-card>
 
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-list-summary">
+    <el-card shadow="never">
       <template #header>
-        <div class="summary-header">
-          <span>列表摘要与只读动作</span>
-          <div class="readonly-actions">
-            <el-tooltip v-for="action in readonlyGuardActions" :key="action.label" :content="action.reason" placement="top">
-              <span>
-                <el-button disabled>{{ action.label }}</el-button>
-              </span>
-            </el-tooltip>
-          </div>
-        </div>
+        <span>列表摘要</span>
       </template>
       <el-descriptions border :column="3">
-        <el-descriptions-item label="筛选结果">{{ summary.filteredCount }}</el-descriptions-item>
-        <el-descriptions-item label="供应商数">{{ summary.supplierCount }}</el-descriptions-item>
-        <el-descriptions-item label="计划数量">{{ formatNumber(summary.plannedQty) }}</el-descriptions-item>
-        <el-descriptions-item label="已发料">{{ formatNumber(summary.issuedQty) }}</el-descriptions-item>
-        <el-descriptions-item label="已回料">{{ formatNumber(summary.receivedQty) }}</el-descriptions-item>
-        <el-descriptions-item label="已验收">{{ formatNumber(summary.acceptedQty) }}</el-descriptions-item>
-        <el-descriptions-item label="加工中">{{ summary.processingCount }}</el-descriptions-item>
-        <el-descriptions-item label="待收货">{{ summary.waitingReceiveCount }}</el-descriptions-item>
-        <el-descriptions-item label="待验货">{{ summary.waitingInspectionCount }}</el-descriptions-item>
-        <el-descriptions-item label="可结算观察">{{ summary.settlementReadyCount }}</el-descriptions-item>
-        <el-descriptions-item label="异常阻断">{{ summary.blockedCount }}</el-descriptions-item>
+        <el-descriptions-item label="当前页记录">{{ filteredRows.length }}</el-descriptions-item>
+        <el-descriptions-item label="后端 total">{{ total }}</el-descriptions-item>
+        <el-descriptions-item label="供应商数">{{ summaryView.supplierCount }}</el-descriptions-item>
+        <el-descriptions-item label="计划数量">{{ formatNumber(summaryView.plannedQty) }}</el-descriptions-item>
+        <el-descriptions-item label="已发料">{{ formatNumber(summaryView.issuedQty) }}</el-descriptions-item>
+        <el-descriptions-item label="已回料">{{ formatNumber(summaryView.receivedQty) }}</el-descriptions-item>
+        <el-descriptions-item label="已验货">{{ formatNumber(summaryView.inspectedQty) }}</el-descriptions-item>
+        <el-descriptions-item label="已验收">{{ formatNumber(summaryView.acceptedQty) }}</el-descriptions-item>
+        <el-descriptions-item label="待结算预览">{{ summaryView.previewReadyCount }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
-
-    <el-card shadow="never" data-testid="yisuan-1to1-subcontract-list-timeline-exception-summary">
-      <template #header>
-        <span>收发时间线与异常摘要</span>
-      </template>
-      <el-descriptions border :column="3">
-        <el-descriptions-item label="收发差异">{{ summary.discrepancyCount }}</el-descriptions-item>
-        <el-descriptions-item label="延期风险">{{ summary.delayCount }}</el-descriptions-item>
-        <el-descriptions-item label="缺料预警">{{ summary.shortageCount }}</el-descriptions-item>
-        <el-descriptions-item label="超收异常">{{ summary.overReceiptCount }}</el-descriptions-item>
-        <el-descriptions-item label="欠收异常">{{ summary.underReceiptCount }}</el-descriptions-item>
-        <el-descriptions-item label="material-purchase parity">
-          {{ isMaterialPurchaseParity ? 'locked' : 'default readonly' }}
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <SubcontractInspectionGuardReadonly :summary="inspectionGuardReadonly" />
-
-    <SubcontractScopeBridgeReadonly
-      v-if="scopeBridgeReadonly"
-      :summary="scopeBridgeReadonly"
-      :guard-states="scopeBridgeGuardStates"
-      :final-path="finalPath"
-      :parity-token="parityToken"
-    />
 
     <el-card shadow="never">
       <el-table
-        :data="rows"
+        :data="filteredRows"
         border
         v-loading="loading"
-        empty-text="暂无委外订单，已保留本地可试用入口"
-        data-testid="yisuan-1to1-subcontract-list-table"
+        empty-text="暂无委外订单，可以直接创建一张本地委外单开始闭环验证"
+        data-testid="subcontract-list-table"
       >
-        <el-table-column label="单据号 / 销售订单" min-width="220">
-          <template #default="{ row }">
-            <div class="stacked-cell">
-              <strong>{{ row.subcontract_no }}</strong>
-              <span>SO {{ row.sales_order || '-' }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="供应商 / 公司" min-width="200">
+        <el-table-column prop="subcontract_no" label="单据号" min-width="180" />
+        <el-table-column label="供应商 / 公司" min-width="180">
           <template #default="{ row }">
             <div class="stacked-cell">
               <span>{{ row.supplier }}</span>
@@ -171,269 +111,310 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="交期参考" min-width="120">
-          <template #default="{ row }">
-            {{ formatDateTime(row.created_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="进度摘要" min-width="240">
+        <el-table-column label="计划 / 发料 / 回料 / 验货 / 验收" min-width="260">
           <template #default="{ row }">
             <div class="stacked-cell">
-              <el-tag :type="progressStageType(row)" effect="plain">{{ progressStageLabel(row) }}</el-tag>
-              <span>计划 / 发料 / 回料 / 验收：{{ row.planned_qty }} / {{ row.issued_qty }} / {{ row.received_qty }} / {{ row.accepted_qty }}</span>
-              <span>计划 {{ row.production_plan_id || '-' }} / 工单 {{ row.work_order || '-' }}</span>
+              <span>{{ formatNumber(row.planned_qty) }} / {{ formatNumber(row.issued_qty) }} / {{ formatNumber(row.received_qty) }}</span>
+              <span>{{ formatNumber(row.inspected_qty) }} / {{ formatNumber(row.accepted_qty) }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态标签" min-width="220">
+        <el-table-column label="状态" width="140">
           <template #default="{ row }">
-            <div class="tag-stack">
-              <el-tag :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
-              <el-tag :type="resourceScopeType(row.resource_scope_status)" effect="plain">
-                {{ resourceScopeLabel(row.resource_scope_status) }}
-              </el-tag>
-              <el-tag
-                v-if="row.profit_scope_status"
-                :type="profitScopeType(row.profit_scope_status)"
-                effect="plain"
-              >
-                {{ profitScopeLabel(row.profit_scope_status) }}
-              </el-tag>
-              <el-tooltip :content="settlementReadonlyReason(row)" placement="top">
-                <el-tag :type="settlementReadonlyType(row)" effect="plain">
-                  {{ settlementReadonlyLabel(row) }}
-                </el-tag>
-              </el-tooltip>
-            </div>
+            <el-tag :type="statusTag(row.status)">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="销售 / 工单" min-width="180">
           <template #default="{ row }">
             <div class="stacked-cell">
-              <el-button link type="primary" @click="openDetail(row.id)">查看详情</el-button>
-              <el-button link disabled>收货已冻结</el-button>
+              <span>{{ row.sales_order || '-' }}</span>
+              <span>{{ row.work_order || '-' }}</span>
             </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" min-width="180">
+          <template #default="{ row }">
+            {{ row.created_at || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" fixed="right" width="200">
+          <template #default="{ row }">
+            <el-button link type="primary" data-testid="subcontract-detail-button" @click="openDetail(row.id)">详情</el-button>
+            <el-button link type="success" data-testid="subcontract-copy-create-button" @click="openCreateDialog(row)">复制创建</el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pager">
+        <el-pagination
+          background
+          layout="prev, pager, next, total, sizes"
+          :current-page="query.page"
+          :page-size="query.page_size"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          @current-change="onPageChange"
+          @size-change="onSizeChange"
+        />
+      </div>
     </el-card>
 
-    <el-card shadow="never" data-testid="realobj-subcontract-readback-evidence">
-      <template #header>
-        <span>本地可试用边界</span>
+    <el-dialog v-model="createDialogVisible" title="创建本地委外单" width="640px" destroy-on-close>
+      <el-form label-width="120px">
+        <el-form-item label="供应商">
+          <el-input v-model="createForm.supplier" data-testid="subcontract-create-supplier" />
+        </el-form-item>
+        <el-form-item label="公司">
+          <el-input v-model="createForm.company" data-testid="subcontract-create-company" />
+        </el-form-item>
+        <el-form-item label="物料编码">
+          <el-input v-model="createForm.item_code" data-testid="subcontract-create-item-code" />
+        </el-form-item>
+        <el-form-item label="BOM ID">
+          <el-input v-model="createForm.bom_id" data-testid="subcontract-create-bom-id" />
+        </el-form-item>
+        <el-form-item label="工序">
+          <el-input v-model="createForm.process_name" data-testid="subcontract-create-process-name" />
+        </el-form-item>
+        <el-form-item label="计划数量">
+          <el-input v-model="createForm.planned_qty" data-testid="subcontract-create-planned-qty" />
+        </el-form-item>
+        <el-form-item label="销售订单">
+          <el-input v-model="createForm.sales_order" data-testid="subcontract-create-sales-order" />
+        </el-form-item>
+        <el-form-item label="销售订单行">
+          <el-input v-model="createForm.sales_order_item" data-testid="subcontract-create-sales-order-item" />
+        </el-form-item>
+        <el-form-item label="生产计划 ID">
+          <el-input v-model="createForm.production_plan_id" data-testid="subcontract-create-production-plan-id" />
+        </el-form-item>
+        <el-form-item label="工单">
+          <el-input v-model="createForm.work_order" data-testid="subcontract-create-work-order" />
+        </el-form-item>
+        <el-form-item label="工票">
+          <el-input v-model="createForm.job_card" data-testid="subcontract-create-job-card" />
+        </el-form-item>
+        <el-form-item label="scenario_tag">
+          <el-input v-model="createForm.scenario_tag" />
+        </el-form-item>
+        <el-form-item label="request_id">
+          <el-input :model-value="createRequestId" readonly />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="createSubmitting"
+          data-testid="subcontract-create-submit"
+          data-action-type="write"
+          @click="submitCreate"
+        >
+          创建并进入详情
+        </el-button>
       </template>
-      <el-descriptions border :column="2">
-        <el-descriptions-item label="final_path">{{ finalPath }}</el-descriptions-item>
-        <el-descriptions-item label="parity">{{ parityToken || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="local_dev_only">true</el-descriptions-item>
-        <el-descriptions-item label="receipt_release">false</el-descriptions-item>
-        <el-descriptions-item label="inventory_effect_release">false</el-descriptions-item>
-        <el-descriptions-item label="stock_worker_push">false</el-descriptions-item>
-        <el-descriptions-item label="erpnext_production">false</el-descriptions-item>
-        <el-descriptions-item label="real_purchase_account">false</el-descriptions-item>
-        <el-descriptions-item label="row_count">{{ rows.length }}</el-descriptions-item>
-        <el-descriptions-item label="fallback_snapshot_used">{{ fallbackSnapshotUsed ? 'true' : 'false' }}</el-descriptions-item>
-        <el-descriptions-item label="scope_bridge_visible">
-          {{ scopeBridgeReadonly ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="profit_scope_status_visible">
-          {{ scopeBridgeReadonly?.profitScopeLabel ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="material_detail_readonly_tags_visible">
-          {{ scopeBridgeReadonly && scopeBridgeReadonly.materialTags.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="readonly_guard_states_visible">
-          {{ scopeBridgeGuardStates.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="issue_timeline_visible">
-          {{ rows.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="receipt_timeline_visible">
-          {{ rows.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="receipt_difference_visible">
-          {{ summary.discrepancyCount > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="delay_shortage_visible">
-          {{ summary.delayCount > 0 || summary.shortageCount > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="material_purchase_parity_visible">
-          {{ isMaterialPurchaseParity ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="inspection_guard_visible">
-          {{ inspectionGuardReadonly.summaryCards.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="inspection_item_status_visible">
-          {{ inspectionGuardReadonly.inspectionItems.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="inspection_blocked_reason_visible">
-          {{ inspectionGuardReadonly.blockedReasons.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="disabled_receive_issue_settlement_export_reason_visible">
-          {{ inspectionGuardReadonly.disabledActions.length > 0 ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="remaining_gap_visible">true</el-descriptions-item>
-        <el-descriptions-item label="cand110_base_readback_retained">true</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { SubcontractOrderListItem } from '@/api/subcontract'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import type { NumericLike, SubcontractCreateRequestPayload, SubcontractOrderListItem } from '@/api/subcontract'
 import {
-  buildDefaultSubcontractReadonlyQuery,
-  buildSubcontractReadonlySummary,
-  fetchSubcontractOrdersReadback,
-  filterSubcontractRows,
-  hasSubcontractReadonlyFilters,
-} from '@/api/subcontract_readback'
-import SubcontractInspectionGuardReadonly from './components/SubcontractInspectionGuardReadonly.vue'
-import SubcontractScopeBridgeReadonly from './components/SubcontractScopeBridgeReadonly.vue'
-import { useSubcontractInspectionGuardReadonly } from './composables/useSubcontractInspectionGuardReadonly'
-import { useSubcontractReadonly } from './composables/useSubcontractReadonly'
+  buildSubcontractRequestId,
+  buildSubcontractScenarioTag,
+  createSubcontractOrder,
+  fetchSubcontractOrders,
+} from '@/api/subcontract'
 
-const route = useRoute()
+interface ListQueryState {
+  keyword: string
+  supplier: string
+  company: string
+  process_name: string
+  status: string
+  from_date: string
+  to_date: string
+  page: number
+  page_size: number
+}
+
+interface CreateFormState {
+  supplier: string
+  company: string
+  item_code: string
+  bom_id: string
+  planned_qty: string
+  process_name: string
+  sales_order: string
+  sales_order_item: string
+  production_plan_id: string
+  work_order: string
+  job_card: string
+  scenario_tag: string
+  idempotency_key: string
+}
+
 const router = useRouter()
 
 const loading = ref(false)
-const rows = ref<SubcontractOrderListItem[]>([])
+const createSubmitting = ref(false)
+const loadError = ref('')
 const feedback = ref('')
-const fallbackSnapshotUsed = ref(false)
+const total = ref(0)
+const rows = ref<SubcontractOrderListItem[]>([])
+const createDialogVisible = ref(false)
 
-const query = reactive(buildDefaultSubcontractReadonlyQuery())
-
-const {
-  formatDateTime,
-  formatNumber,
-  profitScopeLabel,
-  profitScopeType,
-  progressStageLabel,
-  progressStageType,
-  readonlyGuardActions,
-  resourceScopeLabel,
-  resourceScopeType,
-  scopeBridgeListSummary: buildScopeBridgeListSummary,
-  scopeGuardStates: buildScopeGuardStates,
-  settlementReadonlyLabel,
-  settlementReadonlyReason,
-  settlementReadonlyType,
-  statusLabel,
-  statusType,
-  timelineRemainingGap,
-} = useSubcontractReadonly()
-const { buildSubcontractInspectionGuardListModel } = useSubcontractInspectionGuardReadonly()
-
-const parityToken = computed(() => {
-  const raw = route.query.parity
-  if (Array.isArray(raw)) return String(raw[0] || '').trim()
-  return String(raw || '').trim()
+const buildDefaultQuery = (): ListQueryState => ({
+  keyword: '',
+  supplier: '',
+  company: '',
+  process_name: '',
+  status: '',
+  from_date: '',
+  to_date: '',
+  page: 1,
+  page_size: 20,
 })
 
-const routeTab = computed(() => {
-  const raw = route.query.tab
-  if (Array.isArray(raw)) return String(raw[0] || '').trim()
-  return String(raw || '').trim()
+const query = reactive<ListQueryState>(buildDefaultQuery())
+
+const buildDefaultCreateForm = (): CreateFormState => ({
+  supplier: 'SUP-A',
+  company: 'COMP-A',
+  item_code: 'DEMO-TEE',
+  bom_id: '1',
+  planned_qty: '10',
+  process_name: '缝制',
+  sales_order: '',
+  sales_order_item: '',
+  production_plan_id: '',
+  work_order: '',
+  job_card: '',
+  scenario_tag: buildSubcontractScenarioTag(),
+  idempotency_key: '',
 })
 
-const isMaterialPurchaseParity = computed(() => parityToken.value === 'material-purchase')
-const isInspectionGuardTab = computed(() => routeTab.value === 'inspection-guard')
+const createForm = reactive<CreateFormState>(buildDefaultCreateForm())
 
-const finalPath = computed(() => {
-  if (isInspectionGuardTab.value && isMaterialPurchaseParity.value) {
-    return '/subcontract/list?tab=inspection-guard&parity=material-purchase'
-  }
-  if (isMaterialPurchaseParity.value) return '/subcontract/list?parity=material-purchase'
-  return '/subcontract/list'
+const buildNonce = (prefix: string): string => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+const parseNumber = (value: NumericLike | undefined | null): number => {
+  const parsed = Number(value || 0)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const formatNumber = (value: NumericLike | undefined | null, digits = 0): string => {
+  return parseNumber(value).toLocaleString('zh-CN', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })
+}
+
+const statusTag = (status: string): 'info' | 'success' | 'warning' | 'danger' => {
+  if (status === 'completed') return 'success'
+  if (status === 'waiting_inspection' || status === 'waiting_receive') return 'warning'
+  if (status === 'draft') return 'info'
+  return 'danger'
+}
+
+const normalizeWorkOrderRef = (workOrder: string, productionPlanId: string): string => {
+  const normalizedWorkOrder = workOrder.trim()
+  if (normalizedWorkOrder) return normalizedWorkOrder
+  const normalizedPlan = productionPlanId.trim()
+  if (normalizedPlan) return normalizedPlan
+  return 'NO-WORK-ORDER'
+}
+
+const createRequestId = computed(() => {
+  const scenarioTag = createForm.scenario_tag.trim() || buildSubcontractScenarioTag()
+  const plannedQty = String(createForm.planned_qty || '1').trim() || '1'
+  return buildSubcontractRequestId({
+    scenarioTag,
+    operation: 'create',
+    idempotencyKey: createForm.idempotency_key.trim() || 'pending-idempotency-key',
+    sourceRef: `${scenarioTag}:create:${createForm.item_code.trim()}:${plannedQty}`,
+    subcontractRef: `NEW-${createForm.item_code.trim() || 'SUBCONTRACT'}`,
+    supplierRef: createForm.supplier.trim() || 'SUP-A',
+    workOrderRef: normalizeWorkOrderRef(createForm.work_order, createForm.production_plan_id),
+    itemCode: createForm.item_code.trim() || 'DEMO-TEE',
+    statusAction: 'create',
+  })
 })
 
-const summary = computed(() => buildSubcontractReadonlySummary(rows.value))
+const filteredRows = computed(() => {
+  const keyword = query.keyword.trim().toLowerCase()
+  const company = query.company.trim().toLowerCase()
+  const processName = query.process_name.trim().toLowerCase()
 
-const scopeBridgeReadonly = computed(() => buildScopeBridgeListSummary(rows.value, parityToken.value))
+  return rows.value.filter((row) => {
+    const keywordHit =
+      !keyword
+      || row.subcontract_no.toLowerCase().includes(keyword)
+      || row.supplier.toLowerCase().includes(keyword)
+      || row.item_code.toLowerCase().includes(keyword)
+      || String(row.sales_order || '').toLowerCase().includes(keyword)
+    const companyHit = !company || String(row.company || '').toLowerCase().includes(company)
+    const processHit = !processName || row.process_name.toLowerCase().includes(processName)
+    return keywordHit && companyHit && processHit
+  })
+})
 
-const scopeBridgeGuardStates = computed(() => buildScopeGuardStates(scopeBridgeReadonly.value))
-
-const inspectionGuardReadonly = computed(() =>
-  buildSubcontractInspectionGuardListModel({
-    rows: rows.value,
-    tab: routeTab.value,
-    parity: parityToken.value,
-    finalPath: finalPath.value,
-  }),
+const summary = computed(() =>
+  filteredRows.value.reduce(
+    (acc, row) => {
+      acc.plannedQty += parseNumber(row.planned_qty)
+      acc.issuedQty += parseNumber(row.issued_qty)
+      acc.receivedQty += parseNumber(row.received_qty)
+      acc.inspectedQty += parseNumber(row.inspected_qty)
+      acc.acceptedQty += parseNumber(row.accepted_qty)
+      acc.previewReadyCount += row.status === 'completed' || parseNumber(row.inspected_qty) > 0 ? 1 : 0
+      acc.suppliers.add(row.supplier)
+      return acc
+    },
+    {
+      plannedQty: 0,
+      issuedQty: 0,
+      receivedQty: 0,
+      inspectedQty: 0,
+      acceptedQty: 0,
+      previewReadyCount: 0,
+      suppliers: new Set<string>(),
+    },
+  ),
 )
 
-const buildSyntheticRows = (): SubcontractOrderListItem[] => {
-  const supplier = isMaterialPurchaseParity.value ? '本地演示供应商' : '本地演示外协厂'
-  const createdAt = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
-  createdAt.setHours(9, 0, 0, 0)
-  return [
-    {
-      id: 900601,
-      subcontract_no: 'SC-LOCAL-USABLE-001',
-      supplier,
-      item_code: 'ITEM-A',
-      company: 'COMP-A',
-      bom_id: 1,
-      process_name: '外发裁剪',
-      planned_qty: '120',
-      subcontract_rate: '0.65',
-      issued_qty: '90',
-      received_qty: '56',
-      inspected_qty: '56',
-      rejected_qty: '3',
-      accepted_qty: '53',
-      gross_amount: '6800',
-      deduction_amount: '180',
-      net_amount: '6620',
-      status: 'processing',
-      resource_scope_status: 'ready',
-      profit_scope_status: 'resolved',
-      profit_scope_error_code: '',
-      sales_order: isMaterialPurchaseParity.value ? 'SO-LOCAL-001' : 'SO-LOCAL-TRACE',
-      sales_order_item: isMaterialPurchaseParity.value ? 'SO-LOCAL-001-1' : 'SO-LOCAL-TRACE-1',
-      latest_issue_outbox_id: null,
-      latest_issue_sync_status: null,
-      latest_issue_stock_entry_name: null,
-      latest_issue_idempotency_key: null,
-      latest_issue_error_code: null,
-      latest_receipt_outbox_id: null,
-      latest_receipt_sync_status: null,
-      latest_receipt_stock_entry_name: null,
-      latest_receipt_idempotency_key: null,
-      latest_receipt_error_code: null,
-      production_plan_id: isMaterialPurchaseParity.value ? 3001 : 3002,
-      work_order: isMaterialPurchaseParity.value ? 'WO-LOCAL-3001' : 'WO-LOCAL-3002',
-      job_card: isMaterialPurchaseParity.value ? 'JC-LOCAL-3001' : 'JC-LOCAL-3002',
-      created_at: createdAt.toISOString(),
-    },
-  ]
-}
+const summaryView = computed(() => ({
+  plannedQty: summary.value.plannedQty,
+  issuedQty: summary.value.issuedQty,
+  receivedQty: summary.value.receivedQty,
+  inspectedQty: summary.value.inspectedQty,
+  acceptedQty: summary.value.acceptedQty,
+  previewReadyCount: summary.value.previewReadyCount,
+  supplierCount: summary.value.suppliers.size,
+}))
 
 const loadRows = async (): Promise<void> => {
   loading.value = true
+  loadError.value = ''
   feedback.value = ''
-  fallbackSnapshotUsed.value = false
   try {
-    const response = await fetchSubcontractOrdersReadback(query)
-    const serverRows = response.data.items || []
-    const sourceRows = serverRows.length > 0 ? serverRows : buildSyntheticRows()
-    rows.value = filterSubcontractRows(sourceRows, query)
-
-    if (serverRows.length === 0) {
-      fallbackSnapshotUsed.value = true
-      feedback.value = '未读取到本地委外单，已回退 synthetic snapshot 保持入口可试用。'
-      return
-    }
-
-    if (rows.value.length === 0 && hasSubcontractReadonlyFilters(query)) {
-      feedback.value = '当前筛选未命中委外订单，未触发任何收货、入库或库存影响动作。'
-    }
+    const response = await fetchSubcontractOrders({
+      supplier: query.supplier || undefined,
+      status: query.status || undefined,
+      from_date: query.from_date || undefined,
+      to_date: query.to_date || undefined,
+      page: query.page,
+      page_size: query.page_size,
+    })
+    rows.value = response.data.items || []
+    total.value = response.data.total || 0
   } catch (error) {
-    rows.value = filterSubcontractRows(buildSyntheticRows(), query)
-    fallbackSnapshotUsed.value = true
-    feedback.value = (error as Error).message || '委外订单列表 API 不可用，已回退 synthetic snapshot。'
+    rows.value = []
+    total.value = 0
+    loadError.value = (error as Error).message || '委外订单列表加载失败'
   } finally {
     loading.value = false
   }
@@ -445,19 +426,109 @@ const applyQuery = (): void => {
 }
 
 const resetQuery = (): void => {
-  Object.assign(query, buildDefaultSubcontractReadonlyQuery())
+  Object.assign(query, buildDefaultQuery())
+  void loadRows()
+}
+
+const onPageChange = (page: number): void => {
+  query.page = page
+  void loadRows()
+}
+
+const onSizeChange = (pageSize: number): void => {
+  query.page = 1
+  query.page_size = pageSize
   void loadRows()
 }
 
 const openDetail = (orderId: number): void => {
-  router.push({
-    path: '/subcontract/detail',
-    query: {
-      id: String(orderId),
-      mode: isInspectionGuardTab.value ? 'readonly-inspection' : undefined,
-      parity: parityToken.value || undefined,
-    },
-  })
+  router.push({ path: '/subcontract/detail', query: { id: String(orderId) } })
+}
+
+const openCreateDialog = (seed?: SubcontractOrderListItem): void => {
+  const nextDefaults = buildDefaultCreateForm()
+  Object.assign(createForm, nextDefaults)
+  createForm.idempotency_key = buildNonce('subcontract-create')
+  if (seed) {
+    createForm.supplier = seed.supplier
+    createForm.company = String(seed.company || 'COMP-A')
+    createForm.item_code = seed.item_code
+    createForm.bom_id = String(seed.bom_id)
+    createForm.planned_qty = String(seed.planned_qty || '10')
+    createForm.process_name = seed.process_name
+    createForm.sales_order = String(seed.sales_order || '')
+    createForm.sales_order_item = String(seed.sales_order_item || '')
+    createForm.production_plan_id = seed.production_plan_id ? String(seed.production_plan_id) : ''
+    createForm.work_order = String(seed.work_order || '')
+    createForm.job_card = String(seed.job_card || '')
+  }
+  createDialogVisible.value = true
+}
+
+const buildCreatePayload = (): SubcontractCreateRequestPayload => {
+  const scenarioTag = createForm.scenario_tag.trim() || buildSubcontractScenarioTag()
+  const idempotencyKey = createForm.idempotency_key.trim() || buildNonce('subcontract-create')
+  const itemCode = createForm.item_code.trim()
+  const plannedQty = String(createForm.planned_qty || '0').trim()
+  const supplier = createForm.supplier.trim()
+  const workOrderRef = normalizeWorkOrderRef(createForm.work_order, createForm.production_plan_id)
+  const sourceRef = `${scenarioTag}:create:${itemCode}:${plannedQty}`
+  const subcontractRef = `NEW-${Date.now()}`
+  return {
+    request_id: buildSubcontractRequestId({
+      scenarioTag,
+      operation: 'create',
+      idempotencyKey,
+      sourceRef,
+      subcontractRef,
+      supplierRef: supplier,
+      workOrderRef,
+      itemCode,
+      statusAction: 'create',
+    }),
+    idempotency_key: idempotencyKey,
+    scenario_tag: scenarioTag,
+    source_ref: sourceRef,
+    subcontract_ref: subcontractRef,
+    supplier_ref: supplier,
+    work_order_ref: workOrderRef,
+    operation: 'create',
+    item_code: itemCode,
+    quantity: plannedQty,
+    status_action: 'create',
+    supplier,
+    company: createForm.company.trim() || null,
+    bom_id: Number(createForm.bom_id),
+    planned_qty: plannedQty,
+    process_name: createForm.process_name.trim(),
+    sales_order: createForm.sales_order.trim() || null,
+    sales_order_item: createForm.sales_order_item.trim() || null,
+    production_plan_id: createForm.production_plan_id.trim() ? Number(createForm.production_plan_id) : null,
+    work_order: createForm.work_order.trim() || null,
+    job_card: createForm.job_card.trim() || null,
+  }
+}
+
+const submitCreate = async (): Promise<void> => {
+  createSubmitting.value = true
+  try {
+    const payload = buildCreatePayload()
+    const response = await createSubcontractOrder(payload)
+    createDialogVisible.value = false
+    ElMessage.success(`已创建委外单 ${response.data.name}`)
+    Object.assign(query, buildDefaultQuery())
+    await loadRows()
+    const createdRow = rows.value.find((row) => row.subcontract_no === response.data.name)
+    if (createdRow) {
+      openDetail(createdRow.id)
+      return
+    }
+    feedback.value = `已创建 ${response.data.name}，但当前页未命中该单据，请刷新后查看。`
+  } catch (error) {
+    ElMessage.error((error as Error).message || '创建委外单失败')
+  } finally {
+    createSubmitting.value = false
+  }
 }
 
 onMounted(() => {
@@ -472,8 +543,7 @@ onMounted(() => {
   gap: 12px;
 }
 
-.header-row,
-.summary-header {
+.header-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -486,32 +556,30 @@ onMounted(() => {
 }
 
 .sub-title {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
-.header-actions,
-.readonly-actions {
+.header-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.parity-alert,
-.feedback {
+.top-alert {
   margin-top: 12px;
 }
 
-.stacked-cell,
-.tag-stack {
+.stacked-cell {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  line-height: 1.4;
 }
 
-.tag-stack {
-  align-items: flex-start;
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 </style>
