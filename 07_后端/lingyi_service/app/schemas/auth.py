@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Literal
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -25,6 +26,21 @@ class CurrentUserData(BaseModel):
     roles: List[str]
     is_service_account: bool
     source: str
+
+
+class LocalLoginRequest(BaseModel):
+    """Development-only local login request."""
+
+    username: str = Field(min_length=1, max_length=64)
+    profile: Literal[
+        "system_manager",
+        "bom_editor",
+        "production_manager",
+        "subcontract_manager",
+        "quality_manager",
+        "warehouse_manager",
+        "sales_manager",
+    ] = "system_manager"
 
 
 class ActionPermissionData(BaseModel):

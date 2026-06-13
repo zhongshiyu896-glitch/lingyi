@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
+import { usePermissionStore } from '@/stores/permission'
+
 const z042ReportParityQuery = {
   parity: 'z042-report-parity-source-guard',
   readonly_probe: '1',
@@ -29,6 +31,12 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     redirect: '/home',
+  },
+  {
+    path: '/login',
+    name: 'LoginPage',
+    component: () => import('@/views/auth/LoginPage.vue'),
+    meta: { public: true },
   },
   {
     path: '/home',
@@ -365,6 +373,41 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+})
+
+router.beforeEach(async (to) => {
+  const permissionStore = usePermissionStore()
+  const redirectPath =
+    typeof to.query.redirect === 'string' && to.query.redirect.startsWith('/') ? to.query.redirect : '/home'
+
+  if (to.meta.public) {
+    if (to.name === 'LoginPage') {
+      try {
+        await permissionStore.loadCurrentUser({ force: true })
+      } catch {
+        // Keep the login page reachable when the session probe fails closed.
+      }
+      if (permissionStore.state.username && permissionStore.state.status !== 'guest') {
+        return redirectPath
+      }
+    }
+    return true
+  }
+
+  try {
+    await permissionStore.loadCurrentUser({ force: true })
+  } catch {
+    // Route auth is fail-closed below when no authenticated session is available.
+  }
+
+  if (permissionStore.state.username && permissionStore.state.status !== 'guest') {
+    return true
+  }
+
+  return {
+    path: '/login',
+    query: { redirect: to.fullPath },
+  }
 })
 
 export default router

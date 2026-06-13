@@ -1,0 +1,25 @@
+{
+  "targeted_pytest": {
+    "command": "./.venv/bin/python -m pytest tests/test_auth_session.py tests/test_auth_actions.py tests/test_env.py -q",
+    "result": "PASS",
+    "summary": "14 passed, 1 warning"
+  },
+  "npm_run_typecheck": {
+    "command": "npm run typecheck",
+    "result": "PASS"
+  },
+  "npm_run_verify": {
+    "command": "npm run verify",
+    "result": "PASS",
+    "build_warning_only": true
+  },
+  "browser_e2e": {
+    "result": "PASS",
+    "route_flow": [
+      "未登录访问 /quality/inspections -> /login",
+      "登录后进入 /quality/inspections",
+      "登出后回到 /login",
+      "再次访问 /quality/inspections -> /login"
+    ]
+  }
+}

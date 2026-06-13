@@ -1,0 +1,24 @@
+{
+  "steps": [
+    {
+      "step": "unauthenticated_intercept",
+      "href": "http://127.0.0.1:15173/login?redirect=/quality/inspections",
+      "pathname": "/login"
+    },
+    {
+      "step": "login_to_business_route",
+      "href": "http://127.0.0.1:15173/quality/inspections",
+      "pathname": "/quality/inspections"
+    },
+    {
+      "step": "logout_redirect",
+      "href": "http://127.0.0.1:15173/login",
+      "pathname": "/login"
+    },
+    {
+      "step": "post_logout_intercept",
+      "href": "http://127.0.0.1:15173/login?redirect=/quality/inspections",
+      "pathname": "/login"
+    }
+  ]
+}

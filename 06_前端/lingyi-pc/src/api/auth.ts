@@ -11,6 +11,18 @@ export interface CurrentUserData {
   source: string
 }
 
+export interface LocalLoginPayload {
+  username: string
+  profile:
+    | 'system_manager'
+    | 'bom_editor'
+    | 'production_manager'
+    | 'subcontract_manager'
+    | 'quality_manager'
+    | 'warehouse_manager'
+    | 'sales_manager'
+}
+
 export interface ActionPermissionData {
   username?: string
   module?: string
@@ -77,6 +89,18 @@ const request = async <T>(url: string, init?: RequestInit): Promise<ApiResponse<
 }
 
 export const fetchCurrentUser = (): Promise<ApiResponse<CurrentUserData>> => request('/api/auth/me')
+
+export const loginWithLocalSession = (payload: LocalLoginPayload): Promise<ApiResponse<CurrentUserData>> =>
+  request('/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+export const logoutCurrentSession = (): Promise<ApiResponse<{ logged_out: boolean }>> =>
+  request('/api/auth/logout', { method: 'POST' })
 
 export const fetchModuleActions = (params: {
   module?: string

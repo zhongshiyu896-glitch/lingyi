@@ -1,5 +1,6 @@
 <template>
   <section
+    v-if="!isLoginRoute"
     id="global-readonly-shell"
     class="global-readonly-shell"
     data-testid="global-readonly-shell"
@@ -114,6 +115,16 @@
         disabled
       >
         降级说明入口
+      </button>
+      <button
+        v-if="permissionStore.state.username"
+        id="global-auth-logout"
+        type="button"
+        class="global-readonly-shell__button global-readonly-shell__button--logout"
+        data-testid="global-auth-logout"
+        @click="handleLogout"
+      >
+        退出登录
       </button>
       <span
         id="global-remote-lifecycle-parked"
@@ -295,13 +306,18 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
 const route = useRoute()
+const router = useRouter()
+
+const isLoginRoute = computed(() => route.path === '/login')
 
 const routeModule = computed(() => {
+  if (typeof route.meta?.module === 'string' && route.meta.module.trim()) return route.meta.module
   if (route.path.startsWith('/permissions')) return 'permission_governance'
   if (route.path.startsWith('/reports')) return 'report'
   if (route.path.startsWith('/workshop')) return 'workshop'
@@ -434,6 +450,9 @@ const handleReadonlyShellActionGuard = (event: Event): void => {
 }
 
 const loadReadonlyState = async (): Promise<void> => {
+  if (isLoginRoute.value) {
+    return
+  }
   try {
     await permissionStore.loadCurrentUser()
     await permissionStore.loadModuleActions(routeModule.value)
@@ -452,11 +471,19 @@ const refreshReadonlySession = async (): Promise<void> => {
 }
 
 const reloadReadonlyModuleActions = async (): Promise<void> => {
+  if (isLoginRoute.value) {
+    return
+  }
   try {
     await permissionStore.loadModuleActions(routeModule.value)
   } catch {
     // Module action reload is read-only and guarded.
   }
+}
+
+const handleLogout = async (): Promise<void> => {
+  await permissionStore.logout()
+  await router.replace('/login')
 }
 
 onMounted(() => {
@@ -609,6 +636,12 @@ watch(
   color: #223047;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.global-readonly-shell__button--logout {
+  border-color: #b8c7d9;
+  background: #ffffff;
+  color: #25456b;
 }
 
 .global-readonly-shell__button:disabled,

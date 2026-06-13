@@ -1,0 +1,33 @@
+{
+  "live_http_cases": [
+    {
+      "case": "unauth_me",
+      "status": 401,
+      "code": "AUTH_UNAUTHORIZED",
+      "message": "未登录或 Token 无效"
+    },
+    {
+      "case": "invalid_cookie_me",
+      "status": 401,
+      "code": "AUTH_UNAUTHORIZED",
+      "message": "未登录或 Token 无效"
+    },
+    {
+      "case": "unauth_quality_actions",
+      "status": 401,
+      "code": "AUTH_UNAUTHORIZED",
+      "message": "未登录或 Token 无效"
+    },
+    {
+      "case": "production_login_blocked",
+      "status": 503,
+      "code": "INTERNAL_API_DISABLED",
+      "message": "本地登录仅在 local/development/test 且显式允许时可用"
+    }
+  ],
+  "notes": [
+    "fail-closed 结果未使用 422 兜底。",
+    "未登录、无效会话均返回 401。",
+    "生产态本地登录入口默认关闭并返回 503。"
+  ]
+}

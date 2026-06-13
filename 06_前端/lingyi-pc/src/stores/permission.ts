@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { fetchBomActions, fetchCurrentUser, fetchModuleActions } from '@/api/auth'
+import { fetchBomActions, fetchCurrentUser, fetchModuleActions, loginWithLocalSession, logoutCurrentSession, type LocalLoginPayload } from '@/api/auth'
 
 // Action codes from /api/auth/actions
 export const ACTION_BOM_CREATE = 'bom:create'
@@ -203,7 +203,7 @@ export const usePermissionStore = () => {
         const result = await fetchCurrentUser()
         state.username = result.data.username
         state.roles = result.data.roles
-        state.status = ''
+        state.status = 'authenticated'
         clearGuestCache()
       } catch (error) {
         if (isUnauthorizedError(error)) {
@@ -230,6 +230,25 @@ export const usePermissionStore = () => {
 
   const refreshCurrentUser = async (): Promise<void> => {
     await loadCurrentUser({ force: true })
+  }
+
+  const login = async (payload: LocalLoginPayload): Promise<void> => {
+    const result = await loginWithLocalSession(payload)
+    state.username = result.data.username
+    state.roles = result.data.roles
+    state.status = 'authenticated'
+    state.actions = []
+    state.buttonPermissions = emptyButtonPermissions()
+    clearGuestCache()
+  }
+
+  const logout = async (): Promise<void> => {
+    try {
+      await logoutCurrentSession()
+    } finally {
+      clearGuestCache()
+      applyGuestState()
+    }
   }
 
   const loadModuleActions = async (module = 'bom'): Promise<void> => {
@@ -267,9 +286,11 @@ export const usePermissionStore = () => {
 
   return {
     state,
+    login,
     loadCurrentUser,
-    refreshCurrentUser,
     loadModuleActions,
     loadBomActions,
+    logout,
+    refreshCurrentUser,
   }
 }

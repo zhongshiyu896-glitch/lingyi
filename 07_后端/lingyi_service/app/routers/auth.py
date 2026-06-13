@@ -9,14 +9,21 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import Query
 from fastapi import Request
+from fastapi import Response
 from sqlalchemy.orm import Session
 
+from app.core.auth import build_local_login_user
+from app.core.auth import clear_local_session_cookie
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.auth import set_local_session_cookie
+from app.schemas.auth import LocalLoginRequest
 from app.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 # Exposed endpoints:
+# - POST /api/auth/login
+# - POST /api/auth/logout
 # - GET /api/auth/me
 # - GET /api/auth/actions
 # - GET /api/auth/actions/bom/{bom_id}
@@ -30,6 +37,28 @@ def get_db_session() -> Generator[Session, None, None]:
 
 def _ok(data: dict[str, Any]) -> dict[str, Any]:
     return {"code": "0", "message": "success", "data": data}
+
+
+@router.post("/login")
+def login(payload: LocalLoginRequest, response: Response):
+    """Create local guarded session for development/test entry login."""
+    current_user = build_local_login_user(username=payload.username, profile=payload.profile)
+    set_local_session_cookie(response, current_user)
+    return _ok(
+        {
+            "username": current_user.username,
+            "roles": current_user.roles,
+            "is_service_account": current_user.is_service_account,
+            "source": current_user.source,
+        }
+    )
+
+
+@router.post("/logout")
+def logout(response: Response):
+    """Clear local guarded session."""
+    clear_local_session_cookie(response)
+    return _ok({"logged_out": True})
 
 
 @router.get("/me")

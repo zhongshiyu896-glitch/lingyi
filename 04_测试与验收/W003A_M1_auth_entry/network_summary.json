@@ -1,0 +1,43 @@
+{
+  "requestCount": 13,
+  "responseCount": 13,
+  "methods": [
+    "GET",
+    "POST"
+  ],
+  "urls": [
+    "GET http://127.0.0.1:15173/api/auth/me",
+    "GET http://127.0.0.1:15173/api/auth/me",
+    "GET http://127.0.0.1:15173/api/auth/me",
+    "POST http://127.0.0.1:15173/api/auth/login",
+    "GET http://127.0.0.1:15173/api/auth/me",
+    "GET http://127.0.0.1:15173/api/auth/actions?module=quality",
+    "GET http://127.0.0.1:15173/api/auth/me",
+    "GET http://127.0.0.1:15173/api/auth/actions?module=quality",
+    "GET http://127.0.0.1:15173/api/quality/inspections?page=1&page_size=20",
+    "POST http://127.0.0.1:15173/api/auth/logout",
+    "GET http://127.0.0.1:15173/api/auth/me",
+    "GET http://127.0.0.1:15173/api/auth/me",
+    "GET http://127.0.0.1:15173/api/auth/me"
+  ],
+  "statuses": [
+    401,
+    401,
+    401,
+    200,
+    200,
+    200,
+    200,
+    200,
+    500,
+    200,
+    401,
+    401,
+    401
+  ],
+  "hasAuthorizationHeader": false,
+  "hasDevUserHeader": false,
+  "hasDevRolesHeader": false,
+  "localDevEndpointHits": [],
+  "erpnextHits": []
+}
