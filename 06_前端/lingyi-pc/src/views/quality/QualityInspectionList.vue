@@ -50,8 +50,8 @@
               :disabled="!canCreate"
               data-testid="quality-create-button"
               data-action-type="write"
-              data-write-guard="readonly:quality-create-inspection"
-              data-guard-state="guarded_readonly"
+              data-write-guard="local_dev:quality-create-inspection"
+              data-guard-state="enabled_local_dev"
               @click="openCreateDialog"
             >
               创建检验单
@@ -64,7 +64,7 @@
         type="info"
         :closable="false"
         data-testid="quality-readonly-parity-hint"
-        :title="`quality parity=${qualityParity}（READONLY_GET_ONLY，写动作仅本地提示）`"
+        :title="`quality parity=${qualityParity}（LOCAL_DEV_WRITE_CLOSURE，仅 development + sqlite 允许写入）`"
       />
 
       <el-form :inline="true" :model="query" data-testid="quality-filter-form">
@@ -434,8 +434,8 @@
           :disabled="!canCreate"
           data-testid="quality-create-submit"
           data-action-type="write"
-          data-write-guard="readonly:quality-create-submit"
-          data-guard-state="guarded_readonly"
+          data-write-guard="local_dev:quality-create-submit"
+          data-guard-state="enabled_local_dev"
           @click="submitCreate"
         >
           保存
@@ -458,7 +458,6 @@ import {
   fetchQualityInspectionDetail,
   fetchQualityInspections,
   fetchQualityStatistics,
-  fetchQualityStatisticsTrend,
   type QualityInspectionCreatePayload,
   type QualityInspectionListItem,
   type QualityStatisticsData,
@@ -549,8 +548,7 @@ const createForm = reactive<QualityCreateFormState>(buildCreateFormState())
 
 const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_read)
 const canExport = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_export)
-const readonlyWriteDisabled = computed<boolean>(() => true)
-const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_create && !readonlyWriteDisabled.value)
+const canCreate = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_create)
 const qualityParity = computed<string>(() => {
   const parity = String(route.query.parity || 'quality-inspections').trim()
   return parity || 'quality-inspections'
@@ -677,12 +675,7 @@ const resetRows = (): void => {
 }
 
 const loadTrend = async (): Promise<void> => {
-  if (!canRead.value) {
-    statisticsTrend.value = null
-    return
-  }
-  const trend = await fetchQualityStatisticsTrend(trendPeriod.value, buildFilterQuery())
-  statisticsTrend.value = trend.data
+  statisticsTrend.value = null
 }
 
 const loadRows = async (): Promise<void> => {
@@ -700,8 +693,7 @@ const loadRows = async (): Promise<void> => {
     total.value = result.data.total
     const stats = await fetchQualityStatistics(filters)
     statistics.value = stats.data
-    const trend = await fetchQualityStatisticsTrend(trendPeriod.value, filters)
-    statisticsTrend.value = trend.data
+    statisticsTrend.value = null
   } catch (error) {
     const message = (error as Error).message
     listError.value = message
@@ -745,7 +737,13 @@ const showGuardedAction = (actionName: string): void => {
 }
 
 const openCreateDialog = (): void => {
-  showGuardedAction('创建检验单')
+  if (!canCreate.value) {
+    ElMessage.error('无创建检验单权限')
+    return
+  }
+  resetCreateForm()
+  refreshCreateRequestId()
+  createDialogVisible.value = true
 }
 
 const closeCreateDialog = (): void => {
@@ -753,8 +751,6 @@ const closeCreateDialog = (): void => {
 }
 
 const submitCreate = async (): Promise<void> => {
-  showGuardedAction('创建检验单保存')
-  return
   if (!canCreate.value) {
     ElMessage.error('无创建检验单权限')
     return

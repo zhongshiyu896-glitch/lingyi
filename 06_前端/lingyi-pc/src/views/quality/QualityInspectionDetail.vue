@@ -21,7 +21,7 @@
         type="info"
         :closable="false"
         data-testid="quality-inspection-detail-readonly-parity-hint"
-        :title="`quality parity=${qualityDetailParity}（READONLY_GET_ONLY，写动作仅本地提示）`"
+        :title="`quality parity=${qualityDetailParity}（LOCAL_DEV_WRITE_CLOSURE，仅 development + sqlite 允许写入）`"
       />
 
       <el-empty
@@ -95,8 +95,8 @@
               :loading="actionSubmitting && activeAction === 'update'"
               data-testid="quality-inspection-detail-action-edit"
               data-action-type="write"
-              data-write-guard="readonly:quality-detail-update"
-              data-guard-state="guarded_readonly"
+              data-write-guard="local_dev:quality-detail-update"
+              data-guard-state="enabled_local_dev"
               @click="openUpdateDialog"
             >
               编辑草稿
@@ -108,8 +108,8 @@
               :loading="actionSubmitting && activeAction === 'defects'"
               data-testid="quality-inspection-detail-action-defect"
               data-action-type="write"
-              data-write-guard="readonly:quality-detail-defects"
-              data-guard-state="guarded_readonly"
+              data-write-guard="local_dev:quality-detail-defects"
+              data-guard-state="enabled_local_dev"
               @click="openDefectDialog"
             >
               录入缺陷
@@ -121,8 +121,8 @@
               :loading="actionSubmitting && activeAction === 'confirm'"
               data-testid="quality-inspection-detail-action-confirm"
               data-action-type="write"
-              data-write-guard="readonly:quality-detail-confirm"
-              data-guard-state="guarded_readonly"
+              data-write-guard="local_dev:quality-detail-confirm"
+              data-guard-state="enabled_local_dev"
               @click="openConfirmDialog"
             >
               确认检验单
@@ -134,8 +134,8 @@
               :loading="actionSubmitting && activeAction === 'cancel'"
               data-testid="quality-inspection-detail-action-cancel"
               data-action-type="write"
-              data-write-guard="readonly:quality-detail-cancel"
-              data-guard-state="guarded_readonly"
+              data-write-guard="local_dev:quality-detail-cancel"
+              data-guard-state="enabled_local_dev"
               @click="openCancelDialog"
             >
               取消检验单
@@ -262,8 +262,8 @@
           type="primary"
           :disabled="!canUpdate"
           :loading="actionSubmitting && activeAction === 'update'"
-          data-write-guard="readonly:quality-detail-update-submit"
-          data-guard-state="guarded_readonly"
+          data-write-guard="local_dev:quality-detail-update-submit"
+          data-guard-state="enabled_local_dev"
           @click="submitUpdate"
         >
           保存
@@ -308,8 +308,8 @@
           type="primary"
           :disabled="!canUpdate"
           :loading="actionSubmitting && activeAction === 'defects'"
-          data-write-guard="readonly:quality-detail-defects-submit"
-          data-guard-state="guarded_readonly"
+          data-write-guard="local_dev:quality-detail-defects-submit"
+          data-guard-state="enabled_local_dev"
           @click="submitDefect"
         >
           保存
@@ -338,8 +338,8 @@
           type="success"
           :disabled="!canConfirm"
           :loading="actionSubmitting && activeAction === 'confirm'"
-          data-write-guard="readonly:quality-detail-confirm-submit"
-          data-guard-state="guarded_readonly"
+          data-write-guard="local_dev:quality-detail-confirm-submit"
+          data-guard-state="enabled_local_dev"
           @click="submitConfirm"
         >
           确认
@@ -368,8 +368,8 @@
           type="danger"
           :disabled="!canCancel"
           :loading="actionSubmitting && activeAction === 'cancel'"
-          data-write-guard="readonly:quality-detail-cancel-submit"
-          data-guard-state="guarded_readonly"
+          data-write-guard="local_dev:quality-detail-cancel-submit"
+          data-guard-state="enabled_local_dev"
           @click="submitCancel"
         >
           确认取消
@@ -391,7 +391,6 @@ import {
   ensureQualityInspectionScenarioTag,
   extractQualityInspectionScenarioTag,
   fetchQualityInspectionDetail,
-  fetchQualityInspectionOutboxStatus,
   updateDraftInspection,
   type QualityInspectionCancelPayload,
   type QualityInspectionConfirmPayload,
@@ -504,11 +503,9 @@ const canRead = computed<boolean>(() => permissionStore.state.buttonPermissions.
 const canUpdatePermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_update)
 const canConfirmPermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_confirm)
 const canCancelPermission = computed<boolean>(() => permissionStore.state.buttonPermissions.quality_cancel)
-const readonlyWriteDisabled = computed<boolean>(() => true)
-
-const canUpdate = computed<boolean>(() => canUpdatePermission.value && detail.value?.status === 'draft' && !readonlyWriteDisabled.value)
-const canConfirm = computed<boolean>(() => canConfirmPermission.value && detail.value?.status === 'draft' && !readonlyWriteDisabled.value)
-const canCancel = computed<boolean>(() => canCancelPermission.value && detail.value?.status === 'confirmed' && !readonlyWriteDisabled.value)
+const canUpdate = computed<boolean>(() => canUpdatePermission.value && detail.value?.status === 'draft')
+const canConfirm = computed<boolean>(() => canConfirmPermission.value && detail.value?.status === 'draft')
+const canCancel = computed<boolean>(() => canCancelPermission.value && detail.value?.status === 'confirmed')
 const qualityDetailParity = computed<string>(() => {
   const parity = String(route.query.parity || 'quality-inspections-detail').trim()
   return parity || 'quality-inspections-detail'
@@ -516,13 +513,8 @@ const qualityDetailParity = computed<string>(() => {
 
 const permissionStateText = computed<string>(() => {
   if (!canRead.value) return '当前账号缺少质量检验详情读取权限。'
-  return '当前为只读验证阶段，写操作入口统一 guarded_readonly，不会发起写请求。'
+  return '当前为本地 development 写闭环验证阶段；写请求仍受 local-dev gate、request_id carrier 与状态机 fail-closed 保护。'
 })
-
-const showReadonlyGuard = (actionName: string): void => {
-  actionFeedback.value = `${actionName}在当前只读交互阶段已禁用（parity=${qualityDetailParity.value}）`
-  ElMessage.warning(actionFeedback.value)
-}
 
 const formatAmount = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') return '-'
@@ -661,16 +653,7 @@ const refreshCarrierRequestId = (
 }
 
 const loadOutboxStatus = async (): Promise<void> => {
-  if (!detail.value || detail.value.status !== 'confirmed') {
-    outboxStatus.value = null
-    return
-  }
-  try {
-    const result = await fetchQualityInspectionOutboxStatus(detail.value.id)
-    outboxStatus.value = result.data
-  } catch {
-    outboxStatus.value = null
-  }
+  outboxStatus.value = null
 }
 
 const loadDetail = async (): Promise<void> => {
@@ -698,24 +681,75 @@ const loadDetail = async (): Promise<void> => {
 }
 
 const openUpdateDialog = (): void => {
-  showReadonlyGuard('编辑草稿')
+  if (!detail.value || !canUpdate.value) {
+    ElMessage.error('当前状态不允许编辑草稿')
+    return
+  }
+  try {
+    Object.assign(updateForm, buildCarrierForm('update', detail.value.result), {
+      inspection_date: detail.value.inspection_date,
+      inspected_qty: String(detail.value.inspected_qty ?? ''),
+      accepted_qty: String(detail.value.accepted_qty ?? ''),
+      rejected_qty: String(detail.value.rejected_qty ?? ''),
+      defect_qty: String(detail.value.defect_qty ?? ''),
+      remark: detail.value.remark || '',
+    })
+    updateDialogVisible.value = true
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
 }
 
 const openDefectDialog = (): void => {
-  showReadonlyGuard('录入缺陷')
+  if (!detail.value || !canUpdate.value) {
+    ElMessage.error('当前状态不允许录入缺陷')
+    return
+  }
+  try {
+    Object.assign(defectForm, buildCarrierForm('defects', detail.value.result), {
+      defect_code: 'DEFECT-Z003',
+      defect_name: '样例缺陷',
+      defect_qty: '1',
+      severity: 'minor',
+      remark: '',
+    })
+    defectDialogVisible.value = true
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
 }
 
 const openConfirmDialog = (): void => {
-  showReadonlyGuard('确认检验单')
+  if (!detail.value || !canConfirm.value) {
+    ElMessage.error('当前状态不允许确认检验单')
+    return
+  }
+  try {
+    Object.assign(confirmForm, buildCarrierForm('confirm', detail.value.result), {
+      remark: '',
+    })
+    confirmDialogVisible.value = true
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
 }
 
 const openCancelDialog = (): void => {
-  showReadonlyGuard('取消检验单')
+  if (!detail.value || !canCancel.value) {
+    ElMessage.error('当前状态不允许取消检验单')
+    return
+  }
+  try {
+    Object.assign(cancelForm, buildCarrierForm('cancel', detail.value.result), {
+      reason: '',
+    })
+    cancelDialogVisible.value = true
+  } catch (error) {
+    ElMessage.error((error as Error).message)
+  }
 }
 
 const submitUpdate = async (): Promise<void> => {
-  showReadonlyGuard('编辑草稿保存')
-  return
   if (!detail.value || !inspectionId.value) {
     return
   }
@@ -775,8 +809,6 @@ const submitUpdate = async (): Promise<void> => {
 }
 
 const submitDefect = async (): Promise<void> => {
-  showReadonlyGuard('录入缺陷保存')
-  return
   if (!detail.value || !inspectionId.value) {
     return
   }
@@ -828,8 +860,6 @@ const submitDefect = async (): Promise<void> => {
 }
 
 const submitConfirm = async (): Promise<void> => {
-  showReadonlyGuard('确认检验单提交')
-  return
   if (!detail.value || !inspectionId.value) {
     return
   }
@@ -864,8 +894,6 @@ const submitConfirm = async (): Promise<void> => {
 }
 
 const submitCancel = async (): Promise<void> => {
-  showReadonlyGuard('取消检验单提交')
-  return
   if (!detail.value || !inspectionId.value) {
     return
   }
