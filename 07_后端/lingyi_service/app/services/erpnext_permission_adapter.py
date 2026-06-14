@@ -11,9 +11,11 @@ from urllib import error
 from urllib import parse
 from urllib import request
 
+from fastapi import HTTPException
 from fastapi import Request
 
 from app.core.auth import CurrentUser
+from app.core.auth import _erpnext_service_headers
 from app.core.exceptions import PermissionSourceUnavailable
 
 
@@ -31,14 +33,14 @@ class UserPermissionResult:
 
 
 class ERPNextPermissionAdapter:
-    """Read ERPNext role, user permission and workflow action facts."""
+    """Read ERPNext authorization metadata with service credentials."""
 
     def __init__(self, request_obj: Request):
         self.request_obj = request_obj
         self.base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
 
     def get_user_roles(self, current_user: CurrentUser) -> list[str]:
-        """Fetch user's ERPNext roles from ERPNext authority."""
+        """Fetch confirmed user's ERPNext roles from ERPNext authority."""
         if not self.base_url:
             return list(current_user.roles)
 
@@ -66,7 +68,7 @@ class ERPNextPermissionAdapter:
         return sorted(roles) or list(current_user.roles)
 
     def get_user_permissions(self, username: str) -> UserPermissionResult:
-        """Fetch structured ERPNext User Permission facts.
+        """Fetch structured ERPNext User Permission facts for a confirmed user.
 
         Raises:
             PermissionSourceUnavailable: ERPNext unavailable or returns invalid structure.
@@ -164,7 +166,7 @@ class ERPNextPermissionAdapter:
         )
 
     def get_workflow_actions(self, *, doctype: str, docname: str | None = None) -> list[str]:
-        """Fetch workflow transitions currently executable by user."""
+        """Fetch workflow transitions from ERPNext workflow metadata."""
         if not self.base_url or not docname:
             return list()
         path = f"/api/method/frappe.model.workflow.get_transitions?doctype={parse.quote(doctype)}&docname={parse.quote(docname)}"
@@ -232,14 +234,6 @@ class ERPNextPermissionAdapter:
 
     def _get_json(self, path: str, *, strict: bool = False, operation: str = "") -> dict[str, Any] | None:
         headers = self._build_headers()
-        if not headers:
-            if strict:
-                raise PermissionSourceUnavailable(
-                    message="ERPNext 权限查询缺少鉴权上下文",
-                    exception_type="PermissionSourceUnavailable",
-                    exception_message="missing Authorization/Cookie",
-                )
-            return None
 
         req = request.Request(
             url=f"{self.base_url}{path}",
@@ -249,6 +243,20 @@ class ERPNextPermissionAdapter:
         try:
             with request.urlopen(req, timeout=5) as response:
                 body = response.read().decode("utf-8")
+        except error.HTTPError as exc:
+            if exc.code in {401, 403}:
+                raise PermissionSourceUnavailable(
+                    message="ERPNext 服务凭据无效或无权读取授权元数据",
+                    exception_type=type(exc).__name__,
+                    exception_message=str(exc),
+                ) from exc
+            if strict:
+                raise PermissionSourceUnavailable(
+                    message=f"ERPNext 权限查询失败: {operation or 'unknown'}",
+                    exception_type=type(exc).__name__,
+                    exception_message=str(exc),
+                ) from exc
+            return None
         except (error.URLError, TimeoutError) as exc:
             if strict:
                 raise PermissionSourceUnavailable(
@@ -286,14 +294,15 @@ class ERPNextPermissionAdapter:
             return None
         return payload
 
-    def _build_headers(self) -> dict[str, str] | None:
-        headers: dict[str, str] = {"Accept": "application/json"}
-        authorization = self.request_obj.headers.get("Authorization")
-        cookie = self.request_obj.headers.get("Cookie")
-        if authorization:
-            headers["Authorization"] = authorization
-        if cookie:
-            headers["Cookie"] = cookie
-        if "Authorization" not in headers and "Cookie" not in headers:
-            return None
-        return headers
+    def _build_headers(self) -> dict[str, str]:
+        try:
+            return _erpnext_service_headers()
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {}
+            message = str(detail.get("message") or "ERPNext 服务凭据未配置")
+            code = str(detail.get("code") or type(exc).__name__)
+            raise PermissionSourceUnavailable(
+                message=message,
+                exception_type=code,
+                exception_message=message,
+            ) from exc

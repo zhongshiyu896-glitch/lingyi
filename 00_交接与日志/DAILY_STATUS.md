@@ -1,5 +1,5 @@
 # DAILY_STATUS
-updated_at: 2026-06-14 11:47 CST+8
+updated_at: 2026-06-14 12:13 CST+8
 ## W003A
 - state: `MAINLINE_ACTIVE`
 - task: `TASK-W003A-LAUNCH`
@@ -21,6 +21,7 @@ updated_at: 2026-06-14 11:47 CST+8
 - ui_rule: `登录页无衣算云对应业务页，不追 1:1；仅保持衣算云业务页基线风格`
 - backend_cache: `LINGYI_AUTH_CACHE_TTL_SECONDS 默认45s、上限60s；key=ERPNext sid 或本地会话 token；logout 清对应缓存`
 - role_read_fix: `PASS: 用户 sid 仅用于 get_logged_user 身份确认；User.roles 改用 LINGYI_ERPNEXT_API_KEY/SECRET 服务凭据读取，缺失/无效 503 fail-closed；BOM Editor 受限用户权限测试覆盖`
+- permission_adapter_fix: `PASS: ERPNext 授权元数据读取(User Permission/User roles/workflow transitions)统一使用服务凭据；/api/auth/actions 受限 BOM Editor 返回按钮权限，服务凭据缺失/无效 503 fail-closed`
 ## M2
 - current_target: `BOM 写闭环 + 衣算云物料开发 UI 1:1`
 - status: `LOCAL_SELF_TEST_PASS / READY_FOR_CONSULTANT_REVIEW`
