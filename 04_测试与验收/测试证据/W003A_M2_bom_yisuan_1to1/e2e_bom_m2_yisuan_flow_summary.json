@@ -1,0 +1,256 @@
+{
+  "task_id": "W003A_M2_BOM_YISUAN_1TO1",
+  "generated_at": "2026-06-14T02:38:12.145Z",
+  "frontend_url": "http://127.0.0.1:59528",
+  "baseline_screenshot": "/Users/hh/Desktop/领意服装管理系统/01_需求与资料/衣算云文档/证据数据/yisuan_ui_1to1_shots_20260405/04_物料开发_面料.png",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "screenshots": [
+    "01_list_yisuan_1to1_baseline.png",
+    "02_create_dialog_yisuan_build.png",
+    "03_after_create_list_true_endpoint.png",
+    "04_detail_yisuan_lifecycle_toolbar.png",
+    "05_edit_dialog_yisuan_build.png",
+    "06_after_edit_detail_true_endpoint.png",
+    "07_after_default_activate_deactivate.png",
+    "08_explode_result_true_endpoint.png",
+    "09_state_loading.png",
+    "10_state_error.png",
+    "11_state_disabled.png",
+    "12_state_empty.png",
+    "13_state_no_permission.png"
+  ],
+  "style_checks": {
+    "pageBg": "rgb(246, 248, 249)",
+    "primaryBg": "rgb(78, 136, 243)",
+    "tableHeadBg": "rgb(245, 247, 250)",
+    "bodyColor": "rgb(81, 90, 110)",
+    "topbarBox": {
+      "width": 1400,
+      "height": 61,
+      "top": 312
+    },
+    "tabsBox": {
+      "width": 1400,
+      "height": 51,
+      "top": 373
+    },
+    "toolbarBox": {
+      "width": 1374,
+      "height": 32,
+      "top": 449
+    },
+    "headers": [
+      "图片",
+      "编号",
+      "部位",
+      "名称",
+      "颜色",
+      "成分",
+      "幅宽",
+      "克重",
+      "操作"
+    ],
+    "toolbarText": " 新建 ⌄⌕筛选批量删除↙ 导入图片↙ 导入↓ 导出↙ 导入物料计价⚙ 列设置",
+    "paginationText": "共 3 条30条/页‹1›"
+  },
+  "endpoint_assertions": {
+    "create_bom_post": 1,
+    "update_bom_put": 1,
+    "set_default_post": 1,
+    "activate_post": 1,
+    "deactivate_post": 1,
+    "explode_post": 1,
+    "local_dev_bom_calls": 0
+  },
+  "api_calls": [
+    {
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=global"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/?page=1&page_size=30"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/?page=1&page_size=30"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions/bom/104"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/104"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/bom/104"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/104"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions/bom/104"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/104/set-default"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/104"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions/bom/104"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/104/activate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/104"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions/bom/104"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/104/deactivate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/104"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions/bom/104"
+    },
+    {
+      "method": "POST",
+      "path": "/api/bom/104/explode"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=global"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=global"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=global"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/?page=1&page_size=30"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=global"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/bom/?page=1&page_size=30"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=global"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/actions?module=bom"
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "frontend_logs": [
+    "\n  VITE v7.3.3  ready in 227 ms\n\n",
+    "  ➜  Local:   http://127.0.0.1:59528/\n"
+  ]
+}

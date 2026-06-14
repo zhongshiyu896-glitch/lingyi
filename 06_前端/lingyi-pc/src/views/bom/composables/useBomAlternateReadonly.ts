@@ -1,4 +1,4 @@
-import type { BomDetailData, LocalBomReadbackData } from '@/api/bom'
+import type { BomDetailData } from '@/api/bom'
 import {
   BOM_ALTERNATE_FALLBACK_LINES,
   BOM_ALTERNATE_HINT_KEYWORDS,
@@ -12,6 +12,20 @@ import {
 } from '@/views/bom/constants/bomAlternateMaterialFields'
 
 type SourceKind = 'detail-readback' | 'local-readback' | 'fallback-readonly'
+
+interface BomReadonlyReadbackLine {
+  material_item_code: string
+  material_name?: string
+  color?: string
+  size?: string
+  qty_per_piece?: number | string
+  remark?: string
+}
+
+interface BomReadonlyReadbackData {
+  fabric_lines: BomReadonlyReadbackLine[]
+  trim_lines: BomReadonlyReadbackLine[]
+}
 
 interface BomReadonlyLine {
   materialItemCode: string
@@ -118,7 +132,7 @@ const buildDetailLines = (detail: BomDetailData | null): BomReadonlyLine[] => {
   }))
 }
 
-const buildLocalLines = (readback: LocalBomReadbackData | null): BomReadonlyLine[] => {
+const buildLocalLines = (readback: BomReadonlyReadbackData | null): BomReadonlyLine[] => {
   if (!readback) return []
   const fabricLines = readback.fabric_lines.map((line) => ({
     materialItemCode: normalizeText(line.material_item_code),
@@ -154,7 +168,7 @@ const buildFallbackLines = (): BomReadonlyLine[] =>
 
 const resolveReadonlyLines = (
   detail: BomDetailData | null,
-  readback: LocalBomReadbackData | null,
+  readback: BomReadonlyReadbackData | null,
 ): BomReadonlyLine[] => {
   const detailLines = buildDetailLines(detail)
   if (detailLines.length) return detailLines
@@ -283,7 +297,7 @@ export const useBomAlternateReadonly = () => {
 
   const buildBomAlternateDetailView = (
     detail: BomDetailData | null,
-    readback: LocalBomReadbackData | null,
+    readback: BomReadonlyReadbackData | null,
     parity: string,
   ): BomAlternateReadonlyDetailView => {
     const lines = resolveReadonlyLines(detail, readback)

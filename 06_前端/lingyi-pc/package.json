@@ -24,7 +24,8 @@
     "test:quality-contracts": "node scripts/test-quality-contracts.mjs",
     "test:frontend-contract-engine": "node scripts/test-frontend-contract-engine.mjs",
     "test:auth-contracts": "node scripts/test-auth-contracts.mjs",
-    "verify": "npm run check:production-contracts && npm run test:production-contracts && npm run check:style-profit-contracts && npm run test:style-profit-contracts && npm run check:factory-statement-contracts && npm run test:factory-statement-contracts && npm run check:sales-inventory-contracts && npm run test:sales-inventory-contracts && npm run check:quality-contracts && npm run test:quality-contracts && npm run test:frontend-contract-engine && npm run test:auth-contracts && npm run typecheck && npm run build"
+    "test:bom-m2-contracts": "node scripts/test-bom-m2-contracts.mjs",
+    "verify": "npm run check:production-contracts && npm run test:production-contracts && npm run check:style-profit-contracts && npm run test:style-profit-contracts && npm run check:factory-statement-contracts && npm run test:factory-statement-contracts && npm run check:sales-inventory-contracts && npm run test:sales-inventory-contracts && npm run check:quality-contracts && npm run test:quality-contracts && npm run test:frontend-contract-engine && npm run test:auth-contracts && npm run test:bom-m2-contracts && npm run typecheck && npm run build"
   },
   "dependencies": {
     "element-plus": "^2.11.5",

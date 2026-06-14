@@ -1,4 +1,4 @@
-import type { BomDetailData, LocalBomReadbackData } from '@/api/bom'
+import type { BomDetailData } from '@/api/bom'
 import {
   BOM_AUDIT_DEFAULT_VERSION_STATE_LABELS,
   BOM_AUDIT_DEFAULT_VERSION_STATE_TAGS,
@@ -11,6 +11,14 @@ import {
 } from '@/views/bom/constants/bomAuditDefaultVersionFields'
 
 type SourceKind = 'detail-readback' | 'list-readback' | 'local-readback' | 'fallback-readonly'
+
+interface BomAuditReadbackData {
+  bom_main?: {
+    bom_no?: string
+    version_no?: string
+    is_default?: boolean
+  }
+}
 
 export interface BomAuditListRow {
   bomNo: string
@@ -158,7 +166,7 @@ export const useBomAuditDefaultVersionReadonly = () => {
 
   const buildBomAuditDetailView = (
     detail: BomDetailData | null,
-    readback: LocalBomReadbackData | null,
+    readback: BomAuditReadbackData | null,
     parity: string,
   ): BomAuditDetailReadonlyView => {
     const sourceKind: SourceKind = detail?.bom

@@ -1,350 +1,204 @@
 <template>
-  <div class="bom-list-shell" data-testid="yisuan-1to1-bom-list-shell">
-    <el-card shadow="never" class="bom-header-card">
-      <div class="header-row">
-        <div class="header-main">
-          <h2 class="page-title">物料开发 BOM 列表</h2>
-          <p class="page-subtitle">衣算云 UI 1:1 + REALOBJ-CAND-002 本地写入闭环（local-dev only）</p>
-        </div>
-        <div class="header-actions" data-testid="yisuan-1to1-bom-list-toolbar">
-          <el-button type="primary" @click="runQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-          <el-button :disabled="!currentObjectId" @click="readbackObject">回读本地对象</el-button>
-          <el-button @click="checkZeroResidual">zero_residual 校验</el-button>
-        </div>
+  <main class="ys-bom-page" data-testid="yisuan-1to1-bom-list-shell">
+    <header class="ys-bom-topbar" data-testid="m2-bom-yisuan-topbar">
+      <div class="ys-bom-crumbs">
+        <span class="ys-icon">‹</span>
+        <span>物料开发</span>
+        <span>/</span>
+        <span class="ys-bom-crumbs__active">面料</span>
       </div>
-
-      <div class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
-        <el-tag type="success">source_status=found</el-tag>
-        <el-tag type="primary">covered_contract_ids=A002,A005</el-tag>
-        <el-tag type="info">real_business_object_created=false (production)</el-tag>
-        <el-tag type="info">linked_calculation_enabled=false (cross-module)</el-tag>
-        <span>来源：A002/A005 contract sources（B010 继承，B011 local-dev/sqlite/scenario_tag/test_data）</span>
+      <el-select v-model="activeMaterialType" class="ys-bom-title-select" size="default" aria-label="物料类型">
+        <el-option label="面料" value="fabric" />
+      </el-select>
+      <div class="ys-bom-top-actions">
+        <span>看板中心</span>
+        <span>DeepSeek</span>
+        <span>衣算</span>
+        <span>销售部（销售单）</span>
       </div>
-    </el-card>
+    </header>
 
-    <el-card shadow="never" class="filter-card">
-      <el-form :inline="true" :model="query" data-testid="yisuan-1to1-bom-filter-panel">
-        <el-form-item label="关键字">
-          <el-input v-model="query.keyword" clearable placeholder="BOM 编号/款号/版本" style="width: 220px" />
-        </el-form-item>
-        <el-form-item label="款号">
-          <el-input v-model="query.styleCode" clearable placeholder="输入款号" style="width: 160px" />
-        </el-form-item>
-        <el-form-item label="物料分组">
-          <el-select v-model="query.materialGroup" clearable placeholder="选择分组" style="width: 170px">
-            <el-option label="针织上装" value="针织上装" />
-            <el-option label="梭织外套" value="梭织外套" />
-            <el-option label="牛仔系列" value="牛仔系列" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="query.status" clearable placeholder="选择状态" style="width: 140px">
-            <el-option label="草稿" value="draft" />
-            <el-option label="审核中" value="review" />
-            <el-option label="已发布" value="published" />
-          </el-select>
-        </el-form-item>
-      </el-form>
+    <nav class="ys-bom-tabs" aria-label="物料开发页签">
+      <button v-for="tab in materialTabs" :key="tab" class="ys-bom-tab" type="button">
+        <span>{{ tab }}</span>
+        <span class="ys-bom-tab__close">×</span>
+      </button>
+      <button class="ys-bom-tab ys-bom-tab--active" type="button" data-testid="m2-bom-active-fabric-tab">
+        <span>面料</span>
+        <span class="ys-bom-tab__close">×</span>
+      </button>
+    </nav>
 
-      <div class="status-legend" data-testid="yisuan-1to1-bom-status-tags">
-        <el-tag type="info">草稿</el-tag>
-        <el-tag type="warning">审核中</el-tag>
-        <el-tag type="success">已发布</el-tag>
-      </div>
-
-      <el-alert v-if="listError" type="warning" :closable="false" :title="listError" class="feedback-alert" />
-    </el-card>
-
-    <el-card shadow="never" class="contract-boundary-card">
-      <template #header>
-        <div class="contract-header">
-          <strong>合同边界回读（A002/A005）</strong>
-          <el-tag type="warning">A005 partial/unknown 不宣称已确认</el-tag>
-        </div>
-      </template>
-
-      <div class="contract-grid">
-        <div class="contract-block" data-testid="yisuan-contract-key-fields">
-          <h4>key_fields</h4>
-          <div class="tag-row">
-            <el-tag v-for="field in a005VerifiedFields" :key="`verified-${field}`" type="success" effect="light">
-              {{ field }} VERIFIED
-            </el-tag>
-            <el-tag v-for="field in a005PartialFields" :key="`partial-${field}`" type="warning" effect="plain">
-              {{ field }} pending_confirmation
-            </el-tag>
-          </div>
-        </div>
-
-        <div class="contract-block" data-testid="yisuan-contract-validation-rules">
-          <h4>validation_rules</h4>
-          <ul>
-            <li v-for="field in a005UnknownFields" :key="`unknown-${field}`">
-              {{ field }} => source_unknown / pending_confirmation / not_claimed
-            </li>
-          </ul>
-          <div class="tag-row compact">
-            <el-tag v-for="action in a005BlockedActions" :key="`blocked-${action}`" type="danger" effect="plain">
-              {{ action }} blocked
-            </el-tag>
-          </div>
-        </div>
-
-        <div class="contract-block" data-testid="yisuan-contract-status-rules">
-          <h4>status_rules</h4>
-          <div class="tag-row">
-            <el-tag v-for="state in a002StateLabels" :key="state" type="info" effect="light">{{ state }}</el-tag>
-            <el-tag type="warning" effect="light">quote_draft_status=待提交</el-tag>
-          </div>
-        </div>
-
-        <div class="contract-block" data-testid="yisuan-contract-readonly-readback-rules">
-          <h4>readonly/readback rules</h4>
-          <ul>
-            <li v-for="rule in explicitNonClaimRules" :key="rule">{{ rule }}</li>
-          </ul>
-        </div>
-      </div>
-    </el-card>
-
-    <el-card shadow="never" class="readonly-summary-card" data-testid="cand164-bom-list-readonly-summary">
-      <template #header>
-        <div class="contract-header">
-          <strong>BOM 颜色尺码 / 替代料只读提示</strong>
-          <el-tag type="info" effect="plain">{{ listReadonlySummary.readonlySourceTag }}</el-tag>
-        </div>
-      </template>
-
-      <el-alert
-        v-if="listReadonlySummary.parityReadonlyHint"
-        type="warning"
-        :closable="false"
-        :title="listReadonlySummary.parityReadonlyHint"
-        data-testid="cand164-material-fabric-parity-readonly"
-      />
-
-      <el-descriptions border :column="2" class="readback-descriptions" data-testid="cand164-bom-list-readonly-descriptions">
-        <el-descriptions-item label="当前入口">{{ listReadonlySummary.parityScopeLabel }}</el-descriptions-item>
-        <el-descriptions-item label="列表行数">{{ listReadonlySummary.rowCountLabel }}</el-descriptions-item>
-        <el-descriptions-item label="颜色尺码用量">{{ listReadonlySummary.usageSummaryLabel }}</el-descriptions-item>
-        <el-descriptions-item label="替代料状态">{{ listReadonlySummary.alternateStatusLabel }}</el-descriptions-item>
-        <el-descriptions-item label="readonly_guard">{{ listReadonlySummary.readonlyGuardReason }}</el-descriptions-item>
-        <el-descriptions-item label="write_boundary">{{ listReadonlySummary.writeBoundary }}</el-descriptions-item>
-      </el-descriptions>
-
-      <el-alert
-        type="info"
-        :closable="false"
-        :title="listReadonlySummary.remainingGap"
-        class="feedback-alert"
-        data-testid="cand164-bom-list-remaining-gap"
-      />
-    </el-card>
-
-    <el-card shadow="never" class="readonly-summary-card" data-testid="cand206-bom-audit-readonly-summary">
-      <template #header>
-        <div class="contract-header">
-          <strong>BOM 审计来源 / 默认版本只读提示</strong>
-          <el-tag :type="bomAuditReadonlySummary.readonlySourceType" effect="plain">
-            {{ bomAuditReadonlySummary.readonlySourceTag }}
-          </el-tag>
-        </div>
-      </template>
-
-      <el-alert
-        v-if="bomAuditReadonlySummary.parityReadonlyHint"
-        type="warning"
-        :closable="false"
-        :title="bomAuditReadonlySummary.parityReadonlyHint"
-        data-testid="cand206-bom-product-style-parity-readonly"
-      />
-
-      <el-descriptions border :column="2" class="readback-descriptions" data-testid="cand206-bom-audit-readonly-descriptions">
-        <el-descriptions-item label="当前入口">{{ bomAuditReadonlySummary.parityScopeLabel }}</el-descriptions-item>
-        <el-descriptions-item label="列表行数">{{ bomAuditReadonlySummary.rowCountLabel }}</el-descriptions-item>
-        <el-descriptions-item label="审计来源">{{ bomAuditReadonlySummary.auditSourceLabel }}</el-descriptions-item>
-        <el-descriptions-item label="默认版本状态">
-          {{ bomAuditReadonlySummary.defaultVersionStatusLabel }}
-        </el-descriptions-item>
-        <el-descriptions-item label="版本覆盖">
-          {{ bomAuditReadonlySummary.defaultVersionCoverageLabel }}
-        </el-descriptions-item>
-        <el-descriptions-item label="readonly_guard">{{ bomAuditReadonlySummary.readonlyGuardReason }}</el-descriptions-item>
-      </el-descriptions>
-
-      <el-alert
-        type="warning"
-        :closable="false"
-        :title="bomAuditReadonlySummary.versionSourceGapPrompt"
-        class="feedback-alert"
-        data-testid="cand206-bom-version-source-gap"
-      />
-
-      <el-alert
-        type="info"
-        :closable="false"
-        :title="bomAuditReadonlySummary.remainingGap"
-        class="feedback-alert"
-        data-testid="cand206-bom-remaining-gap"
-      />
-    </el-card>
-
-    <BomExceptionBaselineReadonlySection
-      :is-exception-baseline-tab="bomExceptionIsActive"
-      :is-readonly-exception-mode="false"
-      :summary-cards="bomExceptionSummaryCards"
-      :parity-lines="bomExceptionParityLines"
-      :blocked-reasons="bomExceptionBlockedReasons"
-      :readonly-guard-text="bomExceptionReadonlyGuardText"
-      :exception-items="bomExceptionItems"
-      :disabled-actions="bomExceptionDisabledActions"
-      :remaining-gap="bomExceptionRemainingGap"
-    />
-
-    <el-card shadow="never">
-      <el-alert
-        v-if="bomExceptionWriteGuardActive"
-        type="warning"
-        :closable="false"
-        :title="bomExceptionReadonlyWriteGuardReason"
-        class="feedback-alert"
-        data-testid="bom-exception-local-write-guard"
-      />
-
-      <el-table
-        v-loading="listLoading"
-        :data="filteredRows"
-        border
-        height="460"
-        stripe
-        data-testid="yisuan-1to1-bom-table"
-      >
-        <el-table-column prop="bomNo" label="BOM 编号" min-width="170" />
-        <el-table-column prop="styleCode" label="款号" min-width="120" />
-        <el-table-column prop="styleName" label="款式名称" min-width="180" />
-        <el-table-column prop="materialGroup" label="物料分组" min-width="140" />
-        <el-table-column prop="version" label="版本" min-width="90" />
-        <el-table-column prop="owner" label="开发员" min-width="110" />
-        <el-table-column label="状态" min-width="110">
-          <template #default="{ row }">
-            <el-tag :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
+    <section class="ys-bom-panel" data-testid="m2-bom-list-panel">
+      <div class="ys-bom-toolbar" data-testid="yisuan-1to1-bom-list-toolbar">
+        <el-button
+          type="primary"
+          class="ys-primary-button"
+          :disabled="!canCreate || isUiDisabled"
+          data-testid="m2-bom-new-button"
+          @click="openCreateDialog"
+        >
+          新建
+          <span class="ys-button-caret">⌄</span>
+        </el-button>
+        <el-input
+          v-model="query.keyword"
+          class="ys-bom-search"
+          clearable
+          placeholder="请输入名称/供应商/编号"
+          data-testid="m2-bom-search"
+          @keyup.enter="runQuery"
+        >
+          <template #append>
+            <el-button aria-label="搜索" @click="runQuery">⌕</el-button>
           </template>
-        </el-table-column>
-        <el-table-column prop="updatedAt" label="更新时间" min-width="180" />
-        <el-table-column label="操作" width="210" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" :disabled="bomExceptionWriteGuardActive" @click="loadRowToLocalLoop(row)">
-              写入闭环
-            </el-button>
-            <el-button link type="primary" @click="goDetail(row)">查看详情</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+        </el-input>
+        <el-button class="ys-secondary-button" :disabled="isUiDisabled" @click="toggleFilter">筛选</el-button>
+        <el-button class="ys-danger-button" disabled>批量删除</el-button>
+        <div class="ys-bom-toolbar__spacer" />
+        <el-button class="ys-secondary-button" :disabled="isUiDisabled">↙ 导入图片</el-button>
+        <el-button class="ys-secondary-button" :disabled="isUiDisabled">↙ 导入</el-button>
+        <el-button class="ys-secondary-button" :disabled="isUiDisabled">↓ 导出</el-button>
+        <el-button class="ys-secondary-button" :disabled="isUiDisabled">↙ 导入物料计价</el-button>
+        <el-button class="ys-secondary-button" :disabled="isUiDisabled">⚙ 列设置</el-button>
+      </div>
 
-    <el-card shadow="never" class="local-write-panel" data-testid="realobj-bom-local-loop">
-      <template #header>
-        <div class="panel-header">
-          <strong>REALOBJ-CAND-002 本地对象写入闭环（BOM）</strong>
-          <el-tag type="info">local-dev/sqlite/scenario_tag/test_data only</el-tag>
-        </div>
-      </template>
+      <div v-if="filterOpen" class="ys-filter-row" data-testid="m2-bom-filter-panel">
+        <el-input v-model="query.itemCode" clearable placeholder="编号" />
+        <el-select v-model="query.status" clearable placeholder="状态">
+          <el-option label="草稿" value="draft" />
+          <el-option label="已启用" value="active" />
+          <el-option label="已停用" value="inactive" />
+        </el-select>
+        <el-button type="primary" class="ys-primary-button" :disabled="isUiDisabled" @click="runQuery">查询</el-button>
+        <el-button class="ys-secondary-button" :disabled="isUiDisabled" @click="resetQuery">重置</el-button>
+      </div>
 
-      <el-form :inline="true" :model="draftForm">
-        <el-form-item label="scenario_tag">
-          <el-input
-            v-model="draftForm.scenarioTag"
-            style="width: 250px"
-            data-testid="realobj-bom-scenario-tag"
-          />
-        </el-form-item>
-        <el-form-item label="BOM 编号">
-          <el-input v-model="draftForm.bomNo" style="width: 180px" />
-        </el-form-item>
+      <el-alert
+        v-if="stateMessage"
+        :type="stateMessage.type"
+        :closable="false"
+        :title="stateMessage.text"
+        class="ys-state-alert"
+        data-testid="m2-bom-state-alert"
+      />
+
+      <div class="ys-bom-table-wrap" :class="{ 'is-disabled': isUiDisabled }">
+        <div v-if="isLoadingState" class="ys-state-mask" data-testid="m2-bom-loading-state">加载中</div>
+        <table class="ys-bom-table" data-testid="yisuan-1to1-bom-table">
+          <thead>
+            <tr>
+              <th class="ys-check"><input type="checkbox" :disabled="isUiDisabled" /></th>
+              <th>图片</th>
+              <th>编号</th>
+              <th>部位</th>
+              <th>名称</th>
+              <th>颜色</th>
+              <th>成分</th>
+              <th>幅宽</th>
+              <th>克重</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody v-if="visibleRows.length && !isNoPermissionState">
+            <tr v-for="row in visibleRows" :key="row.key" :data-bom-id="row.id || ''">
+              <td class="ys-check"><input type="checkbox" :disabled="isUiDisabled" /></td>
+              <td><span class="ys-image-placeholder" aria-hidden="true"></span></td>
+              <td><button class="ys-link" type="button" @click="openDetail(row)">{{ row.code }}</button></td>
+              <td>{{ row.part }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.color }}</td>
+              <td>{{ row.composition }}</td>
+              <td>{{ row.width }}</td>
+              <td>{{ row.weight }}</td>
+              <td class="ys-actions">
+                <button
+                  type="button"
+                  class="ys-text-button"
+                  :disabled="!canCreate || isUiDisabled"
+                  @click="duplicateRow(row)"
+                >
+                  复制
+                </button>
+                <button type="button" class="ys-text-button" @click="openDetail(row)">详情</button>
+                <button type="button" class="ys-text-button ys-text-button--danger" disabled>删除</button>
+              </td>
+            </tr>
+          </tbody>
+          <tbody v-else>
+            <tr>
+              <td colspan="10" class="ys-empty" data-testid="m2-bom-empty-state">
+                {{ emptyText }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="ys-pagination" data-testid="m2-bom-pagination">
+        <span>共 {{ listTotal }} 条</span>
+        <el-select v-model="pageSize" class="ys-page-size" size="small" @change="runQuery">
+          <el-option :value="30" label="30条/页" />
+          <el-option :value="60" label="60条/页" />
+          <el-option :value="100" label="100条/页" />
+        </el-select>
+        <el-button size="small" disabled>‹</el-button>
+        <el-button size="small" type="primary" class="ys-page-current">{{ currentPage }}</el-button>
+        <el-button size="small" :disabled="visibleRows.length >= listTotal" @click="nextPage">›</el-button>
+      </footer>
+    </section>
+
+    <el-dialog
+      v-model="recordDialogVisible"
+      width="720px"
+      :title="recordDialogMode === 'create' ? '面料建档' : '面料编辑'"
+      class="ys-bom-dialog"
+      data-testid="m2-bom-record-dialog"
+    >
+      <el-form :model="recordForm" label-width="88px" class="ys-bom-form">
         <el-form-item label="款号">
-          <el-input v-model="draftForm.styleCode" style="width: 150px" />
-        </el-form-item>
-        <el-form-item label="款式名称">
-          <el-input v-model="draftForm.styleName" style="width: 180px" />
+          <el-input v-model="recordForm.itemCode" placeholder="请输入款号" data-testid="m2-bom-form-item-code" />
         </el-form-item>
         <el-form-item label="版本">
-          <el-input v-model="draftForm.versionNo" style="width: 110px" />
+          <el-input v-model="recordForm.versionNo" placeholder="V1" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="draftForm.status" style="width: 120px">
-            <el-option label="草稿" value="draft" />
-            <el-option label="审核中" value="review" />
-            <el-option label="已发布" value="published" />
-          </el-select>
+        <el-form-item label="编号">
+          <el-input v-model="recordForm.materialItemCode" placeholder="物料编号" data-testid="m2-bom-form-material-code" />
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="draftForm.note" style="width: 260px" />
+        <el-form-item label="名称">
+          <el-input v-model="recordForm.materialName" placeholder="面料名称" data-testid="m2-bom-form-material-name" />
+        </el-form-item>
+        <el-form-item label="部位">
+          <el-input v-model="recordForm.part" placeholder="面料" />
+        </el-form-item>
+        <el-form-item label="颜色">
+          <el-input v-model="recordForm.color" placeholder="颜色" />
+        </el-form-item>
+        <el-form-item label="成分">
+          <el-input v-model="recordForm.composition" placeholder="成分" />
+        </el-form-item>
+        <el-form-item label="幅宽">
+          <el-input-number v-model="recordForm.width" :min="0.01" :precision="2" />
+        </el-form-item>
+        <el-form-item label="克重">
+          <el-input-number v-model="recordForm.weight" :min="0" :precision="2" />
         </el-form-item>
       </el-form>
-
-      <div class="local-write-actions">
-        <el-button type="primary" :loading="localWriteLoading" :disabled="bomExceptionWriteGuardActive" @click="saveObject">
-          {{ saveButtonLabel }}
+      <template #footer>
+        <el-button class="ys-secondary-button" @click="recordDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          class="ys-primary-button"
+          :loading="writeLoading"
+          :disabled="!canSubmitRecord"
+          data-testid="m2-bom-save-button"
+          @click="submitRecord"
+        >
+          保存
         </el-button>
-        <el-button :loading="localWriteLoading" :disabled="!currentObjectId" @click="readbackObject">
-          回读本地对象
-        </el-button>
-        <el-button :loading="localWriteLoading" :disabled="!currentObjectId" @click="rollbackScenario">
-          回滚 scenario
-        </el-button>
-        <el-button :loading="localWriteLoading" @click="checkZeroResidual">zero_residual 校验</el-button>
-      </div>
-
-      <el-alert
-        v-if="localWriteFeedback"
-        type="info"
-        :closable="false"
-        :title="localWriteFeedback"
-        class="feedback-alert"
-      />
-
-      <el-descriptions border :column="2" class="readback-descriptions">
-        <el-descriptions-item label="object_id">{{ currentObjectId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="scenario_tag">{{ draftForm.scenarioTag }}</el-descriptions-item>
-        <el-descriptions-item label="readback_total">{{ readbackTotal }}</el-descriptions-item>
-        <el-descriptions-item label="residual_records">{{ loopState.residualRecordsAfterRollback }}</el-descriptions-item>
-        <el-descriptions-item label="create_success">{{ loopState.createSuccess ? 'true' : 'false' }}</el-descriptions-item>
-        <el-descriptions-item label="update_success">{{ loopState.updateSuccess ? 'true' : 'false' }}</el-descriptions-item>
-        <el-descriptions-item label="readback_success">{{ loopState.readbackSuccess ? 'true' : 'false' }}</el-descriptions-item>
-        <el-descriptions-item label="rollback_success">{{ loopState.rollbackSuccess ? 'true' : 'false' }}</el-descriptions-item>
-        <el-descriptions-item label="zero_residual_success">{{ loopState.zeroResidualSuccess ? 'true' : 'false' }}</el-descriptions-item>
-        <el-descriptions-item label="test_data_used">true</el-descriptions-item>
-      </el-descriptions>
-
-      <el-descriptions
-        v-if="readbackState"
-        border
-        :column="2"
-        class="readback-descriptions"
-        data-testid="realobj-bom-readback-evidence"
-      >
-        <el-descriptions-item label="bom_main_readback_success">
-          {{ readbackState.readback_flags.bom_main_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="style_binding_readback_success">
-          {{ readbackState.readback_flags.style_binding_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="fabric_line_readback_success">
-          {{ readbackState.readback_flags.fabric_line_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="trim_line_readback_success">
-          {{ readbackState.readback_flags.trim_line_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="status_validation_readback_success">
-          {{ readbackState.readback_flags.status_validation_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="scenario_tag_present">
-          {{ readbackState.readback_flags.scenario_tag_present ? 'true' : 'false' }}
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-  </div>
+      </template>
+    </el-dialog>
+  </main>
 </template>
 
 <script setup lang="ts">
@@ -352,684 +206,777 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  createLocalBom,
+  createBom,
   fetchBomList,
-  fetchLocalBomListSummary,
-  fetchLocalBomReadback,
-  fetchLocalBomResidualCount,
-  rollbackLocalBomScenario,
-  updateLocalBom,
+  updateBomDraft,
+  type BomCreatePayload,
+  type BomItemPayload,
   type BomListItem,
-  type LocalBomLinePayload as BomLinePayload,
-  type LocalBomListSummaryData,
-  type LocalBomOperationPayload as BomOperationPayload,
-  type LocalBomReadbackData,
-  type LocalBomRollbackData,
-  type LocalBomUpsertPayload,
+  type BomOperationPayload,
+  type BomUpdatePayload,
 } from '@/api/bom'
-import { useBomAlternateReadonly } from './composables/useBomAlternateReadonly'
-import { useBomAuditDefaultVersionReadonly } from './composables/useBomAuditDefaultVersionReadonly'
-import BomExceptionBaselineReadonlySection from './components/BomExceptionBaselineReadonlySection.vue'
-import { useBomExceptionBaselineReadonly } from './composables/useBomExceptionBaselineReadonly'
-import { bomExceptionReadonlyWriteGuardReason } from './constants/bomExceptionBaselineFields'
+import { usePermissionStore } from '@/stores/permission'
 
-type BomStatus = 'draft' | 'review' | 'published'
+type UiStateProbe = '' | 'loading' | 'error' | 'disabled' | 'empty' | 'no_permission'
+type RecordDialogMode = 'create' | 'edit'
 
-interface BomRow {
-  bomId: number | null
+interface BomMaterialRow {
+  id: number | null
+  key: string
   bomNo: string
-  styleCode: string
-  styleName: string
-  materialGroup: string
-  version: string
-  owner: string
-  status: BomStatus
-  updatedAt: string
+  itemCode: string
+  versionNo: string
+  status: string
   isDefault: boolean
+  code: string
+  part: string
+  name: string
+  color: string
+  composition: string
+  width: string
+  weight: string
 }
 
+interface RecordFormState {
+  itemCode: string
+  versionNo: string
+  materialItemCode: string
+  materialName: string
+  part: string
+  color: string
+  composition: string
+  width: number
+  weight: number
+}
+
+const materialTabs = ['工类类型', '品牌管理', '条码中心', '国际条码', '洗水类型', '面料类型', '执行标准', '工序模板', '号型', '合格证/洗唛']
+const fallbackRows: BomMaterialRow[] = [
+  {
+    id: null,
+    key: 'fallback-20260320001',
+    bomNo: 'BOM-20260320001',
+    itemCode: '20260320001',
+    versionNo: 'V1',
+    status: 'draft',
+    isDefault: false,
+    code: '20260320001',
+    part: '',
+    name: '雪纺里布',
+    color: '',
+    composition: '',
+    width: '150',
+    weight: '230',
+  },
+  {
+    id: null,
+    key: 'fallback-20260316001',
+    bomNo: 'BOM-20260316001',
+    itemCode: '20260316001',
+    versionNo: 'V1',
+    status: 'draft',
+    isDefault: false,
+    code: '20260316001',
+    part: '',
+    name: '针织布',
+    color: '',
+    composition: '',
+    width: '150',
+    weight: '230',
+  },
+  {
+    id: null,
+    key: 'fallback-20260316002',
+    bomNo: 'BOM-20260316002',
+    itemCode: '20260316002',
+    versionNo: 'V1',
+    status: 'draft',
+    isDefault: false,
+    code: '20260316002',
+    part: '面料',
+    name: '化纤',
+    color: '黑色',
+    composition: '',
+    width: '150',
+    weight: '0',
+  },
+]
+
+const permissionStore = usePermissionStore()
 const router = useRouter()
 const route = useRoute()
-const { buildBomAlternateListSummary } = useBomAlternateReadonly()
-const { buildBomAuditListSummary } = useBomAuditDefaultVersionReadonly()
 
-const a005VerifiedFields = ['款号', '款名', '单位', '面料', '备注', '可打样', '创建人', '修改人']
-const a005PartialFields = ['颜色', '尺码', '吊牌价', '创建时间', '修改时间', '设计号', '纸样师']
-const a005UnknownFields = ['完整颜色尺码矩阵规则', '设计号生成/录入规则', '纸样师选择规则', '价格规则']
-const a005BlockedActions = [
-  '样板生成/生成样衣/确定推送',
-  '提交',
-  '审核',
-  '反审核',
-  '删除',
-  '作废',
-  'BOM',
-  '生产制单',
-  '加工单',
-  '库存入库',
-  '库存出库',
-  '领料',
-  '完工',
-  '财务收付款',
-  '报价/订单联动',
-]
-const a002StateLabels = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
-const explicitNonClaimRules = [
-  'UI 静态证据不等同业务算法 1:1',
-  '报价提交未验证',
-  '审核未验证',
-  '转订单未验证',
-  'mainOrderSaveClicked=false',
-  'orderCreated=false',
-  'orderNumberGenerated=false',
-]
-
-const sourceRows: BomRow[] = [
-  {
-    bomId: null,
-    bomNo: 'BOM-YS-250601-001',
-    styleCode: 'LY-WS-2301',
-    styleName: '圆领短袖卫衣',
-    materialGroup: '针织上装',
-    version: 'V2.3',
-    owner: '张工',
-    status: 'published',
-    updatedAt: '2026-05-31 19:40',
-    isDefault: true,
-  },
-  {
-    bomId: null,
-    bomNo: 'BOM-YS-250601-002',
-    styleCode: 'LY-JK-1412',
-    styleName: '轻量风衣外套',
-    materialGroup: '梭织外套',
-    version: 'V1.7',
-    owner: '李工',
-    status: 'review',
-    updatedAt: '2026-05-31 18:22',
-    isDefault: false,
-  },
-  {
-    bomId: null,
-    bomNo: 'BOM-YS-250601-003',
-    styleCode: 'LY-DN-0877',
-    styleName: '直筒牛仔裤',
-    materialGroup: '牛仔系列',
-    version: 'V0.9',
-    owner: '王工',
-    status: 'draft',
-    updatedAt: '2026-05-31 17:58',
-    isDefault: false,
-  },
-]
-
-const buildDatePart = (): string => {
-  const now = new Date()
-  const yyyy = now.getFullYear()
-  const mm = String(now.getMonth() + 1).padStart(2, '0')
-  const dd = String(now.getDate()).padStart(2, '0')
-  return `${yyyy}${mm}${dd}`
-}
-
-const buildDefaultScenarioTag = (): string => `REALOBJ-CAND002-${buildDatePart()}-001`
-const normalizeScenarioTag = (value: string): string => value.trim() || buildDefaultScenarioTag()
+const activeMaterialType = ref('fabric')
+const currentPage = ref(1)
+const pageSize = ref(30)
+const listLoading = ref(false)
+const listError = ref('')
+const listTotal = ref(0)
+const apiRows = ref<BomMaterialRow[]>([])
+const filterOpen = ref(false)
+const recordDialogVisible = ref(false)
+const recordDialogMode = ref<RecordDialogMode>('create')
+const writeLoading = ref(false)
+const editingRow = ref<BomMaterialRow | null>(null)
 
 const query = reactive({
   keyword: '',
-  styleCode: '',
-  materialGroup: '',
-  status: '' as '' | BomStatus,
+  itemCode: '',
+  status: '',
 })
 
-const localWriteLoading = ref(false)
-const localWriteFeedback = ref('')
-const currentObjectId = ref<number | null>(null)
-const readbackState = ref<LocalBomReadbackData | null>(null)
-const readbackTotal = ref<number>(0)
-const listLoading = ref(false)
-const listLoadedFromApi = ref(false)
-const listError = ref('')
-const apiRows = ref<BomRow[]>([])
-
-const draftForm = reactive({
-  scenarioTag: buildDefaultScenarioTag(),
-  bomNo: 'BOM-YS-250601-001',
-  styleCode: 'LY-WS-2301',
-  styleName: '圆领短袖卫衣',
-  versionNo: 'V2.3',
-  status: 'draft',
-  note: 'REALOBJ-CAND-002 test_data',
+const recordForm = reactive<RecordFormState>({
+  itemCode: 'ITEM-NEW',
+  versionNo: 'V1',
+  materialItemCode: 'MAT-NEW',
+  materialName: '雪纺里布',
+  part: '面料',
+  color: '',
+  composition: '',
+  width: 150,
+  weight: 230,
 })
 
-const loopState = reactive({
-  createSuccess: false,
-  updateSuccess: false,
-  readbackSuccess: false,
-  rollbackSuccess: false,
-  zeroResidualSuccess: false,
-  residualRecordsAfterRollback: -1,
-})
-
-const bomPayloadState = reactive<{
-  fabricLines: BomLinePayload[]
-  trimLines: BomLinePayload[]
-  operations: BomOperationPayload[]
-}>({
-  fabricLines: [],
-  trimLines: [],
-  operations: [],
-})
-
-const createFabricLines = (styleCode: string): BomLinePayload[] => [
-  {
-    material_item_code: `FAB-${styleCode}-001`,
-    material_name: '精梳棉汗布',
-    style_code: styleCode,
-    color: '米白',
-    size: 'M',
-    qty_per_piece: 1.28,
-    loss_rate: 0.04,
-    uom: '米',
-    remark: '面料行 test_data',
-    material_type: 'fabric',
-  },
-]
-
-const createTrimLines = (styleCode: string): BomLinePayload[] => [
-  {
-    material_item_code: `TRM-${styleCode}-001`,
-    material_name: '树脂纽扣',
-    style_code: styleCode,
-    color: '米白',
-    size: '18L',
-    qty_per_piece: 5,
-    loss_rate: 0,
-    uom: '颗',
-    remark: '辅料行 test_data',
-    material_type: 'trim',
-  },
-]
-
-const createDefaultOperations = (): BomOperationPayload[] => [
-  {
-    process_name: '裁剪',
-    sequence_no: 10,
-    is_subcontract: false,
-    wage_rate: 0,
-    subcontract_cost_per_piece: 0,
-    remark: 'local-dev default operation',
-  },
-  {
-    process_name: '缝制',
-    sequence_no: 20,
-    is_subcontract: false,
-    wage_rate: 0,
-    subcontract_cost_per_piece: 0,
-    remark: 'local-dev default operation',
-  },
-]
-
-const ensurePayloadState = (): void => {
-  if (bomPayloadState.fabricLines.length === 0) {
-    bomPayloadState.fabricLines = createFabricLines(draftForm.styleCode)
+const uiStateProbe = computed<UiStateProbe>(() => {
+  const raw = route.query.m2_state
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (value === 'loading' || value === 'error' || value === 'disabled' || value === 'empty' || value === 'no_permission') {
+    return value
   }
-  if (bomPayloadState.trimLines.length === 0) {
-    bomPayloadState.trimLines = createTrimLines(draftForm.styleCode)
-  }
-  if (bomPayloadState.operations.length === 0) {
-    bomPayloadState.operations = createDefaultOperations()
-  }
-}
-
-ensurePayloadState()
-
-const parseParity = (value: unknown): string => {
-  const raw = Array.isArray(value) ? value[0] : value
-  return typeof raw === 'string' ? raw.trim() : ''
-}
-
-const parseTextQuery = (value: unknown): string => {
-  const raw = Array.isArray(value) ? value[0] : value
-  return typeof raw === 'string' ? raw.trim() : ''
-}
-
-const currentParity = computed(() => parseParity(route.query.parity))
-const currentTab = computed(() => parseTextQuery(route.query.tab))
-const bomExceptionWriteGuardActive = computed(
-  () => currentTab.value === 'exception-baseline' || currentParity.value === 'goodsplan-material-samples',
-)
-const currentRouteLabel = computed(() => {
-  const queryParts: string[] = []
-  if (currentParity.value) queryParts.push(`parity=${currentParity.value}`)
-  if (currentTab.value) queryParts.push(`tab=${currentTab.value}`)
-  return queryParts.length ? `/bom/list?${queryParts.join('&')}` : '/bom/list'
+  return ''
 })
 
-const resolveMaterialGroup = (parity: string): string => {
-  if (parity === 'material-fabric') return '面料清单'
-  if (parity === 'goodsplan-material-samples') return '样板物料'
-  if (parity === 'product-style') return '成衣款式'
-  return 'BOM'
+const buttonPermissions = computed(() => permissionStore.state.buttonPermissions)
+const canRead = computed(() => buttonPermissions.value.read && uiStateProbe.value !== 'no_permission')
+const canCreate = computed(() => buttonPermissions.value.create && uiStateProbe.value !== 'no_permission')
+const canUpdate = computed(() => buttonPermissions.value.update && uiStateProbe.value !== 'no_permission')
+const isUiDisabled = computed(() => uiStateProbe.value === 'disabled' || uiStateProbe.value === 'no_permission')
+const isLoadingState = computed(() => listLoading.value || uiStateProbe.value === 'loading')
+const isNoPermissionState = computed(() => !canRead.value || uiStateProbe.value === 'no_permission')
+
+const activeRows = computed(() => (apiRows.value.length ? apiRows.value : fallbackRows))
+const visibleRows = computed(() => {
+  if (uiStateProbe.value === 'empty' || isNoPermissionState.value) return []
+  const keyword = query.keyword.trim().toLowerCase()
+  return activeRows.value.filter((row) => {
+    const hitKeyword = keyword
+      ? [row.code, row.name, row.itemCode, row.bomNo].join('|').toLowerCase().includes(keyword)
+      : true
+    const hitItem = query.itemCode.trim() ? row.itemCode.includes(query.itemCode.trim()) : true
+    const hitStatus = query.status ? row.status === query.status : true
+    return hitKeyword && hitItem && hitStatus
+  })
+})
+
+const emptyText = computed(() => {
+  if (uiStateProbe.value === 'no_permission' || !canRead.value) return '无权限查看面料档案'
+  if (uiStateProbe.value === 'error') return '面料档案读取失败'
+  return '暂无面料档案'
+})
+
+const stateMessage = computed(() => {
+  if (uiStateProbe.value === 'no_permission' || !canRead.value) {
+    return { type: 'warning' as const, text: '当前会话未获得 bom:read，面料列表 fail-closed。' }
+  }
+  if (uiStateProbe.value === 'error') {
+    return { type: 'error' as const, text: '模拟错误状态：面料列表不可用。' }
+  }
+  if (listError.value) {
+    return { type: 'warning' as const, text: listError.value }
+  }
+  if (uiStateProbe.value === 'disabled') {
+    return { type: 'info' as const, text: '模拟禁用状态：写入按钮保持禁用。' }
+  }
+  return null
+})
+
+const canSubmitRecord = computed(() => {
+  const hasRequired = Boolean(
+    recordForm.itemCode.trim() &&
+      recordForm.versionNo.trim() &&
+      recordForm.materialItemCode.trim() &&
+      recordForm.materialName.trim() &&
+      recordForm.width > 0,
+  )
+  const hasPermission = recordDialogMode.value === 'create' ? canCreate.value : canUpdate.value
+  return hasRequired && hasPermission && !isUiDisabled.value
+})
+
+const todayCompact = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
 }
 
-const normalizeBomStatus = (status: string): BomStatus => {
-  if (status === 'draft') return 'draft'
-  if (status === 'active' || status === 'published') return 'published'
-  return 'review'
+const buildScenarioTag = (): string => `Z002-BOM-${todayCompact()}-001`
+
+const carrierCode = (value: string): string => {
+  let hashValue = 2166136261
+  for (const char of new TextEncoder().encode(value.trim())) {
+    hashValue ^= char
+    hashValue = Math.imul(hashValue, 16777619) >>> 0
+  }
+  return hashValue.toString(16).toUpperCase().padStart(8, '0').slice(-4)
 }
 
-const mapBomListItem = (item: BomListItem): BomRow => ({
-  bomId: item.id,
+const buildRequestId = (scenarioTag: string, itemCode: string, bomRef: string, reason = 'NONE'): string =>
+  `${scenarioTag}-RQ-I${carrierCode(itemCode)}-B${carrierCode(bomRef)}-R${carrierCode(reason)}`
+
+const buildSourceRef = (scenarioTag: string, itemCode: string, versionNo: string): string =>
+  `${scenarioTag}-SRC-${itemCode}-${versionNo}`
+
+const buildMaterialPayload = (): BomItemPayload => ({
+  material_item_code: recordForm.materialItemCode.trim(),
+  color: recordForm.color.trim() || undefined,
+  size: recordForm.composition.trim() || undefined,
+  qty_per_piece: Number(recordForm.width),
+  loss_rate: 0,
+  uom: '米',
+  remark: [recordForm.part.trim(), recordForm.materialName.trim(), `克重:${recordForm.weight}`].filter(Boolean).join(' / '),
+})
+
+const buildOperationPayload = (): BomOperationPayload => ({
+  process_name: '面料建档',
+  sequence_no: 1,
+  is_subcontract: false,
+  wage_rate: 0,
+  subcontract_cost_per_piece: 0,
+  remark: 'M2 BOM 真实端点写入',
+})
+
+const normalizeStatus = (status: string): string => {
+  if (status === 'active' || status === 'published') return 'active'
+  if (status === 'inactive') return 'inactive'
+  return 'draft'
+}
+
+const mapBomListItem = (item: BomListItem): BomMaterialRow => ({
+  id: item.id,
+  key: String(item.id),
   bomNo: item.bom_no,
-  styleCode: item.item_code,
-  styleName: item.item_code,
-  materialGroup: resolveMaterialGroup(currentParity.value),
-  version: item.version_no,
-  owner: 'local-dev',
-  status: normalizeBomStatus(item.status),
-  updatedAt: item.effective_date || '-',
+  itemCode: item.item_code,
+  versionNo: item.version_no,
+  status: normalizeStatus(item.status),
   isDefault: item.is_default,
+  code: item.item_code,
+  part: item.is_default ? '面料' : '',
+  name: item.item_code,
+  color: '',
+  composition: '',
+  width: '150',
+  weight: item.is_default ? '230' : '0',
 })
 
-const loadBomList = async (showSuccess = false): Promise<void> => {
+const loadPermissions = async (): Promise<void> => {
+  try {
+    await permissionStore.loadCurrentUser()
+    await permissionStore.loadModuleActions('bom')
+  } catch {
+    // Permission state is fail-closed by the store.
+  }
+}
+
+const loadBomList = async (): Promise<void> => {
+  if (!canRead.value) {
+    apiRows.value = []
+    listTotal.value = 0
+    return
+  }
+  if (uiStateProbe.value === 'loading' || uiStateProbe.value === 'error') {
+    return
+  }
   listLoading.value = true
   listError.value = ''
   try {
     const response = await fetchBomList({
-      item_code: query.styleCode.trim() || undefined,
-      page: 1,
-      page_size: 100,
+      item_code: query.itemCode.trim() || undefined,
+      status: query.status || undefined,
+      page: currentPage.value,
+      page_size: pageSize.value,
     })
     apiRows.value = response.data.items.map(mapBomListItem)
-    listLoadedFromApi.value = true
-    if (showSuccess) {
-      ElMessage.success(`BOM 列表已刷新，共 ${response.data.total} 条`)
-    }
+    listTotal.value = response.data.total
   } catch (error) {
     apiRows.value = []
-    listLoadedFromApi.value = false
-    listError.value = `BOM 列表读取失败，当前回退到静态壳层：${(error as Error).message}`
-    ElMessage.warning(listError.value)
+    listTotal.value = 0
+    listError.value = `面料列表读取失败：${(error as Error).message}`
   } finally {
     listLoading.value = false
   }
 }
 
-const activeRows = computed(() => (listLoadedFromApi.value ? apiRows.value : sourceRows))
-
-const filteredRows = computed(() => {
-  const keyword = query.keyword.trim().toLowerCase()
-  const styleCode = query.styleCode.trim().toLowerCase()
-  return activeRows.value.filter((row) => {
-    const hitKeyword = keyword
-      ? [row.bomNo, row.styleCode, row.styleName, row.version].join('|').toLowerCase().includes(keyword)
-      : true
-    const hitStyleCode = styleCode ? row.styleCode.toLowerCase().includes(styleCode) : true
-    const hitGroup = query.materialGroup ? row.materialGroup === query.materialGroup : true
-    const hitStatus = query.status ? row.status === query.status : true
-    return hitKeyword && hitStyleCode && hitGroup && hitStatus
-  })
-})
-
-const listReadonlySummary = computed(() => buildBomAlternateListSummary(filteredRows.value.length, currentParity.value))
-
-const bomAuditReadonlySummary = computed(() =>
-  buildBomAuditListSummary(filteredRows.value, currentParity.value, listLoadedFromApi.value),
-)
-
-const saveButtonLabel = computed(() => (currentObjectId.value ? '更新本地对象' : '保存本地对象'))
-
-const runQuery = () => {
-  void loadBomList(true)
+const runQuery = (): void => {
+  currentPage.value = 1
+  void loadBomList()
 }
 
-const resetQuery = () => {
+const resetQuery = (): void => {
   query.keyword = ''
-  query.styleCode = ''
-  query.materialGroup = ''
+  query.itemCode = ''
   query.status = ''
-  void loadBomList(true)
+  runQuery()
 }
 
-const loadRowToLocalLoop = (row: BomRow) => {
-  if (bomExceptionWriteGuardActive.value) {
-    ElMessage.warning(bomExceptionReadonlyWriteGuardReason)
+const nextPage = (): void => {
+  currentPage.value += 1
+  void loadBomList()
+}
+
+const toggleFilter = (): void => {
+  filterOpen.value = !filterOpen.value
+}
+
+const resetRecordForm = (): void => {
+  recordForm.itemCode = 'ITEM-NEW'
+  recordForm.versionNo = 'V1'
+  recordForm.materialItemCode = 'MAT-NEW'
+  recordForm.materialName = '雪纺里布'
+  recordForm.part = '面料'
+  recordForm.color = ''
+  recordForm.composition = ''
+  recordForm.width = 150
+  recordForm.weight = 230
+}
+
+const openCreateDialog = (): void => {
+  if (!canCreate.value) {
+    ElMessage.warning('无 BOM 新建权限')
     return
   }
-  draftForm.bomNo = row.bomNo
-  draftForm.styleCode = row.styleCode
-  draftForm.styleName = row.styleName
-  draftForm.versionNo = row.version
-  draftForm.status = row.status
-  draftForm.note = `from:${row.bomNo}`
-  bomPayloadState.fabricLines = createFabricLines(row.styleCode)
-  bomPayloadState.trimLines = createTrimLines(row.styleCode)
-  bomPayloadState.operations = createDefaultOperations()
-  ElMessage.info(`已加载 ${row.bomNo} 到本地对象表单`)
+  recordDialogMode.value = 'create'
+  editingRow.value = null
+  resetRecordForm()
+  recordDialogVisible.value = true
 }
 
-const goDetail = (row: BomRow) => {
+const duplicateRow = (row: BomMaterialRow): void => {
+  if (!canCreate.value) {
+    ElMessage.warning('无 BOM 新建权限')
+    return
+  }
+  recordDialogMode.value = 'create'
+  editingRow.value = null
+  recordForm.itemCode = row.itemCode
+  recordForm.versionNo = row.versionNo
+  recordForm.materialItemCode = `${row.code}-COPY`
+  recordForm.materialName = row.name
+  recordForm.part = row.part || '面料'
+  recordForm.color = row.color
+  recordForm.composition = row.composition
+  recordForm.width = Number(row.width) || 150
+  recordForm.weight = Number(row.weight) || 0
+  recordDialogVisible.value = true
+}
+
+const openEditDialog = (row: BomMaterialRow): void => {
+  if (!canUpdate.value || !row.id) {
+    ElMessage.warning('无 BOM 编辑权限或缺少真实 BOM ID')
+    return
+  }
+  recordDialogMode.value = 'edit'
+  editingRow.value = row
+  recordForm.itemCode = row.itemCode
+  recordForm.versionNo = row.versionNo
+  recordForm.materialItemCode = row.code
+  recordForm.materialName = row.name
+  recordForm.part = row.part || '面料'
+  recordForm.color = row.color
+  recordForm.composition = row.composition
+  recordForm.width = Number(row.width) || 150
+  recordForm.weight = Number(row.weight) || 0
+  recordDialogVisible.value = true
+}
+
+const submitRecord = async (): Promise<void> => {
+  if (!canSubmitRecord.value) return
+  writeLoading.value = true
+  try {
+    const scenarioTag = buildScenarioTag()
+    const itemCode = recordForm.itemCode.trim()
+    const versionNo = recordForm.versionNo.trim()
+    const material = buildMaterialPayload()
+    const operation = buildOperationPayload()
+
+    if (recordDialogMode.value === 'create') {
+      const sourceRef = buildSourceRef(scenarioTag, itemCode, versionNo)
+      const requestId = buildRequestId(scenarioTag, itemCode, sourceRef)
+      const payload: BomCreatePayload = {
+        scenario_tag: scenarioTag,
+        idempotency_key: requestId,
+        source_ref: sourceRef,
+        item_code: itemCode,
+        version_no: versionNo,
+        bom_items: [material],
+        operations: [operation],
+      }
+      await createBom(payload, { requestId })
+      ElMessage.success('面料建档已提交真实 BOM 端点')
+    } else if (editingRow.value?.id) {
+      const sourceRef = editingRow.value.bomNo
+      const requestId = buildRequestId(scenarioTag, itemCode, sourceRef)
+      const payload: BomUpdatePayload = {
+        scenario_tag: scenarioTag,
+        idempotency_key: requestId,
+        source_ref: sourceRef,
+        bom_no: editingRow.value.bomNo,
+        item_code: itemCode,
+        version_no: versionNo,
+        bom_items: [material],
+        operations: [operation],
+      }
+      await updateBomDraft(editingRow.value.id, payload, { requestId })
+      ElMessage.success('面料编辑已提交真实 BOM 端点')
+    }
+    recordDialogVisible.value = false
+    await loadBomList()
+  } catch (error) {
+    ElMessage.error(`保存失败：${(error as Error).message}`)
+  } finally {
+    writeLoading.value = false
+  }
+}
+
+const openDetail = (row: BomMaterialRow): void => {
   void router.push({
     path: '/bom/detail',
     query: {
-      bom_id: row.bomId ? String(row.bomId) : '',
+      bom_id: row.id ? String(row.id) : '',
       bom_no: row.bomNo,
-      style_code: row.styleCode,
-      style_name: row.styleName,
-      version_no: row.version,
-      status: row.status,
-      object_id: currentObjectId.value ? String(currentObjectId.value) : '',
-      scenario_tag: normalizeScenarioTag(draftForm.scenarioTag),
-      ...(currentParity.value ? { parity: currentParity.value } : {}),
-      ...(currentTab.value === 'exception-baseline' ? { mode: 'readonly-exception' } : {}),
+      item_code: row.itemCode,
+      version_no: row.versionNo,
+      material_name: row.name,
+      color: row.color,
+      composition: row.composition,
+      width: row.width,
+      weight: row.weight,
+      ...(route.query.m2_state ? { m2_state: route.query.m2_state } : {}),
     },
   })
 }
 
-const statusLabel = (status: BomStatus) => {
-  if (status === 'draft') return '草稿'
-  if (status === 'review') return '审核中'
-  return '已发布'
-}
-
-const statusType = (status: BomStatus) => {
-  if (status === 'draft') return 'info'
-  if (status === 'review') return 'warning'
-  return 'success'
-}
-
-const {
-  isExceptionBaselineTab: bomExceptionIsActive,
-  summaryCards: bomExceptionSummaryCards,
-  parityLines: bomExceptionParityLines,
-  blockedReasons: bomExceptionBlockedReasons,
-  readonlyGuardText: bomExceptionReadonlyGuardText,
-  exceptionItems: bomExceptionItems,
-  disabledActions: bomExceptionDisabledActions,
-  remainingGap: bomExceptionRemainingGap,
-} = useBomExceptionBaselineReadonly({
-  context: computed(() => 'list' as const),
-  currentRouteLabel,
-  routeTab: currentTab,
-  detailMode: computed(() => ''),
-  routeParity: currentParity,
-  listRows: computed(() => filteredRows.value),
-  detailLines: computed(() => []),
-  bomNo: computed(() => filteredRows.value[0]?.bomNo || 'BOM-LIST'),
-  styleCode: computed(() => filteredRows.value[0]?.styleCode || ''),
-  styleName: computed(() => filteredRows.value[0]?.styleName || ''),
-  versionLabel: computed(() => filteredRows.value[0]?.version || '-'),
-})
-
-const buildUpsertPayload = (): LocalBomUpsertPayload => {
-  const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
-  draftForm.scenarioTag = scenarioTag
-  ensurePayloadState()
-  return {
-    scenario_tag: scenarioTag,
-    bom_main: {
-      bom_no: draftForm.bomNo.trim(),
-      item_code: draftForm.styleCode.trim(),
-      version_no: draftForm.versionNo.trim() || 'V1',
-      status: draftForm.status,
-      is_default: false,
-      style_name: draftForm.styleName.trim(),
-      note: draftForm.note.trim(),
-    },
-    style_binding: {
-      style_code: draftForm.styleCode.trim(),
-      style_name: draftForm.styleName.trim(),
-      style_version: draftForm.versionNo.trim() || 'V1',
-      material_group: 'BOM',
-      binding_note: 'REALOBJ-CAND-002 local binding',
-    },
-    fabric_lines: bomPayloadState.fabricLines,
-    trim_lines: bomPayloadState.trimLines,
-    operations: bomPayloadState.operations,
-    note: draftForm.note.trim(),
-  }
-}
-
-const refreshLocalReadbackSummary = async (scenarioTag: string): Promise<void> => {
-  const response = await fetchLocalBomListSummary(scenarioTag)
-  const summary: LocalBomListSummaryData = response.data
-  readbackTotal.value = summary.total
-}
-
-const saveObject = async (): Promise<void> => {
-  if (bomExceptionWriteGuardActive.value) {
-    ElMessage.warning(bomExceptionReadonlyWriteGuardReason)
-    return
-  }
-  if (!draftForm.bomNo.trim() || !draftForm.styleCode.trim()) {
-    ElMessage.warning('请先填写 BOM 编号与款号')
-    return
-  }
-  localWriteLoading.value = true
-  localWriteFeedback.value = ''
-  try {
-    const payload = buildUpsertPayload()
-    const saved = currentObjectId.value
-      ? (await updateLocalBom(currentObjectId.value, payload)).data
-      : (await createLocalBom(payload)).data
-    currentObjectId.value = saved.object_id || saved.draft_id
-    readbackState.value = saved
-    await refreshLocalReadbackSummary(saved.scenario_tag)
-    if (payload && currentObjectId.value && loopState.createSuccess) {
-      loopState.updateSuccess = true
-    } else if (currentObjectId.value && !loopState.createSuccess) {
-      loopState.createSuccess = true
-    }
-    localWriteFeedback.value = `save_success=true, object_id=${currentObjectId.value}, scenario_tag=${saved.scenario_tag}`
-    ElMessage.success('本地对象写入成功')
-  } catch (error) {
-    localWriteFeedback.value = `保存失败：${(error as Error).message}`
-    ElMessage.error(localWriteFeedback.value)
-  } finally {
-    localWriteLoading.value = false
-  }
-}
-
-const readbackObject = async (): Promise<void> => {
-  if (!currentObjectId.value) {
-    ElMessage.warning('请先保存本地对象')
-    return
-  }
-  localWriteLoading.value = true
-  try {
-    const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
-    draftForm.scenarioTag = scenarioTag
-    const readback = (await fetchLocalBomReadback(currentObjectId.value, scenarioTag)).data
-    readbackState.value = readback
-    await refreshLocalReadbackSummary(scenarioTag)
-    loopState.readbackSuccess = true
-    localWriteFeedback.value = `readback_success=true, object_id=${currentObjectId.value}`
-    ElMessage.success('本地对象回读成功')
-  } catch (error) {
-    loopState.readbackSuccess = false
-    localWriteFeedback.value = `回读失败：${(error as Error).message}`
-    ElMessage.error(localWriteFeedback.value)
-  } finally {
-    localWriteLoading.value = false
-  }
-}
-
-const rollbackScenario = async (): Promise<void> => {
-  if (!currentObjectId.value) {
-    ElMessage.warning('请先保存本地对象')
-    return
-  }
-  localWriteLoading.value = true
-  try {
-    const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
-    draftForm.scenarioTag = scenarioTag
-    const rolled: LocalBomRollbackData = (await rollbackLocalBomScenario(currentObjectId.value, scenarioTag)).data
-    loopState.rollbackSuccess = rolled.rollback_success
-    loopState.zeroResidualSuccess = rolled.zero_residual_success
-    loopState.residualRecordsAfterRollback = rolled.residual_records_after_rollback
-    currentObjectId.value = null
-    readbackState.value = null
-    readbackTotal.value = 0
-    localWriteFeedback.value = `rollback_success=${rolled.rollback_success}, zero_residual_success=${rolled.zero_residual_success}, residual=${rolled.residual_records_after_rollback}`
-    ElMessage.success('scenario 回滚完成')
-  } catch (error) {
-    loopState.rollbackSuccess = false
-    localWriteFeedback.value = `回滚失败：${(error as Error).message}`
-    ElMessage.error(localWriteFeedback.value)
-  } finally {
-    localWriteLoading.value = false
-  }
-}
-
-const checkZeroResidual = async (): Promise<void> => {
-  const scenarioTag = normalizeScenarioTag(draftForm.scenarioTag)
-  draftForm.scenarioTag = scenarioTag
-  localWriteLoading.value = true
-  try {
-    const total = (await fetchLocalBomResidualCount(scenarioTag)).data.total
-    await refreshLocalReadbackSummary(scenarioTag)
-    loopState.residualRecordsAfterRollback = total
-    loopState.zeroResidualSuccess = total === 0
-    localWriteFeedback.value = `zero_residual_check: scenario_tag=${scenarioTag}, residual=${total}`
-    if (total === 0) {
-      ElMessage.success('zero_residual 校验通过')
-    } else {
-      ElMessage.warning(`zero_residual 未通过，残留 ${total} 条`)
-    }
-  } catch (error) {
-    loopState.zeroResidualSuccess = false
-    localWriteFeedback.value = `zero_residual 校验失败：${(error as Error).message}`
-    ElMessage.error(localWriteFeedback.value)
-  } finally {
-    localWriteLoading.value = false
-  }
-}
-
-onMounted(() => {
-  void loadBomList()
+onMounted(async () => {
+  await loadPermissions()
+  await loadBomList()
 })
 </script>
 
 <style scoped>
-.bom-list-shell {
+.ys-bom-page {
+  --ys-color-primary: #4e88f3;
+  --ys-color-primary-weak: rgba(78, 136, 243, 0.1);
+  --ys-color-bg-page: #f6f8f9;
+  --ys-color-bg-table-head: #f5f7fa;
+  --ys-color-text-main: #515a6e;
+  --ys-color-text-title: #303133;
+  --ys-color-text-minor: #606266;
+  --ys-color-border: #dcdfe6;
+  --ys-color-danger: #fd4e4e;
+  min-height: calc(100vh - 42px);
+  padding: 0 12px 12px;
+  background: var(--ys-color-bg-page);
+  color: var(--ys-color-text-main);
+  font-family: "PingFang SC", Arial, "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+}
+
+.ys-bom-topbar {
+  height: 60px;
   display: grid;
+  grid-template-columns: 1fr 200px 1fr;
+  align-items: center;
   gap: 12px;
+  border-bottom: 1px solid var(--ys-color-border);
+  background: #fff;
 }
 
-.bom-header-card,
-.filter-card,
-.local-write-panel {
-  border-radius: 6px;
-}
-
-.header-row {
+.ys-bom-crumbs,
+.ys-bom-top-actions,
+.ys-bom-tabs,
+.ys-bom-toolbar,
+.ys-pagination,
+.ys-actions {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
 }
 
-.header-main {
-  min-width: 0;
+.ys-bom-crumbs {
+  gap: 10px;
+  color: var(--ys-color-text-title);
 }
 
-.page-title {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.3;
-  color: #1f2a37;
+.ys-bom-crumbs__active {
+  color: var(--ys-color-text-main);
 }
 
-.page-subtitle {
-  margin: 6px 0 0;
+.ys-icon {
+  font-size: 24px;
+  color: var(--ys-color-text-minor);
+}
+
+.ys-bom-title-select {
+  width: 200px;
+}
+
+.ys-bom-top-actions {
+  justify-content: flex-end;
+  gap: 14px;
+  color: var(--ys-color-text-minor);
   font-size: 13px;
-  color: #6b7280;
+  white-space: nowrap;
 }
 
-.header-actions {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
+.ys-bom-tabs {
+  height: 50px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--ys-color-border);
+  background: #fff;
+}
+
+.ys-bom-tab {
+  height: 50px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid #ebeef5;
+  background: transparent;
+  color: var(--ys-color-text-title);
+  font: inherit;
+  cursor: default;
+}
+
+.ys-bom-tab--active {
+  color: var(--ys-color-primary);
+  background: var(--ys-color-primary-weak);
+}
+
+.ys-bom-tab__close {
+  margin-left: 12px;
+  color: #909399;
+}
+
+.ys-bom-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--ys-color-border);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.ys-bom-toolbar {
   gap: 8px;
+  min-height: 32px;
 }
 
-.source-readback {
-  margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #4b5563;
+.ys-bom-toolbar__spacer {
+  flex: 1;
 }
 
-.status-legend {
-  margin-top: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.ys-bom-search {
+  width: 288px;
 }
 
-.contract-boundary-card {
-  border-radius: 6px;
+.ys-primary-button,
+.ys-secondary-button,
+.ys-danger-button {
+  min-height: 32px;
+  border-radius: 4px;
+  padding: 8px 15px;
+  font-size: 14px;
 }
 
-.contract-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.ys-primary-button {
+  background: var(--ys-color-primary);
+  border-color: var(--ys-color-primary);
 }
 
-.contract-grid {
+.ys-primary-button:disabled {
+  background: rgba(78, 136, 243, 0.5);
+  border-color: transparent;
+}
+
+.ys-danger-button {
+  background: #ff9da1;
+  border-color: #ff9da1;
+  color: #fff;
+}
+
+.ys-button-caret {
+  margin-left: 4px;
+}
+
+.ys-filter-row {
   display: grid;
-  gap: 12px;
+  grid-template-columns: 180px 140px auto auto 1fr;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.contract-block h4 {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: #1f2937;
+.ys-state-alert {
+  margin-top: 10px;
 }
 
-.contract-block ul {
-  margin: 0;
-  padding-left: 18px;
-  color: #4b5563;
+.ys-bom-table-wrap {
+  position: relative;
+  margin-top: 18px;
+  border: 1px solid #e4e7ed;
+  min-height: 710px;
+  overflow: auto;
+}
+
+.ys-bom-table-wrap.is-disabled {
+  opacity: 0.72;
+}
+
+.ys-state-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ys-color-text-minor);
+}
+
+.ys-bom-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #fff;
+}
+
+.ys-bom-table th {
+  height: 38px;
+  padding: 8px 8px;
+  border-right: 1px solid #ebeef5;
+  border-bottom: 1px solid #e4e7ed;
+  background: var(--ys-color-bg-table-head);
+  color: #909399;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.ys-bom-table td {
+  height: 39px;
+  padding: 0 8px;
+  border-right: 1px solid #ebeef5;
+  border-bottom: 1px solid #ebeef5;
+  color: var(--ys-color-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ys-bom-table th:nth-child(1),
+.ys-bom-table td:nth-child(1) {
+  width: 36px;
+}
+
+.ys-bom-table th:nth-child(2),
+.ys-bom-table td:nth-child(2) {
+  width: 60px;
+}
+
+.ys-bom-table th:nth-child(3),
+.ys-bom-table td:nth-child(3) {
+  width: 150px;
+}
+
+.ys-bom-table th:nth-child(10),
+.ys-bom-table td:nth-child(10) {
+  width: 170px;
+}
+
+.ys-check {
+  text-align: center;
+}
+
+.ys-image-placeholder {
+  display: inline-block;
+  width: 28px;
+  height: 22px;
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 70% 30%, #ffffff 0 2px, transparent 3px),
+    linear-gradient(135deg, #cde6ff 0%, #8ebeff 100%);
+  box-shadow: inset 0 0 0 1px #d8e6f5;
+  vertical-align: middle;
+}
+
+.ys-link,
+.ys-text-button {
+  border: 0;
+  background: transparent;
+  color: #2f7df6;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ys-text-button {
+  padding: 0 6px;
   font-size: 12px;
-  line-height: 1.5;
 }
 
-.tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.ys-text-button--danger {
+  color: var(--ys-color-danger);
 }
 
-.tag-row.compact {
-  margin-top: 8px;
+.ys-text-button:disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
 }
 
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.ys-actions {
+  gap: 4px;
 }
 
-.local-write-actions {
-  margin-top: 6px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.ys-empty {
+  height: 260px;
+  text-align: center;
+  color: #909399;
 }
 
-.feedback-alert {
-  margin-top: 10px;
+.ys-pagination {
+  justify-content: center;
+  gap: 10px;
+  height: 64px;
+  color: var(--ys-color-text-main);
 }
 
-.readback-descriptions {
-  margin-top: 10px;
+.ys-page-size {
+  width: 128px;
+}
+
+.ys-page-current {
+  min-width: 32px;
+}
+
+.ys-bom-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 16px;
+}
+
+@media (max-width: 980px) {
+  .ys-bom-topbar {
+    grid-template-columns: 1fr;
+    height: auto;
+    padding: 10px 0;
+  }
+
+  .ys-bom-top-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .ys-bom-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .ys-bom-toolbar__spacer {
+    display: none;
+  }
+
+  .ys-bom-form,
+  .ys-filter-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

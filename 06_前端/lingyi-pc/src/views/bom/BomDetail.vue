@@ -1,857 +1,971 @@
 <template>
-  <div class="bom-detail-shell" data-testid="yisuan-1to1-bom-detail-shell">
-    <el-card shadow="never">
-      <div class="header-row">
-        <div>
-          <h2 class="page-title">BOM 详情</h2>
-          <p class="page-subtitle">衣算云 UI 1:1 + REALOBJ-CAND-002 回读壳层（local-dev only）</p>
-        </div>
-        <div class="actions">
-          <el-button @click="goList">返回列表</el-button>
-          <el-button :disabled="!localReadbackRef.objectId" :loading="localReadbackRef.loading" @click="refreshLocalReadback">
-            刷新本地回读
-          </el-button>
-        </div>
+  <main class="ys-bom-page" data-testid="yisuan-1to1-bom-detail-shell">
+    <header class="ys-bom-topbar" data-testid="m2-bom-detail-topbar">
+      <div class="ys-bom-crumbs">
+        <button class="ys-back" type="button" @click="goList">‹</button>
+        <span>物料开发</span>
+        <span>/</span>
+        <span>面料</span>
+        <span>/</span>
+        <span class="ys-bom-crumbs__active">{{ detailTitle }}</span>
       </div>
-
-      <div class="source-readback" data-testid="yisuan-1to1-ui-source-readback">
-        <el-tag type="success">source_status=found</el-tag>
-        <el-tag type="primary">covered_contract_ids=A002,A005</el-tag>
-        <el-tag type="warning">A005 partial/unknown kept pending</el-tag>
-        <span>来源：A002/A005 contract sources（B010 继承，B011 local write/readback）</span>
+      <el-select v-model="activeMaterialType" class="ys-bom-title-select" aria-label="物料类型">
+        <el-option label="面料" value="fabric" />
+      </el-select>
+      <div class="ys-bom-top-actions">
+        <span>看板中心</span>
+        <span>DeepSeek</span>
+        <span>销售部（销售单）</span>
       </div>
+    </header>
 
-      <el-alert v-if="detailRef.error" type="warning" :closable="false" :title="detailRef.error" class="readback-descriptions" />
+    <nav class="ys-bom-tabs" aria-label="物料开发页签">
+      <button v-for="tab in materialTabs" :key="tab" class="ys-bom-tab" type="button">
+        <span>{{ tab }}</span>
+        <span class="ys-bom-tab__close">×</span>
+      </button>
+      <button class="ys-bom-tab ys-bom-tab--active" type="button">
+        <span>面料</span>
+        <span class="ys-bom-tab__close">×</span>
+      </button>
+    </nav>
 
-      <el-descriptions :column="3" border class="style-summary" data-testid="yisuan-1to1-bom-style-summary">
-        <el-descriptions-item label="BOM 编号">{{ bomNo }}</el-descriptions-item>
-        <el-descriptions-item label="款号">{{ displayStyleCode }}</el-descriptions-item>
-        <el-descriptions-item label="款式名称">{{ displayStyleName }}</el-descriptions-item>
-        <el-descriptions-item label="版本">{{ displayVersion }}</el-descriptions-item>
-        <el-descriptions-item label="开发员">张工</el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="statusType(displayStatus)">{{ statusLabel(displayStatus) }}</el-tag>
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <el-card shadow="never" data-testid="realobj-bom-detail-local-readback">
-      <template #header>
-        <div class="panel-header">
-          <span>REALOBJ-CAND-002 本地对象回读</span>
-          <el-tag type="info">local-dev/sqlite/scenario_tag/test_data only</el-tag>
-        </div>
-      </template>
-
-      <el-alert
-        v-if="localReadbackRef.error"
-        type="warning"
-        :closable="false"
-        :title="localReadbackRef.error"
-      />
-      <el-alert
-        v-else-if="!localReadbackRef.data"
-        type="info"
-        :closable="false"
-        title="未携带 object_id/scenario_tag，当前显示静态回读壳层。"
-      />
-
-      <el-descriptions
-        v-if="localReadbackRef.data"
-        border
-        :column="2"
-        class="readback-descriptions"
-        data-testid="realobj-bom-main-readback"
-      >
-        <el-descriptions-item label="object_id">{{ localReadbackRef.data.object_id }}</el-descriptions-item>
-        <el-descriptions-item label="scenario_tag">{{ localReadbackRef.data.scenario_tag }}</el-descriptions-item>
-        <el-descriptions-item label="bom_main_readback_success">
-          {{ localReadbackRef.data.readback_flags.bom_main_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="style_binding_readback_success">
-          {{ localReadbackRef.data.readback_flags.style_binding_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="fabric_line_readback_success">
-          {{ localReadbackRef.data.readback_flags.fabric_line_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="trim_line_readback_success">
-          {{ localReadbackRef.data.readback_flags.trim_line_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="status_validation_readback_success">
-          {{ localReadbackRef.data.readback_flags.status_validation_readback_success ? 'true' : 'false' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="scenario_tag_present">
-          {{ localReadbackRef.data.readback_flags.scenario_tag_present ? 'true' : 'false' }}
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <el-card shadow="never">
-      <el-tabs type="border-card" data-testid="yisuan-1to1-bom-material-tabs">
-        <el-tab-pane label="面料">
-          <el-table :data="displayFabricLines" border stripe data-testid="yisuan-1to1-bom-fabric-lines">
-            <el-table-column prop="code" label="面料编码" min-width="160" />
-            <el-table-column prop="name" label="面料名称" min-width="200" />
-            <el-table-column prop="spec" label="规格" min-width="160" />
-            <el-table-column prop="uom" label="单位" min-width="80" />
-            <el-table-column prop="usage" label="单件用量" min-width="110" />
-            <el-table-column prop="lossRate" label="损耗率" min-width="90" />
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="辅料">
-          <el-table :data="displayTrimLines" border stripe data-testid="yisuan-1to1-bom-trim-lines">
-            <el-table-column prop="code" label="辅料编码" min-width="160" />
-            <el-table-column prop="name" label="辅料名称" min-width="200" />
-            <el-table-column prop="spec" label="规格" min-width="160" />
-            <el-table-column prop="uom" label="单位" min-width="80" />
-            <el-table-column prop="usage" label="单件用量" min-width="110" />
-            <el-table-column prop="remark" label="备注" min-width="180" />
-          </el-table>
-        </el-tab-pane>
-      </el-tabs>
-    </el-card>
-
-    <el-card shadow="never" data-testid="cand164-bom-alternate-readonly-panel">
-      <template #header>
-        <div class="panel-header">
-          <span>BOM 颜色尺码 / 替代料只读回读</span>
-          <div class="tag-row compact">
-            <el-tag :type="bomAlternateReadonlyView.readonlySourceType" effect="plain">
-              {{ bomAlternateReadonlyView.readonlySourceTag }}
-            </el-tag>
-            <el-tag :type="bomAlternateReadonlyView.coverageType" effect="plain">
-              {{ bomAlternateReadonlyView.coverageLabel }}
-            </el-tag>
-            <el-tag type="warning" effect="plain">{{ bomAlternateReadonlyView.parityScopeLabel }}</el-tag>
-          </div>
-        </div>
-      </template>
-
-      <div class="cost-grid">
-        <div
-          v-for="field in BOM_COLOR_SIZE_SUMMARY_FIELDS"
-          :key="field.key"
-          class="metric"
+    <section class="ys-bom-panel" data-testid="m2-bom-detail-panel">
+      <div class="ys-bom-toolbar" data-testid="m2-bom-lifecycle-toolbar">
+        <el-button class="ys-secondary-button" @click="goList">返回</el-button>
+        <el-button
+          v-if="showUpdateButton"
+          class="ys-secondary-button"
+          :disabled="!canUpdate || isUiDisabled || !detailRef.data"
+          data-testid="m2-bom-detail-edit-button"
+          @click="openEditDialog"
         >
-          <span class="metric-label">{{ field.label }}</span>
-          <strong class="metric-value">{{ bomSummaryValue(field.key) }}</strong>
-        </div>
+          编辑
+        </el-button>
+        <el-button
+          v-if="showSetDefaultButton"
+          class="ys-secondary-button"
+          :loading="actionLoading === 'set-default'"
+          :disabled="!canSetDefault || isUiDisabled || !detailRef.data"
+          data-testid="m2-bom-set-default-button"
+          @click="submitSetDefault"
+        >
+          设默认
+        </el-button>
+        <el-button
+          v-if="showPublishButton"
+          type="primary"
+          class="ys-primary-button"
+          :loading="actionLoading === 'activate'"
+          :disabled="!canPublish || isUiDisabled || !detailRef.data"
+          data-testid="m2-bom-activate-button"
+          @click="submitActivate"
+        >
+          启用
+        </el-button>
+        <el-button
+          v-if="showDeactivateButton"
+          class="ys-secondary-button"
+          :loading="actionLoading === 'deactivate'"
+          :disabled="!canDeactivate || isUiDisabled || !detailRef.data"
+          data-testid="m2-bom-deactivate-button"
+          @click="submitDeactivate"
+        >
+          停用
+        </el-button>
+        <el-button
+          class="ys-secondary-button"
+          :loading="actionLoading === 'explode'"
+          :disabled="!canExplode || isUiDisabled || !detailRef.data"
+          data-testid="m2-bom-explode-button"
+          @click="submitExplode"
+        >
+          展开
+        </el-button>
+        <div class="ys-bom-toolbar__spacer" />
+        <el-button class="ys-secondary-button" disabled>↙ 导入图片</el-button>
+        <el-button class="ys-secondary-button" disabled>↓ 导出</el-button>
+        <el-button class="ys-secondary-button" disabled>⚙ 列设置</el-button>
       </div>
 
       <el-alert
-        type="info"
+        v-if="stateMessage"
+        :type="stateMessage.type"
         :closable="false"
-        :title="bomAlternateReadonlyView.readonlyGuardReason"
-        class="readback-descriptions"
-        data-testid="cand164-bom-readonly-guard"
+        :title="stateMessage.text"
+        class="ys-state-alert"
+        data-testid="m2-bom-detail-state-alert"
       />
 
-      <el-alert
-        v-if="bomAlternateReadonlyView.missingAlternatePrompt"
-        type="warning"
-        :closable="false"
-        :title="bomAlternateReadonlyView.missingAlternatePrompt"
-        class="readback-descriptions"
-        data-testid="cand164-bom-missing-alternate-prompt"
-      />
-
-      <el-table
-        :data="bomAlternateReadonlyView.colorSizeUsageRows"
-        border
-        stripe
-        class="readback-descriptions"
-        data-testid="cand164-bom-color-size-usage-table"
-      >
-        <el-table-column prop="color" label="颜色" min-width="120" />
-        <el-table-column prop="size" label="尺码" min-width="120" />
-        <el-table-column prop="totalUsageLabel" label="用量汇总" min-width="120" />
-        <el-table-column prop="materialCount" label="物料行数" min-width="120" />
-        <el-table-column prop="sourceTag" label="来源标签" min-width="160" />
-      </el-table>
-
-      <el-table
-        :data="bomAlternateReadonlyView.alternateRows"
-        border
-        stripe
-        class="readback-descriptions"
-        data-testid="cand164-bom-alternate-material-table"
-      >
-        <el-table-column prop="materialLabel" label="物料" min-width="220" />
-        <el-table-column prop="colorSizeLabel" label="颜色 / 尺码" min-width="150" />
-        <el-table-column label="替代料状态" min-width="150">
-          <template #default="{ row }">
-            <el-tag :type="bomAlternateStateType(row.alternateState)" effect="plain">
-              {{ row.alternateStateLabel }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="alternateMaterialLabel" label="替代料" min-width="180" />
-        <el-table-column prop="sourceTag" label="来源标签" min-width="140" />
-        <el-table-column prop="note" label="备注" min-width="220" />
-      </el-table>
-
-      <el-alert
-        type="warning"
-        :closable="false"
-        :title="bomAlternateReadonlyView.remainingGap"
-        class="readback-descriptions"
-        data-testid="cand164-bom-remaining-gap"
-      />
-    </el-card>
-
-    <el-card shadow="never" data-testid="cand206-bom-audit-default-version-panel">
-      <template #header>
-        <div class="panel-header">
-          <span>BOM 审计来源 / 默认版本只读回读</span>
-          <div class="tag-row compact">
-            <el-tag :type="bomAuditDefaultVersionView.readonlySourceType" effect="plain">
-              {{ bomAuditDefaultVersionView.readonlySourceTag }}
-            </el-tag>
-            <el-tag :type="bomAuditDefaultVersionView.defaultVersionStatusType" effect="plain">
-              {{ bomAuditDefaultVersionView.defaultVersionStatusLabel }}
-            </el-tag>
-            <el-tag type="warning" effect="plain">{{ bomAuditDefaultVersionView.parityScopeLabel }}</el-tag>
-          </div>
+      <section class="ys-detail-summary" data-testid="m2-bom-detail-summary">
+        <div>
+          <span>编号</span>
+          <strong>{{ detailRow.code }}</strong>
         </div>
+        <div>
+          <span>名称</span>
+          <strong>{{ detailRow.name }}</strong>
+        </div>
+        <div>
+          <span>版本</span>
+          <strong>{{ detailRow.versionNo }}</strong>
+        </div>
+        <div>
+          <span>状态</span>
+          <strong>{{ statusLabel(detailRow.status) }}</strong>
+        </div>
+      </section>
+
+      <div class="ys-bom-table-wrap" :class="{ 'is-disabled': isUiDisabled }">
+        <div v-if="isLoadingState" class="ys-state-mask" data-testid="m2-bom-detail-loading-state">加载中</div>
+        <table class="ys-bom-table" data-testid="yisuan-1to1-bom-detail-table">
+          <thead>
+            <tr>
+              <th class="ys-check"><input type="checkbox" disabled /></th>
+              <th>图片</th>
+              <th>编号</th>
+              <th>部位</th>
+              <th>名称</th>
+              <th>颜色</th>
+              <th>成分</th>
+              <th>幅宽</th>
+              <th>克重</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody v-if="detailMaterialRows.length && !isNoPermissionState">
+            <tr v-for="row in detailMaterialRows" :key="row.key">
+              <td class="ys-check"><input type="checkbox" disabled /></td>
+              <td><span class="ys-image-placeholder" aria-hidden="true"></span></td>
+              <td><span class="ys-link">{{ row.code }}</span></td>
+              <td>{{ row.part }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.color }}</td>
+              <td>{{ row.composition }}</td>
+              <td>{{ row.width }}</td>
+              <td>{{ row.weight }}</td>
+              <td class="ys-actions">
+                <button type="button" class="ys-text-button" :disabled="!canUpdate || isUiDisabled" @click="openEditDialog">
+                  编辑
+                </button>
+                <button type="button" class="ys-text-button ys-text-button--danger" disabled>删除</button>
+              </td>
+            </tr>
+          </tbody>
+          <tbody v-else>
+            <tr>
+              <td colspan="10" class="ys-empty" data-testid="m2-bom-detail-empty-state">{{ emptyText }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <section v-if="explodeResultRows.length" class="ys-explode-panel" data-testid="m2-bom-explode-result">
+        <h3>展开结果</h3>
+        <table class="ys-mini-table">
+          <thead>
+            <tr>
+              <th>物料编号</th>
+              <th>颜色</th>
+              <th>尺码</th>
+              <th>单位</th>
+              <th>需求量</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in explodeResultRows" :key="`${row.material_item_code}-${row.color}-${row.size}`">
+              <td>{{ row.material_item_code }}</td>
+              <td>{{ row.color || '-' }}</td>
+              <td>{{ row.size || '-' }}</td>
+              <td>{{ row.uom }}</td>
+              <td>{{ row.qty }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+
+    <el-dialog
+      v-model="recordDialogVisible"
+      width="720px"
+      title="面料编辑"
+      class="ys-bom-dialog"
+      data-testid="m2-bom-detail-edit-dialog"
+    >
+      <el-form :model="recordForm" label-width="88px" class="ys-bom-form">
+        <el-form-item label="款号">
+          <el-input v-model="recordForm.itemCode" disabled />
+        </el-form-item>
+        <el-form-item label="版本">
+          <el-input v-model="recordForm.versionNo" placeholder="V1" />
+        </el-form-item>
+        <el-form-item label="编号">
+          <el-input v-model="recordForm.materialItemCode" placeholder="物料编号" />
+        </el-form-item>
+        <el-form-item label="名称">
+          <el-input v-model="recordForm.materialName" placeholder="面料名称" />
+        </el-form-item>
+        <el-form-item label="部位">
+          <el-input v-model="recordForm.part" placeholder="面料" />
+        </el-form-item>
+        <el-form-item label="颜色">
+          <el-input v-model="recordForm.color" placeholder="颜色" />
+        </el-form-item>
+        <el-form-item label="成分">
+          <el-input v-model="recordForm.composition" placeholder="成分" />
+        </el-form-item>
+        <el-form-item label="幅宽">
+          <el-input-number v-model="recordForm.width" :min="0.01" :precision="2" />
+        </el-form-item>
+        <el-form-item label="克重">
+          <el-input-number v-model="recordForm.weight" :min="0" :precision="2" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button class="ys-secondary-button" @click="recordDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          class="ys-primary-button"
+          :loading="actionLoading === 'update'"
+          :disabled="!canSubmitRecord"
+          data-testid="m2-bom-detail-save-button"
+          @click="submitUpdate"
+        >
+          保存
+        </el-button>
       </template>
-
-      <el-table
-        :data="bomAuditDefaultVersionView.auditRows"
-        border
-        stripe
-        class="readback-descriptions"
-        data-testid="cand206-bom-audit-source-table"
-      >
-        <el-table-column prop="label" label="只读字段" min-width="160" />
-        <el-table-column prop="value" label="回读结果" min-width="220" />
-        <el-table-column prop="note" label="备注" min-width="220" />
-      </el-table>
-
-      <el-alert
-        type="info"
-        :closable="false"
-        :title="bomAuditDefaultVersionView.readonlyGuardReason"
-        class="readback-descriptions"
-        data-testid="cand206-bom-readonly-guard"
-      />
-
-      <el-alert
-        type="warning"
-        :closable="false"
-        :title="bomAuditDefaultVersionView.versionSourceGapPrompt"
-        class="readback-descriptions"
-        data-testid="cand206-bom-version-source-gap"
-      />
-
-      <el-alert
-        type="warning"
-        :closable="false"
-        :title="bomAuditDefaultVersionView.remainingGap"
-        class="readback-descriptions"
-        data-testid="cand206-bom-remaining-gap"
-      />
-    </el-card>
-
-    <BomExceptionBaselineReadonlySection
-      :is-exception-baseline-tab="false"
-      :is-readonly-exception-mode="bomExceptionIsReadonlyMode"
-      :summary-cards="bomExceptionSummaryCards"
-      :parity-lines="bomExceptionParityLines"
-      :blocked-reasons="bomExceptionBlockedReasons"
-      :readonly-guard-text="bomExceptionReadonlyGuardText"
-      :exception-items="bomExceptionItems"
-      :disabled-actions="bomExceptionDisabledActions"
-      :remaining-gap="bomExceptionRemainingGap"
-    />
-
-    <el-card shadow="never" data-testid="yisuan-1to1-bom-cost-usage-panel">
-      <template #header>
-        <div class="panel-header">
-          <span>成本 / 用量概览</span>
-          <el-tag type="info">只读展示</el-tag>
-        </div>
-      </template>
-
-      <div class="cost-grid">
-        <div class="metric">
-          <span class="metric-label">面料总成本</span>
-          <strong class="metric-value">¥ {{ fabricTotalCost.toFixed(2) }}</strong>
-        </div>
-        <div class="metric">
-          <span class="metric-label">辅料总成本</span>
-          <strong class="metric-value">¥ {{ trimTotalCost.toFixed(2) }}</strong>
-        </div>
-        <div class="metric">
-          <span class="metric-label">单位件估算</span>
-          <strong class="metric-value">¥ {{ totalCost.toFixed(2) }}</strong>
-        </div>
-        <div class="metric">
-          <span class="metric-label">总损耗系数</span>
-          <strong class="metric-value">{{ totalLossRate.toFixed(2) }}%</strong>
-        </div>
-      </div>
-    </el-card>
-
-    <el-card shadow="never" class="contract-card">
-      <template #header>
-        <div class="panel-header">
-          <span>合同字段与规则回读（A002/A005）</span>
-          <el-tag type="danger" effect="plain">not_claimed_for_unknown_fields</el-tag>
-        </div>
-      </template>
-
-      <el-table :data="contractFieldRows" border stripe class="contract-field-table" data-testid="yisuan-contract-fields-observation">
-        <el-table-column prop="field" label="字段" min-width="160" />
-        <el-table-column prop="contract" label="合同来源" min-width="130" />
-        <el-table-column prop="status" label="状态" min-width="170" />
-        <el-table-column prop="evidence" label="页面策略" min-width="220" />
-      </el-table>
-
-      <div class="contract-block" data-testid="yisuan-contract-validation-rules">
-        <h4>validation_rules</h4>
-        <ul>
-          <li v-for="field in a005UnknownFields" :key="`unknown-${field}`">
-            {{ field }} => source_unknown / pending_confirmation / not_claimed
-          </li>
-        </ul>
-      </div>
-
-      <div class="contract-block" data-testid="yisuan-contract-status-rules">
-        <h4>status_rules</h4>
-        <div class="tag-row">
-          <el-tag v-for="state in a002StateLabels" :key="state" type="info" effect="light">{{ state }}</el-tag>
-          <el-tag type="warning" effect="light">quote_draft_status=待提交</el-tag>
-        </div>
-      </div>
-
-      <div class="contract-block" data-testid="yisuan-contract-readonly-readback-rules">
-        <h4>readonly/readback rules</h4>
-        <ul>
-          <li v-for="rule in explicitNonClaimRules" :key="rule">{{ rule }}</li>
-        </ul>
-        <div class="tag-row compact">
-          <el-tag v-for="action in a005BlockedActions" :key="`blocked-${action}`" type="danger" effect="plain">
-            {{ action }} blocked
-          </el-tag>
-        </div>
-      </div>
-    </el-card>
-  </div>
+    </el-dialog>
+  </main>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
+  activateBom,
+  deactivateBom,
+  explodeBom,
   fetchBomDetail,
-  fetchLocalBomReadback,
+  setDefaultBom,
+  updateBomDraft,
   type BomDetailData,
-  type LocalBomReadbackData,
+  type BomExplodeData,
+  type BomExplodePayload,
+  type BomItemPayload,
+  type BomOperationPayload,
+  type BomUpdatePayload,
+  type BomWriteCarrierPayload,
 } from '@/api/bom'
-import { BOM_COLOR_SIZE_SUMMARY_FIELDS } from './constants/bomAlternateMaterialFields'
-import { useBomAlternateReadonly } from './composables/useBomAlternateReadonly'
-import { useBomAuditDefaultVersionReadonly } from './composables/useBomAuditDefaultVersionReadonly'
-import BomExceptionBaselineReadonlySection from './components/BomExceptionBaselineReadonlySection.vue'
-import { useBomExceptionBaselineReadonly } from './composables/useBomExceptionBaselineReadonly'
+import { usePermissionStore } from '@/stores/permission'
 
-interface MaterialLine {
+type UiStateProbe = '' | 'loading' | 'error' | 'disabled' | 'empty' | 'no_permission'
+type ActionKey = '' | 'update' | 'set-default' | 'activate' | 'deactivate' | 'explode'
+
+interface MaterialRow {
+  key: string
   code: string
+  part: string
   name: string
-  spec: string
-  uom: string
-  usage: number
-  lossRate?: number
-  remark?: string
-  unitCost: number
+  color: string
+  composition: string
+  width: string
+  weight: string
 }
 
-type ContractFieldRow = {
-  field: string
-  contract: string
-  status: string
-  evidence: string
+interface RecordFormState {
+  itemCode: string
+  versionNo: string
+  materialItemCode: string
+  materialName: string
+  part: string
+  color: string
+  composition: string
+  width: number
+  weight: number
 }
 
+const materialTabs = ['工类类型', '品牌管理', '条码中心', '国际条码', '洗水类型', '面料类型', '执行标准', '工序模板', '号型', '合格证/洗唛']
+const permissionStore = usePermissionStore()
 const router = useRouter()
 const route = useRoute()
-const { bomAlternateStateType, buildBomAlternateDetailView } = useBomAlternateReadonly()
-const { buildBomAuditDetailView } = useBomAuditDefaultVersionReadonly()
 
-const a002StateLabels = ['VERIFIED', 'PARTIAL', 'UNKNOWN', 'NO-GO', 'BLOCKED']
-const a005BlockedActions = [
-  '样板生成/生成样衣/确定推送',
-  '提交',
-  '审核',
-  '反审核',
-  '删除',
-  '作废',
-  'BOM',
-  '生产制单',
-  '加工单',
-  '库存入库',
-  '库存出库',
-  '领料',
-  '完工',
-  '财务收付款',
-  '报价/订单联动',
-]
-const a005UnknownFields = ['完整颜色尺码矩阵规则', '设计号生成/录入规则', '纸样师选择规则', '价格规则']
-const explicitNonClaimRules = [
-  'UI 静态证据不等同业务算法 1:1',
-  '报价提交未验证',
-  '审核未验证',
-  '转订单未验证',
-  'mainOrderSaveClicked=false',
-  'orderCreated=false',
-  'orderNumberGenerated=false',
-]
-const contractFieldRows: ContractFieldRow[] = [
-  { field: '款号', contract: 'A005', status: 'VERIFIED', evidence: '主信息区直接回读' },
-  { field: '款名', contract: 'A005', status: 'VERIFIED', evidence: '主信息区直接回读' },
-  { field: '单位', contract: 'A005', status: 'VERIFIED', evidence: '物料明细单位列' },
-  { field: '面料', contract: 'A005', status: 'VERIFIED', evidence: '面料 Tab 明细' },
-  { field: '备注', contract: 'A005', status: 'VERIFIED', evidence: '辅料 Tab 备注列' },
-  { field: '可打样', contract: 'A005', status: 'VERIFIED', evidence: '只读标记展示' },
-  { field: '创建人/修改人', contract: 'A005', status: 'VERIFIED', evidence: '主信息区展示' },
-  { field: '颜色/尺码', contract: 'A005', status: 'PARTIAL pending_confirmation', evidence: '标注未确认，不参与联动计算' },
-  { field: '吊牌价', contract: 'A005', status: 'PARTIAL pending_confirmation', evidence: '仅状态占位，禁止宣称已确认' },
-  { field: '设计号/纸样师', contract: 'A005', status: 'PARTIAL pending_confirmation', evidence: '保留为待确认字段' },
-  { field: '只读壳层规则', contract: 'A002', status: 'VERIFIED', evidence: '无写入按钮，无真实对象创建' },
-]
-
-const localReadbackRef = reactive<{
-  loading: boolean
-  data: LocalBomReadbackData | null
-  error: string
-  objectId: number | null
-  scenarioTag: string
-}>({
+const activeMaterialType = ref('fabric')
+const detailRef = reactive<{ loading: boolean; data: BomDetailData | null; error: string }>({
   loading: false,
   data: null,
   error: '',
-  objectId: null,
-  scenarioTag: '',
+})
+const actionLoading = ref<ActionKey>('')
+const recordDialogVisible = ref(false)
+const explodeResultRows = ref<BomExplodeData['material_requirements']>([])
+
+const recordForm = reactive<RecordFormState>({
+  itemCode: '',
+  versionNo: '',
+  materialItemCode: '',
+  materialName: '',
+  part: '面料',
+  color: '',
+  composition: '',
+  width: 150,
+  weight: 230,
 })
 
-const detailRef = reactive<{
-  loading: boolean
-  data: BomDetailData | null
-  error: string
-  bomId: number | null
-}>({
-  loading: false,
-  data: null,
-  error: '',
-  bomId: null,
-})
-
-const parseObjectId = (value: unknown): number | null => {
+const parsePositiveInt = (value: unknown): number | null => {
   const raw = Array.isArray(value) ? value[0] : value
   const parsed = Number(raw)
   if (!Number.isFinite(parsed) || parsed <= 0) return null
   return Math.floor(parsed)
 }
 
-const parseScenarioTag = (value: unknown): string => {
-  const raw = Array.isArray(value) ? value[0] : value
-  return typeof raw === 'string' ? raw.trim() : ''
+const queryText = (key: string, fallback = ''): string => {
+  const raw = route.query[key]
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
 }
 
-const parseTextQuery = (value: unknown): string => {
-  const raw = Array.isArray(value) ? value[0] : value
-  return typeof raw === 'string' ? raw.trim() : ''
-}
-
-const bomIdFromQuery = computed<number | null>(() => parseObjectId(route.query.bom_id))
-const objectIdFromQuery = computed<number | null>(() => parseObjectId(route.query.object_id))
-const scenarioTagFromQuery = computed<string>(() => parseScenarioTag(route.query.scenario_tag))
-const styleNameFromQuery = computed<string>(() => parseTextQuery(route.query.style_name))
-const parityFromQuery = computed<string>(() => parseTextQuery(route.query.parity))
-const detailModeFromQuery = computed<string>(() => parseTextQuery(route.query.mode))
-const currentRouteLabel = computed(() => {
-  const queryParts: string[] = []
-  if (bomIdFromQuery.value) queryParts.push(`bom_id=${bomIdFromQuery.value}`)
-  if (parityFromQuery.value) queryParts.push(`parity=${parityFromQuery.value}`)
-  if (detailModeFromQuery.value) queryParts.push(`mode=${detailModeFromQuery.value}`)
-  return queryParts.length ? `/bom/detail?${queryParts.join('&')}` : '/bom/detail'
-})
-
-const bomNo = computed(() => {
-  if (detailRef.data?.bom.bom_no) return detailRef.data.bom.bom_no
-  const queryBom = route.query.bom_no
-  if (typeof queryBom === 'string' && queryBom.trim()) return queryBom.trim()
-  if (localReadbackRef.data?.bom_main.bom_no) return localReadbackRef.data.bom_main.bom_no
-  return 'BOM-YS-250601-001'
-})
-
-const staticFabricLines: MaterialLine[] = [
-  {
-    code: 'FAB-CT-0021',
-    name: '32支精梳棉汗布',
-    spec: '185g / 米白',
-    uom: 'KG',
-    usage: 0.62,
-    lossRate: 3.5,
-    unitCost: 38.4,
-  },
-  {
-    code: 'FAB-RB-0012',
-    name: '1x1 罗纹',
-    spec: '袖口/下摆',
-    uom: 'KG',
-    usage: 0.11,
-    lossRate: 2.8,
-    unitCost: 29.8,
-  },
-]
-
-const staticTrimLines: MaterialLine[] = [
-  {
-    code: 'TRM-LB-1022',
-    name: '主唛+洗水唛套组',
-    spec: '国标成分标签',
-    uom: 'SET',
-    usage: 1,
-    remark: '同款共版',
-    unitCost: 0.85,
-  },
-  {
-    code: 'TRM-PK-2010',
-    name: '包装袋',
-    spec: 'PE 自粘袋',
-    uom: 'PCS',
-    usage: 1,
-    remark: '含条码贴',
-    unitCost: 0.48,
-  },
-]
-
-const isFabricMaterial = (materialItemCode: string, remark?: string | null): boolean => {
-  const remarkText = (remark || '').trim()
-  if (remarkText.includes('面料')) return true
-  const token = materialItemCode.replace('_', '-').split('-', 1)[0].trim().toUpperCase()
-  return token === 'FAB' || token === 'FABRIC' || token === 'CLOTH'
-}
-
-const toMaterialLine = (line: LocalBomReadbackData['fabric_lines'][number]): MaterialLine => ({
-  code: line.material_item_code,
-  name: line.material_name || line.remark || '-',
-  spec: [line.color, line.size || ''].filter(Boolean).join(' / ') || '-',
-  uom: line.uom || 'PCS',
-  usage: Number(line.qty_per_piece || 0),
-  lossRate: Number(line.loss_rate || 0) * 100,
-  remark: line.remark || '',
-  unitCost: 0,
-})
-
-const toDetailMaterialLine = (line: BomDetailData['items'][number]): MaterialLine => ({
-  code: line.material_item_code,
-  name: line.remark || line.material_item_code,
-  spec: [line.color, line.size || ''].filter(Boolean).join(' / ') || '-',
-  uom: line.uom || 'PCS',
-  usage: Number(line.qty_per_piece || 0),
-  lossRate: Number(line.loss_rate || 0) * 100,
-  remark: line.remark || '',
-  unitCost: 0,
-})
-
-const detailFabricLines = computed<MaterialLine[]>(() => {
-  if (!detailRef.data?.items?.length) return []
-  return detailRef.data.items.filter((line) => isFabricMaterial(line.material_item_code, line.remark)).map(toDetailMaterialLine)
-})
-
-const detailTrimLines = computed<MaterialLine[]>(() => {
-  if (!detailRef.data?.items?.length) return []
-  return detailRef.data.items.filter((line) => !isFabricMaterial(line.material_item_code, line.remark)).map(toDetailMaterialLine)
-})
-
-const displayFabricLines = computed<MaterialLine[]>(() => {
-  if (detailFabricLines.value.length) {
-    return detailFabricLines.value
+const bomId = computed(() => parsePositiveInt(route.query.bom_id))
+const uiStateProbe = computed<UiStateProbe>(() => {
+  const value = queryText('m2_state')
+  if (value === 'loading' || value === 'error' || value === 'disabled' || value === 'empty' || value === 'no_permission') {
+    return value
   }
-  if (localReadbackRef.data?.fabric_lines?.length) {
-    return localReadbackRef.data.fabric_lines.map(toMaterialLine)
-  }
-  return staticFabricLines
+  return ''
 })
 
-const displayTrimLines = computed<MaterialLine[]>(() => {
-  if (detailTrimLines.value.length) {
-    return detailTrimLines.value
+const buttonPermissions = computed(() => permissionStore.state.buttonPermissions)
+const canRead = computed(() => buttonPermissions.value.read && uiStateProbe.value !== 'no_permission')
+const canUpdate = computed(() => buttonPermissions.value.update && uiStateProbe.value !== 'no_permission')
+const canPublish = computed(() => buttonPermissions.value.publish && uiStateProbe.value !== 'no_permission')
+const canDeactivate = computed(() => buttonPermissions.value.deactivate && uiStateProbe.value !== 'no_permission')
+const canSetDefault = computed(() => buttonPermissions.value.set_default && uiStateProbe.value !== 'no_permission')
+const canExplode = computed(() => canRead.value && uiStateProbe.value !== 'no_permission')
+const isUiDisabled = computed(() => uiStateProbe.value === 'disabled' || uiStateProbe.value === 'no_permission')
+const isLoadingState = computed(() => detailRef.loading || uiStateProbe.value === 'loading')
+const isNoPermissionState = computed(() => !canRead.value || uiStateProbe.value === 'no_permission')
+
+const showUpdateButton = computed(() => canUpdate.value)
+const showSetDefaultButton = computed(() => canSetDefault.value)
+const showPublishButton = computed(() => canPublish.value)
+const showDeactivateButton = computed(() => canDeactivate.value)
+
+const detailTitle = computed(() => detailRef.data?.bom.bom_no || queryText('bom_no', '面料详情'))
+const detailRow = computed(() => {
+  const bom = detailRef.data?.bom
+  return {
+    bomNo: bom?.bom_no || queryText('bom_no', '-'),
+    itemCode: bom?.item_code || queryText('item_code', '-'),
+    versionNo: bom?.version_no || queryText('version_no', '-'),
+    status: bom?.status || 'draft',
+    code: queryText('item_code', bom?.item_code || '-'),
+    name: queryText('material_name', bom?.item_code || '面料'),
+    color: queryText('color'),
+    composition: queryText('composition'),
+    width: queryText('width', '150'),
+    weight: queryText('weight', '230'),
   }
-  if (localReadbackRef.data?.trim_lines?.length) {
-    return localReadbackRef.data.trim_lines.map(toMaterialLine)
-  }
-  return staticTrimLines
 })
 
-const displayStyleCode = computed(() => detailRef.data?.bom.item_code || localReadbackRef.data?.style_binding.style_code || 'LY-WS-2301')
-const displayStyleName = computed(
-  () => styleNameFromQuery.value || localReadbackRef.data?.style_binding.style_name || detailRef.data?.bom.item_code || '圆领短袖卫衣',
+const detailMaterialRows = computed<MaterialRow[]>(() => {
+  if (uiStateProbe.value === 'empty') return []
+  const items = detailRef.data?.items || []
+  if (items.length) {
+    return items.map((item) => ({
+      key: String(item.id),
+      code: item.material_item_code,
+      part: '面料',
+      name: item.remark?.split(' / ')[1] || item.material_item_code,
+      color: item.color || '',
+      composition: item.size || '',
+      width: String(item.qty_per_piece || ''),
+      weight: item.remark?.match(/克重:([^/]+)/)?.[1]?.trim() || '0',
+    }))
+  }
+  if (detailRow.value.code !== '-') {
+    return [
+      {
+        key: 'query-fallback',
+        code: detailRow.value.code,
+        part: '面料',
+        name: detailRow.value.name,
+        color: detailRow.value.color,
+        composition: detailRow.value.composition,
+        width: detailRow.value.width,
+        weight: detailRow.value.weight,
+      },
+    ]
+  }
+  return []
+})
+
+const emptyText = computed(() => {
+  if (isNoPermissionState.value) return '无权限查看面料详情'
+  if (uiStateProbe.value === 'error') return '面料详情读取失败'
+  return '暂无面料明细'
+})
+
+const stateMessage = computed(() => {
+  if (isNoPermissionState.value) {
+    return { type: 'warning' as const, text: '当前会话未获得 bom:read，详情页 fail-closed。' }
+  }
+  if (uiStateProbe.value === 'error') {
+    return { type: 'error' as const, text: '模拟错误状态：面料详情不可用。' }
+  }
+  if (detailRef.error) {
+    return { type: 'warning' as const, text: detailRef.error }
+  }
+  if (uiStateProbe.value === 'disabled') {
+    return { type: 'info' as const, text: '模拟禁用状态：生命周期按钮保持禁用。' }
+  }
+  return null
+})
+
+const canSubmitRecord = computed(() =>
+  Boolean(
+    canUpdate.value &&
+      !isUiDisabled.value &&
+      detailRef.data &&
+      recordForm.itemCode.trim() &&
+      recordForm.versionNo.trim() &&
+      recordForm.materialItemCode.trim() &&
+      recordForm.materialName.trim() &&
+      recordForm.width > 0,
+  ),
 )
-const displayVersion = computed(() => detailRef.data?.bom.version_no || localReadbackRef.data?.bom_main.version_no || 'V2.3')
-const displayStatus = computed(() => detailRef.data?.bom.status || localReadbackRef.data?.bom_main.status || 'published')
 
-const statusLabel = (status: string) => {
-  if (status === 'draft') return '草稿'
-  if (status === 'review') return '审核中'
-  return '已发布'
+const todayCompact = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
 }
 
-const statusType = (status: string) => {
-  if (status === 'draft') return 'info'
-  if (status === 'review') return 'warning'
-  return 'success'
+const buildScenarioTag = (): string => `Z002-BOM-${todayCompact()}-001`
+
+const carrierCode = (value: string): string => {
+  let hashValue = 2166136261
+  for (const char of new TextEncoder().encode(value.trim())) {
+    hashValue ^= char
+    hashValue = Math.imul(hashValue, 16777619) >>> 0
+  }
+  return hashValue.toString(16).toUpperCase().padStart(8, '0').slice(-4)
 }
 
-const fabricTotalCost = computed(() =>
-  displayFabricLines.value.reduce((sum, row) => sum + row.usage * row.unitCost * (1 + (row.lossRate ?? 0) / 100), 0),
-)
-const trimTotalCost = computed(() => displayTrimLines.value.reduce((sum, row) => sum + row.usage * row.unitCost, 0))
-const totalCost = computed(() => fabricTotalCost.value + trimTotalCost.value)
-const totalLossRate = computed(() =>
-  displayFabricLines.value.reduce((sum, row) => sum + (row.lossRate ?? 0), 0) / (displayFabricLines.value.length || 1),
-)
+const buildRequestId = (scenarioTag: string, itemCode: string, bomRef: string, reason = 'NONE'): string =>
+  `${scenarioTag}-RQ-I${carrierCode(itemCode)}-B${carrierCode(bomRef)}-R${carrierCode(reason)}`
 
-const bomAlternateReadonlyView = computed(() =>
-  buildBomAlternateDetailView(detailRef.data, localReadbackRef.data, parityFromQuery.value),
-)
-
-const bomAuditDefaultVersionView = computed(() =>
-  buildBomAuditDetailView(detailRef.data, localReadbackRef.data, parityFromQuery.value),
-)
-
-const {
-  isReadonlyExceptionMode: bomExceptionIsReadonlyMode,
-  summaryCards: bomExceptionSummaryCards,
-  parityLines: bomExceptionParityLines,
-  blockedReasons: bomExceptionBlockedReasons,
-  readonlyGuardText: bomExceptionReadonlyGuardText,
-  exceptionItems: bomExceptionItems,
-  disabledActions: bomExceptionDisabledActions,
-  remainingGap: bomExceptionRemainingGap,
-} = useBomExceptionBaselineReadonly({
-  context: computed(() => 'detail' as const),
-  currentRouteLabel,
-  routeTab: computed(() => ''),
-  detailMode: detailModeFromQuery,
-  routeParity: parityFromQuery,
-  listRows: computed(() => []),
-  detailLines: computed(() => [...displayFabricLines.value, ...displayTrimLines.value]),
-  bomNo,
-  styleCode: displayStyleCode,
-  styleName: displayStyleName,
-  versionLabel: displayVersion,
-})
-
-const bomSummaryValue = (
-  key: (typeof BOM_COLOR_SIZE_SUMMARY_FIELDS)[number]['key'],
-): string => {
-  switch (key) {
-    case 'skuCount':
-      return String(bomAlternateReadonlyView.value.skuCount)
-    case 'materialCount':
-      return String(bomAlternateReadonlyView.value.materialCount)
-    case 'alternateCount':
-      return String(bomAlternateReadonlyView.value.alternateCount)
-    case 'parityScopeLabel':
-      return bomAlternateReadonlyView.value.parityScopeLabel
-    default:
-      return '-'
+const buildCarrierPayload = (reason?: string): { payload: BomWriteCarrierPayload; requestId: string } => {
+  const bom = detailRef.data?.bom
+  if (!bom) throw new Error('缺少 BOM 详情')
+  const scenarioTag = buildScenarioTag()
+  const requestId = buildRequestId(scenarioTag, bom.item_code, bom.bom_no, reason)
+  return {
+    requestId,
+    payload: {
+      scenario_tag: scenarioTag,
+      idempotency_key: requestId,
+      source_ref: bom.bom_no,
+      bom_no: bom.bom_no,
+      item_code: bom.item_code,
+    },
   }
 }
 
-const refreshRemoteDetail = async () => {
-  const bomId = bomIdFromQuery.value
-  detailRef.bomId = bomId
-  if (!bomId) {
-    detailRef.data = null
-    detailRef.error = ''
+const buildMaterialPayload = (): BomItemPayload => ({
+  material_item_code: recordForm.materialItemCode.trim(),
+  color: recordForm.color.trim() || undefined,
+  size: recordForm.composition.trim() || undefined,
+  qty_per_piece: Number(recordForm.width),
+  loss_rate: 0,
+  uom: '米',
+  remark: [recordForm.part.trim(), recordForm.materialName.trim(), `克重:${recordForm.weight}`].filter(Boolean).join(' / '),
+})
+
+const buildOperationPayload = (): BomOperationPayload => ({
+  process_name: '面料建档',
+  sequence_no: 1,
+  is_subcontract: false,
+  wage_rate: 0,
+  subcontract_cost_per_piece: 0,
+  remark: 'M2 BOM 真实端点编辑',
+})
+
+const statusLabel = (status: string): string => {
+  if (status === 'active' || status === 'published') return '已启用'
+  if (status === 'inactive') return '已停用'
+  return '草稿'
+}
+
+const loadPermissions = async (): Promise<void> => {
+  try {
+    await permissionStore.loadCurrentUser()
+    if (bomId.value) {
+      await permissionStore.loadBomActions(bomId.value)
+    } else {
+      await permissionStore.loadModuleActions('bom')
+    }
+  } catch {
+    // Permission state is fail-closed by the store.
+  }
+}
+
+const loadDetail = async (): Promise<void> => {
+  if (!bomId.value || !canRead.value || uiStateProbe.value === 'loading' || uiStateProbe.value === 'error') {
     return
   }
-
   detailRef.loading = true
   detailRef.error = ''
   try {
-    detailRef.data = (await fetchBomDetail(bomId)).data
+    detailRef.data = (await fetchBomDetail(bomId.value)).data
   } catch (error) {
     detailRef.data = null
-    detailRef.error = `BOM 详情读取失败：${(error as Error).message}`
-    ElMessage.warning(detailRef.error)
+    detailRef.error = `面料详情读取失败：${(error as Error).message}`
   } finally {
     detailRef.loading = false
   }
 }
 
-const refreshLocalReadback = async () => {
-  const objectId = objectIdFromQuery.value
-  const scenarioTag = scenarioTagFromQuery.value
-  localReadbackRef.objectId = objectId
-  localReadbackRef.scenarioTag = scenarioTag
-  if (!objectId || !scenarioTag) {
-    localReadbackRef.data = null
-    localReadbackRef.error = ''
+const refreshAfterAction = async (): Promise<void> => {
+  await loadDetail()
+  if (bomId.value) await permissionStore.loadBomActions(bomId.value)
+}
+
+const openEditDialog = (): void => {
+  if (!canUpdate.value || !detailRef.data) {
+    ElMessage.warning('无 BOM 编辑权限或缺少真实 BOM 详情')
     return
   }
+  const primary = detailMaterialRows.value[0]
+  recordForm.itemCode = detailRef.data.bom.item_code
+  recordForm.versionNo = detailRef.data.bom.version_no
+  recordForm.materialItemCode = primary?.code || 'MAT-NEW'
+  recordForm.materialName = primary?.name || detailRef.data.bom.item_code
+  recordForm.part = primary?.part || '面料'
+  recordForm.color = primary?.color || ''
+  recordForm.composition = primary?.composition || ''
+  recordForm.width = Number(primary?.width) || 150
+  recordForm.weight = Number(primary?.weight) || 0
+  recordDialogVisible.value = true
+}
 
-  localReadbackRef.loading = true
-  localReadbackRef.error = ''
+const submitUpdate = async (): Promise<void> => {
+  if (!canSubmitRecord.value || !bomId.value || !detailRef.data) return
+  actionLoading.value = 'update'
   try {
-    localReadbackRef.data = (await fetchLocalBomReadback(objectId, scenarioTag)).data
+    const { payload: carrier, requestId } = buildCarrierPayload()
+    const payload: BomUpdatePayload = {
+      ...carrier,
+      version_no: recordForm.versionNo.trim(),
+      bom_items: [buildMaterialPayload()],
+      operations: [buildOperationPayload()],
+    }
+    await updateBomDraft(bomId.value, payload, { requestId })
+    ElMessage.success('面料编辑已提交真实 BOM 端点')
+    recordDialogVisible.value = false
+    await refreshAfterAction()
   } catch (error) {
-    localReadbackRef.data = null
-    localReadbackRef.error = `本地回读失败：${(error as Error).message}`
-    ElMessage.warning(localReadbackRef.error)
+    ElMessage.error(`编辑失败：${(error as Error).message}`)
   } finally {
-    localReadbackRef.loading = false
+    actionLoading.value = ''
   }
 }
 
-watch([bomIdFromQuery, objectIdFromQuery, scenarioTagFromQuery], () => {
-  void refreshRemoteDetail()
-  void refreshLocalReadback()
-})
-
-onMounted(() => {
-  void refreshRemoteDetail()
-  void refreshLocalReadback()
-})
-
-const goList = () => {
-  void router.push({
-    path: '/bom/list',
-    query: {
-      ...(parityFromQuery.value ? { parity: parityFromQuery.value } : {}),
-      ...(detailModeFromQuery.value === 'readonly-exception' ? { tab: 'exception-baseline' } : {}),
-    },
-  })
+const submitSetDefault = async (): Promise<void> => {
+  if (!canSetDefault.value || !bomId.value) return
+  actionLoading.value = 'set-default'
+  try {
+    const { payload, requestId } = buildCarrierPayload()
+    await setDefaultBom(bomId.value, payload, { requestId })
+    ElMessage.success('已提交设默认')
+    await refreshAfterAction()
+  } catch (error) {
+    ElMessage.error(`设默认失败：${(error as Error).message}`)
+  } finally {
+    actionLoading.value = ''
+  }
 }
+
+const submitActivate = async (): Promise<void> => {
+  if (!canPublish.value || !bomId.value) return
+  actionLoading.value = 'activate'
+  try {
+    const { payload, requestId } = buildCarrierPayload()
+    await activateBom(bomId.value, payload, { requestId })
+    ElMessage.success('已提交启用')
+    await refreshAfterAction()
+  } catch (error) {
+    ElMessage.error(`启用失败：${(error as Error).message}`)
+  } finally {
+    actionLoading.value = ''
+  }
+}
+
+const submitDeactivate = async (): Promise<void> => {
+  if (!canDeactivate.value || !bomId.value) return
+  actionLoading.value = 'deactivate'
+  try {
+    const reason = `${buildScenarioTag()}-停用面料`
+    const { payload, requestId } = buildCarrierPayload(reason)
+    await deactivateBom(bomId.value, { ...payload, reason }, { requestId })
+    ElMessage.success('已提交停用')
+    await refreshAfterAction()
+  } catch (error) {
+    ElMessage.error(`停用失败：${(error as Error).message}`)
+  } finally {
+    actionLoading.value = ''
+  }
+}
+
+const submitExplode = async (): Promise<void> => {
+  if (!canExplode.value || !bomId.value) return
+  actionLoading.value = 'explode'
+  try {
+    const { payload, requestId } = buildCarrierPayload()
+    const explodePayload: BomExplodePayload = {
+      ...payload,
+      order_qty: 10,
+      size_ratio: {},
+    }
+    const response = await explodeBom(bomId.value, explodePayload, { requestId })
+    explodeResultRows.value = response.data.material_requirements
+    ElMessage.success('BOM 展开完成')
+  } catch (error) {
+    ElMessage.error(`展开失败：${(error as Error).message}`)
+  } finally {
+    actionLoading.value = ''
+  }
+}
+
+const goList = (): void => {
+  void router.push('/bom/list')
+}
+
+onMounted(async () => {
+  await loadPermissions()
+  await loadDetail()
+})
 </script>
 
 <style scoped>
-.bom-detail-shell {
+.ys-bom-page {
+  --ys-color-primary: #4e88f3;
+  --ys-color-primary-weak: rgba(78, 136, 243, 0.1);
+  --ys-color-bg-page: #f6f8f9;
+  --ys-color-bg-table-head: #f5f7fa;
+  --ys-color-text-main: #515a6e;
+  --ys-color-text-title: #303133;
+  --ys-color-text-minor: #606266;
+  --ys-color-border: #dcdfe6;
+  --ys-color-danger: #fd4e4e;
+  min-height: calc(100vh - 42px);
+  padding: 0 12px 12px;
+  background: var(--ys-color-bg-page);
+  color: var(--ys-color-text-main);
+  font-family: "PingFang SC", Arial, "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+}
+
+.ys-bom-topbar {
+  height: 60px;
   display: grid;
+  grid-template-columns: 1fr 200px 1fr;
+  align-items: center;
   gap: 12px;
+  border-bottom: 1px solid var(--ys-color-border);
+  background: #fff;
 }
 
-.header-row {
+.ys-bom-crumbs,
+.ys-bom-top-actions,
+.ys-bom-tabs,
+.ys-bom-toolbar,
+.ys-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
 }
 
-.page-title {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.3;
-  color: #1f2a37;
+.ys-bom-crumbs {
+  gap: 10px;
+  color: var(--ys-color-text-title);
 }
 
-.page-subtitle {
-  margin: 6px 0 0;
+.ys-bom-crumbs__active {
+  color: var(--ys-color-primary);
+}
+
+.ys-back {
+  border: 0;
+  background: transparent;
+  color: var(--ys-color-text-minor);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.ys-bom-title-select {
+  width: 200px;
+}
+
+.ys-bom-top-actions {
+  justify-content: flex-end;
+  gap: 14px;
+  color: var(--ys-color-text-minor);
   font-size: 13px;
-  color: #6b7280;
+  white-space: nowrap;
 }
 
-.actions {
-  display: inline-flex;
+.ys-bom-tabs {
+  height: 50px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--ys-color-border);
+  background: #fff;
+}
+
+.ys-bom-tab {
+  height: 50px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid #ebeef5;
+  background: transparent;
+  color: var(--ys-color-text-title);
+  font: inherit;
+  cursor: default;
+}
+
+.ys-bom-tab--active {
+  color: var(--ys-color-primary);
+  background: var(--ys-color-primary-weak);
+}
+
+.ys-bom-tab__close {
+  margin-left: 12px;
+  color: #909399;
+}
+
+.ys-bom-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--ys-color-border);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.ys-bom-toolbar {
   gap: 8px;
+  min-height: 32px;
 }
 
-.source-readback {
+.ys-bom-toolbar__spacer {
+  flex: 1;
+}
+
+.ys-primary-button,
+.ys-secondary-button {
+  min-height: 32px;
+  border-radius: 4px;
+  padding: 8px 15px;
+  font-size: 14px;
+}
+
+.ys-primary-button {
+  background: var(--ys-color-primary);
+  border-color: var(--ys-color-primary);
+}
+
+.ys-primary-button:disabled {
+  background: rgba(78, 136, 243, 0.5);
+  border-color: transparent;
+}
+
+.ys-state-alert {
   margin-top: 10px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #4b5563;
 }
 
-.style-summary {
-  margin-top: 10px;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.readback-descriptions {
-  margin-top: 10px;
-}
-
-.cost-grid {
+.ys-detail-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 1px;
+  margin-top: 12px;
+  border: 1px solid #e4e7ed;
+  background: #e4e7ed;
 }
 
-.metric {
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 10px;
-  background: #fbfcfe;
-}
-
-.metric-label {
-  display: block;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.metric-value {
-  margin-top: 6px;
-  display: block;
-  font-size: 18px;
-  color: #111827;
-  letter-spacing: 0;
-}
-
-.contract-card {
-  border-radius: 6px;
-}
-
-.contract-field-table {
-  margin-bottom: 12px;
-}
-
-.contract-block {
-  margin-top: 10px;
-}
-
-.contract-block h4 {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: #1f2937;
-}
-
-.contract-block ul {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 12px;
-  color: #4b5563;
-  line-height: 1.5;
-}
-
-.tag-row {
-  display: flex;
-  flex-wrap: wrap;
+.ys-detail-summary div {
+  display: grid;
   gap: 6px;
+  padding: 10px 12px;
+  background: #fff;
 }
 
-.tag-row.compact {
-  margin-top: 8px;
+.ys-detail-summary span {
+  color: #909399;
+  font-size: 12px;
 }
 
-@media (max-width: 1180px) {
-  .cost-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+.ys-detail-summary strong {
+  color: var(--ys-color-text-title);
+  font-weight: 500;
+}
+
+.ys-bom-table-wrap {
+  position: relative;
+  margin-top: 12px;
+  border: 1px solid #e4e7ed;
+  min-height: 620px;
+  overflow: auto;
+}
+
+.ys-bom-table-wrap.is-disabled {
+  opacity: 0.72;
+}
+
+.ys-state-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ys-color-text-minor);
+}
+
+.ys-bom-table,
+.ys-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #fff;
+}
+
+.ys-bom-table th,
+.ys-mini-table th {
+  height: 38px;
+  padding: 8px 8px;
+  border-right: 1px solid #ebeef5;
+  border-bottom: 1px solid #e4e7ed;
+  background: var(--ys-color-bg-table-head);
+  color: #909399;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.ys-bom-table td,
+.ys-mini-table td {
+  height: 39px;
+  padding: 0 8px;
+  border-right: 1px solid #ebeef5;
+  border-bottom: 1px solid #ebeef5;
+  color: var(--ys-color-text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ys-bom-table th:nth-child(1),
+.ys-bom-table td:nth-child(1) {
+  width: 36px;
+}
+
+.ys-bom-table th:nth-child(2),
+.ys-bom-table td:nth-child(2) {
+  width: 60px;
+}
+
+.ys-bom-table th:nth-child(3),
+.ys-bom-table td:nth-child(3) {
+  width: 150px;
+}
+
+.ys-bom-table th:nth-child(10),
+.ys-bom-table td:nth-child(10) {
+  width: 150px;
+}
+
+.ys-check {
+  text-align: center;
+}
+
+.ys-image-placeholder {
+  display: inline-block;
+  width: 28px;
+  height: 22px;
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 70% 30%, #ffffff 0 2px, transparent 3px),
+    linear-gradient(135deg, #cde6ff 0%, #8ebeff 100%);
+  box-shadow: inset 0 0 0 1px #d8e6f5;
+  vertical-align: middle;
+}
+
+.ys-link,
+.ys-text-button {
+  border: 0;
+  background: transparent;
+  color: #2f7df6;
+  font: inherit;
+}
+
+.ys-text-button {
+  padding: 0 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ys-text-button--danger {
+  color: var(--ys-color-danger);
+}
+
+.ys-text-button:disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+}
+
+.ys-actions {
+  gap: 4px;
+}
+
+.ys-empty {
+  height: 260px;
+  text-align: center;
+  color: #909399;
+}
+
+.ys-explode-panel {
+  margin-top: 12px;
+}
+
+.ys-explode-panel h3 {
+  margin: 0 0 8px;
+  color: var(--ys-color-text-title);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ys-bom-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 16px;
+}
+
+@media (max-width: 980px) {
+  .ys-bom-topbar,
+  .ys-detail-summary,
+  .ys-bom-form {
+    grid-template-columns: 1fr;
+  }
+
+  .ys-bom-topbar {
+    height: auto;
+    padding: 10px 0;
+  }
+
+  .ys-bom-toolbar,
+  .ys-bom-top-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .ys-bom-toolbar__spacer {
+    display: none;
   }
 }
 </style>
