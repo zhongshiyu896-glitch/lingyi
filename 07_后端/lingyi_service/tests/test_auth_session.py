@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from urllib import error as url_error
 from unittest.mock import patch
 
 os.environ.setdefault("APP_ENV", "test")
@@ -20,6 +21,36 @@ import app.main as main_module
 from app.main import app
 from app.models.audit import Base as AuditBase
 from app.routers.auth import get_db_session as auth_db_dep
+
+
+class _FakeERPNextHeaders:
+    def __init__(self, set_cookie_headers: list[str] | None = None) -> None:
+        self._set_cookie_headers = set_cookie_headers or []
+
+    def get_all(self, name: str, default=None):
+        if name.lower() == "set-cookie":
+            return list(self._set_cookie_headers)
+        return default
+
+
+class _FakeERPNextResponse:
+    def __init__(self, payload: dict, set_cookie_headers: list[str] | None = None) -> None:
+        self._payload = payload
+        self._headers = _FakeERPNextHeaders(set_cookie_headers)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> bool:
+        return False
+
+    def read(self) -> bytes:
+        import json
+
+        return json.dumps(self._payload).encode("utf-8")
+
+    def info(self) -> _FakeERPNextHeaders:
+        return self._headers
 
 
 class AuthSessionTest(unittest.TestCase):
@@ -115,7 +146,7 @@ class AuthSessionTest(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
 
-    def test_login_is_blocked_when_local_auth_is_disabled(self) -> None:
+    def test_production_login_without_erpnext_base_url_fails_closed(self) -> None:
         with patch.dict(
             os.environ,
             {"APP_ENV": "production", "LINGYI_ALLOW_DEV_AUTH": "true", "LINGYI_ERPNEXT_BASE_URL": ""},
@@ -123,11 +154,85 @@ class AuthSessionTest(unittest.TestCase):
         ):
             response = self.client.post(
                 "/api/auth/login",
-                json={"username": "blocked.user", "profile": "system_manager"},
+                json={"username": "blocked.user", "password": "secret-pass"},
             )
 
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["code"], "INTERNAL_API_DISABLED")
+        self.assertEqual(response.json()["code"], "ERPNEXT_SERVICE_UNAVAILABLE")
+
+    def test_production_login_proxies_erpnext_and_sets_sid_cookie(self) -> None:
+        captured_login_body = b""
+
+        def _fake_urlopen(req, timeout=0):
+            nonlocal captured_login_body
+            self.assertEqual(timeout, 5)
+            url = req.full_url
+            if url.endswith("/api/method/login"):
+                captured_login_body = req.data or b""
+                return _FakeERPNextResponse(
+                    {"message": "Logged In"},
+                    ["sid=erpnext-session-123; Path=/; HttpOnly; SameSite=Lax"],
+                )
+            if url.endswith("/api/method/frappe.auth.get_logged_user"):
+                self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-session-123")
+                return _FakeERPNextResponse({"message": "erp.user@example.com"})
+            if "/api/resource/User/erp.user%40example.com" in url:
+                self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-session-123")
+                return _FakeERPNextResponse(
+                    {"data": {"roles": [{"role": "System Manager"}, {"role": "BOM Editor"}]}}
+                )
+            raise AssertionError(f"unexpected ERPNext URL: {url}")
+
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
+                "LINGYI_PERMISSION_SOURCE": "erpnext",
+            },
+            clear=False,
+        ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
+            response = self.client.post(
+                "/api/auth/login",
+                json={"username": "erp.user@example.com", "password": "secret-pass"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(b"usr=erp.user%40example.com", captured_login_body)
+            self.assertIn(b"pwd=secret-pass", captured_login_body)
+            self.assertIn("sid=erpnext-session-123", response.headers.get("set-cookie", ""))
+            payload = response.json()
+            self.assertEqual(payload["code"], "0")
+            self.assertEqual(payload["data"]["username"], "erp.user@example.com")
+            self.assertEqual(payload["data"]["roles"], ["BOM Editor", "System Manager"])
+            self.assertEqual(payload["data"]["source"], "erpnext_session")
+
+            me_response = self.client.get("/api/auth/me")
+            self.assertEqual(me_response.status_code, 200)
+            self.assertEqual(me_response.json()["data"]["source"], "erpnext_session")
+
+    def test_production_login_fail_closed_on_erpnext_unauthorized(self) -> None:
+        def _fake_urlopen(req, timeout=0):
+            raise url_error.HTTPError(req.full_url, 401, "Unauthorized", hdrs=None, fp=None)
+
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
+                "LINGYI_PERMISSION_SOURCE": "erpnext",
+            },
+            clear=False,
+        ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
+            response = self.client.post(
+                "/api/auth/login",
+                json={"username": "erp.user@example.com", "password": "bad-pass"},
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
+        self.assertNotIn("sid=", response.headers.get("set-cookie", ""))
 
     def test_module_action_scan_is_unauthorized_without_session(self) -> None:
         for module in self.MODULE_SCAN:

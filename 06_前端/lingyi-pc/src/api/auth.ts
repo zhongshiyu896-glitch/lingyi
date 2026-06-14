@@ -11,16 +11,19 @@ export interface CurrentUserData {
   source: string
 }
 
+export type LocalLoginProfile =
+  | 'system_manager'
+  | 'bom_editor'
+  | 'production_manager'
+  | 'subcontract_manager'
+  | 'quality_manager'
+  | 'warehouse_manager'
+  | 'sales_manager'
+
 export interface LocalLoginPayload {
   username: string
-  profile:
-    | 'system_manager'
-    | 'bom_editor'
-    | 'production_manager'
-    | 'subcontract_manager'
-    | 'quality_manager'
-    | 'warehouse_manager'
-    | 'sales_manager'
+  password?: string
+  profile?: LocalLoginProfile
 }
 
 export interface ActionPermissionData {

@@ -6,6 +6,7 @@ import base64
 from dataclasses import dataclass
 import hashlib
 import hmac
+from http.cookies import SimpleCookie
 import json
 import os
 import time
@@ -18,12 +19,17 @@ from fastapi import HTTPException
 from fastapi import Request
 from fastapi import Response
 
+from app.core.error_codes import ERPNEXT_RESPONSE_INVALID
+from app.core.error_codes import ERPNEXT_SERVICE_UNAVAILABLE
+from app.core.error_codes import ERPNEXT_TIMEOUT
 from app.core.error_codes import INTERNAL_API_DISABLED
+from app.core.permissions import AUTH_FORBIDDEN_CODE
 from app.core.permissions import AUTH_UNAUTHORIZED_CODE
 
 DEV_AUTH_ALLOWED_ENVS = frozenset({"development", "test", "local"})
 LOCAL_SESSION_COOKIE_NAME = "lingyi_local_session"
 LOCAL_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
+ERPNEXT_SESSION_COOKIE_NAME = "sid"
 
 LOCAL_LOGIN_ROLE_PROFILES: dict[str, list[str]] = {
     "system_manager": ["System Manager"],
@@ -46,6 +52,14 @@ class CurrentUser:
     source: str
 
 
+@dataclass(frozen=True)
+class ERPNextLoginSession:
+    """ERPNext login result that can be mirrored into the browser session."""
+
+    current_user: CurrentUser
+    sid: str
+
+
 def _auth_error(message: str = "未登录或 Token 无效") -> HTTPException:
     return HTTPException(
         status_code=401,
@@ -53,10 +67,28 @@ def _auth_error(message: str = "未登录或 Token 无效") -> HTTPException:
     )
 
 
+def _auth_forbidden_error(message: str = "无权执行该操作") -> HTTPException:
+    return HTTPException(
+        status_code=403,
+        detail={"code": AUTH_FORBIDDEN_CODE, "message": message, "data": {}},
+    )
+
+
 def _local_auth_disabled_error(message: str = "本地登录仅在 local/development/test 且显式允许时可用") -> HTTPException:
     return HTTPException(
         status_code=503,
         detail={"code": INTERNAL_API_DISABLED, "message": message, "data": {}},
+    )
+
+
+def _erpnext_unavailable_error(
+    message: str = "ERPNext 服务暂时不可用",
+    *,
+    code: str = ERPNEXT_SERVICE_UNAVAILABLE,
+) -> HTTPException:
+    return HTTPException(
+        status_code=503,
+        detail={"code": code, "message": message, "data": {}},
     )
 
 
@@ -177,6 +209,104 @@ def clear_local_session_cookie(response: Response) -> None:
         httponly=True,
         samesite="lax",
     )
+
+
+def set_erpnext_session_cookie(response: Response, sid: str, *, secure: bool = False) -> None:
+    response.set_cookie(
+        key=ERPNEXT_SESSION_COOKIE_NAME,
+        value=sid,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+        path="/",
+    )
+
+
+def clear_erpnext_session_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=ERPNEXT_SESSION_COOKIE_NAME,
+        path="/",
+        httponly=True,
+        samesite="lax",
+    )
+
+
+def _extract_sid_from_set_cookie(set_cookie_headers: list[str]) -> str | None:
+    for header in set_cookie_headers:
+        cookie = SimpleCookie()
+        try:
+            cookie.load(header)
+        except Exception:
+            continue
+        sid = cookie.get(ERPNEXT_SESSION_COOKIE_NAME)
+        if sid is not None and sid.value.strip():
+            return sid.value.strip()
+    return None
+
+
+def _post_erpnext_login(*, base_url: str, username: str, password: str) -> tuple[dict[str, Any], list[str]]:
+    body = parse.urlencode({"usr": username, "pwd": password}).encode("utf-8")
+    req = request.Request(
+        url=f"{base_url}/api/method/login",
+        data=body,
+        method="POST",
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    )
+    try:
+        with request.urlopen(req, timeout=5) as response:
+            raw_body = response.read().decode("utf-8")
+            response_info = response.info()
+            set_cookie_headers = response_info.get_all("Set-Cookie", []) if response_info is not None else []
+    except error.HTTPError as exc:
+        if exc.code == 403:
+            raise _auth_forbidden_error("ERPNext 拒绝登录") from exc
+        if exc.code == 401:
+            raise _auth_error("ERPNext 用户名或密码错误") from exc
+        raise _erpnext_unavailable_error("ERPNext 登录服务暂时不可用") from exc
+    except TimeoutError as exc:
+        raise _erpnext_unavailable_error("ERPNext 登录请求超时", code=ERPNEXT_TIMEOUT) from exc
+    except error.URLError as exc:
+        raise _erpnext_unavailable_error("ERPNext 登录服务暂时不可用") from exc
+
+    try:
+        payload = json.loads(raw_body) if raw_body.strip() else {}
+    except json.JSONDecodeError as exc:
+        raise _erpnext_unavailable_error("ERPNext 登录响应格式非法", code=ERPNEXT_RESPONSE_INVALID) from exc
+    if not isinstance(payload, dict):
+        raise _erpnext_unavailable_error("ERPNext 登录响应格式非法", code=ERPNEXT_RESPONSE_INVALID)
+    return payload, list(set_cookie_headers)
+
+
+def login_erpnext_user(*, username: str, password: str) -> ERPNextLoginSession:
+    normalized_username = username.strip()
+    normalized_password = password.strip()
+    if not normalized_username or not normalized_password:
+        raise _auth_error("ERPNext 用户名或密码错误")
+
+    base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
+    if not base_url:
+        raise _erpnext_unavailable_error("LINGYI_ERPNEXT_BASE_URL 未配置")
+
+    _, set_cookie_headers = _post_erpnext_login(
+        base_url=base_url,
+        username=normalized_username,
+        password=normalized_password,
+    )
+    sid = _extract_sid_from_set_cookie(set_cookie_headers)
+    if not sid:
+        raise _auth_error("ERPNext 登录未返回有效会话")
+
+    current_user = _resolve_erpnext_user(
+        base_url=base_url,
+        authorization=None,
+        cookie=f"{ERPNEXT_SESSION_COOKIE_NAME}={sid}",
+    )
+    if current_user is None:
+        raise _auth_error("ERPNext 会话校验失败")
+    return ERPNextLoginSession(current_user=current_user, sid=sid)
 
 
 def _extract_roles(user_payload: dict[str, Any]) -> list[str]:

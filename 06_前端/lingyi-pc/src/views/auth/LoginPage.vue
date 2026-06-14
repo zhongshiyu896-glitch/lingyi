@@ -2,8 +2,8 @@
   <main class="login-shell" data-testid="m1-login-page">
     <section class="login-card" data-testid="m1-login-card">
       <header class="login-card__header">
-        <h1>本地登录入口</h1>
-        <p>仅在 development / local / test 且显式允许本地认证时可用。</p>
+        <h1>领意登录</h1>
+        <p>{{ loginDescription }}</p>
       </header>
 
       <el-form label-position="top" @submit.prevent="handleSubmit">
@@ -12,11 +12,24 @@
             v-model="username"
             data-testid="m1-login-username"
             maxlength="64"
-            placeholder="输入本地会话用户名"
+            autocomplete="username"
+            placeholder="输入 ERPNext 用户名"
           />
         </el-form-item>
 
-        <el-form-item label="角色配置">
+        <el-form-item label="密码">
+          <el-input
+            v-model="password"
+            autocomplete="current-password"
+            data-testid="m1-login-password"
+            maxlength="256"
+            placeholder="输入 ERPNext 密码"
+            show-password
+            type="password"
+          />
+        </el-form-item>
+
+        <el-form-item v-if="!isProductionLogin" label="角色配置">
           <el-select
             v-model="profile"
             data-testid="m1-login-profile"
@@ -42,6 +55,7 @@
 
         <div class="login-card__actions">
           <el-button
+            :disabled="!canSubmit"
             :loading="submitting"
             data-testid="m1-login-submit"
             type="primary"
@@ -49,7 +63,7 @@
           >
             登录
           </el-button>
-          <span class="login-card__hint">成功后会跳转到业务路由并复用 cookie 会话。</span>
+          <span class="login-card__hint">{{ loginHint }}</span>
         </div>
       </el-form>
     </section>
@@ -60,19 +74,21 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { type LocalLoginPayload } from '@/api/auth'
+import { type LocalLoginPayload, type LocalLoginProfile } from '@/api/auth'
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
 const route = useRoute()
 const router = useRouter()
 
-const username = ref('w003a.local')
-const profile = ref<LocalLoginPayload['profile']>('system_manager')
+const isProductionLogin = import.meta.env.PROD || import.meta.env.MODE === 'production'
+const username = ref(isProductionLogin ? '' : 'w003a.local')
+const password = ref('')
+const profile = ref<LocalLoginProfile>('system_manager')
 const submitting = ref(false)
 const errorMessage = ref('')
 
-const roleOptions: Array<{ label: string; value: LocalLoginPayload['profile'] }> = [
+const roleOptions: Array<{ label: string; value: LocalLoginProfile }> = [
   { label: '系统管理员', value: 'system_manager' },
   { label: 'BOM 编辑', value: 'bom_editor' },
   { label: '生产经理', value: 'production_manager' },
@@ -82,6 +98,20 @@ const roleOptions: Array<{ label: string; value: LocalLoginPayload['profile'] }>
   { label: '销售经理', value: 'sales_manager' },
 ]
 
+const loginDescription = computed(() =>
+  isProductionLogin ? '使用 ERPNext 账号登录，成功后复用 ERPNext 会话。' : '本地开发可使用 profile 会话；生产构建不会显示角色配置。',
+)
+
+const loginHint = computed(() =>
+  isProductionLogin ? '成功后会跳转到业务路由并复用 ERPNext cookie 会话。' : '成功后会跳转到业务路由并复用本地 cookie 会话。',
+)
+
+const canSubmit = computed(() => {
+  if (!username.value.trim()) return false
+  if (isProductionLogin && !password.value.trim()) return false
+  return true
+})
+
 const redirectPath = computed(() => {
   const raw = route.query.redirect
   return typeof raw === 'string' && raw.startsWith('/') ? raw : '/home'
@@ -89,12 +119,20 @@ const redirectPath = computed(() => {
 
 const handleSubmit = async (): Promise<void> => {
   errorMessage.value = ''
+  if (!canSubmit.value) {
+    errorMessage.value = isProductionLogin ? '请输入用户名和密码' : '请输入用户名'
+    return
+  }
   submitting.value = true
   try {
-    await permissionStore.login({
+    const payload: LocalLoginPayload = {
       username: username.value.trim(),
-      profile: profile.value,
-    })
+      password: password.value,
+    }
+    if (!isProductionLogin) {
+      payload.profile = profile.value
+    }
+    await permissionStore.login(payload)
     await router.replace(redirectPath.value)
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '登录失败'

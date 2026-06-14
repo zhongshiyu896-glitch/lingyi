@@ -13,9 +13,13 @@ from fastapi import Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import build_local_login_user
+from app.core.auth import clear_erpnext_session_cookie
 from app.core.auth import clear_local_session_cookie
 from app.core.auth import CurrentUser
 from app.core.auth import get_current_user
+from app.core.auth import is_local_session_auth_enabled
+from app.core.auth import login_erpnext_user
+from app.core.auth import set_erpnext_session_cookie
 from app.core.auth import set_local_session_cookie
 from app.schemas.auth import LocalLoginRequest
 from app.services.permission_service import PermissionService
@@ -39,11 +43,25 @@ def _ok(data: dict[str, Any]) -> dict[str, Any]:
     return {"code": "0", "message": "success", "data": data}
 
 
+def _is_secure_cookie_request(request: Request) -> bool:
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "").split(",", maxsplit=1)[0].strip().lower()
+    return request.url.scheme == "https" or forwarded_proto == "https"
+
+
 @router.post("/login")
-def login(payload: LocalLoginRequest, response: Response):
-    """Create local guarded session for development/test entry login."""
-    current_user = build_local_login_user(username=payload.username, profile=payload.profile)
-    set_local_session_cookie(response, current_user)
+def login(payload: LocalLoginRequest, request: Request, response: Response):
+    """Create an authenticated browser session.
+
+    Local profile login is available only when development auth is explicitly enabled.
+    All other environments use ERPNext login and mirror the ERPNext sid cookie.
+    """
+    if is_local_session_auth_enabled():
+        current_user = build_local_login_user(username=payload.username, profile=payload.profile or "system_manager")
+        set_local_session_cookie(response, current_user)
+    else:
+        erpnext_session = login_erpnext_user(username=payload.username, password=payload.password or "")
+        current_user = erpnext_session.current_user
+        set_erpnext_session_cookie(response, erpnext_session.sid, secure=_is_secure_cookie_request(request))
     return _ok(
         {
             "username": current_user.username,
@@ -56,8 +74,9 @@ def login(payload: LocalLoginRequest, response: Response):
 
 @router.post("/logout")
 def logout(response: Response):
-    """Clear local guarded session."""
+    """Clear local and ERPNext browser sessions."""
     clear_local_session_cookie(response)
+    clear_erpnext_session_cookie(response)
     return _ok({"logged_out": True})
 
 

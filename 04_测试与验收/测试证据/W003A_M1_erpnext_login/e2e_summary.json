@@ -1,0 +1,779 @@
+{
+  "backendUrl": "http://127.0.0.1:58321",
+  "frontendUrl": "http://127.0.0.1:58322",
+  "mockERPNextUrl": "http://127.0.0.1:58320",
+  "screenshots": [
+    "01_unauth_redirect_to_login.png",
+    "02_login_error_fail_closed.png",
+    "03_login_redirect_success.png",
+    "04_logout_returns_to_login.png",
+    "05_session_expired_redirect.png"
+  ],
+  "network": [
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/bom/list"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/bom/list"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/@vite/client"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/main.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/main.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/vue.js?v=9695e7c7"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/element-plus.js?v=9695e7c7"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/element-plus/dist/index.css"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/App.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/router/index.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/vue.js?v=9695e7c7"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/@vite/client"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/vite/dist/client/env.mjs"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/element-plus/dist/index.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/router/index.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/vue-router.js?v=9695e7c7"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/stores/permission.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/vite/dist/client/env.mjs"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/vue-router.js?v=9695e7c7"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/stores/permission.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/api/auth.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/App.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/@id/__x00__plugin-vue:export-helper"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/api/auth.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/@id/__x00__plugin-vue:export-helper"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/element-plus.js?v=9695e7c7"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/api/auth/me"
+    },
+    {
+      "type": "response",
+      "status": 401,
+      "url": "http://127.0.0.1:58322/api/auth/me"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/auth/LoginPage.vue"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/auth/LoginPage.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/auth/LoginPage.vue?vue&type=style&index=0&scoped=a0b48162&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/auth/LoginPage.vue?vue&type=style&index=0&scoped=a0b48162&lang.css"
+    },
+    {
+      "type": "request",
+      "method": "POST",
+      "url": "http://127.0.0.1:58322/api/auth/login"
+    },
+    {
+      "type": "response",
+      "status": 401,
+      "url": "http://127.0.0.1:58322/api/auth/login"
+    },
+    {
+      "type": "request",
+      "method": "POST",
+      "url": "http://127.0.0.1:58322/api/auth/login"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/api/auth/login"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/BomList.vue"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/BomList.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/api/bom.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/composables/useBomAlternateReadonly.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/composables/useBomAuditDefaultVersionReadonly.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/components/BomExceptionBaselineReadonlySection.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/composables/useBomExceptionBaselineReadonly.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/constants/bomExceptionBaselineFields.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/BomList.vue?vue&type=style&index=0&scoped=26dce185&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/api/bom.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/api/request.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/BomList.vue?vue&type=style&index=0&scoped=26dce185&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/constants/bomExceptionBaselineFields.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/composables/useBomAuditDefaultVersionReadonly.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/constants/bomAuditDefaultVersionFields.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/composables/useBomExceptionBaselineReadonly.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/composables/useBomAlternateReadonly.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/constants/bomAlternateMaterialFields.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/api/request.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/components/BomExceptionBaselineReadonlySection.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/bom/components/BomExceptionBaselineReadonlySection.vue?vue&type=style&index=0&scoped=72c5daf9&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/components/BomExceptionBaselineReadonlySection.vue?vue&type=style&index=0&scoped=72c5daf9&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/constants/bomAuditDefaultVersionFields.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/bom/constants/bomAlternateMaterialFields.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/api/auth/actions?module=bom"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/api/bom/?page=1&page_size=100"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/api/auth/actions?module=bom"
+    },
+    {
+      "type": "response",
+      "status": 500,
+      "url": "http://127.0.0.1:58322/api/bom/?page=1&page_size=100"
+    },
+    {
+      "type": "request",
+      "method": "POST",
+      "url": "http://127.0.0.1:58322/api/auth/logout"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/api/auth/logout"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/api/auth/me"
+    },
+    {
+      "type": "response",
+      "status": 401,
+      "url": "http://127.0.0.1:58322/api/auth/me"
+    },
+    {
+      "type": "request",
+      "method": "POST",
+      "url": "http://127.0.0.1:58322/api/auth/login"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/api/auth/login"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/HomePage.vue"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/HomePage.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/api/dashboard.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/home/components/HomeModuleShortcutReadonlySection.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/home/composables/useHomeModuleShortcutReadonly.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/HomePage.vue?vue&type=style&index=0&scoped=9b48b94e&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/HomePage.vue?vue&type=style&index=0&scoped=9b48b94e&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/api/dashboard.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/home/composables/useHomeModuleShortcutReadonly.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/home/constants/homeModuleShortcutFields.ts"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/home/components/HomeModuleShortcutReadonlySection.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/home/components/HomeModuleShortcutReadonlySection.vue?vue&type=style&index=0&scoped=15db50ac&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/home/components/HomeModuleShortcutReadonlySection.vue?vue&type=style&index=0&scoped=15db50ac&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/src/views/home/constants/homeModuleShortcutFields.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/api/auth/actions?module=global"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/api/dashboard/overview?company=%E9%A2%86%E6%84%8F%E6%9C%8D%E8%A3%85"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/warehouse"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/warehouse"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/@vite/client"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/main.ts"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/@vite/client"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/src/main.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/vite/dist/client/env.mjs"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/vue.js?v=9695e7c7"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/vue.js?v=9695e7c7"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/element-plus.js?v=9695e7c7"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/element-plus.js?v=9695e7c7"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/element-plus/dist/index.css"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/App.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/router/index.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/chunk-RUVWAA4I.js?v=9695e7c7"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/node_modules/vite/dist/client/env.mjs"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/node_modules/element-plus/dist/index.css"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/src/App.vue"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/src/router/index.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/vue-router.js?v=9695e7c7"
+    },
+    {
+      "type": "response",
+      "status": 200,
+      "url": "http://127.0.0.1:58322/node_modules/.vite/deps/vue-router.js?v=9695e7c7"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/stores/permission.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/@id/__x00__plugin-vue:export-helper"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/src/stores/permission.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/api/auth.ts"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/src/App.vue?vue&type=style&index=0&scoped=7a7a37b1&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/@id/__x00__plugin-vue:export-helper"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/src/api/auth.ts"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/api/auth/me"
+    },
+    {
+      "type": "response",
+      "status": 401,
+      "url": "http://127.0.0.1:58322/api/auth/me"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/auth/LoginPage.vue"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/src/views/auth/LoginPage.vue"
+    },
+    {
+      "type": "request",
+      "method": "GET",
+      "url": "http://127.0.0.1:58322/src/views/auth/LoginPage.vue?vue&type=style&index=0&scoped=a0b48162&lang.css"
+    },
+    {
+      "type": "response",
+      "status": 304,
+      "url": "http://127.0.0.1:58322/src/views/auth/LoginPage.vue?vue&type=style&index=0&scoped=a0b48162&lang.css"
+    }
+  ],
+  "mockERPNextRequests": [
+    {
+      "method": "POST",
+      "url": "/api/method/login",
+      "hasSidCookie": false
+    },
+    {
+      "method": "POST",
+      "url": "/api/method/login",
+      "hasSidCookie": false
+    },
+    {
+      "method": "GET",
+      "url": "/api/method/frappe.auth.get_logged_user",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User/erp.user%40example.com?fields=%5B%22name%22%2C%22roles%22%5D",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/method/frappe.auth.get_logged_user",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User/erp.user%40example.com?fields=%5B%22name%22%2C%22roles%22%5D",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User/erp.user%40example.com?fields=%5B%22name%22%2C%22roles%22%5D",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User%20Permission?filters=%5B%5B%22user%22%2C%20%22%3D%22%2C%20%22erp.user%40example.com%22%5D%2C%20%5B%22applicable_for%22%2C%20%22in%22%2C%20%5B%22Item%22%2C%20%22Company%22%2C%20%22Supplier%22%2C%20%22Warehouse%22%2C%20%22Customer%22%5D%5D%5D&fields=%5B%22allow%22%2C%22for_value%22%2C%22applicable_for%22%5D&limit_page_length=200",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/method/frappe.auth.get_logged_user",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User/erp.user%40example.com?fields=%5B%22name%22%2C%22roles%22%5D",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User/erp.user%40example.com?fields=%5B%22name%22%2C%22roles%22%5D",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User%20Permission?filters=%5B%5B%22user%22%2C%20%22%3D%22%2C%20%22erp.user%40example.com%22%5D%2C%20%5B%22applicable_for%22%2C%20%22in%22%2C%20%5B%22Item%22%2C%20%22Company%22%2C%20%22Supplier%22%2C%20%22Warehouse%22%2C%20%22Customer%22%5D%5D%5D&fields=%5B%22allow%22%2C%22for_value%22%2C%22applicable_for%22%5D&limit_page_length=200",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User%20Permission?filters=%5B%5B%22user%22%2C%20%22%3D%22%2C%20%22erp.user%40example.com%22%5D%2C%20%5B%22applicable_for%22%2C%20%22in%22%2C%20%5B%22Item%22%2C%20%22Company%22%2C%20%22Supplier%22%2C%20%22Warehouse%22%2C%20%22Customer%22%5D%5D%5D&fields=%5B%22allow%22%2C%22for_value%22%2C%22applicable_for%22%5D&limit_page_length=200",
+      "hasSidCookie": true
+    },
+    {
+      "method": "POST",
+      "url": "/api/method/login",
+      "hasSidCookie": false
+    },
+    {
+      "method": "GET",
+      "url": "/api/method/frappe.auth.get_logged_user",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User/erp.user%40example.com?fields=%5B%22name%22%2C%22roles%22%5D",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/method/frappe.auth.get_logged_user",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User/erp.user%40example.com?fields=%5B%22name%22%2C%22roles%22%5D",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User/erp.user%40example.com?fields=%5B%22name%22%2C%22roles%22%5D",
+      "hasSidCookie": true
+    },
+    {
+      "method": "GET",
+      "url": "/api/resource/User%20Permission?filters=%5B%5B%22user%22%2C%20%22%3D%22%2C%20%22erp.user%40example.com%22%5D%2C%20%5B%22applicable_for%22%2C%20%22in%22%2C%20%5B%22Item%22%2C%20%22Company%22%2C%20%22Supplier%22%2C%20%22Warehouse%22%2C%20%22Customer%22%5D%5D%5D&fields=%5B%22allow%22%2C%22for_value%22%2C%22applicable_for%22%5D&limit_page_length=200",
+      "hasSidCookie": true
+    }
+  ],
+  "backendLogs": [
+    "INFO:     Started server process [70679]\nINFO:     Waiting for application startup.\n",
+    "INFO:     Application startup complete.\n",
+    "INFO:     Uvicorn running on http://127.0.0.1:58321 (Press CTRL+C to quit)\n",
+    "event=security_audit_write_failed exception_type=AuditWriteFailed request_id=a5066a76b0fd4e0f93b3d3dbb4102dc2 module=unknown error_code=AUDIT_WRITE_FAILED\n",
+    "INFO:     127.0.0.1:58326 - \"GET /api/auth/me HTTP/1.1\" 401 Unauthorized\n",
+    "event=security_audit_write_failed exception_type=AuditWriteFailed request_id=be3223f0388c4cf9846f5d8811c9c8f1 module=unknown error_code=AUDIT_WRITE_FAILED\n",
+    "INFO:     127.0.0.1:58335 - \"GET /api/auth/me HTTP/1.1\" 401 Unauthorized\n",
+    "event=security_audit_write_failed exception_type=AuditWriteFailed request_id=eca02f6048e14624a4437e472c2e3481 module=unknown error_code=AUDIT_WRITE_FAILED\n",
+    "INFO:     127.0.0.1:58336 - \"POST /api/auth/login HTTP/1.1\" 401 Unauthorized\n",
+    "INFO:     127.0.0.1:58338 - \"POST /api/auth/login HTTP/1.1\" 200 OK\n",
+    "INFO:     127.0.0.1:58345 - \"GET /api/auth/actions?module=bom HTTP/1.1\" 200 OK\n",
+    "INFO:     127.0.0.1:58350 - \"GET /api/bom/?page=1&page_size=100 HTTP/1.1\" 500 Internal Server Error\n",
+    "INFO:     127.0.0.1:58357 - \"POST /api/auth/logout HTTP/1.1\" 200 OK\n",
+    "event=security_audit_write_failed exception_type=AuditWriteFailed request_id=82f69d17825345328b6be65125d08c5e module=unknown error_code=AUDIT_WRITE_FAILED\n",
+    "INFO:     127.0.0.1:58358 - \"GET /api/auth/me HTTP/1.1\" 401 Unauthorized\n",
+    "INFO:     127.0.0.1:58359 - \"POST /api/auth/login HTTP/1.1\" 200 OK\n",
+    "INFO:     127.0.0.1:58366 - \"GET /api/auth/actions?module=global HTTP/1.1\" 200 OK\n",
+    "event=security_audit_write_failed exception_type=AuditWriteFailed request_id=df303898e5e74644a9e460032155c434 action=dashboard:read resource_type=DashboardOverview module=dashboard error_code=AUDIT_WRITE_FAILED\n",
+    "INFO:     127.0.0.1:58371 - \"GET /api/dashboard/overview?company=%E9%A2%86%E6%84%8F%E6%9C%8D%E8%A3%85 HTTP/1.1\" 401 Unauthorized\n",
+    "event=security_audit_write_failed exception_type=AuditWriteFailed request_id=8876942de205417db728e1aefa873385 module=unknown error_code=AUDIT_WRITE_FAILED\n",
+    "INFO:     127.0.0.1:58374 - \"GET /api/auth/me HTTP/1.1\" 401 Unauthorized\n",
+    "INFO:     Shutting down\n",
+    "INFO:     Waiting for application shutdown.\n",
+    "INFO:     Application shutdown complete.\n",
+    "INFO:     Finished server process [70679]\n"
+  ],
+  "frontendLogs": [
+    "\n> lingyi-pc@0.1.0 dev\n> vite --host 127.0.0.1 --port 58322 --mode production\n\n",
+    "\n  VITE v7.3.3   production   ready in 237 ms\n\n",
+    "  ➜  Local:   http://127.0.0.1:58322/\n",
+    "[exit] code=143 signal=null"
+  ]
+}

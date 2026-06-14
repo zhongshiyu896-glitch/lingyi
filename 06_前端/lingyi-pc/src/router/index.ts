@@ -383,7 +383,7 @@ router.beforeEach(async (to) => {
   if (to.meta.public) {
     if (to.name === 'LoginPage') {
       try {
-        await permissionStore.loadCurrentUser({ force: true })
+        await permissionStore.loadCurrentUser()
       } catch {
         // Keep the login page reachable when the session probe fails closed.
       }
@@ -395,7 +395,7 @@ router.beforeEach(async (to) => {
   }
 
   try {
-    await permissionStore.loadCurrentUser({ force: true })
+    await permissionStore.loadCurrentUser()
   } catch {
     // Route auth is fail-closed below when no authenticated session is available.
   }

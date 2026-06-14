@@ -136,7 +136,9 @@ const state = reactive<PermissionState>({
 })
 
 const AUTH_ME_GUEST_CACHE_KEY = 'lingyi.auth_me_guest_until'
-const AUTH_ME_GUEST_CACHE_TTL_MS = 15000
+const AUTH_ME_GUEST_CACHE_TTL_MS = 5000
+const AUTH_ME_USER_CACHE_TTL_MS = 5000
+let currentUserCacheUntil = 0
 
 const readGuestCacheUntil = (): number => {
   if (typeof window === 'undefined') return 0
@@ -156,12 +158,21 @@ const clearGuestCache = (): void => {
   window.sessionStorage.removeItem(AUTH_ME_GUEST_CACHE_KEY)
 }
 
+const clearCurrentUserCache = (): void => {
+  currentUserCacheUntil = 0
+}
+
+const markCurrentUserCacheFresh = (): void => {
+  currentUserCacheUntil = Date.now() + AUTH_ME_USER_CACHE_TTL_MS
+}
+
 const applyGuestState = (): void => {
   state.username = ''
   state.roles = []
   state.actions = []
   state.status = 'guest'
   state.buttonPermissions = emptyButtonPermissions()
+  clearCurrentUserCache()
 }
 
 let currentUserLoadPromise: Promise<void> | null = null
@@ -189,9 +200,14 @@ const applyActionPayload = (payload: {
 export const usePermissionStore = () => {
   const loadCurrentUser = async (options?: { force?: boolean }): Promise<void> => {
     const force = Boolean(options?.force)
-    if (!force && readGuestCacheUntil() > Date.now()) {
-      applyGuestState()
-      return
+    if (!force) {
+      if (state.username && state.status !== 'guest' && currentUserCacheUntil > Date.now()) {
+        return
+      }
+      if (!state.username && readGuestCacheUntil() > Date.now()) {
+        applyGuestState()
+        return
+      }
     }
     if (!force && currentUserLoadPromise) {
       await currentUserLoadPromise
@@ -205,6 +221,7 @@ export const usePermissionStore = () => {
         state.roles = result.data.roles
         state.status = 'authenticated'
         clearGuestCache()
+        markCurrentUserCacheFresh()
       } catch (error) {
         if (isUnauthorizedError(error)) {
           applyGuestState()
@@ -240,6 +257,7 @@ export const usePermissionStore = () => {
     state.actions = []
     state.buttonPermissions = emptyButtonPermissions()
     clearGuestCache()
+    markCurrentUserCacheFresh()
   }
 
   const logout = async (): Promise<void> => {
@@ -247,6 +265,7 @@ export const usePermissionStore = () => {
       await logoutCurrentSession()
     } finally {
       clearGuestCache()
+      clearCurrentUserCache()
       applyGuestState()
     }
   }

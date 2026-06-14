@@ -29,10 +29,12 @@ class CurrentUserData(BaseModel):
 
 
 class LocalLoginRequest(BaseModel):
-    """Development-only local login request."""
+    """Login request for ERPNext session or development-only local profile."""
 
     username: str = Field(min_length=1, max_length=64)
-    profile: Literal[
+    password: Optional[str] = Field(default=None, max_length=256)
+    profile: Optional[
+        Literal[
         "system_manager",
         "bom_editor",
         "production_manager",
@@ -40,6 +42,7 @@ class LocalLoginRequest(BaseModel):
         "quality_manager",
         "warehouse_manager",
         "sales_manager",
+        ]
     ] = "system_manager"
 
 

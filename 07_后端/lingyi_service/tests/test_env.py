@@ -43,6 +43,14 @@ class ConfigureTestEnvTest(unittest.TestCase):
         self.assertEqual(os.environ["LINGYI_ERPNEXT_BASE_URL"], "")
         self.assertEqual(os.environ["LINGYI_PERMISSION_SOURCE"], "static")
 
+    def test_dev_auth_default_is_closed(self) -> None:
+        from app.core.auth import is_local_session_auth_enabled
+
+        os.environ["APP_ENV"] = "development"
+        os.environ.pop("LINGYI_ALLOW_DEV_AUTH", None)
+
+        self.assertFalse(is_local_session_auth_enabled())
+
 
 if __name__ == "__main__":
     unittest.main()
