@@ -1,6 +1,6 @@
 <template>
   <section
-    v-if="!isLoginRoute"
+    v-if="showReadonlyDiagnostics"
     id="global-readonly-shell"
     class="global-readonly-shell"
     data-testid="global-readonly-shell"
@@ -300,7 +300,32 @@
       </span>
     </div>
   </section>
-  <router-view />
+  <div v-if="isBomRoute" class="yisuan-business-shell" data-testid="m2-yisuan-app-shell">
+    <aside class="yisuan-business-sidebar" data-testid="m2-yisuan-left-menu">
+      <div class="yisuan-business-brand">
+        <strong>衣算云</strong>
+        <span>服装管理系统</span>
+      </div>
+      <section v-for="group in yisuanShellMenuGroups" :key="group.title" class="yisuan-business-menu-group">
+        <h2>{{ group.title }}</h2>
+        <button
+          v-for="item in group.items"
+          :key="item.name"
+          type="button"
+          class="yisuan-business-menu-item"
+          :class="{ 'is-active': isYisuanShellItemActive(item), 'is-disabled': item.disabled }"
+          :disabled="item.disabled"
+          @click="navigateYisuanShell(item)"
+        >
+          {{ item.name }}
+        </button>
+      </section>
+    </aside>
+    <main class="yisuan-business-main" data-testid="m2-yisuan-business-main">
+      <router-view />
+    </main>
+  </div>
+  <router-view v-else />
 </template>
 
 <script setup lang="ts">
@@ -315,6 +340,51 @@ const route = useRoute()
 const router = useRouter()
 
 const isLoginRoute = computed(() => route.path === '/login')
+const isBomRoute = computed(() => route.path.startsWith('/bom'))
+const readonlyDiagnosticsEnabled =
+  import.meta.env.DEV && import.meta.env.VITE_LINGYI_READONLY_DIAGNOSTICS === 'true'
+const showReadonlyDiagnostics = computed(() => !isLoginRoute.value && readonlyDiagnosticsEnabled)
+
+type YisuanShellMenuItem = {
+  name: string
+  path: string
+  disabled?: boolean
+}
+
+type YisuanShellMenuGroup = {
+  title: string
+  items: YisuanShellMenuItem[]
+}
+
+const yisuanShellMenuGroups: YisuanShellMenuGroup[] = [
+  {
+    title: '主菜单',
+    items: [
+      { name: '基础资料', path: '/sales-inventory/references' },
+      { name: '款式设计', path: '/style-profit' },
+      { name: '物料开发', path: '/bom/list' },
+      { name: '物料采购', path: '/subcontract/list?parity=material-purchase' },
+      { name: '物料进销存', path: '/sales-inventory/stock-ledger' },
+      { name: '生产管理', path: '/workshop/tickets' },
+      { name: '外发管理', path: '/subcontract/list' },
+      { name: '仓库管理', path: '/warehouse' },
+      { name: '成品进销存', path: '/sales-inventory/sales-orders' },
+      { name: '财务管理', path: '/factory-statement/list' },
+      { name: '报表管理', path: '/reports' },
+      { name: '系统设置', path: '/system/management' },
+    ],
+  },
+]
+
+const isYisuanShellItemActive = (item: YisuanShellMenuItem): boolean => {
+  if (item.name === '物料开发') return isBomRoute.value
+  return route.path === item.path || (item.path !== '/' && route.path.startsWith(item.path))
+}
+
+const navigateYisuanShell = (item: YisuanShellMenuItem): void => {
+  if (item.disabled || isYisuanShellItemActive(item)) return
+  void router.push(item.path)
+}
 
 const routeModule = computed(() => {
   if (typeof route.meta?.module === 'string' && route.meta.module.trim()) return route.meta.module
@@ -450,7 +520,7 @@ const handleReadonlyShellActionGuard = (event: Event): void => {
 }
 
 const loadReadonlyState = async (): Promise<void> => {
-  if (isLoginRoute.value) {
+  if (isLoginRoute.value || !showReadonlyDiagnostics.value) {
     return
   }
   try {
@@ -471,7 +541,7 @@ const refreshReadonlySession = async (): Promise<void> => {
 }
 
 const reloadReadonlyModuleActions = async (): Promise<void> => {
-  if (isLoginRoute.value) {
+  if (isLoginRoute.value || !showReadonlyDiagnostics.value) {
     return
   }
   try {
@@ -499,6 +569,96 @@ watch(
 </script>
 
 <style scoped>
+.yisuan-business-shell {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #f6f8f9;
+  color: #303133;
+  font-family: "PingFang SC", Arial, "Microsoft YaHei", sans-serif;
+}
+
+.yisuan-business-sidebar {
+  min-height: 100vh;
+  padding: 12px 0;
+  border-right: 1px solid #dcdfe6;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.yisuan-business-brand {
+  display: grid;
+  gap: 3px;
+  padding: 0 18px 12px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.yisuan-business-brand strong {
+  color: #303133;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.yisuan-business-brand span {
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.yisuan-business-menu-group {
+  padding: 10px 0 0;
+}
+
+.yisuan-business-menu-group h2 {
+  margin: 0;
+  padding: 0 18px 7px;
+  color: #909399;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.yisuan-business-menu-item {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: #515a6e;
+  font: inherit;
+  font-size: 14px;
+  line-height: 36px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.yisuan-business-menu-item:hover {
+  background: #f5f7fa;
+  color: #4e88f3;
+}
+
+.yisuan-business-menu-item.is-active {
+  border-left-color: #4e88f3;
+  background: rgba(78, 136, 243, 0.1);
+  color: #4e88f3;
+  font-weight: 500;
+}
+
+.yisuan-business-menu-item.is-disabled,
+.yisuan-business-menu-item:disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+}
+
+.yisuan-business-main {
+  min-width: 0;
+  min-height: 100vh;
+  background: #f6f8f9;
+}
+
 .global-readonly-shell {
   position: sticky;
   top: 0;
@@ -662,6 +822,16 @@ watch(
 }
 
 @media (max-width: 920px) {
+  .yisuan-business-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .yisuan-business-sidebar {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid #dcdfe6;
+  }
+
   .global-readonly-shell {
     grid-template-columns: 1fr;
   }

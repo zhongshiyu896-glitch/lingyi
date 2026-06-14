@@ -33,6 +33,14 @@ const fullButtonPermissions = {
   read: true,
 }
 const localDevPattern = /\/api\/local-dev\/bom/i
+const requiredLeftMenuLabels = ['基础资料', '款式设计', '物料开发', '物料采购', '物料进销存', '生产管理', '外发管理']
+const forbiddenDiagnosticTexts = [
+  'readonly session',
+  'guest/readonly fallback',
+  'remote lifecycle parked',
+  'fallback 原因',
+  '路由分类：',
+]
 
 mkdirSync(outputDir, { recursive: true })
 
@@ -447,6 +455,24 @@ const waitForSelector = async (page, selector, label) => {
   })
 }
 
+const waitForTransientMessagesToClear = async (page) => {
+  await page.locator('.el-message').first().waitFor({ state: 'hidden', timeout: 6000 }).catch(() => {})
+}
+
+const assertCleanYisuanBusinessShell = async (page, label) => {
+  const diagnosticsCount = await page.locator('[data-testid="global-readonly-shell"]').count()
+  assert(diagnosticsCount === 0, `${label} 顶部仍渲染 readonly session 诊断带`)
+  await waitForSelector(page, '[data-testid="m2-yisuan-left-menu"]', `${label} full left shell`)
+  const leftMenuText = (await page.locator('[data-testid="m2-yisuan-left-menu"]').textContent()) || ''
+  for (const menuLabel of requiredLeftMenuLabels) {
+    assert(leftMenuText.includes(menuLabel), `${label} 左侧主菜单缺失 ${menuLabel}`)
+  }
+  const bodyText = (await page.locator('body').textContent()) || ''
+  for (const forbiddenText of forbiddenDiagnosticTexts) {
+    assert(!bodyText.includes(forbiddenText), `${label} 仍可见诊断文案: ${forbiddenText}`)
+  }
+}
+
 const countCalls = (apiCalls, method, pathMatcher) =>
   apiCalls.filter((call) => call.method === method && pathMatcher(call.path)).length
 
@@ -464,6 +490,9 @@ const collectStyleChecks = async (page) =>
       return window.getComputedStyle(element).getPropertyValue(prop)
     }
     return {
+      appShellColumns: readStyle('[data-testid="m2-yisuan-app-shell"]', 'grid-template-columns'),
+      leftMenuText: document.querySelector('[data-testid="m2-yisuan-left-menu"]')?.textContent || '',
+      readonlyDiagnosticsCount: document.querySelectorAll('[data-testid="global-readonly-shell"]').length,
       pageBg: readStyle('[data-testid="yisuan-1to1-bom-list-shell"]', 'background-color'),
       primaryBg: readStyle('[data-testid="m2-bom-new-button"]', 'background-color'),
       tableHeadBg: readStyle('.ys-bom-table th', 'background-color'),
@@ -480,6 +509,11 @@ const collectStyleChecks = async (page) =>
   })
 
 const assertYisuanStyleChecks = (checks) => {
+  assert(checks.readonlyDiagnosticsCount === 0, `readonly 诊断带不应出现在 BOM 1:1 页: ${checks.readonlyDiagnosticsCount}`)
+  assert(checks.appShellColumns.includes('184px'), `BOM 完整外壳左栏宽度未生效: ${checks.appShellColumns}`)
+  for (const menuLabel of requiredLeftMenuLabels) {
+    assert(checks.leftMenuText.includes(menuLabel), `BOM 完整外壳左栏缺失: ${menuLabel}`)
+  }
   assert(checks.pageBg === 'rgb(246, 248, 249)', `页面背景不符合 1:1 基准: ${checks.pageBg}`)
   assert(checks.primaryBg === 'rgb(78, 136, 243)', `主按钮色不符合 1:1 基准: ${checks.primaryBg}`)
   assert(checks.tableHeadBg === 'rgb(245, 247, 250)', `表头背景不符合 1:1 基准: ${checks.tableHeadBg}`)
@@ -504,6 +538,7 @@ const main = async () => {
     env: {
       ...process.env,
       VITE_LINGYI_DEV_AUTH_HEADERS: 'false',
+      VITE_LINGYI_READONLY_DIAGNOSTICS: 'false',
     },
   })
 
@@ -530,6 +565,7 @@ const main = async () => {
     await waitForUrl(frontendUrl, 'frontend')
 
     await page.goto(`${frontendUrl}/bom/list`, { waitUntil: 'networkidle' })
+    await assertCleanYisuanBusinessShell(page, 'BOM 列表')
     await waitForSelector(page, '[data-testid="yisuan-1to1-bom-table"]', 'BOM list table')
     const styleChecks = await collectStyleChecks(page)
     assertYisuanStyleChecks(styleChecks)
@@ -547,12 +583,15 @@ const main = async () => {
     await page.locator('[data-testid="m2-bom-record-dialog"]').waitFor({ state: 'hidden', timeout: 12000 })
     assert(countCalls(apiCalls, 'POST', (item) => item === '/api/bom/') === 1, 'createBom 未命中 POST /api/bom/')
     await waitForSelector(page, 'text=Z002-BOM-20260614-001', 'created BOM row')
+    await waitForTransientMessagesToClear(page)
     await screenshot(page, '03_after_create_list_true_endpoint.png')
     screenshots.push('03_after_create_list_true_endpoint.png')
 
     await page.locator('button.ys-link', { hasText: 'Z002-BOM-20260614-001' }).first().click()
     await page.waitForURL(/\/bom\/detail/)
+    await assertCleanYisuanBusinessShell(page, 'BOM 详情')
     await waitForSelector(page, '[data-testid="yisuan-1to1-bom-detail-table"]', 'BOM detail table')
+    await waitForTransientMessagesToClear(page)
     await screenshot(page, '04_detail_yisuan_lifecycle_toolbar.png')
     screenshots.push('04_detail_yisuan_lifecycle_toolbar.png')
 
@@ -563,6 +602,7 @@ const main = async () => {
     await page.locator('[data-testid="m2-bom-detail-save-button"]').click()
     await page.locator('[data-testid="m2-bom-detail-edit-dialog"]').waitFor({ state: 'hidden', timeout: 12000 })
     assert(countCalls(apiCalls, 'PUT', (item) => /^\/api\/bom\/\d+$/.test(item)) === 1, 'updateBomDraft 未命中 PUT /api/bom/{id}')
+    await waitForTransientMessagesToClear(page)
     await screenshot(page, '06_after_edit_detail_true_endpoint.png')
     screenshots.push('06_after_edit_detail_true_endpoint.png')
 
@@ -575,12 +615,14 @@ const main = async () => {
     assert(countCalls(apiCalls, 'POST', (item) => /\/set-default$/.test(item)) === 1, 'setDefaultBom 未命中 POST /api/bom/{id}/set-default')
     assert(countCalls(apiCalls, 'POST', (item) => /\/activate$/.test(item)) === 1, 'activateBom 未命中 POST /api/bom/{id}/activate')
     assert(countCalls(apiCalls, 'POST', (item) => /\/deactivate$/.test(item)) === 1, 'deactivateBom 未命中 POST /api/bom/{id}/deactivate')
+    await waitForTransientMessagesToClear(page)
     await screenshot(page, '07_after_default_activate_deactivate.png')
     screenshots.push('07_after_default_activate_deactivate.png')
 
     await page.locator('[data-testid="m2-bom-explode-button"]').click()
     await waitForSelector(page, '[data-testid="m2-bom-explode-result"]', 'BOM explode result')
     assert(countCalls(apiCalls, 'POST', (item) => /\/explode$/.test(item)) === 1, 'explodeBom 未命中 POST /api/bom/{id}/explode')
+    await waitForTransientMessagesToClear(page)
     await screenshot(page, '08_explode_result_true_endpoint.png')
     screenshots.push('08_explode_result_true_endpoint.png')
 
@@ -593,6 +635,7 @@ const main = async () => {
     ]
     for (const [stateName, filename] of stateRoutes) {
       await page.goto(`${frontendUrl}/bom/list?m2_state=${stateName}`, { waitUntil: 'networkidle' })
+      await assertCleanYisuanBusinessShell(page, `BOM ${stateName} 状态`)
       await waitForSelector(page, '[data-testid="yisuan-1to1-bom-table"]', `BOM state ${stateName}`)
       await screenshot(page, filename)
       screenshots.push(filename)
@@ -610,6 +653,11 @@ const main = async () => {
       viewport,
       screenshots,
       style_checks: styleChecks,
+      shell_assertions: {
+        diagnostics_hidden: styleChecks.readonlyDiagnosticsCount === 0,
+        left_menu_labels: requiredLeftMenuLabels,
+        app_shell_columns: styleChecks.appShellColumns,
+      },
       endpoint_assertions: {
         create_bom_post: countCalls(apiCalls, 'POST', (item) => item === '/api/bom/'),
         update_bom_put: countCalls(apiCalls, 'PUT', (item) => /^\/api\/bom\/\d+$/.test(item)),

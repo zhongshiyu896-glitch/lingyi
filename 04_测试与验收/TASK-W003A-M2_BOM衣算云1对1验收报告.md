@@ -1,6 +1,6 @@
 # TASK-W003A-M2 BOM 衣算云 1:1 验收报告
 
-- 更新时间：2026-06-14 10:42 CST+8
+- 更新时间：2026-06-14 11:09 CST+8
 - 范围：M2-S1 至 M2-S5，BOM 列表/详情读基线、建档/编辑真实写端点、详情生命周期按钮、清 local-dev 沙箱 UI 与死代码、Playwright 闭环截图。
 - 结论：本地实现与自测 gate 通过；等待顾问代码/视觉审查。后端零改，未执行真实 ERPNext 生产写。
 
@@ -11,6 +11,8 @@
 3. 写闭环接真实前端 API：`createBom(POST /api/bom/)`、`updateBomDraft(PUT /api/bom/{id})`。
 4. `BomDetail.vue` 接真实生命周期 API：`setDefaultBom`、`activateBom`、`deactivateBom`、`explodeBom`，按钮按 `button_permissions` fail-closed 显隐/禁用。
 5. 删除 `bom.ts` 的 `LOCAL_*`/`*LocalBom*` 旧沙箱函数；删除 `production.ts` 的两个 `fetchLocalReadback*` 死代码。
+6. 收尾补正：`App.vue` 的 `global-readonly-shell` 已改为仅 `VITE_LINGYI_READONLY_DIAGNOSTICS=true` 且非 production 诊断模式渲染；BOM 1:1 业务页默认不再显示 readonly session/remote lifecycle/fallback 诊断带。
+7. BOM 路由补齐衣算云业务外壳左侧主菜单，列表/详情截图已包含 `基础资料 / 款式设计 / 物料开发 / ...`，并高亮 `物料开发`。
 
 ## 自测结果
 
@@ -18,6 +20,7 @@
 - `npm run test:bom-m2-contracts`：PASS，锁定无 `/api/local-dev/bom`、无旧 LocalBom/rollback/readback 符号、真实 BOM API 与 1:1 关键 token。
 - `node 04_测试与验收/测试证据/W003A_M2_bom_yisuan_1to1/e2e_bom_m2_yisuan_flow.mjs`：PASS。
 - `rg -n "/api/local-dev/bom" src/views`：空。
+- `e2e_bom_m2_yisuan_flow_summary.json`：`diagnostics_hidden=true`、`app_shell_columns="184px 1240px"`、`local_dev_bom_calls=0`。
 
 ## 浏览器证据
 
@@ -32,6 +35,8 @@
 - `local_dev_bom_calls=0`。
 - 1:1 样式 token：页面背景 `rgb(246, 248, 249)`、主色 `rgb(78, 136, 243)`、表头 `rgb(245, 247, 250)`、正文 `rgb(81, 90, 110)`。
 - 关键结构：物料开发/面料顶部、工具栏、`请输入名称/供应商/编号`、表头 `图片/编号/部位/名称/颜色/成分/幅宽/克重/操作`、`30条/页` 均通过。
+- 顶部清场：BOM 列表/详情/五种状态页均断言无 `global-readonly-shell`、无 `readonly session`、无 `remote lifecycle parked`、无 `fallback 原因`/`路由分类`诊断文案。
+- 完整外壳：BOM 列表/详情截图均含左侧主菜单，`物料开发` 高亮。
 
 ## 未释放项
 

@@ -1,5 +1,5 @@
 # DAILY_STATUS
-updated_at: 2026-06-14 10:42 CST+8
+updated_at: 2026-06-14 11:09 CST+8
 ## W003A
 - state: `MAINLINE_ACTIVE`
 - task: `TASK-W003A-LAUNCH`
@@ -28,7 +28,9 @@ updated_at: 2026-06-14 10:42 CST+8
 - state_baselines: `01_需求与资料/衣算云文档/证据数据/*ui_state*/screenshots_*/04_物料开发_面料_{loading,error,disabled,empty,no_permission}.png`
 - write_endpoints: `createBom(POST /api/bom/), updateBomDraft(PUT /api/bom/{id}); lifecycle buttons use real BOM endpoints only`
 - forbidden_ui: `no /api/local-dev/bom, no scenario_tag/回滚/回读本地沙箱面板, no non-1:1 temporary BOM UI`
-- closeout_gate: `PASS: npm run verify + BOM M2 contract + Playwright e2e; grep /api/local-dev/bom src/views 为空`
+- readonly_diagnostics_cleanup: `PASS: global-readonly-shell 仅 VITE_LINGYI_READONLY_DIAGNOSTICS=true 且非 production 诊断模式渲染；BOM 1:1 页默认顶部干净`
+- app_shell: `PASS: BOM 列表/详情截图已包含衣算云左侧主菜单（基础资料/款式设计/物料开发/...）`
+- closeout_gate: `PASS: npm run verify + BOM M2 contract + Playwright e2e; grep /api/local-dev/bom src/views 为空；diagnostics_hidden=true`
 - evidence: `04_测试与验收/TASK-W003A-M2_BOM衣算云1对1验收报告.md`
 - screenshots: `04_测试与验收/测试证据/W003A_M2_bom_yisuan_1to1/`
 ## Frozen

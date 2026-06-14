@@ -1,7 +1,7 @@
 {
   "task_id": "W003A_M2_BOM_YISUAN_1TO1",
-  "generated_at": "2026-06-14T02:38:12.145Z",
-  "frontend_url": "http://127.0.0.1:59528",
+  "generated_at": "2026-06-14T03:05:00.105Z",
+  "frontend_url": "http://127.0.0.1:60827",
   "baseline_screenshot": "/Users/hh/Desktop/领意服装管理系统/01_需求与资料/衣算云文档/证据数据/yisuan_ui_1to1_shots_20260405/04_物料开发_面料.png",
   "viewport": {
     "width": 1440,
@@ -23,24 +23,27 @@
     "13_state_no_permission.png"
   ],
   "style_checks": {
+    "appShellColumns": "184px 1240px",
+    "leftMenuText": "衣算云服装管理系统主菜单基础资料款式设计物料开发物料采购物料进销存生产管理外发管理仓库管理成品进销存财务管理报表管理系统设置",
+    "readonlyDiagnosticsCount": 0,
     "pageBg": "rgb(246, 248, 249)",
     "primaryBg": "rgb(78, 136, 243)",
     "tableHeadBg": "rgb(245, 247, 250)",
     "bodyColor": "rgb(81, 90, 110)",
     "topbarBox": {
-      "width": 1400,
+      "width": 1216,
       "height": 61,
-      "top": 312
+      "top": 8
     },
     "tabsBox": {
-      "width": 1400,
+      "width": 1216,
       "height": 51,
-      "top": 373
+      "top": 69
     },
     "toolbarBox": {
-      "width": 1374,
+      "width": 1190,
       "height": 32,
-      "top": 449
+      "top": 145
     },
     "headers": [
       "图片",
@@ -55,6 +58,19 @@
     ],
     "toolbarText": " 新建 ⌄⌕筛选批量删除↙ 导入图片↙ 导入↓ 导出↙ 导入物料计价⚙ 列设置",
     "paginationText": "共 3 条30条/页‹1›"
+  },
+  "shell_assertions": {
+    "diagnostics_hidden": true,
+    "left_menu_labels": [
+      "基础资料",
+      "款式设计",
+      "物料开发",
+      "物料采购",
+      "物料进销存",
+      "生产管理",
+      "外发管理"
+    ],
+    "app_shell_columns": "184px 1240px"
   },
   "endpoint_assertions": {
     "create_bom_post": 1,
@@ -72,14 +88,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/auth/actions?module=global"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=bom"
-    },
-    {
-      "method": "GET",
       "path": "/api/auth/actions?module=bom"
     },
     {
@@ -93,10 +101,6 @@
     {
       "method": "GET",
       "path": "/api/bom/?page=1&page_size=30"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=bom"
     },
     {
       "method": "GET",
@@ -164,14 +168,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/auth/actions?module=global"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=bom"
-    },
-    {
-      "method": "GET",
       "path": "/api/auth/actions?module=bom"
     },
     {
@@ -180,27 +176,11 @@
     },
     {
       "method": "GET",
-      "path": "/api/auth/actions?module=global"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=bom"
-    },
-    {
-      "method": "GET",
       "path": "/api/auth/actions?module=bom"
     },
     {
       "method": "GET",
       "path": "/api/auth/me"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=global"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=bom"
     },
     {
       "method": "GET",
@@ -216,14 +196,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/auth/actions?module=global"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=bom"
-    },
-    {
-      "method": "GET",
       "path": "/api/auth/actions?module=bom"
     },
     {
@@ -233,14 +205,6 @@
     {
       "method": "GET",
       "path": "/api/auth/me"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=global"
-    },
-    {
-      "method": "GET",
-      "path": "/api/auth/actions?module=bom"
     },
     {
       "method": "GET",
@@ -250,7 +214,7 @@
   "page_errors": [],
   "console_errors": [],
   "frontend_logs": [
-    "\n  VITE v7.3.3  ready in 227 ms\n\n",
-    "  ➜  Local:   http://127.0.0.1:59528/\n"
+    "\n  VITE v7.3.3  ready in 156 ms\n\n",
+    "  ➜  Local:   http://127.0.0.1:60827/\n"
   ]
 }

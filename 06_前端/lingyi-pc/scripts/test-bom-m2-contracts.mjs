@@ -37,6 +37,7 @@ const assertNotContains = (source, needle, label) => {
 
 const bomApi = read('src/api/bom.ts')
 const productionApi = read('src/api/production.ts')
+const appShell = read('src/App.vue')
 const bomList = read('src/views/bom/BomList.vue')
 const bomDetail = read('src/views/bom/BomDetail.vue')
 const bomListTemplate = bomList.split('<script setup')[0]
@@ -73,6 +74,28 @@ assertContains(bomDetail, "loadBomActions(bomId", 'BomDetail.vue button permissi
 assertContains(bomDetail, 'buttonPermissions.value.set_default', 'BomDetail.vue set default permission')
 assertContains(bomDetail, 'buttonPermissions.value.publish', 'BomDetail.vue activate permission')
 assertContains(bomDetail, 'buttonPermissions.value.deactivate', 'BomDetail.vue deactivate permission')
+
+assertContains(appShell, 'VITE_LINGYI_READONLY_DIAGNOSTICS', 'App.vue readonly diagnostics env gate')
+assertContains(
+  appShell,
+  "import.meta.env.DEV && import.meta.env.VITE_LINGYI_READONLY_DIAGNOSTICS === 'true'",
+  'App.vue readonly diagnostics default-off gate',
+)
+assertContains(appShell, 'v-if="showReadonlyDiagnostics"', 'App.vue readonly diagnostics render gate')
+assertContains(appShell, 'data-testid="m2-yisuan-app-shell"', 'App.vue BOM 1:1 business shell')
+assertContains(appShell, 'data-testid="m2-yisuan-left-menu"', 'App.vue BOM 1:1 left menu')
+assertContains(appShell, '基础资料', 'App.vue left menu')
+assertContains(appShell, '款式设计', 'App.vue left menu')
+assertContains(appShell, '物料开发', 'App.vue left menu')
+assertContains(appShell, 'm2-yisuan-business-main', 'App.vue BOM business content')
+assertNotContains(bomList, 'BomAlternateMaterialReadonlySection', 'BomList.vue mounted readonly section')
+assertNotContains(bomList, 'useBomAlternateReadonly', 'BomList.vue readonly composable')
+assertNotContains(bomList, 'useBomExceptionBaselineReadonly', 'BomList.vue readonly composable')
+assertNotContains(bomList, 'useBomAuditDefaultVersionReadonly', 'BomList.vue readonly composable')
+assertNotContains(bomDetail, 'BomAlternateMaterialReadonlySection', 'BomDetail.vue mounted readonly section')
+assertNotContains(bomDetail, 'useBomAlternateReadonly', 'BomDetail.vue readonly composable')
+assertNotContains(bomDetail, 'useBomExceptionBaselineReadonly', 'BomDetail.vue readonly composable')
+assertNotContains(bomDetail, 'useBomAuditDefaultVersionReadonly', 'BomDetail.vue readonly composable')
 
 assertContains(bomListTemplate, '物料开发', 'Yisuan list crumb')
 assertContains(bomListTemplate, '请输入名称/供应商/编号', 'Yisuan list search placeholder')
