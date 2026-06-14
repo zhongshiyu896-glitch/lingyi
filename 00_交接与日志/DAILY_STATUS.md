@@ -1,5 +1,5 @@
 # DAILY_STATUS
-updated_at: 2026-06-14 12:13 CST+8
+updated_at: 2026-06-14 15:53 CST+8
 ## W003A
 - state: `MAINLINE_ACTIVE`
 - task: `TASK-W003A-LAUNCH`
@@ -31,10 +31,11 @@ updated_at: 2026-06-14 12:13 CST+8
 - write_endpoints: `createBom(POST /api/bom/), updateBomDraft(PUT /api/bom/{id}); lifecycle buttons use real BOM endpoints only`
 - forbidden_ui: `no /api/local-dev/bom, no scenario_tag/回滚/回读本地沙箱面板, no non-1:1 temporary BOM UI`
 - readonly_diagnostics_cleanup: `PASS: global-readonly-shell 仅 VITE_LINGYI_READONLY_DIAGNOSTICS=true 且非 production 诊断模式渲染；BOM 1:1 页默认顶部干净`
-- app_shell: `PASS: BOM 列表/详情截图已包含衣算云左侧主菜单（基础资料/款式设计/物料开发/...）`
+- app_shell: `PASS: 侧边栏改为 LIVE_MODULES 白名单渲染；当前仅 live=bom，因此 BOM/首页侧栏只显示“物料开发”，空壳模块隐藏，路由保留直接 URL 可达`
 - closeout_gate: `PASS: npm run verify + BOM M2 contract + Playwright e2e; grep /api/local-dev/bom src/views 为空；diagnostics_hidden=true`
 - evidence: `04_测试与验收/TASK-W003A-M2_BOM衣算云1对1验收报告.md`
 - screenshots: `04_测试与验收/测试证据/W003A_M2_bom_yisuan_1to1/`
+- live_sidebar_screenshots: `04_测试与验收/测试证据/live_sidebar_modules/bom_live_sidebar_only.png, 04_测试与验收/测试证据/live_sidebar_modules/home_live_sidebar_only.png`
 ## Frozen
 - W002A: `FROZEN_NOT_STARTED`
 - excluded_dirty: `none for BOM after M2; warehouse carryover remains separate`

@@ -333,6 +333,7 @@ import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useRouter } from 'vue-router'
 
+import { isLiveModule } from '@/config/liveModules'
 import { usePermissionStore } from '@/stores/permission'
 
 const permissionStore = usePermissionStore()
@@ -348,6 +349,7 @@ const showReadonlyDiagnostics = computed(() => !isLoginRoute.value && readonlyDi
 type YisuanShellMenuItem = {
   name: string
   path: string
+  module: string
   disabled?: boolean
 }
 
@@ -356,25 +358,32 @@ type YisuanShellMenuGroup = {
   items: YisuanShellMenuItem[]
 }
 
-const yisuanShellMenuGroups: YisuanShellMenuGroup[] = [
+const allYisuanShellMenuGroups: YisuanShellMenuGroup[] = [
   {
     title: '主菜单',
     items: [
-      { name: '基础资料', path: '/sales-inventory/references' },
-      { name: '款式设计', path: '/style-profit' },
-      { name: '物料开发', path: '/bom/list' },
-      { name: '物料采购', path: '/subcontract/list?parity=material-purchase' },
-      { name: '物料进销存', path: '/sales-inventory/stock-ledger' },
-      { name: '生产管理', path: '/workshop/tickets' },
-      { name: '外发管理', path: '/subcontract/list' },
-      { name: '仓库管理', path: '/warehouse' },
-      { name: '成品进销存', path: '/sales-inventory/sales-orders' },
-      { name: '财务管理', path: '/factory-statement/list' },
-      { name: '报表管理', path: '/reports' },
-      { name: '系统设置', path: '/system/management' },
+      { name: '基础资料', path: '/sales-inventory/references', module: 'sales_inventory' },
+      { name: '款式设计', path: '/style-profit', module: 'style_profit' },
+      { name: '物料开发', path: '/bom/list', module: 'bom' },
+      { name: '物料采购', path: '/subcontract/list?parity=material-purchase', module: 'subcontract' },
+      { name: '物料进销存', path: '/sales-inventory/stock-ledger', module: 'sales_inventory' },
+      { name: '生产管理', path: '/workshop/tickets', module: 'workshop' },
+      { name: '外发管理', path: '/subcontract/list', module: 'subcontract' },
+      { name: '仓库管理', path: '/warehouse', module: 'warehouse' },
+      { name: '成品进销存', path: '/sales-inventory/sales-orders', module: 'sales_inventory' },
+      { name: '财务管理', path: '/factory-statement/list', module: 'factory_statement' },
+      { name: '报表管理', path: '/reports', module: 'report' },
+      { name: '系统设置', path: '/system/management', module: 'system' },
     ],
   },
 ]
+
+const yisuanShellMenuGroups: YisuanShellMenuGroup[] = allYisuanShellMenuGroups
+  .map((group) => ({
+    ...group,
+    items: group.items.filter((item) => isLiveModule(item.module)),
+  }))
+  .filter((group) => group.items.length > 0)
 
 const isYisuanShellItemActive = (item: YisuanShellMenuItem): boolean => {
   if (item.name === '物料开发') return isBomRoute.value

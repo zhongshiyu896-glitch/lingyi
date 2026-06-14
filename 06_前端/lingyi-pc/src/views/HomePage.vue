@@ -405,12 +405,14 @@ import {
   type DashboardOverviewQuery,
   type DashboardSourceStatus,
 } from '@/api/dashboard'
+import { isLiveModule } from '@/config/liveModules'
 import HomeModuleShortcutReadonlySection from './home/components/HomeModuleShortcutReadonlySection.vue'
 import { useHomeModuleShortcutReadonly } from './home/composables/useHomeModuleShortcutReadonly'
 
 interface NavItem {
   name: string
   path: string
+  module: string
 }
 
 interface NavGroup {
@@ -540,33 +542,84 @@ const readQueryText = (value: unknown): string | undefined => {
   return normalized || undefined
 }
 
-const sidebarGroups: NavGroup[] = [
+const allSidebarGroups: NavGroup[] = [
   {
     title: '运营工作台',
     items: [
-      { name: '首页', path: '/home' },
-      { name: '经营看板', path: '/dashboard/overview' },
+      { name: '首页', path: '/home', module: 'home' },
+      { name: '经营看板', path: '/dashboard/overview', module: 'dashboard' },
     ],
   },
   {
     title: '核心业务',
     items: [
-      { name: '物料开发', path: '/bom/list' },
-      { name: '大货管理', path: '/sales-inventory/sales-orders' },
-      { name: '采购/外协', path: '/subcontract/list?parity=material-purchase' },
-      { name: '库存流水', path: '/sales-inventory/stock-ledger' },
+      { name: '物料开发', path: '/bom/list', module: 'bom' },
+      { name: '大货管理', path: '/sales-inventory/sales-orders', module: 'sales_inventory' },
+      { name: '采购/外协', path: '/subcontract/list?parity=material-purchase', module: 'subcontract' },
+      { name: '库存流水', path: '/sales-inventory/stock-ledger', module: 'sales_inventory' },
     ],
   },
 ]
 
-const moduleEntries: ModuleEntry[] = [
-  { name: '基础资料', path: '/sales-inventory/references', group: '基础资料', desc: '款号、客户、供应商基础信息', status: '已就绪' },
-  { name: 'BOM 物料开发', path: '/bom/list', group: '物料开发', desc: 'BOM 列表与明细对齐', status: '已就绪' },
-  { name: '大货订单', path: '/sales-inventory/sales-orders', group: '大货管理', desc: '订单草稿与计划联动', status: '已就绪' },
-  { name: '采购外协', path: '/subcontract/list?parity=material-purchase', group: '物料采购', desc: '前置单据与明细追踪', status: '已就绪' },
-  { name: '库存管理', path: '/sales-inventory/stock-ledger', group: '物料进销存', desc: '库存流水与仓库摘要', status: '已就绪' },
-  { name: '仓库看板', path: '/warehouse', group: '物料进销存', desc: '仓库概况与盘点入口', status: '已就绪' },
+const sidebarGroups: NavGroup[] = allSidebarGroups
+  .map((group) => ({
+    ...group,
+    items: group.items.filter((item) => isLiveModule(item.module)),
+  }))
+  .filter((group) => group.items.length > 0)
+
+const allModuleEntries: ModuleEntry[] = [
+  {
+    name: '基础资料',
+    path: '/sales-inventory/references',
+    module: 'sales_inventory',
+    group: '基础资料',
+    desc: '款号、客户、供应商基础信息',
+    status: '已就绪',
+  },
+  {
+    name: 'BOM 物料开发',
+    path: '/bom/list',
+    module: 'bom',
+    group: '物料开发',
+    desc: 'BOM 列表与明细对齐',
+    status: '已就绪',
+  },
+  {
+    name: '大货订单',
+    path: '/sales-inventory/sales-orders',
+    module: 'sales_inventory',
+    group: '大货管理',
+    desc: '订单草稿与计划联动',
+    status: '已就绪',
+  },
+  {
+    name: '采购外协',
+    path: '/subcontract/list?parity=material-purchase',
+    module: 'subcontract',
+    group: '物料采购',
+    desc: '前置单据与明细追踪',
+    status: '已就绪',
+  },
+  {
+    name: '库存管理',
+    path: '/sales-inventory/stock-ledger',
+    module: 'sales_inventory',
+    group: '物料进销存',
+    desc: '库存流水与仓库摘要',
+    status: '已就绪',
+  },
+  {
+    name: '仓库看板',
+    path: '/warehouse',
+    module: 'warehouse',
+    group: '物料进销存',
+    desc: '仓库概况与盘点入口',
+    status: '已就绪',
+  },
 ]
+
+const moduleEntries: ModuleEntry[] = allModuleEntries.filter((entry) => isLiveModule(entry.module))
 
 const readonlyNavigationHints = [
   '首页卡片只负责导航和摘要展示，所有入口保持只读。',
