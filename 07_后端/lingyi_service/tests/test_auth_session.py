@@ -108,6 +108,8 @@ class AuthSessionTest(unittest.TestCase):
         os.environ["LINGYI_ERPNEXT_BASE_URL"] = ""
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         os.environ["LINGYI_AUTH_CACHE_TTL_SECONDS"] = "45"
+        os.environ["LINGYI_ERPNEXT_API_KEY"] = ""
+        os.environ["LINGYI_ERPNEXT_API_SECRET"] = ""
 
     def _login(self, *, username: str = "w003a.local", profile: str = "system_manager"):
         response = self.client.post(
@@ -180,7 +182,8 @@ class AuthSessionTest(unittest.TestCase):
                 self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-session-123")
                 return _FakeERPNextResponse({"message": "erp.user@example.com"})
             if "/api/resource/User/erp.user%40example.com" in url:
-                self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-session-123")
+                self.assertEqual(req.headers.get("Authorization"), "token service-key:service-secret")
+                self.assertIsNone(req.headers.get("Cookie"))
                 return _FakeERPNextResponse(
                     {"data": {"roles": [{"role": "System Manager"}, {"role": "BOM Editor"}]}}
                 )
@@ -193,6 +196,8 @@ class AuthSessionTest(unittest.TestCase):
                 "LINGYI_ALLOW_DEV_AUTH": "false",
                 "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
                 "LINGYI_PERMISSION_SOURCE": "erpnext",
+                "LINGYI_ERPNEXT_API_KEY": "service-key",
+                "LINGYI_ERPNEXT_API_SECRET": "service-secret",
             },
             clear=False,
         ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
@@ -237,16 +242,157 @@ class AuthSessionTest(unittest.TestCase):
         self.assertEqual(response.json()["code"], "AUTH_UNAUTHORIZED")
         self.assertNotIn("sid=", response.headers.get("set-cookie", ""))
 
+    def test_erpnext_limited_user_roles_are_loaded_with_service_credentials(self) -> None:
+        service_role_calls: list[str] = []
+        session_role_calls: list[str] = []
+
+        def _fake_urlopen(req, timeout=0):
+            self.assertEqual(timeout, 5)
+            url = req.full_url
+            if url.endswith("/api/method/frappe.auth.get_logged_user"):
+                self.assertEqual(req.headers.get("Cookie"), "sid=limited-user-sid")
+                return _FakeERPNextResponse({"message": "limited.user@example.com"})
+            if "/api/resource/User/limited.user%40example.com" in url:
+                if req.headers.get("Authorization") == "token service-key:service-secret":
+                    service_role_calls.append(url)
+                    self.assertIsNone(req.headers.get("Cookie"))
+                    return _FakeERPNextResponse(
+                        {
+                            "data": {
+                                "name": "limited.user@example.com",
+                                "roles": [{"role": "BOM Editor", "parent": "limited.user@example.com"}],
+                            }
+                        }
+                    )
+                if req.headers.get("Cookie") == "sid=limited-user-sid":
+                    session_role_calls.append(url)
+                    return _FakeERPNextResponse({"data": {"name": "limited.user@example.com", "roles": []}})
+            if "/api/resource/User%20Permission" in url:
+                self.assertEqual(req.headers.get("Cookie"), "sid=limited-user-sid")
+                return _FakeERPNextResponse({"data": []})
+            raise AssertionError(f"unexpected ERPNext URL: {url}")
+
+        self.client.cookies.set("sid", "limited-user-sid")
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
+                "LINGYI_PERMISSION_SOURCE": "erpnext",
+                "LINGYI_AUTH_CACHE_TTL_SECONDS": "45",
+                "LINGYI_ERPNEXT_API_KEY": "service-key",
+                "LINGYI_ERPNEXT_API_SECRET": "service-secret",
+            },
+            clear=False,
+        ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
+            me_response = self.client.get("/api/auth/me")
+            actions_response = self.client.get("/api/auth/actions?module=bom")
+
+        self.assertEqual(me_response.status_code, 200)
+        self.assertEqual(me_response.json()["data"]["roles"], ["BOM Editor"])
+        self.assertEqual(actions_response.status_code, 200)
+        actions_payload = actions_response.json()["data"]
+        self.assertIn("bom:read", actions_payload["actions"])
+        self.assertIn("bom:create", actions_payload["actions"])
+        self.assertIn("bom:update", actions_payload["actions"])
+        self.assertNotIn("bom:publish", actions_payload["actions"])
+        button_permissions = actions_payload["button_permissions"]
+        self.assertIs(button_permissions["create"], True)
+        self.assertIs(button_permissions["update"], True)
+        self.assertIs(button_permissions["read"], True)
+        self.assertIs(button_permissions["publish"], False)
+        self.assertIs(button_permissions["deactivate"], False)
+        self.assertIs(button_permissions["set_default"], False)
+        self.assertEqual(len(service_role_calls), 1)
+        self.assertEqual(len(session_role_calls), 1)
+
+    def test_erpnext_service_credentials_missing_fails_closed(self) -> None:
+        def _fake_urlopen(req, timeout=0):
+            self.assertEqual(timeout, 5)
+            if req.full_url.endswith("/api/method/frappe.auth.get_logged_user"):
+                self.assertEqual(req.headers.get("Cookie"), "sid=missing-service-credentials")
+                return _FakeERPNextResponse({"message": "limited.user@example.com"})
+            raise AssertionError(f"unexpected ERPNext URL: {req.full_url}")
+
+        self.client.cookies.set("sid", "missing-service-credentials")
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
+                "LINGYI_PERMISSION_SOURCE": "erpnext",
+                "LINGYI_ERPNEXT_API_KEY": "",
+                "LINGYI_ERPNEXT_API_SECRET": "",
+            },
+            clear=False,
+        ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
+            response = self.client.get("/api/auth/me")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["code"], "ERPNEXT_SERVICE_UNAVAILABLE")
+
+    def test_erpnext_service_credentials_invalid_fails_closed(self) -> None:
+        def _fake_urlopen(req, timeout=0):
+            self.assertEqual(timeout, 5)
+            if req.full_url.endswith("/api/method/frappe.auth.get_logged_user"):
+                self.assertEqual(req.headers.get("Cookie"), "sid=invalid-service-credentials")
+                return _FakeERPNextResponse({"message": "limited.user@example.com"})
+            if "/api/resource/User/limited.user%40example.com" in req.full_url:
+                self.assertEqual(req.headers.get("Authorization"), "token bad-key:bad-secret")
+                raise url_error.HTTPError(req.full_url, 403, "Forbidden", hdrs=None, fp=None)
+            raise AssertionError(f"unexpected ERPNext URL: {req.full_url}")
+
+        self.client.cookies.set("sid", "invalid-service-credentials")
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "production",
+                "LINGYI_ALLOW_DEV_AUTH": "false",
+                "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
+                "LINGYI_PERMISSION_SOURCE": "erpnext",
+                "LINGYI_ERPNEXT_API_KEY": "bad-key",
+                "LINGYI_ERPNEXT_API_SECRET": "bad-secret",
+            },
+            clear=False,
+        ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
+            response = self.client.get("/api/auth/me")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["code"], "ERPNEXT_SERVICE_UNAVAILABLE")
+
+    def test_extract_roles_accepts_frappe_roles_child_table_shape(self) -> None:
+        roles = auth_core._extract_roles(
+            {
+                "data": {
+                    "name": "limited.user@example.com",
+                    "roles": [
+                        {
+                            "name": "row-0001",
+                            "parent": "limited.user@example.com",
+                            "parentfield": "roles",
+                            "parenttype": "User",
+                            "role": "BOM Editor",
+                        }
+                    ],
+                }
+            }
+        )
+        self.assertEqual(roles, ["BOM Editor"])
+
     def test_erpnext_session_cache_reuses_successful_sid_within_ttl(self) -> None:
         network_calls: list[str] = []
 
         def _fake_urlopen(req, timeout=0):
             network_calls.append(req.full_url)
             self.assertEqual(timeout, 5)
-            self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-cache-sid")
             if req.full_url.endswith("/api/method/frappe.auth.get_logged_user"):
+                self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-cache-sid")
                 return _FakeERPNextResponse({"message": "cached.user@example.com"})
             if "/api/resource/User/cached.user%40example.com" in req.full_url:
+                self.assertEqual(req.headers.get("Authorization"), "token service-key:service-secret")
+                self.assertIsNone(req.headers.get("Cookie"))
                 return _FakeERPNextResponse({"data": {"roles": [{"role": "BOM Editor"}]}})
             raise AssertionError(f"unexpected ERPNext URL: {req.full_url}")
 
@@ -259,6 +405,8 @@ class AuthSessionTest(unittest.TestCase):
                 "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
                 "LINGYI_PERMISSION_SOURCE": "erpnext",
                 "LINGYI_AUTH_CACHE_TTL_SECONDS": "45",
+                "LINGYI_ERPNEXT_API_KEY": "service-key",
+                "LINGYI_ERPNEXT_API_SECRET": "service-secret",
             },
             clear=False,
         ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):
@@ -279,10 +427,12 @@ class AuthSessionTest(unittest.TestCase):
 
         def _fake_urlopen(req, timeout=0):
             network_calls.append(req.full_url)
-            self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-expiring-sid")
             if req.full_url.endswith("/api/method/frappe.auth.get_logged_user"):
+                self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-expiring-sid")
                 return _FakeERPNextResponse({"message": "expiring.user@example.com"})
             if "/api/resource/User/expiring.user%40example.com" in req.full_url:
+                self.assertEqual(req.headers.get("Authorization"), "token service-key:service-secret")
+                self.assertIsNone(req.headers.get("Cookie"))
                 return _FakeERPNextResponse({"data": {"roles": [{"role": "System Manager"}]}})
             raise AssertionError(f"unexpected ERPNext URL: {req.full_url}")
 
@@ -295,6 +445,8 @@ class AuthSessionTest(unittest.TestCase):
                 "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
                 "LINGYI_PERMISSION_SOURCE": "erpnext",
                 "LINGYI_AUTH_CACHE_TTL_SECONDS": "1",
+                "LINGYI_ERPNEXT_API_KEY": "service-key",
+                "LINGYI_ERPNEXT_API_SECRET": "service-secret",
             },
             clear=False,
         ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen), patch(
@@ -313,10 +465,12 @@ class AuthSessionTest(unittest.TestCase):
 
         def _fake_urlopen(req, timeout=0):
             network_calls.append(req.full_url)
-            self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-logout-sid")
             if req.full_url.endswith("/api/method/frappe.auth.get_logged_user"):
+                self.assertEqual(req.headers.get("Cookie"), "sid=erpnext-logout-sid")
                 return _FakeERPNextResponse({"message": "logout.user@example.com"})
             if "/api/resource/User/logout.user%40example.com" in req.full_url:
+                self.assertEqual(req.headers.get("Authorization"), "token service-key:service-secret")
+                self.assertIsNone(req.headers.get("Cookie"))
                 return _FakeERPNextResponse({"data": {"roles": [{"role": "BOM Editor"}]}})
             raise AssertionError(f"unexpected ERPNext URL: {req.full_url}")
 
@@ -328,6 +482,8 @@ class AuthSessionTest(unittest.TestCase):
                 "LINGYI_ERPNEXT_BASE_URL": "https://erpnext.example.test",
                 "LINGYI_PERMISSION_SOURCE": "erpnext",
                 "LINGYI_AUTH_CACHE_TTL_SECONDS": "45",
+                "LINGYI_ERPNEXT_API_KEY": "service-key",
+                "LINGYI_ERPNEXT_API_SECRET": "service-secret",
             },
             clear=False,
         ), patch("app.core.auth.request.urlopen", side_effect=_fake_urlopen):

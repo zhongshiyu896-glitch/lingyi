@@ -34,6 +34,8 @@ ERPNEXT_SESSION_COOKIE_NAME = "sid"
 AUTH_SESSION_CACHE_TTL_ENV = "LINGYI_AUTH_CACHE_TTL_SECONDS"
 AUTH_SESSION_CACHE_DEFAULT_TTL_SECONDS = 45.0
 AUTH_SESSION_CACHE_MAX_TTL_SECONDS = 60.0
+ERPNEXT_API_KEY_ENV = "LINGYI_ERPNEXT_API_KEY"
+ERPNEXT_API_SECRET_ENV = "LINGYI_ERPNEXT_API_SECRET"
 
 LOCAL_LOGIN_ROLE_PROFILES: dict[str, list[str]] = {
     "system_manager": ["System Manager"],
@@ -226,6 +228,44 @@ def _load_json(url: str, headers: dict[str, str]) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
     return payload
+
+
+def _load_json_strict(
+    url: str,
+    headers: dict[str, str],
+    *,
+    unavailable_message: str,
+    invalid_message: str,
+) -> dict[str, Any]:
+    req = request.Request(url=url, method="GET", headers=headers)
+    try:
+        with request.urlopen(req, timeout=5) as response:
+            body = response.read().decode("utf-8")
+    except TimeoutError as exc:
+        raise _erpnext_unavailable_error(unavailable_message, code=ERPNEXT_TIMEOUT) from exc
+    except error.URLError as exc:
+        raise _erpnext_unavailable_error(unavailable_message) from exc
+    except Exception as exc:
+        raise _erpnext_unavailable_error(unavailable_message) from exc
+
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise _erpnext_unavailable_error(invalid_message, code=ERPNEXT_RESPONSE_INVALID) from exc
+    if not isinstance(payload, dict):
+        raise _erpnext_unavailable_error(invalid_message, code=ERPNEXT_RESPONSE_INVALID)
+    return payload
+
+
+def _erpnext_service_headers() -> dict[str, str]:
+    api_key = os.getenv(ERPNEXT_API_KEY_ENV, "").strip()
+    api_secret = os.getenv(ERPNEXT_API_SECRET_ENV, "").strip()
+    if not api_key or not api_secret:
+        raise _erpnext_unavailable_error("ERPNext 服务凭据未配置")
+    return {
+        "Accept": "application/json",
+        "Authorization": f"token {api_key}:{api_secret}",
+    }
 
 
 def _service_account_users() -> set[str]:
@@ -426,6 +466,23 @@ def _extract_roles(user_payload: dict[str, Any]) -> list[str]:
     return sorted(roles)
 
 
+def _load_erpnext_user_roles_with_service_credentials(*, base_url: str, username: str) -> list[str]:
+    """Read confirmed user's roles with ERPNext service credentials.
+
+    The username must come from frappe.auth.get_logged_user; callers must not pass
+    user-controlled identifiers into this helper.
+    """
+    encoded_username = parse.quote(username.strip(), safe="")
+    fields = parse.quote('["name","roles"]', safe="")
+    profile_payload = _load_json_strict(
+        f"{base_url}/api/resource/User/{encoded_username}?fields={fields}",
+        headers=_erpnext_service_headers(),
+        unavailable_message="ERPNext 服务凭据读取用户角色失败",
+        invalid_message="ERPNext 用户角色响应格式非法",
+    )
+    return _extract_roles(profile_payload)
+
+
 def _resolve_erpnext_user(
     *,
     base_url: str,
@@ -446,18 +503,13 @@ def _resolve_erpnext_user(
     if not isinstance(username, str) or not username.strip():
         return None
 
-    encoded_username = parse.quote(username.strip(), safe="")
-    fields = parse.quote('["name","roles"]', safe="")
-    profile_payload = _load_json(
-        f"{base_url}/api/resource/User/{encoded_username}?fields={fields}",
-        headers=headers,
-    )
-    roles = _extract_roles(profile_payload or {})
+    normalized_username = username.strip()
+    roles = _load_erpnext_user_roles_with_service_credentials(base_url=base_url, username=normalized_username)
 
     is_service_account = username in _service_account_users()
     source = "erpnext_token" if authorization else "erpnext_session"
     return CurrentUser(
-        username=username.strip(),
+        username=normalized_username,
         roles=roles,
         is_service_account=is_service_account,
         source=source,
