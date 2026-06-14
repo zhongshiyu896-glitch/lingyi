@@ -9,6 +9,7 @@ import hmac
 from http.cookies import SimpleCookie
 import json
 import os
+import threading
 import time
 from typing import Any
 from urllib import error
@@ -30,6 +31,9 @@ DEV_AUTH_ALLOWED_ENVS = frozenset({"development", "test", "local"})
 LOCAL_SESSION_COOKIE_NAME = "lingyi_local_session"
 LOCAL_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 ERPNEXT_SESSION_COOKIE_NAME = "sid"
+AUTH_SESSION_CACHE_TTL_ENV = "LINGYI_AUTH_CACHE_TTL_SECONDS"
+AUTH_SESSION_CACHE_DEFAULT_TTL_SECONDS = 45.0
+AUTH_SESSION_CACHE_MAX_TTL_SECONDS = 60.0
 
 LOCAL_LOGIN_ROLE_PROFILES: dict[str, list[str]] = {
     "system_manager": ["System Manager"],
@@ -58,6 +62,99 @@ class ERPNextLoginSession:
 
     current_user: CurrentUser
     sid: str
+
+
+_AuthSessionCacheValue = tuple[CurrentUser, float]
+_auth_session_cache: dict[str, _AuthSessionCacheValue] = {}
+_auth_session_cache_lock = threading.Lock()
+
+
+def _clone_current_user(current_user: CurrentUser) -> CurrentUser:
+    return CurrentUser(
+        username=current_user.username,
+        roles=list(current_user.roles),
+        is_service_account=current_user.is_service_account,
+        source=current_user.source,
+    )
+
+
+def _auth_cache_now() -> float:
+    return time.monotonic()
+
+
+def _auth_session_cache_ttl_seconds() -> float:
+    raw = os.getenv(AUTH_SESSION_CACHE_TTL_ENV, str(AUTH_SESSION_CACHE_DEFAULT_TTL_SECONDS)).strip()
+    try:
+        ttl = float(raw)
+    except ValueError:
+        ttl = AUTH_SESSION_CACHE_DEFAULT_TTL_SECONDS
+    if ttl <= 0:
+        return 0.0
+    return min(ttl, AUTH_SESSION_CACHE_MAX_TTL_SECONDS)
+
+
+def _local_session_cache_key(token: str) -> str:
+    return f"local_session:{token}"
+
+
+def _erpnext_session_cache_key(sid: str) -> str:
+    return f"erpnext_sid:{sid}"
+
+
+def _erpnext_authorization_cache_key(authorization: str) -> str:
+    return f"erpnext_authorization:{authorization}"
+
+
+def _auth_session_cache_get(cache_key: str | None) -> CurrentUser | None:
+    if not cache_key:
+        return None
+    now = _auth_cache_now()
+    with _auth_session_cache_lock:
+        cached = _auth_session_cache.get(cache_key)
+        if cached is None:
+            return None
+        current_user, expires_at = cached
+        if expires_at <= now:
+            _auth_session_cache.pop(cache_key, None)
+            return None
+        return _clone_current_user(current_user)
+
+
+def _auth_session_cache_set(cache_key: str | None, current_user: CurrentUser) -> None:
+    if not cache_key:
+        return
+    ttl = _auth_session_cache_ttl_seconds()
+    if ttl <= 0:
+        return
+    expires_at = _auth_cache_now() + ttl
+    with _auth_session_cache_lock:
+        _auth_session_cache[cache_key] = (_clone_current_user(current_user), expires_at)
+
+
+def _auth_session_cache_delete(cache_key: str | None) -> None:
+    if not cache_key:
+        return
+    with _auth_session_cache_lock:
+        _auth_session_cache.pop(cache_key, None)
+
+
+def clear_auth_session_cache_for_request(request_obj: Request) -> None:
+    local_token = request_obj.cookies.get(LOCAL_SESSION_COOKIE_NAME, "").strip()
+    if local_token:
+        _auth_session_cache_delete(_local_session_cache_key(local_token))
+
+    erpnext_sid = request_obj.cookies.get(ERPNEXT_SESSION_COOKIE_NAME, "").strip()
+    if erpnext_sid:
+        _auth_session_cache_delete(_erpnext_session_cache_key(erpnext_sid))
+
+    authorization = request_obj.headers.get("Authorization", "").strip()
+    if authorization:
+        _auth_session_cache_delete(_erpnext_authorization_cache_key(authorization))
+
+
+def _reset_auth_session_cache_for_tests() -> None:
+    with _auth_session_cache_lock:
+        _auth_session_cache.clear()
 
 
 def _auth_error(message: str = "未登录或 Token 无效") -> HTTPException:
@@ -306,6 +403,7 @@ def login_erpnext_user(*, username: str, password: str) -> ERPNextLoginSession:
     )
     if current_user is None:
         raise _auth_error("ERPNext 会话校验失败")
+    _auth_session_cache_set(_erpnext_session_cache_key(sid), current_user)
     return ERPNextLoginSession(current_user=current_user, sid=sid)
 
 
@@ -465,12 +563,31 @@ def get_current_user(request_obj: Request) -> CurrentUser:
     base_url = os.getenv("LINGYI_ERPNEXT_BASE_URL", "").strip().rstrip("/")
     authorization = request_obj.headers.get("Authorization")
 
+    local_session_token = request_obj.cookies.get(LOCAL_SESSION_COOKIE_NAME, "").strip()
+    local_session_cache_key = _local_session_cache_key(local_session_token) if local_session_token else None
+    cached_local_user = _auth_session_cache_get(local_session_cache_key)
+    if cached_local_user and is_local_session_auth_enabled():
+        request_obj.state.current_user = cached_local_user
+        return cached_local_user
+
     local_session_user = _resolve_local_session_user(request_obj)
     if local_session_user:
+        _auth_session_cache_set(local_session_cache_key, local_session_user)
         request_obj.state.current_user = local_session_user
         return local_session_user
 
     cookie = request_obj.headers.get("Cookie")
+    erpnext_sid = request_obj.cookies.get(ERPNEXT_SESSION_COOKIE_NAME, "").strip()
+    erpnext_cache_key = None
+    if erpnext_sid:
+        erpnext_cache_key = _erpnext_session_cache_key(erpnext_sid)
+    elif authorization:
+        erpnext_cache_key = _erpnext_authorization_cache_key(authorization)
+
+    cached_erpnext_user = _auth_session_cache_get(erpnext_cache_key)
+    if cached_erpnext_user and base_url and (authorization or cookie):
+        request_obj.state.current_user = cached_erpnext_user
+        return cached_erpnext_user
 
     if base_url and (authorization or cookie):
         user = _resolve_erpnext_user(
@@ -479,6 +596,7 @@ def get_current_user(request_obj: Request) -> CurrentUser:
             cookie=cookie,
         )
         if user:
+            _auth_session_cache_set(erpnext_cache_key, user)
             request_obj.state.current_user = user
             return user
         raise _auth_error()

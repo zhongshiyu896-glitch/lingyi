@@ -13,6 +13,7 @@ from fastapi import Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import build_local_login_user
+from app.core.auth import clear_auth_session_cache_for_request
 from app.core.auth import clear_erpnext_session_cookie
 from app.core.auth import clear_local_session_cookie
 from app.core.auth import CurrentUser
@@ -73,8 +74,9 @@ def login(payload: LocalLoginRequest, request: Request, response: Response):
 
 
 @router.post("/logout")
-def logout(response: Response):
+def logout(request: Request, response: Response):
     """Clear local and ERPNext browser sessions."""
+    clear_auth_session_cache_for_request(request)
     clear_local_session_cookie(response)
     clear_erpnext_session_cookie(response)
     return _ok({"logged_out": True})

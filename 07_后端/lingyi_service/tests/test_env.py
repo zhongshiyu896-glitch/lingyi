@@ -21,6 +21,7 @@ class ConfigureTestEnvTest(unittest.TestCase):
             "LINGYI_ALLOW_DEV_AUTH": os.environ.get("LINGYI_ALLOW_DEV_AUTH"),
             "LINGYI_ERPNEXT_BASE_URL": os.environ.get("LINGYI_ERPNEXT_BASE_URL"),
             "LINGYI_PERMISSION_SOURCE": os.environ.get("LINGYI_PERMISSION_SOURCE"),
+            "LINGYI_AUTH_CACHE_TTL_SECONDS": os.environ.get("LINGYI_AUTH_CACHE_TTL_SECONDS"),
         }
 
     def tearDown(self) -> None:
@@ -50,6 +51,13 @@ class ConfigureTestEnvTest(unittest.TestCase):
         os.environ.pop("LINGYI_ALLOW_DEV_AUTH", None)
 
         self.assertFalse(is_local_session_auth_enabled())
+
+    def test_auth_cache_ttl_is_capped_at_sixty_seconds(self) -> None:
+        from app.core.auth import _auth_session_cache_ttl_seconds
+
+        os.environ["LINGYI_AUTH_CACHE_TTL_SECONDS"] = "300"
+
+        self.assertEqual(_auth_session_cache_ttl_seconds(), 60.0)
 
 
 if __name__ == "__main__":
