@@ -18,11 +18,17 @@ from app.main import app
 from app.models.audit import Base as AuditBase
 from app.models.audit import LyOperationAuditLog
 from app.models.audit import LySecurityAuditLog
+from app.models.bom import Base as BomBase
+from app.models.bom import LyApparelBom
 from app.models.material_purchase import Base as MaterialPurchaseBase
 from app.models.material_purchase import LyMaterialPurchaseIdempotency
 from app.models.material_purchase import LyMaterialPurchaseOrder
 from app.models.material_purchase import LyMaterialPurchaseOrderItem
 from app.models.quality import Base as QualityBase
+from app.models.subcontract import Base as SubcontractBase
+from app.models.subcontract import LySubcontractMaterial
+from app.models.subcontract import LySubcontractOrder
+from app.models.subcontract import LySubcontractStockOutbox
 from app.models.warehouse import LyWarehouseStockEntryDraft
 from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
@@ -50,8 +56,25 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         AuditBase.metadata.create_all(bind=cls.engine)
+        BomBase.metadata.create_all(bind=cls.engine)
+        LyApparelBom.__table__.to_metadata(SubcontractBase.metadata)
+        SubcontractBase.metadata.create_all(bind=cls.engine)
         MaterialPurchaseBase.metadata.create_all(bind=cls.engine)
         QualityBase.metadata.create_all(bind=cls.engine)
+        with cls.SessionLocal() as session:
+            session.add(
+                LyApparelBom(
+                    id=1,
+                    bom_no="BOM-WHSE-FRR-001",
+                    item_code="STYLE-FRR",
+                    version_no="v1",
+                    is_default=True,
+                    status="active",
+                    created_by="seed",
+                    updated_by="seed",
+                )
+            )
+            session.commit()
 
         def _override_db():
             db = cls.SessionLocal()
@@ -81,6 +104,9 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         os.environ["LINGYI_DB_URL"] = "sqlite:///./lingyi_service.local.db"
         os.environ["LINGYI_PERMISSION_SOURCE"] = "static"
         with self.SessionLocal() as session:
+            session.query(LySubcontractMaterial).delete()
+            session.query(LySubcontractStockOutbox).delete()
+            session.query(LySubcontractOrder).delete()
             session.query(LyWarehouseStockEntryOutboxEvent).delete()
             session.query(LyWarehouseStockEntryDraftItem).delete()
             session.query(LyWarehouseStockEntryDraft).delete()
@@ -308,6 +334,84 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["material_code"], self.ITEM_CODE)
         self.assertEqual(rows[0]["warehouse"], self.WAREHOUSE)
+
+    def test_factory_return_material_report_prefers_subcontract_issue_facts(self) -> None:
+        with self.SessionLocal() as session:
+            session.add(
+                LySubcontractOrder(
+                    id=901,
+                    subcontract_no="SC-FRR-B5-001",
+                    supplier="B5加工厂",
+                    item_code="STYLE-FRR",
+                    company="COMP-A",
+                    bom_id=1,
+                    process_name="外发裁剪",
+                    planned_qty=Decimal("100"),
+                    issued_qty=Decimal("100"),
+                    received_qty=Decimal("60"),
+                    inspected_qty=Decimal("60"),
+                    accepted_qty=Decimal("60"),
+                    status="inspected",
+                    settlement_status="unsettled",
+                )
+            )
+            session.add(
+                LySubcontractStockOutbox(
+                    id=901,
+                    subcontract_id=901,
+                    event_key="b5-frr-outbox-001",
+                    stock_action="issue",
+                    idempotency_key="b5-frr-issue-001",
+                    payload_hash="b5-frr-hash",
+                    company="COMP-A",
+                    supplier="B5加工厂",
+                    item_code="STYLE-FRR",
+                    warehouse=self.WAREHOUSE,
+                    action="issue",
+                    status="succeeded",
+                    request_id="req-b5-frr-001",
+                    created_by="seed",
+                )
+            )
+            session.add(
+                LySubcontractMaterial(
+                    id=901,
+                    subcontract_id=901,
+                    stock_outbox_id=901,
+                    company="COMP-A",
+                    issue_batch_no="SIB-B5-FRR-001",
+                    material_item_code="FAB-B5-FRR",
+                    required_qty=Decimal("100"),
+                    issued_qty=Decimal("100"),
+                    sync_status="succeeded",
+                    stock_entry_name="LOCAL-ISSUE-B5-FRR-001",
+                )
+            )
+            session.commit()
+
+        with patch("app.routers.warehouse.ERPNextWarehouseAdapter", side_effect=AssertionError("ERPNext adapter must not be used")):
+            response = self.client.get(
+                "/api/warehouse/factory-return-material-report?company=COMP-A&warehouse=WH-A&item_code=FAB-B5-FRR",
+                headers=self._headers(),
+            )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["code"], "0")
+        rows = payload["data"]["items"]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["subcontract_no"], "SC-FRR-B5-001")
+        self.assertEqual(row["source_doc_no"], "SC-FRR-B5-001")
+        self.assertEqual(row["factory_name"], "B5加工厂")
+        self.assertEqual(row["material_code"], "FAB-B5-FRR")
+        self.assertEqual(row["warehouse"], self.WAREHOUSE)
+        self.assertEqual(Decimal(str(row["issued_qty"])), Decimal("100.0"))
+        self.assertEqual(Decimal(str(row["theoretical_usage_qty"])), Decimal("60.0"))
+        self.assertEqual(Decimal(str(row["planned_return_qty"])), Decimal("40.0"))
+        self.assertEqual(Decimal(str(row["returned_qty"])), Decimal("0.0"))
+        self.assertEqual(Decimal(str(row["pending_qty"])), Decimal("40.0"))
+        self.assertEqual(row["status"], "pending")
 
     def test_material_retention_report_uses_fastapi_native_stock_movements(self) -> None:
         receipt_idem = f"{self.SCENARIO_TAG}:receipt:RETENTION-LOCAL-IDEM"

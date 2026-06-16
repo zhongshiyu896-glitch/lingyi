@@ -23,6 +23,9 @@ from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.models.warehouse import LyWarehouseInventoryCount
 from app.models.warehouse import LyWarehouseInventoryCountItem
 from app.models.warehouse import LyWarehouseStockEntryOutboxEvent
+from app.models.subcontract import LySubcontractMaterial
+from app.models.subcontract import LySubcontractOrder
+from app.models.subcontract import LySubcontractStockOutbox
 from app.schemas.warehouse import WarehouseAlertItem
 from app.schemas.warehouse import WarehouseAlertsData
 from app.schemas.warehouse import WarehouseBatchDetailData
@@ -533,6 +536,15 @@ class WarehouseService:
         item_code: str | None,
         status: str | None,
     ) -> WarehouseFactoryReturnMaterialReportData:
+        subcontract_report = self._factory_return_material_report_from_subcontract_issues(
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
+            status=status,
+        )
+        if subcontract_report is not None:
+            return subcontract_report
+
         summary = self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
         return self._factory_return_material_report_from_summary(
             summary=summary,
@@ -593,6 +605,144 @@ class WarehouseService:
             company=company,
             warehouse=warehouse,
             item_code=item_code,
+            status=status_filter,
+            items=rows,
+        )
+
+    def _factory_return_material_report_from_subcontract_issues(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        status: str | None,
+    ) -> WarehouseFactoryReturnMaterialReportData | None:
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_warehouse = self._text(warehouse)
+        normalized_item_code = self._text(item_code)
+        status_filter = (status or "").strip().lower() or None
+
+        query = (
+            session.query(LySubcontractMaterial, LySubcontractOrder, LySubcontractStockOutbox)
+            .join(
+                LySubcontractOrder,
+                LySubcontractOrder.id == LySubcontractMaterial.subcontract_id,
+            )
+            .outerjoin(
+                LySubcontractStockOutbox,
+                LySubcontractStockOutbox.id == LySubcontractMaterial.stock_outbox_id,
+            )
+            .order_by(LySubcontractOrder.subcontract_no.asc(), LySubcontractMaterial.material_item_code.asc())
+        )
+        source_rows = query.all()
+        if not source_rows:
+            return None
+
+        grouped: dict[tuple[str, str, int, str], dict[str, Any]] = {}
+        for material, order, outbox in source_rows:
+            company_value = (
+                self._text(getattr(order, "company", None))
+                or self._text(getattr(material, "company", None))
+                or self._text(getattr(outbox, "company", None) if outbox is not None else None)
+                or ""
+            )
+            warehouse_value = self._text(getattr(outbox, "warehouse", None) if outbox is not None else None) or "未指定仓库"
+            material_code = self._text(getattr(material, "material_item_code", None)) or ""
+            if not material_code:
+                continue
+            if normalized_company and company_value != normalized_company:
+                continue
+            if normalized_warehouse and warehouse_value != normalized_warehouse:
+                continue
+            if normalized_item_code and material_code != normalized_item_code:
+                continue
+
+            order_id = int(order.id)
+            key = (company_value, warehouse_value, order_id, material_code)
+            bucket = grouped.setdefault(
+                key,
+                {
+                    "company": company_value,
+                    "warehouse": warehouse_value,
+                    "order": order,
+                    "material_code": material_code,
+                    "required_qty": Decimal("0"),
+                    "issued_qty": Decimal("0"),
+                    "latest_created_at": getattr(material, "created_at", None),
+                },
+            )
+            bucket["required_qty"] = max(
+                Decimal(str(bucket["required_qty"])),
+                Decimal(str(getattr(material, "required_qty", 0) or 0)),
+            )
+            bucket["issued_qty"] = Decimal(str(bucket["issued_qty"])) + Decimal(
+                str(getattr(material, "issued_qty", 0) or 0)
+            )
+            material_created_at = getattr(material, "created_at", None)
+            if material_created_at is not None:
+                latest_created_at = bucket.get("latest_created_at")
+                if latest_created_at is None or material_created_at > latest_created_at:
+                    bucket["latest_created_at"] = material_created_at
+
+        rows: list[WarehouseFactoryReturnMaterialReportItem] = []
+        for index, bucket in enumerate(grouped.values(), start=1):
+            order = bucket["order"]
+            issued_qty = Decimal(str(bucket["issued_qty"])).quantize(Decimal("0.01"))
+            required_qty = Decimal(str(bucket["required_qty"]))
+            planned_qty = Decimal(str(getattr(order, "planned_qty", 0) or 0))
+            accepted_qty = Decimal(str(getattr(order, "accepted_qty", 0) or 0))
+            received_qty = Decimal(str(getattr(order, "received_qty", 0) or 0))
+            output_qty = accepted_qty if accepted_qty > Decimal("0") else received_qty
+            if planned_qty > Decimal("0") and required_qty > Decimal("0") and output_qty > Decimal("0"):
+                effective_output_qty = min(output_qty, planned_qty)
+                theoretical_usage_qty = (required_qty * effective_output_qty / planned_qty).quantize(Decimal("0.01"))
+            else:
+                theoretical_usage_qty = Decimal("0.00")
+
+            planned_return_qty = max((issued_qty - theoretical_usage_qty).quantize(Decimal("0.01")), Decimal("0.00"))
+            returned_qty = Decimal("0.00")
+            pending_qty = max((planned_return_qty - returned_qty).quantize(Decimal("0.01")), Decimal("0.00"))
+            if pending_qty == Decimal("0.00"):
+                status_value: Literal["pending", "confirmed", "closed"] = "closed"
+            elif returned_qty > Decimal("0.00"):
+                status_value = "confirmed"
+            else:
+                status_value = "pending"
+            if status_filter is not None and status_value != status_filter:
+                continue
+
+            created_at = bucket.get("latest_created_at")
+            report_date = created_at.date() if created_at is not None else date.today()
+            material_code = str(bucket["material_code"])
+            warehouse_value = str(bucket["warehouse"])
+            subcontract_no = str(getattr(order, "subcontract_no", "") or "")
+            rows.append(
+                WarehouseFactoryReturnMaterialReportItem(
+                    report_no=f"FRR-{subcontract_no}-{index:03d}",
+                    subcontract_no=subcontract_no,
+                    factory_name=str(getattr(order, "supplier", "") or "未指定加工厂"),
+                    material_code=material_code,
+                    material_name=self._material_name_from_code(material_code),
+                    warehouse=warehouse_value,
+                    location=self._material_location(warehouse=warehouse_value, index=index),
+                    issued_qty=issued_qty,
+                    theoretical_usage_qty=theoretical_usage_qty,
+                    planned_return_qty=planned_return_qty,
+                    returned_qty=returned_qty,
+                    pending_qty=pending_qty,
+                    report_date=report_date,
+                    source_doc_no=subcontract_no,
+                    operator="FastAPI 外发发料事实",
+                    status=status_value,
+                )
+            )
+
+        rows.sort(key=lambda item: (item.status, item.report_no, item.material_code))
+        return WarehouseFactoryReturnMaterialReportData(
+            company=normalized_company,
+            warehouse=normalized_warehouse,
+            item_code=normalized_item_code,
             status=status_filter,
             items=rows,
         )

@@ -235,11 +235,14 @@ class WarehouseFactoryReturnMaterialReportItem(BaseModel):
     """Factory return material report read-only projection row."""
 
     report_no: str
+    subcontract_no: str | None = None
     factory_name: str
     material_code: str
     material_name: str
     warehouse: str
     location: str
+    issued_qty: Decimal | None = None
+    theoretical_usage_qty: Decimal | None = None
     planned_return_qty: Decimal
     returned_qty: Decimal
     pending_qty: Decimal

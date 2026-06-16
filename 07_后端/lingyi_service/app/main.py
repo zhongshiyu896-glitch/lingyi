@@ -141,7 +141,14 @@ from app.services.audit_service import AuditService
 DATABASE_URL = os.getenv("LINGYI_DB_URL", "sqlite:///./lingyi_service.db")
 logger = logging.getLogger(__name__)
 
-engine = create_engine(DATABASE_URL, future=True)
+
+def _engine_execution_options(database_url: str) -> dict[str, object]:
+    if database_url.strip().lower().startswith("sqlite"):
+        return {"schema_translate_map": {"ly_schema": None, "public": None}}
+    return {}
+
+
+engine = create_engine(DATABASE_URL, future=True, execution_options=_engine_execution_options(DATABASE_URL))
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 

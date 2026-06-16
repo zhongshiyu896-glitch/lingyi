@@ -15,7 +15,10 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import func
 
+from app.models.bom import LyApparelBom
+
 Base = declarative_base()
+LyApparelBom.__table__.to_metadata(Base.metadata)
 
 
 class LySubcontractOrder(Base):
