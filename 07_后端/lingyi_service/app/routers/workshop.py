@@ -289,7 +289,57 @@ def _batch_row_fail(
 def _is_local_workshop_write_enabled() -> bool:
     app_env = os.getenv("APP_ENV", "").strip().lower()
     db_url = os.getenv("LINGYI_DB_URL", "").strip()
-    return app_env in {"development", "test"} and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+    return app_env == "development" and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+
+
+def _has_local_ticket_carriers(payload: WorkshopTicketRegisterRequest | WorkshopTicketReversalRequest) -> bool:
+    return all(
+        _scope_text(value) is not None
+        for value in (
+            payload.scenario_tag,
+            payload.idempotency_key,
+            payload.ticket_key,
+            payload.job_card,
+            payload.source_ref,
+            payload.operator_id or payload.employee,
+            payload.batch_no,
+            payload.operation,
+        )
+    )
+
+
+def _has_local_ticket_batch_carriers(payload: WorkshopTicketBatchRequest) -> bool:
+    top_values = (
+        payload.scenario_tag,
+        payload.idempotency_key,
+        payload.ticket_key,
+        payload.job_card,
+        payload.source_ref,
+        payload.batch_no,
+        payload.operator_id or payload.employee,
+        payload.operation,
+    )
+    if not all(_scope_text(value) is not None for value in top_values):
+        return False
+    for row in payload.tickets:
+        row_values = (
+            row.scenario_tag,
+            row.idempotency_key,
+            row.ticket_key,
+            row.job_card,
+            row.source_ref,
+            row.batch_no,
+            row.operator_id or row.employee,
+            row.operation,
+            row.operation_type,
+        )
+        if not all(_scope_text(value) is not None for value in row_values):
+            return False
+    return True
+
+
+def _has_local_wage_carriers(*values: Any) -> bool:
+    return all(_scope_text(value) is not None for value in values)
 
 
 def _match_scenario_tag(value: str) -> str | None:
@@ -865,20 +915,24 @@ def register_ticket(
     action = WORKSHOP_TICKET_REGISTER
     request_id = get_request_id_from_request(request)
     resource = None
+    local_scenario_tag: str | None = None
     try:
-        local_scenario_tag = _validate_local_ticket_write_gate(
-            mode="register",
-            scenario_tag=payload.scenario_tag,
-            idempotency_key=payload.idempotency_key,
-            ticket_key=payload.ticket_key,
-            job_card=payload.job_card,
-            source_ref=payload.source_ref,
-            employee_or_operator=payload.operator_id or payload.employee,
-            batch_no=payload.batch_no,
-            operation=payload.operation,
-            request_id=request_id,
-            request_obj=request,
-        )
+        if _is_local_workshop_write_enabled() and _has_local_ticket_carriers(payload):
+            local_scenario_tag = _validate_local_ticket_write_gate(
+                mode="register",
+                scenario_tag=payload.scenario_tag,
+                idempotency_key=payload.idempotency_key,
+                ticket_key=payload.ticket_key,
+                job_card=payload.job_card,
+                source_ref=payload.source_ref,
+                employee_or_operator=payload.operator_id or payload.employee,
+                batch_no=payload.batch_no,
+                operation=payload.operation,
+                request_id=request_id,
+                request_obj=request,
+            )
+        else:
+            local_scenario_tag = _match_scenario_tag(str(payload.scenario_tag or ""))
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _app_err(exc)
@@ -992,20 +1046,24 @@ def reverse_ticket(
     context = AuditContext.from_request(request)
     action = WORKSHOP_TICKET_REVERSAL
     request_id = get_request_id_from_request(request)
+    local_scenario_tag: str | None = None
     try:
-        local_scenario_tag = _validate_local_ticket_write_gate(
-            mode="reversal",
-            scenario_tag=payload.scenario_tag,
-            idempotency_key=payload.idempotency_key,
-            ticket_key=payload.ticket_key,
-            job_card=payload.job_card,
-            source_ref=payload.source_ref,
-            employee_or_operator=payload.operator_id or payload.employee,
-            batch_no=payload.batch_no,
-            operation=payload.operation,
-            request_id=request_id,
-            request_obj=request,
-        )
+        if _is_local_workshop_write_enabled() and _has_local_ticket_carriers(payload):
+            local_scenario_tag = _validate_local_ticket_write_gate(
+                mode="reversal",
+                scenario_tag=payload.scenario_tag,
+                idempotency_key=payload.idempotency_key,
+                ticket_key=payload.ticket_key,
+                job_card=payload.job_card,
+                source_ref=payload.source_ref,
+                employee_or_operator=payload.operator_id or payload.employee,
+                batch_no=payload.batch_no,
+                operation=payload.operation,
+                request_id=request_id,
+                request_obj=request,
+            )
+        else:
+            local_scenario_tag = _match_scenario_tag(str(payload.scenario_tag or ""))
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _app_err(exc)
@@ -1130,12 +1188,16 @@ def batch_tickets(
     context = AuditContext.from_request(request)
     action = WORKSHOP_TICKET_BATCH
     request_id = get_request_id_from_request(request)
+    local_scenario_tag: str | None = None
     try:
-        local_scenario_tag = _validate_local_ticket_batch_gate(
-            payload=payload,
-            request_id=request_id,
-            request_obj=request,
-        )
+        if _is_local_workshop_write_enabled() and _has_local_ticket_batch_carriers(payload):
+            local_scenario_tag = _validate_local_ticket_batch_gate(
+                payload=payload,
+                request_id=request_id,
+                request_obj=request,
+            )
+        else:
+            local_scenario_tag = _match_batch_scenario_tag(str(payload.scenario_tag or ""))
     except AppException as exc:
         _rollback_safely(session=session, request=request, action=action, origin=exc)
         return _app_err(exc)
@@ -1927,15 +1989,20 @@ def create_wage_rate(
 
     try:
         resource = service.resolve_wage_rate_resource(item_code=payload.item_code, company=payload.company)
-        _validate_local_wage_request_id_gate(
-            request_obj=request,
-            request_id=request_id,
-            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag],
-            expected_company=resource.company or "GLOBAL",
-            expected_process_name=payload.process_name,
-            expected_item_scope=resource.item_code or "GLOBAL",
-            expected_effective_from=payload.effective_from,
-        )
+        if _is_local_workshop_write_enabled() and _has_local_wage_carriers(
+            payload.idempotency_key,
+            payload.source_ref,
+            payload.scenario_tag,
+        ):
+            _validate_local_wage_request_id_gate(
+                request_obj=request,
+                request_id=request_id,
+                carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag],
+                expected_company=resource.company or "GLOBAL",
+                expected_process_name=payload.process_name,
+                expected_item_scope=resource.item_code or "GLOBAL",
+                expected_effective_from=payload.effective_from,
+            )
         if resource.is_global:
             permission_service.require_action(
                 current_user=current_user,
@@ -2057,15 +2124,21 @@ def deactivate_wage_rate(
             payload=payload,
             before_data=before_data,
         )
-        _validate_local_wage_request_id_gate(
-            request_obj=request,
-            request_id=request_id,
-            carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.reason],
-            expected_company=before_data.get("company") or "GLOBAL",
-            expected_process_name=before_data.get("process_name"),
-            expected_item_scope=before_data.get("item_code") or "GLOBAL",
-            expected_effective_from=before_data.get("effective_from"),
-        )
+        if _is_local_workshop_write_enabled() and _has_local_wage_carriers(
+            payload.idempotency_key,
+            payload.source_ref,
+            payload.scenario_tag,
+            payload.reason,
+        ):
+            _validate_local_wage_request_id_gate(
+                request_obj=request,
+                request_id=request_id,
+                carriers=[payload.idempotency_key, payload.source_ref, payload.scenario_tag, payload.reason],
+                expected_company=before_data.get("company") or "GLOBAL",
+                expected_process_name=before_data.get("process_name"),
+                expected_item_scope=before_data.get("item_code") or "GLOBAL",
+                expected_effective_from=before_data.get("effective_from"),
+            )
         target_item_code = before_data.get("item_code")
         target_company = before_data.get("company")
 

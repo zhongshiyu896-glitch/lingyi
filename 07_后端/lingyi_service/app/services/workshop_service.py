@@ -1234,7 +1234,7 @@ class WorkshopService:
                     work_date=row.work_date,
                     source=row.source,
                     source_ref=row.source_ref,
-                    operation=row.operation,
+                    operation=row.operation or self.OP_REGISTER,
                     operator_id=row.operator_id,
                     batch_no=row.batch_no,
                 ),
@@ -1260,7 +1260,7 @@ class WorkshopService:
                     original_ticket_id=row.original_ticket_id,
                     source_ref=row.source_ref,
                     reason=row.reason or "batch reversal",
-                    operation=row.operation,
+                    operation=row.operation or self.OP_REVERSAL,
                     operator_id=row.operator_id,
                     batch_no=row.batch_no,
                 ),
@@ -1377,6 +1377,27 @@ class WorkshopService:
         local_scenario_tag: str | None = None,
     ) -> Decimal:
         try:
+            if local_scenario_tag and self._is_local_synthetic_context_enabled():
+                local_companies = list(dict.fromkeys([self._local_synthetic_company(), WORKSHOP_LOCAL_DEFAULT_COMPANY]))
+                local_rows = (
+                    self.session.query(LyOperationWageRate)
+                    .filter(
+                        and_(
+                            LyOperationWageRate.status == "active",
+                            LyOperationWageRate.is_global.is_(False),
+                            LyOperationWageRate.item_code == item_code,
+                            LyOperationWageRate.company.in_(local_companies),
+                            LyOperationWageRate.process_name == process_name,
+                            LyOperationWageRate.effective_from <= work_date,
+                            or_(LyOperationWageRate.effective_to.is_(None), LyOperationWageRate.effective_to >= work_date),
+                        )
+                    )
+                    .order_by(desc(LyOperationWageRate.effective_from), desc(LyOperationWageRate.id))
+                    .all()
+                )
+                if local_rows:
+                    return self._round(Decimal(local_rows[0].wage_rate))
+
             specific_rows = (
                 self.session.query(LyOperationWageRate)
                 .filter(
@@ -1493,7 +1514,7 @@ class WorkshopService:
     def _is_local_synthetic_context_enabled() -> bool:
         app_env = os.getenv("APP_ENV", "").strip().lower()
         db_url = os.getenv("LINGYI_DB_URL", "").strip()
-        return app_env == "development" and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
+        return app_env in {"development", "test"} and db_url == WORKSHOP_LOCAL_ALLOWED_DB_URL
 
     @staticmethod
     def _extract_local_scenario_tag_from_text(value: str) -> str | None:
