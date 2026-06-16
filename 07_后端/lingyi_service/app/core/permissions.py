@@ -93,6 +93,9 @@ SALES_INVENTORY_DIAGNOSTIC = "sales_inventory:diagnostic"
 MASTER_DATA_READ = "master_data:read"
 MASTER_DATA_MANAGE = "master_data:manage"
 
+SAMPLE_READ = "sample:read"
+SAMPLE_MANAGE = "sample:manage"
+
 SALES_READ = "sales:read"
 SALES_EXPORT = "sales:export"
 INVENTORY_READ = "inventory:read"
@@ -232,6 +235,11 @@ ALL_MASTER_DATA_ACTIONS = {
     MASTER_DATA_MANAGE,
 }
 
+ALL_SAMPLE_ACTIONS = {
+    SAMPLE_READ,
+    SAMPLE_MANAGE,
+}
+
 ALL_SALES_ACTIONS = {
     SALES_READ,
     SALES_EXPORT,
@@ -304,6 +312,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_FRONTEND_CONTRACT_ACTIONS
         | ALL_SALES_INVENTORY_ACTIONS
         | ALL_MASTER_DATA_ACTIONS
+        | ALL_SAMPLE_ACTIONS
         | ALL_SALES_ACTIONS
         | ALL_INVENTORY_ACTIONS
         | ALL_WAREHOUSE_ACTIONS
@@ -367,8 +376,10 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         SALES_INVENTORY_READ,
         SALES_INVENTORY_EXPORT,
         MASTER_DATA_READ,
+        SAMPLE_READ,
     },
     "Master Data Manager": set(ALL_MASTER_DATA_ACTIONS),
+    "Sample Manager": set(ALL_SAMPLE_ACTIONS),
     "Quality Manager": {
         QUALITY_READ,
         QUALITY_CREATE,
@@ -424,6 +435,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "frontend_contract": set(ALL_FRONTEND_CONTRACT_ACTIONS),
     "sales_inventory": set(ALL_SALES_INVENTORY_ACTIONS),
     "master_data": set(ALL_MASTER_DATA_ACTIONS),
+    "sample": set(ALL_SAMPLE_ACTIONS),
     "sales": set(ALL_SALES_ACTIONS),
     "inventory": set(ALL_INVENTORY_ACTIONS),
     "warehouse": set(ALL_WAREHOUSE_ACTIONS),
