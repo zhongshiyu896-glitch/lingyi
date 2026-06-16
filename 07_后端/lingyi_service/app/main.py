@@ -62,6 +62,7 @@ from app.core.permissions import FACTORY_STATEMENT_CONFIRM
 from app.core.permissions import FACTORY_STATEMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_READ
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
+from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_READ
@@ -428,6 +429,10 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
             if method == "POST":
                 return "factory_statement", FACTORY_STATEMENT_CREATE, "FactoryStatement", None
             return "factory_statement", FACTORY_STATEMENT_READ, "FactoryStatement", None
+        if path in {"/api/factory-statements/payments", "/api/factory-statements/payments/"}:
+            if method == "POST":
+                return "factory_statement", FACTORY_STATEMENT_PAYMENT_CREATE, "FactoryStatementPayment", None
+            return "factory_statement", FACTORY_STATEMENT_READ, "FactoryStatementPayment", None
         if path.endswith("/internal/payable-draft-sync/run-once"):
             return (
                 "factory_statement",
@@ -436,6 +441,13 @@ def _infer_security_target(request: Request) -> tuple[str, str | None, str | Non
                 None,
             )
         statement_id = _extract_factory_statement_id(path)
+        if path.endswith("/payments") and method == "POST":
+            return (
+                "factory_statement",
+                FACTORY_STATEMENT_PAYMENT_CREATE,
+                "FactoryStatementPayment",
+                statement_id,
+            )
         if path.endswith("/confirm"):
             return "factory_statement", FACTORY_STATEMENT_CONFIRM, "FactoryStatement", statement_id
         if path.endswith("/cancel"):

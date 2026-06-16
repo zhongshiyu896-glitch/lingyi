@@ -27,6 +27,10 @@ from app.core.error_codes import FACTORY_STATEMENT_ERPNEXT_UNAVAILABLE
 from app.core.error_codes import FACTORY_STATEMENT_INVALID_STATUS
 from app.core.error_codes import FACTORY_STATEMENT_IDEMPOTENCY_CONFLICT
 from app.core.error_codes import FACTORY_STATEMENT_INTERNAL_ERROR
+from app.core.error_codes import FACTORY_STATEMENT_PAYMENT_ALREADY_PAID
+from app.core.error_codes import FACTORY_STATEMENT_PAYMENT_AMOUNT_EXCEEDED
+from app.core.error_codes import FACTORY_STATEMENT_PAYMENT_CONFLICT
+from app.core.error_codes import FACTORY_STATEMENT_PAYMENT_INVALID_PAYLOAD
 from app.core.error_codes import FACTORY_STATEMENT_PAYABLE_ACCOUNT_INVALID
 from app.core.error_codes import FACTORY_STATEMENT_PAYABLE_ALREADY_CREATED
 from app.core.error_codes import FACTORY_STATEMENT_PAYABLE_OUTBOX_ACTIVE
@@ -43,6 +47,7 @@ from app.models.factory_statement import LyFactoryStatementItem
 from app.models.factory_statement import LyFactoryStatementLog
 from app.models.factory_statement import LyFactoryStatementOperation
 from app.models.factory_statement import LyFactoryStatementPayableOutbox
+from app.models.factory_statement import LyFactoryStatementPayment
 from app.models.subcontract import LySubcontractInspection
 from app.models.subcontract import LySubcontractOrder
 from app.schemas.factory_statement import FactoryStatementCancelData
@@ -87,6 +92,9 @@ from app.schemas.factory_statement import FactoryStatementLogData
 from app.schemas.factory_statement import FactoryStatementPayableDraftData
 from app.schemas.factory_statement import FactoryStatementPayableOutboxData
 from app.schemas.factory_statement import FactoryStatementPayableDraftRequest
+from app.schemas.factory_statement import FactoryStatementPaymentCreateRequest
+from app.schemas.factory_statement import FactoryStatementPaymentData
+from app.schemas.factory_statement import FactoryStatementPaymentListData
 from app.services.erpnext_purchase_invoice_adapter import ERPNextPurchaseInvoiceAdapter
 from app.services.factory_statement_payable_outbox_service import FactoryStatementPayableOutboxService
 
@@ -113,6 +121,7 @@ class FactoryStatementService:
     _OP_CONFIRM = "confirm"
     _OP_CANCEL = "cancel"
     _OP_PAYABLE_DRAFT_CREATE = "payable_draft_create"
+    _OP_PAYMENT_CREATE = "create_payment_entry"
     _LOCAL_ALLOWED_DB_URL = "sqlite:///./lingyi_service.local.db"
 
     def __init__(self, session: Session):
@@ -463,49 +472,14 @@ class FactoryStatementService:
 
         statement_ids = [int(row.id) for row in rows]
         latest_payable_map = self._fetch_latest_payable_outbox_map(statement_ids=statement_ids)
+        paid_amount_map = self._fetch_paid_amount_map(statement_ids=statement_ids)
 
         return FactoryStatementListData(
             items=[
-                FactoryStatementListItem(
-                    id=int(row.id),
-                    statement_no=str(row.statement_no),
-                    company=str(row.company),
-                    supplier=str(row.supplier),
-                    from_date=row.from_date,
-                    to_date=row.to_date,
-                    source_count=int(row.source_count or 0),
-                    gross_amount=self._to_decimal(row.gross_amount),
-                    deduction_amount=self._to_decimal(row.deduction_amount),
-                    net_amount=self._to_decimal(row.net_amount),
-                    rejected_rate=self._to_decimal(row.rejected_rate),
-                    statement_status=str(row.statement_status),
-                    payable_outbox_id=(
-                        int(latest_payable_map[int(row.id)].id)
-                        if latest_payable_map.get(int(row.id)) is not None
-                        else None
-                    ),
-                    payable_outbox_status=(
-                        str(latest_payable_map[int(row.id)].status)
-                        if latest_payable_map.get(int(row.id)) is not None
-                        else None
-                    ),
-                    purchase_invoice_name=(
-                        self._normalize_text(latest_payable_map[int(row.id)].erpnext_purchase_invoice)
-                        if latest_payable_map.get(int(row.id)) is not None
-                        else None
-                    ),
-                    payable_error_code=(
-                        self._normalize_text(latest_payable_map[int(row.id)].last_error_code)
-                        if latest_payable_map.get(int(row.id)) is not None
-                        else None
-                    ),
-                    payable_error_message=(
-                        self._normalize_text(latest_payable_map[int(row.id)].last_error_message)
-                        if latest_payable_map.get(int(row.id)) is not None
-                        else None
-                    ),
-                    created_by=str(row.created_by),
-                    created_at=row.created_at,
+                self._to_list_item(
+                    row=row,
+                    latest_payable=latest_payable_map.get(int(row.id)),
+                    paid_amount=paid_amount_map.get(int(row.id), Decimal("0")),
                 )
                 for row in rows
             ],
@@ -543,6 +517,12 @@ class FactoryStatementService:
                 .order_by(LyFactoryStatementPayableOutbox.created_at.desc(), LyFactoryStatementPayableOutbox.id.desc())
                 .all()
             )
+            payments = (
+                self.session.query(LyFactoryStatementPayment)
+                .filter(LyFactoryStatementPayment.statement_id == statement_id)
+                .order_by(LyFactoryStatementPayment.created_at.desc(), LyFactoryStatementPayment.id.desc())
+                .all()
+            )
         except BusinessException:
             raise
         except SQLAlchemyError as exc:
@@ -551,6 +531,8 @@ class FactoryStatementService:
             raise BusinessException(code=FACTORY_STATEMENT_INTERNAL_ERROR) from exc
 
         latest_payable = payable_outboxes[0] if payable_outboxes else None
+        paid_amount = sum((self._to_decimal(row.paid_amount) for row in payments if str(row.status) == "submitted"), Decimal("0"))
+        outstanding_amount = self._compute_outstanding_amount(net_amount=self._to_decimal(statement.net_amount), paid_amount=paid_amount)
 
         return FactoryStatementDetailData(
             statement_id=int(statement.id),
@@ -567,6 +549,9 @@ class FactoryStatementService:
             gross_amount=self._to_decimal(statement.gross_amount),
             deduction_amount=self._to_decimal(statement.deduction_amount),
             net_amount=self._to_decimal(statement.net_amount),
+            paid_amount=paid_amount,
+            outstanding_amount=outstanding_amount,
+            payment_status=self._payment_status(net_amount=self._to_decimal(statement.net_amount), paid_amount=paid_amount),
             rejected_rate=self._to_decimal(statement.rejected_rate),
             idempotency_key=str(statement.idempotency_key),
             created_by=str(statement.created_by),
@@ -631,6 +616,7 @@ class FactoryStatementService:
                 )
                 for row in payable_outboxes
             ],
+            payments=[self._to_payment_data(row) for row in payments],
         )
 
     def get_expense_reimbursement_payments(
@@ -3679,6 +3665,182 @@ class FactoryStatementService:
             idempotent_replay=False,
         )
 
+    def create_payment_entry(
+        self,
+        *,
+        statement_id: int,
+        payload: FactoryStatementPaymentCreateRequest,
+        operator: str,
+        request_id: str,
+    ) -> FactoryStatementPaymentData:
+        """Create FastAPI-native payment entry allocated to one factory statement."""
+        company = self._normalize_text(payload.company)
+        supplier = self._normalize_text(payload.supplier)
+        statement_no = self._normalize_text(payload.statement_no)
+        idempotency_key = self._normalize_text(payload.idempotency_key)
+        operation = self._normalize_text(payload.operation) or self._OP_PAYMENT_CREATE
+
+        if not company:
+            raise BusinessException(code=FACTORY_STATEMENT_COMPANY_REQUIRED)
+        if not idempotency_key:
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="idempotency_key 不能为空")
+        if operation != self._OP_PAYMENT_CREATE:
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="operation 非法")
+
+        paid_amount = self._to_decimal(payload.paid_amount)
+        if paid_amount <= Decimal("0"):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_INVALID_PAYLOAD, message="paid_amount 必须大于 0")
+
+        mode_of_payment = self._normalize_text(payload.mode_of_payment) or "Bank Transfer"
+        reference_no = self._normalize_text(payload.reference_no)
+
+        try:
+            statement = (
+                self.session.query(LyFactoryStatement)
+                .filter(LyFactoryStatement.id == statement_id)
+                .with_for_update()
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+        if statement is None:
+            raise BusinessException(code=FACTORY_STATEMENT_SOURCE_NOT_FOUND)
+        if company != str(statement.company):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="company 与对账单不一致")
+        if supplier is not None and supplier != str(statement.supplier):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="supplier 与对账单不一致")
+        if statement_no is not None and statement_no != str(statement.statement_no):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="statement_no 与对账单不一致")
+        if str(statement.statement_status) not in {self._STATUS_CONFIRMED, self._STATUS_PAYABLE_DRAFT_CREATED}:
+            raise BusinessException(code=FACTORY_STATEMENT_STATUS_INVALID)
+
+        source_ref = self._normalize_text(payload.source_ref) or f"{statement.statement_no}:{idempotency_key}"
+        requested_payment_entry = self._normalize_text(payload.payment_entry)
+        request_hash = self._build_payment_request_hash(
+            {
+                "company": company,
+                "statement_id": int(statement.id),
+                "statement_no": str(statement.statement_no),
+                "supplier": str(statement.supplier),
+                "posting_date": payload.posting_date.isoformat(),
+                "paid_amount": str(paid_amount),
+                "mode_of_payment": mode_of_payment,
+                "reference_no": reference_no,
+                "reference_date": payload.reference_date.isoformat() if payload.reference_date else None,
+                "requested_payment_entry": requested_payment_entry,
+                "source_ref": source_ref,
+            }
+        )
+
+        existing_idem = self._find_payment_by_idempotency(company=company, idempotency_key=idempotency_key)
+        if existing_idem is not None:
+            if str(existing_idem.request_hash) != request_hash:
+                raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="幂等键冲突且请求内容不一致")
+            return self._to_payment_data(existing_idem)
+
+        existing_source = self._find_payment_by_source_ref(company=company, source_ref=source_ref)
+        if existing_source is not None:
+            if str(existing_source.request_hash) != request_hash:
+                raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="source_ref 已存在且请求内容不一致")
+            return self._to_payment_data(existing_source)
+
+        outstanding_before = self._compute_outstanding_amount(
+            net_amount=self._to_decimal(statement.net_amount),
+            paid_amount=self._paid_amount_for_statement(statement_id=int(statement.id)),
+        )
+        if outstanding_before <= Decimal("0"):
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_ALREADY_PAID)
+        if paid_amount > outstanding_before:
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_AMOUNT_EXCEEDED)
+
+        payment_entry = requested_payment_entry or self._next_factory_statement_payment_entry(
+            company=company,
+            posting_date=payload.posting_date,
+        )
+        existing_payment = self._find_payment_by_no(company=company, payment_entry=payment_entry)
+        if existing_payment is not None:
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT, message="payment_entry 已存在")
+
+        outstanding_after = outstanding_before - paid_amount
+        row = LyFactoryStatementPayment(
+            company=company,
+            payment_entry=payment_entry,
+            statement_id=int(statement.id),
+            statement_no=str(statement.statement_no),
+            supplier=str(statement.supplier),
+            posting_date=payload.posting_date,
+            paid_amount=paid_amount,
+            allocated_amount=paid_amount,
+            outstanding_before=outstanding_before,
+            outstanding_after=outstanding_after,
+            mode_of_payment=mode_of_payment,
+            reference_no=reference_no,
+            reference_date=payload.reference_date,
+            status="submitted",
+            docstatus=1,
+            source_ref=source_ref,
+            idempotency_key=idempotency_key,
+            request_hash=request_hash,
+            scenario_tag=self._normalize_text(payload.scenario_tag),
+            payload={
+                "operation": operation,
+                "scenario_tag": self._normalize_text(payload.scenario_tag),
+                "statement_no": str(statement.statement_no),
+            },
+            created_by=self._normalize_text(operator) or "system",
+        )
+        self.session.add(row)
+        self.session.add(
+            LyFactoryStatementLog(
+                statement_id=int(statement.id),
+                company=str(statement.company),
+                supplier=str(statement.supplier),
+                from_status=str(statement.statement_status),
+                to_status=str(statement.statement_status),
+                action="factory_statement:payment_create",
+                operator=self._normalize_text(operator) or "system",
+                request_id=self._normalize_text(request_id),
+                remark=f"payment:{payment_entry}",
+            )
+        )
+        try:
+            self.session.flush()
+        except IntegrityError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_PAYMENT_CONFLICT) from exc
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_WRITE_FAILED) from exc
+        return self._to_payment_data(row)
+
+    def list_payment_entries(
+        self,
+        *,
+        company: str | None,
+        statement_id: int | None,
+        statement_no: str | None,
+        supplier: str | None,
+        status: str | None,
+        keyword: str | None,
+        page: int,
+        page_size: int,
+    ) -> FactoryStatementPaymentListData:
+        rows = self._query_payment_entries(
+            company=company,
+            statement_id=statement_id,
+            statement_no=statement_no,
+            supplier=supplier,
+            status=status,
+            keyword=keyword,
+        )
+        total = len(rows)
+        start = max((page - 1) * page_size, 0)
+        return FactoryStatementPaymentListData(
+            items=[self._to_payment_data(row) for row in rows[start : start + page_size]],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
     def _has_locked_source(
         self,
         *,
@@ -3840,6 +4002,144 @@ class FactoryStatementService:
             if statement_id not in latest_map:
                 latest_map[statement_id] = row
         return latest_map
+
+    def _fetch_paid_amount_map(self, *, statement_ids: list[int]) -> dict[int, Decimal]:
+        if not statement_ids:
+            return {}
+        try:
+            rows = (
+                self.session.query(
+                    LyFactoryStatementPayment.statement_id,
+                    func.coalesce(func.sum(LyFactoryStatementPayment.paid_amount), 0),
+                )
+                .filter(
+                    LyFactoryStatementPayment.statement_id.in_(statement_ids),
+                    LyFactoryStatementPayment.status == "submitted",
+                )
+                .group_by(LyFactoryStatementPayment.statement_id)
+                .all()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+        return {int(statement_id): self._to_decimal(amount) for statement_id, amount in rows}
+
+    def _paid_amount_for_statement(self, *, statement_id: int) -> Decimal:
+        try:
+            amount = (
+                self.session.query(func.coalesce(func.sum(LyFactoryStatementPayment.paid_amount), 0))
+                .filter(
+                    LyFactoryStatementPayment.statement_id == statement_id,
+                    LyFactoryStatementPayment.status == "submitted",
+                )
+                .scalar()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+        return self._to_decimal(amount)
+
+    def _find_payment_by_idempotency(
+        self,
+        *,
+        company: str,
+        idempotency_key: str,
+    ) -> LyFactoryStatementPayment | None:
+        try:
+            return (
+                self.session.query(LyFactoryStatementPayment)
+                .filter(
+                    LyFactoryStatementPayment.company == company,
+                    LyFactoryStatementPayment.idempotency_key == idempotency_key,
+                )
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+    def _find_payment_by_source_ref(
+        self,
+        *,
+        company: str,
+        source_ref: str,
+    ) -> LyFactoryStatementPayment | None:
+        try:
+            return (
+                self.session.query(LyFactoryStatementPayment)
+                .filter(
+                    LyFactoryStatementPayment.company == company,
+                    LyFactoryStatementPayment.source_ref == source_ref,
+                )
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+    def _find_payment_by_no(
+        self,
+        *,
+        company: str,
+        payment_entry: str,
+    ) -> LyFactoryStatementPayment | None:
+        try:
+            return (
+                self.session.query(LyFactoryStatementPayment)
+                .filter(
+                    LyFactoryStatementPayment.company == company,
+                    LyFactoryStatementPayment.payment_entry == payment_entry,
+                )
+                .one_or_none()
+            )
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+    def _query_payment_entries(
+        self,
+        *,
+        company: str | None,
+        statement_id: int | None,
+        statement_no: str | None,
+        supplier: str | None,
+        status: str | None,
+        keyword: str | None,
+    ) -> list[LyFactoryStatementPayment]:
+        try:
+            query = self.session.query(LyFactoryStatementPayment)
+            normalized_company = self._normalize_text(company)
+            normalized_statement_no = self._normalize_text(statement_no)
+            normalized_supplier = self._normalize_text(supplier)
+            normalized_status = self._normalize_text(status)
+            if normalized_company:
+                query = query.filter(LyFactoryStatementPayment.company == normalized_company)
+            if statement_id is not None:
+                query = query.filter(LyFactoryStatementPayment.statement_id == int(statement_id))
+            if normalized_statement_no:
+                query = query.filter(LyFactoryStatementPayment.statement_no == normalized_statement_no)
+            if normalized_supplier:
+                query = query.filter(LyFactoryStatementPayment.supplier == normalized_supplier)
+            if normalized_status:
+                query = query.filter(LyFactoryStatementPayment.status == normalized_status)
+            rows = query.order_by(LyFactoryStatementPayment.created_at.desc(), LyFactoryStatementPayment.id.desc()).all()
+        except SQLAlchemyError as exc:
+            raise BusinessException(code=FACTORY_STATEMENT_DATABASE_READ_FAILED) from exc
+
+        normalized_keyword = self._normalize_text(keyword)
+        if normalized_keyword:
+            rows = [
+                row
+                for row in rows
+                if self._contains_like(
+                    " ".join(
+                        [
+                            str(row.payment_entry),
+                            str(row.statement_no),
+                            str(row.supplier),
+                            str(row.mode_of_payment),
+                            self._normalize_text(row.reference_no) or "",
+                        ]
+                    ),
+                    normalized_keyword,
+                )
+            ]
+        return rows
 
     def _find_operation_by_idempotency(
         self,
@@ -4013,16 +4313,102 @@ class FactoryStatementService:
         return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     @staticmethod
+    def _build_payment_request_hash(payload: dict[str, object]) -> str:
+        serialized = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+    @staticmethod
     def _build_statement_no() -> str:
         now = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
         suffix = uuid.uuid4().hex[:6].upper()
         return f"FS-{now}-{suffix}"
+
+    def _next_factory_statement_payment_entry(self, *, company: str, posting_date: date) -> str:
+        prefix = f"FSP-{posting_date.strftime('%Y%m%d')}-"
+        latest = (
+            self.session.query(LyFactoryStatementPayment)
+            .filter(
+                LyFactoryStatementPayment.company == company,
+                LyFactoryStatementPayment.payment_entry.like(f"{prefix}%"),
+            )
+            .order_by(LyFactoryStatementPayment.id.desc())
+            .first()
+        )
+        return f"{prefix}{self._next_numeric_tail(latest.payment_entry if latest is not None else None, prefix):03d}"
+
+    @staticmethod
+    def _next_numeric_tail(value: object | None, prefix: str) -> int:
+        if value is None:
+            return 1
+        tail = str(value).replace(prefix, "", 1)
+        if tail.isdigit():
+            return int(tail) + 1
+        return 1
 
     @staticmethod
     def _compute_rejected_rate(*, inspected_qty: Decimal, rejected_qty: Decimal) -> Decimal:
         if inspected_qty <= 0:
             return Decimal("0")
         return (rejected_qty / inspected_qty).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+    @staticmethod
+    def _compute_outstanding_amount(*, net_amount: Decimal, paid_amount: Decimal) -> Decimal:
+        outstanding = net_amount - paid_amount
+        return outstanding if outstanding > Decimal("0") else Decimal("0")
+
+    @staticmethod
+    def _payment_status(*, net_amount: Decimal, paid_amount: Decimal) -> str:
+        if net_amount <= Decimal("0"):
+            return "paid"
+        if paid_amount <= Decimal("0"):
+            return "unpaid"
+        if paid_amount >= net_amount:
+            return "paid"
+        return "partly_paid"
+
+    @staticmethod
+    def _contains_like(value: str, keyword: str) -> bool:
+        return keyword.lower() in value.lower()
+
+    def _to_list_item(
+        self,
+        *,
+        row: LyFactoryStatement,
+        latest_payable: LyFactoryStatementPayableOutbox | None,
+        paid_amount: Decimal,
+    ) -> FactoryStatementListItem:
+        net_amount = self._to_decimal(row.net_amount)
+        outstanding_amount = self._compute_outstanding_amount(net_amount=net_amount, paid_amount=paid_amount)
+        return FactoryStatementListItem(
+            id=int(row.id),
+            statement_no=str(row.statement_no),
+            company=str(row.company),
+            supplier=str(row.supplier),
+            from_date=row.from_date,
+            to_date=row.to_date,
+            source_count=int(row.source_count or 0),
+            gross_amount=self._to_decimal(row.gross_amount),
+            deduction_amount=self._to_decimal(row.deduction_amount),
+            net_amount=net_amount,
+            paid_amount=paid_amount,
+            outstanding_amount=outstanding_amount,
+            payment_status=self._payment_status(net_amount=net_amount, paid_amount=paid_amount),
+            rejected_rate=self._to_decimal(row.rejected_rate),
+            statement_status=str(row.statement_status),
+            payable_outbox_id=int(latest_payable.id) if latest_payable is not None else None,
+            payable_outbox_status=str(latest_payable.status) if latest_payable is not None else None,
+            purchase_invoice_name=(
+                self._normalize_text(latest_payable.erpnext_purchase_invoice) if latest_payable is not None else None
+            ),
+            payable_error_code=(
+                self._normalize_text(latest_payable.last_error_code) if latest_payable is not None else None
+            ),
+            payable_error_message=(
+                self._normalize_text(latest_payable.last_error_message) if latest_payable is not None else None
+            ),
+            created_by=str(row.created_by),
+            created_at=row.created_at,
+        )
 
     def _to_create_data(self, row: LyFactoryStatement, *, idempotent_replay: bool) -> FactoryStatementCreateData:
         return FactoryStatementCreateData(
@@ -4104,4 +4490,29 @@ class FactoryStatementService:
             purchase_invoice_name=self._normalize_text(row.erpnext_purchase_invoice),
             net_amount=self._to_decimal(statement.net_amount),
             idempotent_replay=idempotent_replay,
+        )
+
+    def _to_payment_data(self, row: LyFactoryStatementPayment) -> FactoryStatementPaymentData:
+        return FactoryStatementPaymentData(
+            id=int(row.id),
+            company=str(row.company),
+            payment_entry=str(row.payment_entry),
+            statement_id=int(row.statement_id),
+            statement_no=str(row.statement_no),
+            supplier=str(row.supplier),
+            posting_date=row.posting_date,
+            paid_amount=self._to_decimal(row.paid_amount),
+            allocated_amount=self._to_decimal(row.allocated_amount),
+            outstanding_before=self._to_decimal(row.outstanding_before),
+            outstanding_after=self._to_decimal(row.outstanding_after),
+            mode_of_payment=str(row.mode_of_payment),
+            reference_no=self._normalize_text(row.reference_no),
+            reference_date=row.reference_date,
+            status=str(row.status),
+            docstatus=int(row.docstatus or 0),
+            source_ref=str(row.source_ref),
+            idempotency_key=str(row.idempotency_key),
+            scenario_tag=self._normalize_text(row.scenario_tag),
+            created_by=str(row.created_by),
+            created_at=row.created_at,
         )

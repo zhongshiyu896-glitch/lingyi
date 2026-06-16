@@ -57,6 +57,9 @@ class FactoryStatementListItem(BaseModel):
     gross_amount: Decimal
     deduction_amount: Decimal
     net_amount: Decimal
+    paid_amount: Decimal = Decimal("0")
+    outstanding_amount: Decimal = Decimal("0")
+    payment_status: str = "unpaid"
     rejected_rate: Decimal
     statement_status: str
     payable_outbox_id: int | None = None
@@ -574,6 +577,59 @@ class FactoryStatementPayableOutboxData(BaseModel):
     updated_at: datetime
 
 
+class FactoryStatementPaymentCreateRequest(BaseModel):
+    """Create FastAPI-native factory statement payment payload."""
+
+    company: str = Field(..., min_length=1, max_length=140)
+    supplier: str | None = Field(default=None, max_length=140)
+    statement_no: str | None = Field(default=None, max_length=140)
+    posting_date: date
+    paid_amount: Decimal
+    mode_of_payment: str = Field(default="Bank Transfer", max_length=140)
+    reference_no: str | None = Field(default=None, max_length=140)
+    reference_date: date | None = None
+    payment_entry: str | None = Field(default=None, max_length=140)
+    source_ref: str | None = Field(default=None, max_length=140)
+    idempotency_key: str = Field(..., min_length=1, max_length=140)
+    scenario_tag: str | None = Field(default=None, max_length=64)
+    operation: str | None = Field(default="create_payment_entry", max_length=64)
+
+
+class FactoryStatementPaymentData(BaseModel):
+    """FastAPI-native factory statement payment response."""
+
+    id: int
+    company: str
+    payment_entry: str
+    statement_id: int
+    statement_no: str
+    supplier: str
+    posting_date: date
+    paid_amount: Decimal
+    allocated_amount: Decimal
+    outstanding_before: Decimal
+    outstanding_after: Decimal
+    mode_of_payment: str
+    reference_no: str | None = None
+    reference_date: date | None = None
+    status: str
+    docstatus: int
+    source_ref: str
+    idempotency_key: str
+    scenario_tag: str | None = None
+    created_by: str
+    created_at: datetime
+
+
+class FactoryStatementPaymentListData(BaseModel):
+    """Paginated factory statement payment response."""
+
+    items: list[FactoryStatementPaymentData]
+    total: int
+    page: int
+    page_size: int
+
+
 class FactoryStatementDetailData(BaseModel):
     """Statement detail payload."""
 
@@ -591,6 +647,9 @@ class FactoryStatementDetailData(BaseModel):
     gross_amount: Decimal
     deduction_amount: Decimal
     net_amount: Decimal
+    paid_amount: Decimal = Decimal("0")
+    outstanding_amount: Decimal = Decimal("0")
+    payment_status: str = "unpaid"
     rejected_rate: Decimal
     idempotency_key: str
     created_by: str
@@ -603,6 +662,7 @@ class FactoryStatementDetailData(BaseModel):
     items: list[FactoryStatementItemData]
     logs: list[FactoryStatementLogData] = Field(default_factory=list)
     payable_outboxes: list[FactoryStatementPayableOutboxData] = Field(default_factory=list)
+    payments: list[FactoryStatementPaymentData] = Field(default_factory=list)
 
 
 class FactoryStatementConfirmRequest(BaseModel):
