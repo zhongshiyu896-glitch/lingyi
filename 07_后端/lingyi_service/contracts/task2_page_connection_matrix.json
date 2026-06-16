@@ -1,0 +1,50 @@
+{
+  "task": "task2_page_connection_matrix",
+  "scope": "backend_contract_only_no_frontend_read",
+  "sources": [
+    "contracts/frontend_backend_page_matrix.json",
+    "contracts/frontend_backend_page_matrix.md",
+    "contracts/frontend_readiness_page_handoff.md",
+    "contracts/frontend_readiness_field_contract.json",
+    "contracts/backend_interface_asset_catalog.json"
+  ],
+  "backend_catalog_counts": {
+    "A": 185,
+    "B": 19,
+    "C": 7,
+    "D": 11
+  },
+  "page_matrix_counts": {
+    "total_pages": 48,
+    "real_backend_route": 15,
+    "dev_readiness_only": 0,
+    "api_path_miss": 0,
+    "missing_api_path": 33,
+    "p1_first_readonly_connect": 13,
+    "p4_hold": 2,
+    "p3_needs_product_contract": 33
+  },
+  "direct_connect_pages": [
+    {"module": "首页", "page": "首页", "route": "/dashboard/workplace", "api": "/api/dashboard/overview?company=<company>"},
+    {"module": "基础资料", "page": "客户", "route": "/foundation/customer", "api": "/api/sales-inventory/customers"},
+    {"module": "基础资料", "page": "仓库管理", "route": "/foundation/warehouse", "api": "/api/sales-inventory/warehouses"},
+    {"module": "物料开发", "page": "面料", "route": "/material/materialFabric", "api": "/api/bom/fabrics"},
+    {"module": "物料开发", "page": "辅料/包材", "route": "/material/materialAccessory", "api": "/api/bom/accessories-packaging"},
+    {"module": "物料开发", "page": "物料图库", "route": "/material/materialGalleryList", "api": "/api/bom/material-gallery"},
+    {"module": "物料开发", "page": "物料加工类型", "route": "/material/materialProcessType", "api": "/api/bom/processing-types"},
+    {"module": "物料开发", "page": "物料类型", "route": "/material/materialCategory", "api": "/api/bom/material-types"},
+    {"module": "物料开发", "page": "物料单位", "route": "/material/materialUnit", "api": "/api/bom/material-units"},
+    {"module": "大货管理", "page": "订单", "route": "/production/productOrder", "api": "/api/sales-inventory/sales-orders"},
+    {"module": "大货管理", "page": "大货跟进", "route": "/production/orderTrackingV2", "api": "/api/production/plans"},
+    {"module": "物料采购", "page": "物料加工", "route": "/materialPurchase/materialProcess", "api": "/api/subcontract/"},
+    {"module": "物料进销存", "page": "物料进销存报表", "route": "/materialStock/materialTransfer", "api": "/api/warehouse/stock-ledger"}
+  ],
+  "hold_pages": [
+    {"module": "大货管理", "page": "大货看板", "route": "/production/home", "api": "/api/dashboard/overview?company=<company>", "reason": "ProductionDashboard contract not finalized"},
+    {"module": "物料进销存", "page": "物料库存", "route": "/materialStock/materialTypeStock", "api": "/api/warehouse/stock-ledger", "reason": "stock_finance_core_decision_parked"}
+  ],
+  "parked_architecture_decisions": [
+    "production_permission_source_detach_from_erpnext",
+    "self_built_stock_finance_core"
+  ]
+}
