@@ -30,8 +30,8 @@
 | P1_first_readonly_connect | 物料开发 | 物料加工类型 | `/material/materialProcessType` | `/api/bom/processing-types` | real_backend_route | BomProcessingTypeItem |
 | P1_first_readonly_connect | 物料开发 | 物料类型 | `/material/materialCategory` | `/api/bom/material-types` | real_backend_route | MaterialTypeTree: 树形层级为前端派生，后端无 children/level/order 字段 |
 | P1_first_readonly_connect | 物料开发 | 物料单位 | `/material/materialUnit` | `/api/bom/material-units` | real_backend_route | BomMaterialUnitItem |
-| P3_needs_product_contract | 设计打样 | 样板单 | `/sample/sampleListV2` | `` | missing_api_path | SampleOrder: contract 缺少 SampleOrder schema |
-| P3_needs_product_contract | 设计打样 | 跟进模板 | `/sample/trackingTemplate` | `` | missing_api_path | SampleTrackingTemplate: contract 缺少 SampleTrackingTemplate schema |
+| P1_first_readonly_connect | 设计打样 | 样板单 | `/sample/sampleListV2` | `/api/sample/orders` | real_backend_route | SampleOrderItem, SampleOrderCreateRequest；转大货生成 A4 销售订单草稿，样衣成本归集待 B 期 |
+| P1_first_readonly_connect | 设计打样 | 跟进模板 | `/sample/trackingTemplate` | `/api/sample/tracking-templates` | real_backend_route | SampleTrackingTemplateItem, SampleTrackingNodeItem |
 | P4_hold | 大货管理 | 大货看板 | `/production/home` | `/api/dashboard/overview?company=<company>` | real_backend_route | ProductionDashboard: contract 缺少 ProductionDashboard schema |
 | P3_needs_product_contract | 大货管理 | 报价单 | `/production/productQuote` | `` | missing_api_path | ProductQuote: 契约无 ProductQuote schema，不伪装为 sales-orders |
 | P1_first_readonly_connect | 大货管理 | 订单 | `/production/productOrder` | `/api/sales-inventory/sales-orders` | real_backend_route | SalesOrderListItem, SalesOrderDraftCreateRequest |

@@ -20,6 +20,10 @@ from app.models.sample import LySampleIdempotency
 from app.models.sample import LySampleOrder
 from app.models.sample import LySampleTrackingNode
 from app.models.sample import LySampleTrackingTemplate
+from app.models.sales_order import Base as SalesOrderBase
+from app.models.sales_order import LySalesOrder
+from app.models.sales_order import LySalesOrderIdempotency
+from app.models.sales_order import LySalesOrderItem
 from app.routers.auth import get_db_session as auth_db_dep
 from app.routers.sample import get_db_session as sample_db_dep
 
@@ -38,6 +42,7 @@ class SampleApiTest(unittest.TestCase):
         )
         cls.SessionLocal = sessionmaker(bind=cls.engine, autoflush=False, autocommit=False, expire_on_commit=False)
         SampleBase.metadata.create_all(bind=cls.engine)
+        SalesOrderBase.metadata.create_all(bind=cls.engine)
         AuditBase.metadata.create_all(bind=cls.engine)
 
         def _override_db():
@@ -68,6 +73,9 @@ class SampleApiTest(unittest.TestCase):
         with self.SessionLocal() as session:
             session.query(LyOperationAuditLog).delete()
             session.query(LySecurityAuditLog).delete()
+            session.query(LySalesOrderIdempotency).delete()
+            session.query(LySalesOrderItem).delete()
+            session.query(LySalesOrder).delete()
             session.query(LySampleIdempotency).delete()
             session.query(LySampleTrackingNode).delete()
             session.query(LySampleTrackingTemplate).delete()
@@ -199,7 +207,7 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(denied.status_code, 403)
         self.assertEqual(denied.json()["code"], "AUTH_FORBIDDEN")
 
-    def test_sample_order_convert_creates_bulk_handoff_only(self) -> None:
+    def test_sample_order_convert_creates_sales_order_draft(self) -> None:
         created = self.client.post(
             "/api/sample/orders",
             headers=self._headers(request_id="SAMPLE-CONVERT-001"),
@@ -225,14 +233,65 @@ class SampleApiTest(unittest.TestCase):
         self.assertEqual(converted.status_code, 200)
         data = converted.json()["data"]
         self.assertEqual(data["status"], "converted")
-        self.assertEqual(data["bulk_handoff_no"], "BULK-HANDOFF-SMP-A3-CONVERT")
-        self.assertEqual(data["bulk_handoff_status"], "待 A4 销售订单草稿落库")
+        self.assertTrue(data["bulk_handoff_no"].startswith("SO-"))
+        self.assertEqual(data["bulk_handoff_status"], "已生成 A4 销售订单草稿")
 
         with self.SessionLocal() as session:
             row = session.query(LySampleOrder).one()
+            sales_order = session.query(LySalesOrder).one()
+            sales_item = session.query(LySalesOrderItem).one()
             self.assertEqual(row.status, "converted")
-            self.assertEqual(row.bulk_handoff_no, "BULK-HANDOFF-SMP-A3-CONVERT")
+            self.assertEqual(row.bulk_handoff_no, sales_order.sales_order_no)
+            self.assertEqual(sales_order.status, "draft")
+            self.assertEqual(sales_order.customer, "A3 客户")
+            self.assertEqual(sales_order.source_order_ref, "SAMPLE-SMP-A3-CONVERT")
+            self.assertEqual(sales_item.item_code, "ST-A3-001")
+            self.assertEqual(str(sales_item.qty), "1.000000")
+            self.assertEqual(session.query(LySalesOrderIdempotency).count(), 1)
             self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "sample").count(), 2)
+
+    def test_sample_order_convert_can_use_target_sales_order_no(self) -> None:
+        created = self.client.post(
+            "/api/sample/orders",
+            headers=self._headers(request_id="SAMPLE-CONVERT-TARGET-001"),
+            json={
+                **self._order_payload(sample_no="SMP-A3-CONVERT-TARGET", idempotency_key="IDEMP-SMP-A3-CONVERT-TARGET-C"),
+                "status": "sealed",
+                "stage": "已封样",
+                "progress": 100,
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        order_id = int(created.json()["data"]["id"])
+
+        converted = self.client.post(
+            f"/api/sample/orders/{order_id}/convert-to-bulk",
+            headers=self._headers(request_id="SAMPLE-CONVERT-TARGET-002"),
+            json={
+                "operation": "convert",
+                "company": "COMP-A",
+                "target_sales_order": "SO-SAMPLE-A3-TARGET",
+                "idempotency_key": "IDEMP-SMP-A3-CONVERT-TARGET-X",
+            },
+        )
+        self.assertEqual(converted.status_code, 200)
+        self.assertEqual(converted.json()["data"]["bulk_handoff_no"], "SO-SAMPLE-A3-TARGET")
+
+        retry = self.client.post(
+            f"/api/sample/orders/{order_id}/convert-to-bulk",
+            headers=self._headers(request_id="SAMPLE-CONVERT-TARGET-003"),
+            json={
+                "operation": "convert",
+                "company": "COMP-A",
+                "target_sales_order": "SO-SAMPLE-A3-TARGET",
+                "idempotency_key": "IDEMP-SMP-A3-CONVERT-TARGET-X",
+            },
+        )
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(retry.json()["data"]["bulk_handoff_no"], "SO-SAMPLE-A3-TARGET")
+
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LySalesOrder).count(), 1)
 
     def test_tracking_template_and_node_create(self) -> None:
         created = self.client.post(

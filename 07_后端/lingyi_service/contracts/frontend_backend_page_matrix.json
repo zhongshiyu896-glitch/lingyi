@@ -357,15 +357,18 @@
       "page": "样板单",
       "page_route": "/sample/sampleListV2",
       "template": "flow_diagram",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
-      "contract_schemas": [],
-      "field_gaps": [
-        "SampleOrder: contract 缺少 SampleOrder schema"
+      "data_kind": "sample",
+      "api_path": "/api/sample/orders",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "SampleOrderItem",
+        "SampleOrderCreateRequest"
       ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [
+        "SampleOrder: API 模式转大货生成 A4 销售订单草稿；样衣成本归集待 B 期"
+      ],
+      "priority": "P1_first_readonly_connect"
     },
     {
       "index": 47,
@@ -373,15 +376,18 @@
       "page": "跟进模板",
       "page_route": "/sample/trackingTemplate",
       "template": "config_list",
-      "data_kind": "contractGap",
-      "api_path": null,
-      "backend_status": "missing_api_path",
-      "backend_class": null,
-      "contract_schemas": [],
-      "field_gaps": [
-        "SampleTrackingTemplate: contract 缺少 SampleTrackingTemplate schema"
+      "data_kind": "sample",
+      "api_path": "/api/sample/tracking-templates",
+      "backend_status": "real_backend_route",
+      "backend_class": "A",
+      "contract_schemas": [
+        "SampleTrackingTemplateItem",
+        "SampleTrackingNodeItem"
       ],
-      "priority": "P3_needs_product_contract"
+      "field_gaps": [
+        "SampleTrackingTemplate: API 模式已接 FastAPI 原生模板和节点表"
+      ],
+      "priority": "P1_first_readonly_connect"
     },
     {
       "index": 48,

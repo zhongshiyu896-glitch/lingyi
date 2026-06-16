@@ -59,8 +59,8 @@
 | 基础资料 | 出纳账户 | `/foundation/bankAccount` | `BankAccount` schema 缺失；候选 `/api/factory-statements/cashier-accounts` 为 dev readiness。 |
 | 基础资料 | 工艺要求模板 | `/foundation/workmanshipTemplate` | `WorkmanshipTemplate` schema 缺失；可参考 `/api/bom/process-requirement-templates`。 |
 | 基础资料 | 尺寸表模板 | `/foundation/sizeSpecTemplate` | `SizeSpecTemplate` schema 缺失；候选 `/api/bom/size-chart-templates` 为 dev readiness。 |
-| 设计打样 | 样板单 | `/sample/sampleListV2` | `SampleOrder` schema 缺失；候选 `/api/bom/sample-orders` 为 dev readiness。 |
-| 设计打样 | 跟进模板 | `/sample/trackingTemplate` | `SampleTrackingTemplate` schema 缺失；后端已有 `/api/production/followup-templates`，需确认是否复用。 |
+| 设计打样 | 样板单 | `/sample/sampleListV2` | 已接 `/api/sample/orders`；样板单建档/编辑/提交/反审核/转大货真实落库，转大货生成 A4 销售订单草稿。 |
+| 设计打样 | 跟进模板 | `/sample/trackingTemplate` | 已接 `/api/sample/tracking-templates`；模板和节点真实落库。 |
 | 大货管理 | 报价单 | `/production/productQuote` | `ProductQuote` schema 缺失，不伪装为 sales-orders。 |
 | 大货管理 | 跟进模板 | `/production/factoryPacking/pending` | `ProductionTrackingTemplate` schema 缺失。 |
 | 大货管理 | 下单进出数量明细表 | `/production/factoryPacking/list` | `FactoryPacking` schema 缺失。 |

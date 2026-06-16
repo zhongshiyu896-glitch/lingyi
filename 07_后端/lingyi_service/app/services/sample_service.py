@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC
 from datetime import date
 from datetime import datetime
+from decimal import Decimal
 import hashlib
 import json
 from typing import Any
@@ -21,6 +22,7 @@ from app.core.error_codes import DATABASE_READ_FAILED
 from app.core.error_codes import DATABASE_WRITE_FAILED
 from app.core.error_codes import SAMPLE_CONFLICT
 from app.core.error_codes import SAMPLE_IDEMPOTENCY_CONFLICT
+from app.core.error_codes import SAMPLE_INTERNAL_ERROR
 from app.core.error_codes import SAMPLE_INVALID_STATUS
 from app.core.error_codes import SAMPLE_NOT_FOUND
 from app.core.exceptions import BusinessException
@@ -39,6 +41,10 @@ from app.schemas.sample import SampleTrackingNodeItem
 from app.schemas.sample import SampleTrackingTemplateCreateRequest
 from app.schemas.sample import SampleTrackingTemplateItem
 from app.schemas.sample import SampleTrackingTemplateListData
+from app.schemas.sales_inventory import SalesOrderDraftCreateRequest
+from app.schemas.sales_inventory import SalesOrderDraftLineItemCreateRequest
+from app.services.sales_inventory_service import SalesInventoryService
+from app.services.sales_inventory_service import SalesInventoryServiceError
 
 
 @dataclass(frozen=True)
@@ -232,16 +238,13 @@ class SampleService:
         company = self._require_text(payload.company, "company")
         idempotency_key = self._require_text(payload.idempotency_key, "idempotency_key")
         row = self._get_order_for_mutation(order_id=order_id, company=company)
-        if row.status != "sealed":
-            raise BusinessException(code=SAMPLE_INVALID_STATUS, message="只有已封样的样板单可以转大货衔接")
         target_sales_order = self._optional_text(payload.target_sales_order)
-        handoff_no = target_sales_order or f"BULK-HANDOFF-{row.sample_no}"
         request_hash = self._request_hash(
             operation="convert",
             entity_type="order",
             company=company,
             order_id=order_id,
-            handoff_no=handoff_no,
+            target_sales_order=target_sales_order,
         )
         idem = self._get_idempotency(entity_type="order", company=company, idempotency_key=idempotency_key)
         if idem:
@@ -249,14 +252,22 @@ class SampleService:
             idem_row = self._get_order_by_id(idem.record_id)
             after = self._snapshot_order(idem_row)
             return self._order_result(row=idem_row, before=after, after=after, idempotent=True)
+        if row.status != "sealed":
+            raise BusinessException(code=SAMPLE_INVALID_STATUS, message="只有已封样的样板单可以转大货衔接")
 
         before = self._snapshot_order(row)
         try:
+            sales_draft = self._create_sales_order_draft_from_sample(
+                row=row,
+                target_sales_order=target_sales_order,
+                idempotency_key=idempotency_key,
+                actor=actor,
+            )
             row.status = "converted"
             row.stage = "已转大货"
             row.progress = 100
-            row.bulk_handoff_no = handoff_no
-            row.bulk_handoff_status = "待 A4 销售订单草稿落库"
+            row.bulk_handoff_no = sales_draft.sales_order_no
+            row.bulk_handoff_status = "已生成 A4 销售订单草稿"
             row.converted_by = actor
             row.converted_at = datetime.now(UTC)
             row.updated_by = actor
@@ -271,6 +282,10 @@ class SampleService:
                 actor=actor,
             )
             self.session.flush()
+        except SalesInventoryServiceError as exc:
+            if exc.code == "SALES_ORDER_IDEMPOTENCY_CONFLICT":
+                raise BusinessException(code=SAMPLE_CONFLICT, message=exc.message) from exc
+            raise BusinessException(code=SAMPLE_INTERNAL_ERROR, message=exc.message) from exc
         except (IntegrityError, OperationalError, DBAPIError, SQLAlchemyError) as exc:
             raise BusinessException(code=DATABASE_WRITE_FAILED) from exc
         after = self._snapshot_order(row)
@@ -725,6 +740,56 @@ class SampleService:
             reminder=row.reminder,
             sequence_no=int(row.sequence_no or 0),
         )
+
+    def _create_sales_order_draft_from_sample(
+        self,
+        *,
+        row: LySampleOrder,
+        target_sales_order: str | None,
+        idempotency_key: str,
+        actor: str,
+    ):
+        sales_idempotency_key = self._sales_draft_idempotency_key(
+            company=row.company,
+            sample_no=row.sample_no,
+            sample_idempotency_key=idempotency_key,
+        )
+        return SalesInventoryService(session=self.session).create_sales_order_draft(
+            payload=SalesOrderDraftCreateRequest(
+                company=row.company,
+                customer=row.customer,
+                operation="create_draft",
+                scenario_tag="sample_convert",
+                sales_order_no=target_sales_order,
+                source_order_ref=f"SAMPLE-{row.sample_no}",
+                idempotency_key=sales_idempotency_key,
+                transaction_date=date.today(),
+                delivery_date=row.due_date,
+                currency="CNY",
+                items=[
+                    SalesOrderDraftLineItemCreateRequest(
+                        item_code=row.style_no,
+                        item_name=row.style_name,
+                        qty=Decimal("1"),
+                        rate=None,
+                        uom="件",
+                        delivery_date=row.due_date,
+                    )
+                ],
+            ),
+            current_user=actor,
+            scenario_tag="sample_convert",
+        )
+
+    @classmethod
+    def _sales_draft_idempotency_key(cls, *, company: str, sample_no: str, sample_idempotency_key: str) -> str:
+        digest = cls._request_hash(
+            operation="sample_convert_sales_order_draft",
+            company=company,
+            sample_no=sample_no,
+            idempotency_key=sample_idempotency_key,
+        )
+        return f"SAMPLE-CONVERT-{digest[:24]}"
 
     def _order_result(self, *, row: LySampleOrder, before: dict[str, Any] | None, after: dict[str, Any], idempotent: bool = False) -> SampleMutationResult:
         return SampleMutationResult(

@@ -71,7 +71,7 @@ class SampleOrderStatusRequest(BaseModel):
 
 
 class SampleOrderConvertRequest(BaseModel):
-    """Create a sample-to-bulk handoff record on the sample order."""
+    """Convert a sealed sample order into a local sales-order draft."""
 
     operation: Literal["convert"] = "convert"
     company: str = Field(default="默认公司", min_length=1, max_length=140)
