@@ -144,6 +144,19 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
         self.assertEqual(data["warehouse"], "WH-A")
         self.assertEqual(data["variance_stats"]["variance_items"], 1)
         self.assertEqual(data["items"][0]["variance_qty"], "-2.000000")
+        with self.SessionLocal() as session:
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:inventory_count",
+                    LyOperationAuditLog.resource_type == "warehouse_inventory_count",
+                    LyOperationAuditLog.resource_id == int(data["id"]),
+                    LyOperationAuditLog.result == "success",
+                )
+                .one()
+            )
+            self.assertEqual(audit.resource_no, data["count_no"])
 
     def test_inventory_write_only_cannot_create_inventory_count(self) -> None:
         response = self.client.post(
@@ -163,6 +176,18 @@ class WarehouseInventoryCountApiTest(WarehouseInventoryCountApiBase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["code"], "WAREHOUSE_INVALID_QTY")
+        with self.SessionLocal() as session:
+            audit = (
+                session.query(LyOperationAuditLog)
+                .filter(
+                    LyOperationAuditLog.module == "warehouse",
+                    LyOperationAuditLog.action == "warehouse:inventory_count",
+                    LyOperationAuditLog.result == "failed",
+                    LyOperationAuditLog.error_code == "WAREHOUSE_INVALID_QTY",
+                )
+                .one()
+            )
+            self.assertEqual(audit.resource_no, payload["source_ref"])
 
     def test_variance_without_reason_returns_400(self) -> None:
         payload = self._payload()

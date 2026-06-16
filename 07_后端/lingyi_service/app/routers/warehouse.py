@@ -816,6 +816,53 @@ def _raise_service_error(exc: WarehouseServiceError) -> None:
     ) from exc
 
 
+def _record_inventory_count_success(
+    *,
+    session: Session,
+    request: Request,
+    current_user: CurrentUser,
+    data: Any,
+    before_data: dict[str, Any] | None = None,
+) -> None:
+    AuditService(session).record_success(
+        module="warehouse",
+        action=WAREHOUSE_INVENTORY_COUNT,
+        operator=current_user.username,
+        operator_roles=current_user.roles,
+        resource_type="warehouse_inventory_count",
+        resource_id=int(data.id),
+        resource_no=str(data.count_no),
+        before_data=before_data,
+        after_data=data.model_dump(mode="json"),
+        context=AuditContext.from_request(request),
+    )
+
+
+def _record_inventory_count_failure(
+    *,
+    session: Session,
+    request: Request,
+    current_user: CurrentUser,
+    error_code: str,
+    before_data: dict[str, Any] | None = None,
+    resource_id: int | None = None,
+    resource_no: str | None = None,
+) -> None:
+    AuditService(session).record_failure(
+        module="warehouse",
+        action=WAREHOUSE_INVENTORY_COUNT,
+        operator=current_user.username,
+        operator_roles=current_user.roles,
+        resource_type="warehouse_inventory_count",
+        resource_id=resource_id,
+        resource_no=resource_no,
+        before_data=before_data,
+        after_data=None,
+        error_code=error_code,
+        context=AuditContext.from_request(request),
+    )
+
+
 def _ensure_scope_required_text(value: str | None, field_name: str) -> str:
     text = _scope_text(value)
     if text is None:
@@ -3006,9 +3053,18 @@ def create_inventory_count(
 
     try:
         data = _write_service(session).create_inventory_count(payload=payload, current_user=current_user.username)
+        _record_inventory_count_success(session=session, request=request, current_user=current_user, data=data)
         session.commit()
     except WarehouseServiceError as exc:
         session.rollback()
+        _record_inventory_count_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            error_code=exc.code,
+            resource_no=payload.source_ref,
+        )
+        session.commit()
         _raise_service_error(exc)
     except Exception:
         session.rollback()
@@ -3068,9 +3124,26 @@ def submit_inventory_count(
 
     try:
         data = _write_service(session).submit_inventory_count(count_id=count_id, submitted_by=current_user.username)
+        _record_inventory_count_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            data=data,
+            before_data=before_data,
+        )
         session.commit()
     except WarehouseServiceError as exc:
         session.rollback()
+        _record_inventory_count_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            error_code=exc.code,
+            before_data=before_data,
+            resource_id=count_id,
+            resource_no=str(before_data.get("count_no") or ""),
+        )
+        session.commit()
         _raise_service_error(exc)
     except Exception:
         session.rollback()
@@ -3135,9 +3208,26 @@ def variance_review_inventory_count(
             payload=payload,
             reviewed_by=current_user.username,
         )
+        _record_inventory_count_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            data=data,
+            before_data=before_data,
+        )
         session.commit()
     except WarehouseServiceError as exc:
         session.rollback()
+        _record_inventory_count_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            error_code=exc.code,
+            before_data=before_data,
+            resource_id=count_id,
+            resource_no=str(before_data.get("count_no") or ""),
+        )
+        session.commit()
         _raise_service_error(exc)
     except Exception:
         session.rollback()
@@ -3197,9 +3287,26 @@ def confirm_inventory_count(
 
     try:
         data = _write_service(session).confirm_inventory_count(count_id=count_id, confirmed_by=current_user.username)
+        _record_inventory_count_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            data=data,
+            before_data=before_data,
+        )
         session.commit()
     except WarehouseServiceError as exc:
         session.rollback()
+        _record_inventory_count_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            error_code=exc.code,
+            before_data=before_data,
+            resource_id=count_id,
+            resource_no=str(before_data.get("count_no") or ""),
+        )
+        session.commit()
         _raise_service_error(exc)
     except Exception:
         session.rollback()
@@ -3264,9 +3371,26 @@ def cancel_inventory_count(
             reason=payload.reason,
             cancelled_by=current_user.username,
         )
+        _record_inventory_count_success(
+            session=session,
+            request=request,
+            current_user=current_user,
+            data=data,
+            before_data=before_data,
+        )
         session.commit()
     except WarehouseServiceError as exc:
         session.rollback()
+        _record_inventory_count_failure(
+            session=session,
+            request=request,
+            current_user=current_user,
+            error_code=exc.code,
+            before_data=before_data,
+            resource_id=count_id,
+            resource_no=str(before_data.get("count_no") or ""),
+        )
+        session.commit()
         _raise_service_error(exc)
     except Exception:
         session.rollback()
