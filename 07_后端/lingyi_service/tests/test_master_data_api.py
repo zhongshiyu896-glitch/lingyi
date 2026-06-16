@@ -212,6 +212,80 @@ class MasterDataApiTest(unittest.TestCase):
         self.assertTrue(deactivated.json()["data"]["disabled"])
         self.assertEqual(deactivated.json()["data"]["status"], "inactive")
 
+    def test_material_payload_update_and_deactivate(self) -> None:
+        created = self.client.post(
+            "/api/master-data/materials",
+            headers=self._headers(request_id="MASTER-DATA-MAT-001"),
+            json={
+                "operation": "create",
+                "company": "COMP-A",
+                "code": "FAB-A2-001",
+                "name": "A2 面料",
+                "idempotency_key": "IDEMP-MAT-A2-001-C",
+                "payload": {
+                    "material_kind": "fabric",
+                    "material_item_code": "FAB-A2-001",
+                    "fabric_name": "A2 面料",
+                    "supplier_name": "青禾面辅料",
+                    "uom": "米",
+                    "qty_per_piece": 1.25,
+                    "loss_rate": 0.03,
+                    "status": "active",
+                },
+            },
+        )
+        self.assertEqual(created.status_code, 201)
+        record_id = int(created.json()["data"]["id"])
+        self.assertEqual(created.json()["data"]["payload"]["material_kind"], "fabric")
+
+        updated = self.client.patch(
+            f"/api/master-data/materials/{record_id}",
+            headers=self._headers(request_id="MASTER-DATA-MAT-002"),
+            json={
+                "operation": "update",
+                "company": "COMP-A",
+                "code": "FAB-A2-001",
+                "name": "A2 面料修改",
+                "idempotency_key": "IDEMP-MAT-A2-001-U",
+                "payload": {
+                    "material_kind": "fabric",
+                    "material_item_code": "FAB-A2-001",
+                    "fabric_name": "A2 面料修改",
+                    "supplier_name": "锦程纺织",
+                    "uom": "米",
+                    "qty_per_piece": 1.5,
+                    "loss_rate": 0.04,
+                    "status": "active",
+                },
+            },
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["data"]["name"], "A2 面料修改")
+        self.assertEqual(updated.json()["data"]["payload"]["supplier_name"], "锦程纺织")
+
+        listed = self.client.get(
+            "/api/master-data/materials?company=COMP-A&keyword=FAB-A2-001",
+            headers=self._headers(request_id="MASTER-DATA-MAT-003"),
+        )
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json()["data"]["total"], 1)
+
+        deactivated = self.client.post(
+            f"/api/master-data/materials/{record_id}/deactivate",
+            headers=self._headers(request_id="MASTER-DATA-MAT-004"),
+            json={
+                "operation": "deactivate",
+                "company": "COMP-A",
+                "reason": "物料停用测试",
+                "idempotency_key": "IDEMP-MAT-A2-001-X",
+            },
+        )
+        self.assertEqual(deactivated.status_code, 200)
+        self.assertTrue(deactivated.json()["data"]["disabled"])
+        with self.SessionLocal() as session:
+            self.assertEqual(session.query(LyMasterDataRecord).filter(LyMasterDataRecord.entity_type == "material").count(), 1)
+            self.assertEqual(session.query(LyOperationAuditLog).filter(LyOperationAuditLog.module == "master_data").count(), 3)
+
     def test_manage_permission_fails_closed(self) -> None:
         response = self.client.post(
             "/api/master-data/customers",
