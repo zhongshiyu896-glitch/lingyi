@@ -29,7 +29,6 @@ MAX_PAGE_SIZE = 100
 
 EARLY_READINESS_ENDPOINTS: dict[str, str] = {
     "/api/subcontract/factories": "factories",
-    "/api/bom/styles": "styles",
     "/api/bom/colors": "colors",
     "/api/bom/sizes": "sizes",
     "/api/bom/units": "units",
@@ -46,7 +45,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
     "/api/warehouse/finished-goods-inbound": "finished_goods_inbound",
     "/api/sales-inventory/delivery-notes": "delivery_notes",
     "/api/sales-inventory/sales-invoices": "sales_invoices",
-    "/api/factory-statements/customer-receivables": "customer_receivables",
     "/api/warehouse/inventory-balance-reconciliation": "inventory_balance_reconciliation",
     "/api/style-profit/style-costs": "style_costs",
     "/api/factory-statements/settlement-methods": "settlement_methods",
@@ -62,7 +60,6 @@ EARLY_READINESS_ENDPOINTS: dict[str, str] = {
 
 READINESS_ENDPOINTS: dict[str, str] = {
     "/api/sales-inventory/delivery-addresses": "delivery_addresses",
-    "/api/sales-inventory/warehouses": "warehouses",
     "/api/sales-inventory/sales-channels": "sales_channels",
     "/api/production/followup-templates": "followup_templates",
 }

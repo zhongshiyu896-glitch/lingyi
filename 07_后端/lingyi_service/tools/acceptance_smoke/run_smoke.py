@@ -93,7 +93,6 @@ def _page_payload(seed_key: str, *, page: int = 1, page_size: int = 20) -> dict[
 
 GAP_PATHS = [
     "/api/subcontract/factories",
-    "/api/bom/styles",
     "/api/bom/colors",
     "/api/bom/sizes",
     "/api/bom/units",
@@ -110,7 +109,6 @@ GAP_PATHS = [
     "/api/warehouse/finished-goods-inbound",
     "/api/sales-inventory/delivery-notes",
     "/api/sales-inventory/sales-invoices",
-    "/api/factory-statements/customer-receivables",
     "/api/warehouse/inventory-balance-reconciliation",
     "/api/style-profit/style-costs",
     "/api/sales-inventory/delivery-addresses",
@@ -119,7 +117,6 @@ GAP_PATHS = [
     "/api/bom/sample-types",
     "/api/factory-statements/expense-types",
     "/api/bom/size-sortings",
-    "/api/sales-inventory/warehouses",
     "/api/sales-inventory/sales-channels",
     "/api/factory-statements/cashier-accounts",
     "/api/bom/process-requirement-templates",
@@ -139,7 +136,6 @@ WRITE_FLOW_PATHS = [
 ]
 
 FIELD_EXPECTATIONS = {
-    "/api/bom/styles": {"bom_no", "item_code", "version_no", "is_default", "status"},
     "/api/bom/style-bom-process": {"bom_no", "item_code", "process_name", "sequence_no", "unit_rate"},
     "/api/production/material-issues": {"work_order", "material_item_code", "required_qty", "issued_qty"},
     "/api/bom/material-requests": {"request_no", "material_item_code", "supplier_name", "qty", "status"},
@@ -161,12 +157,6 @@ FIELD_EXPECTATIONS = {
     "/api/warehouse/finished-goods-inbound": {"reservation_no", "item_code", "reserve_qty", "inbound_qty"},
     "/api/sales-inventory/delivery-notes": {"delivery_note", "sales_order", "customer", "delivered_qty"},
     "/api/sales-inventory/sales-invoices": {"sales_invoice", "sales_order", "grand_total", "outstanding_amount"},
-    "/api/factory-statements/customer-receivables": {
-        "summary_no",
-        "customer_code",
-        "current_receivable",
-        "ending_receivable",
-    },
     "/api/warehouse/inventory-balance-reconciliation": {"warehouse", "item_code", "book_qty", "actual_qty", "diff_qty"},
     "/api/style-profit/style-costs": {"snapshot_no", "item_code", "actual_total_cost", "profit_amount"},
 }
@@ -218,6 +208,7 @@ REAL_REUSE_EXPECTATIONS = {
     "/api/bom/fabrics": {"fabric_name", "material_item_code", "supplier_name", "qty_per_piece"},
     "/api/bom/accessories-packaging": {"material_name", "category", "supplier_name", "qty_per_piece"},
     "/api/bom/materials": {"item_code", "material_item_code", "material_type_name", "supplier_name", "status"},
+    "/api/bom/styles": {"bom_no", "item_code", "version_no", "is_default", "status"},
     "/api/bom/purchase-orders": {"purchase_no", "supplier_name", "material_item_code", "total_amount"},
     "/api/production/plans": {"plan_no", "sales_order", "item_code", "planned_qty"},
     "/api/production/work-orders": {"plan_no", "sales_order", "item_code", "work_order", "planned_qty"},
@@ -245,6 +236,13 @@ REAL_REUSE_EXPECTATIONS = {
     "/api/reports/approval-reports": {"approval_no", "approval_type", "approver", "status"},
     "/api/system/approval-flows": {"flow_key", "title", "audit_type", "status"},
     "/api/sales-inventory/suppliers": {"name", "supplier_name", "disabled"},
+    "/api/sales-inventory/warehouses": {"name", "company", "warehouse_name", "disabled"},
+    "/api/factory-statements/customer-receivables": {
+        "summary_no",
+        "customer_code",
+        "current_receivable",
+        "ending_receivable",
+    },
     "/api/reports/style-profit/snapshots?company=LY-FRONTEND-DEV&item_code=ITEM-FR-001": {
         "snapshot_no",
         "item_code",
@@ -255,6 +253,7 @@ REAL_REUSE_EXPECTATIONS = {
 
 def _patches_for_real_reuse_endpoints():
     return [
+        patch("app.services.bom_service.BomService.list_bom", return_value=_DumpablePage(_page_payload("styles"))),
         patch("app.services.bom_service.BomService.list_material_types", return_value=_DumpablePage(_page_payload("materials"))),
         patch("app.services.bom_service.BomService.list_material_gallery", return_value=_DumpablePage(_page_payload("material_gallery"))),
         patch("app.services.bom_service.BomService.list_fabrics", return_value=_DumpablePage(_page_payload("fabrics"))),
@@ -282,6 +281,10 @@ def _patches_for_real_reuse_endpoints():
         patch(
             "app.services.factory_statement_service.FactoryStatementService.get_factory_payable_summaries",
             return_value=_DumpablePage(_page_payload("factory_payable_summaries")),
+        ),
+        patch(
+            "app.services.factory_statement_service.FactoryStatementService.get_customer_receivable_summaries",
+            return_value=_DumpablePage(_page_payload("customer_receivables")),
         ),
         patch(
             "app.services.production_service.ProductionService.list_plans",
@@ -386,6 +389,11 @@ def _patches_for_real_reuse_endpoints():
         patch(
             "app.services.sales_inventory_service.SalesInventoryService.list_local_suppliers",
             return_value=SalesInventoryListData[SupplierItem].model_validate(_page_payload("suppliers")),
+        ),
+        patch.object(
+            ERPNextSalesInventoryAdapter,
+            "list_warehouses",
+            return_value=(GAP_LIST_ROWS["warehouses"], len(GAP_LIST_ROWS["warehouses"])),
         ),
     ]
 

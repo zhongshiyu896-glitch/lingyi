@@ -1850,6 +1850,7 @@ def list_customer_unpaid_reports(
         return _app_err(error)
 
 
+@router.get("/customer-receivables")
 @router.get("/customer-receivable-summaries")
 def list_customer_receivable_summaries(
     request: Request,

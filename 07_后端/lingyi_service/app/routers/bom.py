@@ -543,6 +543,7 @@ def create_bom(
         return _app_err(_unknown_to_internal_error(request, action, exc))
 
 
+@router.get("/styles")
 @router.get("/")
 def list_bom(
     request: Request,

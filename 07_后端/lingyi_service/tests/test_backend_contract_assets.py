@@ -38,7 +38,7 @@ class BackendContractAssetsTest(unittest.TestCase):
         app = load_app_for_env("test")
         catalog = {(row["method"], row["path"], row["endpoint_module"]): row for row in build_route_catalog(app)}
 
-        readiness_row = catalog[("GET", "/api/bom/styles", "app.routers.frontend_readiness")]
+        readiness_row = catalog[("GET", "/api/bom/colors", "app.routers.frontend_readiness")]
         self.assertEqual(readiness_row["class"], "B")
         self.assertFalse(readiness_row["is_real_write_db"])
         self.assertEqual(readiness_row["frontend_connect_status"], "temporary_dev_only")
@@ -46,8 +46,11 @@ class BackendContractAssetsTest(unittest.TestCase):
 
         for path, module_name in {
             "/api/bom/materials": "app.routers.bom",
+            "/api/bom/styles": "app.routers.bom",
             "/api/production/work-orders": "app.routers.production",
             "/api/sales-inventory/suppliers": "app.routers.sales_inventory",
+            "/api/sales-inventory/warehouses": "app.routers.sales_inventory",
+            "/api/factory-statements/customer-receivables": "app.routers.factory_statement",
         }.items():
             with self.subTest(path=path):
                 real_productized_row = catalog[("GET", path, module_name)]
@@ -69,13 +72,15 @@ class BackendContractAssetsTest(unittest.TestCase):
     def test_readiness_routes_are_dev_enabled_and_production_disabled(self) -> None:
         dev_app = load_app_for_env("test")
         dev_paths = {(method, route.path) for route in dev_app.routes for method in getattr(route, "methods", set())}
+        self.assertIn(("GET", "/api/bom/colors"), dev_paths)
         self.assertIn(("GET", "/api/bom/styles"), dev_paths)
         self.assertIn(("GET", "/api/bom/materials"), dev_paths)
         self.assertIn(("POST", "/api/production/readiness/work-order-flow"), dev_paths)
 
         prod_app = load_app_for_env("production")
         prod_paths = {(method, route.path) for route in prod_app.routes for method in getattr(route, "methods", set())}
-        self.assertNotIn(("GET", "/api/bom/styles"), prod_paths)
+        self.assertNotIn(("GET", "/api/bom/colors"), prod_paths)
+        self.assertIn(("GET", "/api/bom/styles"), prod_paths)
         self.assertIn(("GET", "/api/bom/materials"), prod_paths)
         self.assertNotIn(("POST", "/api/production/readiness/work-order-flow"), prod_paths)
 
@@ -84,6 +89,8 @@ class BackendContractAssetsTest(unittest.TestCase):
         core_paths = [
             "/api/bom/material-gallery",
             "/api/bom/materials",
+            "/api/bom/styles",
+            "/api/factory-statements/customer-receivables",
             "/api/production/plans",
             "/api/production/work-orders",
             "/api/sales-inventory/customers",

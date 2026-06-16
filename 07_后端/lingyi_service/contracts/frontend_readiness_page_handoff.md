@@ -7,12 +7,12 @@
 | 基础资料 | 客户 | GET | `/api/sales-inventory/customers` | `name, customer_name, disabled` | 是 |
 | 基础资料 | 供应商 | GET | `/api/sales-inventory/suppliers` | `name, supplier_name, disabled` | 真实 |
 | 基础资料 | 加工厂 | GET | `/api/subcontract/factories` | `factory_name, factory_code, review_status` | 是 |
-| 基础资料 | 仓库 | GET | `/api/sales-inventory/warehouses` | `name, company, warehouse_name, disabled` | 是 |
+| 基础资料 | 仓库 | GET | `/api/sales-inventory/warehouses` | `name, company, warehouse_name, disabled` | 真实 |
 | 基础资料 | 供应商评估 | GET | `/api/factory-statements/supplier-evaluations` | `evaluation_no, supplier, score, review_status` | 是 |
 | 基础资料 | 加工厂评估 | GET | `/api/factory-statements/factory-evaluations` | `evaluation_no, factory_name, score, review_status` | 是 |
 | 物料开发 | BOM | GET | `/api/bom/` | `bom_no, item_code, version_no, status` | 既有 |
 | 物料开发 | 物料档案 | GET | `/api/bom/materials` | `item_code, material_item_code, material_type_name` | 真实 |
-| 物料开发 | 款式档案 | GET | `/api/bom/styles` | `bom_no, item_code, version_no` | 是 |
+| 物料开发 | 款式档案 | GET | `/api/bom/styles` | `bom_no, item_code, version_no` | 真实 |
 | 物料开发 | 物料图库 | GET | `/api/bom/material-gallery` | `bom_no, material_item_code, qty_per_piece` | 是 |
 | 物料开发 | 面料 | GET | `/api/bom/fabrics` | `fabric_name, material_item_code, supplier_name` | 是 |
 | 物料开发 | 辅料包材 | GET | `/api/bom/accessories-packaging` | `material_name, category, supplier_name` | 是 |
@@ -41,7 +41,7 @@
 | 库存财务 | 完工入库 | GET | `/api/warehouse/finished-goods-inbound` | `reservation_no, inbound_qty, pending_inbound_qty` | 是 |
 | 库存财务 | 发货单 | GET | `/api/sales-inventory/delivery-notes` | `delivery_note, sales_order, delivered_qty` | 是 |
 | 库存财务 | 销售发票 | GET | `/api/sales-inventory/sales-invoices` | `sales_invoice, grand_total, outstanding_amount` | 是 |
-| 库存财务 | 应收 | GET | `/api/factory-statements/customer-receivables` | `summary_no, customer_code, ending_receivable` | 是 |
+| 库存财务 | 应收 | GET | `/api/factory-statements/customer-receivables` | `summary_no, customer_code, ending_receivable` | 真实 |
 | 库存财务 | 账实平 | GET | `/api/warehouse/inventory-balance-reconciliation` | `warehouse, item_code, book_qty, actual_qty, diff_qty` | 是 |
 | 质检工票 | 质检列表 | GET | `/api/quality/inspections` | `inspection_no, inspected_qty, accepted_qty, rejected_qty` | 是 |
 | 质检工票 | 质检统计 | GET | `/api/quality/statistics` | `total_count, total_inspected_qty, overall_defect_rate` | 是 |
