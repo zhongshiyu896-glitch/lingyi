@@ -35,6 +35,7 @@ from app.models.bom import LyApparelBom  # noqa: E402
 from app.models.bom import LyApparelBomItem  # noqa: E402
 from app.models.bom import LyBomOperation  # noqa: E402
 from app.models.factory_statement import Base as FactoryStatementBase  # noqa: E402
+from app.models.master_data import Base as MasterDataBase  # noqa: E402
 from app.models.production import Base as ProductionBase  # noqa: E402
 from app.models.quality import Base as QualityBase  # noqa: E402
 import app.models.quality_outbox  # noqa: E402,F401
@@ -66,6 +67,7 @@ def _create_local_tables() -> None:
     AuditBase.metadata.create_all(bind=main_module.engine)
     ProductionBase.metadata.create_all(bind=main_module.engine)
     FactoryStatementBase.metadata.create_all(bind=main_module.engine)
+    MasterDataBase.metadata.create_all(bind=main_module.engine)
     QualityBase.metadata.create_all(bind=main_module.engine)
     StyleProfitBase.metadata.create_all(bind=main_module.engine)
     WorkshopBase.metadata.create_all(bind=main_module.engine)

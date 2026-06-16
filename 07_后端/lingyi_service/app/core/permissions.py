@@ -1,7 +1,7 @@
-"""Permission constants and static fallback mapping.
+"""Permission constants and FastAPI-native role action mapping.
 
 注意：
-- static 角色映射仅为 Sprint 1 临时方案，生产前必须切换为 ERPNext 权限来源。
+- production 权限源必须为 FastAPI 原生；ERPNext 不再作为生产权限源。
 """
 
 from __future__ import annotations
@@ -89,6 +89,9 @@ FRONTEND_CONTRACT_DIAGNOSTIC = "frontend_contract:diagnostic"
 SALES_INVENTORY_READ = "sales_inventory:read"
 SALES_INVENTORY_EXPORT = "sales_inventory:export"
 SALES_INVENTORY_DIAGNOSTIC = "sales_inventory:diagnostic"
+
+MASTER_DATA_READ = "master_data:read"
+MASTER_DATA_MANAGE = "master_data:manage"
 
 SALES_READ = "sales:read"
 SALES_EXPORT = "sales:export"
@@ -224,6 +227,11 @@ ALL_SALES_INVENTORY_ACTIONS = {
     SALES_INVENTORY_DIAGNOSTIC,
 }
 
+ALL_MASTER_DATA_ACTIONS = {
+    MASTER_DATA_READ,
+    MASTER_DATA_MANAGE,
+}
+
 ALL_SALES_ACTIONS = {
     SALES_READ,
     SALES_EXPORT,
@@ -295,6 +303,7 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         | ALL_OUTBOX_ACTIONS
         | ALL_FRONTEND_CONTRACT_ACTIONS
         | ALL_SALES_INVENTORY_ACTIONS
+        | ALL_MASTER_DATA_ACTIONS
         | ALL_SALES_ACTIONS
         | ALL_INVENTORY_ACTIONS
         | ALL_WAREHOUSE_ACTIONS
@@ -357,7 +366,9 @@ DEFAULT_STATIC_ROLE_ACTIONS: dict[str, set[str]] = {
         STYLE_PROFIT_READ,
         SALES_INVENTORY_READ,
         SALES_INVENTORY_EXPORT,
+        MASTER_DATA_READ,
     },
+    "Master Data Manager": set(ALL_MASTER_DATA_ACTIONS),
     "Quality Manager": {
         QUALITY_READ,
         QUALITY_CREATE,
@@ -412,6 +423,7 @@ MODULE_ACTION_REGISTRY: dict[str, set[str]] = {
     "outbox": set(ALL_OUTBOX_ACTIONS),
     "frontend_contract": set(ALL_FRONTEND_CONTRACT_ACTIONS),
     "sales_inventory": set(ALL_SALES_INVENTORY_ACTIONS),
+    "master_data": set(ALL_MASTER_DATA_ACTIONS),
     "sales": set(ALL_SALES_ACTIONS),
     "inventory": set(ALL_INVENTORY_ACTIONS),
     "warehouse": set(ALL_WAREHOUSE_ACTIONS),

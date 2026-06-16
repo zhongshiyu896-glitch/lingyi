@@ -107,6 +107,8 @@ from app.routers.factory_statement import get_db_session as factory_statement_ro
 from app.routers.factory_statement import router as factory_statement_router
 from app.routers.sales_inventory import get_db_session as sales_inventory_router_session_dep
 from app.routers.sales_inventory import router as sales_inventory_router
+from app.routers.master_data import get_db_session as master_data_router_session_dep
+from app.routers.master_data import router as master_data_router
 from app.routers.quality import get_db_session as quality_router_session_dep
 from app.routers.quality import router as quality_router
 from app.routers.cross_module_view import get_db_session as cross_module_view_router_session_dep
@@ -159,6 +161,7 @@ app.dependency_overrides[workshop_router_session_dep] = get_db_session
 app.dependency_overrides[style_profit_router_session_dep] = get_db_session
 app.dependency_overrides[factory_statement_router_session_dep] = get_db_session
 app.dependency_overrides[sales_inventory_router_session_dep] = get_db_session
+app.dependency_overrides[master_data_router_session_dep] = get_db_session
 app.dependency_overrides[quality_router_session_dep] = get_db_session
 app.dependency_overrides[cross_module_view_router_session_dep] = get_db_session
 app.dependency_overrides[warehouse_router_session_dep] = get_db_session
@@ -177,6 +180,7 @@ app.include_router(style_profit_router)
 app.include_router(style_profit_compatibility_router)
 app.include_router(factory_statement_router)
 app.include_router(sales_inventory_router)
+app.include_router(master_data_router)
 app.include_router(quality_router)
 app.include_router(cross_module_view_router)
 app.include_router(warehouse_router)
