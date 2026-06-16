@@ -68,9 +68,24 @@ from app.core.permissions import FACTORY_STATEMENT_CANCEL
 from app.core.permissions import FACTORY_STATEMENT_READ
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE
 from app.core.permissions import FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER
+from app.core.permissions import FACTORY_STATEMENT_PAYMENT_CREATE
+from app.core.permissions import MASTER_DATA_MANAGE
+from app.core.permissions import MASTER_DATA_READ
+from app.core.permissions import MATERIAL_PURCHASE_READ
+from app.core.permissions import MATERIAL_PURCHASE_WRITE
+from app.core.permissions import REPORT_DIAGNOSTIC
+from app.core.permissions import REPORT_EXPORT
+from app.core.permissions import REPORT_READ
+from app.core.permissions import SAMPLE_MANAGE
+from app.core.permissions import SAMPLE_READ
 from app.core.permissions import SALES_INVENTORY_DIAGNOSTIC
 from app.core.permissions import SALES_INVENTORY_EXPORT
 from app.core.permissions import SALES_INVENTORY_READ
+from app.core.permissions import SALES_INVENTORY_WRITE
+from app.core.permissions import SYSTEM_CONFIG_READ
+from app.core.permissions import SYSTEM_DIAGNOSTIC
+from app.core.permissions import SYSTEM_DICTIONARY_READ
+from app.core.permissions import SYSTEM_READ
 from app.core.permissions import QUALITY_CANCEL
 from app.core.permissions import QUALITY_CONFIRM
 from app.core.permissions import QUALITY_CREATE
@@ -80,6 +95,7 @@ from app.core.permissions import QUALITY_READ
 from app.core.permissions import QUALITY_UPDATE
 from app.core.permissions import WAREHOUSE_DIAGNOSTIC
 from app.core.permissions import WAREHOUSE_EXPORT
+from app.core.permissions import WAREHOUSE_INVENTORY_COUNT
 from app.core.permissions import WAREHOUSE_READ
 from app.core.permissions import WAREHOUSE_STOCK_ENTRY_CANCEL
 from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
@@ -1733,7 +1749,10 @@ class PermissionService:
             "factory_statement_cancel": False,
             "factory_statement_payable_draft_create": False,
             "factory_statement_payable_draft_worker": False,
+            "factory_statement_payment_create": False,
+            "payment_create": False,
             "manage": False,
+            "write": False,
             "retry": False,
             "dry_run": False,
             "diagnostic": False,
@@ -1757,8 +1776,28 @@ class PermissionService:
             "frontend_contract_diagnostic": False,
             "sales_read": False,
             "sales_export": False,
+            "sales_inventory_read": False,
+            "sales_inventory_write": False,
+            "sales_inventory_export": False,
+            "sales_inventory_diagnostic": False,
             "inventory_read": False,
             "inventory_export": False,
+            "master_data_read": False,
+            "master_data_manage": False,
+            "sample_read": False,
+            "sample_manage": False,
+            "material_purchase_read": False,
+            "material_purchase_write": False,
+            "stock_entry_draft": False,
+            "stock_entry_cancel": False,
+            "inventory_count": False,
+            "report_read": False,
+            "report_export": False,
+            "report_diagnostic": False,
+            "system_read": False,
+            "system_config_read": False,
+            "system_dictionary_read": False,
+            "system_diagnostic": False,
             "quality_read": False,
             "quality_create": False,
             "quality_update": False,
@@ -1806,11 +1845,14 @@ class PermissionService:
             return base
         if module == "warehouse":
             base["read"] = WAREHOUSE_READ in actions
-            base["create"] = WAREHOUSE_STOCK_ENTRY_DRAFT in actions
+            base["create"] = WAREHOUSE_STOCK_ENTRY_DRAFT in actions or WAREHOUSE_INVENTORY_COUNT in actions
             base["cancel"] = WAREHOUSE_STOCK_ENTRY_CANCEL in actions
             base["export"] = WAREHOUSE_EXPORT in actions
             base["diagnostic"] = WAREHOUSE_DIAGNOSTIC in actions
             base["worker"] = WAREHOUSE_WORKER in actions
+            base["stock_entry_draft"] = WAREHOUSE_STOCK_ENTRY_DRAFT in actions
+            base["stock_entry_cancel"] = WAREHOUSE_STOCK_ENTRY_CANCEL in actions
+            base["inventory_count"] = WAREHOUSE_INVENTORY_COUNT in actions
             return base
         if module == "style_profit":
             base["read"] = STYLE_PROFIT_READ in actions
@@ -1827,6 +1869,62 @@ class PermissionService:
             base["factory_statement_cancel"] = FACTORY_STATEMENT_CANCEL in actions
             base["factory_statement_payable_draft_create"] = FACTORY_STATEMENT_PAYABLE_DRAFT_CREATE in actions
             base["factory_statement_payable_draft_worker"] = FACTORY_STATEMENT_PAYABLE_DRAFT_WORKER in actions
+            base["payment_create"] = FACTORY_STATEMENT_PAYMENT_CREATE in actions
+            base["factory_statement_payment_create"] = FACTORY_STATEMENT_PAYMENT_CREATE in actions
+            return base
+        if module == "sales_inventory":
+            base["read"] = SALES_INVENTORY_READ in actions
+            base["write"] = SALES_INVENTORY_WRITE in actions
+            base["create"] = base["write"]
+            base["update"] = base["write"]
+            base["export"] = SALES_INVENTORY_EXPORT in actions
+            base["diagnostic"] = SALES_INVENTORY_DIAGNOSTIC in actions
+            base["sales_inventory_read"] = base["read"]
+            base["sales_inventory_write"] = base["write"]
+            base["sales_inventory_export"] = base["export"]
+            base["sales_inventory_diagnostic"] = base["diagnostic"]
+            return base
+        if module == "master_data":
+            base["read"] = MASTER_DATA_READ in actions
+            base["manage"] = MASTER_DATA_MANAGE in actions
+            base["create"] = base["manage"]
+            base["update"] = base["manage"]
+            base["master_data_read"] = base["read"]
+            base["master_data_manage"] = base["manage"]
+            return base
+        if module == "sample":
+            base["read"] = SAMPLE_READ in actions
+            base["manage"] = SAMPLE_MANAGE in actions
+            base["create"] = base["manage"]
+            base["update"] = base["manage"]
+            base["sample_read"] = base["read"]
+            base["sample_manage"] = base["manage"]
+            return base
+        if module == "material_purchase":
+            base["read"] = MATERIAL_PURCHASE_READ in actions
+            base["write"] = MATERIAL_PURCHASE_WRITE in actions
+            base["create"] = base["write"]
+            base["update"] = base["write"]
+            base["material_purchase_read"] = base["read"]
+            base["material_purchase_write"] = base["write"]
+            return base
+        if module == "report":
+            base["read"] = REPORT_READ in actions
+            base["export"] = REPORT_EXPORT in actions
+            base["diagnostic"] = REPORT_DIAGNOSTIC in actions
+            base["report_read"] = base["read"]
+            base["report_export"] = base["export"]
+            base["report_diagnostic"] = base["diagnostic"]
+            return base
+        if module == "system":
+            base["read"] = SYSTEM_READ in actions
+            base["config_read"] = SYSTEM_CONFIG_READ in actions
+            base["dictionary_read"] = SYSTEM_DICTIONARY_READ in actions
+            base["diagnostic"] = SYSTEM_DIAGNOSTIC in actions
+            base["system_read"] = base["read"]
+            base["system_config_read"] = base["config_read"]
+            base["system_dictionary_read"] = base["dictionary_read"]
+            base["system_diagnostic"] = base["diagnostic"]
             return base
         if module == "permission_audit":
             base["read"] = "permission_audit:read" in actions

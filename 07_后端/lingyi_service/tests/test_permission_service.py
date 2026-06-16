@@ -151,6 +151,74 @@ class PermissionAggregationTest(unittest.TestCase):
         self.assertTrue(agg.button_permissions["export"])
         self.assertTrue(agg.button_permissions["diagnostic"])
         self.assertTrue(agg.button_permissions["worker"])
+        self.assertTrue(agg.button_permissions["stock_entry_draft"])
+        self.assertTrue(agg.button_permissions["stock_entry_cancel"])
+        self.assertTrue(agg.button_permissions["inventory_count"])
+
+    def test_business_module_button_permissions_are_projected(self) -> None:
+        cases = [
+            (
+                "sales_inventory",
+                "Sales Manager",
+                {
+                    "read": True,
+                    "write": True,
+                    "create": True,
+                    "update": True,
+                    "export": True,
+                    "sales_inventory_write": True,
+                },
+            ),
+            (
+                "master_data",
+                "Master Data Manager",
+                {"read": True, "manage": True, "create": True, "update": True, "master_data_manage": True},
+            ),
+            (
+                "sample",
+                "Sample Manager",
+                {"read": True, "manage": True, "create": True, "update": True, "sample_manage": True},
+            ),
+            (
+                "material_purchase",
+                "Purchasing Manager",
+                {"read": True, "write": True, "create": True, "update": True, "material_purchase_write": True},
+            ),
+            (
+                "report",
+                "System Manager",
+                {"read": True, "export": True, "diagnostic": True, "report_export": True},
+            ),
+        ]
+        for module, role, expected_permissions in cases:
+            with self.subTest(module=module):
+                agg = self._service().get_actions(
+                    current_user=CurrentUser(
+                        username=f"{module}.user",
+                        roles=[role],
+                        is_service_account=False,
+                        source="dev_header",
+                    ),
+                    request_obj=_build_request(),
+                    module=module,
+                )
+                for key, expected in expected_permissions.items():
+                    self.assertIs(agg.button_permissions[key], expected)
+
+    def test_factory_statement_payment_button_permission(self) -> None:
+        agg = self._service().get_actions(
+            current_user=CurrentUser(
+                username="finance.manager",
+                roles=["Finance Manager"],
+                is_service_account=False,
+                source="dev_header",
+            ),
+            request_obj=_build_request(),
+            module="factory_statement",
+        )
+        self.assertIn("factory_statement:payment_create", agg.actions)
+        self.assertTrue(agg.button_permissions["payment_create"])
+        self.assertTrue(agg.button_permissions["factory_statement_payment_create"])
 
 
 class PermissionServiceFailClosedTest(unittest.TestCase):
