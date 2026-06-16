@@ -209,6 +209,14 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
             "/api/warehouse/stock-entry-drafts?purpose=Material%20Receipt&keyword=PO-A5-001",
             headers=self._headers(),
         )
+        stock_ledger = self.client.get(
+            "/api/warehouse/stock-ledger?item_code=FAB-A",
+            headers=self._headers(),
+        )
+        stock_summary = self.client.get(
+            "/api/warehouse/stock-summary?item_code=FAB-A",
+            headers=self._headers(),
+        )
         return_report = self.client.get(
             "/api/warehouse/factory-return-material-report?item_code=FAB-A",
             headers=self._headers(),
@@ -218,6 +226,18 @@ class MaterialPurchaseWarehouseFlowTest(unittest.TestCase):
         self.assertEqual(receipt.json()["data"]["status"], "pending_outbox")
         self.assertEqual(list_drafts.status_code, 200, list_drafts.text)
         self.assertEqual(list_drafts.json()["data"]["total"], 1)
+        self.assertEqual(stock_ledger.status_code, 200, stock_ledger.text)
+        ledger_items = stock_ledger.json()["data"]["items"]
+        self.assertEqual(stock_ledger.json()["data"]["total"], 1)
+        self.assertEqual(ledger_items[0]["item_code"], self.ITEM_CODE)
+        self.assertEqual(ledger_items[0]["warehouse"], self.WAREHOUSE)
+        self.assertEqual(Decimal(str(ledger_items[0]["actual_qty"])), Decimal("20.0"))
+        self.assertEqual(Decimal(str(ledger_items[0]["qty_after_transaction"])), Decimal("20.0"))
+        self.assertEqual(ledger_items[0]["posting_date"], self.BUSINESS_DATE)
+        self.assertEqual(stock_summary.status_code, 200, stock_summary.text)
+        summary_items = stock_summary.json()["data"]["items"]
+        self.assertEqual(len(summary_items), 1)
+        self.assertEqual(Decimal(str(summary_items[0]["actual_qty"])), Decimal("20.0"))
         self.assertEqual(return_report.status_code, 200, return_report.text)
         report_items = return_report.json()["data"]["items"]
         self.assertEqual(len(report_items), 1)

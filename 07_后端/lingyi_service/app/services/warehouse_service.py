@@ -87,6 +87,23 @@ class WarehouseStockEntryOutboxClaim:
     payload: dict[str, Any]
 
 
+@dataclass(slots=True, frozen=True)
+class WarehouseStockMovement:
+    """Normalized local stock movement derived from stock-entry draft rows."""
+
+    company: str
+    warehouse: str
+    item_code: str
+    posting_date: date
+    sort_at: datetime
+    draft_id: int
+    item_id: int
+    sequence: int
+    purpose: str
+    actual_qty: Decimal
+    valuation_rate: Decimal
+
+
 class WarehouseService:
     """Warehouse read-only and draft/outbox write service."""
 
@@ -118,21 +135,45 @@ class WarehouseService:
         page: int,
         page_size: int,
     ) -> WarehouseStockLedgerData:
-        rows, total = self._require_adapter().list_stock_ledger(
-            company=company,
-            warehouse=warehouse,
-            item_code=item_code,
-            from_date=from_date,
-            to_date=to_date,
-            page=page,
-            page_size=page_size,
-        )
-        return WarehouseStockLedgerData(
-            items=[WarehouseStockLedgerItem(**row) for row in rows],
-            total=total,
-            page=page,
-            page_size=page_size,
-        )
+        if self.adapter is None and self._local_read_fallback_enabled():
+            return self.list_local_stock_ledger(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                from_date=from_date,
+                to_date=to_date,
+                page=page,
+                page_size=page_size,
+            )
+        try:
+            rows, total = self._require_adapter().list_stock_ledger(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                from_date=from_date,
+                to_date=to_date,
+                page=page,
+                page_size=page_size,
+            )
+        except ERPNextAdapterException:
+            if not self._local_read_fallback_enabled():
+                raise
+            return self.list_local_stock_ledger(
+                company=company,
+                warehouse=warehouse,
+                item_code=item_code,
+                from_date=from_date,
+                to_date=to_date,
+                page=page,
+                page_size=page_size,
+            )
+        else:
+            return WarehouseStockLedgerData(
+                items=[WarehouseStockLedgerItem(**row) for row in rows],
+                total=total,
+                page=page,
+                page_size=page_size,
+            )
 
     def get_stock_summary(
         self,
@@ -141,12 +182,14 @@ class WarehouseService:
         warehouse: str | None,
         item_code: str | None,
     ) -> WarehouseStockSummaryData:
+        if self.adapter is None and self._local_read_fallback_enabled():
+            return self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
         try:
             rows = self._require_adapter().list_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
         except ERPNextAdapterException:
             if not self._local_read_fallback_enabled():
                 raise
-            return self._local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+            return self.get_local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
         items = [self._summary_item(row) for row in rows]
         items.sort(key=lambda row: (row.company, row.warehouse, row.item_code))
         management_rows = self._build_management_overview(items=items)
@@ -159,6 +202,167 @@ class WarehouseService:
             warehouse_management=management_rows,
             material_inventory=material_rows,
         )
+
+    def list_local_stock_ledger(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+        from_date: date | None,
+        to_date: date | None,
+        page: int,
+        page_size: int,
+    ) -> WarehouseStockLedgerData:
+        movements = self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code)
+        running_qty: dict[tuple[str, str, str], Decimal] = {}
+        ledger_rows: list[WarehouseStockLedgerItem] = []
+        for movement in movements:
+            key = (movement.company, movement.warehouse, movement.item_code)
+            next_balance = running_qty.get(key, Decimal("0")) + movement.actual_qty
+            running_qty[key] = next_balance
+            if from_date is not None and movement.posting_date < from_date:
+                continue
+            if to_date is not None and movement.posting_date > to_date:
+                continue
+            ledger_rows.append(
+                WarehouseStockLedgerItem(
+                    company=movement.company,
+                    warehouse=movement.warehouse,
+                    item_code=movement.item_code,
+                    posting_date=movement.posting_date,
+                    voucher_type=f"Stock Entry Draft/{movement.purpose}",
+                    voucher_no=f"DRAFT-{movement.draft_id}",
+                    actual_qty=movement.actual_qty,
+                    qty_after_transaction=next_balance,
+                    valuation_rate=movement.valuation_rate,
+                )
+            )
+
+        total = len(ledger_rows)
+        start = max(page - 1, 0) * page_size
+        return WarehouseStockLedgerData(
+            items=ledger_rows[start : start + page_size],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    def get_local_stock_summary(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> WarehouseStockSummaryData:
+        return self._local_stock_summary(company=company, warehouse=warehouse, item_code=item_code)
+
+    def _local_stock_movements(
+        self,
+        *,
+        company: str | None,
+        warehouse: str | None,
+        item_code: str | None,
+    ) -> list[WarehouseStockMovement]:
+        session = self._require_session()
+        normalized_company = self._text(company)
+        normalized_warehouse = self._text(warehouse)
+        normalized_item_code = self._text(item_code)
+        query = (
+            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
+            .join(
+                LyWarehouseStockEntryDraftItem,
+                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
+            )
+            .filter(LyWarehouseStockEntryDraft.status != "cancelled")
+        )
+        if normalized_company:
+            query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
+        if normalized_item_code:
+            query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
+
+        movements: list[WarehouseStockMovement] = []
+
+        def add_movement(
+            *,
+            draft: LyWarehouseStockEntryDraft,
+            item: LyWarehouseStockEntryDraftItem,
+            warehouse_value: str | None,
+            qty: Decimal,
+            sequence: int,
+        ) -> None:
+            warehouse_key = str(warehouse_value or "").strip()
+            if not warehouse_key:
+                return
+            if normalized_warehouse and warehouse_key != normalized_warehouse:
+                return
+            posting_date = self._local_draft_posting_date(draft=draft)
+            movements.append(
+                WarehouseStockMovement(
+                    company=str(draft.company),
+                    warehouse=warehouse_key,
+                    item_code=str(item.item_code),
+                    posting_date=posting_date,
+                    sort_at=draft.created_at or datetime.combine(posting_date, datetime.min.time(), timezone.utc),
+                    draft_id=int(draft.id),
+                    item_id=int(item.id),
+                    sequence=sequence,
+                    purpose=str(draft.purpose),
+                    actual_qty=qty,
+                    valuation_rate=self._material_unit_price(item_code=str(item.item_code)),
+                )
+            )
+
+        for draft, item in query.all():
+            qty = Decimal(str(item.qty or 0))
+            purpose = str(draft.purpose)
+            if purpose == "Material Issue":
+                add_movement(
+                    draft=draft,
+                    item=item,
+                    warehouse_value=item.source_warehouse or draft.source_warehouse,
+                    qty=-qty,
+                    sequence=1,
+                )
+            elif purpose == "Material Transfer":
+                add_movement(
+                    draft=draft,
+                    item=item,
+                    warehouse_value=item.source_warehouse or draft.source_warehouse,
+                    qty=-qty,
+                    sequence=1,
+                )
+                add_movement(
+                    draft=draft,
+                    item=item,
+                    warehouse_value=item.target_warehouse or draft.target_warehouse,
+                    qty=qty,
+                    sequence=2,
+                )
+            else:
+                add_movement(
+                    draft=draft,
+                    item=item,
+                    warehouse_value=item.target_warehouse or draft.target_warehouse,
+                    qty=qty,
+                    sequence=1,
+                )
+
+        movements.sort(key=lambda row: (row.sort_at, row.draft_id, row.item_id, row.sequence, row.warehouse))
+        return movements
+
+    def _local_draft_posting_date(self, *, draft: LyWarehouseStockEntryDraft) -> date:
+        outbox = self._latest_outbox_for_draft(int(draft.id))
+        if outbox is not None and isinstance(outbox.payload, dict):
+            raw_business_date = self._text(outbox.payload.get("business_date"))
+            if raw_business_date is not None:
+                try:
+                    return date.fromisoformat(raw_business_date)
+                except ValueError:
+                    pass
+        if draft.created_at is not None:
+            return draft.created_at.date()
+        return date.today()
 
     def _local_read_fallback_enabled(self) -> bool:
         app_env = os.getenv("APP_ENV", "").strip().lower()
@@ -178,43 +382,13 @@ class WarehouseService:
         warehouse: str | None,
         item_code: str | None,
     ) -> WarehouseStockSummaryData:
-        session = self._require_session()
         normalized_company = self._text(company)
         normalized_warehouse = self._text(warehouse)
         normalized_item_code = self._text(item_code)
-        query = (
-            session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
-            .join(
-                LyWarehouseStockEntryDraftItem,
-                LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
-            )
-            .filter(LyWarehouseStockEntryDraft.status != "cancelled")
-        )
-        if normalized_company:
-            query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
-        if normalized_item_code:
-            query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
-
         grouped: dict[tuple[str, str, str], Decimal] = {}
-
-        def add_movement(*, draft: LyWarehouseStockEntryDraft, item: LyWarehouseStockEntryDraftItem, warehouse_value: str | None, qty: Decimal) -> None:
-            warehouse_key = str(warehouse_value or "").strip()
-            if not warehouse_key:
-                return
-            if normalized_warehouse and warehouse_key != normalized_warehouse:
-                return
-            key = (str(draft.company), warehouse_key, str(item.item_code))
-            grouped[key] = grouped.get(key, Decimal("0")) + qty
-
-        for draft, item in query.all():
-            qty = Decimal(str(item.qty or 0))
-            if str(draft.purpose) == "Material Issue":
-                add_movement(draft=draft, item=item, warehouse_value=item.source_warehouse or draft.source_warehouse, qty=-qty)
-            elif str(draft.purpose) == "Material Transfer":
-                add_movement(draft=draft, item=item, warehouse_value=item.source_warehouse or draft.source_warehouse, qty=-qty)
-                add_movement(draft=draft, item=item, warehouse_value=item.target_warehouse or draft.target_warehouse, qty=qty)
-            else:
-                add_movement(draft=draft, item=item, warehouse_value=item.target_warehouse or draft.target_warehouse, qty=qty)
+        for movement in self._local_stock_movements(company=company, warehouse=warehouse, item_code=item_code):
+            key = (movement.company, movement.warehouse, movement.item_code)
+            grouped[key] = grouped.get(key, Decimal("0")) + movement.actual_qty
 
         items = [
             WarehouseStockSummaryItem(
@@ -957,6 +1131,7 @@ class WarehouseService:
             "purpose": purpose,
             "source_type": source_type,
             "source_id": source_id,
+            "business_date": payload.business_date.isoformat(),
             "source_warehouse": source_warehouse,
             "target_warehouse": target_warehouse,
             "items": [

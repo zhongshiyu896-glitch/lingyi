@@ -37,8 +37,6 @@ from app.core.permissions import WAREHOUSE_STOCK_ENTRY_CANCEL
 from app.core.permissions import WAREHOUSE_STOCK_ENTRY_DRAFT
 from app.core.permissions import WAREHOUSE_WORKER
 from app.core.permissions import get_permission_source
-from app.models.warehouse import LyWarehouseStockEntryDraft
-from app.models.warehouse import LyWarehouseStockEntryDraftItem
 from app.schemas.warehouse import ApiResponse
 from app.schemas.warehouse import WarehouseAlertsData
 from app.schemas.warehouse import WarehouseBatchDetailData
@@ -60,9 +58,7 @@ from app.schemas.warehouse import WarehouseSerialNumberListData
 from app.schemas.warehouse import WarehouseStockEntryDraftCancelRequest
 from app.schemas.warehouse import WarehouseStockEntryDraftCreateRequest
 from app.schemas.warehouse import WarehouseStockLedgerData
-from app.schemas.warehouse import WarehouseStockLedgerItem
 from app.schemas.warehouse import WarehouseStockSummaryData
-from app.schemas.warehouse import WarehouseStockSummaryItem
 from app.schemas.warehouse import WarehouseStockEntryWorkerRunOnceData
 from app.schemas.warehouse import WarehouseStockEntryWorkerRunOnceRequest
 from app.schemas.warehouse import WarehouseTraceabilityData
@@ -598,54 +594,15 @@ def _build_local_stock_ledger_fallback(
     page: int,
     page_size: int,
 ) -> WarehouseStockLedgerData:
-    normalized_company = _scope_text(company)
-    normalized_warehouse = _scope_text(warehouse)
-    normalized_item_code = _scope_text(item_code)
-    query = (
-        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
-        .join(
-            LyWarehouseStockEntryDraftItem,
-            LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
-        )
-        .filter(LyWarehouseStockEntryDraft.status != "cancelled")
-        .order_by(LyWarehouseStockEntryDraft.created_at.asc(), LyWarehouseStockEntryDraft.id.asc())
+    return WarehouseService(session=session).list_local_stock_ledger(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
+        from_date=from_date,
+        to_date=to_date,
+        page=page,
+        page_size=page_size,
     )
-    if normalized_company is not None:
-        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
-    if normalized_warehouse is not None:
-        query = query.filter(LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
-    if normalized_item_code is not None:
-        query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
-    rows = query.all()
-
-    running_qty = Decimal("0")
-    fallback_items: list[WarehouseStockLedgerItem] = []
-    for draft_row, item_row in rows:
-        qty = Decimal(str(item_row.qty))
-        posting_date = draft_row.created_at.date() if draft_row.created_at else date.today()
-        if from_date is not None and posting_date < from_date:
-            continue
-        if to_date is not None and posting_date > to_date:
-            continue
-        running_qty += qty
-        fallback_items.append(
-            WarehouseStockLedgerItem(
-                company=str(draft_row.company),
-                warehouse=str(item_row.target_warehouse or draft_row.target_warehouse or ""),
-                item_code=str(item_row.item_code),
-                posting_date=posting_date,
-                voucher_type="Stock Entry Draft",
-                voucher_no=f"DRAFT-{draft_row.id}",
-                actual_qty=qty,
-                qty_after_transaction=running_qty,
-                valuation_rate=Decimal("0"),
-            )
-        )
-
-    total = len(fallback_items)
-    start = max((page - 1) * page_size, 0)
-    end = start + page_size
-    return WarehouseStockLedgerData(items=fallback_items[start:end], total=total, page=page, page_size=page_size)
 
 
 def _build_local_stock_summary_fallback(
@@ -655,56 +612,10 @@ def _build_local_stock_summary_fallback(
     warehouse: str | None,
     item_code: str | None,
 ) -> WarehouseStockSummaryData:
-    normalized_company = _scope_text(company)
-    normalized_warehouse = _scope_text(warehouse)
-    normalized_item_code = _scope_text(item_code)
-    query = (
-        session.query(LyWarehouseStockEntryDraft, LyWarehouseStockEntryDraftItem)
-        .join(
-            LyWarehouseStockEntryDraftItem,
-            LyWarehouseStockEntryDraftItem.draft_id == LyWarehouseStockEntryDraft.id,
-        )
-        .filter(LyWarehouseStockEntryDraft.status != "cancelled")
-    )
-    if normalized_company is not None:
-        query = query.filter(LyWarehouseStockEntryDraft.company == normalized_company)
-    if normalized_warehouse is not None:
-        query = query.filter(LyWarehouseStockEntryDraft.target_warehouse == normalized_warehouse)
-    if normalized_item_code is not None:
-        query = query.filter(LyWarehouseStockEntryDraftItem.item_code == normalized_item_code)
-
-    grouped: dict[tuple[str, str, str], Decimal] = {}
-    for draft_row, item_row in query.all():
-        company_key = str(draft_row.company)
-        warehouse_key = str(item_row.target_warehouse or draft_row.target_warehouse or "")
-        item_key = str(item_row.item_code)
-        key = (company_key, warehouse_key, item_key)
-        grouped[key] = grouped.get(key, Decimal("0")) + Decimal(str(item_row.qty))
-
-    items = [
-        WarehouseStockSummaryItem(
-            company=company_key,
-            warehouse=warehouse_key,
-            item_code=item_key,
-            actual_qty=qty,
-            projected_qty=qty,
-            reserved_qty=Decimal("0"),
-            ordered_qty=Decimal("0"),
-            reorder_level=None,
-            safety_stock=None,
-            threshold_missing=True,
-            is_below_reorder=False,
-            is_below_safety=False,
-        )
-        for (company_key, warehouse_key, item_key), qty in sorted(grouped.items())
-    ]
-    return WarehouseStockSummaryData(
-        company=normalized_company,
-        warehouse=normalized_warehouse,
-        item_code=normalized_item_code,
-        items=items,
-        warehouse_management=[],
-        material_inventory=[],
+    return WarehouseService(session=session).get_local_stock_summary(
+        company=_scope_text(company),
+        warehouse=_scope_text(warehouse),
+        item_code=_scope_text(item_code),
     )
 
 
@@ -1387,29 +1298,37 @@ def get_stock_summary(
     except HTTPException as exc:
         _raise_scope_denied_as_forbidden(exc)
 
-    try:
-        data = _read_service(request).get_stock_summary(
-            company=_scope_text(company),
-            warehouse=_scope_text(warehouse),
-            item_code=_scope_text(item_code),
+    if _is_local_warehouse_read_enabled():
+        data = _build_local_stock_summary_fallback(
+            session=session,
+            company=company,
+            warehouse=warehouse,
+            item_code=item_code,
         )
-    except ERPNextAdapterException as exc:
-        if _local_warehouse_read_fallback_enabled(exc):
-            data = _build_local_stock_summary_fallback(
-                session=session,
-                company=company,
-                warehouse=warehouse,
-                item_code=item_code,
+    else:
+        try:
+            data = _read_service(request).get_stock_summary(
+                company=_scope_text(company),
+                warehouse=_scope_text(warehouse),
+                item_code=_scope_text(item_code),
             )
-        else:
-            _handle_erpnext_error(
-                exc=exc,
-                permission_service=permission_service,
-                request=request,
-                current_user=current_user,
-                action=action,
-                resource_type="Bin",
-            )
+        except ERPNextAdapterException as exc:
+            if _local_warehouse_read_fallback_enabled(exc):
+                data = _build_local_stock_summary_fallback(
+                    session=session,
+                    company=company,
+                    warehouse=warehouse,
+                    item_code=item_code,
+                )
+            else:
+                _handle_erpnext_error(
+                    exc=exc,
+                    permission_service=permission_service,
+                    request=request,
+                    current_user=current_user,
+                    action=action,
+                    resource_type="Bin",
+                )
 
     filtered = [
         row
@@ -1461,9 +1380,9 @@ def list_purchase_receipts(
             current_user=current_user,
             request=request,
             action=action,
-            company=company,
-            warehouse=warehouse,
-            item_code=item_code,
+            company=_scope_text(company),
+            warehouse=_scope_text(warehouse),
+            item_code=_scope_text(item_code),
             user_permissions=permissions,
         )
     except HTTPException as exc:
