@@ -343,7 +343,7 @@ class ReportCatalogService:
             department="财务对账",
             amount="1280.00",
             priority="高",
-            submitted_at="2026-05-07 09:10",
+            filed_at="2026-05-07 09:10",
             completed_at="-",
             status="待审批",
             remark="差旅报销待一审",
@@ -357,7 +357,7 @@ class ReportCatalogService:
             department="仓储协同",
             amount="5600.00",
             priority="中",
-            submitted_at="2026-05-06 14:22",
+            filed_at="2026-05-06 14:22",
             completed_at="2026-05-06 15:05",
             status="已通过",
             remark="供应商运费付款",
@@ -371,7 +371,7 @@ class ReportCatalogService:
             department="生产计划",
             amount="9200.00",
             priority="高",
-            submitted_at="2026-05-05 16:18",
+            filed_at="2026-05-05 16:18",
             completed_at="2026-05-05 17:40",
             status="已驳回",
             remark="资料不完整驳回补充",
@@ -385,7 +385,7 @@ class ReportCatalogService:
             department="财务对账",
             amount="3000.00",
             priority="低",
-            submitted_at="2026-05-04 11:03",
+            filed_at="2026-05-04 11:03",
             completed_at="2026-05-04 11:36",
             status="已通过",
             remark="月度预算微调",
@@ -534,9 +534,9 @@ class ReportCatalogService:
         if normalized_approval_status:
             items = [item for item in items if item.status == normalized_approval_status]
         if normalized_from_date:
-            items = [item for item in items if item.submitted_at[:10] >= normalized_from_date]
+            items = [item for item in items if item.filed_at[:10] >= normalized_from_date]
         if normalized_to_date:
-            items = [item for item in items if item.submitted_at[:10] <= normalized_to_date]
+            items = [item for item in items if item.filed_at[:10] <= normalized_to_date]
 
         return ReportApprovalReportData(
             items=items,

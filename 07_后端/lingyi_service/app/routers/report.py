@@ -45,7 +45,7 @@ def _scope_text(value: Any) -> str | None:
 
 
 def _ok(data: Any) -> dict[str, Any]:
-    return ApiResponse(code="0", message="success", data=data).model_dump(mode="json")
+    return ApiResponse(code="0", message="success", data=data).model_dump(mode="json", by_alias=True)
 
 
 def _invalid_query(message: str) -> None:

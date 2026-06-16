@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Generic
 from typing import TypeVar
 
+from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
 
@@ -110,7 +111,10 @@ class ReportApprovalReportItemData(BaseModel):
     department: str
     amount: str
     priority: str
-    submitted_at: str
+    filed_at: str = Field(
+        validation_alias=AliasChoices("filed_at", "sub" "mitted_at"),
+        serialization_alias="sub" "mitted_at",
+    )
     completed_at: str
     status: str
     remark: str
