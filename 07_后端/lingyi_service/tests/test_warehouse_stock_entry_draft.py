@@ -214,6 +214,25 @@ class WarehouseStockEntryDraftApiTest(WarehouseStockEntryDraftApiBase):
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["outbox"]["status"], "in_pending")
 
+    def test_create_transfer_allows_distinct_source_and_target_warehouses(self) -> None:
+        payload = self._payload()
+        payload["target_warehouse"] = "WH-C"
+        payload["items"][0]["target_warehouse"] = "WH-C"
+        response = self.client.post(
+            "/api/warehouse/stock-entry-drafts",
+            headers=self._headers(
+                "warehouse:stock_entry_draft,warehouse:read",
+                request_id=self._request_id_from_payload(payload),
+            ),
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        body = response.json()["data"]
+        self.assertEqual(body["source_warehouse"], self.WAREHOUSE)
+        self.assertEqual(body["target_warehouse"], "WH-C")
+        self.assertEqual(body["items"][0]["source_warehouse"], self.WAREHOUSE)
+        self.assertEqual(body["items"][0]["target_warehouse"], "WH-C")
+
     def test_create_draft_generates_in_pending_outbox(self) -> None:
         response = self.client.post(
             "/api/warehouse/stock-entry-drafts",

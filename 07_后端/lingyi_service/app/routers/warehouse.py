@@ -2593,15 +2593,23 @@ def create_stock_entry_draft(
         action=action,
         resource_type="warehouse",
     )
-    draft_warehouse = _scope_text(payload.warehouse) or _scope_text(payload.source_warehouse) or _scope_text(payload.target_warehouse)
+    payload_purpose = _scope_text(payload.purpose)
+    payload_warehouse = _scope_text(payload.warehouse)
+    payload_source_warehouse = _scope_text(payload.source_warehouse)
+    payload_target_warehouse = _scope_text(payload.target_warehouse)
+    draft_warehouse = payload_warehouse or payload_source_warehouse or payload_target_warehouse
     first_item_code = _scope_text(payload.item_code) or _scope_text(payload.items[0].item_code)
     total_qty = sum(Decimal(str(item.qty)) for item in payload.items)
     if _scope_text(payload.source_ref) != _scope_text(payload.source_id):
         _raise_warehouse_idempotency_conflict("source_ref 载体与业务载体不一致")
-    if _scope_text(payload.source_warehouse) and _scope_text(payload.warehouse) != _scope_text(payload.source_warehouse):
-        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
-    if _scope_text(payload.target_warehouse) and _scope_text(payload.warehouse) != _scope_text(payload.target_warehouse):
-        _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+    if payload_purpose == "Material Transfer":
+        if not payload_warehouse or payload_warehouse not in {payload_source_warehouse, payload_target_warehouse}:
+            _raise_warehouse_idempotency_conflict("warehouse 载体与调仓源/目标仓不一致")
+    else:
+        if payload_source_warehouse and payload_warehouse != payload_source_warehouse:
+            _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
+        if payload_target_warehouse and payload_warehouse != payload_target_warehouse:
+            _raise_warehouse_idempotency_conflict("warehouse 载体与业务载体不一致")
     if _scope_text(payload.operation) != "create_stock_entry_draft":
         _raise_warehouse_idempotency_conflict("operation 载体与业务模式不一致")
     if _scope_text(payload.status_action) != "create":
